@@ -80,8 +80,8 @@ Spark or M/R를 InMemory에서 동작하도록 구현 - locality, loading, broad
 	* REEF Driver는 계속 자원을 점유하지만 YARN이 죽으면 죽음
 	* 일단은 ZooKeeper사용. Driver fail에 대한 대응은 차후에
 * Scheduling 관련 이슈
-	* Yarn의 scheduling 관련 여러 issue가 많으므로 Zira issues 공유
-* Spark와 tazo를 같이 쓰면 자원을 점유 - 활용 능력이 떨어짐
+	* Yarn의 scheduling 관련 여러 issue가 많으므로 jira issues 공유
+* Spark와 tajo를 같이 쓰면 자원을 점유 - 활용 능력이 떨어짐
 	* Omega ; shared state 를 track하여 workload에 따라 job을 분배?
 * 진행중인 연구들
 	* M/R on REEF	
