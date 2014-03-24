@@ -82,7 +82,7 @@ Spark or M/R를 InMemory에서 동작하도록 구현 - locality, loading, broad
 * Scheduling 관련 이슈
 	* Yarn의 scheduling 관련 여러 issue가 많으므로 Zira issues 공유
 * Spark와 tazo를 같이 쓰면 자원을 점유 - 활용 능력이 떨어짐
-	* Omega ; shared status 를 track하여 workload를 분배?
+	* Omega ; shared state 를 track하여 workload에 따라 job을 분배?
 * 진행중인 연구들
 	* M/R on REEF	
 		* shuffle에서의 fault tolerance 구현이 어려움
