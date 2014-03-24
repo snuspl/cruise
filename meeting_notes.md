@@ -28,7 +28,7 @@ Target이 분명한 InMemory Part는 7월까지 확실히 진행하도록 하고
 		* LTE가 되면서 3배씩 증가된 양 포함
 		* 13개월치 Data
 		* Web에서 수행 후 완료시 notify
-		* Tazo 사용 ; DataNode를 통해서 가져오는데 사용하게 될 지 확실치는 않음
+		* Tajo 사용 ; DataNode를 통해서 가져오는데 사용하게 될 지 확실치는 않음
 		* M/R에서 하는 것과 동일했으면 좋겠다.
 	* front-end MART
 		* 정형report
