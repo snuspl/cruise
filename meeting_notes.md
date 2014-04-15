@@ -61,7 +61,7 @@
 * 각 Component의 역할
 	* Application Client : Tachyon의 FSClient에 대응하는 class입니다.
 	* NameServer : Tachyon의 master와 같은 역할을 수행합니다. reef-io의 network 패키지를 보면 Logical ID를 Socket Address과 연결짓는 NameServer가 구현되어 있습니다. Refactor하여 사용할 수 있을 것 같습니다.
-	* Driver : Worker와 통신하여 자원 사용량을 monitor하고 유동적으로 Resource를 allocate합니다. 또한 heartbeat를 주고 받아 worker의 상태를 tracking 합니다.
+	* Driver : Worker와 통신하여 자원 사용량을 monitor하고 유동적으로 Resource를 allocate합니다. 또한 heartbeat를 주고 받아 worker의 상태를 tracking 합니다. Elasticity/Resource Control담당. 필요시 Driver가 Evaluator 를 띄움
 	* Inmemory Client : Driver를 통해서 Cache data에 access합니다.
 	* Worker : Data를 HDFS에서 cache로 읽어 오거나, cache로부터 data를 읽는 것을 Context 에 Service로 등록하고, Task에서는 요청된 작업을 수행합니다. Broadcast는 examples에 있는 groupcomm/MatMultREEF 예제를 참조하여 구현하면 될 것 같습니다.
 
