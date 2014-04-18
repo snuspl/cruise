@@ -1,5 +1,6 @@
 # Retained Evaluators
-Retained Evaluators receives a shell command as input from user, execute them and return the result back to user.
+Retained Evaluators receives a shell command as input from user, execute them and return the result back to user. The source code is under [`reef-examples`](https://github.com/Microsoft-CISL/REEF/tree/master/reef-examples/src/main/java/com/microsoft/reef/examples/retained_eval)
+
 
 ##Launch
 
