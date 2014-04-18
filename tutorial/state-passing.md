@@ -1,6 +1,7 @@
-`StatePassing` is a simple example that shows how state is passed across Tasks via `Service` that lives in the `Context` of an `Evaluator`.
+`StatePassing` is a simple test that shows how state is passed across Tasks via `Service` that lives in the `Context` of an `Evaluator`. You can find the code in [`reef-tests`](https://github.com/Microsoft-CISL/REEF/tree/master/reef-tests)
 
-	Services: these are user code that lives in the context of an Evaluator, therefore outliving any particular Task. Examples include caches of parsed data, intermediate state and network connection pools.
+	Services: these are user code that lives in the context of an Evaluator, therefore outliving any particular Task. Examples include caches of parsed data, intermediate state and network connection pools.
+
 This tutorial explains how to create a Service and how the Service works.
 
 ## Prerequisite
