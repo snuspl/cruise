@@ -39,18 +39,10 @@ public class InMemoryClient
     ConfigurationModule driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
         .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class);
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class);//TANG 구현 
     driverConf = EnvironmentUtils.addClasspath(driverConf, DriverConfiguration.GLOBAL_LIBRARIES);
 
     return DriverLauncher.getLauncher(runtimeConf).run(driverConf.build(), timeOut);
   }
 
-  public static void main( String[] args ) throws BindException, InjectionException
-  {
-    final Configuration runtimeConf = LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, 2)
-        .build();
-    LauncherStatus status = runInMemory(runtimeConf, JOB_TIMEOUT);
-    LOG.log(Level.INFO, "InMemory job completed: {0}", status);
-  }
 }
