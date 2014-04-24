@@ -19,3 +19,5 @@ nb-configuration.xml
 atlassian-ide-plugin.xml
 REEF_LOCAL_RUNTIME
 profile-*.json
+*.ipr
+*.iws
