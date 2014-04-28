@@ -11,9 +11,9 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <logging>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config</logging>
     <hadoop.version>2.2.0</hadoop.version>
-    <tang.version>0.1</tang.version>
-    <wake.version>0.1</wake.version>
-    <reef.version>0.1</reef.version>
+    <tang.version>0.4-SNAPSHOT</tang.version>
+    <wake.version>0.4-SNAPSHOT</wake.version>
+    <reef.version>0.4-SNAPSHOT</reef.version>
   </properties>
   <repositories>
     <repository>
@@ -41,8 +41,14 @@
       <version>3.8.1</version>
       <scope>test</scope>
     </dependency>
-   
-    <!-- HADOOP -->
+      <!--Guava cache -->
+      <dependency>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+          <version>16.0</version>
+      </dependency>
+
+      <!-- HADOOP -->
     <dependency>
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-common</artifactId>
