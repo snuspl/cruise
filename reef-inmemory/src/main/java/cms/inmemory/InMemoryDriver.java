@@ -42,7 +42,7 @@ public final class InMemoryDriver {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
       InMemoryDriver.this.requestor.submit(EvaluatorRequest.newBuilder()
           .setNumber(1)
-          .setSize(EvaluatorRequest.Size.SMALL)
+          .setMemory(64)
           .build());
     }
   }
