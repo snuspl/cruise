@@ -19,6 +19,7 @@ import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
+import org.apache.reef.inmemory.org.apache.reef.inmemory.worker.CacheTask;
 
 /**
  * The driver class for InMemory Application
@@ -47,6 +48,7 @@ public final class InMemoryDriver {
     return  TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
         .set(TaskConfiguration.TASK, InMemoryTask.class)
+//        .set(TaskConfiguration.TASK, CacheTask.class)
         .build();
   }
   
