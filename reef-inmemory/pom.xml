@@ -46,8 +46,14 @@
       <version>3.8.1</version>
       <scope>test</scope>
     </dependency>
-   
-    <!-- HADOOP -->
+      <!--Guava cache -->
+      <dependency>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+          <version>16.0</version>
+      </dependency>
+
+      <!-- HADOOP -->
     <dependency>
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-common</artifactId>
