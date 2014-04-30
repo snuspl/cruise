@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory.org.apache.reef.inmemory.worker;
+package org.apache.reef.inmemory.worker;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -6,7 +6,6 @@ import com.microsoft.reef.task.Task;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
