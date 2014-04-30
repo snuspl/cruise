@@ -1,4 +1,4 @@
-package cms.inmemory;
+package org.apache.reef.inmemory;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -7,7 +7,7 @@ import junit.framework.TestSuite;
 /**
  * Unit test for simple App.
  */
-public class InMemoryTaskTest 
+public class InMemoryDriverTest 
     extends TestCase
 {
     /**
@@ -15,7 +15,7 @@ public class InMemoryTaskTest
      *
      * @param testName name of the test case
      */
-    public InMemoryTaskTest( String testName )
+    public InMemoryDriverTest( String testName )
     {
         super( testName );
     }
@@ -25,7 +25,7 @@ public class InMemoryTaskTest
      */
     public static Test suite()
     {
-        return new TestSuite( InMemoryTaskTest.class );
+        return new TestSuite( InMemoryDriverTest.class );
     }
 
     /**
