@@ -117,7 +117,7 @@ public class Launch
     final Configuration clientConf = getClientConfiguration(runtimeConf, cmdlineConf);
 
     LauncherStatus status = runInMemory(runtimeConf);
-    // LauncherStatus status = runInMemory(runtimeConf, clientConf);
+//    LauncherStatus status = runInMemory(runtimeConf, clientConf);
     LOG.log(Level.INFO, "InMemory job completed: {0}", status);
   }
 
