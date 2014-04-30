@@ -1,4 +1,4 @@
-package cms.inmemory;
+package org.apache.reef.inmemory;
 
 import junit.framework.Test;
 import junit.framework.TestCase;

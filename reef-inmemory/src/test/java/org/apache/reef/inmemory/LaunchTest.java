@@ -1,4 +1,4 @@
-package cms.inmemory;
+package org.apache.reef.inmemory;
 
 import com.microsoft.reef.client.LauncherStatus;
 import com.microsoft.reef.runtime.local.client.LocalRuntimeConfiguration;
@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 /**
  * Unit test for simple App.
  */
-public class InMemoryClientTest 
+public class LaunchTest 
     extends TestCase
 {
     final Logger LOG = Logger.getLogger(InMemoryClientTest.class.getName());
@@ -25,7 +25,7 @@ public class InMemoryClientTest
      *
      * @param testName name of the test case
      */
-    public InMemoryClientTest( String testName )
+    public LaunchTest( String testName )
     {
         super( testName );
     }
@@ -35,7 +35,7 @@ public class InMemoryClientTest
      */
     public static Test suite()
     {
-        return new TestSuite( InMemoryClientTest.class );
+        return new TestSuite( LaunchTest.class );
     }
 
     /**

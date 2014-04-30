@@ -1,9 +1,12 @@
-package cms.inmemory;
+package org.apache.reef.inmemory;
 
 import javax.inject.Inject;
 
 import com.microsoft.reef.task.Task;
 
+/**
+ * InMemory Task. Print a message.
+ */
 public class InMemoryTask implements Task {
 
   @Inject
@@ -12,7 +15,7 @@ public class InMemoryTask implements Task {
 
   @Override
   public byte[] call(byte[] arg0) throws Exception {
-    System.out.println("Hello");
+    System.out.println("InMemoryTaskCalled");
     return null;
   }
 
