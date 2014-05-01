@@ -47,7 +47,6 @@ public final class InMemoryDriver {
     return  TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
         .set(TaskConfiguration.TASK, InMemoryTask.class)
-//        .set(TaskConfiguration.TASK, CacheTask.class)
         .build();
   }
   
