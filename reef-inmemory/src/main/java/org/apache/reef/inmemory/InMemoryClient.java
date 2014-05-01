@@ -23,9 +23,6 @@ import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 
-@Public 
-@Provided
-@ClientSide
 @Unit
 public final class InMemoryClient {
 
