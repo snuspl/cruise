@@ -15,11 +15,7 @@
     <wake.version>0.4-SNAPSHOT</wake.version>
     <reef.version>0.4-SNAPSHOT</reef.version>
   </properties>
-  <prerequisites>
-    <maven>3.0</maven>
-  </prerequisites>
-
-
+  
   <repositories>
     <repository>
       <id>central</id>
@@ -140,7 +136,6 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
-            <version>1.2.1</version>
             <configuration>
               <executable>java</executable>
               <arguments>
