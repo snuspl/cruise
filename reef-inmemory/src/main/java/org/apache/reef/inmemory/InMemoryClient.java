@@ -4,79 +4,61 @@ import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
+import com.microsoft.reef.annotations.Provided;
+import com.microsoft.reef.annotations.audience.ClientSide;
+import com.microsoft.reef.annotations.audience.Public;
+import com.microsoft.reef.client.ClientConfiguration;
 import com.microsoft.reef.client.CompletedJob;
-import com.microsoft.reef.client.DriverConfiguration;
 import com.microsoft.reef.client.FailedJob;
 import com.microsoft.reef.client.FailedRuntime;
 import com.microsoft.reef.client.JobMessage;
 import com.microsoft.reef.client.LauncherStatus;
 import com.microsoft.reef.client.REEF;
 import com.microsoft.reef.client.RunningJob;
-import com.microsoft.reef.util.EnvironmentUtils;
 import com.microsoft.tang.Configuration;
-import com.microsoft.tang.JavaConfigurationBuilder;
 import com.microsoft.tang.Tang;
+import com.microsoft.tang.annotations.Unit;
 import com.microsoft.tang.exceptions.BindException;
+import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 
-
+@Public 
+@Provided
+@ClientSide
+@Unit
 public final class InMemoryClient {
 
+  /**
+   * Standard java logger.
+   */
   private static final Logger LOG = Logger.getLogger(InMemoryClient.class.getName());
+  
+  /**
+   * Codec to translate messages to and from the job driver
+   */
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
-
-  private final Configuration driverConfig;
-
+  
   private LauncherStatus status = LauncherStatus.INIT;
 
-  private boolean isBusy = true;
-  private RunningJob theJob = null;
+  private RunningJob runningJob = null;
 
   private final REEF reef;
 
   @Inject
   InMemoryClient(final REEF reef) throws BindException {
     this.reef = reef;
-
-    final JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
-    cb.addConfiguration(
-        EnvironmentUtils.addClasspath(DriverConfiguration.CONF, DriverConfiguration.GLOBAL_LIBRARIES)
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
-        .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
-        /*
-        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, InMemoryDriver.ActiveContextHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, InMemoryDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_CLOSED, InMemoryDriver.ClosedContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_RUNNING, InMemoryDriver.RunningTaskHandler.class)
-        .set(DriverConfiguration.ON_DRIVER_STOP, InMemoryDriver.StopHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_COMPLETED, InMemoryDriver.CompletedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CLIENT_MESSAGE, InMemoryDriver.ClientMessageHandler.class)
-        */
-        .build());
-
-    this.driverConfig = cb.build();
   }
-  
-  /**
-   * Submit driver configuration to launch the driver.
-   */
-  public void submit() {
-    this.reef.submit(this.driverConfig);
-  }
-  
+
   /**
    *  Receive notification from the job driver that the job is running.
    */
-  final class RunningJobHandler implements EventHandler<RunningJob> {
+  public final class RunningJobHandler implements EventHandler<RunningJob> {
     @Override
     public void onNext(RunningJob job) {
       synchronized (InMemoryClient.this) {
         LOG.log(Level.INFO, "Run!");
-        theJob = job;
-        isBusy = true;
+        runningJob = job;
         setStatusAndNotify(LauncherStatus.RUNNING);
       }
     }
@@ -95,31 +77,32 @@ public final class InMemoryClient {
             new Object[]{time, result});
       }
     }
+
+  /**
+   * Receive notification from the job driver that the job had failed.
+   */
+  public final class FailedJobHandler implements EventHandler<FailedJob> {
+    @Override
+    public void onNext(FailedJob job) {
+      final Throwable ex = job.getCause();
+      LOG.log(Level.SEVERE, "Received an error for job " + job.getId(), ex);
+      runningJob = null;
+      setStatusAndNotify(LauncherStatus.FAILED(ex));
+    }
+  }
   
   /**
    * Receive notification from the job driver that the job had completed successfully.
    */
-  final class CompletedJobHandler implements EventHandler<CompletedJob> {
+  public final class CompletedJobHandler implements EventHandler<CompletedJob> {
     @Override
     public void onNext(CompletedJob job) {
       LOG.log(Level.INFO, "Completed job: {0}", job.getId());
-      isBusy = false;
-      stopAndNotify(LauncherStatus.COMPLETED);
+      runningJob = null;
+      setStatusAndNotify(LauncherStatus.COMPLETED);
     }
   }
  
-  /**
-   * Receive notification from the job driver that the job had failed.
-   */
-  final class FailedJobHandler implements EventHandler<FailedJob> {
-    @Override
-    public void onNext(FailedJob job) {
-      final Throwable ex = job.getCause();
-      LOG.log(Level.SEVERE, "Failed job: {0}", job.getId());
-      stopAndNotify(LauncherStatus.FAILED(ex));
-    }
-  }
-
   /**
    * Receive notification that there was an exception thrown from the driver.
    */
@@ -127,18 +110,19 @@ public final class InMemoryClient {
     @Override
     public void onNext(final FailedRuntime error) {
       LOG.log(Level.SEVERE, "Error in job driver: " + error, error.getCause());
-      stopAndNotify(LauncherStatus.FAILED);
+      setStatusAndNotify(LauncherStatus.FAILED(error.getCause()));
     }
   }
 
   /**
    *  Wait until the job is done
    */
-  public LauncherStatus waitForCompletion() {
+  public LauncherStatus run(final Configuration driverConfig) {
+    this.reef.submit(driverConfig);
     synchronized (this) {
-      while(this.isBusy) {
-        LOG.info("Waiting for the Driver to complete.");
+      while(!this.status.isDone()) {
         try {
+          LOG.info("Waiting for the Driver to complete.");
           this.wait();
         } catch (final InterruptedException ex) {
           LOG.log(Level.WARNING, "Interrupted", ex);
@@ -150,20 +134,39 @@ public final class InMemoryClient {
     return this.status;
   }
 
+  
   /**
-   *  Set status of Client and notify
+   * Build a Client Configuration
+   * @throws InjectionException 
+   */
+  public static InMemoryClient getClient(final Configuration runtimeConfiguration) throws BindException, InjectionException {
+    final Configuration clientConfiguration = ClientConfiguration.CONF
+        .set(ClientConfiguration.ON_JOB_RUNNING, RunningJobHandler.class)
+        .set(ClientConfiguration.ON_JOB_COMPLETED, CompletedJobHandler.class)
+        .set(ClientConfiguration.ON_JOB_FAILED, FailedJobHandler.class)
+        .set(ClientConfiguration.ON_JOB_MESSAGE, JobMessageHandler.class)
+        .set(ClientConfiguration.ON_RUNTIME_ERROR, RuntimeErrorHandler.class)
+        .build();
+
+    return Tang.Factory.getTang()
+        .newInjector(runtimeConfiguration, clientConfiguration)
+        .getInstance(InMemoryClient.class);
+  }
+  
+  
+  /**
+   * @return the current status of the job.
+   */
+  public LauncherStatus getStatus() {
+    return this.status;
+  }
+
+  /**
+   * Update job status and notify the waiting thread.
    */
   public synchronized void setStatusAndNotify(final LauncherStatus status) {
     LOG.log(Level.FINEST, "Set status: {0} -> {1}", new Object[]{this.status, status});
     this.status = status;
     this.notify();
-  }
-  
-  /**
-   * Set status COMPLETED or FAILED and notify to finish the Application.
-   */
-  public synchronized void stopAndNotify(final LauncherStatus status) {
-    this.theJob = null;
-    setStatusAndNotify(status);
   }
 }

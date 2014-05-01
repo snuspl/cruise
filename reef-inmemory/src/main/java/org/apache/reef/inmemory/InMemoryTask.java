@@ -16,7 +16,6 @@ import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
  */
 public class InMemoryTask implements Task {
   private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
-  private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   private boolean isDone = false;
   private Cache<Object, Object> cache = null;
@@ -40,6 +39,8 @@ public class InMemoryTask implements Task {
    */
   @Override
   public byte[] call(byte[] arg0) throws Exception {
+    final ObjectSerializableCodec<String> codec = new ObjectSerializableCodec<>();
+
     final String message = "Done";
     loadCache();
     while(true) {
@@ -49,7 +50,7 @@ public class InMemoryTask implements Task {
           break;
       }
     }
-    return CODEC.encode(message);
+    return codec.encode(message);
   }
 
   /**
