@@ -94,6 +94,7 @@ public class Launch
         .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class);
+      
     driverConf = EnvironmentUtils.addClasspath(driverConf, DriverConfiguration.GLOBAL_LIBRARIES);
 
     return DriverLauncher.getLauncher(runtimeConf).run(driverConf.build());
