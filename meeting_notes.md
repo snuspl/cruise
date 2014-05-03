@@ -1,3 +1,70 @@
+## 5월 1일 Meeting Notes
+
+### 해외과제 관련 issue
+
+#####Objectives
+* Deliverable DAG scheduler computation stage
+* DAG scheduling -> Optimization
+* Multi-framework association
+* Several job workflow scheduling
+
+
+#####ManPower
+* 1 Research Scientist / 4 Studnets (June)
+* __Q. How many people participate in UCLA?__
+
+#####MS involvement
+* MOU 관련 문의 기다리는 중
+* MS의 기여를 보여줄 수 있는 다른 방법?
+
+#####Proposal paper
+* Internal 하게 인용 가능
+* 참가 인원에 SKT분들 포함 문의
+
+#####Ideation
+* Tajo, PLSQL(Oracle)의 integration
+* 다른 것 대비 좋은 점
+	* Resource utilization
+	* 이기종 framework에서도 동작하는 scheduling system
+	* Spark에 대비되는 시스템
+
+##### Workload distribution
+* SKT : Tajo integration
+* UCLA/SNU : DAG Scheduling
+* MS : ML
+	* _어쩌면 NDA sign하면 ML code base 공유가 가능할지도_ 
+
+###Surf
+
+#####Commit Policy
+* Create branch for each feature (e.g. ys-integrate-cache-task)
+* Pull Request
+* Code Review & Merge into master
+* Delete the branch
+
+#####Client-Driver Connection
+* 현재는 Client가 떠 있고 Driver와 Channel을 유지하는 형태
+* __Q.필요할 때 적절한 Client가 만들어지고, 현재 떠 있는 Driver와의 Channel을 생성하는 Model이 가능할까요?__
+	* 예를 들어, Application은 daemon의 형태로 작동하여 cache를 구성하고 있고(client-less driver)
+	* user가 실행하고 싶은 명령어(e.g. ls)에 대한 Client가 Driver와 Channel형성하여 필요한 작업을 한 후 (현재 cache애 있는 file list를 받아옴) 종료
+* 이미 REEF상에 구현이 되어 있다면 어떤 방식으로 할 수 있을까요?
+
+#####Master-Worker Interaction
+* Master가 관리하는 Metadata의 DataStructure
+	* Hadoop의 FSImage 와 유사하게 자료 구조를 유지한다.
+	* SortedMap<Directory, Array<File>> 의 형태
+	* 디렉터리간에는 상하를 갖지 않는다.
+* Heartbeat policy
+	* 주기적으로 heartbeat 전송하는 period? : __Q. 2~3초면 적절할까요?__
+	* Event(Worker의 cache 내용변화)발생시 - 바로 hb전송 / 다음 interval에서 전송할 지
+	
+#####FileCopy
+* __Q.Client에서 File의 위치를 Lookup 한뒤, 해당하는 Worker로의 직접적인 Channel 연결이 가능한가요?__
+* file의 copy를 지원하기 위해서는 반드시 필요한 기능인 것 같습니다.
+
+#####GuavaCache
+* Task에 이식하여 cache가 build되는 것 확인
+
 ##4월 11일 Meeting Note
 
 ###TODO
