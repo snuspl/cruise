@@ -11,7 +11,6 @@ import com.microsoft.reef.driver.evaluator.EvaluatorRequest;
 import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.reef.driver.task.CompletedTask;
 import com.microsoft.reef.driver.task.TaskConfiguration;
-import com.microsoft.reef.driver.task.TaskMessage;
 import com.microsoft.tang.Configuration;
 import com.microsoft.tang.annotations.Unit;
 import com.microsoft.tang.exceptions.BindException;
@@ -45,7 +44,6 @@ public final class InMemoryDriver {
     return  TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
         .set(TaskConfiguration.TASK, InMemoryTask.class)
-        .set(TaskConfiguration.ON_SEND_MESSAGE, InMemoryTask.class)
         .build();
   }
   
@@ -104,18 +102,6 @@ public final class InMemoryDriver {
       synchronized (this) {
         LOG.log(Level.FINEST, "DriverStopTime: {0}", stopTime);
       }
-    }
-  }
-
-  /**
-   * Handler of TaskMessage event: Receive a message from Task 
-   */
-  public class TaskMessageHandler implements EventHandler<TaskMessage> {
-
-    @Override
-    public void onNext(TaskMessage msg) {
-        LOG.log(Level.FINEST, "TaskMessage: from {0}: {1}",
-            new Object[]{msg.getId(), CODEC.decode(msg.get())});
     }
   }
 }

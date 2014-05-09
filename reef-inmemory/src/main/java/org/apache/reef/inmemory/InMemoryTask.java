@@ -7,28 +7,21 @@ import javax.inject.Inject;
 import org.apache.reef.inmemory.cache.CacheImpl;
 
 import com.microsoft.reef.task.Task;
-import com.microsoft.reef.task.TaskMessage;
-import com.microsoft.reef.task.TaskMessageSource;
-import com.microsoft.reef.util.Optional;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 
 /**
  * InMemory Task. Wait until receiving a signal from Driver.
  */
-public class InMemoryTask implements Task, TaskMessageSource {
-
+public class InMemoryTask implements Task {
   private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
-  private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
-  private transient Optional<TaskMessage> hbMessage = Optional.empty();
-  CacheImpl cache;
   
   private boolean isDone = false;
+  CacheImpl cache = null;
 
   @Inject
   InMemoryTask() {
     this.cache = new CacheImpl();
-    this.hbMessage.orElse(INIT_MESSAGE).get();
   }
 
   /**
@@ -37,7 +30,6 @@ public class InMemoryTask implements Task, TaskMessageSource {
    */
   @Override
   public byte[] call(byte[] arg0) throws Exception {
-    
     final String message = "Done";
     while(true) {
       synchronized (this) {
@@ -47,12 +39,5 @@ public class InMemoryTask implements Task, TaskMessageSource {
       }
     }
     return CODEC.encode(message);
-  }
-
-  @Override
-  public Optional<TaskMessage> getMessage() {
-    byte[] report = cache.getReport();
-    InMemoryTask.this.hbMessage = Optional.of(TaskMessage.from(this.toString(), report));
-    return this.hbMessage;
   }
 }
