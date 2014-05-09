@@ -19,7 +19,10 @@ public class InMemoryTask implements Task, TaskMessageSource {
 
   private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
-
+  private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
+  private transient Optional<TaskMessage> hbMessage = Optional.empty();
+  CacheImpl cache;
+  
   private boolean isDone = false;
 
   @Inject
@@ -34,6 +37,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
    */
   @Override
   public byte[] call(byte[] arg0) throws Exception {
+    
     final String message = "Done";
     while(true) {
       synchronized (this) {
