@@ -5,7 +5,6 @@ import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
-import com.microsoft.reef.driver.context.ActiveContext;
 import com.microsoft.reef.driver.context.ContextConfiguration;
 import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
 import com.microsoft.reef.driver.evaluator.EvaluatorRequest;
@@ -14,7 +13,6 @@ import com.microsoft.reef.driver.task.CompletedTask;
 import com.microsoft.reef.driver.task.TaskConfiguration;
 import com.microsoft.reef.driver.task.TaskMessage;
 import com.microsoft.tang.Configuration;
-import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.wake.EventHandler;
@@ -31,16 +29,13 @@ public final class InMemoryDriver {
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   private final EvaluatorRequestor requestor;
-  private int numRuns = 0;
-  private int maxRuns = 1;
+  
   /**
    * Job Driver. Instantiated by TANG.
    */
   @Inject
-  public InMemoryDriver(final EvaluatorRequestor requestor,
-      final @Parameter(Launch.NumRuns.class) Integer numRuns) {
+  public InMemoryDriver(final EvaluatorRequestor requestor) {
     this.requestor = requestor;
-    this.maxRuns = numRuns;
   }
 
   /**
@@ -61,7 +56,6 @@ public final class InMemoryDriver {
     @Override
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
-      InMemoryDriver.this.numRuns = 0;
       InMemoryDriver.this.requestor.submit(EvaluatorRequest.newBuilder()
           .setNumber(1)
           .setMemory(128)
@@ -92,27 +86,12 @@ public final class InMemoryDriver {
   }
   
   /**
-   * Handler of CompletedTask event: Submit another Task or Terminate.
+   * Handler of CompletedTask event.
    */
   final class CompletedTaskHandler implements EventHandler<CompletedTask>{
     @Override
     public void onNext(CompletedTask task) {
-      synchronized (this) {
-        ActiveContext context = task.getActiveContext();
-        try {
-          if(++numRuns < maxRuns) {
-            context.submitTask(getTaskConfiguration());
-            LOG.log(Level.INFO, "Submit Task{0}", numRuns);
-          } else {
-            context.close();
-            LOG.info("Done!");
-          }
-        } catch (BindException e) {
-          e.printStackTrace();
-          context.close();
-          LOG.info("ERROR");
-        }
-      }
+        LOG.log(Level.FINEST, "Task {0} Completed", task.getId());
     }
   }
   
