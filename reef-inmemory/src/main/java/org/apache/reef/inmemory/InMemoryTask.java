@@ -1,6 +1,9 @@
 package org.apache.reef.inmemory;
 
 import java.io.File;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -42,7 +45,7 @@ public class InMemoryTask implements Task {
     final ObjectSerializableCodec<String> codec = new ObjectSerializableCodec<>();
 
     final String message = "Done";
-    loadCache();
+    writeCache("/tmp");
     while(true) {
       synchronized (this) {
         this.wait();
@@ -54,16 +57,24 @@ public class InMemoryTask implements Task {
   }
 
   /**
-   * Load files to cache
+   * Write files information to cache
    */
-  private void loadCache(){
-    File files = new File("/tmp");
+  private void writeCache(String path){
+    File files = new File(path);
+      Map<String, String> mySortedMap = new TreeMap<String, String>();
+      LOG.info("path : "+files.isDirectory());
+      if(files.isDirectory()){
+          File [] fileList = files.listFiles();
 
-    cache.put("total",files.getTotalSpace());
-    cache.put("avail",files.getUsableSpace());
-    cache.put("used",files.getTotalSpace()-files.getUsableSpace());
-    LOG.info("total:" + cache.getIfPresent("total") + "\t"
-        + "avail:" + cache.getIfPresent("avail") + "\t"
-        + "used:" + cache.getIfPresent("used") + "\n");
+          for(File child : fileList){
+              mySortedMap.put(child.getName(), child.getPath());
+          }
+
+      }else{
+          mySortedMap.put(files.getName(), files.getPath());
+      }
+
+      cache.putAll(mySortedMap);
+    LOG.info("size:" + cache.size() + "\t");
   }
 }
