@@ -56,7 +56,7 @@ public class Launch
         .set(ClientConfiguration.ON_JOB_RUNNING, InMemoryClient.RunningJobHandler.class)
         .set(ClientConfiguration.ON_JOB_COMPLETED, InMemoryClient.CompletedJobHandler.class)
         .set(ClientConfiguration.ON_JOB_FAILED, InMemoryClient.FailedJobHandler.class)
-        /* TODO set more handlers
+        /* TODO Add more handlers
         .set(ClientConfiguration.ON_RUNTIME_ERROR, SurfClient.RuntimeErrorHandler.class)
         .set(ClientConfiguration.ON_JOB_MESSAGE, SurfClient.JobMessageHandler.class)
          */
@@ -83,23 +83,6 @@ public class Launch
     return confBuilder.build();
   }
 
-  /**
-   * Build a driver configuration and run InMemory application
-   */
-  public static LauncherStatus runInMemory(final Configuration runtimeConf)
-      throws BindException, InjectionException {
-
-    ConfigurationModule driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
-        .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
-        .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class);
-      
-    driverConf = EnvironmentUtils.addClasspath(driverConf, DriverConfiguration.GLOBAL_LIBRARIES);
-
-    return DriverLauncher.getLauncher(runtimeConf).run(driverConf.build());
-  }
-
   /** 
    * run InMemory Application injecting InMemoryClient
    */
@@ -112,13 +95,12 @@ public class Launch
 
   public static void main(String[] args) throws BindException, InjectionException, IOException
   {
-    final Configuration runtimeConf = getRuntimeConfiguration();
     final Configuration cmdlineConf = getCommandLineConfiguration(args);
-
+    
+    final Configuration runtimeConf = getRuntimeConfiguration();
     final Configuration clientConf = getClientConfiguration(runtimeConf, cmdlineConf);
 
-    LauncherStatus status = runInMemory(runtimeConf);
-//    LauncherStatus status = runInMemory(runtimeConf, clientConf);
+    LauncherStatus status = runInMemory(runtimeConf, clientConf);
     LOG.log(Level.INFO, "InMemory job completed: {0}", status);
   }
 

@@ -12,11 +12,13 @@ import com.microsoft.reef.driver.evaluator.EvaluatorRequest;
 import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.reef.driver.task.CompletedTask;
 import com.microsoft.reef.driver.task.TaskConfiguration;
+import com.microsoft.reef.driver.task.TaskMessage;
 import com.microsoft.tang.Configuration;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.wake.EventHandler;
+import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
 
@@ -26,6 +28,7 @@ import com.microsoft.wake.time.event.StopTime;
 @Unit
 public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
+  private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   private final EvaluatorRequestor requestor;
   private int numRuns = 0;
@@ -47,6 +50,7 @@ public final class InMemoryDriver {
     return  TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
         .set(TaskConfiguration.TASK, InMemoryTask.class)
+        .set(TaskConfiguration.ON_SEND_MESSAGE, InMemoryTask.class)
         .build();
   }
   
@@ -124,4 +128,15 @@ public final class InMemoryDriver {
     }
   }
 
+  /**
+   * Handler of TaskMessage event: Receive a message from Task 
+   */
+  public class TaskMessageHandler implements EventHandler<TaskMessage> {
+
+    @Override
+    public void onNext(TaskMessage msg) {
+        LOG.log(Level.FINEST, "TaskMessage: from {0}: {1}",
+            new Object[]{msg.getId(), CODEC.decode(msg.get())});
+    }
+  }
 }
