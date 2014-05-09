@@ -47,15 +47,6 @@ public final class InMemoryClient {
         .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class)
         .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
         .set(DriverConfiguration.ON_TASK_MESSAGE, InMemoryDriver.TaskMessageHandler.class)
-        /*
-        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, InMemoryDriver.ActiveContextHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, InMemoryDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_CLOSED, InMemoryDriver.ClosedContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_RUNNING, InMemoryDriver.RunningTaskHandler.class)
-        .set(DriverConfiguration.ON_DRIVER_STOP, InMemoryDriver.StopHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_COMPLETED, InMemoryDriver.CompletedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CLIENT_MESSAGE, InMemoryDriver.ClientMessageHandler.class)
-        */
         .build());
 
     this.driverConfig = cb.build();

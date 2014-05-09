@@ -55,18 +55,4 @@ public class InMemoryTask implements Task, TaskMessageSource {
     InMemoryTask.this.hbMessage = Optional.of(TaskMessage.from(this.toString(), report));
     return this.hbMessage;
   }
-
-  /*
-   TODO move this method to Test code
-  private void loadCache(){
-    File files = new File("/tmp");
-
-    cache.put("total",files.getTotalSpace());
-    cache.put("avail",files.getUsableSpace());
-    cache.put("used",files.getTotalSpace()-files.getUsableSpace());
-    LOG.info("total:" + cache.getIfPresent("total") + "\t"
-        + "avail:" + cache.getIfPresent("avail") + "\t"
-        + "used:" + cache.getIfPresent("used") + "\n");
-  }
-  */
 }
