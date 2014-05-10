@@ -1,75 +1,56 @@
 package org.apache.reef.inmemory;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.microsoft.reef.task.Task;
+import com.microsoft.reef.task.TaskMessage;
+import com.microsoft.reef.task.TaskMessageSource;
+import com.microsoft.reef.util.Optional;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.inmemory.cache.CacheImpl;
 
 import javax.inject.Inject;
-import java.io.File;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
  * InMemory Task. Wait until receiving a signal from Driver.
  */
-public class InMemoryTask implements Task {
-    private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
 
-    private boolean isDone = false;
-    private Cache<Object, Object> cache = null;
+public class InMemoryTask implements Task, TaskMessageSource {
 
-    /**
-     * Constructor. Build a cache.
-     * lock is an Object for synchronization
-     */
-    @Inject
-    InMemoryTask() {
-        cache = CacheBuilder.newBuilder()
-                .maximumSize(100L)
-                .expireAfterAccess(10, TimeUnit.HOURS)
-                .concurrencyLevel(4)
-                .build();
+  private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
+  private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
+  private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
+  private transient Optional<TaskMessage> hbMessage = Optional.empty();
+  CacheImpl cache = null;
+
+  private boolean isDone = false;
+
+  @Inject
+  InMemoryTask() {
+    this.cache = new CacheImpl();
+    this.hbMessage.orElse(INIT_MESSAGE).get();
+  }
+
+  /**
+   * Wait until receiving a signal.
+   * TODO notify this and set isDone to be true to wake up
+   */
+  @Override
+  public byte[] call(byte[] arg0) throws Exception {
+    final String message = "Done";
+    while(true) {
+      synchronized (this) {
+        this.wait();
+        if(this.isDone)
+          break;
+      }
     }
+    return CODEC.encode(message);
+  }
 
-    /**
-     * Wait until receiving a signal.
-     * TODO notify this and set isDone to be true to wake up
-     */
-    @Override
-    public byte[] call(byte[] arg0) throws Exception {
-        final ObjectSerializableCodec<String> codec = new ObjectSerializableCodec<>();
-
-        final String message = "Done";
-        writeCache("/tmp");
-        while (true) {
-            synchronized (this) {
-                this.wait();
-                if (this.isDone)
-                    break;
-            }
-        }
-        return codec.encode(message);
-    }
-
-    /**
-     * Write files information to cache
-     */
-    private void writeCache(String path) {
-        File files = new File(path);
-        Map<String, String> mySortedMap = new TreeMap<String, String>();
-        LOG.info("path : " + files.isDirectory());
-        if (files.isDirectory()) {
-            File[] fileList = files.listFiles();
-            for (File child : fileList) {
-                mySortedMap.put(child.getName(), child.getPath());
-            }
-        } else {
-            mySortedMap.put(files.getName(), files.getPath());
-        }
-        cache.putAll(mySortedMap);
-        LOG.info("size:" + cache.size() + "\t");
-    }
+  @Override
+  public Optional<TaskMessage> getMessage() {
+    byte[] report = cache.getReport();
+    InMemoryTask.this.hbMessage = Optional.of(TaskMessage.from(this.toString(), report));
+    return this.hbMessage;
+  }
 }
