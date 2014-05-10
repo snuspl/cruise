@@ -1,36 +1,34 @@
 package org.apache.reef.inmemory;
 
-import java.io.File;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import org.apache.reef.inmemory.cache.CacheImpl;
+
 import com.microsoft.reef.task.Task;
+import com.microsoft.reef.task.TaskMessage;
+import com.microsoft.reef.task.TaskMessageSource;
+import com.microsoft.reef.util.Optional;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 
 /**
  * InMemory Task. Wait until receiving a signal from Driver.
  */
-public class InMemoryTask implements Task {
+public class InMemoryTask implements Task, TaskMessageSource {
+
   private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
-
+  private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
+  private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
+  private transient Optional<TaskMessage> hbMessage = Optional.empty();
+  CacheImpl cache = null;
+  
   private boolean isDone = false;
-  private Cache<Object, Object> cache = null;
 
-  /**
-   * Constructor. Build a cache.
-   * lock is an Object for synchronization
-   */
   @Inject
   InMemoryTask() {
-    cache = CacheBuilder.newBuilder()
-        .maximumSize(100L)
-        .expireAfterAccess(10, TimeUnit.HOURS)
-        .concurrencyLevel(4)
-        .build();
+    this.cache = new CacheImpl();
+    this.hbMessage.orElse(INIT_MESSAGE).get();
   }
 
   /**
@@ -39,10 +37,7 @@ public class InMemoryTask implements Task {
    */
   @Override
   public byte[] call(byte[] arg0) throws Exception {
-    final ObjectSerializableCodec<String> codec = new ObjectSerializableCodec<>();
-
     final String message = "Done";
-    loadCache();
     while(true) {
       synchronized (this) {
         this.wait();
@@ -50,20 +45,13 @@ public class InMemoryTask implements Task {
           break;
       }
     }
-    return codec.encode(message);
+    return CODEC.encode(message);
   }
 
-  /**
-   * Load files to cache
-   */
-  private void loadCache(){
-    File files = new File("/tmp");
-
-    cache.put("total",files.getTotalSpace());
-    cache.put("avail",files.getUsableSpace());
-    cache.put("used",files.getTotalSpace()-files.getUsableSpace());
-    LOG.info("total:" + cache.getIfPresent("total") + "\t"
-        + "avail:" + cache.getIfPresent("avail") + "\t"
-        + "used:" + cache.getIfPresent("used") + "\n");
+  @Override
+  public Optional<TaskMessage> getMessage() {
+    byte[] report = cache.getReport();
+    InMemoryTask.this.hbMessage = Optional.of(TaskMessage.from(this.toString(), report));
+    return this.hbMessage;
   }
 }
