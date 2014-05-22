@@ -106,7 +106,7 @@ public final class InMemoryClient {
   final class FailedJobHandler implements EventHandler<FailedJob> {
     @Override
     public void onNext(FailedJob job) {
-      final Throwable ex = job.getCause();
+      final Throwable ex = job.getReason().get();
       LOG.log(Level.SEVERE, "Failed job: {0}", job.getId());
       stopAndNotify(LauncherStatus.FAILED(ex));
     }
@@ -118,7 +118,7 @@ public final class InMemoryClient {
   public final class RuntimeErrorHandler implements EventHandler<FailedRuntime> {
     @Override
     public void onNext(final FailedRuntime error) {
-      LOG.log(Level.SEVERE, "Error in job driver: " + error, error.getCause());
+      LOG.log(Level.SEVERE, "Error in job driver: " + error, error.getReason());
       stopAndNotify(LauncherStatus.FAILED);
     }
   }
