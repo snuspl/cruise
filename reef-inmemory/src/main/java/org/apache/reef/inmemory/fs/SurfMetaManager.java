@@ -13,16 +13,16 @@ import java.util.TreeMap;
  * Surf FileSystem Meta Information management
  */
 public class SurfMetaManager {
-    private static SortedMap<Path, FileMeta> fsMeta;
+    private static SortedMap<Path, org.apache.reef.inmemory.fs.entity.FileMeta> fsMeta;
     public static String USERS_HOME = "/user";
 
     static{
-        fsMeta = new TreeMap<Path, FileMeta>();
+        fsMeta = new TreeMap<Path, org.apache.reef.inmemory.fs.entity.FileMeta>();
     }
 
-    public List<FileMeta> listStatus(Path path, boolean recursive, User creator) throws FileNotFoundException{
+    public List<org.apache.reef.inmemory.fs.entity.FileMeta> listStatus(Path path, boolean recursive, org.apache.reef.inmemory.fs.entity.User creator) throws FileNotFoundException{
         //TODO: need to support glob pattern
-        List<FileMeta> fm = new ArrayList<FileMeta>();
+        List<org.apache.reef.inmemory.fs.entity.FileMeta> fm = new ArrayList<org.apache.reef.inmemory.fs.entity.FileMeta>();
         Path newPath = null;
 
         if(path.isAbsolute())
@@ -35,7 +35,7 @@ public class SurfMetaManager {
 
         //TODO: Authority check will be needed
 
-        SortedMap<Path, FileMeta> subMap = fsMeta.tailMap(newPath);
+        SortedMap<Path, org.apache.reef.inmemory.fs.entity.FileMeta> subMap = fsMeta.tailMap(newPath);
 
         for(Path subPath : subMap.keySet()){
             if(subPath.toString().contains(newPath.toString())){
@@ -49,9 +49,9 @@ public class SurfMetaManager {
         return fm;
     }
 
-    public FileMeta makeDirectory(Path path, User creator) throws FileAlreadyExistsException {
+    public org.apache.reef.inmemory.fs.entity.FileMeta makeDirectory(Path path, org.apache.reef.inmemory.fs.entity.User creator) throws FileAlreadyExistsException {
         Path newPath = null;
-        FileMeta fm = new FileMeta();
+        org.apache.reef.inmemory.fs.entity.FileMeta fm = new org.apache.reef.inmemory.fs.entity.FileMeta();
         fm.setOwner(creator);
         fm.setDirectory(true);
 
