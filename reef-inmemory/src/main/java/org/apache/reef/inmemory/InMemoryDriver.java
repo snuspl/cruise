@@ -19,6 +19,7 @@ import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
+import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
 
 /**
  * The driver class for InMemory Application
@@ -60,6 +61,9 @@ public final class InMemoryDriver {
           .setNumber(1)
           .setMemory(128)
           .build());
+
+        Thread thread = new Thread(new SurfMetaServiceImpl());
+        thread.start();
     }
   }
   
