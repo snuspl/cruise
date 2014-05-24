@@ -1,158 +1,156 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>org.apache.reef.inmemory</groupId>
-  <artifactId>reef-inmemory</artifactId>
-  <packaging>jar</packaging>
-  <version>1.0-SNAPSHOT</version>
-  <name>reef-inmemory</name>
-  <url>http://maven.apache.org</url>
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <logging>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config</logging>
-    <hadoop.version>2.2.0</hadoop.version>
-    <tang.version>0.4-SNAPSHOT</tang.version>
-    <wake.version>0.4-SNAPSHOT</wake.version>
-    <reef.version>0.4-SNAPSHOT</reef.version>
-  </properties>
-  
-  <repositories>
-    <repository>
-      <id>central</id>
-        <name>Maven Repository Switchboard</name>
-        <!-- <layout>default</layout> -->
-        <url>http://repo1.maven.org/maven2</url>
-        <!-- <snapshots> <enabled>false</enabled> </snapshots> -->
-    </repository>
-    <repository>
-        <id>google-maven-repository</id>
-        <name>Google Maven Repository</name>
-        <url>http://google-maven-repository.googlecode.com/svn/repository/</url>
-    </repository>
-    <repository>
-      <id>clojars.org</id>
-      <url>http://clojars.org/repo</url>
-    </repository>
-  </repositories>
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.apache.reef.inmemory</groupId>
+    <artifactId>reef-inmemory</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <name>reef-inmemory</name>
+    <url>http://maven.apache.org</url>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <logging>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config</logging>
+        <hadoop.version>2.2.0</hadoop.version>
+        <reef.version>0.4</reef.version>
+    </properties>
+    
+    <repositories>
+        <repository>
+            <id>central</id>
+                <name>Maven Repository Switchboard</name>
+                <!-- <layout>default</layout> -->
+                <url>http://repo1.maven.org/maven2</url>
+                <!-- <snapshots> <enabled>false</enabled> </snapshots> -->
+        </repository>
+        <repository>
+                <id>google-maven-repository</id>
+                <name>Google Maven Repository</name>
+                <url>http://google-maven-repository.googlecode.com/svn/repository/</url>
+        </repository>
+        <repository>
+            <id>clojars.org</id>
+            <url>http://clojars.org/repo</url>
+        </repository>
+    </repositories>
 
-  <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>3.8.1</version>
-      <scope>test</scope>
-    </dependency>
-      <!--Guava cache -->
-      <dependency>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-          <version>16.0</version>
-      </dependency>
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.1</version>
+            <scope>test</scope>
+        </dependency>
+            <!--Guava cache -->
+            <dependency>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                    <version>16.0</version>
+            </dependency>
 
-      <!-- HADOOP -->
-    <dependency>
-        <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-common</artifactId>
-        <version>${hadoop.version}</version>
-    </dependency>
-    <!-- REEF -->
-    <dependency>
-      <groupId>com.microsoft.reef</groupId>
-      <artifactId>reef-common</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.microsoft.reef</groupId>
-      <artifactId>reef-io</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.microsoft.reef</groupId>
-      <artifactId>reef-runtime-local</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.microsoft.reef</groupId>
-      <artifactId>reef-runtime-yarn</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-  <!-- End of REEF -->
+            <!-- HADOOP -->
+        <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-common</artifactId>
+                <version>${hadoop.version}</version>
+        </dependency>
+        <!-- REEF -->
+        <dependency>
+            <groupId>com.microsoft.reef</groupId>
+            <artifactId>reef-common</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.reef</groupId>
+            <artifactId>reef-io</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.reef</groupId>
+            <artifactId>reef-runtime-local</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.reef</groupId>
+            <artifactId>reef-runtime-yarn</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+    <!-- End of REEF -->
 
-  </dependencies>
+    </dependencies>
 
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
-        <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
-          <showDeprecation>true</showDeprecation>
-          <encoding>${project.build.sourceEncoding}</encoding>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-          </execution>
-        </executions>
-
-        <version>2.2</version>
-        <configuration>
-          <outputFile>
-            ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
-          </outputFile>
-          <filters>
-            <filter>
-              <artifact>*:*</artifact>
-              <excludes> 
-                <exclude>yarn-default.xml</exclude>
-                <exclude>yarn-version-info.properties</exclude>
-                <exclude>core-default.xml</exclude>
-                <exclude>LICENSE</exclude>
-                <exclude>META-INF/*</exclude>
-              </excludes>
-            </filter>
-          </filters>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
-   
-  <profiles>
-    <profile>
-      <id>Inmemory</id>
-      <build>
-        <defaultGoal>exec:exec</defaultGoal>
+    <build>
         <plugins>
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <configuration>
-              <executable>java</executable>
-              <arguments>
-                <argument>-classpath</argument>
-                <classpath/>
-                <argument>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config
-                </argument>
-                <!-- <argument>-Dlog4j.debug=true</argument> -->
-                <argument>-Dcom.microsoft.reef.runtime.local.folder=${project.build.directory}
-                </argument>
-                <argument>org.apache.reef.inmemory.Launch</argument>
-              </arguments>
-            </configuration>
-          </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                    <showDeprecation>true</showDeprecation>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+
+                <version>2.2</version>
+                <configuration>
+                    <outputFile>
+                        ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
+                    </outputFile>
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes> 
+                                <exclude>yarn-default.xml</exclude>
+                                <exclude>yarn-version-info.properties</exclude>
+                                <exclude>core-default.xml</exclude>
+                                <exclude>LICENSE</exclude>
+                                <exclude>META-INF/*</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                </configuration>
+            </plugin>
         </plugins>
-      </build>
-    </profile>
-  </profiles>
+    </build>
+     
+    <profiles>
+        <profile>
+            <id>Inmemory</id>
+            <build>
+                <defaultGoal>exec:exec</defaultGoal>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <configuration>
+                            <executable>java</executable>
+                            <arguments>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config
+                                </argument>
+                                <!-- <argument>-Dlog4j.debug=true</argument> -->
+                                <argument>-Dcom.microsoft.reef.runtime.local.folder=${project.build.directory}
+                                </argument>
+                                <argument>org.apache.reef.inmemory.Launch</argument>
+                            </arguments>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>
