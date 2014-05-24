@@ -16,16 +16,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SurfMetaServiceImpl implements SurfMetaService.Iface, Runnable {
-    @Override
-    public List<FileMeta> listStatus(String path, boolean recursive, User user) throws FileNotFoundException, TException {
-        SurfMetaManager sm = new SurfMetaManager();
+  @Override
+  public List<FileMeta> listStatus(String path, boolean recursive, User user) throws FileNotFoundException, TException {
+    SurfMetaManager sm = new SurfMetaManager();
 
-        List<FileMeta> fms = new ArrayList<FileMeta>();
-        FileMeta fm = new FileMeta();
-        fm.setFullPath("/user/surf");
-        fms.add(fm);
+    List<FileMeta> fms = new ArrayList<FileMeta>();
+    FileMeta fm = new FileMeta();
+    fm.setFullPath("/user/surf");
+    fms.add(fm);
 
-        return fms;
+    return fms;
 //
 //        try{
 //
@@ -33,35 +33,35 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, Runnable {
 //        }catch(java.io.FileNotFoundException fe){
 //            throw new FileNotFoundException(fe.getMessage());
 //        }
+  }
+
+  @Override
+  public FileMeta makeDirectory(String path, User user) throws FileAlreadyExistsException, TException {
+    SurfMetaManager sm = new SurfMetaManager();
+
+    try {
+      return sm.makeDirectory(new Path(path), user);
+    } catch (java.nio.file.FileAlreadyExistsException fe) {
+      throw new FileAlreadyExistsException(fe.getMessage());
     }
+  }
 
-    @Override
-    public FileMeta makeDirectory(String path, User user) throws FileAlreadyExistsException, TException {
-        SurfMetaManager sm = new SurfMetaManager();
+  @Override
+  public void run() {
+    try {
+      int port = 18000;
 
-        try{
-            return sm.makeDirectory(new Path(path), user);
-        }catch(java.nio.file.FileAlreadyExistsException fe){
-            throw new FileAlreadyExistsException(fe.getMessage());
-        }
+      TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(port, 30000);
+      SurfMetaService.Processor<SurfMetaService.Iface> processor = new SurfMetaService.Processor<SurfMetaService.Iface>(new SurfMetaServiceImpl());
+
+      TServer server = new THsHaServer(
+          new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
+              .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
+              .workerThreads(10));
+
+      server.serve();
+    } catch (Exception e) {
+      e.printStackTrace();
     }
-
-    @Override
-    public void run() {
-        try{
-            int port = 18000;
-
-            TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(port, 30000);
-            SurfMetaService.Processor<SurfMetaService.Iface> processor = new SurfMetaService.Processor<SurfMetaService.Iface>(new SurfMetaServiceImpl());
-
-            TServer server = new THsHaServer(
-                    new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
-                            .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
-                            .workerThreads(10));
-
-            server.serve();
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-    }
+  }
 }

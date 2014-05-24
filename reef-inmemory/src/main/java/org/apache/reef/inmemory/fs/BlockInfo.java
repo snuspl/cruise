@@ -6,41 +6,41 @@ import java.util.List;
 /**
  * Created by i1befree on 2014. 5. 10..
  */
-public class BlockInfo implements Serializable{
-    private long blockId;
-    private int offSet;
-    private int length;
-    private List<String> locations;
+public class BlockInfo implements Serializable {
+  private long blockId;
+  private int offSet;
+  private int length;
+  private List<String> locations;
 
-    public long getBlockId() {
-        return blockId;
-    }
+  public long getBlockId() {
+    return blockId;
+  }
 
-    public void setBlockId(long blockId) {
-        this.blockId = blockId;
-    }
+  public void setBlockId(long blockId) {
+    this.blockId = blockId;
+  }
 
-    public int getOffSet() {
-        return offSet;
-    }
+  public int getOffSet() {
+    return offSet;
+  }
 
-    public void setOffSet(int offSet) {
-        this.offSet = offSet;
-    }
+  public void setOffSet(int offSet) {
+    this.offSet = offSet;
+  }
 
-    public int getLength() {
-        return length;
-    }
+  public int getLength() {
+    return length;
+  }
 
-    public void setLength(int length) {
-        this.length = length;
-    }
+  public void setLength(int length) {
+    this.length = length;
+  }
 
-    public List<String> getLocations() {
-        return locations;
-    }
+  public List<String> getLocations() {
+    return locations;
+  }
 
-    public void setLocations(List<String> locations) {
-        this.locations = locations;
-    }
+  public void setLocations(List<String> locations) {
+    this.locations = locations;
+  }
 }

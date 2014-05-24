@@ -6,31 +6,19 @@
  */
 package org.apache.reef.inmemory.fs.service;
 
-import org.apache.thrift.scheme.IScheme;
-import org.apache.thrift.scheme.SchemeFactory;
-import org.apache.thrift.scheme.StandardScheme;
-
-import org.apache.thrift.scheme.TupleScheme;
-import org.apache.thrift.protocol.TTupleProtocol;
-import org.apache.thrift.protocol.TProtocolException;
 import org.apache.thrift.EncodingUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.server.AbstractNonblockingServer.*;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.EnumMap;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.EnumSet;
-import java.util.Collections;
-import java.util.BitSet;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
+import org.apache.thrift.protocol.TTupleProtocol;
+import org.apache.thrift.scheme.IScheme;
+import org.apache.thrift.scheme.SchemeFactory;
+import org.apache.thrift.scheme.StandardScheme;
+import org.apache.thrift.scheme.TupleScheme;
+import org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 public class SurfMetaService {
 
@@ -52,17 +40,19 @@ public class SurfMetaService {
 
   public static class Client extends org.apache.thrift.TServiceClient implements Iface {
     public static class Factory implements org.apache.thrift.TServiceClientFactory<Client> {
-      public Factory() {}
+      public Factory() {
+      }
+
       public Client getClient(org.apache.thrift.protocol.TProtocol prot) {
         return new Client(prot);
       }
+
       public Client getClient(org.apache.thrift.protocol.TProtocol iprot, org.apache.thrift.protocol.TProtocol oprot) {
         return new Client(iprot, oprot);
       }
     }
 
-    public Client(org.apache.thrift.protocol.TProtocol prot)
-    {
+    public Client(org.apache.thrift.protocol.TProtocol prot) {
       super(prot, prot);
     }
 
@@ -70,14 +60,12 @@ public class SurfMetaService {
       super(iprot, oprot);
     }
 
-    public List<org.apache.reef.inmemory.fs.entity.FileMeta> listStatus(String path, boolean recursive, org.apache.reef.inmemory.fs.entity.User user) throws org.apache.reef.inmemory.fs.exceptions.FileNotFoundException, org.apache.thrift.TException
-    {
+    public List<org.apache.reef.inmemory.fs.entity.FileMeta> listStatus(String path, boolean recursive, org.apache.reef.inmemory.fs.entity.User user) throws org.apache.reef.inmemory.fs.exceptions.FileNotFoundException, org.apache.thrift.TException {
       send_listStatus(path, recursive, user);
       return recv_listStatus();
     }
 
-    public void send_listStatus(String path, boolean recursive, org.apache.reef.inmemory.fs.entity.User user) throws org.apache.thrift.TException
-    {
+    public void send_listStatus(String path, boolean recursive, org.apache.reef.inmemory.fs.entity.User user) throws org.apache.thrift.TException {
       listStatus_args args = new listStatus_args();
       args.setPath(path);
       args.setRecursive(recursive);
@@ -85,8 +73,7 @@ public class SurfMetaService {
       sendBase("listStatus", args);
     }
 
-    public List<org.apache.reef.inmemory.fs.entity.FileMeta> recv_listStatus() throws org.apache.reef.inmemory.fs.exceptions.FileNotFoundException, org.apache.thrift.TException
-    {
+    public List<org.apache.reef.inmemory.fs.entity.FileMeta> recv_listStatus() throws org.apache.reef.inmemory.fs.exceptions.FileNotFoundException, org.apache.thrift.TException {
       listStatus_result result = new listStatus_result();
       receiveBase(result, "listStatus");
       if (result.isSetSuccess()) {
@@ -98,22 +85,19 @@ public class SurfMetaService {
       throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "listStatus failed: unknown result");
     }
 
-    public org.apache.reef.inmemory.fs.entity.FileMeta makeDirectory(String path, org.apache.reef.inmemory.fs.entity.User user) throws org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException, org.apache.thrift.TException
-    {
+    public org.apache.reef.inmemory.fs.entity.FileMeta makeDirectory(String path, org.apache.reef.inmemory.fs.entity.User user) throws org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException, org.apache.thrift.TException {
       send_makeDirectory(path, user);
       return recv_makeDirectory();
     }
 
-    public void send_makeDirectory(String path, org.apache.reef.inmemory.fs.entity.User user) throws org.apache.thrift.TException
-    {
+    public void send_makeDirectory(String path, org.apache.reef.inmemory.fs.entity.User user) throws org.apache.thrift.TException {
       makeDirectory_args args = new makeDirectory_args();
       args.setPath(path);
       args.setUser(user);
       sendBase("makeDirectory", args);
     }
 
-    public org.apache.reef.inmemory.fs.entity.FileMeta recv_makeDirectory() throws org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException, org.apache.thrift.TException
-    {
+    public org.apache.reef.inmemory.fs.entity.FileMeta recv_makeDirectory() throws org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException, org.apache.thrift.TException {
       makeDirectory_result result = new makeDirectory_result();
       receiveBase(result, "makeDirectory");
       if (result.isSetSuccess()) {
@@ -126,14 +110,17 @@ public class SurfMetaService {
     }
 
   }
+
   public static class AsyncClient extends org.apache.thrift.async.TAsyncClient implements AsyncIface {
     public static class Factory implements org.apache.thrift.async.TAsyncClientFactory<AsyncClient> {
       private org.apache.thrift.async.TAsyncClientManager clientManager;
       private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
+
       public Factory(org.apache.thrift.async.TAsyncClientManager clientManager, org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
         this.clientManager = clientManager;
         this.protocolFactory = protocolFactory;
       }
+
       public AsyncClient getAsyncClient(org.apache.thrift.transport.TNonblockingTransport transport) {
         return new AsyncClient(protocolFactory, clientManager, transport);
       }
@@ -154,6 +141,7 @@ public class SurfMetaService {
       private String path;
       private boolean recursive;
       private org.apache.reef.inmemory.fs.entity.User user;
+
       public listStatus_call(String path, boolean recursive, org.apache.reef.inmemory.fs.entity.User user, org.apache.thrift.async.AsyncMethodCallback resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.path = path;
@@ -191,6 +179,7 @@ public class SurfMetaService {
     public static class makeDirectory_call extends org.apache.thrift.async.TAsyncMethodCall {
       private String path;
       private org.apache.reef.inmemory.fs.entity.User user;
+
       public makeDirectory_call(String path, org.apache.reef.inmemory.fs.entity.User user, org.apache.thrift.async.AsyncMethodCallback resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
         super(client, protocolFactory, transport, resultHandler, false);
         this.path = path;
@@ -220,15 +209,16 @@ public class SurfMetaService {
 
   public static class Processor<I extends Iface> extends org.apache.thrift.TBaseProcessor<I> implements org.apache.thrift.TProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(Processor.class.getName());
+
     public Processor(I iface) {
       super(iface, getProcessMap(new HashMap<String, org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>>()));
     }
 
-    protected Processor(I iface, Map<String,  org.apache.thrift.ProcessFunction<I, ? extends  org.apache.thrift.TBase>> processMap) {
+    protected Processor(I iface, Map<String, org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>> processMap) {
       super(iface, getProcessMap(processMap));
     }
 
-    private static <I extends Iface> Map<String,  org.apache.thrift.ProcessFunction<I, ? extends  org.apache.thrift.TBase>> getProcessMap(Map<String,  org.apache.thrift.ProcessFunction<I, ? extends  org.apache.thrift.TBase>> processMap) {
+    private static <I extends Iface> Map<String, org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>> getProcessMap(Map<String, org.apache.thrift.ProcessFunction<I, ? extends org.apache.thrift.TBase>> processMap) {
       processMap.put("listStatus", new listStatus());
       processMap.put("makeDirectory", new makeDirectory());
       return processMap;
@@ -286,15 +276,16 @@ public class SurfMetaService {
 
   public static class AsyncProcessor<I extends AsyncIface> extends org.apache.thrift.TBaseAsyncProcessor<I> {
     private static final Logger LOGGER = LoggerFactory.getLogger(AsyncProcessor.class.getName());
+
     public AsyncProcessor(I iface) {
       super(iface, getProcessMap(new HashMap<String, org.apache.thrift.AsyncProcessFunction<I, ? extends org.apache.thrift.TBase, ?>>()));
     }
 
-    protected AsyncProcessor(I iface, Map<String,  org.apache.thrift.AsyncProcessFunction<I, ? extends  org.apache.thrift.TBase, ?>> processMap) {
+    protected AsyncProcessor(I iface, Map<String, org.apache.thrift.AsyncProcessFunction<I, ? extends org.apache.thrift.TBase, ?>> processMap) {
       super(iface, getProcessMap(processMap));
     }
 
-    private static <I extends AsyncIface> Map<String,  org.apache.thrift.AsyncProcessFunction<I, ? extends  org.apache.thrift.TBase,?>> getProcessMap(Map<String,  org.apache.thrift.AsyncProcessFunction<I, ? extends  org.apache.thrift.TBase, ?>> processMap) {
+    private static <I extends AsyncIface> Map<String, org.apache.thrift.AsyncProcessFunction<I, ? extends org.apache.thrift.TBase, ?>> getProcessMap(Map<String, org.apache.thrift.AsyncProcessFunction<I, ? extends org.apache.thrift.TBase, ?>> processMap) {
       processMap.put("listStatus", new listStatus());
       processMap.put("makeDirectory", new makeDirectory());
       return processMap;
@@ -311,34 +302,33 @@ public class SurfMetaService {
 
       public AsyncMethodCallback<List<org.apache.reef.inmemory.fs.entity.FileMeta>> getResultHandler(final AsyncFrameBuffer fb, final int seqid) {
         final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new AsyncMethodCallback<List<org.apache.reef.inmemory.fs.entity.FileMeta>>() { 
+        return new AsyncMethodCallback<List<org.apache.reef.inmemory.fs.entity.FileMeta>>() {
           public void onComplete(List<org.apache.reef.inmemory.fs.entity.FileMeta> o) {
             listStatus_result result = new listStatus_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb,result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY, seqid);
               return;
             } catch (Exception e) {
               LOGGER.error("Exception writing to internal frame buffer", e);
             }
             fb.close();
           }
+
           public void onError(Exception e) {
             byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
             org.apache.thrift.TBase msg;
             listStatus_result result = new listStatus_result();
             if (e instanceof org.apache.reef.inmemory.fs.exceptions.FileNotFoundException) {
-                        result.fe = (org.apache.reef.inmemory.fs.exceptions.FileNotFoundException) e;
-                        result.setFeIsSet(true);
-                        msg = result;
-            }
-             else 
-            {
+              result.fe = (org.apache.reef.inmemory.fs.exceptions.FileNotFoundException) e;
+              result.setFeIsSet(true);
+              msg = result;
+            } else {
               msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TBase)new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msg = (org.apache.thrift.TBase) new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
-              fcall.sendResponse(fb,msg,msgType,seqid);
+              fcall.sendResponse(fb, msg, msgType, seqid);
               return;
             } catch (Exception ex) {
               LOGGER.error("Exception writing to internal frame buffer", ex);
@@ -353,7 +343,7 @@ public class SurfMetaService {
       }
 
       public void start(I iface, listStatus_args args, org.apache.thrift.async.AsyncMethodCallback<List<org.apache.reef.inmemory.fs.entity.FileMeta>> resultHandler) throws TException {
-        iface.listStatus(args.path, args.recursive, args.user,resultHandler);
+        iface.listStatus(args.path, args.recursive, args.user, resultHandler);
       }
     }
 
@@ -368,34 +358,33 @@ public class SurfMetaService {
 
       public AsyncMethodCallback<org.apache.reef.inmemory.fs.entity.FileMeta> getResultHandler(final AsyncFrameBuffer fb, final int seqid) {
         final org.apache.thrift.AsyncProcessFunction fcall = this;
-        return new AsyncMethodCallback<org.apache.reef.inmemory.fs.entity.FileMeta>() { 
+        return new AsyncMethodCallback<org.apache.reef.inmemory.fs.entity.FileMeta>() {
           public void onComplete(org.apache.reef.inmemory.fs.entity.FileMeta o) {
             makeDirectory_result result = new makeDirectory_result();
             result.success = o;
             try {
-              fcall.sendResponse(fb,result, org.apache.thrift.protocol.TMessageType.REPLY,seqid);
+              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY, seqid);
               return;
             } catch (Exception e) {
               LOGGER.error("Exception writing to internal frame buffer", e);
             }
             fb.close();
           }
+
           public void onError(Exception e) {
             byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
             org.apache.thrift.TBase msg;
             makeDirectory_result result = new makeDirectory_result();
             if (e instanceof org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException) {
-                        result.fe = (org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException) e;
-                        result.setFeIsSet(true);
-                        msg = result;
-            }
-             else 
-            {
+              result.fe = (org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException) e;
+              result.setFeIsSet(true);
+              msg = result;
+            } else {
               msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
-              msg = (org.apache.thrift.TBase)new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+              msg = (org.apache.thrift.TBase) new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
             }
             try {
-              fcall.sendResponse(fb,msg,msgType,seqid);
+              fcall.sendResponse(fb, msg, msgType, seqid);
               return;
             } catch (Exception ex) {
               LOGGER.error("Exception writing to internal frame buffer", ex);
@@ -410,20 +399,21 @@ public class SurfMetaService {
       }
 
       public void start(I iface, makeDirectory_args args, org.apache.thrift.async.AsyncMethodCallback<org.apache.reef.inmemory.fs.entity.FileMeta> resultHandler) throws TException {
-        iface.makeDirectory(args.path, args.user,resultHandler);
+        iface.makeDirectory(args.path, args.user, resultHandler);
       }
     }
 
   }
 
-  public static class listStatus_args implements org.apache.thrift.TBase<listStatus_args, listStatus_args._Fields>, java.io.Serializable, Cloneable, Comparable<listStatus_args>   {
+  public static class listStatus_args implements org.apache.thrift.TBase<listStatus_args, listStatus_args._Fields>, java.io.Serializable, Cloneable, Comparable<listStatus_args> {
     private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("listStatus_args");
 
-    private static final org.apache.thrift.protocol.TField PATH_FIELD_DESC = new org.apache.thrift.protocol.TField("path", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField RECURSIVE_FIELD_DESC = new org.apache.thrift.protocol.TField("recursive", org.apache.thrift.protocol.TType.BOOL, (short)2);
-    private static final org.apache.thrift.protocol.TField USER_FIELD_DESC = new org.apache.thrift.protocol.TField("user", org.apache.thrift.protocol.TType.STRUCT, (short)3);
+    private static final org.apache.thrift.protocol.TField PATH_FIELD_DESC = new org.apache.thrift.protocol.TField("path", org.apache.thrift.protocol.TType.STRING, (short) 1);
+    private static final org.apache.thrift.protocol.TField RECURSIVE_FIELD_DESC = new org.apache.thrift.protocol.TField("recursive", org.apache.thrift.protocol.TType.BOOL, (short) 2);
+    private static final org.apache.thrift.protocol.TField USER_FIELD_DESC = new org.apache.thrift.protocol.TField("user", org.apache.thrift.protocol.TType.STRUCT, (short) 3);
 
     private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
+
     static {
       schemes.put(StandardScheme.class, new listStatus_argsStandardSchemeFactory());
       schemes.put(TupleScheme.class, new listStatus_argsTupleSchemeFactory());
@@ -433,11 +423,13 @@ public class SurfMetaService {
     private boolean recursive; // required
     private org.apache.reef.inmemory.fs.entity.User user; // required
 
-    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+    /**
+     * The set of fields this struct contains, along with convenience methods for finding and manipulating them.
+     */
     public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-      PATH((short)1, "path"),
-      RECURSIVE((short)2, "recursive"),
-      USER((short)3, "user");
+      PATH((short) 1, "path"),
+      RECURSIVE((short) 2, "recursive"),
+      USER((short) 3, "user");
 
       private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -451,7 +443,7 @@ public class SurfMetaService {
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
       public static _Fields findByThriftId(int fieldId) {
-        switch(fieldId) {
+        switch (fieldId) {
           case 1: // PATH
             return PATH;
           case 2: // RECURSIVE
@@ -501,13 +493,14 @@ public class SurfMetaService {
     private static final int __RECURSIVE_ISSET_ID = 0;
     private byte __isset_bitfield = 0;
     public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+
     static {
       Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.PATH, new org.apache.thrift.meta_data.FieldMetaData("path", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+      tmpMap.put(_Fields.PATH, new org.apache.thrift.meta_data.FieldMetaData("path", org.apache.thrift.TFieldRequirementType.DEFAULT,
           new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
-      tmpMap.put(_Fields.RECURSIVE, new org.apache.thrift.meta_data.FieldMetaData("recursive", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+      tmpMap.put(_Fields.RECURSIVE, new org.apache.thrift.meta_data.FieldMetaData("recursive", org.apache.thrift.TFieldRequirementType.DEFAULT,
           new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.BOOL)));
-      tmpMap.put(_Fields.USER, new org.apache.thrift.meta_data.FieldMetaData("user", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+      tmpMap.put(_Fields.USER, new org.apache.thrift.meta_data.FieldMetaData("user", org.apache.thrift.TFieldRequirementType.DEFAULT,
           new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, org.apache.reef.inmemory.fs.entity.User.class)));
       metaDataMap = Collections.unmodifiableMap(tmpMap);
       org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(listStatus_args.class, metaDataMap);
@@ -517,10 +510,9 @@ public class SurfMetaService {
     }
 
     public listStatus_args(
-      String path,
-      boolean recursive,
-      org.apache.reef.inmemory.fs.entity.User user)
-    {
+        String path,
+        boolean recursive,
+        org.apache.reef.inmemory.fs.entity.User user) {
       this();
       this.path = path;
       this.recursive = recursive;
@@ -566,7 +558,9 @@ public class SurfMetaService {
       this.path = null;
     }
 
-    /** Returns true if field path is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field path is set (has been assigned a value) and false otherwise
+     */
     public boolean isSetPath() {
       return this.path != null;
     }
@@ -590,7 +584,9 @@ public class SurfMetaService {
       __isset_bitfield = EncodingUtils.clearBit(__isset_bitfield, __RECURSIVE_ISSET_ID);
     }
 
-    /** Returns true if field recursive is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field recursive is set (has been assigned a value) and false otherwise
+     */
     public boolean isSetRecursive() {
       return EncodingUtils.testBit(__isset_bitfield, __RECURSIVE_ISSET_ID);
     }
@@ -611,7 +607,9 @@ public class SurfMetaService {
       this.user = null;
     }
 
-    /** Returns true if field user is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field user is set (has been assigned a value) and false otherwise
+     */
     public boolean isSetUser() {
       return this.user != null;
     }
@@ -624,61 +622,63 @@ public class SurfMetaService {
 
     public void setFieldValue(_Fields field, Object value) {
       switch (field) {
-      case PATH:
-        if (value == null) {
-          unsetPath();
-        } else {
-          setPath((String)value);
-        }
-        break;
+        case PATH:
+          if (value == null) {
+            unsetPath();
+          } else {
+            setPath((String) value);
+          }
+          break;
 
-      case RECURSIVE:
-        if (value == null) {
-          unsetRecursive();
-        } else {
-          setRecursive((Boolean)value);
-        }
-        break;
+        case RECURSIVE:
+          if (value == null) {
+            unsetRecursive();
+          } else {
+            setRecursive((Boolean) value);
+          }
+          break;
 
-      case USER:
-        if (value == null) {
-          unsetUser();
-        } else {
-          setUser((org.apache.reef.inmemory.fs.entity.User)value);
-        }
-        break;
+        case USER:
+          if (value == null) {
+            unsetUser();
+          } else {
+            setUser((org.apache.reef.inmemory.fs.entity.User) value);
+          }
+          break;
 
       }
     }
 
     public Object getFieldValue(_Fields field) {
       switch (field) {
-      case PATH:
-        return getPath();
+        case PATH:
+          return getPath();
 
-      case RECURSIVE:
-        return Boolean.valueOf(isRecursive());
+        case RECURSIVE:
+          return Boolean.valueOf(isRecursive());
 
-      case USER:
-        return getUser();
+        case USER:
+          return getUser();
 
       }
       throw new IllegalStateException();
     }
 
-    /** Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise
+     */
     public boolean isSet(_Fields field) {
       if (field == null) {
         throw new IllegalArgumentException();
       }
 
       switch (field) {
-      case PATH:
-        return isSetPath();
-      case RECURSIVE:
-        return isSetRecursive();
-      case USER:
-        return isSetUser();
+        case PATH:
+          return isSetPath();
+        case RECURSIVE:
+          return isSetRecursive();
+        case USER:
+          return isSetUser();
       }
       throw new IllegalStateException();
     }
@@ -688,7 +688,7 @@ public class SurfMetaService {
       if (that == null)
         return false;
       if (that instanceof listStatus_args)
-        return this.equals((listStatus_args)that);
+        return this.equals((listStatus_args) that);
       return false;
     }
 
@@ -849,10 +849,9 @@ public class SurfMetaService {
       public void read(org.apache.thrift.protocol.TProtocol iprot, listStatus_args struct) throws org.apache.thrift.TException {
         org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
-        while (true)
-        {
+        while (true) {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) {
             break;
           }
           switch (schemeField.id) {
@@ -860,7 +859,7 @@ public class SurfMetaService {
               if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
                 struct.path = iprot.readString();
                 struct.setPathIsSet(true);
-              } else { 
+              } else {
                 org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
@@ -868,7 +867,7 @@ public class SurfMetaService {
               if (schemeField.type == org.apache.thrift.protocol.TType.BOOL) {
                 struct.recursive = iprot.readBool();
                 struct.setRecursiveIsSet(true);
-              } else { 
+              } else {
                 org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
@@ -877,7 +876,7 @@ public class SurfMetaService {
                 struct.user = new org.apache.reef.inmemory.fs.entity.User();
                 struct.user.read(iprot);
                 struct.setUserIsSet(true);
-              } else { 
+              } else {
                 org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
@@ -968,13 +967,14 @@ public class SurfMetaService {
 
   }
 
-  public static class listStatus_result implements org.apache.thrift.TBase<listStatus_result, listStatus_result._Fields>, java.io.Serializable, Cloneable, Comparable<listStatus_result>   {
+  public static class listStatus_result implements org.apache.thrift.TBase<listStatus_result, listStatus_result._Fields>, java.io.Serializable, Cloneable, Comparable<listStatus_result> {
     private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("listStatus_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.LIST, (short)0);
-    private static final org.apache.thrift.protocol.TField FE_FIELD_DESC = new org.apache.thrift.protocol.TField("fe", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.LIST, (short) 0);
+    private static final org.apache.thrift.protocol.TField FE_FIELD_DESC = new org.apache.thrift.protocol.TField("fe", org.apache.thrift.protocol.TType.STRUCT, (short) 1);
 
     private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
+
     static {
       schemes.put(StandardScheme.class, new listStatus_resultStandardSchemeFactory());
       schemes.put(TupleScheme.class, new listStatus_resultTupleSchemeFactory());
@@ -983,10 +983,12 @@ public class SurfMetaService {
     private List<org.apache.reef.inmemory.fs.entity.FileMeta> success; // required
     private org.apache.reef.inmemory.fs.exceptions.FileNotFoundException fe; // required
 
-    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+    /**
+     * The set of fields this struct contains, along with convenience methods for finding and manipulating them.
+     */
     public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-      SUCCESS((short)0, "success"),
-      FE((short)1, "fe");
+      SUCCESS((short) 0, "success"),
+      FE((short) 1, "fe");
 
       private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -1000,7 +1002,7 @@ public class SurfMetaService {
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
       public static _Fields findByThriftId(int fieldId) {
-        switch(fieldId) {
+        switch (fieldId) {
           case 0: // SUCCESS
             return SUCCESS;
           case 1: // FE
@@ -1046,12 +1048,13 @@ public class SurfMetaService {
 
     // isset id assignments
     public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+
     static {
       Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-          new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
+      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT,
+          new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST,
               new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, org.apache.reef.inmemory.fs.entity.FileMeta.class))));
-      tmpMap.put(_Fields.FE, new org.apache.thrift.meta_data.FieldMetaData("fe", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+      tmpMap.put(_Fields.FE, new org.apache.thrift.meta_data.FieldMetaData("fe", org.apache.thrift.TFieldRequirementType.DEFAULT,
           new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRUCT)));
       metaDataMap = Collections.unmodifiableMap(tmpMap);
       org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(listStatus_result.class, metaDataMap);
@@ -1061,9 +1064,8 @@ public class SurfMetaService {
     }
 
     public listStatus_result(
-      List<org.apache.reef.inmemory.fs.entity.FileMeta> success,
-      org.apache.reef.inmemory.fs.exceptions.FileNotFoundException fe)
-    {
+        List<org.apache.reef.inmemory.fs.entity.FileMeta> success,
+        org.apache.reef.inmemory.fs.exceptions.FileNotFoundException fe) {
       this();
       this.success = success;
       this.fe = fe;
@@ -1122,7 +1124,9 @@ public class SurfMetaService {
       this.success = null;
     }
 
-    /** Returns true if field success is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field success is set (has been assigned a value) and false otherwise
+     */
     public boolean isSetSuccess() {
       return this.success != null;
     }
@@ -1145,7 +1149,9 @@ public class SurfMetaService {
       this.fe = null;
     }
 
-    /** Returns true if field fe is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field fe is set (has been assigned a value) and false otherwise
+     */
     public boolean isSetFe() {
       return this.fe != null;
     }
@@ -1158,48 +1164,50 @@ public class SurfMetaService {
 
     public void setFieldValue(_Fields field, Object value) {
       switch (field) {
-      case SUCCESS:
-        if (value == null) {
-          unsetSuccess();
-        } else {
-          setSuccess((List<org.apache.reef.inmemory.fs.entity.FileMeta>)value);
-        }
-        break;
+        case SUCCESS:
+          if (value == null) {
+            unsetSuccess();
+          } else {
+            setSuccess((List<org.apache.reef.inmemory.fs.entity.FileMeta>) value);
+          }
+          break;
 
-      case FE:
-        if (value == null) {
-          unsetFe();
-        } else {
-          setFe((org.apache.reef.inmemory.fs.exceptions.FileNotFoundException)value);
-        }
-        break;
+        case FE:
+          if (value == null) {
+            unsetFe();
+          } else {
+            setFe((org.apache.reef.inmemory.fs.exceptions.FileNotFoundException) value);
+          }
+          break;
 
       }
     }
 
     public Object getFieldValue(_Fields field) {
       switch (field) {
-      case SUCCESS:
-        return getSuccess();
+        case SUCCESS:
+          return getSuccess();
 
-      case FE:
-        return getFe();
+        case FE:
+          return getFe();
 
       }
       throw new IllegalStateException();
     }
 
-    /** Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise
+     */
     public boolean isSet(_Fields field) {
       if (field == null) {
         throw new IllegalArgumentException();
       }
 
       switch (field) {
-      case SUCCESS:
-        return isSetSuccess();
-      case FE:
-        return isSetFe();
+        case SUCCESS:
+          return isSetSuccess();
+        case FE:
+          return isSetFe();
       }
       throw new IllegalStateException();
     }
@@ -1209,7 +1217,7 @@ public class SurfMetaService {
       if (that == null)
         return false;
       if (that instanceof listStatus_result)
-        return this.equals((listStatus_result)that);
+        return this.equals((listStatus_result) that);
       return false;
     }
 
@@ -1284,7 +1292,7 @@ public class SurfMetaService {
 
     public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
       schemes.get(oprot.getScheme()).getScheme().write(oprot, this);
-      }
+    }
 
     @Override
     public String toString() {
@@ -1342,10 +1350,9 @@ public class SurfMetaService {
       public void read(org.apache.thrift.protocol.TProtocol iprot, listStatus_result struct) throws org.apache.thrift.TException {
         org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
-        while (true)
-        {
+        while (true) {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) {
             break;
           }
           switch (schemeField.id) {
@@ -1354,8 +1361,7 @@ public class SurfMetaService {
                 {
                   org.apache.thrift.protocol.TList _list0 = iprot.readListBegin();
                   struct.success = new ArrayList<org.apache.reef.inmemory.fs.entity.FileMeta>(_list0.size);
-                  for (int _i1 = 0; _i1 < _list0.size; ++_i1)
-                  {
+                  for (int _i1 = 0; _i1 < _list0.size; ++_i1) {
                     org.apache.reef.inmemory.fs.entity.FileMeta _elem2;
                     _elem2 = new org.apache.reef.inmemory.fs.entity.FileMeta();
                     _elem2.read(iprot);
@@ -1364,7 +1370,7 @@ public class SurfMetaService {
                   iprot.readListEnd();
                 }
                 struct.setSuccessIsSet(true);
-              } else { 
+              } else {
                 org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
@@ -1373,7 +1379,7 @@ public class SurfMetaService {
                 struct.fe = new org.apache.reef.inmemory.fs.exceptions.FileNotFoundException();
                 struct.fe.read(iprot);
                 struct.setFeIsSet(true);
-              } else { 
+              } else {
                 org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
@@ -1394,8 +1400,7 @@ public class SurfMetaService {
           oprot.writeFieldBegin(SUCCESS_FIELD_DESC);
           {
             oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, struct.success.size()));
-            for (org.apache.reef.inmemory.fs.entity.FileMeta _iter3 : struct.success)
-            {
+            for (org.apache.reef.inmemory.fs.entity.FileMeta _iter3 : struct.success) {
               _iter3.write(oprot);
             }
             oprot.writeListEnd();
@@ -1435,8 +1440,7 @@ public class SurfMetaService {
         if (struct.isSetSuccess()) {
           {
             oprot.writeI32(struct.success.size());
-            for (org.apache.reef.inmemory.fs.entity.FileMeta _iter4 : struct.success)
-            {
+            for (org.apache.reef.inmemory.fs.entity.FileMeta _iter4 : struct.success) {
               _iter4.write(oprot);
             }
           }
@@ -1454,8 +1458,7 @@ public class SurfMetaService {
           {
             org.apache.thrift.protocol.TList _list5 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRUCT, iprot.readI32());
             struct.success = new ArrayList<org.apache.reef.inmemory.fs.entity.FileMeta>(_list5.size);
-            for (int _i6 = 0; _i6 < _list5.size; ++_i6)
-            {
+            for (int _i6 = 0; _i6 < _list5.size; ++_i6) {
               org.apache.reef.inmemory.fs.entity.FileMeta _elem7;
               _elem7 = new org.apache.reef.inmemory.fs.entity.FileMeta();
               _elem7.read(iprot);
@@ -1474,13 +1477,14 @@ public class SurfMetaService {
 
   }
 
-  public static class makeDirectory_args implements org.apache.thrift.TBase<makeDirectory_args, makeDirectory_args._Fields>, java.io.Serializable, Cloneable, Comparable<makeDirectory_args>   {
+  public static class makeDirectory_args implements org.apache.thrift.TBase<makeDirectory_args, makeDirectory_args._Fields>, java.io.Serializable, Cloneable, Comparable<makeDirectory_args> {
     private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("makeDirectory_args");
 
-    private static final org.apache.thrift.protocol.TField PATH_FIELD_DESC = new org.apache.thrift.protocol.TField("path", org.apache.thrift.protocol.TType.STRING, (short)1);
-    private static final org.apache.thrift.protocol.TField USER_FIELD_DESC = new org.apache.thrift.protocol.TField("user", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+    private static final org.apache.thrift.protocol.TField PATH_FIELD_DESC = new org.apache.thrift.protocol.TField("path", org.apache.thrift.protocol.TType.STRING, (short) 1);
+    private static final org.apache.thrift.protocol.TField USER_FIELD_DESC = new org.apache.thrift.protocol.TField("user", org.apache.thrift.protocol.TType.STRUCT, (short) 2);
 
     private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
+
     static {
       schemes.put(StandardScheme.class, new makeDirectory_argsStandardSchemeFactory());
       schemes.put(TupleScheme.class, new makeDirectory_argsTupleSchemeFactory());
@@ -1489,10 +1493,12 @@ public class SurfMetaService {
     private String path; // required
     private org.apache.reef.inmemory.fs.entity.User user; // required
 
-    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+    /**
+     * The set of fields this struct contains, along with convenience methods for finding and manipulating them.
+     */
     public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-      PATH((short)1, "path"),
-      USER((short)2, "user");
+      PATH((short) 1, "path"),
+      USER((short) 2, "user");
 
       private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -1506,7 +1512,7 @@ public class SurfMetaService {
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
       public static _Fields findByThriftId(int fieldId) {
-        switch(fieldId) {
+        switch (fieldId) {
           case 1: // PATH
             return PATH;
           case 2: // USER
@@ -1552,11 +1558,12 @@ public class SurfMetaService {
 
     // isset id assignments
     public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+
     static {
       Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.PATH, new org.apache.thrift.meta_data.FieldMetaData("path", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+      tmpMap.put(_Fields.PATH, new org.apache.thrift.meta_data.FieldMetaData("path", org.apache.thrift.TFieldRequirementType.DEFAULT,
           new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
-      tmpMap.put(_Fields.USER, new org.apache.thrift.meta_data.FieldMetaData("user", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+      tmpMap.put(_Fields.USER, new org.apache.thrift.meta_data.FieldMetaData("user", org.apache.thrift.TFieldRequirementType.DEFAULT,
           new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, org.apache.reef.inmemory.fs.entity.User.class)));
       metaDataMap = Collections.unmodifiableMap(tmpMap);
       org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(makeDirectory_args.class, metaDataMap);
@@ -1566,9 +1573,8 @@ public class SurfMetaService {
     }
 
     public makeDirectory_args(
-      String path,
-      org.apache.reef.inmemory.fs.entity.User user)
-    {
+        String path,
+        org.apache.reef.inmemory.fs.entity.User user) {
       this();
       this.path = path;
       this.user = user;
@@ -1608,7 +1614,9 @@ public class SurfMetaService {
       this.path = null;
     }
 
-    /** Returns true if field path is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field path is set (has been assigned a value) and false otherwise
+     */
     public boolean isSetPath() {
       return this.path != null;
     }
@@ -1631,7 +1639,9 @@ public class SurfMetaService {
       this.user = null;
     }
 
-    /** Returns true if field user is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field user is set (has been assigned a value) and false otherwise
+     */
     public boolean isSetUser() {
       return this.user != null;
     }
@@ -1644,48 +1654,50 @@ public class SurfMetaService {
 
     public void setFieldValue(_Fields field, Object value) {
       switch (field) {
-      case PATH:
-        if (value == null) {
-          unsetPath();
-        } else {
-          setPath((String)value);
-        }
-        break;
+        case PATH:
+          if (value == null) {
+            unsetPath();
+          } else {
+            setPath((String) value);
+          }
+          break;
 
-      case USER:
-        if (value == null) {
-          unsetUser();
-        } else {
-          setUser((org.apache.reef.inmemory.fs.entity.User)value);
-        }
-        break;
+        case USER:
+          if (value == null) {
+            unsetUser();
+          } else {
+            setUser((org.apache.reef.inmemory.fs.entity.User) value);
+          }
+          break;
 
       }
     }
 
     public Object getFieldValue(_Fields field) {
       switch (field) {
-      case PATH:
-        return getPath();
+        case PATH:
+          return getPath();
 
-      case USER:
-        return getUser();
+        case USER:
+          return getUser();
 
       }
       throw new IllegalStateException();
     }
 
-    /** Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise
+     */
     public boolean isSet(_Fields field) {
       if (field == null) {
         throw new IllegalArgumentException();
       }
 
       switch (field) {
-      case PATH:
-        return isSetPath();
-      case USER:
-        return isSetUser();
+        case PATH:
+          return isSetPath();
+        case USER:
+          return isSetUser();
       }
       throw new IllegalStateException();
     }
@@ -1695,7 +1707,7 @@ public class SurfMetaService {
       if (that == null)
         return false;
       if (that instanceof makeDirectory_args)
-        return this.equals((makeDirectory_args)that);
+        return this.equals((makeDirectory_args) that);
       return false;
     }
 
@@ -1831,10 +1843,9 @@ public class SurfMetaService {
       public void read(org.apache.thrift.protocol.TProtocol iprot, makeDirectory_args struct) throws org.apache.thrift.TException {
         org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
-        while (true)
-        {
+        while (true) {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) {
             break;
           }
           switch (schemeField.id) {
@@ -1842,7 +1853,7 @@ public class SurfMetaService {
               if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
                 struct.path = iprot.readString();
                 struct.setPathIsSet(true);
-              } else { 
+              } else {
                 org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
@@ -1851,7 +1862,7 @@ public class SurfMetaService {
                 struct.user = new org.apache.reef.inmemory.fs.entity.User();
                 struct.user.read(iprot);
                 struct.setUserIsSet(true);
-              } else { 
+              } else {
                 org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
@@ -1929,13 +1940,14 @@ public class SurfMetaService {
 
   }
 
-  public static class makeDirectory_result implements org.apache.thrift.TBase<makeDirectory_result, makeDirectory_result._Fields>, java.io.Serializable, Cloneable, Comparable<makeDirectory_result>   {
+  public static class makeDirectory_result implements org.apache.thrift.TBase<makeDirectory_result, makeDirectory_result._Fields>, java.io.Serializable, Cloneable, Comparable<makeDirectory_result> {
     private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("makeDirectory_result");
 
-    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.STRUCT, (short)0);
-    private static final org.apache.thrift.protocol.TField FE_FIELD_DESC = new org.apache.thrift.protocol.TField("fe", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+    private static final org.apache.thrift.protocol.TField SUCCESS_FIELD_DESC = new org.apache.thrift.protocol.TField("success", org.apache.thrift.protocol.TType.STRUCT, (short) 0);
+    private static final org.apache.thrift.protocol.TField FE_FIELD_DESC = new org.apache.thrift.protocol.TField("fe", org.apache.thrift.protocol.TType.STRUCT, (short) 1);
 
     private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
+
     static {
       schemes.put(StandardScheme.class, new makeDirectory_resultStandardSchemeFactory());
       schemes.put(TupleScheme.class, new makeDirectory_resultTupleSchemeFactory());
@@ -1944,10 +1956,12 @@ public class SurfMetaService {
     private org.apache.reef.inmemory.fs.entity.FileMeta success; // required
     private org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException fe; // required
 
-    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+    /**
+     * The set of fields this struct contains, along with convenience methods for finding and manipulating them.
+     */
     public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-      SUCCESS((short)0, "success"),
-      FE((short)1, "fe");
+      SUCCESS((short) 0, "success"),
+      FE((short) 1, "fe");
 
       private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -1961,7 +1975,7 @@ public class SurfMetaService {
        * Find the _Fields constant that matches fieldId, or null if its not found.
        */
       public static _Fields findByThriftId(int fieldId) {
-        switch(fieldId) {
+        switch (fieldId) {
           case 0: // SUCCESS
             return SUCCESS;
           case 1: // FE
@@ -2007,11 +2021,12 @@ public class SurfMetaService {
 
     // isset id assignments
     public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+
     static {
       Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
-      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+      tmpMap.put(_Fields.SUCCESS, new org.apache.thrift.meta_data.FieldMetaData("success", org.apache.thrift.TFieldRequirementType.DEFAULT,
           new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, org.apache.reef.inmemory.fs.entity.FileMeta.class)));
-      tmpMap.put(_Fields.FE, new org.apache.thrift.meta_data.FieldMetaData("fe", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+      tmpMap.put(_Fields.FE, new org.apache.thrift.meta_data.FieldMetaData("fe", org.apache.thrift.TFieldRequirementType.DEFAULT,
           new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRUCT)));
       metaDataMap = Collections.unmodifiableMap(tmpMap);
       org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(makeDirectory_result.class, metaDataMap);
@@ -2021,9 +2036,8 @@ public class SurfMetaService {
     }
 
     public makeDirectory_result(
-      org.apache.reef.inmemory.fs.entity.FileMeta success,
-      org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException fe)
-    {
+        org.apache.reef.inmemory.fs.entity.FileMeta success,
+        org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException fe) {
       this();
       this.success = success;
       this.fe = fe;
@@ -2063,7 +2077,9 @@ public class SurfMetaService {
       this.success = null;
     }
 
-    /** Returns true if field success is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field success is set (has been assigned a value) and false otherwise
+     */
     public boolean isSetSuccess() {
       return this.success != null;
     }
@@ -2086,7 +2102,9 @@ public class SurfMetaService {
       this.fe = null;
     }
 
-    /** Returns true if field fe is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field fe is set (has been assigned a value) and false otherwise
+     */
     public boolean isSetFe() {
       return this.fe != null;
     }
@@ -2099,48 +2117,50 @@ public class SurfMetaService {
 
     public void setFieldValue(_Fields field, Object value) {
       switch (field) {
-      case SUCCESS:
-        if (value == null) {
-          unsetSuccess();
-        } else {
-          setSuccess((org.apache.reef.inmemory.fs.entity.FileMeta)value);
-        }
-        break;
+        case SUCCESS:
+          if (value == null) {
+            unsetSuccess();
+          } else {
+            setSuccess((org.apache.reef.inmemory.fs.entity.FileMeta) value);
+          }
+          break;
 
-      case FE:
-        if (value == null) {
-          unsetFe();
-        } else {
-          setFe((org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException)value);
-        }
-        break;
+        case FE:
+          if (value == null) {
+            unsetFe();
+          } else {
+            setFe((org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException) value);
+          }
+          break;
 
       }
     }
 
     public Object getFieldValue(_Fields field) {
       switch (field) {
-      case SUCCESS:
-        return getSuccess();
+        case SUCCESS:
+          return getSuccess();
 
-      case FE:
-        return getFe();
+        case FE:
+          return getFe();
 
       }
       throw new IllegalStateException();
     }
 
-    /** Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise */
+    /**
+     * Returns true if field corresponding to fieldID is set (has been assigned a value) and false otherwise
+     */
     public boolean isSet(_Fields field) {
       if (field == null) {
         throw new IllegalArgumentException();
       }
 
       switch (field) {
-      case SUCCESS:
-        return isSetSuccess();
-      case FE:
-        return isSetFe();
+        case SUCCESS:
+          return isSetSuccess();
+        case FE:
+          return isSetFe();
       }
       throw new IllegalStateException();
     }
@@ -2150,7 +2170,7 @@ public class SurfMetaService {
       if (that == null)
         return false;
       if (that instanceof makeDirectory_result)
-        return this.equals((makeDirectory_result)that);
+        return this.equals((makeDirectory_result) that);
       return false;
     }
 
@@ -2225,7 +2245,7 @@ public class SurfMetaService {
 
     public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
       schemes.get(oprot.getScheme()).getScheme().write(oprot, this);
-      }
+    }
 
     @Override
     public String toString() {
@@ -2286,10 +2306,9 @@ public class SurfMetaService {
       public void read(org.apache.thrift.protocol.TProtocol iprot, makeDirectory_result struct) throws org.apache.thrift.TException {
         org.apache.thrift.protocol.TField schemeField;
         iprot.readStructBegin();
-        while (true)
-        {
+        while (true) {
           schemeField = iprot.readFieldBegin();
-          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) { 
+          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) {
             break;
           }
           switch (schemeField.id) {
@@ -2298,7 +2317,7 @@ public class SurfMetaService {
                 struct.success = new org.apache.reef.inmemory.fs.entity.FileMeta();
                 struct.success.read(iprot);
                 struct.setSuccessIsSet(true);
-              } else { 
+              } else {
                 org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
@@ -2307,7 +2326,7 @@ public class SurfMetaService {
                 struct.fe = new org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException();
                 struct.fe.read(iprot);
                 struct.setFeIsSet(true);
-              } else { 
+              } else {
                 org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
               }
               break;
