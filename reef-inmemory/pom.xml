@@ -11,9 +11,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <logging>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config</logging>
     <hadoop.version>2.2.0</hadoop.version>
-    <tang.version>0.4-SNAPSHOT</tang.version>
-    <wake.version>0.4-SNAPSHOT</wake.version>
-    <reef.version>0.4-SNAPSHOT</reef.version>
+    <reef.version>0.4</reef.version>
   </properties>
   
   <repositories>
