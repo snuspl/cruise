@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -25,12 +24,7 @@ public class SurfMetaManager {
   public List<org.apache.reef.inmemory.fs.entity.FileMeta> listStatus(Path path, boolean recursive, org.apache.reef.inmemory.fs.entity.User creator) throws FileNotFoundException {
     //TODO: need to support glob pattern
     List<org.apache.reef.inmemory.fs.entity.FileMeta> fm = new ArrayList<org.apache.reef.inmemory.fs.entity.FileMeta>();
-    Path newPath = null;
-
-    if (path.isAbsolute())
-      newPath = path;
-    else
-      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getId() + Path.SEPARATOR + path);
+    Path newPath = getAbsolutePath(path, creator);
 
     if (!fsMeta.containsKey(newPath))
       throw new FileNotFoundException(path + " does not exists");
@@ -52,16 +46,10 @@ public class SurfMetaManager {
   }
 
   public org.apache.reef.inmemory.fs.entity.FileMeta makeDirectory(Path path, org.apache.reef.inmemory.fs.entity.User creator) throws FileAlreadyExistsException {
-    Path newPath = null;
     org.apache.reef.inmemory.fs.entity.FileMeta fm = new org.apache.reef.inmemory.fs.entity.FileMeta();
     fm.setOwner(creator);
     fm.setDirectory(true);
-
-    if (path.isAbsolute())
-      newPath = path;
-    else
-      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getId() + Path.SEPARATOR + path);
-
+    Path newPath = getAbsolutePath(path, creator);
     fm.setFullPath(newPath.toString());
 
     //if fsMeta has path, throw FileAlreadyExistsException
@@ -84,19 +72,8 @@ public class SurfMetaManager {
   }
 
   public boolean delete(Path path, boolean recursive, org.apache.reef.inmemory.fs.entity.User creator) throws IOException {
-    Path newPath = null;
-    org.apache.reef.inmemory.fs.entity.FileMeta fm = new org.apache.reef.inmemory.fs.entity.FileMeta();
-    fm.setOwner(creator);
-    fm.setDirectory(true);
+    Path newPath = getAbsolutePath(path, creator);
 
-    if (path.isAbsolute())
-      newPath = path;
-    else
-      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getId() + Path.SEPARATOR + path);
-
-    fm.setFullPath(newPath.toString());
-
-    //if fsMeta has path, throw FileAlreadyExistsException
     if (!fsMeta.containsKey(newPath))
       throw new FileNotFoundException(path + " dose not exist");
 
@@ -117,5 +94,16 @@ public class SurfMetaManager {
     }
 
     return true;
+  }
+
+  private Path getAbsolutePath(Path path, org.apache.reef.inmemory.fs.entity.User creator) {
+    Path newPath = null;
+
+    if (path.isAbsolute())
+      newPath = path;
+    else
+      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getId() + Path.SEPARATOR + path);
+
+    return newPath;
   }
 }
