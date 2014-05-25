@@ -97,4 +97,16 @@ public class SurfMetaManagerTest extends TestCase {
     int after = sm.listStatus(new Path("/user"), true, user).size();
     assertEquals("Total count is different", before - 4, after);
   }
+
+  @Test
+  public void testRename() throws IOException {
+    // Absolute path renaming test
+    assertTrue(sm.rename(new Path("/user"), new Path("/user_moved"), user));
+    assertTrue(sm.rename(new Path("/user_moved"), new Path("/user"), user));
+
+    // Relative path renaming test
+    sm.makeDirectory(new Path("/user/surf/test"), user);
+    assertTrue(sm.rename(new Path("test"), new Path("test2"), user));
+    assertTrue(sm.rename(new Path("test2"), new Path("test"), user));
+  }
 }

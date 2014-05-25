@@ -96,6 +96,36 @@ public class SurfMetaManager {
     return true;
   }
 
+  public boolean rename(Path src, Path dst, org.apache.reef.inmemory.fs.entity.User creator) throws IOException {
+    Path newSrc = getAbsolutePath(src, creator);
+    Path newDst = getAbsolutePath(dst, creator);
+
+    if (!fsMeta.containsKey(newSrc))
+      throw new FileNotFoundException(newSrc + " dose not exist");
+    if (fsMeta.containsKey(newDst))
+      throw new FileAlreadyExistsException(newDst + " already exist");
+
+    if (newSrc.isRoot())
+      throw new IOException(src + " can't be moved.");
+
+    //TODO: Authority check will be needed
+
+    SortedMap<Path, org.apache.reef.inmemory.fs.entity.FileMeta> subMap = fsMeta.tailMap(newSrc);
+    Path[] keys = subMap.keySet().toArray(new Path[subMap.size()]);
+    String prefix = newSrc.toString();
+    String newPrefix = newDst.toString();
+
+    for (Path subPath : keys) {
+      if (subPath.toString().equals(prefix) || subPath.toString().startsWith(prefix + Path.SEPARATOR)) {
+        org.apache.reef.inmemory.fs.entity.FileMeta fm = fsMeta.remove(subPath);
+        fm.setFullPath(fm.getFullPath().replaceFirst(prefix, newPrefix));
+        fsMeta.put(new Path(fm.getFullPath()), fm);
+      }
+    }
+
+    return true;
+  }
+
   private Path getAbsolutePath(Path path, org.apache.reef.inmemory.fs.entity.User creator) {
     Path newPath = null;
 
