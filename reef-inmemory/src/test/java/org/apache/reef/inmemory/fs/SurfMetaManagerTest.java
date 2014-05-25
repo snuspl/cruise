@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.List;
 
@@ -60,5 +61,40 @@ public class SurfMetaManagerTest extends TestCase {
 
     fms = sm.listStatus(new Path("/"), false, user);
     assertEquals("Sub directories count is different", 2, fms.size());
+  }
+
+  @Test
+  public void testDelete() throws IOException {
+    // Absolute path deleting test
+    assertTrue(sm.delete(new Path("/user/surf/hive"), false, user));
+
+    try {
+      sm.delete(new Path("/user/surf/hive"), false, user);
+      assertFalse("FileNotFoundException is expected", true);
+    } catch (FileNotFoundException fe) {
+      assertTrue(true);
+    } catch (IOException e) {
+      assertFalse("FileNotFoundException is expected", true);
+    }
+
+    // Relative path deleting test
+    assertTrue(sm.delete(new Path("test"), false, user));
+
+    try {
+      sm.delete(new Path("test"), false, user);
+      assertFalse("FileNotFoundException is expected", true);
+    } catch (FileNotFoundException fe) {
+      assertTrue(true);
+    } catch (IOException e) {
+      assertFalse("FileNotFoundException is expected", true);
+    }
+
+    // Recursive deleting test
+    sm.makeDirectory(new Path("/user/test/a/b/c"), user);
+    sm.makeDirectory(new Path("/user/test2/a/b/c"), user);
+    int before = sm.listStatus(new Path("/user"), true, user).size();
+    assertTrue(sm.delete(new Path("/user/test"), false, user));
+    int after = sm.listStatus(new Path("/user"), true, user).size();
+    assertEquals("Total count is different", before - 4, after);
   }
 }
