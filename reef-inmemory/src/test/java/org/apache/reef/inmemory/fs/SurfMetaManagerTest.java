@@ -44,11 +44,11 @@ public class SurfMetaManagerTest extends TestCase {
   @Test
   public void testListStatus() throws FileNotFoundException, FileAlreadyExistsException {
     List<org.apache.reef.inmemory.fs.entity.FileMeta> fms = sm.listStatus(new Path("/user/hive"), false, user);
-    assertEquals("Directory name is differenct", "/user/hive/home", fms.get(0).getFullPath());
+    assertEquals("Directory name is different", "/user/hive/home", fms.get(0).getFullPath());
 
     try {
       fms = sm.listStatus(new Path("/user/test"), false, user);
-      assertFalse("Directory /user/hive already exists", true);
+      assertFalse("FileNotFoundException is expected", true);
     } catch (FileNotFoundException fe) {
       assertTrue(true);
     }
