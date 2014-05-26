@@ -1,6 +1,8 @@
 package org.apache.reef.inmemory.fs;
 
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.fs.entity.FileMeta;
+import org.apache.reef.inmemory.fs.entity.User;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -14,16 +16,16 @@ import java.util.TreeMap;
  * Surf FileSystem Meta Information management
  */
 public class SurfMetaManager {
-  private static SortedMap<Path, org.apache.reef.inmemory.fs.entity.FileMeta> fsMeta;
+  private static SortedMap<Path, FileMeta> fsMeta;
   public static String USERS_HOME = "/user";
 
   static {
-    fsMeta = new TreeMap<Path, org.apache.reef.inmemory.fs.entity.FileMeta>();
+    fsMeta = new TreeMap<Path, FileMeta>();
   }
 
-  public List<org.apache.reef.inmemory.fs.entity.FileMeta> listStatus(Path path, boolean recursive, org.apache.reef.inmemory.fs.entity.User creator) throws FileNotFoundException {
+  public List<FileMeta> listStatus(Path path, boolean recursive, User creator) throws FileNotFoundException {
     //TODO: need to support glob pattern
-    List<org.apache.reef.inmemory.fs.entity.FileMeta> fm = new ArrayList<org.apache.reef.inmemory.fs.entity.FileMeta>();
+    List<FileMeta> fm = new ArrayList<FileMeta>();
     Path newPath = getAbsolutePath(path, creator);
 
     if (!fsMeta.containsKey(newPath))
@@ -31,7 +33,7 @@ public class SurfMetaManager {
 
     //TODO: Authority check will be needed
 
-    SortedMap<Path, org.apache.reef.inmemory.fs.entity.FileMeta> subMap = fsMeta.tailMap(newPath);
+    SortedMap<Path, FileMeta> subMap = fsMeta.tailMap(newPath);
 
     for (Path subPath : subMap.keySet()) {
       if (subPath.toString().contains(newPath.toString())) {
@@ -45,8 +47,8 @@ public class SurfMetaManager {
     return fm;
   }
 
-  public org.apache.reef.inmemory.fs.entity.FileMeta makeDirectory(Path path, org.apache.reef.inmemory.fs.entity.User creator) throws FileAlreadyExistsException {
-    org.apache.reef.inmemory.fs.entity.FileMeta fm = new org.apache.reef.inmemory.fs.entity.FileMeta();
+  public FileMeta makeDirectory(Path path, User creator) throws FileAlreadyExistsException {
+    FileMeta fm = new FileMeta();
     fm.setOwner(creator);
     fm.setDirectory(true);
     Path newPath = getAbsolutePath(path, creator);
@@ -71,7 +73,7 @@ public class SurfMetaManager {
     return fm;
   }
 
-  public boolean delete(Path path, boolean recursive, org.apache.reef.inmemory.fs.entity.User creator) throws IOException {
+  public boolean delete(Path path, boolean recursive, User creator) throws IOException {
     Path newPath = getAbsolutePath(path, creator);
 
     if (!fsMeta.containsKey(newPath))
@@ -83,7 +85,7 @@ public class SurfMetaManager {
 
     //TODO: Authority check will be needed
 
-    SortedMap<Path, org.apache.reef.inmemory.fs.entity.FileMeta> subMap = fsMeta.tailMap(newPath);
+    SortedMap<Path, FileMeta> subMap = fsMeta.tailMap(newPath);
     Path[] keys = subMap.keySet().toArray(new Path[subMap.size()]);
     String prefix = newPath.toString();
 
@@ -96,7 +98,7 @@ public class SurfMetaManager {
     return true;
   }
 
-  public boolean rename(Path src, Path dst, org.apache.reef.inmemory.fs.entity.User creator) throws IOException {
+  public boolean rename(Path src, Path dst, User creator) throws IOException {
     Path newSrc = getAbsolutePath(src, creator);
     Path newDst = getAbsolutePath(dst, creator);
 
@@ -110,14 +112,14 @@ public class SurfMetaManager {
 
     //TODO: Authority check will be needed
 
-    SortedMap<Path, org.apache.reef.inmemory.fs.entity.FileMeta> subMap = fsMeta.tailMap(newSrc);
+    SortedMap<Path, FileMeta> subMap = fsMeta.tailMap(newSrc);
     Path[] keys = subMap.keySet().toArray(new Path[subMap.size()]);
     String prefix = newSrc.toString();
     String newPrefix = newDst.toString();
 
     for (Path subPath : keys) {
       if (subPath.toString().equals(prefix) || subPath.toString().startsWith(prefix + Path.SEPARATOR)) {
-        org.apache.reef.inmemory.fs.entity.FileMeta fm = fsMeta.remove(subPath);
+        FileMeta fm = fsMeta.remove(subPath);
         fm.setFullPath(fm.getFullPath().replaceFirst(prefix, newPrefix));
         fsMeta.put(new Path(fm.getFullPath()), fm);
       }
@@ -126,7 +128,7 @@ public class SurfMetaManager {
     return true;
   }
 
-  private Path getAbsolutePath(Path path, org.apache.reef.inmemory.fs.entity.User creator) {
+  private Path getAbsolutePath(Path path, User creator) {
     Path newPath = null;
 
     if (path.isAbsolute())
