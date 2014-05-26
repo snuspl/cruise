@@ -12,7 +12,6 @@ import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class SurfMetaServiceImpl implements SurfMetaService.Iface, Runnable {
@@ -20,19 +19,12 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, Runnable {
   public List<FileMeta> listStatus(String path, boolean recursive, User user) throws FileNotFoundException, TException {
     SurfMetaManager sm = new SurfMetaManager();
 
-    List<FileMeta> fms = new ArrayList<FileMeta>();
-    FileMeta fm = new FileMeta();
-    fm.setFullPath("/user/surf");
-    fms.add(fm);
+    try {
 
-    return fms;
-//
-//        try{
-//
-//            return sm.listStatus(new Path(path), recursive, user);
-//        }catch(java.io.FileNotFoundException fe){
-//            throw new FileNotFoundException(fe.getMessage());
-//        }
+      return sm.listStatus(new Path(path), recursive, user);
+    } catch (java.io.FileNotFoundException fe) {
+      throw new FileNotFoundException(fe.getMessage());
+    }
   }
 
   @Override
