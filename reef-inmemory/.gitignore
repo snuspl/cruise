@@ -1,7 +1,0 @@
-# Auto-generated files
-src/main/java/org/apache/reef/inmemory/fs/entity/BlockInfo.java
-src/main/java/org/apache/reef/inmemory/fs/entity/FileMeta.java
-src/main/java/org/apache/reef/inmemory/fs/entity/User.java
-src/main/java/org/apache/reef/inmemory/fs/exceptions/FileAlreadyExistsException.java
-src/main/java/org/apache/reef/inmemory/fs/exceptions/FileNotFoundException.java
-src/main/java/org/apache/reef/inmemory/fs/service/SurfMetaService.java
