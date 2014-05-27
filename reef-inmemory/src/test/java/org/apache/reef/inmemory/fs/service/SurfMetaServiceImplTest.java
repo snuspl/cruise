@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory.service;
+package org.apache.reef.inmemory.fs.service;
 
 import junit.framework.TestCase;
 import org.apache.thrift.transport.TTransportException;
