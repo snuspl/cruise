@@ -1,10 +1,5 @@
 package org.apache.reef.inmemory;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import javax.inject.Inject;
-
 import com.microsoft.reef.driver.context.ContextConfiguration;
 import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
 import com.microsoft.reef.driver.evaluator.EvaluatorRequest;
@@ -19,6 +14,11 @@ import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
+import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
+
+import javax.inject.Inject;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The driver class for InMemory Application
@@ -29,7 +29,7 @@ public final class InMemoryDriver {
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   private final EvaluatorRequestor requestor;
-  
+
   /**
    * Job Driver. Instantiated by TANG.
    */
@@ -42,13 +42,13 @@ public final class InMemoryDriver {
    * Get a Task Configuration
    */
   final Configuration getTaskConfiguration() throws BindException {
-    return  TaskConfiguration.CONF
+    return TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
         .set(TaskConfiguration.TASK, InMemoryTask.class)
         .set(TaskConfiguration.ON_SEND_MESSAGE, InMemoryTask.class)
         .build();
   }
-  
+
   /**
    * Handler of StartTime event: Request as a single Evaluator
    */
@@ -60,17 +60,20 @@ public final class InMemoryDriver {
           .setNumber(1)
           .setMemory(128)
           .build());
+
+      Thread thread = new Thread(new SurfMetaServiceImpl());
+      thread.start();
     }
   }
-  
+
   /**
    * Handler of AllocatedEvaluator event: Submit an Task to the allocated evaluator
    */
-  final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator>{
+  final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       LOG.log(Level.INFO, "Submitting Task to AllocatedEvaluator: {0}", allocatedEvaluator);
-      try{
+      try {
         final Configuration contextConf = ContextConfiguration.CONF
             .set(ContextConfiguration.IDENTIFIER, "InMemoryContext")
             .build();
@@ -84,17 +87,17 @@ public final class InMemoryDriver {
       }
     }
   }
-  
+
   /**
    * Handler of CompletedTask event.
    */
-  final class CompletedTaskHandler implements EventHandler<CompletedTask>{
+  final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(CompletedTask task) {
-        LOG.log(Level.FINEST, "Task {0} Completed", task.getId());
+      LOG.log(Level.FINEST, "Task {0} Completed", task.getId());
     }
   }
-  
+
   /**
    * Handler of StartTime event: Request as a single Evaluator
    */
@@ -114,8 +117,8 @@ public final class InMemoryDriver {
 
     @Override
     public void onNext(TaskMessage msg) {
-        LOG.log(Level.FINEST, "TaskMessage: from {0}: {1}",
-            new Object[]{msg.getId(), CODEC.decode(msg.get())});
+      LOG.log(Level.FINEST, "TaskMessage: from {0}: {1}",
+          new Object[]{msg.getId(), CODEC.decode(msg.get())});
     }
   }
 }
