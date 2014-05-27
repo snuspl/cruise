@@ -17,6 +17,10 @@ import com.microsoft.wake.time.event.StopTime;
 import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
 
 import javax.inject.Inject;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,6 +33,7 @@ public final class InMemoryDriver {
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   private final EvaluatorRequestor requestor;
+  private ExecutorService executor;
 
   /**
    * Job Driver. Instantiated by TANG.
@@ -61,8 +66,8 @@ public final class InMemoryDriver {
           .setMemory(128)
           .build());
 
-      Thread thread = new Thread(new SurfMetaServiceImpl());
-      thread.start();
+      ExecutorService executor = Executors.newSingleThreadExecutor();
+      executor.execute(new SurfMetaServiceImpl());
     }
   }
 
@@ -105,6 +110,24 @@ public final class InMemoryDriver {
     @Override
     public void onNext(final StopTime stopTime) {
       synchronized (this) {
+        if(!executor.isShutdown()){
+          LOG.log(Level.INFO, "Shutdown SurfMetaService now!!");
+
+          executor.shutdown();
+
+          try {
+            if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+              executor.shutdownNow();
+              if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                LOG.log(Level.WARNING, "Shutdown SurfMetaService Now!! Data will be lost.");
+              }
+            }
+          } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+          }
+        }
+
         LOG.log(Level.FINEST, "DriverStopTime: {0}", stopTime);
       }
     }
