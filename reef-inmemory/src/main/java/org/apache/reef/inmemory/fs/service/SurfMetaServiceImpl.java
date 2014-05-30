@@ -14,7 +14,18 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 
 import java.util.List;
 
-public class SurfMetaServiceImpl implements SurfMetaService.Iface, Runnable {
+public class SurfMetaServiceImpl implements SurfMetaService.Iface, Runnable, AutoCloseable {
+  private int port = 18000;
+  private int timeout = 30000;
+  private int numThread = 10;
+
+  TServer server = null;
+
+  public SurfMetaServiceImpl(){
+    this.port = 18000;
+    this.timeout = 30000;
+    this.numThread = 10;
+  }
   @Override
   public List<FileMeta> listStatus(String path, boolean recursive, User user) throws FileNotFoundException, TException {
     SurfMetaManager sm = new SurfMetaManager();
@@ -41,19 +52,26 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, Runnable {
   @Override
   public void run() {
     try {
-      int port = 18000;
-
-      TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(port, 30000);
+      TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.port, this.timeout);
       SurfMetaService.Processor<SurfMetaService.Iface> processor = new SurfMetaService.Processor<SurfMetaService.Iface>(new SurfMetaServiceImpl());
 
-      TServer server = new THsHaServer(
+      this.server = new THsHaServer(
           new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
               .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
-              .workerThreads(10));
+              .workerThreads(this.numThread));
 
-      server.serve();
+      this.server.serve();
     } catch (Exception e) {
       e.printStackTrace();
+    } finally {
+      if (this.server != null && this.server.isServing())
+        this.server.stop();
     }
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (this.server != null && this.server.isServing())
+      this.server.stop();
   }
 }

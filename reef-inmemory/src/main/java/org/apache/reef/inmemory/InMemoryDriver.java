@@ -17,7 +17,6 @@ import com.microsoft.wake.time.event.StopTime;
 import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
 
 import javax.inject.Inject;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -109,18 +108,17 @@ public final class InMemoryDriver {
   final class StopHandler implements EventHandler<StopTime> {
     @Override
     public void onNext(final StopTime stopTime) {
-      synchronized (this) {
-        if(!executor.isShutdown()){
+      synchronized (executor) {
+        if (!executor.isShutdown()) {
           LOG.log(Level.INFO, "Shutdown SurfMetaService now!!");
-
           executor.shutdown();
 
           try {
             if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+              LOG.log(Level.WARNING, "Shutdown SurfMetaService Now!! Data will be lost.");
+
               executor.shutdownNow();
-              if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
-                LOG.log(Level.WARNING, "Shutdown SurfMetaService Now!! Data will be lost.");
-              }
+              executor.awaitTermination(10, TimeUnit.SECONDS);
             }
           } catch (InterruptedException e) {
             executor.shutdownNow();
