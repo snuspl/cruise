@@ -1,5 +1,15 @@
 package org.apache.reef.inmemory;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.inject.Inject;
+
+import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
+
 import com.microsoft.reef.driver.context.ContextConfiguration;
 import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
 import com.microsoft.reef.driver.evaluator.EvaluatorRequest;
@@ -14,14 +24,6 @@ import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
-import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
-
-import javax.inject.Inject;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * The driver class for InMemory Application
@@ -81,7 +83,6 @@ public final class InMemoryDriver {
         final Configuration contextConf = ContextConfiguration.CONF
             .set(ContextConfiguration.IDENTIFIER, "InMemoryContext")
             .build();
-
         final Configuration taskConf = getTaskConfiguration();
         allocatedEvaluator.submitContextAndTask(contextConf, taskConf);
       } catch (final BindException ex) {
@@ -98,12 +99,13 @@ public final class InMemoryDriver {
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(CompletedTask task) {
-      LOG.log(Level.FINEST, "Task {0} Completed", task.getId());
+      LOG.log(Level.INFO, "Task {0} Completed", task.getId());
     }
   }
 
   /**
-   * Handler of StopEvent: Shutting down.
+   * Handler of StopTime event: Shutting down.
+   * TODO Resources has to be released properly.
    */
   final class StopHandler implements EventHandler<StopTime> {
     @Override
@@ -126,19 +128,19 @@ public final class InMemoryDriver {
           }
         }
 
-        LOG.log(Level.FINEST, "DriverStopTime: {0}", stopTime);
+        LOG.log(Level.INFO, "DriverStopTime: {0}", stopTime);
       }
     }
   }
 
   /**
    * Handler of TaskMessage event: Receive a message from Task
+   * TODO Distinguish the type of messages by ID
    */
   public class TaskMessageHandler implements EventHandler<TaskMessage> {
-
     @Override
     public void onNext(TaskMessage msg) {
-      LOG.log(Level.FINEST, "TaskMessage: from {0}: {1}",
+      LOG.log(Level.INFO, "TaskMessage: from {0}: {1}",
           new Object[]{msg.getId(), CODEC.decode(msg.get())});
     }
   }

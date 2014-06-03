@@ -2,6 +2,7 @@ package org.apache.reef.inmemory;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import com.microsoft.reef.client.DriverConfiguration;
 import com.microsoft.reef.client.REEF;
 import com.microsoft.reef.runtime.common.client.REEFImplementation;
