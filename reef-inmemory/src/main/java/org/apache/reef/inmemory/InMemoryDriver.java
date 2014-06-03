@@ -103,7 +103,7 @@ public final class InMemoryDriver {
   }
 
   /**
-   * Handler of StartTime event: Request as a single Evaluator
+   * Handler of StopEvent: Shutting down.
    */
   final class StopHandler implements EventHandler<StopTime> {
     @Override
