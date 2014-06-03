@@ -1,14 +1,14 @@
 package org.apache.reef.inmemory;
 
-import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.microsoft.reef.client.ClientConfiguration;
-import com.microsoft.reef.client.LauncherStatus;
+import com.microsoft.reef.client.DriverConfiguration;
+import com.microsoft.reef.client.REEF;
+import com.microsoft.reef.runtime.common.client.REEFImplementation;
 import com.microsoft.reef.runtime.local.client.LocalRuntimeConfiguration;
+import com.microsoft.reef.util.EnvironmentUtils;
 import com.microsoft.tang.Configuration;
-import com.microsoft.tang.Injector;
 import com.microsoft.tang.Tang;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.tang.exceptions.InjectionException;
@@ -24,45 +24,43 @@ public class Launch
   private static final Logger LOG = Logger.getLogger(Launch.class.getName());
 
   /**
-   * Build a Runtime Configuration
+   * Build Runtime Configuration
    */ 
-  public static final Configuration getRuntimeConfiguration() throws BindException {
+  private static final Configuration getRuntimeConfiguration() throws BindException {
     return LocalRuntimeConfiguration.CONF
         .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, 2)
         .build();
   }
-
+  
   /**
-   * Build a Client Configuration
-   */
-  public static final Configuration getClientConfiguration(final Configuration runtimeConf) throws BindException {
-    final Configuration clientConfiguration = ClientConfiguration.CONF
-        .set(ClientConfiguration.ON_JOB_RUNNING, InMemoryClient.RunningJobHandler.class)
-        .set(ClientConfiguration.ON_JOB_COMPLETED, InMemoryClient.CompletedJobHandler.class)
-        .set(ClientConfiguration.ON_JOB_FAILED, InMemoryClient.FailedJobHandler.class)
+   * Build Driver Configuration
+   */ 
+  private static Configuration getDriverConfiguration() {
+    final Configuration driverConfig =
+        EnvironmentUtils.addClasspath(DriverConfiguration.CONF, DriverConfiguration.GLOBAL_LIBRARIES)
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_TASK_MESSAGE, InMemoryDriver.TaskMessageHandler.class)
         .build();
-
-    return Tang.Factory.getTang()
-        .newConfigurationBuilder(runtimeConf, clientConfiguration).build();
+    return driverConfig;
   }
 
   /** 
-   * run InMemory Application injecting InMemoryClient
+   * Run InMemory Application
    */
-  public static LauncherStatus runInMemory(final Configuration runtimeConf, final Configuration clientConf) throws InjectionException {
-    final Injector injector = Tang.Factory.getTang().newInjector(clientConf);
-    final InMemoryClient client = injector.getInstance(InMemoryClient.class);
-    client.submit();
-    return client.waitForCompletion();
+  private static void runInMemory(final Configuration runtimeConf) throws InjectionException {
+    final REEF reef = Tang.Factory.getTang().newInjector(runtimeConf).getInstance(REEFImplementation.class);
+    final Configuration driverConfig = getDriverConfiguration();
+    reef.submit(driverConfig);
   }
 
-  public static void main(String[] args) throws BindException, InjectionException, IOException
-  {
-    final Configuration runtimeConf = getRuntimeConfiguration();
-    final Configuration clientConf = getClientConfiguration(runtimeConf);
 
-    LauncherStatus status = runInMemory(runtimeConf, clientConf);
-    LOG.log(Level.INFO, "InMemory job completed: {0}", status);
+  public static void main(String[] args) throws BindException, InjectionException {
+    final Configuration runtimeConfig = getRuntimeConfiguration();
+    runInMemory(runtimeConfig);
+    LOG.log(Level.INFO, "Job Submitted");
   }
 
 }
