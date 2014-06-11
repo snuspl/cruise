@@ -111,4 +111,10 @@ public class SurfMetaManagerTest extends TestCase {
     assertTrue(sm.rename(new Path("test"), new Path("test2"), user));
     assertTrue(sm.rename(new Path("test2"), new Path("test"), user));
   }
+
+  @Test
+  public void testClear() {
+    // TODO: Fill in metadata first, once that functionality is created
+    assertEquals(0, sm.clear());
+  }
 }
