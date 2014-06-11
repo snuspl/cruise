@@ -1,6 +1,13 @@
 package org.apache.reef.inmemory.cli;
 
 import org.apache.commons.cli.*;
+import org.apache.reef.inmemory.cache.service.SurfManagementService;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
 public class CLI {
 
@@ -13,28 +20,49 @@ public class CLI {
             .create("host")
     )
     .addOption(
-      OptionBuilder.withArgName("port")
-            .hasArg()
-            .withDescription("Cache server port number")
-            .create("port")
+            OptionBuilder.withArgName("port")
+                    .hasArg()
+                    .withDescription("Cache server port number")
+                    .create("port")
     );
     return options;
   }
 
-  private static void runCommand(String command, CommandLine line) {
-    // TODO: implement commands
+  private static SurfManagementService.Client getClient(String host, int port) throws TTransportException {
+    TTransport transport = new TSocket(host, port);
+    transport.open();
+    TProtocol protocol = new TBinaryProtocol(transport);
+    return new SurfManagementService.Client(protocol);
+  }
+
+  private static boolean runCommand(String command, CommandLine line) throws TException {
     System.out.println("Command: "+command);
     for (Option option: line.getOptions()) {
       System.out.println(option.getArgName()+" : "+option.getValue());
     }
+    if ("clear".equals(command)) {
+      SurfManagementService.Client client = getClient(line.getOptionValue("host", "localhost"),
+              Integer.parseInt(line.getOptionValue("port", "18000")));
+      client.clear();
+      return true;
+    } else {
+      return false;
+    }
   }
 
-  public static void main(String args[]) throws ParseException {
+  public static void main(String args[]) throws ParseException, TTransportException {
     CommandLineParser parser = new PosixParser();
     Options options = getOptions();
     CommandLine line = parser.parse(options, args);
     if (line.getArgs().length == 1) {
-      runCommand(line.getArgs()[0], line);
+      try {
+        if (!runCommand(line.getArgs()[0], line)) {
+          System.err.println("Unknown command: " + line.getArgs()[0]);
+        }
+      } catch (TException e) {
+        System.err.print("Unexpected exception: ");
+        e.printStackTrace();
+      }
     } else {
       HelpFormatter formatter = new HelpFormatter();
       formatter.printHelp("surf command", options, true);
