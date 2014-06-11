@@ -3,7 +3,6 @@ package org.apache.reef.inmemory.cli;
 import org.apache.commons.cli.*;
 import org.apache.reef.inmemory.fs.service.SurfManagementService;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TMultiplexedProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -15,20 +14,19 @@ import org.apache.thrift.transport.TTransportException;
 public class CLI {
 
   private static Options getOptions() {
-    Options options = new Options()
-    .addOption(
-      OptionBuilder.withArgName("host")
-            .hasArg()
-            .withDescription("Cache server host address")
-            .create("host")
-    )
-    .addOption(
-            OptionBuilder.withArgName("port")
-                    .hasArg()
-                    .withDescription("Cache server port number")
-                    .create("port")
-    );
-    return options;
+    return new Options()
+      .addOption(
+        OptionBuilder.withArgName("host")
+              .hasArg()
+              .withDescription("Cache server host address")
+              .create("host")
+      )
+      .addOption(
+              OptionBuilder.withArgName("port")
+                      .hasArg()
+                      .withDescription("Cache server port number")
+                      .create("port")
+      );
   }
 
   private static SurfManagementService.Client getClient(String host, int port) throws TTransportException {
