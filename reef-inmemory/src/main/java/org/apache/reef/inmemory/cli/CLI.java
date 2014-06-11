@@ -1,10 +1,13 @@
 package org.apache.reef.inmemory.cli;
 
 import org.apache.commons.cli.*;
-import org.apache.reef.inmemory.cache.service.SurfManagementService;
+import org.apache.reef.inmemory.fs.service.SurfManagementService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TMultiplexedProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -29,9 +32,10 @@ public class CLI {
   }
 
   private static SurfManagementService.Client getClient(String host, int port) throws TTransportException {
-    TTransport transport = new TSocket(host, port);
+    TTransport transport = new TFramedTransport(new TSocket(host, port));
     transport.open();
-    TProtocol protocol = new TBinaryProtocol(transport);
+    TProtocol protocol = new TMultiplexedProtocol(
+            new TCompactProtocol(transport), SurfManagementService.class.getName());
     return new SurfManagementService.Client(protocol);
   }
 
@@ -43,7 +47,9 @@ public class CLI {
     if ("clear".equals(command)) {
       SurfManagementService.Client client = getClient(line.getOptionValue("host", "localhost"),
               Integer.parseInt(line.getOptionValue("port", "18000")));
-      client.clear();
+      System.out.println("Connected to surf");
+      long numCleared = client.clear();
+      System.out.println("numCleared: "+numCleared);
       return true;
     } else {
       return false;
