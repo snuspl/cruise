@@ -51,10 +51,10 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagemen
   }
 
   @Override
-  public long clear() throws TException {
-    // TODO: implement clear message to caches
-    System.out.println("Received clear message");
-    return 0;
+  public int clear() throws TException {
+    SurfMetaManager sm = new SurfMetaManager(); // TODO: this pattern of creating an instance should be changed
+
+    return sm.clear();
   }
 
   @Override

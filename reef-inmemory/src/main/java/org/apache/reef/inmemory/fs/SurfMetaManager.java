@@ -128,6 +128,12 @@ public class SurfMetaManager {
     return true;
   }
 
+  public int clear() {
+    int numEntries = fsMeta.size();
+    fsMeta.clear(); // TODO: The Task nodes must be contacted to remove the actual cached blocks
+    return numEntries;
+  }
+
   private Path getAbsolutePath(Path path, User creator) {
     Path newPath = null;
 
