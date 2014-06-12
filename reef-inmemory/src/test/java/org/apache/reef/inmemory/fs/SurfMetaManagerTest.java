@@ -2,10 +2,12 @@ package org.apache.reef.inmemory.fs;
 
 import junit.framework.TestCase;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.User;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;
+import java.util.List;
 
 import static org.mockito.Mockito.*;
 
@@ -24,9 +26,18 @@ public class SurfMetaManagerTest extends TestCase {
     user.setGroup("surf");
   }
 
-  @Test(expected= FileNotFoundException.class)
+  @Test
   public void testGetNotExists() throws FileNotFoundException {
-    metaManager.getBlocks(new Path("/path/not/found"), new User());
+    List<BlockInfo> blocks = null;
+    try {
+      blocks = metaManager.getBlocks(new Path("/path/not/found"), new User());
+      assertTrue("Expected but did not receive exception", false);
+    } catch (FileNotFoundException e) {
+      assertTrue(true); // Test passes
+    } catch (Throwable t) {
+      assertTrue("Unexpected throwable "+t, false);
+    }
+    assertNull("Received blocks that do not exist", blocks);
   }
 
   @Test

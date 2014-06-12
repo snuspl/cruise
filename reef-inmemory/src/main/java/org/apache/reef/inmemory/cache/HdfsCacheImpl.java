@@ -19,8 +19,6 @@ public class HdfsCacheImpl implements InMemoryCache {
 
   public HdfsCacheImpl() {
     cache = CacheBuilder.newBuilder()
-        .maximumSize(100L)
-        .expireAfterAccess(10, TimeUnit.HOURS)
         .concurrencyLevel(4)
         .build();
   }

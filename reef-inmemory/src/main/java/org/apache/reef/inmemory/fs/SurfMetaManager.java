@@ -22,30 +22,24 @@ public class SurfMetaManager {
 
   public SurfMetaManager() {
     fsMeta = CacheBuilder.newBuilder()
-            .maximumSize(100L)
-            .expireAfterAccess(10, TimeUnit.HOURS)
             .concurrencyLevel(4)
             .build(
               new CacheLoader<Path, FileMeta>() {
                 @Override
-                public FileMeta load(Path path) {
+                public FileMeta load(Path path) throws FileNotFoundException {
                   // TODO: Communicate with HDFS, Task, and get the correct FileMeta
-                  return new FileMeta();
+                  throw new FileNotFoundException();
                 }
               }
             );
   }
 
-  public List<BlockInfo> getBlocks(Path path, User creator) throws FileNotFoundException {
+  public List<BlockInfo> getBlocks(Path path, User creator) throws FileNotFoundException, Throwable {
     try {
       FileMeta metadata = fsMeta.get(getAbsolutePath(path, creator));
       return metadata.getBlocks();
     } catch (ExecutionException e) {
-      if (FileNotFoundException.class.equals(e.getCause().getClass())) {
-        throw (FileNotFoundException)e.getCause();
-      }
-      e.printStackTrace();
-      return null;
+      throw e.getCause();
     }
   }
 
