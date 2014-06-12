@@ -20,6 +20,22 @@ import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
 
+/**
+ * Command Line Interface for sending Cache management commands to the
+ * InMemoryDriver.
+ * <p>
+ * Give command with -cmd &lt;command&gt; option
+ * <ul>
+ *   <li> clear : Clear the cache at the Driver and all Tasks </li>
+ * </ul>
+ * <p>
+ * Other options:
+ * <ul>
+ *   <li> -hostname &lt;hostname&gt; :
+ *                     InMemory Cache Driver hostname (default: localhost)</li>
+ *   <li> -port &lt;port&gt; : InMemory Cache Driver port (default: 18000)</li>
+ * </ul>
+ */
 public class CLI {
 
   @NamedParameter(doc = "Command", short_name = "cmd")
@@ -36,15 +52,18 @@ public class CLI {
   public static final class Port implements Name<Integer> {
   }
 
-  private static SurfManagementService.Client getClient(String host, int port) throws TTransportException {
+  private static SurfManagementService.Client getClient(String host, int port)
+          throws TTransportException {
     TTransport transport = new TFramedTransport(new TSocket(host, port));
     transport.open();
     TProtocol protocol = new TMultiplexedProtocol(
-            new TCompactProtocol(transport), SurfManagementService.class.getName());
+            new TCompactProtocol(transport),
+            SurfManagementService.class.getName());
     return new SurfManagementService.Client(protocol);
   }
 
-  private static boolean runCommand(final Configuration config) throws InjectionException, TException {
+  private static boolean runCommand(final Configuration config)
+          throws InjectionException, TException {
     final Injector injector = Tang.Factory.getTang().newInjector(config);
     String cmd = injector.getNamedInstance(Command.class);
     String hostname = injector.getNamedInstance(Hostname.class);
@@ -61,8 +80,10 @@ public class CLI {
     }
   }
 
-  private static Configuration parseCommandLine(final String[] args) throws IOException {
-    final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
+  private static Configuration parseCommandLine(final String[] args)
+          throws IOException {
+    final JavaConfigurationBuilder confBuilder =
+            Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder)
             .registerShortNameOfClass(Command.class)
             .registerShortNameOfClass(Hostname.class)
@@ -71,7 +92,8 @@ public class CLI {
     return confBuilder.build();
   }
 
-  public static void main(String args[]) throws TException, IOException, InjectionException {
+  public static void main(String args[])
+          throws TException, IOException, InjectionException {
     final Configuration config = parseCommandLine(args);
     runCommand(config);
   }
