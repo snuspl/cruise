@@ -3,9 +3,9 @@ package org.apache.reef.inmemory.cache;
 public class FileBlock {
   private final String path;
   private final long offset;
-  private final long length;
+  private final int length;
 
-  FileBlock(final String path, final long offset, final long length) {
+  FileBlock(final String path, final long offset, final int length) {
     this.path = path;
     this.offset = offset;
     this.length = length;
@@ -19,7 +19,7 @@ public class FileBlock {
     return offset;
   }
 
-  public long getLength() {
+  public int getLength() {
     return length;
   }
 
