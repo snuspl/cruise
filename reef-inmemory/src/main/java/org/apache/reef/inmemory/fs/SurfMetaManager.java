@@ -1,6 +1,5 @@
 package org.apache.reef.inmemory.fs;
 
-import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -10,9 +9,7 @@ import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
 
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.util.*;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -60,7 +57,7 @@ public class SurfMetaManager {
   }
 
   private void clearCaches() {
-    // TODO: Clear all Task caches
+    // TODO: Communicate with Task to clear caches
   }
 
   private Path getAbsolutePath(Path path, User creator) {
