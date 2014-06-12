@@ -5,5 +5,5 @@ namespace java org.apache.reef.inmemory.fs.service
  * to call these.
  */
 service SurfManagementService {
-    i32 clear()
+    i64 clear()
 }

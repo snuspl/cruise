@@ -4,8 +4,8 @@ import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
+import org.apache.reef.inmemory.cache.HdfsCacheImpl;
 import org.apache.reef.inmemory.cache.InMemoryCache;
-import org.apache.reef.inmemory.cache.InMemoryCacheImpl;
 
 import com.microsoft.reef.task.Task;
 import com.microsoft.reef.task.TaskMessage;
@@ -28,7 +28,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
 
   @Inject
   InMemoryTask() {
-    this.cache = new InMemoryCacheImpl();
+    this.cache = new HdfsCacheImpl();
     this.hbMessage.orElse(INIT_MESSAGE).get();
   }
 

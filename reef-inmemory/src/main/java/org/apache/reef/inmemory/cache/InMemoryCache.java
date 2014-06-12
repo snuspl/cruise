@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public interface InMemoryCache {
-  public ByteBuffer get(FileBlock fileBlock);
-  public void put(FileBlock fileBlock, ByteBuffer buffer);
+  public ByteBuffer get(BlockId fileBlock);
+  public void put(BlockId fileBlock, ByteBuffer buffer);
   public void clear();
   public byte[] getReport();
 }

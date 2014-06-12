@@ -22,39 +22,28 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagemen
 
   TServer server = null;
 
+  private final SurfMetaManager metaManager;
+
   public SurfMetaServiceImpl(){
     this.port = 18000;
     this.timeout = 30000;
     this.numThread = 10;
+
+    this.metaManager = new SurfMetaManager();
   }
   @Override
   public List<FileMeta> listStatus(String path, boolean recursive, User user) throws FileNotFoundException, TException {
-    SurfMetaManager sm = new SurfMetaManager();
-
-    try {
-
-      return sm.listStatus(new Path(path), recursive, user);
-    } catch (java.io.FileNotFoundException fe) {
-      throw new FileNotFoundException(fe.getMessage());
-    }
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public FileMeta makeDirectory(String path, User user) throws FileAlreadyExistsException, TException {
-    SurfMetaManager sm = new SurfMetaManager();
-
-    try {
-      return sm.makeDirectory(new Path(path), user);
-    } catch (java.nio.file.FileAlreadyExistsException fe) {
-      throw new FileAlreadyExistsException(fe.getMessage());
-    }
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public int clear() throws TException {
-    SurfMetaManager sm = new SurfMetaManager(); // TODO: this pattern of creating an instance should be changed
-
-    return sm.clear();
+  public long clear() throws TException {
+    return metaManager.clear();
   }
 
   @Override

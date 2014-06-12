@@ -13,11 +13,11 @@ import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 /**
  * Implementation of Cache class using Google Cache interface. 
  */
-public class InMemoryCacheImpl implements InMemoryCache {
-  private Cache<FileBlock, ByteBuffer> cache = null;
+public class HdfsCacheImpl implements InMemoryCache {
+  private Cache<BlockId, ByteBuffer> cache = null;
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
-  public InMemoryCacheImpl() {
+  public HdfsCacheImpl() {
     cache = CacheBuilder.newBuilder()
         .maximumSize(100L)
         .expireAfterAccess(10, TimeUnit.HOURS)
@@ -26,13 +26,13 @@ public class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public ByteBuffer get(FileBlock fileBlock) {
-    return cache.getIfPresent(fileBlock);
+  public ByteBuffer get(BlockId blockId) {
+    return cache.getIfPresent(blockId);
   }
 
   @Override
-  public void put(FileBlock fileBlock, ByteBuffer buffer) {
-    cache.put(fileBlock, buffer);
+  public void put(BlockId blockId, ByteBuffer buffer) {
+    cache.put(blockId, buffer);
   }
 
   @Override
