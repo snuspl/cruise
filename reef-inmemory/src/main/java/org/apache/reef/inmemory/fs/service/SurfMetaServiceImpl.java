@@ -3,7 +3,6 @@ package org.apache.reef.inmemory.fs.service;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import org.apache.hadoop.fs.Path;
-import org.apache.reef.inmemory.fs.HdfsCacheLoader;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
@@ -17,17 +16,13 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 
 public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagementService.Iface, Runnable, AutoCloseable {
-  private int port = 18000;
-  private int timeout = 30000;
-  private int numThread = 10;
-
-  public static String HDFS_LOCATION = "localhost"; // TODO: configure
-
+  private final int port;
+  private final int timeout;
+  private final int numThreads;
   TServer server = null;
 
   private final SurfMetaManager metaManager;
@@ -35,7 +30,7 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagemen
   public SurfMetaServiceImpl(CacheLoader<Path, FileMeta> cacheLoader) throws IOException, URISyntaxException {
     this.port = 18000;
     this.timeout = 30000;
-    this.numThread = 10;
+    this.numThreads = 10;
 
     this.metaManager = new SurfMetaManager(
             CacheBuilder.newBuilder()
@@ -74,7 +69,7 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagemen
       this.server = new THsHaServer(
           new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
               .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
-              .workerThreads(this.numThread));
+              .workerThreads(this.numThreads));
 
       this.server.serve();
     } catch (Exception e) {

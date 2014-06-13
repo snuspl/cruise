@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 import javax.inject.Inject;
 
 import com.google.common.cache.CacheLoader;
+import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.fs.HdfsCacheLoader;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
@@ -49,8 +50,13 @@ public final class InMemoryDriver {
    * Job Driver. Instantiated by TANG.
    */
   @Inject
-  public InMemoryDriver(final EvaluatorRequestor requestor) throws IOException {
+  public InMemoryDriver(final EvaluatorRequestor requestor,
+                        final @Parameter(Launch.Hostname.class) String hostname,
+                        final @Parameter(Launch.Port.class) Integer port,
+                        final @Parameter(Launch.Timeout.class) Integer timeout,
+                        final @Parameter(Launch.NumThreads.class) Integer numThreads) {
     this.requestor = requestor;
+    // TODO: make use of the parameters
   }
 
   /**
@@ -76,7 +82,7 @@ public final class InMemoryDriver {
           .setMemory(128)
           .build());
 
-      ExecutorService executor = Executors.newSingleThreadExecutor();
+      executor = Executors.newSingleThreadExecutor();
       try {
         CacheLoader<Path, FileMeta> cacheLoader =
                 new HdfsCacheLoader(new URI(HDFS_LOCATION)); // TODO: configure

@@ -56,6 +56,5 @@ public class SurfMetaManagerTest extends TestCase {
     assertEquals(0, metaManager.clear());
     metaManager.getBlocks(path, user);
     assertEquals(1, metaManager.clear());
-    assertEquals()
   }
 }
