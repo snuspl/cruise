@@ -7,6 +7,7 @@ import org.apache.reef.inmemory.fs.entity.User;
 import org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.fs.exceptions.FileNotFoundException;
 import org.apache.thrift.TException;
+import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -14,7 +15,7 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 
 import java.util.List;
 
-public class SurfMetaServiceImpl implements SurfMetaService.Iface, Runnable, AutoCloseable {
+public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagementService.Iface, Runnable, AutoCloseable {
   private int port = 18000;
   private int timeout = 30000;
   private int numThread = 10;
@@ -50,10 +51,24 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, Runnable, Aut
   }
 
   @Override
+  public int clear() throws TException {
+    SurfMetaManager sm = new SurfMetaManager(); // TODO: this pattern of creating an instance should be changed
+
+    return sm.clear();
+  }
+
+  @Override
   public void run() {
     try {
       TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.port, this.timeout);
-      SurfMetaService.Processor<SurfMetaService.Iface> processor = new SurfMetaService.Processor<SurfMetaService.Iface>(new SurfMetaServiceImpl());
+
+      TMultiplexedProcessor processor = new TMultiplexedProcessor();
+      SurfMetaService.Processor<SurfMetaService.Iface> metaProcessor =
+              new SurfMetaService.Processor<SurfMetaService.Iface>(this);
+      processor.registerProcessor(SurfMetaService.class.getName(), metaProcessor);
+      SurfManagementService.Processor<SurfManagementService.Iface> managementProcessor =
+              new SurfManagementService.Processor<SurfManagementService.Iface>(this);
+      processor.registerProcessor(SurfManagementService.class.getName(), managementProcessor);
 
       this.server = new THsHaServer(
           new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
