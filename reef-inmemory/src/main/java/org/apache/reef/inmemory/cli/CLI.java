@@ -19,6 +19,8 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Command Line Interface for sending Cache management commands to the
@@ -37,6 +39,8 @@ import java.io.IOException;
  * </ul>
  */
 public class CLI {
+
+  private static final Logger LOG = Logger.getLogger(CLI.class.getName());
 
   @NamedParameter(doc = "Command", short_name = "cmd")
   public static final class Command implements Name<String> {
@@ -71,9 +75,9 @@ public class CLI {
 
     if ("clear".equals(cmd)) {
       SurfManagementService.Client client = getClient(hostname, port);
-      System.out.println("Connected to surf");
+      LOG.log(Level.INFO, "Connected to surf");
       long numCleared = client.clear();
-      System.out.println("numCleared: "+numCleared);
+      LOG.log(Level.INFO, "Cleared {0} items from cache", numCleared);
       return true;
     } else {
       return false;
