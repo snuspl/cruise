@@ -1,5 +1,8 @@
 package org.apache.reef.inmemory;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -8,6 +11,10 @@ import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
+import com.google.common.cache.CacheLoader;
+import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.fs.HdfsCacheLoader;
+import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
 
 import com.microsoft.reef.driver.context.ContextConfiguration;
@@ -33,6 +40,8 @@ public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
+  private static final String HDFS_LOCATION = "localhost";
+
   private final EvaluatorRequestor requestor;
   private ExecutorService executor;
 
@@ -40,7 +49,7 @@ public final class InMemoryDriver {
    * Job Driver. Instantiated by TANG.
    */
   @Inject
-  public InMemoryDriver(final EvaluatorRequestor requestor) {
+  public InMemoryDriver(final EvaluatorRequestor requestor) throws IOException {
     this.requestor = requestor;
   }
 
@@ -68,7 +77,15 @@ public final class InMemoryDriver {
           .build());
 
       ExecutorService executor = Executors.newSingleThreadExecutor();
-      executor.execute(new SurfMetaServiceImpl());
+      try {
+        CacheLoader<Path, FileMeta> cacheLoader =
+                new HdfsCacheLoader(new URI(HDFS_LOCATION)); // TODO: configure
+        executor.execute(new SurfMetaServiceImpl(cacheLoader));
+      } catch (Exception ex) {
+        final String message = "Failed to start Surf Meta Service";
+        LOG.log(Level.SEVERE, message);
+        throw new RuntimeException(message, ex);
+      }
     }
   }
 

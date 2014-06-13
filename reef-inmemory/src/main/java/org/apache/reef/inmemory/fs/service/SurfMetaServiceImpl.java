@@ -1,6 +1,9 @@
 package org.apache.reef.inmemory.fs.service;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.fs.HdfsCacheLoader;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
@@ -13,6 +16,9 @@ import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 
 public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagementService.Iface, Runnable, AutoCloseable {
@@ -20,17 +26,23 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagemen
   private int timeout = 30000;
   private int numThread = 10;
 
+  public static String HDFS_LOCATION = "localhost"; // TODO: configure
+
   TServer server = null;
 
   private final SurfMetaManager metaManager;
 
-  public SurfMetaServiceImpl(){
+  public SurfMetaServiceImpl(CacheLoader<Path, FileMeta> cacheLoader) throws IOException, URISyntaxException {
     this.port = 18000;
     this.timeout = 30000;
     this.numThread = 10;
 
-    this.metaManager = new SurfMetaManager();
+    this.metaManager = new SurfMetaManager(
+            CacheBuilder.newBuilder()
+                    .concurrencyLevel(4)
+                    .build(cacheLoader));
   }
+
   @Override
   public List<FileMeta> listStatus(String path, boolean recursive, User user) throws FileNotFoundException, TException {
     throw new UnsupportedOperationException();
