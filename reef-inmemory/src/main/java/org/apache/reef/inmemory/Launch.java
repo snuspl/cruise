@@ -34,15 +34,15 @@ public class Launch
   }
 
   @NamedParameter(doc = "InMemory Cache Driver timeout", short_name = "timeout", default_value = "30000")
-  public static final class Timeout implements Name<Integer> {
+  public static final class MetaserverTimeout implements Name<Integer> {
   }
 
   @NamedParameter(doc = "InMemory Cache Driver threads", short_name = "num_threads", default_value = "10")
-  public static final class NumThreads implements Name<Integer> {
+  public static final class MetaserverThreads implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "InMemory Cache Task port", short_name = "cache_port", default_value = "18001")
-  public static final class CachePort implements Name<Integer> {
+  @NamedParameter(doc = "Underlying DFS type", short_name = "dfs_type", default_value = "hdfs")
+  public static final class DfsType implements Name<String> {
   }
 
   @NamedParameter(doc = "Underlying DFS address", short_name = "dfs_address", default_value = "hdfs://localhost:50070")
@@ -67,8 +67,8 @@ public class Launch
             Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder)
             .registerShortNameOfClass(MetaserverPort.class)
-            .registerShortNameOfClass(Timeout.class)
-            .registerShortNameOfClass(NumThreads.class)
+            .registerShortNameOfClass(MetaserverTimeout.class)
+            .registerShortNameOfClass(MetaserverThreads.class)
             .processCommandLine(args);
     return confBuilder.build();
   }
@@ -91,9 +91,8 @@ public class Launch
   private static Configuration getInMemoryConfiguration(final Configuration runtimeConf)
           throws InjectionException, BindException {
     final Injector injector = Tang.Factory.getTang().newInjector(runtimeConf);
-    final Configuration inMemoryConfig = InMemoryConfiguration.HDFS_CONF
+    final Configuration inMemoryConfig = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsType.class))
             .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaserverPort.class))
-            .set(InMemoryConfiguration.CACHE_PORT, injector.getNamedInstance(CachePort.class))
             .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsAddress.class))
             .build();
     return inMemoryConfig;

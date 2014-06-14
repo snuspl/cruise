@@ -32,12 +32,14 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagemen
 
   @Inject
   public SurfMetaServiceImpl(final SurfMetaManager metaManager,
-                             final @Parameter(Launch.MetaserverPort.class) int port) {
+                             final @Parameter(Launch.MetaserverPort.class) int port,
+                             final @Parameter(Launch.MetaserverTimeout.class) int timeout,
+                             final @Parameter(Launch.MetaserverThreads.class) int numThreads) {
     this.metaManager = metaManager;
 
     this.port = port;
-    this.timeout = 30000;
-    this.numThreads = 10;
+    this.timeout = timeout;
+    this.numThreads = numThreads;
   }
 
   @Override
