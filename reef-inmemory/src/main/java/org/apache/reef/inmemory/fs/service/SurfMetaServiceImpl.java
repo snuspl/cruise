@@ -2,7 +2,9 @@ package org.apache.reef.inmemory.fs.service;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
+import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
@@ -15,6 +17,7 @@ import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -27,15 +30,14 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagemen
 
   private final SurfMetaManager metaManager;
 
-  public SurfMetaServiceImpl(CacheLoader<Path, FileMeta> cacheLoader) throws IOException, URISyntaxException {
-    this.port = 18000;
+  @Inject
+  public SurfMetaServiceImpl(final SurfMetaManager metaManager,
+                             final @Parameter(Launch.MetaserverPort.class) int port) {
+    this.metaManager = metaManager;
+
+    this.port = port;
     this.timeout = 30000;
     this.numThreads = 10;
-
-    this.metaManager = new SurfMetaManager(
-            CacheBuilder.newBuilder()
-                    .concurrencyLevel(4)
-                    .build(cacheLoader));
   }
 
   @Override

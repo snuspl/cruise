@@ -1,15 +1,18 @@
 package org.apache.reef.inmemory.fs;
 
 import com.google.common.cache.CacheLoader;
+import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 
+import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
@@ -24,8 +27,13 @@ public class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   // TODO: Need object that talks to Task
   private final DFSClient client;
 
-  public HdfsCacheLoader(URI nameNodeUri) throws IOException {
-    this.client = new DFSClient(nameNodeUri, new Configuration());
+  @Inject
+  public HdfsCacheLoader(final @Parameter(Launch.DfsAddress.class) String dfsAddress) {
+    try {
+      this.client = new DFSClient(new URI(dfsAddress), new Configuration());
+    } catch (Exception ex) {
+      throw new RuntimeException("Unable to connect to DFS Client", ex);
+    }
   }
 
   @Override

@@ -6,6 +6,7 @@ import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
 
+import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -19,7 +20,8 @@ public class SurfMetaManager {
   private final LoadingCache<Path, FileMeta> metadataIndex;
   public static String USERS_HOME = "/user";
 
-  public SurfMetaManager(LoadingCache<Path, FileMeta> metadataIndex) throws IOException, URISyntaxException {
+  @Inject
+  public SurfMetaManager(final LoadingCache metadataIndex) {
     this.metadataIndex = metadataIndex;
   }
 

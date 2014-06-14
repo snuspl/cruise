@@ -31,7 +31,7 @@ public class HdfsCacheLoaderTest {
     cluster = new MiniDFSCluster.Builder(hdfsConfig).numDataNodes(3).build();
     cluster.waitActive();
     fs = cluster.getFileSystem();
-    loader = new HdfsCacheLoader(fs.getUri());
+    loader = new HdfsCacheLoader(fs.getUri().toString());
   }
 
   @Test

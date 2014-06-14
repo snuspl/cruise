@@ -1,8 +1,6 @@
 package org.apache.reef.inmemory;
 
-import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -16,6 +14,7 @@ import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.fs.HdfsCacheLoader;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
+import org.apache.reef.inmemory.fs.service.SurfMetaService;
 import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
 
 import com.microsoft.reef.driver.context.ContextConfiguration;
@@ -44,6 +43,7 @@ public final class InMemoryDriver {
   private static final String HDFS_LOCATION = "localhost";
 
   private final EvaluatorRequestor requestor;
+  private final SurfMetaServiceImpl metaService;
   private ExecutorService executor;
 
   /**
@@ -51,11 +51,9 @@ public final class InMemoryDriver {
    */
   @Inject
   public InMemoryDriver(final EvaluatorRequestor requestor,
-                        final @Parameter(Launch.Hostname.class) String hostname,
-                        final @Parameter(Launch.Port.class) Integer port,
-                        final @Parameter(Launch.Timeout.class) Integer timeout,
-                        final @Parameter(Launch.NumThreads.class) Integer numThreads) {
+                        final SurfMetaServiceImpl metaService) {
     this.requestor = requestor;
+    this.metaService = metaService;
     // TODO: make use of the parameters
   }
 
@@ -84,9 +82,7 @@ public final class InMemoryDriver {
 
       executor = Executors.newSingleThreadExecutor();
       try {
-        CacheLoader<Path, FileMeta> cacheLoader =
-                new HdfsCacheLoader(new URI(HDFS_LOCATION)); // TODO: configure
-        executor.execute(new SurfMetaServiceImpl(cacheLoader));
+        executor.execute(metaService);
       } catch (Exception ex) {
         final String message = "Failed to start Surf Meta Service";
         LOG.log(Level.SEVERE, message);

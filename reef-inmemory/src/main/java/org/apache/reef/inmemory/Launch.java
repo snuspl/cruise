@@ -10,6 +10,7 @@ import com.microsoft.reef.runtime.common.client.REEFImplementation;
 import com.microsoft.reef.runtime.local.client.LocalRuntimeConfiguration;
 import com.microsoft.reef.util.EnvironmentUtils;
 import com.microsoft.tang.Configuration;
+import com.microsoft.tang.Injector;
 import com.microsoft.tang.JavaConfigurationBuilder;
 import com.microsoft.tang.Tang;
 import com.microsoft.tang.annotations.Name;
@@ -28,13 +29,8 @@ public class Launch
    */
   private static final Logger LOG = Logger.getLogger(Launch.class.getName());
 
-  @NamedParameter(doc = "InMemory Cache Driver hostname",
-          short_name = "hostname", default_value = "localhost")
-  public static final class Hostname implements Name<String> {
-  }
-
-  @NamedParameter(doc = "InMemory Cache Driver port", short_name = "port", default_value = "18000")
-  public static final class Port implements Name<Integer> {
+  @NamedParameter(doc = "InMemory Cache Driver port", short_name = "metaserver_port", default_value = "18000")
+  public static final class MetaserverPort implements Name<Integer> {
   }
 
   @NamedParameter(doc = "InMemory Cache Driver timeout", short_name = "timeout", default_value = "30000")
@@ -43,6 +39,14 @@ public class Launch
 
   @NamedParameter(doc = "InMemory Cache Driver threads", short_name = "num_threads", default_value = "10")
   public static final class NumThreads implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "InMemory Cache Task port", short_name = "cache_port", default_value = "18001")
+  public static final class CachePort implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "Underlying DFS address", short_name = "dfs_address", default_value = "hdfs://localhost:50070")
+  public static final class DfsAddress implements Name<String> {
   }
 
   /**
@@ -54,6 +58,7 @@ public class Launch
         .build();
   }
 
+
   /**
    * Parse the command line arguments.
    */
@@ -61,8 +66,7 @@ public class Launch
     final JavaConfigurationBuilder confBuilder =
             Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder)
-            .registerShortNameOfClass(Hostname.class)
-            .registerShortNameOfClass(Port.class)
+            .registerShortNameOfClass(MetaserverPort.class)
             .registerShortNameOfClass(Timeout.class)
             .registerShortNameOfClass(NumThreads.class)
             .processCommandLine(args);
@@ -86,13 +90,26 @@ public class Launch
     return driverConfig;
   }
 
+  private static Configuration getInMemoryConfiguration(final Configuration runtimeConf)
+          throws InjectionException, BindException {
+    final Injector injector = Tang.Factory.getTang().newInjector(runtimeConf);
+    final Configuration inMemoryConfig = InMemoryConfiguration.HDFS_CONF
+            .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaserverPort.class))
+            .set(InMemoryConfiguration.CACHE_PORT, injector.getNamedInstance(CachePort.class))
+            .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsAddress.class))
+            .build();
+    return inMemoryConfig;
+ }
+
+
   /** 
    * Run InMemory Application
    */
   private static void runInMemory(final Configuration runtimeConf) throws InjectionException {
     final REEF reef = Tang.Factory.getTang().newInjector(runtimeConf).getInstance(REEFImplementation.class);
     final Configuration driverConfig = getDriverConfiguration();
-    reef.submit(driverConfig);
+    final Configuration inMemoryConfig = getInMemoryConfiguration(runtimeConf);
+    reef.submit(Tang.Factory.getTang().newConfigurationBuilder(driverConfig, inMemoryConfig).build());
   }
 
 
