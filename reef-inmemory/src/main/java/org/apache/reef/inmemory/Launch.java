@@ -73,8 +73,6 @@ public class Launch
     return confBuilder.build();
   }
 
-  // TODO: Do we need to clone?
-
   /**
    * Build Driver Configuration
    */ 
