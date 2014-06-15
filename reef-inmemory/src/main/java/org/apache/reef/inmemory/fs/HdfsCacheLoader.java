@@ -28,7 +28,7 @@ public class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   private final DFSClient client;
 
   @Inject
-  public HdfsCacheLoader(final @Parameter(Launch.DfsAddress.class) String dfsAddress) {
+  public HdfsCacheLoader(final @Parameter(DfsParameters.Address.class) String dfsAddress) {
     try {
       this.client = new DFSClient(new URI(dfsAddress), new Configuration());
     } catch (Exception ex) {
