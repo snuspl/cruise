@@ -40,7 +40,6 @@ public class Launch
         .build();
   }
 
-
   /**
    * Parse the command line arguments.
    */
@@ -72,9 +71,9 @@ public class Launch
     return driverConfig;
   }
 
-  private static Configuration getInMemoryConfiguration(final Configuration runtimeConf)
+  private static Configuration getInMemoryConfiguration(final Configuration clConf)
           throws InjectionException, BindException {
-    final Injector injector = Tang.Factory.getTang().newInjector(runtimeConf);
+    final Injector injector = Tang.Factory.getTang().newInjector(clConf);
     final Configuration inMemoryConfig = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsParameters.Type.class))
             .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaServerParameters.Port.class))
             .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class))
@@ -82,14 +81,13 @@ public class Launch
     return inMemoryConfig;
  }
 
-
   /** 
    * Run InMemory Application
    */
-  private static void runInMemory(final Configuration runtimeConf) throws InjectionException {
+  private static void runInMemory(final Configuration runtimeConf, final Configuration clConfig) throws InjectionException {
     final REEF reef = Tang.Factory.getTang().newInjector(runtimeConf).getInstance(REEFImplementation.class);
     final Configuration driverConfig = getDriverConfiguration();
-    final Configuration inMemoryConfig = getInMemoryConfiguration(runtimeConf);
+    final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig);
     reef.submit(Tang.Factory.getTang().newConfigurationBuilder(driverConfig, inMemoryConfig).build());
   }
 
@@ -97,7 +95,7 @@ public class Launch
   public static void main(String[] args) throws BindException, InjectionException, IOException {
     final Configuration runtimeConfig = getRuntimeConfiguration();
     final Configuration clConfig = parseCommandLine(args);
-    runInMemory(Tang.Factory.getTang().newConfigurationBuilder(runtimeConfig, clConfig).build());
+    runInMemory(runtimeConfig, clConfig);
     LOG.log(Level.INFO, "Job Submitted");
   }
 
