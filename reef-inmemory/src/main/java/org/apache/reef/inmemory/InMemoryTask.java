@@ -4,7 +4,6 @@ import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
-import org.apache.reef.inmemory.cache.HdfsCacheImpl;
 import org.apache.reef.inmemory.cache.InMemoryCache;
 
 import com.microsoft.reef.task.Task;
@@ -22,13 +21,13 @@ public class InMemoryTask implements Task, TaskMessageSource {
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
   private transient Optional<TaskMessage> hbMessage = Optional.empty();
-  private InMemoryCache cache = null;
+  private final InMemoryCache cache;
 
   private boolean isDone = false;
 
   @Inject
-  InMemoryTask() {
-    this.cache = new HdfsCacheImpl();
+  InMemoryTask(InMemoryCache cache) {
+    this.cache = cache;
     this.hbMessage.orElse(INIT_MESSAGE).get();
   }
 

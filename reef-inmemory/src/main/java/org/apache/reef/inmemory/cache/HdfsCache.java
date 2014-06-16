@@ -10,14 +10,17 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 
+import javax.inject.Inject;
+
 /**
  * Implementation of Cache class using Google Cache interface. 
  */
-public class HdfsCacheImpl implements InMemoryCache {
+public class HdfsCache implements InMemoryCache {
   private Cache<BlockId, ByteBuffer> cache = null;
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
-  public HdfsCacheImpl() {
+  @Inject
+  public HdfsCache() {
     cache = CacheBuilder.newBuilder()
         .concurrencyLevel(4)
         .build();

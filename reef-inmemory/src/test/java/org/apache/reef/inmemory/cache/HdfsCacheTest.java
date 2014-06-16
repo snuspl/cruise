@@ -8,14 +8,14 @@ import java.util.Random;
 
 import static org.junit.Assert.*;
 
-public class HdfsCacheImplTest {
+public class HdfsCacheTest {
 
   private InMemoryCache cache;
   private Random random = new Random();
 
   @Before
   public void setUp() {
-    cache = new HdfsCacheImpl();
+    cache = new HdfsCache();
   }
 
   private BlockId randomBlockId() {

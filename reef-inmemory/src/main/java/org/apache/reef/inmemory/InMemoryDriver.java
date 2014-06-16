@@ -1,6 +1,5 @@
 package org.apache.reef.inmemory;
 
-import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -9,13 +8,10 @@ import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
-import com.google.common.cache.CacheLoader;
+import com.microsoft.tang.Tang;
 import com.microsoft.tang.annotations.Parameter;
-import org.apache.hadoop.fs.Path;
-import org.apache.reef.inmemory.fs.HdfsCacheLoader;
-import org.apache.reef.inmemory.fs.entity.FileMeta;
-import org.apache.reef.inmemory.fs.service.SurfMetaService;
-import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
+import org.apache.reef.inmemory.fs.DfsParameters;
+import org.apache.reef.inmemory.fs.service.SurfMetaServer;
 
 import com.microsoft.reef.driver.context.ContextConfiguration;
 import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
@@ -40,21 +36,21 @@ public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
-  private static final String HDFS_LOCATION = "localhost";
-
+  private final String dfsType;
   private final EvaluatorRequestor requestor;
-  private final SurfMetaServiceImpl metaService;
+  private final SurfMetaServer metaService;
   private ExecutorService executor;
 
   /**
    * Job Driver. Instantiated by TANG.
    */
   @Inject
-  public InMemoryDriver(final EvaluatorRequestor requestor,
-                        final SurfMetaServiceImpl metaService) {
+  public InMemoryDriver(final @Parameter(DfsParameters.Type.class) String dfsType,
+                        final EvaluatorRequestor requestor,
+                        final SurfMetaServer metaService) {
+    this.dfsType = dfsType;
     this.requestor = requestor;
     this.metaService = metaService;
-    // TODO: make use of the parameters
   }
 
   /**
@@ -103,7 +99,11 @@ public final class InMemoryDriver {
             .set(ContextConfiguration.IDENTIFIER, "InMemoryContext")
             .build();
         final Configuration taskConf = getTaskConfiguration();
-        allocatedEvaluator.submitContextAndTask(contextConf, taskConf);
+        final Configuration taskInMemoryConf = InMemoryTaskConfiguration
+                .getConf(dfsType).build();
+
+        allocatedEvaluator.submitContextAndTask(contextConf,
+                Tang.Factory.getTang().newConfigurationBuilder(taskConf, taskInMemoryConf).build());
       } catch (final BindException ex) {
         final String message = "Failed to bind Task.";
         LOG.log(Level.SEVERE, message);

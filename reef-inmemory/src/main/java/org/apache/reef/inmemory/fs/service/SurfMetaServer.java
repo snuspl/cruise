@@ -1,11 +1,9 @@
 package org.apache.reef.inmemory.fs.service;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
 import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.fs.Path;
-import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
+import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
 import org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException;
@@ -18,11 +16,14 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
 import javax.inject.Inject;
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagementService.Iface, Runnable, AutoCloseable {
+public class SurfMetaServer implements SurfMetaService.Iface, SurfManagementService.Iface, Runnable, AutoCloseable {
+
+  private static final Logger LOG = Logger.getLogger(SurfMetaServer.class.getName());
+
   private final int port;
   private final int timeout;
   private final int numThreads;
@@ -31,10 +32,10 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagemen
   private final SurfMetaManager metaManager;
 
   @Inject
-  public SurfMetaServiceImpl(final SurfMetaManager metaManager,
-                             final @Parameter(MetaServerParameters.Port.class) int port,
-                             final @Parameter(MetaServerParameters.Timeout.class) int timeout,
-                             final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
+  public SurfMetaServer(final SurfMetaManager metaManager,
+                        final @Parameter(MetaServerParameters.Port.class) int port,
+                        final @Parameter(MetaServerParameters.Timeout.class) int timeout,
+                        final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
     this.metaManager = metaManager;
 
     this.port = port;
@@ -55,6 +56,22 @@ public class SurfMetaServiceImpl implements SurfMetaService.Iface, SurfManagemen
   @Override
   public long clear() throws TException {
     return metaManager.clear();
+  }
+
+  @Override
+  public boolean load(String path) throws TException {
+    try {
+      List<BlockInfo> blocks = metaManager.getBlocks(new Path(path), new User());
+      for (BlockInfo block : blocks) {
+        LOG.log(Level.INFO, "Loaded block " + block.getBlockId() + " for " + path);
+      }
+      return true;
+    } catch (java.io.FileNotFoundException e) {
+      throw new FileNotFoundException("File not found at "+path);
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Load failed for "+path, e);
+      return false;
+    }
   }
 
   @Override

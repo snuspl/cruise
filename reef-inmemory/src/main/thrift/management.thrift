@@ -1,3 +1,5 @@
+include "exceptions.thrift"
+
 namespace java org.apache.reef.inmemory.fs.service
 
 /**
@@ -6,4 +8,5 @@ namespace java org.apache.reef.inmemory.fs.service
  */
 service SurfManagementService {
     i64 clear()
+    bool load(1:string path) throws (1: exceptions.FileNotFoundException ex)
 }

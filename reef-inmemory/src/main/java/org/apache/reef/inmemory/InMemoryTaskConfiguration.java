@@ -14,12 +14,7 @@ import org.apache.reef.inmemory.fs.HdfsCacheLoader;
 import org.apache.reef.inmemory.fs.LoadingCacheConstructor;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 
-public class InMemoryConfiguration extends ConfigurationModuleBuilder {
-
-  public static final RequiredParameter<Integer> METASERVER_PORT = new RequiredParameter<>();
-
-  public static final RequiredParameter<String> DFS_TYPE = new RequiredParameter<>();
-  public static final RequiredParameter<String> DFS_ADDRESS = new RequiredParameter<>();
+public class InMemoryTaskConfiguration extends ConfigurationModuleBuilder {
 
   public static final ConfigurationModule getConf(String dfsType) {
     if ("hdfs".equals(dfsType)) {
@@ -29,12 +24,7 @@ public class InMemoryConfiguration extends ConfigurationModuleBuilder {
     }
   }
 
-  public static final ConfigurationModule HDFS_CONF = new InMemoryConfiguration()
-          .bindNamedParameter(MetaServerParameters.Port.class, METASERVER_PORT)
-          .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)
-          .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
-          .bindImplementation(BlockId.class, HdfsBlockId.class)
-          .bindImplementation(CacheLoader.class, HdfsCacheLoader.class)
-          .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
+  public static final ConfigurationModule HDFS_CONF = new InMemoryTaskConfiguration()
+          .bindImplementation(InMemoryCache.class, HdfsCache.class)
           .build();
 }
