@@ -1,10 +1,16 @@
 namespace java org.apache.reef.inmemory.fs.entity
 
+/*
+ * Contains relevant block information to be stored as Metadata.
+ * Currently takes after o.a.h.hdfs.protocol.ExtendedBlock
+ */
 struct BlockInfo {
-	1: i64 blockId,           // Block id (unique)
-	2: i32 offSet,            // Order of the block
-	3: i32 length,            // Size of the block in bytes
-	4: list<string> locations // Block location. These are server ip addresses containig the block.
+	1: i64 blockId,            // Block id (unique)
+	2: i64 offSet,             // Order of the block
+	3: i64 length,             // Size of the block in bytes
+	4: list<string> locations, // Block location. These are server ip addresses containing the block.
+	5: string namespaceId,     // The namespace, e.g. HDFS block pool ID
+	6: i64 generationStamp     // Version number for append-able FSes, e.g. HDFS (set to 0 when not append-able)
 }
 
 struct User {
