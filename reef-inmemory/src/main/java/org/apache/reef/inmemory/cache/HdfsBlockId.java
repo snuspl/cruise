@@ -1,6 +1,12 @@
 package org.apache.reef.inmemory.cache;
 
-public class HdfsBlockId extends BlockId{
+/**
+ * Implementation of Block identification for HDFS, based on blockId.
+ * The implementation may have to change in the future, based on
+ * experience with HDFS.
+ */
+
+public final class HdfsBlockId extends BlockId{
 
   private final long blockId;
   private final String fs = "hdfs";

@@ -11,10 +11,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- *
+ * Test for SurfMetaServer
  */
-public class SurfMetaServerTest {
+public final class SurfMetaServerTest {
 
+  /**
+   * Test that java.io.FileNotFoundException is properly thrown as a thrift IDL defined
+   * exception that can be returned to the client.
+   * @throws Throwable
+   */
   @Test
   public void testExceptionTranslation() throws Throwable {
     SurfMetaManager metaManager = mock(SurfMetaManager.class);

@@ -7,7 +7,10 @@ import com.microsoft.tang.ExternalConstructor;
 
 import javax.inject.Inject;
 
-public class LoadingCacheConstructor implements ExternalConstructor<LoadingCache> {
+/**
+ * Constructs an instance of the Guava LoadingCache, for use by Tang injector.
+ */
+public final class LoadingCacheConstructor implements ExternalConstructor<LoadingCache> {
 
   private final CacheLoader cacheLoader;
 

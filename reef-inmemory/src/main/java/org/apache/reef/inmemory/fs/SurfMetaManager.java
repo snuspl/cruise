@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Surf FileSystem Meta Information management
+ * Wraps the cache implementation to provide metadata operations.
  */
 public class SurfMetaManager {
   private final LoadingCache<Path, FileMeta> metadataIndex;

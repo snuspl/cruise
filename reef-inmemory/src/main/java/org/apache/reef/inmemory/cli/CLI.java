@@ -25,22 +25,17 @@ import java.util.logging.Logger;
 /**
  * Command Line Interface for sending Cache management commands to the
  * InMemoryDriver.
- * <p>
- * Give command with -cmd &lt;command&gt; option
- * <ul>
- *   <li> clear : Clear the cache at the Driver and all Tasks </li>
- *   <li> load : Load into the cache the file on the given path</li>
- * </ul>
- * <p>
+ *
+ * Give command with -cmd (command) option
+ * - clear : Clear the cache at the Driver and all Tasks
+ * - load : Load into the cache the file on the given path
+ *
  * Other options:
- * <ul>
- *   <li> -hostname &lt;hostname&gt; :
- *                     InMemory Cache Driver hostname (default: localhost)</li>
- *   <li> -port &lt;port&gt; : InMemory Cache Driver port (default: 18000)</li>
- *   <li> -path &lt;path%gt; : File path (required for load, no default)</li>
- * </ul>
+ * -hostname (hostname) : InMemory Cache Driver hostname (default: localhost)
+ * -port (port) : InMemory Cache Driver port (default: 18000)
+ * -path (path) : File path (required for load, no default)
  */
-public class CLI {
+public final class CLI {
 
   private static final Logger LOG = Logger.getLogger(CLI.class.getName());
 

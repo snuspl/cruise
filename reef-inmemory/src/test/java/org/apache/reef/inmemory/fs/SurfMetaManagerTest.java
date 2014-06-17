@@ -18,14 +18,19 @@ import java.util.List;
 import static org.mockito.Mockito.*;
 
 /**
- * Test class for SurfMeta
+ * Test class for SurfMetaManager
  */
-public class SurfMetaManagerTest extends TestCase {
+public final class SurfMetaManagerTest extends TestCase {
   SurfMetaManager metaManager;
   CacheLoader<Path, FileMeta> cacheLoader;
   Path path;
   User user;
 
+  /**
+   * Setup the Meta Manager with a mock CacheLoader that returns
+   * blank metadata for each path.
+   * @throws Exception
+   */
   @Override
   public void setUp() throws Exception {
     path = new Path("/path");
@@ -43,6 +48,10 @@ public class SurfMetaManagerTest extends TestCase {
     user.setGroup("surf");
   }
 
+  /**
+   * Verify that load is called only when the path given does not exist.
+   * @throws Throwable
+   */
   @Test
   public void testGet() throws Throwable {
     metaManager.getBlocks(path, user);
@@ -51,10 +60,16 @@ public class SurfMetaManagerTest extends TestCase {
     verify(cacheLoader, times(1)).load(path);
   }
 
+  /**
+   * Verify that clear properly clears the cache, and returns the number of
+   * previously loaded paths.
+   * @throws Throwable
+   */
   @Test
   public void testClear() throws Throwable {
     assertEquals(0, metaManager.clear());
     metaManager.getBlocks(path, user);
     assertEquals(1, metaManager.clear());
+    assertEquals(0, metaManager.clear());
   }
 }

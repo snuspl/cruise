@@ -29,7 +29,10 @@ import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
 
 /**
- * The driver class for InMemory Application
+ * The Driver for InMemory Application
+ *  - Point of contact for client
+ *  - Contains metadata indicating where cached files are stored
+ *  - Manages Tasks
  */
 @Unit
 public final class InMemoryDriver {

@@ -20,7 +20,12 @@ import java.net.URISyntaxException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
+/**
+ * Cache Loader implementation for HDFS. The metadata containing HDFS locations
+ * is sent to the Tasks. The metadata containing Task locations is then returned
+ * to the LoadingCache.
+ */
+public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
   private static final Logger LOG = Logger.getLogger(HdfsCacheLoader.class.getName());
 

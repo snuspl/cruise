@@ -14,7 +14,10 @@ import org.apache.reef.inmemory.fs.HdfsCacheLoader;
 import org.apache.reef.inmemory.fs.LoadingCacheConstructor;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 
-public class InMemoryTaskConfiguration extends ConfigurationModuleBuilder {
+/**
+ * Builder that creates a Configuration Module to be used at each Task, based on underlying FS type
+ */
+public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder {
 
   public static final ConfigurationModule getConf(String dfsType) {
     if ("hdfs".equals(dfsType)) {
@@ -24,7 +27,7 @@ public class InMemoryTaskConfiguration extends ConfigurationModuleBuilder {
     }
   }
 
-  public static final ConfigurationModule HDFS_CONF = new InMemoryTaskConfiguration()
+  private static final ConfigurationModule HDFS_CONF = new InMemoryTaskConfiguration()
           .bindImplementation(InMemoryCache.class, HdfsCache.class)
           .build();
 }

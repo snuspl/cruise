@@ -8,7 +8,10 @@ import java.util.Random;
 
 import static org.junit.Assert.*;
 
-public class HdfsCacheTest {
+/**
+ * Tests for HdfsCache
+ */
+public final class HdfsCacheTest {
 
   private InMemoryCache cache;
   private Random random = new Random();
@@ -33,6 +36,9 @@ public class HdfsCacheTest {
     return onesBuffer(1 + random.nextInt(10));
   }
 
+  /**
+   * Put a small buffer in the cache, and check correctness of get after put
+   */
   @Test
   public void testPutAndGet() {
     BlockId blockId = randomBlockId();
@@ -43,6 +49,9 @@ public class HdfsCacheTest {
     assertEquals(buffer, getBuffer);
   }
 
+  /**
+   * Put a small buffer in the cache, and check correctness of clear
+   */
   @Test
   public void testClear() {
     BlockId blockId = randomBlockId();

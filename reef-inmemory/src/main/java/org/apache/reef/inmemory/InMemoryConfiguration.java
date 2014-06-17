@@ -14,7 +14,10 @@ import org.apache.reef.inmemory.fs.HdfsCacheLoader;
 import org.apache.reef.inmemory.fs.LoadingCacheConstructor;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 
-public class InMemoryConfiguration extends ConfigurationModuleBuilder {
+/**
+ * Builder that creates a Configuration Module to be used at the Driver, based on underlying FS type
+ */
+public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
 
   public static final RequiredParameter<Integer> METASERVER_PORT = new RequiredParameter<>();
 
@@ -29,7 +32,7 @@ public class InMemoryConfiguration extends ConfigurationModuleBuilder {
     }
   }
 
-  public static final ConfigurationModule HDFS_CONF = new InMemoryConfiguration()
+  private static final ConfigurationModule HDFS_CONF = new InMemoryConfiguration()
           .bindNamedParameter(MetaServerParameters.Port.class, METASERVER_PORT)
           .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)
           .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)

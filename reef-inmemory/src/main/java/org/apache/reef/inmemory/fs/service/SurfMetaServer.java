@@ -20,7 +20,11 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class SurfMetaServer implements SurfMetaService.Iface, SurfManagementService.Iface, Runnable, AutoCloseable {
+/**
+ * Implements thrift server operations, for both FileSystem client and cache management CLI.
+ * @see org.apache.reef.inmemory.cli.CLI
+ */
+public final class SurfMetaServer implements SurfMetaService.Iface, SurfManagementService.Iface, Runnable, AutoCloseable {
 
   private static final Logger LOG = Logger.getLogger(SurfMetaServer.class.getName());
 

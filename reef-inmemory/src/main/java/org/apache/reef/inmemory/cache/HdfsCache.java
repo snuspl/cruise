@@ -15,7 +15,7 @@ import javax.inject.Inject;
 /**
  * Implementation of Cache class using Google Cache interface. 
  */
-public class HdfsCache implements InMemoryCache {
+public final class HdfsCache implements InMemoryCache {
   private Cache<BlockId, ByteBuffer> cache = null;
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 

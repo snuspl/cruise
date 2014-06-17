@@ -16,7 +16,11 @@ import java.io.IOException;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
-public class HdfsCacheLoaderTest {
+/**
+ * Tests for HdfsCacheLoader. All Hdfs operations are performed on a live
+ * MiniDFSCluster.
+ */
+public final class HdfsCacheLoaderTest {
 
   private MiniDFSCluster cluster;
   private FileSystem fs;
@@ -38,8 +42,11 @@ public class HdfsCacheLoaderTest {
     cluster.shutdown();
   }
 
+  /**
+   * Test load of a non-existing path correctly throws FileNotFoundException
+   */
   @Test
-  public void testLoadNonexistingPath() throws IOException {
+  public void testLoadNonexistingPath() {
     try {
       loader.load(new Path("/nonexistent/path"));
     } catch (Exception e) {
@@ -47,6 +54,10 @@ public class HdfsCacheLoaderTest {
     }
   }
 
+  /**
+   * Test load of a directory (not a file) correctly throws FileNotFoundException
+   * @throws IOException
+   */
   @Test
   public void testLoadDirectory() throws IOException {
     Path directory = new Path("/existing/directory");
@@ -59,6 +70,11 @@ public class HdfsCacheLoaderTest {
     }
   }
 
+  /**
+   * Test proper loading of a small file. Checks that metadata is returned,
+   * and correct.
+   * @throws IOException
+   */
   @Test
   public void testLoadSmallFile() throws IOException {
     Path smallFile = new Path("/existing/file");
