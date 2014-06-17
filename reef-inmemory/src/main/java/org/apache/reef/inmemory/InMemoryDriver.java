@@ -10,7 +10,9 @@ import javax.inject.Inject;
 
 import com.microsoft.tang.Tang;
 import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.fs.DfsParameters;
+import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 import org.apache.reef.inmemory.fs.service.SurfMetaServer;
 
 import com.microsoft.reef.driver.context.ContextConfiguration;
@@ -39,21 +41,25 @@ public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
-  private final String dfsType;
   private final EvaluatorRequestor requestor;
   private final SurfMetaServer metaService;
+  private final String dfsType;
+  private final int cachePort;
+
   private ExecutorService executor;
 
   /**
    * Job Driver. Instantiated by TANG.
    */
   @Inject
-  public InMemoryDriver(final @Parameter(DfsParameters.Type.class) String dfsType,
-                        final EvaluatorRequestor requestor,
-                        final SurfMetaServer metaService) {
-    this.dfsType = dfsType;
+  public InMemoryDriver(final EvaluatorRequestor requestor,
+                        final SurfMetaServer metaService,
+                        final @Parameter(DfsParameters.Type.class) String dfsType,
+                        final @Parameter(CacheParameters.Port.class) int cachePort) {
     this.requestor = requestor;
     this.metaService = metaService;
+    this.dfsType = dfsType;
+    this.cachePort = cachePort;
   }
 
   /**
@@ -102,8 +108,9 @@ public final class InMemoryDriver {
             .set(ContextConfiguration.IDENTIFIER, "InMemoryContext")
             .build();
         final Configuration taskConf = getTaskConfiguration();
-        final Configuration taskInMemoryConf = InMemoryTaskConfiguration
-                .getConf(dfsType).build();
+        final Configuration taskInMemoryConf = InMemoryTaskConfiguration.getConf(dfsType)
+                .set(InMemoryTaskConfiguration.CACHESERVER_PORT, cachePort)
+                .build();
 
         allocatedEvaluator.submitContextAndTask(contextConf,
                 Tang.Factory.getTang().newConfigurationBuilder(taskConf, taskInMemoryConf).build());
