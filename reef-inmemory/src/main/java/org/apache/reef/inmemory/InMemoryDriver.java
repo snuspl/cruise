@@ -8,7 +8,10 @@ import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
-import org.apache.reef.inmemory.fs.service.SurfMetaServiceImpl;
+import com.microsoft.tang.Tang;
+import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.inmemory.fs.DfsParameters;
+import org.apache.reef.inmemory.fs.service.SurfMetaServer;
 
 import com.microsoft.reef.driver.context.ContextConfiguration;
 import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
@@ -26,22 +29,31 @@ import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
 
 /**
- * The driver class for InMemory Application
+ * The Driver for InMemory Application
+ *  - Point of contact for client
+ *  - Contains metadata indicating where cached files are stored
+ *  - Manages Tasks
  */
 @Unit
 public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
+  private final String dfsType;
   private final EvaluatorRequestor requestor;
+  private final SurfMetaServer metaService;
   private ExecutorService executor;
 
   /**
    * Job Driver. Instantiated by TANG.
    */
   @Inject
-  public InMemoryDriver(final EvaluatorRequestor requestor) {
+  public InMemoryDriver(final @Parameter(DfsParameters.Type.class) String dfsType,
+                        final EvaluatorRequestor requestor,
+                        final SurfMetaServer metaService) {
+    this.dfsType = dfsType;
     this.requestor = requestor;
+    this.metaService = metaService;
   }
 
   /**
@@ -67,8 +79,14 @@ public final class InMemoryDriver {
           .setMemory(128)
           .build());
 
-      ExecutorService executor = Executors.newSingleThreadExecutor();
-      executor.execute(new SurfMetaServiceImpl());
+      executor = Executors.newSingleThreadExecutor();
+      try {
+        executor.execute(metaService);
+      } catch (Exception ex) {
+        final String message = "Failed to start Surf Meta Service";
+        LOG.log(Level.SEVERE, message);
+        throw new RuntimeException(message, ex);
+      }
     }
   }
 
@@ -84,7 +102,11 @@ public final class InMemoryDriver {
             .set(ContextConfiguration.IDENTIFIER, "InMemoryContext")
             .build();
         final Configuration taskConf = getTaskConfiguration();
-        allocatedEvaluator.submitContextAndTask(contextConf, taskConf);
+        final Configuration taskInMemoryConf = InMemoryTaskConfiguration
+                .getConf(dfsType).build();
+
+        allocatedEvaluator.submitContextAndTask(contextConf,
+                Tang.Factory.getTang().newConfigurationBuilder(taskConf, taskInMemoryConf).build());
       } catch (final BindException ex) {
         final String message = "Failed to bind Task.";
         LOG.log(Level.SEVERE, message);

@@ -25,20 +25,17 @@ import java.util.logging.Logger;
 /**
  * Command Line Interface for sending Cache management commands to the
  * InMemoryDriver.
- * <p>
- * Give command with -cmd &lt;command&gt; option
- * <ul>
- *   <li> clear : Clear the cache at the Driver and all Tasks </li>
- * </ul>
- * <p>
+ *
+ * Give command with -cmd (command) option
+ * - clear : Clear the cache at the Driver and all Tasks
+ * - load : Load into the cache the file on the given path
+ *
  * Other options:
- * <ul>
- *   <li> -hostname &lt;hostname&gt; :
- *                     InMemory Cache Driver hostname (default: localhost)</li>
- *   <li> -port &lt;port&gt; : InMemory Cache Driver port (default: 18000)</li>
- * </ul>
+ * -hostname (hostname) : InMemory Cache Driver hostname (default: localhost)
+ * -port (port) : InMemory Cache Driver port (default: 18000)
+ * -path (path) : File path (required for load, no default)
  */
-public class CLI {
+public final class CLI {
 
   private static final Logger LOG = Logger.getLogger(CLI.class.getName());
 
@@ -54,6 +51,11 @@ public class CLI {
   @NamedParameter(doc = "InMemory Cache Driver port",
           short_name = "port", default_value = "18000")
   public static final class Port implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "DFS file path for load operation",
+          short_name = "path")
+  public static final class Path implements Name<String> {
   }
 
   private static SurfManagementService.Client getClient(String host, int port)
@@ -79,6 +81,10 @@ public class CLI {
       long numCleared = client.clear();
       LOG.log(Level.INFO, "Cleared {0} items from cache", numCleared);
       return true;
+    } else if ("load".equals(cmd)) {
+      SurfManagementService.Client client = getClient(hostname, port);
+      String path = injector.getNamedInstance(Path.class);
+      return client.load(path);
     } else {
       return false;
     }
@@ -92,6 +98,7 @@ public class CLI {
             .registerShortNameOfClass(Command.class)
             .registerShortNameOfClass(Hostname.class)
             .registerShortNameOfClass(Port.class)
+            .registerShortNameOfClass(Path.class)
             .processCommandLine(args);
     return confBuilder.build();
   }
@@ -99,6 +106,7 @@ public class CLI {
   public static void main(String args[])
           throws TException, IOException, InjectionException {
     final Configuration config = parseCommandLine(args);
-    runCommand(config);
+    boolean success = runCommand(config);
+    LOG.log(Level.INFO, success ? "Run command succeeded" : "Run command failed");
   }
 }

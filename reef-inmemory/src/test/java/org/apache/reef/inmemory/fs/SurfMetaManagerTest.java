@@ -1,120 +1,75 @@
 package org.apache.reef.inmemory.fs;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import junit.framework.TestCase;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
+import java.net.URISyntaxException;
 import java.util.List;
 
+import static org.mockito.Mockito.*;
+
 /**
- * Test class for SurfMeta
+ * Test class for SurfMetaManager
  */
-public class SurfMetaManagerTest extends TestCase {
-  SurfMetaManager sm;
+public final class SurfMetaManagerTest extends TestCase {
+  SurfMetaManager metaManager;
+  CacheLoader<Path, FileMeta> cacheLoader;
+  Path path;
   User user;
 
+  /**
+   * Setup the Meta Manager with a mock CacheLoader that returns
+   * blank metadata for each path.
+   * @throws Exception
+   */
   @Override
-  public void setUp() {
-    sm = new SurfMetaManager();
+  public void setUp() throws Exception {
+    path = new Path("/path");
+
+    cacheLoader = mock(CacheLoader.class);
+    when(cacheLoader.load(path)).thenReturn(new FileMeta());
+
+    LoadingCache<Path, FileMeta> cache = CacheBuilder.newBuilder()
+            .concurrencyLevel(4)
+            .build(cacheLoader);
+
+    metaManager = new SurfMetaManager(cache);
     user = new User();
     user.setId("surf");
     user.setGroup("surf");
   }
 
+  /**
+   * Verify that load is called only when the path given does not exist.
+   * @throws Throwable
+   */
   @Test
-  public void testMakeDirectory() throws FileAlreadyExistsException {
-    //Absolute path creating test
-    FileMeta fm = sm.makeDirectory(new Path("/user/hive/home"), user);
-    assertEquals("Directory name is different.", fm.getFullPath(), "/user/hive/home");
-
-    try {
-      sm.makeDirectory(new Path("/user/hive"), user);
-      assertFalse("Directory /user/hive already exists", true);
-    } catch (FileAlreadyExistsException fe) {
-      assertTrue(true);
-    }
-
-    //Relative path creating test
-    fm = sm.makeDirectory(new Path("hive"), user);
-    assertEquals("Directory name is different.", "/user/surf/hive", fm.getFullPath());
+  public void testGet() throws Throwable {
+    metaManager.getBlocks(path, user);
+    verify(cacheLoader, times(1)).load(path);
+    metaManager.getBlocks(path, user);
+    verify(cacheLoader, times(1)).load(path);
   }
 
+  /**
+   * Verify that clear properly clears the cache, and returns the number of
+   * previously loaded paths.
+   * @throws Throwable
+   */
   @Test
-  public void testListStatus() throws FileNotFoundException, FileAlreadyExistsException {
-    List<FileMeta> fms = sm.listStatus(new Path("/user/hive"), false, user);
-    assertEquals("Directory name is different", "/user/hive/home", fms.get(0).getFullPath());
-
-    try {
-      fms = sm.listStatus(new Path("/user/test"), false, user);
-      assertFalse("FileNotFoundException is expected", true);
-    } catch (FileNotFoundException fe) {
-      assertTrue(true);
-    }
-
-    sm.makeDirectory(new Path("test"), user);
-
-    fms = sm.listStatus(new Path("./"), false, user);
-    assertEquals("Sub directories count is different", 2, fms.size());
-
-    fms = sm.listStatus(new Path("/"), false, user);
-    assertEquals("Sub directories count is different", 2, fms.size());
-  }
-
-  @Test
-  public void testDelete() throws IOException {
-    // Absolute path deleting test
-    assertTrue(sm.delete(new Path("/user/surf/hive"), false, user));
-
-    try {
-      sm.delete(new Path("/user/surf/hive"), false, user);
-      assertFalse("FileNotFoundException is expected", true);
-    } catch (FileNotFoundException fe) {
-      assertTrue(true);
-    } catch (IOException e) {
-      assertFalse("FileNotFoundException is expected", true);
-    }
-
-    // Relative path deleting test
-    assertTrue(sm.delete(new Path("test"), false, user));
-
-    try {
-      sm.delete(new Path("test"), false, user);
-      assertFalse("FileNotFoundException is expected", true);
-    } catch (FileNotFoundException fe) {
-      assertTrue(true);
-    } catch (IOException e) {
-      assertFalse("FileNotFoundException is expected", true);
-    }
-
-    // Recursive deleting test
-    sm.makeDirectory(new Path("/user/test/a/b/c"), user);
-    sm.makeDirectory(new Path("/user/test2/a/b/c"), user);
-    int before = sm.listStatus(new Path("/user"), true, user).size();
-    assertTrue(sm.delete(new Path("/user/test"), false, user));
-    int after = sm.listStatus(new Path("/user"), true, user).size();
-    assertEquals("Total count is different", before - 4, after);
-  }
-
-  @Test
-  public void testRename() throws IOException {
-    // Absolute path renaming test
-    assertTrue(sm.rename(new Path("/user"), new Path("/user_moved"), user));
-    assertTrue(sm.rename(new Path("/user_moved"), new Path("/user"), user));
-
-    // Relative path renaming test
-    sm.makeDirectory(new Path("/user/surf/test"), user);
-    assertTrue(sm.rename(new Path("test"), new Path("test2"), user));
-    assertTrue(sm.rename(new Path("test2"), new Path("test"), user));
-  }
-
-  @Test
-  public void testClear() {
-    // TODO: Fill in metadata first, once that functionality is created
-    assertEquals(0, sm.clear());
+  public void testClear() throws Throwable {
+    assertEquals(0, metaManager.clear());
+    metaManager.getBlocks(path, user);
+    assertEquals(1, metaManager.clear());
+    assertEquals(0, metaManager.clear());
   }
 }
