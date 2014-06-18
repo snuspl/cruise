@@ -18,6 +18,7 @@ import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.CommandLine;
+import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.fs.DfsParameters;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 
@@ -50,6 +51,7 @@ public class Launch
             .registerShortNameOfClass(MetaServerParameters.Port.class)
             .registerShortNameOfClass(MetaServerParameters.Timeout.class)
             .registerShortNameOfClass(MetaServerParameters.Threads.class)
+            .registerShortNameOfClass(CacheParameters.Port.class)
             .registerShortNameOfClass(DfsParameters.Type.class)
             .registerShortNameOfClass(DfsParameters.Address.class)
             .processCommandLine(args);
@@ -64,6 +66,7 @@ public class Launch
         EnvironmentUtils.addClasspath(DriverConfiguration.CONF, DriverConfiguration.GLOBAL_LIBRARIES)
         .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_TASK_RUNNING, InMemoryDriver.RunningTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class)
         .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
         .set(DriverConfiguration.ON_TASK_MESSAGE, InMemoryDriver.TaskMessageHandler.class)
@@ -76,6 +79,7 @@ public class Launch
     final Injector injector = Tang.Factory.getTang().newInjector(clConf);
     final Configuration inMemoryConfig = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsParameters.Type.class))
             .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaServerParameters.Port.class))
+            .set(InMemoryConfiguration.CACHESERVER_PORT, injector.getNamedInstance(CacheParameters.Port.class))
             .set(InMemoryConfiguration.DFS_TYPE, injector.getNamedInstance(DfsParameters.Type.class))
             .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class))
             .build();

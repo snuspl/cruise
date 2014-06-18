@@ -5,13 +5,9 @@ import com.google.common.cache.LoadingCache;
 import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.RequiredParameter;
-import org.apache.reef.inmemory.cache.BlockId;
-import org.apache.reef.inmemory.cache.HdfsBlockId;
-import org.apache.reef.inmemory.cache.HdfsCache;
-import org.apache.reef.inmemory.cache.InMemoryCache;
-import org.apache.reef.inmemory.fs.DfsParameters;
-import org.apache.reef.inmemory.fs.HdfsCacheLoader;
-import org.apache.reef.inmemory.fs.LoadingCacheConstructor;
+import org.apache.reef.inmemory.cache.*;
+import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.fs.*;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 
 /**
@@ -20,6 +16,7 @@ import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
 
   public static final RequiredParameter<Integer> METASERVER_PORT = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> CACHESERVER_PORT = new RequiredParameter<>();
 
   public static final RequiredParameter<String> DFS_TYPE = new RequiredParameter<>();
   public static final RequiredParameter<String> DFS_ADDRESS = new RequiredParameter<>();
@@ -34,10 +31,12 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
 
   private static final ConfigurationModule HDFS_CONF = new InMemoryConfiguration()
           .bindNamedParameter(MetaServerParameters.Port.class, METASERVER_PORT)
+          .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
           .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)
           .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
           .bindImplementation(BlockId.class, HdfsBlockId.class)
           .bindImplementation(CacheLoader.class, HdfsCacheLoader.class)
+          .bindImplementation(TaskManager.class, HdfsCacheManager.class)
           .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
           .build();
 }

@@ -1,26 +1,21 @@
 package org.apache.reef.inmemory.cache;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
+import java.nio.ByteBuffer;
 
 /**
  * Implementation of Cache class using Google Cache interface. 
  */
-public final class HdfsCache implements InMemoryCache {
+public final class InMemoryCacheImpl implements InMemoryCache {
   private Cache<BlockId, ByteBuffer> cache = null;
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   @Inject
-  public HdfsCache() {
+  public InMemoryCacheImpl() {
     cache = CacheBuilder.newBuilder()
         .concurrencyLevel(4)
         .build();

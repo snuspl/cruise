@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.cache;
 
+import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
 import org.junit.*;
 
 import java.nio.ByteBuffer;
@@ -11,18 +12,22 @@ import static org.junit.Assert.*;
 /**
  * Tests for HdfsCache
  */
-public final class HdfsCacheTest {
+public final class InMemoryCacheImplTest {
 
   private InMemoryCache cache;
   private Random random = new Random();
 
   @Before
   public void setUp() {
-    cache = new HdfsCache();
+    cache = new InMemoryCacheImpl();
   }
 
   private BlockId randomBlockId() {
-    return new HdfsBlockId(random.nextInt());
+    return new HdfsBlockId(random.nextLong(),
+            random.nextLong(),
+            random.nextLong(),
+            Long.toString(random.nextLong()),
+            Long.toString(random.nextLong()));
   }
 
   private ByteBuffer onesBuffer(int length) {

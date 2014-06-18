@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.fs;
 
+import com.microsoft.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -7,11 +8,14 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.junit.*;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -24,6 +28,7 @@ public final class HdfsCacheLoaderTest {
 
   private MiniDFSCluster cluster;
   private FileSystem fs;
+  private HdfsCacheManager manager;
   private HdfsCacheLoader loader;
 
   @Before
@@ -34,7 +39,17 @@ public final class HdfsCacheLoaderTest {
     cluster = new MiniDFSCluster.Builder(hdfsConfig).numDataNodes(3).build();
     cluster.waitActive();
     fs = cluster.getFileSystem();
-    loader = new HdfsCacheLoader(fs.getUri().toString());
+    manager = mock(HdfsCacheManager.class);
+
+    List<RunningTask> tasksToCache = new ArrayList<>(3);
+    for (int i = 0; i < 3; i++) {
+      RunningTask task = mock(RunningTask.class);
+      when(manager.getCacheHost(task)).thenReturn("host"+i);
+      tasksToCache.add(task);
+    }
+    when(manager.getTasksToCache(any(LocatedBlock.class))).thenReturn(tasksToCache);
+
+    loader = new HdfsCacheLoader(manager, 18001, fs.getUri().toString());
   }
 
   @After
@@ -49,6 +64,7 @@ public final class HdfsCacheLoaderTest {
   public void testLoadNonexistingPath() {
     try {
       loader.load(new Path("/nonexistent/path"));
+      fail("FileNotFoundException was expected");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof FileNotFoundException);
     }
@@ -65,6 +81,7 @@ public final class HdfsCacheLoaderTest {
     fs.mkdirs(directory);
     try {
       FileMeta fileMeta = loader.load(directory);
+      fail("FileNotFoundException was expected");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof FileNotFoundException);
     }

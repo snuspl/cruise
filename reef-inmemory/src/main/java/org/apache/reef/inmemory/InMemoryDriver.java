@@ -8,9 +8,13 @@ import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
+import com.microsoft.reef.driver.task.RunningTask;
 import com.microsoft.tang.Tang;
 import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.fs.DfsParameters;
+import org.apache.reef.inmemory.fs.TaskManager;
+import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 import org.apache.reef.inmemory.fs.service.SurfMetaServer;
 
 import com.microsoft.reef.driver.context.ContextConfiguration;
@@ -39,21 +43,28 @@ public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
-  private final String dfsType;
   private final EvaluatorRequestor requestor;
   private final SurfMetaServer metaService;
+  private final TaskManager taskManager;
+  private final String dfsType;
+  private final int cachePort;
+
   private ExecutorService executor;
 
   /**
    * Job Driver. Instantiated by TANG.
    */
   @Inject
-  public InMemoryDriver(final @Parameter(DfsParameters.Type.class) String dfsType,
-                        final EvaluatorRequestor requestor,
-                        final SurfMetaServer metaService) {
-    this.dfsType = dfsType;
+  public InMemoryDriver(final EvaluatorRequestor requestor,
+                        final SurfMetaServer metaService,
+                        final TaskManager taskManager,
+                        final @Parameter(DfsParameters.Type.class) String dfsType,
+                        final @Parameter(CacheParameters.Port.class) int cachePort) {
     this.requestor = requestor;
     this.metaService = metaService;
+    this.taskManager = taskManager;
+    this.dfsType = dfsType;
+    this.cachePort = cachePort;
   }
 
   /**
@@ -63,6 +74,7 @@ public final class InMemoryDriver {
     return TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
         .set(TaskConfiguration.TASK, InMemoryTask.class)
+        .set(TaskConfiguration.ON_MESSAGE, InMemoryTask.DriverMessageHandler.class)
         .set(TaskConfiguration.ON_SEND_MESSAGE, InMemoryTask.class)
         .build();
   }
@@ -102,8 +114,9 @@ public final class InMemoryDriver {
             .set(ContextConfiguration.IDENTIFIER, "InMemoryContext")
             .build();
         final Configuration taskConf = getTaskConfiguration();
-        final Configuration taskInMemoryConf = InMemoryTaskConfiguration
-                .getConf(dfsType).build();
+        final Configuration taskInMemoryConf = InMemoryTaskConfiguration.getConf(dfsType)
+                .set(InMemoryTaskConfiguration.CACHESERVER_PORT, cachePort)
+                .build();
 
         allocatedEvaluator.submitContextAndTask(contextConf,
                 Tang.Factory.getTang().newConfigurationBuilder(taskConf, taskInMemoryConf).build());
@@ -116,12 +129,24 @@ public final class InMemoryDriver {
   }
 
   /**
+   * Handler of RunningTask event.
+   */
+  final class RunningTaskHandler implements EventHandler<RunningTask> {
+    @Override
+    public void onNext(RunningTask task) {
+      LOG.log(Level.INFO, "Task {0} Running", task.getId());
+      taskManager.addRunningTask(task);
+    }
+  }
+
+  /**
    * Handler of CompletedTask event.
    */
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(CompletedTask task) {
       LOG.log(Level.INFO, "Task {0} Completed", task.getId());
+      taskManager.removeRunningTask(task.getId());
     }
   }
 

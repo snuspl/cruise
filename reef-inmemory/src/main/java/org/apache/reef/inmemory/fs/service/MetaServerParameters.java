@@ -18,4 +18,8 @@ public final class MetaServerParameters {
   @NamedParameter(doc = "InMemory MetaServer threads", short_name = "metaserver_num_threads", default_value = "10")
   public static final class Threads implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "Default cache replicas", short_name = "num_replicas", default_value = "1")
+  public static final class Replicas implements Name<Integer> {
+  }
 }
