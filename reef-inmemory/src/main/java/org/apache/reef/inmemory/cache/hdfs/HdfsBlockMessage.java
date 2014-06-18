@@ -20,7 +20,7 @@ public final class HdfsBlockMessage implements Serializable {
     this.locations = locations;
   }
 
-  public BlockId getBlockId() {
+  public HdfsBlockId getBlockId() {
     return blockId;
   }
 

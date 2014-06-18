@@ -13,6 +13,7 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.token.Token;
+import org.apache.reef.inmemory.cache.BlockId;
 import org.apache.reef.inmemory.cache.BlockLoader;
 
 import javax.inject.Inject;
@@ -36,6 +37,7 @@ public class HdfsBlockLoader implements BlockLoader {
   private static final boolean ALLOW_SHORT_CIRCUIT_LOCAL_READS = false;
   private static final CachingStrategy STRATEGY = CachingStrategy.newDefaultStrategy();
 
+  private final HdfsBlockId hdfsBlockId;
   private final ExtendedBlock block;
   private final DatanodeID datanode;
   private final long blockSize;
@@ -47,6 +49,7 @@ public class HdfsBlockLoader implements BlockLoader {
   @Inject
   public HdfsBlockLoader(HdfsBlockId id,
                          HdfsDatanodeInfo dnInfo) {
+    hdfsBlockId = id;
     block = new ExtendedBlock(id.getPoolId(), id.getBlockId(), id.getBlockSize(), id.getGenerationTimestamp());
     datanode = new DatanodeID(dnInfo.getIpAddr(), dnInfo.getHostName(), dnInfo.getStorageID(), dnInfo.getXferPort(), dnInfo.getInfoPort(), dnInfo.getInfoSecurePort(), dnInfo.getIpcPort());
     blockSize = id.getBlockSize();
@@ -61,10 +64,8 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * Load a block assigned to this Loader. Connect to the DataNode directly, and read one block
+   * Loading a block from HDFS.
    * Too large block size(>2GB) is not supported.
-   * @return byteBuffer holds the data it loaded.
-   * @throws IOException
    */
   public ByteBuffer loadBlock() throws IOException {
     final Configuration conf = new HdfsConfiguration();
@@ -103,5 +104,9 @@ public class HdfsBlockLoader implements BlockLoader {
     // Wrap up
     blockReader.close();
     return byteBuffer;
+  }
+
+  public BlockId getBlockId() {
+    return this.hdfsBlockId;
   }
 }
