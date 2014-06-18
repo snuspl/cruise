@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class HdfsCacheManager implements TaskManager {
+public final class HdfsCacheManager implements TaskManager {
 
   private static final ObjectSerializableCodec<HdfsMessage> CODEC = new ObjectSerializableCodec<>();
 

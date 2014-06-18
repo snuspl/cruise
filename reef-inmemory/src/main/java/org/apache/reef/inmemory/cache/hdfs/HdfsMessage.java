@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.cache.hdfs;
 
 import com.microsoft.reef.util.Optional;
 import org.apache.reef.inmemory.cache.CacheClearMessage;
-import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
 
 import java.io.Serializable;
 

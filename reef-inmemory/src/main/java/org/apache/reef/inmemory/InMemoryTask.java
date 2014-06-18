@@ -1,22 +1,17 @@
 package org.apache.reef.inmemory;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import javax.inject.Inject;
-
-import com.microsoft.reef.task.events.DriverMessage;
-import com.microsoft.tang.annotations.Unit;
-import com.microsoft.wake.EventHandler;
-import org.apache.reef.inmemory.cache.BlockId;
-import org.apache.reef.inmemory.cache.InMemoryCache;
-
 import com.microsoft.reef.task.Task;
 import com.microsoft.reef.task.TaskMessage;
 import com.microsoft.reef.task.TaskMessageSource;
+import com.microsoft.reef.task.events.DriverMessage;
 import com.microsoft.reef.util.Optional;
+import com.microsoft.tang.annotations.Unit;
+import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
-import org.apache.reef.inmemory.fs.entity.BlockInfo;
+import org.apache.reef.inmemory.cache.InMemoryCache;
+
+import javax.inject.Inject;
+import java.util.logging.Logger;
 
 /**
  * InMemory Task. Wait until receiving a signal from Driver.

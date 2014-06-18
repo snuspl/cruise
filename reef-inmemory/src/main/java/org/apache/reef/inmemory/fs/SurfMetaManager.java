@@ -16,7 +16,7 @@ import java.util.concurrent.ExecutionException;
 /**
  * Wraps the cache implementation to provide metadata operations.
  */
-public class SurfMetaManager {
+public final class SurfMetaManager {
   private final LoadingCache<Path, FileMeta> metadataIndex;
   private final TaskManager taskManager;
   public static String USERS_HOME = "/user";
