@@ -1,12 +1,15 @@
 package org.apache.reef.inmemory.fs.service;
 
+import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
+import org.apache.reef.inmemory.fs.TaskManager;
 import org.apache.reef.inmemory.fs.entity.User;
 import org.junit.*;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -22,8 +25,12 @@ public final class SurfMetaServerTest {
    */
   @Test
   public void testExceptionTranslation() throws Throwable {
-    SurfMetaManager metaManager = mock(SurfMetaManager.class);
-    when(metaManager.getBlocks(any(Path.class), any(User.class))).thenThrow(java.io.FileNotFoundException.class);
+
+    LoadingCache loadingCache = mock(LoadingCache.class);
+    when(loadingCache.get(anyObject())).thenThrow(java.io.FileNotFoundException.class);
+    TaskManager taskManager = mock(TaskManager.class);
+
+    SurfMetaManager metaManager = new SurfMetaManager(loadingCache, taskManager);
 
     try {
       SurfMetaServer metaService = new SurfMetaServer(metaManager, 18000, 10, 1);

@@ -5,26 +5,31 @@ import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.cache.CacheClearMessage;
+import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.cache.hdfs.HdfsMessage;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+/**
+ * Implements HDFS-specific
+ * general Task/Cache management methods,
+ */
 public final class HdfsCacheManager implements TaskManager {
 
   private static final ObjectSerializableCodec<HdfsMessage> CODEC = new ObjectSerializableCodec<>();
 
-  private final int numReplicas;
+  private final HdfsTaskSelectionPolicy taskSelectionPolicy;
+  private final int cachePort;
   private final Map<String, RunningTask> tasks = new HashMap<>();
 
   @Inject
-  public HdfsCacheManager(final @Parameter(MetaServerParameters.Replicas.class) int numReplicas) {
-    this.numReplicas = numReplicas;
+  public HdfsCacheManager(final HdfsTaskSelectionPolicy taskSelectionPolicy,
+                          final @Parameter(CacheParameters.Port.class) int cachePort) {
+    this.taskSelectionPolicy = taskSelectionPolicy;
+    this.cachePort = cachePort;
   }
 
   @Override
@@ -49,6 +54,16 @@ public final class HdfsCacheManager implements TaskManager {
     }
   }
 
+  @Override
+  public String getCacheAddress(final RunningTask task) {
+    return getCacheHost(task) + ":" + cachePort;
+  }
+
+  private String getCacheHost(final RunningTask task) {
+    return task.getActiveContext().getEvaluatorDescriptor()
+            .getNodeDescriptor().getInetSocketAddress().getHostString();
+  }
+
   /**
    * Return the Tasks to place cache replicas on.
    * The current implementation just returns a number of numReplicas Tasks
@@ -57,19 +72,8 @@ public final class HdfsCacheManager implements TaskManager {
    * this synchronized method does not block other methods.
    */
   public synchronized List<RunningTask> getTasksToCache(final LocatedBlock block) {
-    final List<RunningTask> tasksToCache = new ArrayList<>(numReplicas);
-    int replicasAdded = 0;
-    for (RunningTask task : tasks.values()) {
-      if (replicasAdded >= numReplicas) break;
-      tasksToCache.add(task);
-      replicasAdded++;
-    }
-    return tasksToCache;
-  }
+    return taskSelectionPolicy.select(block, Collections.unmodifiableCollection(tasks.values()));
 
-  public String getCacheHost(final RunningTask task) {
-    return task.getActiveContext().getEvaluatorDescriptor()
-            .getNodeDescriptor().getInetSocketAddress().getHostString();
   }
 
   public void sendToTask(RunningTask task, HdfsBlockMessage blockMsg) {
