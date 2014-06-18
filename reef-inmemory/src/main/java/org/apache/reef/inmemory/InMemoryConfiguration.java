@@ -6,9 +6,8 @@ import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.RequiredParameter;
 import org.apache.reef.inmemory.cache.*;
-import org.apache.reef.inmemory.fs.DfsParameters;
-import org.apache.reef.inmemory.fs.HdfsCacheLoader;
-import org.apache.reef.inmemory.fs.LoadingCacheConstructor;
+import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.fs.*;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 
 /**
@@ -37,6 +36,7 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
           .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
           .bindImplementation(BlockId.class, HdfsBlockId.class)
           .bindImplementation(CacheLoader.class, HdfsCacheLoader.class)
+          .bindImplementation(TaskManager.class, HdfsCacheManager.class)
           .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
           .build();
 }

@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory.cache;
+package org.apache.reef.inmemory.cache.hdfs;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,6 +9,8 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.inmemory.cache.BlockId;
+import org.apache.reef.inmemory.cache.InMemoryCache;
 
 import javax.inject.Inject;
 

@@ -1,15 +1,11 @@
 package org.apache.reef.inmemory;
 
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.RequiredParameter;
 import org.apache.reef.inmemory.cache.*;
-import org.apache.reef.inmemory.fs.DfsParameters;
-import org.apache.reef.inmemory.fs.HdfsCacheLoader;
-import org.apache.reef.inmemory.fs.LoadingCacheConstructor;
-import org.apache.reef.inmemory.fs.service.MetaServerParameters;
+import org.apache.reef.inmemory.cache.hdfs.HdfsCache;
+import org.apache.reef.inmemory.cache.hdfs.HdfsDriverMessageHandler;
 
 /**
  * Builder that creates a Configuration Module to be used at each Task, based on underlying FS type
@@ -29,5 +25,6 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
   private static final ConfigurationModule HDFS_CONF = new InMemoryTaskConfiguration()
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
           .bindImplementation(InMemoryCache.class, HdfsCache.class)
+          .bindImplementation(DriverMessageHandler.class, HdfsDriverMessageHandler.class)
           .build();
 }

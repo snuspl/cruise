@@ -10,6 +10,9 @@ import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.cache.CacheParameters;
+import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.cache.hdfs.HdfsDatanodeInfo;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 
@@ -67,7 +70,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
     blockInfo.setBlockId(locatedBlock.getBlock().getBlockId());
     blockInfo.setOffSet(locatedBlock.getStartOffset());
-    blockInfo.setLength(locatedBlock.getBlockSize()); // TODO: make length long?
+    blockInfo.setLength(locatedBlock.getBlockSize());
     blockInfo.setNamespaceId(locatedBlock.getBlock().getBlockPoolId());
     blockInfo.setGenerationStamp(locatedBlock.getBlock().getGenerationStamp());
 
@@ -82,12 +85,14 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
     LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0);
     for (final LocatedBlock locatedBlock : locatedBlocks.getLocatedBlocks()) {
-      final BlockInfo hdfsBlock = copyBlockInfo(locatedBlock);
-      hdfsBlock.setLocations(getLocations(locatedBlock)); // Add HDFS location info
+      final HdfsBlockId hdfsBlock = HdfsBlockId.copyBlock(locatedBlock);
+      final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
+              HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
+      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos);
 
       final BlockInfo cacheBlock = copyBlockInfo(locatedBlock);
       for (final RunningTask task : cacheManager.getTasksToCache(locatedBlock)) {
-        cacheManager.sendToTask(task, hdfsBlock);
+        cacheManager.sendToTask(task, msg);
         cacheBlock.addToLocations( // Add Cache node location info
                 cacheManager.getCacheHost(task) + ":" + cachePort);
       }

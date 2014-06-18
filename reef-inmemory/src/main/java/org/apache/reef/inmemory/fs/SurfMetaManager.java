@@ -18,11 +18,14 @@ import java.util.concurrent.ExecutionException;
  */
 public class SurfMetaManager {
   private final LoadingCache<Path, FileMeta> metadataIndex;
+  private final TaskManager taskManager;
   public static String USERS_HOME = "/user";
 
   @Inject
-  public SurfMetaManager(final LoadingCache metadataIndex) {
+  public SurfMetaManager(final LoadingCache metadataIndex,
+                         final TaskManager taskManager) {
     this.metadataIndex = metadataIndex;
+    this.taskManager = taskManager;
   }
 
   public List<BlockInfo> getBlocks(Path path, User creator) throws FileNotFoundException, Throwable {
@@ -37,12 +40,8 @@ public class SurfMetaManager {
   public long clear() {
     long numEntries = metadataIndex.size();
     metadataIndex.invalidateAll();
-    clearCaches();
+    taskManager.clearCaches();
     return numEntries;
-  }
-
-  private void clearCaches() {
-    // TODO: Communicate with Task to clear caches
   }
 
   private Path getAbsolutePath(Path path, User creator) {
