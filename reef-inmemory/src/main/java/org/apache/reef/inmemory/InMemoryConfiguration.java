@@ -37,6 +37,7 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
           .bindImplementation(BlockId.class, HdfsBlockId.class)
           .bindImplementation(CacheLoader.class, HdfsCacheLoader.class)
           .bindImplementation(TaskManager.class, HdfsCacheManager.class)
+          .bindImplementation(HdfsTaskSelectionPolicy.class, HdfsRandomTaskSelectionPolicy.class)
           .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
           .build();
 }

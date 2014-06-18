@@ -9,6 +9,6 @@ import com.microsoft.reef.driver.task.RunningTask;
 public interface TaskManager {
   public boolean addRunningTask(RunningTask task);
   public void removeRunningTask(String taskId);
-
   public void clearCaches();
+  public String getCacheAddress(final RunningTask task);
 }

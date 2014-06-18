@@ -35,30 +35,19 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   private static final Logger LOG = Logger.getLogger(HdfsCacheLoader.class.getName());
 
   private final HdfsCacheManager cacheManager;
-  private final int cachePort;
   private final String dfsAddress;
   private final DFSClient dfsClient;
 
   @Inject
   public HdfsCacheLoader(final HdfsCacheManager cacheManager,
-                         final @Parameter(CacheParameters.Port.class) int cachePort,
                          final @Parameter(DfsParameters.Address.class) String dfsAddress) {
     this.cacheManager = cacheManager;
-    this.cachePort = cachePort;
     this.dfsAddress = dfsAddress;
     try {
       this.dfsClient = new DFSClient(new URI(this.dfsAddress), new Configuration());
     } catch (Exception ex) {
       throw new RuntimeException("Unable to connect to DFS Client", ex);
     }
-  }
-
-  private List<String> getLocations(LocatedBlock locatedBlock) {
-    List<String> locations = new ArrayList<>(locatedBlock.getLocations().length);
-    for (DatanodeInfo dnInfo : locatedBlock.getLocations()) {
-      locations.add(dnInfo.getNetworkLocation());
-    }
-    return locations;
   }
 
   /*
@@ -93,8 +82,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       final BlockInfo cacheBlock = copyBlockInfo(locatedBlock);
       for (final RunningTask task : cacheManager.getTasksToCache(locatedBlock)) {
         cacheManager.sendToTask(task, msg);
-        cacheBlock.addToLocations( // Add Cache node location info
-                cacheManager.getCacheHost(task) + ":" + cachePort);
+        cacheBlock.addToLocations(cacheManager.getCacheAddress(task));
       }
 
       if (LOG.isLoggable(Level.FINE)) {
