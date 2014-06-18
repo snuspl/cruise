@@ -5,7 +5,7 @@ import org.apache.reef.inmemory.cache.BlockId;
 import java.io.Serializable;
 import java.util.List;
 
-public class HdfsBlockMessage implements Serializable {
+public final class HdfsBlockMessage implements Serializable {
 
   private final HdfsBlockId blockId;
   private final List<HdfsDatanodeInfo> locations;

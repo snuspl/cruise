@@ -5,7 +5,7 @@ import org.apache.reef.inmemory.cache.InMemoryCache;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 
-public class HdfsBlockLoader {
+public final class HdfsBlockLoader {
 
   private final InMemoryCache cache;
 

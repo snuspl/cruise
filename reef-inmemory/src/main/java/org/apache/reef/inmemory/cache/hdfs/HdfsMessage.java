@@ -6,7 +6,7 @@ import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
 
 import java.io.Serializable;
 
-public class HdfsMessage implements Serializable {
+public final class HdfsMessage implements Serializable {
 
   private final Optional<HdfsBlockMessage> blockMessage;
   private final Optional<CacheClearMessage> clearMessage;
