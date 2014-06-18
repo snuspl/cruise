@@ -5,12 +5,30 @@ import com.microsoft.reef.task.TaskMessage;
 import com.microsoft.reef.task.TaskMessageSource;
 import com.microsoft.reef.task.events.DriverMessage;
 import com.microsoft.reef.util.Optional;
+import com.microsoft.tang.Injector;
+import com.microsoft.tang.JavaConfigurationBuilder;
+import com.microsoft.tang.Tang;
+import com.microsoft.tang.annotations.Name;
+import com.microsoft.tang.annotations.NamedParameter;
+import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;
+import com.microsoft.tang.exceptions.InjectionException;
+import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
+import com.microsoft.wake.StageConfiguration;
+import com.microsoft.wake.impl.ThreadPoolStage;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.inmemory.cache.BlockId;
+import org.apache.reef.inmemory.cache.BlockLoader;
 import org.apache.reef.inmemory.cache.InMemoryCache;
+import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
+import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.cache.hdfs.HdfsMessage;
 
 import javax.inject.Inject;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -20,20 +38,26 @@ import java.util.logging.Logger;
 public class InMemoryTask implements Task, TaskMessageSource {
   private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
+  private static final ObjectSerializableCodec<HdfsMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
+  private final int numThreads;
   private transient Optional<TaskMessage> hbMessage = Optional.empty();
+  private static final int NUM_THREADS = 5;
 
   private final InMemoryCache cache;
-  private final org.apache.reef.inmemory.cache.DriverMessageHandler driverMessageHandler;
 
   private boolean isDone = false;
+  private EStage<BlockLoader> loadingStage;
+  @NamedParameter(doc = "Number of threads assigned to a stage", short_name = "num_threads", default_value = "3")
+  public static class NumThreads implements Name<Integer>{}
 
   @Inject
   InMemoryTask(InMemoryCache cache,
-               org.apache.reef.inmemory.cache.DriverMessageHandler driverMessageHandler) {
+               @Parameter(NumThreads.class) int numThreads) throws InjectionException {
     this.cache = cache;
-    this.driverMessageHandler = driverMessageHandler;
+    this.numThreads = numThreads;
     this.hbMessage.orElse(INIT_MESSAGE).get();
+    this.loadingStage = initStage();
   }
 
   /**
@@ -63,7 +87,61 @@ public class InMemoryTask implements Task, TaskMessageSource {
   public final class DriverMessageHandler implements EventHandler<DriverMessage> {
     @Override
     public void onNext(DriverMessage driverMessage) {
-      driverMessageHandler.onNext(driverMessage);
+      if (driverMessage.get().isPresent()) {
+        HdfsMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
+        if (msg.getBlockMessage().isPresent()) {
+          LOG.log(Level.INFO, "Received load block msg");
+          HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
+          HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
+          executeLoad(loader);
+        } else if (msg.getClearMessage().isPresent()) {
+          LOG.log(Level.INFO, "Received cache clear msg");
+          cache.clear();
+        }
+      }
+
     }
+  }
+
+  private static class LoadExecutor implements EventHandler<BlockLoader> {
+    private InMemoryCache cache;
+    @Inject
+    LoadExecutor(InMemoryCache cache) {
+      this.cache = cache;
+    }
+    @Override
+    public void onNext(BlockLoader loader) {
+      try {
+        LOG.log(Level.INFO, "Start loading block");
+        BlockId blockId = loader.getBlockId();
+        ByteBuffer result = loader.loadBlock();
+        cache.put(blockId, result);
+        LOG.log(Level.INFO, "Finish loading block");
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  private EStage<BlockLoader> initStage() throws InjectionException {
+    JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
+    cb.bindImplementation(BlockLoader.class, HdfsBlockLoader.class);
+
+    LoadExecutor executor;
+    {
+      Injector i = Tang.Factory.getTang().newInjector(cb.build());
+      i.bindVolatileInstance(InMemoryCache.class, InMemoryTask.this.cache);
+      executor = i.getInstance(LoadExecutor.class);
+    }
+
+    cb.bindImplementation(EStage.class, ThreadPoolStage.class);
+    cb.bindNamedParameter(StageConfiguration.NumberOfThreads.class, String.valueOf(numThreads));
+    Injector i = Tang.Factory.getTang().newInjector(cb.build());
+    i.bindVolatileParameter(StageConfiguration.StageHandler.class, executor);
+    return i.getInstance(EStage.class);
+  }
+
+  public void executeLoad(BlockLoader loader) {
+    loadingStage.onNext(loader);
   }
 }
