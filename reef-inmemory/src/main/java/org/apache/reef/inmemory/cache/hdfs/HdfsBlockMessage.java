@@ -5,6 +5,10 @@ import org.apache.reef.inmemory.cache.BlockId;
 import java.io.Serializable;
 import java.util.List;
 
+/**
+ * Message sent by Driver to Task. Contains a single Block to load into its cache
+ * and the locations where the Block is replicated in HDFS.
+ */
 public final class HdfsBlockMessage implements Serializable {
 
   private final HdfsBlockId blockId;

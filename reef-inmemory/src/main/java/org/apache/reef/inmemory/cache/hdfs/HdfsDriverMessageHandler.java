@@ -9,6 +9,10 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Handle messages sent from Driver to Task. All cache and cache management
+ * messages go through this handler.
+ */
 public final class HdfsDriverMessageHandler implements DriverMessageHandler {
   private static final Logger LOG = Logger.getLogger(HdfsDriverMessageHandler.class.getName());
   private static final ObjectSerializableCodec<HdfsMessage> CODEC = new ObjectSerializableCodec<>();

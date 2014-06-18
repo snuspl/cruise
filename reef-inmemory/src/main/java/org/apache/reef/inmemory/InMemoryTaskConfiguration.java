@@ -4,7 +4,7 @@ import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.RequiredParameter;
 import org.apache.reef.inmemory.cache.*;
-import org.apache.reef.inmemory.cache.hdfs.HdfsCache;
+import org.apache.reef.inmemory.cache.InMemoryCacheImpl;
 import org.apache.reef.inmemory.cache.hdfs.HdfsDriverMessageHandler;
 
 /**
@@ -24,7 +24,7 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
 
   private static final ConfigurationModule HDFS_CONF = new InMemoryTaskConfiguration()
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
-          .bindImplementation(InMemoryCache.class, HdfsCache.class)
+          .bindImplementation(InMemoryCache.class, InMemoryCacheImpl.class)
           .bindImplementation(DriverMessageHandler.class, HdfsDriverMessageHandler.class)
           .build();
 }

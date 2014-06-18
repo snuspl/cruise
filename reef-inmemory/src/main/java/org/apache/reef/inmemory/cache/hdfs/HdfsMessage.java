@@ -5,6 +5,10 @@ import org.apache.reef.inmemory.cache.CacheClearMessage;
 
 import java.io.Serializable;
 
+/**
+ * Parent object for messages sent from Driver to Task. Each message will only
+ * hold a single child message.
+ */
 public final class HdfsMessage implements Serializable {
 
   private final Optional<HdfsBlockMessage> blockMessage;

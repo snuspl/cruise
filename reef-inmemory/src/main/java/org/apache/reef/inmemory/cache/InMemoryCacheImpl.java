@@ -1,10 +1,8 @@
-package org.apache.reef.inmemory.cache.hdfs;
+package org.apache.reef.inmemory.cache;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
-import org.apache.reef.inmemory.cache.BlockId;
-import org.apache.reef.inmemory.cache.InMemoryCache;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
@@ -12,12 +10,12 @@ import java.nio.ByteBuffer;
 /**
  * Implementation of Cache class using Google Cache interface. 
  */
-public final class HdfsCache implements InMemoryCache {
+public final class InMemoryCacheImpl implements InMemoryCache {
   private Cache<BlockId, ByteBuffer> cache = null;
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   @Inject
-  public HdfsCache() {
+  public InMemoryCacheImpl() {
     cache = CacheBuilder.newBuilder()
         .concurrencyLevel(4)
         .build();

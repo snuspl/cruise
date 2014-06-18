@@ -6,6 +6,10 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Information needed for Task to establish a channel with the HDFS Datanode.
+ * @see org.apache.hadoop.hdfs.protocol.DatanodeInfo
+ */
 public final class HdfsDatanodeInfo implements Serializable {
 
   private final String ipAddr;       // IP address

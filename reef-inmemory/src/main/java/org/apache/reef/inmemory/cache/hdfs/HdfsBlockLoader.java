@@ -5,6 +5,9 @@ import org.apache.reef.inmemory.cache.InMemoryCache;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 
+/**
+ * Load block from Hdfs Datanode, given the block ID and locations from Driver
+ */
 public final class HdfsBlockLoader {
 
   private final InMemoryCache cache;
