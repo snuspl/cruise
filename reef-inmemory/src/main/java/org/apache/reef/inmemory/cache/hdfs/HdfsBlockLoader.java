@@ -1,26 +1,107 @@
 package org.apache.reef.inmemory.cache.hdfs;
 
-import org.apache.reef.inmemory.cache.InMemoryCache;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.UnresolvedLinkException;
+import org.apache.hadoop.hdfs.*;
+import org.apache.hadoop.hdfs.net.TcpPeerServer;
+import org.apache.hadoop.hdfs.protocol.DatanodeID;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
+import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
+import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
+import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
+import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.token.Token;
+import org.apache.reef.inmemory.cache.BlockLoader;
 
 import javax.inject.Inject;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 
 /**
- * Load block from Hdfs Datanode, given the block ID and locations from Driver
+ * This class loads one block from DataNode
  */
-public final class HdfsBlockLoader {
+public class HdfsBlockLoader implements BlockLoader {
+  // Some Fields are left null, because those types are not public.
+  private static final int BUF_SIZE = 1024;
+  private static final byte[] buf = new byte[BUF_SIZE];
+  private static final int START_OFFSET = 0;
+  private static final String CLIENT_NAME = "BlockLoader";
+  private static final boolean VERIFY_CHECKSUM = true;
+  private static final boolean ALLOW_SHORT_CIRCUIT_LOCAL_READS = false;
+  private static final CachingStrategy STRATEGY = CachingStrategy.newDefaultStrategy();
 
-  private final InMemoryCache cache;
+  private final ExtendedBlock block;
+  private final DatanodeID datanode;
+  private final long blockSize;
+  private final Token<BlockTokenIdentifier> blockToken;
 
+  /**
+   * Constructor of BlockLoader
+   */
   @Inject
-  public HdfsBlockLoader(final InMemoryCache cache) {
-    this.cache = cache;
+  public HdfsBlockLoader(HdfsBlockId id,
+                         HdfsDatanodeInfo dnInfo) {
+    block = new ExtendedBlock(id.getPoolId(), id.getBlockId(), id.getBlockSize(), id.getGenerationTimestamp());
+    datanode = new DatanodeID(dnInfo.getIpAddr(), dnInfo.getHostName(), dnInfo.getStorageID(), dnInfo.getXferPort(), dnInfo.getInfoPort(), dnInfo.getInfoSecurePort(), dnInfo.getIpcPort());
+    blockSize = id.getBlockSize();
+    Token<BlockTokenIdentifier> tempToken = null;
+    try {
+      tempToken = new Token<>();
+      tempToken.decodeFromUrlString(id.getEncodedToken());
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    blockToken = tempToken;
   }
 
-  public void loadOnMessage(HdfsBlockMessage msg) {
-    // TODO: Dummy implementation; Transfer data from HDFS NameNode using msg.getLocations()
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1);
+  /**
+   * Load a block assigned to this Loader. Connect to the DataNode directly, and read one block
+   * Too large block size(>2GB) is not supported.
+   * @return byteBuffer holds the data it loaded.
+   * @throws IOException
+   */
+  public ByteBuffer loadBlock() throws IOException {
+    final Configuration conf = new HdfsConfiguration();
 
-    cache.put(msg.getBlockId(), byteBuffer);
+    // Allocate a ByteBuffer as a size of the Block
+    if(blockSize > Integer.MAX_VALUE)
+      throw new UnsupportedOperationException("Currently we don't support large(>2GB) block");
+    ByteBuffer byteBuffer = ByteBuffer.allocate((int)blockSize);
+
+    // Establish a connection against the DataNode
+    InetSocketAddress targetAddress = NetUtils.createSocketAddr(datanode.getXferAddr());
+    Socket s = NetUtils.getDefaultSocketFactory(conf).createSocket();
+    s.connect(targetAddress, HdfsServerConstants.READ_TIMEOUT);
+    s.setSoTimeout(HdfsServerConstants.READ_TIMEOUT);
+
+    String fileName = targetAddress.toString() + ":" + block.getBlockId();
+
+    // Set up BlockReader.
+    // TODO Tweak config to improve the performance (e.g. utilize local short-circuit/cache)
+    BlockReader blockReader = BlockReaderFactory.newBlockReader(
+      new DFSClient.Conf(conf), fileName, block,
+      blockToken, START_OFFSET, blockSize,
+      VERIFY_CHECKSUM, CLIENT_NAME, TcpPeerServer.peerFromSocket(s),
+      datanode, null, null, null, ALLOW_SHORT_CIRCUIT_LOCAL_READS,
+      CachingStrategy.newDefaultStrategy());
+
+    // Read the data using byte array buffer. BlockReader supports a method
+    // to read the data into ByteBuffer directly, but it caused timeout.
+    int totalRead = 0;
+    do {
+      int nRead = blockReader.read(buf, 0, BUF_SIZE);
+      byteBuffer.put(buf, 0, nRead);
+      totalRead += nRead;
+    } while(totalRead < blockSize);
+
+    // Wrap up
+    blockReader.close();
+    return byteBuffer;
   }
 }
