@@ -11,25 +11,24 @@ import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class HdfsCacheManager implements TaskManager {
 
   private static final ObjectSerializableCodec<HdfsMessage> CODEC = new ObjectSerializableCodec<>();
 
   private final int numReplicas;
-  private final Map<String, RunningTask> tasks;
+  private final Map<String, RunningTask> tasks = new HashMap<>();
 
   @Inject
   public HdfsCacheManager(final @Parameter(MetaServerParameters.Replicas.class) int numReplicas) {
     this.numReplicas = numReplicas;
-    this.tasks = new ConcurrentHashMap<>();
   }
 
   @Override
-  public boolean addRunningTask(RunningTask task) {
+  public synchronized boolean addRunningTask(RunningTask task) {
     if (tasks.containsKey(task.getId())) {
       return false;
     } else {
@@ -39,18 +38,25 @@ public final class HdfsCacheManager implements TaskManager {
   }
 
   @Override
-  public void removeRunningTask(String taskId) {
+  public synchronized void removeRunningTask(String taskId) {
     tasks.remove(taskId);
   }
 
   @Override
-  public void clearCaches() {
+  public synchronized void clearCaches() {
     for (RunningTask task : tasks.values()) {
       task.send(CODEC.encode(new HdfsMessage(new CacheClearMessage())));
     }
   }
 
-  public List<RunningTask> getTasksToCache(final LocatedBlock block) {
+  /**
+   * Return the Tasks to place cache replicas on.
+   * The current implementation just returns a number of numReplicas Tasks
+   * (based on placement within a HashMap).
+   * Any future implementations that require more logic should consider whether
+   * this synchronized method does not block other methods.
+   */
+  public synchronized List<RunningTask> getTasksToCache(final LocatedBlock block) {
     final List<RunningTask> tasksToCache = new ArrayList<>(numReplicas);
     int replicasAdded = 0;
     for (RunningTask task : tasks.values()) {
