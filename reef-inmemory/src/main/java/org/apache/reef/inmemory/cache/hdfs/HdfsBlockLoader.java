@@ -47,8 +47,8 @@ public class HdfsBlockLoader implements BlockLoader {
    * Constructor of BlockLoader
    */
   @Inject
-  public HdfsBlockLoader(HdfsBlockId id,
-                         HdfsDatanodeInfo dnInfo) {
+  public HdfsBlockLoader(final HdfsBlockId id,
+                         final HdfsDatanodeInfo dnInfo) {
     hdfsBlockId = id;
     block = new ExtendedBlock(id.getPoolId(), id.getBlockId(), id.getBlockSize(), id.getGenerationTimestamp());
     datanode = new DatanodeID(dnInfo.getIpAddr(), dnInfo.getHostName(), dnInfo.getStorageID(), dnInfo.getXferPort(), dnInfo.getInfoPort(), dnInfo.getInfoSecurePort(), dnInfo.getIpcPort());

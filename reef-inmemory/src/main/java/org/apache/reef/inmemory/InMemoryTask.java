@@ -51,8 +51,8 @@ public class InMemoryTask implements Task, TaskMessageSource {
   public static class NumThreads implements Name<Integer>{}
 
   @Inject
-  InMemoryTask(InMemoryCache cache,
-               @Parameter(NumThreads.class) int numThreads) throws InjectionException {
+  InMemoryTask(final InMemoryCache cache,
+               final @Parameter(NumThreads.class) int numThreads) throws InjectionException {
     this.cache = cache;
     this.numThreads = numThreads;
     this.hbMessage.orElse(INIT_MESSAGE).get();
@@ -103,9 +103,9 @@ public class InMemoryTask implements Task, TaskMessageSource {
   }
 
   private static class LoadExecutor implements EventHandler<BlockLoader> {
-    private InMemoryCache cache;
+    private final InMemoryCache cache;
     @Inject
-    LoadExecutor(InMemoryCache cache) {
+    LoadExecutor(final InMemoryCache cache) {
       this.cache = cache;
     }
     @Override
