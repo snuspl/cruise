@@ -50,7 +50,7 @@ public class HdfsBlockLoaderTest {
 
   @Test
   public void testLoadBlock() throws IOException, InjectionException {
-    long blockSize = fs.getDefaultBlockSize();
+    long blockSize = fs.getDefaultBlockSize(new Path(PATH));
 
     DFSClient dfsClient = new DFSClient(cluster.getURI(), new Configuration());
     ClientProtocol nameNode = dfsClient.getNamenode();
@@ -87,6 +87,12 @@ public class HdfsBlockLoaderTest {
     }
   }
 
+  /**
+   * Write sequential numbers of Long type into the file
+   * @param path the location of file
+   * @param numBlock number of blocks the file takes
+   * @throws IOException
+   */
   public void writeSequentialData(String path, int numBlock) throws IOException {
     DistributedFileSystem fs = cluster.getFileSystem();
     FSDataOutputStream os = fs.create(new Path(path), true);

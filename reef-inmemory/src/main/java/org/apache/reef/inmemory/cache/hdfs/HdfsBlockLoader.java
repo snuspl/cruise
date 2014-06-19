@@ -48,18 +48,14 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   @Inject
   public HdfsBlockLoader(final HdfsBlockId id,
-                         final HdfsDatanodeInfo dnInfo) {
+                         final HdfsDatanodeInfo dnInfo) throws IOException {
     hdfsBlockId = id;
     block = new ExtendedBlock(id.getPoolId(), id.getBlockId(), id.getBlockSize(), id.getGenerationTimestamp());
     datanode = new DatanodeID(dnInfo.getIpAddr(), dnInfo.getHostName(), dnInfo.getStorageID(), dnInfo.getXferPort(), dnInfo.getInfoPort(), dnInfo.getInfoSecurePort(), dnInfo.getIpcPort());
     blockSize = id.getBlockSize();
     Token<BlockTokenIdentifier> tempToken = null;
-    try {
-      tempToken = new Token<>();
-      tempToken.decodeFromUrlString(id.getEncodedToken());
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+    tempToken = new Token<>();
+    tempToken.decodeFromUrlString(id.getEncodedToken());
     blockToken = tempToken;
   }
 
@@ -101,11 +97,9 @@ public class HdfsBlockLoader implements BlockLoader {
       totalRead += nRead;
     } while(totalRead < blockSize);
 
-    // Wrap up
     blockReader.close();
     return byteBuffer;
   }
-
   public BlockId getBlockId() {
     return this.hdfsBlockId;
   }
