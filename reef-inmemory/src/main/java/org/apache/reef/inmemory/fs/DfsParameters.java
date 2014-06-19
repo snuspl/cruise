@@ -10,7 +10,7 @@ public final class DfsParameters {
   public static final class Type implements Name<String> {
   }
 
-  @NamedParameter(doc = "Underlying DFS address", short_name = "dfs_address", default_value = "hdfs://localhost:50070")
+  @NamedParameter(doc = "Underlying DFS address", short_name = "dfs_address", default_value = "hdfs://localhost:9000")
   public static final class Address implements Name<String> {
   }
 }
