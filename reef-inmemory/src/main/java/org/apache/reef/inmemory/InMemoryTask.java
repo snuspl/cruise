@@ -5,12 +5,24 @@ import com.microsoft.reef.task.TaskMessage;
 import com.microsoft.reef.task.TaskMessageSource;
 import com.microsoft.reef.task.events.DriverMessage;
 import com.microsoft.reef.util.Optional;
+import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;
+import com.microsoft.tang.exceptions.InjectionException;
+import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.inmemory.cache.BlockId;
+import org.apache.reef.inmemory.cache.BlockLoader;
+import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.cache.InMemoryCache;
+import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
+import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.cache.hdfs.HdfsMessage;
 
 import javax.inject.Inject;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -20,20 +32,24 @@ import java.util.logging.Logger;
 public class InMemoryTask implements Task, TaskMessageSource {
   private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
+  private static final ObjectSerializableCodec<HdfsMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
+  private final int numThreads;
   private transient Optional<TaskMessage> hbMessage = Optional.empty();
 
   private final InMemoryCache cache;
-  private final org.apache.reef.inmemory.cache.DriverMessageHandler driverMessageHandler;
 
   private boolean isDone = false;
+  private EStage<BlockLoader> loadingStage;
 
   @Inject
-  InMemoryTask(InMemoryCache cache,
-               org.apache.reef.inmemory.cache.DriverMessageHandler driverMessageHandler) {
+  InMemoryTask(final InMemoryCache cache,
+               final @Parameter(CacheParameters.NumThreads.class) int numThreads,
+               final EStage<BlockLoader> loadingStage) throws InjectionException {
     this.cache = cache;
-    this.driverMessageHandler = driverMessageHandler;
+    this.numThreads = numThreads;
     this.hbMessage.orElse(INIT_MESSAGE).get();
+    this.loadingStage = loadingStage;
   }
 
   /**
@@ -60,10 +76,62 @@ public class InMemoryTask implements Task, TaskMessageSource {
     return this.hbMessage;
   }
 
+  /**
+   * Handles messages from the Driver. The message contains the information
+   * what this task is supposed to do.
+   * TODO Separate Hdfs-specific part
+   */
   public final class DriverMessageHandler implements EventHandler<DriverMessage> {
     @Override
     public void onNext(DriverMessage driverMessage) {
-      driverMessageHandler.onNext(driverMessage);
+      if (driverMessage.get().isPresent()) {
+        HdfsMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
+        if (msg.getBlockMessage().isPresent()) {
+          LOG.log(Level.INFO, "Received load block msg");
+          HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
+          try {
+          HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
+            executeLoad(loader);
+          } catch (IOException e ) {
+            LOG.log(Level.SEVERE, "Exception occured while loading");
+          }
+        } else if (msg.getClearMessage().isPresent()) {
+          LOG.log(Level.INFO, "Received cache clear msg");
+          cache.clear();
+        }
+      }
+
     }
+  }
+
+  /**
+   * Handler for the loading stage. This executes block loading with
+   * a thread allocated from the thread pool of the loading stage.
+   */
+  public static class LoadExecutor implements EventHandler<BlockLoader> {
+    private final InMemoryCache cache;
+    @Inject
+    LoadExecutor(final InMemoryCache cache) {
+      this.cache = cache;
+    }
+    @Override
+    public void onNext(BlockLoader loader) {
+      try {
+        LOG.log(Level.INFO, "Start loading block");
+        BlockId blockId = loader.getBlockId();
+        ByteBuffer result = loader.loadBlock();
+        cache.put(blockId, result);
+        LOG.log(Level.INFO, "Finish loading block");
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  /**
+   * Submit an event to the loading stage
+   */
+  public void executeLoad(BlockLoader loader) {
+    loadingStage.onNext(loader);
   }
 }
