@@ -42,7 +42,6 @@ public class InMemoryTask implements Task, TaskMessageSource {
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
   private final int numThreads;
   private transient Optional<TaskMessage> hbMessage = Optional.empty();
-  private static final int NUM_THREADS = 5;
 
   private final InMemoryCache cache;
 
