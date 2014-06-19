@@ -48,6 +48,7 @@ public final class InMemoryDriver {
   private final TaskManager taskManager;
   private final String dfsType;
   private final int cachePort;
+  private final int numThreads;
 
   private ExecutorService executor;
 
@@ -59,12 +60,14 @@ public final class InMemoryDriver {
                         final SurfMetaServer metaService,
                         final TaskManager taskManager,
                         final @Parameter(DfsParameters.Type.class) String dfsType,
-                        final @Parameter(CacheParameters.Port.class) int cachePort) {
+                        final @Parameter(CacheParameters.Port.class) int cachePort,
+                        final @Parameter(CacheParameters.NumThreads.class) int numThreads) {
     this.requestor = requestor;
     this.metaService = metaService;
     this.taskManager = taskManager;
     this.dfsType = dfsType;
     this.cachePort = cachePort;
+    this.numThreads = numThreads;
   }
 
   /**
@@ -116,6 +119,7 @@ public final class InMemoryDriver {
         final Configuration taskConf = getTaskConfiguration();
         final Configuration taskInMemoryConf = InMemoryTaskConfiguration.getConf(dfsType)
                 .set(InMemoryTaskConfiguration.CACHESERVER_PORT, cachePort)
+                .set(InMemoryTaskConfiguration.NUM_THREADS, numThreads)
                 .build();
 
         allocatedEvaluator.submitContextAndTask(contextConf,

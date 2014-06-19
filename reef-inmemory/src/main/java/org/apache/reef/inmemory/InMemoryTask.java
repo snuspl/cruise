@@ -47,12 +47,11 @@ public class InMemoryTask implements Task, TaskMessageSource {
 
   private boolean isDone = false;
   private EStage<BlockLoader> loadingStage;
-  @NamedParameter(doc = "Number of threads assigned to a stage", short_name = "num_threads", default_value = "3")
-  public static class NumThreads implements Name<Integer>{}
+
 
   @Inject
   InMemoryTask(final InMemoryCache cache,
-               final @Parameter(NumThreads.class) int numThreads) throws InjectionException {
+               final int numThreads) throws InjectionException {
     this.cache = cache;
     this.numThreads = numThreads;
     this.hbMessage.orElse(INIT_MESSAGE).get();

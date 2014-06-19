@@ -52,6 +52,7 @@ public class Launch
             .registerShortNameOfClass(MetaServerParameters.Timeout.class)
             .registerShortNameOfClass(MetaServerParameters.Threads.class)
             .registerShortNameOfClass(CacheParameters.Port.class)
+            .registerShortNameOfClass(CacheParameters.NumThreads.class)
             .registerShortNameOfClass(DfsParameters.Type.class)
             .registerShortNameOfClass(DfsParameters.Address.class)
             .processCommandLine(args);
