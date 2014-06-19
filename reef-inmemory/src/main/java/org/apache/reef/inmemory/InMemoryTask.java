@@ -124,11 +124,9 @@ public class InMemoryTask implements Task, TaskMessageSource {
   private EStage<BlockLoader> initStage() throws InjectionException {
     JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     cb.bindImplementation(BlockLoader.class, HdfsBlockLoader.class);
-
     LoadExecutor executor;
     {
       Injector i = Tang.Factory.getTang().newInjector(cb.build());
-      i.bindVolatileInstance(InMemoryCache.class, InMemoryTask.this.cache);
       executor = i.getInstance(LoadExecutor.class);
     }
 
