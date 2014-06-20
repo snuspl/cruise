@@ -62,6 +62,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     return metaManager.clear();
   }
 
+  // TODO: return loaded Task address and absolute path
   @Override
   public boolean load(String path) throws TException {
     try {
