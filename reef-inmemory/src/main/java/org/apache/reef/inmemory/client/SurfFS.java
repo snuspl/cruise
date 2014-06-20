@@ -12,25 +12,33 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.logging.Logger;
 
-public class CachedFS extends FileSystem {
+/**
+ * Provides a transparent caching layer on top of a base FS (e.g. HDFS).
+ * Surf can be configured for access under the surf:// scheme by Hadoop FileSystem-compatible
+ * tools and frameworks, by setting the following:
+ *   fs.defaultFS: the driver's address (e.g., surf://localhost:9001)
+ *   fs.surf.impl: this class (org.apache.reef.inmemory.client.CachedFS)
+ *   surf.basefs: base FS address (e.g., hdfs://localhost:9000)
+ */
+public class SurfFS extends FileSystem {
 
-  private static final Logger LOG = Logger.getLogger(CachedFS.class.getName());
+  public static final String BASE_FS_ADDRESS_KEY = "surf.basefs";
+  public static final String BASE_FS_ADDRESS_DEFAULT = "hdfs://localhost:9000";
 
-  // These cannot be final, because the empty constructor is expected
+  private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
+
+  // These cannot be final, because the empty constructor is used externally
   private FileSystem baseFs;
   private SurfMetaService.Client thriftClient;
 
   private URI uri;
   private URI baseFsUri;
 
-  private static String BASE_SCHEME = "hdfs";
-  private static String BASE_ADDRESS = "localhost:9000";
-
-  public CachedFS() {
+  public SurfFS() {
   }
 
-  protected CachedFS(final FileSystem baseFs,
-                  final SurfMetaService.Client thriftClient) {
+  protected SurfFS(final FileSystem baseFs,
+                   final SurfMetaService.Client thriftClient) {
     this.baseFs = baseFs;
     this.thriftClient = thriftClient;
   }
@@ -39,8 +47,10 @@ public class CachedFS extends FileSystem {
   public void initialize(URI uri, Configuration conf) throws IOException {
     super.initialize(uri, conf);
 
+    String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
+
     this.uri = uri;
-    this.baseFsUri = URI.create(BASE_SCHEME+"://"+BASE_ADDRESS); // TODO: move to conf
+    this.baseFsUri = URI.create(baseFsAddress);
 
     this.baseFs = new DistributedFileSystem();
     this.baseFs.initialize(this.baseFsUri, conf);
