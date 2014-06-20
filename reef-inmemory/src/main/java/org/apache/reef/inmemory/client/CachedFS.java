@@ -17,12 +17,14 @@ public class CachedFS extends FileSystem {
   private static final Logger LOG = Logger.getLogger(CachedFS.class.getName());
 
   // These cannot be final, because the empty constructor is expected
-  FileSystem baseFs;
-  SurfMetaService.Client thriftClient;
+  private FileSystem baseFs;
+  private SurfMetaService.Client thriftClient;
 
-  URI uri;
-  URI hdfsUri;
+  private URI uri;
+  private URI baseFsUri;
 
+  private static String BASE_SCHEME = "hdfs";
+  private static String BASE_ADDRESS = "localhost:9000";
 
   public CachedFS() {
   }
@@ -38,15 +40,38 @@ public class CachedFS extends FileSystem {
     super.initialize(uri, conf);
 
     this.uri = uri;
-    this.hdfsUri = URI.create("hdfs://"+uri.getAuthority());
+    this.baseFsUri = URI.create(BASE_SCHEME+"://"+BASE_ADDRESS); // TODO: move to conf
 
     this.baseFs = new DistributedFileSystem();
-    this.baseFs.initialize(this.hdfsUri, conf);
+    this.baseFs.initialize(this.baseFsUri, conf);
+  }
+
+  protected Path pathToSurf(Path baseFsPath) {
+    URI basePathUri = baseFsPath.toUri();
+    if (basePathUri.isAbsolute()) {
+      return new Path(uri.getScheme(), uri.getAuthority(), basePathUri.getPath());
+    } else {
+      return baseFsPath;
+    }
+  }
+
+  protected Path pathToBase(Path surfPath) {
+    URI surfPathUri = surfPath.toUri();
+    if (surfPathUri.isAbsolute()) {
+      return new Path(baseFsUri.getScheme(), baseFsUri.getAuthority(), surfPathUri.getPath());
+    } else {
+      return surfPath;
+    }
+  }
+
+  protected void setStatusToSurf(FileStatus status) {
+    status.setPath(
+            pathToSurf(status.getPath()));
   }
 
   @Override
   public String getScheme() {
-    return "surf";
+    return uri.getScheme();
   }
 
   @Override
@@ -81,7 +106,11 @@ public class CachedFS extends FileSystem {
 
   @Override
   public FileStatus[] listStatus(Path path) throws FileNotFoundException, IOException {
-    return baseFs.listStatus(path);
+    FileStatus[] statuses = baseFs.listStatus(pathToBase(path));
+    for (FileStatus status : statuses) {
+      setStatusToSurf(status);
+    }
+    return statuses;
   }
 
   @Override
@@ -101,6 +130,8 @@ public class CachedFS extends FileSystem {
 
   @Override
   public FileStatus getFileStatus(Path path) throws IOException {
-    return baseFs.getFileStatus(path);
+    FileStatus status = baseFs.getFileStatus(pathToBase(path));
+    setStatusToSurf(status);
+    return status;
   }
 }
