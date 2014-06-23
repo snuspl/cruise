@@ -38,13 +38,19 @@ From `$SURF_HOME` use run.sh. To clear the cache:
 ./run.sh org.apache.reef.inmemory.cli.CLI -cmd clear
 ```
 
-To load an entry into the cache, run e.g.,
+The `load` command can be used to explicitly load a path in the base FS into the cache. If you don't already have a file in HDFS, copy one in by running from `$HADOOP_HOME`:
 
 ```
-./run.sh org.apache.reef.inmemory.cli.CLI -cmd load -path /user/readme/test/README.md
+bin/hdfs dfs -Dfs.defaultFS=hdfs://localhost:9000 -copyFromLocal ./share/doc/hadoop/hdfs/LICENSE.txt
 ```
 
-This will load data from the given path in HDFS into the cache. Surf must be running, as well as a properly configured HDFS.
+To load an entry into the cache, supply the full path (replacing `{name}` with the username):
+
+```
+./run.sh org.apache.reef.inmemory.cli.CLI -cmd load -path /user/{name}/LICENSE.txt
+```
+
+This will load data from the given path in HDFS into the cache.
 
 ### Access Surf FileSystem interface using Hadoop dfs command line
 
@@ -82,7 +88,7 @@ export SPARK_CLASSPATH=/Users/readme/surf/reef-inmemory/target/reef-inmemory-1.0
 Even a simple job will fail right now, because the `open()` method has not been implemented. To run a simple job, and experience failure:
 
 ```
-./bin/run-example HdfsTest HdfsTest surf://localhost:9001/user/readme/README.md
+./bin/run-example HdfsTest HdfsTest surf://localhost:9001/user/{name}/LICENSE.txt
 ```
 
-Make sure to provide a file path that is actually in HDFS (and not just loaded using the `CLI` above). You should see a `UnsupportedOperationException` thrown by `SurfFS`.
+Make sure to provide a file path that is actually in HDFS. You should see a `UnsupportedOperationException` thrown on `SurfFS.open()`.
