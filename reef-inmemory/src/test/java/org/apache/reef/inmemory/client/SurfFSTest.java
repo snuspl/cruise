@@ -150,10 +150,16 @@ public class SurfFSTest {
    */
   @Test
   public void testWorkingDirectory() throws IOException {
-    Path path = new Path(TESTDIR, "workingdir");
+    Path path = new Path("/user/otheruser");
     baseFs.mkdirs(path);
+
+    Path original = surfFs.getWorkingDirectory();
 
     surfFs.setWorkingDirectory(path);
     assertEquals(path, surfFs.getWorkingDirectory());
+
+    // Restore for other tests
+    surfFs.setWorkingDirectory(original);
+    assertEquals(original, surfFs.getWorkingDirectory());
   }
 }
