@@ -16,7 +16,7 @@ import java.net.URI;
 import static org.junit.Assert.*;
 
 /**
- * Tests for CachedFS, connecting to a base HDFS minicluster
+ * Tests for SurfFS, connecting to a base HDFS minicluster
  */
 public class SurfFSTest {
 

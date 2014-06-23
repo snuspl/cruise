@@ -17,7 +17,7 @@ import java.util.logging.Logger;
  * Surf can be configured for access under the surf:// scheme by Hadoop FileSystem-compatible
  * tools and frameworks, by setting the following:
  *   fs.defaultFS: the driver's address (e.g., surf://localhost:9001)
- *   fs.surf.impl: this class (org.apache.reef.inmemory.client.CachedFS)
+ *   fs.surf.impl: this class (org.apache.reef.inmemory.client.SurfFS)
  *   surf.basefs: base FS address (e.g., hdfs://localhost:9000)
  *
  * In the current design, SurfFS is a read-only filesystem. Thus,
