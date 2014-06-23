@@ -58,6 +58,20 @@ public class SurfFSTest {
   }
 
   /**
+   * Test ls on directory
+   */
+  @Test
+  public void testDirectoryListStatus() throws IOException {
+    FileStatus[] statuses = surfFs.listStatus(new Path(SURF, SURF_ADDRESS, TESTDIR));
+    for (FileStatus status : statuses) {
+      URI uri = status.getPath().toUri();
+      assertEquals(SURF, uri.getScheme());
+      assertEquals(SURF_ADDRESS, uri.getAuthority());
+      assertEquals(ABSPATH, uri.getPath());
+    }
+  }
+
+  /**
    * Test ls using a path including surf:// scheme and address
    */
   @Test
