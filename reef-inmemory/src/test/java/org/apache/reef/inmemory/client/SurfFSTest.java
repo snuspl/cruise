@@ -24,14 +24,12 @@ public class SurfFSTest {
   private static FileSystem baseFs;
   private static SurfFS surfFs;
 
-  private static final String TESTDIR = "/user/junit";
+  private static final String TESTDIR = "/user/"+System.getProperty("user.name");
   private static final String TESTFILE = "README.md";
   private static final String ABSPATH = TESTDIR+"/"+TESTFILE;
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:9001";
-
-  // TODO: test relative paths
 
   /**
    * Setup test environment once, since it's expensive.
@@ -88,19 +86,60 @@ public class SurfFSTest {
   }
 
   /**
+   * Test ls using a relative path
+   */
+  @Test
+  public void testRelPathListStatus() throws IOException {
+    FileStatus[] statuses = surfFs.listStatus(new Path(TESTFILE));
+    for (FileStatus status : statuses) {
+      URI uri = status.getPath().toUri();
+      assertEquals(SURF, uri.getScheme());
+      assertEquals(SURF_ADDRESS, uri.getAuthority());
+      assertEquals(ABSPATH, uri.getPath());
+    }
+  }
+
+  /**
    * Test translation of base HDFS path to a Surf path
    */
   @Test
   public void testHdfsPathToSurf() {
-    String absPath = "/path/to/file";
-
-    Path path = new Path(baseFs.getUri().toString(), absPath);
+    Path path = new Path(baseFs.getUri().toString(), ABSPATH);
     assertTrue(path.isAbsolute());
     Path surfPath = surfFs.pathToSurf(path);
     assertTrue(surfPath.isAbsolute());
+
     URI surfUri = surfPath.toUri();
     assertEquals(SURF, surfUri.getScheme());
     assertEquals(SURF_ADDRESS, surfUri.getAuthority());
-    assertEquals(absPath, surfUri.getPath());
+    assertEquals(ABSPATH, surfUri.getPath());
+  }
+
+  /**
+   * Test translation of Surf path to base HDFS path
+   */
+  @Test
+  public void testSurfPathToHdfs() {
+    Path path = new Path(surfFs.getUri().toString(), ABSPATH);
+    assertTrue(path.isAbsolute());
+    Path hdfsPath = surfFs.pathToBase(path);
+    assertTrue(hdfsPath.isAbsolute());
+
+    URI hdfsUri = hdfsPath.toUri();
+    assertEquals(baseFs.getUri().getScheme(), hdfsUri.getScheme());
+    assertEquals(baseFs.getUri().getAuthority(), hdfsUri.getAuthority());
+    assertEquals(ABSPATH, hdfsUri.getPath());
+  }
+
+  /**
+   * Test set/get of working directory
+   */
+  @Test
+  public void testWorkingDirectory() throws IOException {
+    Path path = new Path(TESTDIR, "workingdir");
+    baseFs.mkdirs(path);
+
+    surfFs.setWorkingDirectory(path);
+    assertEquals(path, surfFs.getWorkingDirectory());
   }
 }

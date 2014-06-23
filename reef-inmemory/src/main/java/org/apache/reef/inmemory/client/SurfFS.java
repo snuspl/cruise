@@ -19,6 +19,10 @@ import java.util.logging.Logger;
  *   fs.defaultFS: the driver's address (e.g., surf://localhost:9001)
  *   fs.surf.impl: this class (org.apache.reef.inmemory.client.CachedFS)
  *   surf.basefs: base FS address (e.g., hdfs://localhost:9000)
+ *
+ * In the current design, SurfFS is a read-only filesystem. Thus,
+ *   create, append, rename, delete, mkdirs
+ * throw an UnsupportedOperationException
  */
 public class SurfFS extends FileSystem {
 
@@ -89,6 +93,7 @@ public class SurfFS extends FileSystem {
     return uri;
   }
 
+  // TODO: implement open, using thriftClient
   @Override
   public FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     throw new UnsupportedOperationException();
@@ -123,14 +128,17 @@ public class SurfFS extends FileSystem {
     return statuses;
   }
 
+  /**
+   * Working directory management is delegated to the Base FS
+   */
   @Override
   public void setWorkingDirectory(Path path) {
-    throw new UnsupportedOperationException();
+    baseFs.setWorkingDirectory(pathToBase(path));
   }
 
   @Override
   public Path getWorkingDirectory() {
-    return baseFs.getWorkingDirectory(); // TODO: does this make sense?
+    return pathToSurf(baseFs.getWorkingDirectory());
   }
 
   @Override
