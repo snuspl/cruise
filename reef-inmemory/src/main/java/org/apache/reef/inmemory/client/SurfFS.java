@@ -24,14 +24,14 @@ import java.util.logging.Logger;
  *   create, append, rename, delete, mkdirs
  * throw an UnsupportedOperationException
  */
-public class SurfFS extends FileSystem {
+public final class SurfFS extends FileSystem {
 
   public static final String BASE_FS_ADDRESS_KEY = "surf.basefs";
   public static final String BASE_FS_ADDRESS_DEFAULT = "hdfs://localhost:9000";
 
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
-  // These cannot be final, because the empty constructor is used externally
+  // These cannot be final, because the empty constructor + intialize() are called externally
   private FileSystem baseFs;
   private SurfMetaService.Client thriftClient;
 
@@ -48,7 +48,8 @@ public class SurfFS extends FileSystem {
   }
 
   @Override
-  public void initialize(URI uri, Configuration conf) throws IOException {
+  public void initialize(final URI uri,
+                         final Configuration conf) throws IOException {
     super.initialize(uri, conf);
 
     String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
@@ -60,7 +61,7 @@ public class SurfFS extends FileSystem {
     this.baseFs.initialize(this.baseFsUri, conf);
   }
 
-  protected Path pathToSurf(Path baseFsPath) {
+  protected Path pathToSurf(final Path baseFsPath) {
     URI basePathUri = baseFsPath.toUri();
     if (basePathUri.isAbsolute()) {
       return new Path(uri.getScheme(), uri.getAuthority(), basePathUri.getPath());
@@ -69,7 +70,7 @@ public class SurfFS extends FileSystem {
     }
   }
 
-  protected Path pathToBase(Path surfPath) {
+  protected Path pathToBase(final Path surfPath) {
     URI surfPathUri = surfPath.toUri();
     if (surfPathUri.isAbsolute()) {
       return new Path(baseFsUri.getScheme(), baseFsUri.getAuthority(), surfPathUri.getPath());

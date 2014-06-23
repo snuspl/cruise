@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
  * Tests for SurfFS methods that delegate to a Base FS.
  * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
  */
-public class SurfFSDelegationTest {
+public final class SurfFSDelegationTest {
 
   private static MiniDFSCluster cluster;
   private static FileSystem baseFs;
