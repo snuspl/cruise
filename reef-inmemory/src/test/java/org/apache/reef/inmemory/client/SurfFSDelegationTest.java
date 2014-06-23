@@ -16,9 +16,10 @@ import java.net.URI;
 import static org.junit.Assert.*;
 
 /**
- * Tests for SurfFS, connecting to a base HDFS minicluster
+ * Tests for SurfFS methods that delegate to a Base FS.
+ * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
  */
-public class SurfFSTest {
+public class SurfFSDelegationTest {
 
   private static MiniDFSCluster cluster;
   private static FileSystem baseFs;
