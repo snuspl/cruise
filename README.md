@@ -2,6 +2,28 @@
 
 Surf is still under development. You can try out some of Surf's features, by following the instructions below.
 
+## Starting Surf
+
+Surf must be run along with a base FS. Here, we give an example of running with HDFS.
+
+### Launch Surf
+
+Surf can be launched using`run.sh`. E.g., to launch while specifying the base FS's address:
+
+```
+./run.sh org.apache.reef.inmemory.Launch -dfs_address "hdfs://localhost:9000"
+```
+
+### Launch HDFS
+
+If you already have an HDFS instance running, the address for that instance should be provided above. If not, a simple way to start a working (though not persistent) HDFS instance is by using the Hadoop MiniCluster. Start a MiniCluster with a specific NameNode port, by running from `$HADOOP_HOME`: 
+
+```
+HADOOP_CLASSPATH=share/hadoop/yarn/test/hadoop-yarn-server-tests-2.2.0-tests.jar ./bin/hadoop jar ./share/hadoop/mapreduce/hadoop-mapreduce-client-jobclient-2.2.0-tests.jar minicluster -nnport 9000
+```
+
+More details can be found in the [Hadoop documentation](http://hadoop.apache.org/docs/r2.2.0/hadoop-project-dist/hadoop-common/CLIMiniCluster.html).
+
 ## Using Surf
 
 By extending Hadoop's `FileSystem` abstract class, tools and frameworks that were built to use HDFS can be configured to run Surf. In this way, Surf runs as a transparent caching layer above HDFS. A cache management CLI is also provided for manual adjustment of the cache, but this will not be the main production interface.
