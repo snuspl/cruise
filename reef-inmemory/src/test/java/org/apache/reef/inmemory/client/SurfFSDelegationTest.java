@@ -1,10 +1,7 @@
 package org.apache.reef.inmemory.client;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
@@ -69,6 +66,8 @@ public final class SurfFSDelegationTest {
       assertEquals(SURF, uri.getScheme());
       assertEquals(SURF_ADDRESS, uri.getAuthority());
       assertEquals(ABSPATH, uri.getPath());
+
+      assertEquals(status, surfFs.getFileStatus(status.getPath()));
     }
   }
 
@@ -77,12 +76,17 @@ public final class SurfFSDelegationTest {
    */
   @Test
   public void testFullPathListStatus() throws IOException {
-    FileStatus[] statuses = surfFs.listStatus(new Path(SURF, SURF_ADDRESS, ABSPATH));
+    Path filePath = new Path(SURF, SURF_ADDRESS, ABSPATH);
+    FileStatus fileStatus = surfFs.getFileStatus(filePath);
+
+    FileStatus[] statuses = surfFs.listStatus(filePath);
     for (FileStatus status : statuses) {
       URI uri = status.getPath().toUri();
       assertEquals(SURF, uri.getScheme());
       assertEquals(SURF_ADDRESS, uri.getAuthority());
       assertEquals(ABSPATH, uri.getPath());
+
+      assertEquals(fileStatus, status);
     }
   }
 
@@ -91,12 +95,17 @@ public final class SurfFSDelegationTest {
    */
   @Test
   public void testAbsPathListStatus() throws IOException {
-    FileStatus[] statuses = surfFs.listStatus(new Path(ABSPATH));
+    Path filePath = new Path(ABSPATH);
+    FileStatus fileStatus = surfFs.getFileStatus(filePath);
+
+    FileStatus[] statuses = surfFs.listStatus(filePath);
     for (FileStatus status : statuses) {
       URI uri = status.getPath().toUri();
       assertEquals(SURF, uri.getScheme());
       assertEquals(SURF_ADDRESS, uri.getAuthority());
       assertEquals(ABSPATH, uri.getPath());
+
+      assertEquals(fileStatus, status);
     }
   }
 
@@ -105,12 +114,17 @@ public final class SurfFSDelegationTest {
    */
   @Test
   public void testRelPathListStatus() throws IOException {
-    FileStatus[] statuses = surfFs.listStatus(new Path(TESTFILE));
+    Path filePath = new Path(TESTFILE);
+    FileStatus fileStatus = surfFs.getFileStatus(filePath);
+
+    FileStatus[] statuses = surfFs.listStatus(filePath);
     for (FileStatus status : statuses) {
       URI uri = status.getPath().toUri();
       assertEquals(SURF, uri.getScheme());
       assertEquals(SURF_ADDRESS, uri.getAuthority());
       assertEquals(ABSPATH, uri.getPath());
+
+      assertEquals(fileStatus, status);
     }
   }
 
