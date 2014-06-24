@@ -54,7 +54,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
    * Copies block identifying information into BlockInfo. Does /not/ copy
    * location information (as it is not identifying information).
    */
-  private BlockInfo copyBlockInfo(LocatedBlock locatedBlock) {
+  private BlockInfo copyBlockInfo(LocatedBlock locatedBlock) throws IOException {
     BlockInfo blockInfo = new BlockInfo();
 
     blockInfo.setBlockId(locatedBlock.getBlock().getBlockId());
@@ -62,6 +62,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
     blockInfo.setLength(locatedBlock.getBlockSize());
     blockInfo.setNamespaceId(locatedBlock.getBlock().getBlockPoolId());
     blockInfo.setGenerationStamp(locatedBlock.getBlock().getGenerationStamp());
+    blockInfo.setToken(locatedBlock.getBlockToken().encodeToUrlString());
 
     return blockInfo;
   }

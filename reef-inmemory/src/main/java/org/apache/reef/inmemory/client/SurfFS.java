@@ -7,6 +7,7 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
+import org.apache.reef.inmemory.fs.service.SurfCacheService;
 import org.apache.reef.inmemory.fs.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -17,9 +18,14 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,6 +51,7 @@ public final class SurfFS extends FileSystem {
   // These cannot be final, because the empty constructor + intialize() are called externally
   private FileSystem baseFs;
   private SurfMetaService.Client driverClient;
+  private final Map<String, SurfCacheService.Client> taskClients = new HashMap<>(); // TODO: this assumes single threaded access
 
   private URI uri;
   private URI baseFsUri;
@@ -58,7 +65,7 @@ public final class SurfFS extends FileSystem {
     this.driverClient = driverClient;
   }
 
-  private static SurfMetaService.Client getClient(String host, int port)
+  private static SurfMetaService.Client getDriverClient(String host, int port)
           throws TTransportException {
     TTransport transport = new TFramedTransport(new TSocket(host, port));
     transport.open();
@@ -66,6 +73,25 @@ public final class SurfFS extends FileSystem {
             new TCompactProtocol(transport),
             SurfMetaService.class.getName());
     return new SurfMetaService.Client(protocol);
+  }
+
+  // TODO: may not be general (e.g., IPv6 addresses)
+  private SurfCacheService.Client getTaskClient(String address)
+          throws TTransportException {
+    String[] split = address.split(":");
+    if (split.length == 2) {
+      String host = split[0];
+      int port = Integer.parseInt(split[1]);
+
+      TTransport transport = new TFramedTransport(new TSocket(host, port));
+      transport.open();
+      TProtocol protocol = new TMultiplexedProtocol(
+              new TCompactProtocol(transport),
+              SurfCacheService.class.getName());
+      return new SurfCacheService.Client(protocol);
+    } else {
+      throw new RuntimeException("Bad address: "+address);
+    }
   }
 
   @Override
@@ -115,12 +141,26 @@ public final class SurfFS extends FileSystem {
     return uri;
   }
 
+  private ByteBuffer getBlockBuffer(BlockInfo block) throws TException {
+    String location = block.getLocationsIterator().next();
+
+    if (!taskClients.containsKey(location)) {
+      LOG.log(Level.INFO, "Connecting to cache service at: "+location);
+      taskClients.put(location, getTaskClient(location));
+      LOG.log(Level.INFO, "Connected! to cache service at: "+location);
+    }
+    SurfCacheService.Client client = taskClients.get(location);
+
+    LOG.log(Level.INFO, "Sending block request: "+block);
+    return client.getData(block);
+  }
+
   @Override
   public FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     // Lazy loading (for now)
     if (this.driverClient == null) {
       try {
-        this.driverClient = getClient("localhost", 18000); // TODO: use conf
+        this.driverClient = getDriverClient("localhost", 18000); // TODO: use conf
       } catch (TTransportException e) {
         throw new RuntimeException(e);
       }
@@ -131,8 +171,11 @@ public final class SurfFS extends FileSystem {
       FileMeta metadata = driverClient.getFileMeta(path.toUri().getPath());
       for (BlockInfo block : metadata.getBlocks()) {
         LOG.log(Level.INFO, "Retrieve block: {0}", block);
+        ByteBuffer buffer = getBlockBuffer(block);
+        LOG.log(Level.INFO, "Block buffer array length: {0}", buffer.array().length);
+        // TODO: we are just assuming one block for now!
+        return new FSDataInputStream(new SingleBlockInputStream(buffer.array()));
       }
-
       throw new UnsupportedOperationException();
     } catch (org.apache.reef.inmemory.fs.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException: "+e.getMessage()+" "+e.getCause());

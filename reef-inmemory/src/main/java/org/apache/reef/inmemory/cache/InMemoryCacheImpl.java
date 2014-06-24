@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
  * Implementation of Cache class using Google Cache interface. 
  */
 public final class InMemoryCacheImpl implements InMemoryCache {
-  private Cache<BlockId, ByteBuffer> cache = null;
+  private Cache<BlockId, byte[]> cache = null;
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   @Inject
@@ -22,13 +22,13 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public ByteBuffer get(BlockId blockId) {
+  public byte[] get(BlockId blockId) {
     return cache.getIfPresent(blockId);
   }
 
   @Override
-  public void put(BlockId blockId, ByteBuffer buffer) {
-    cache.put(blockId, buffer);
+  public void put(BlockId blockId, byte[] data) {
+    cache.put(blockId, data);
   }
 
   @Override

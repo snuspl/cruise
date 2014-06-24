@@ -6,8 +6,8 @@ import java.nio.ByteBuffer;
  * Interface for InMemory Cache.
  */
 public interface InMemoryCache {
-  public ByteBuffer get(BlockId fileBlock);
-  public void put(BlockId fileBlock, ByteBuffer buffer);
+  public byte[] get(BlockId fileBlock);
+  public void put(BlockId fileBlock, byte[] data);
   public void clear();
   public byte[] getReport();
 }

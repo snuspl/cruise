@@ -49,9 +49,9 @@ public final class InMemoryCacheImplTest {
     BlockId blockId = randomBlockId();
     ByteBuffer buffer = randomOnesBuffer();
     assertNull(cache.get(blockId));
-    cache.put(blockId, buffer);
-    ByteBuffer getBuffer = cache.get(blockId);
-    assertEquals(buffer, getBuffer);
+    cache.put(blockId, buffer.array());
+    byte[] getData = cache.get(blockId);
+    assertEquals(buffer.array(), getData);
   }
 
   /**
@@ -61,7 +61,7 @@ public final class InMemoryCacheImplTest {
   public void testClear() {
     BlockId blockId = randomBlockId();
     ByteBuffer buffer = randomOnesBuffer();
-    cache.put(blockId, buffer);
+    cache.put(blockId, buffer.array());
     assertNotNull(cache.get(blockId));
     cache.clear();
     assertNull(cache.get(blockId));

@@ -77,6 +77,7 @@ public final class InMemoryDriver {
     return TaskConfiguration.CONF
         .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
         .set(TaskConfiguration.TASK, InMemoryTask.class)
+        .set(TaskConfiguration.ON_TASK_STARTED, InMemoryTask.StartHandler.class)
         .set(TaskConfiguration.ON_MESSAGE, InMemoryTask.DriverMessageHandler.class)
         .set(TaskConfiguration.ON_SEND_MESSAGE, InMemoryTask.class)
         .build();

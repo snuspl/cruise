@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.cache.hdfs;
 
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.cache.BlockId;
+import org.apache.reef.inmemory.fs.entity.BlockInfo;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -41,6 +42,15 @@ public final class HdfsBlockId extends BlockId implements Serializable {
             locatedBlock.getBlock().getGenerationStamp(),
             locatedBlock.getBlock().getBlockPoolId(),
             locatedBlock.getBlockToken().encodeToUrlString());
+  }
+
+  public static HdfsBlockId copyBlock(BlockInfo blockInfo) {
+    return new HdfsBlockId(
+            blockInfo.getBlockId(),
+            blockInfo.getLength(),
+            blockInfo.getGenerationStamp(),
+            blockInfo.getNamespaceId(),
+            blockInfo.getToken());
   }
 
   public long getBlockId() {
