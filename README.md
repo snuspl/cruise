@@ -79,7 +79,13 @@ Note, the actual listing of files is delegated to HDFS. Make sure HDFS is runnin
 
 ### Run Spark job with Surf
 
-Add the same `core-site.xml` configuration above to the configuration at `$SPARK_HOME/conf/core-site.xml`. Add Surf's jar to Spark's classpath in `$SPARK_HOME/conf/spark-env.sh`:
+Spark must be built to work with Hadoop Yarn 2.2.0. Detailed information on building Spark can be found [within the Spark documentation](http://spark.apache.org/docs/latest/building-with-maven.html). The specific command used for 2.2.0 is:
+
+```
+mvn -Pyarn -Phadoop-2.2 -Dhadoop.version=2.2.0 -DskipTests clean package
+```
+
+Once Spark is built, it must be configured. Add the same `core-site.xml` configuration for the dfs command line (above) to the configuration at `$SPARK_HOME/conf/core-site.xml`. Then, add Surf's jar to Spark's classpath in `$SPARK_HOME/conf/spark-env.sh`:
 
 ```
 export SPARK_CLASSPATH=$SURF_HOME/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar:$SPARK_CLASSPATH
