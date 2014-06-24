@@ -48,13 +48,15 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public List<FileMeta> listStatus(String path, boolean recursive, User user) throws FileNotFoundException, TException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public FileMeta makeDirectory(String path, User user) throws FileAlreadyExistsException, TException {
-    throw new UnsupportedOperationException();
+  public FileMeta getFileMeta(String path) throws FileNotFoundException, TException {
+    try {
+      return metaManager.getBlocks(new Path(path), new User());
+    } catch (java.io.FileNotFoundException e) {
+      throw new FileNotFoundException("File not found at "+path);
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Get metadata failed for "+path, e);
+      throw new TException(e);
+    }
   }
 
   @Override
@@ -66,7 +68,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   @Override
   public boolean load(String path) throws TException {
     try {
-      List<BlockInfo> blocks = metaManager.getBlocks(new Path(path), new User());
+      List<BlockInfo> blocks = metaManager.getBlocks(new Path(path), new User()).getBlocks();
       for (BlockInfo block : blocks) {
         LOG.log(Level.INFO, "Loaded block " + block.getBlockId() + " for " + path);
       }

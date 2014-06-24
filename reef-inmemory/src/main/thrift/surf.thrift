@@ -9,8 +9,8 @@ namespace java org.apache.reef.inmemory.fs.service
  * interface.
  */
 service SurfMetaService {
-	// List status of files or directories
-	list<entity.FileMeta> listStatus(1:string path, 2:bool recursive, 3:entity.User user) throws (1: exceptions.FileNotFoundException fe),
-	// Make a new directory
-	entity.FileMeta makeDirectory(1:string path, 2:entity.User user) throws (1: exceptions.FileAlreadyExistsException fe)
+	/**
+	 * Get the list of blocks and locations for the file
+	 */
+	entity.FileMeta getFileMeta(1:string path) throws (1: exceptions.FileNotFoundException fe)
 }

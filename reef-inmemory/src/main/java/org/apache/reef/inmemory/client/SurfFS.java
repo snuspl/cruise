@@ -5,11 +5,22 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
+import org.apache.reef.inmemory.fs.entity.BlockInfo;
+import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.service.SurfMetaService;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TMultiplexedProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -33,7 +44,7 @@ public final class SurfFS extends FileSystem {
 
   // These cannot be final, because the empty constructor + intialize() are called externally
   private FileSystem baseFs;
-  private SurfMetaService.Client thriftClient;
+  private SurfMetaService.Client driverClient;
 
   private URI uri;
   private URI baseFsUri;
@@ -42,9 +53,19 @@ public final class SurfFS extends FileSystem {
   }
 
   protected SurfFS(final FileSystem baseFs,
-                   final SurfMetaService.Client thriftClient) {
+                   final SurfMetaService.Client driverClient) {
     this.baseFs = baseFs;
-    this.thriftClient = thriftClient;
+    this.driverClient = driverClient;
+  }
+
+  private static SurfMetaService.Client getClient(String host, int port)
+          throws TTransportException {
+    TTransport transport = new TFramedTransport(new TSocket(host, port));
+    transport.open();
+    TProtocol protocol = new TMultiplexedProtocol(
+            new TCompactProtocol(transport),
+            SurfMetaService.class.getName());
+    return new SurfMetaService.Client(protocol);
   }
 
   @Override
@@ -94,10 +115,32 @@ public final class SurfFS extends FileSystem {
     return uri;
   }
 
-  // TODO: implement open, using thriftClient
   @Override
   public FSDataInputStream open(Path path, final int bufferSize) throws IOException {
-    throw new UnsupportedOperationException();
+    // Lazy loading (for now)
+    if (this.driverClient == null) {
+      try {
+        this.driverClient = getClient("localhost", 18000); // TODO: use conf
+      } catch (TTransportException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    try {
+      LOG.log(Level.INFO, "getFileMeta called on: "+path+", using: "+path.toUri().getPath());
+      FileMeta metadata = driverClient.getFileMeta(path.toUri().getPath());
+      for (BlockInfo block : metadata.getBlocks()) {
+        LOG.log(Level.INFO, "Retrieve block: {0}", block);
+      }
+
+      throw new UnsupportedOperationException();
+    } catch (org.apache.reef.inmemory.fs.exceptions.FileNotFoundException e) {
+      LOG.log(Level.FINE, "FileNotFoundException: "+e.getMessage()+" "+e.getCause());
+      throw new FileNotFoundException(e.getMessage());
+    } catch (TException e) {
+      LOG.log(Level.SEVERE, "TException: "+e.getMessage()+" "+e.getCause());
+      throw new IOException(e.getMessage());
+    }
   }
 
   @Override

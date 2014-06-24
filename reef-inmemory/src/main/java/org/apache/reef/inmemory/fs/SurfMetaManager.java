@@ -28,10 +28,10 @@ public final class SurfMetaManager {
     this.taskManager = taskManager;
   }
 
-  public List<BlockInfo> getBlocks(Path path, User creator) throws FileNotFoundException, Throwable {
+  public FileMeta getBlocks(Path path, User creator) throws FileNotFoundException, Throwable {
     try {
       FileMeta metadata = metadataIndex.get(getAbsolutePath(path, creator));
-      return metadata.getBlocks();
+      return metadata;
     } catch (ExecutionException e) {
       throw e.getCause();
     }
