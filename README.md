@@ -44,7 +44,7 @@ The `load` command can be used to explicitly load a path in the base FS into the
 bin/hdfs dfs -Dfs.defaultFS=hdfs://localhost:9000 -copyFromLocal ./share/doc/hadoop/hdfs/LICENSE.txt
 ```
 
-To load an entry into the cache, supply the full path (replacing `{name}` with the username):
+To load an entry into the cache, supply the full path (replacing `{name}` with your username):
 
 ```
 ./run.sh org.apache.reef.inmemory.cli.CLI -cmd load -path /user/{name}/LICENSE.txt
@@ -79,10 +79,10 @@ Note, the actual listing of files is delegated to HDFS. Make sure HDFS is runnin
 
 ### Run Spark job with Surf
 
-Add the same `core-site.xml` configuration above to the configuration at `$SURF_HOME/conf/core-site.xml`. Add Surf's jar to Spark's classpath in `$SURF_HOME/conf/spark-env.sh`:
+Add the same `core-site.xml` configuration above to the configuration at `$SPARK_HOME/conf/core-site.xml`. Add Surf's jar to Spark's classpath in `$SPARK_HOME/conf/spark-env.sh`:
 
 ```
-export SPARK_CLASSPATH=/Users/readme/surf/reef-inmemory/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar:$SPARK_CLASSPATH
+export SPARK_CLASSPATH=$SURF_HOME/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar:$SPARK_CLASSPATH
 ```
 
 Even a simple job will fail right now, because the `open()` method has not been implemented. To run a simple job, and experience failure:
