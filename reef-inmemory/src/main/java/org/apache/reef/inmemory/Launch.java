@@ -44,7 +44,7 @@ public class Launch
   /**
    * Parse the command line arguments.
    */
-  private static Configuration parseCommandLine(final String[] args) throws IOException {
+  public static Configuration parseCommandLine(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder =
       Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
@@ -110,13 +110,14 @@ public class Launch
   /**
    * Run InMemory Application
    */
-  private static void runInMemory(final Configuration clConfig) throws InjectionException {
+  public static REEF runInMemory(final Configuration clConfig) throws InjectionException {
     final Configuration driverConfig = getDriverConfiguration();
     final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig);
     final Configuration runtimeConfig = getRuntimeConfiguration(clConfig);
     final Injector injector = Tang.Factory.getTang().newInjector(runtimeConfig);
     final REEF reef = injector.getInstance(REEFImplementation.class);
     reef.submit(Tang.Factory.getTang().newConfigurationBuilder(driverConfig, inMemoryConfig).build());
+    return reef;
   }
 
   public static void main(String[] args) throws BindException, InjectionException, IOException {

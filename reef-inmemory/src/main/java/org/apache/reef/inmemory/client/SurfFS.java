@@ -106,6 +106,8 @@ public final class SurfFS extends FileSystem {
 
     this.baseFs = new DistributedFileSystem();
     this.baseFs.initialize(this.baseFsUri, conf);
+
+    this.setConf(conf);
   }
 
   protected Path pathToSurf(final Path baseFsPath) {
@@ -178,10 +180,10 @@ public final class SurfFS extends FileSystem {
       }
       throw new UnsupportedOperationException();
     } catch (org.apache.reef.inmemory.fs.exceptions.FileNotFoundException e) {
-      LOG.log(Level.FINE, "FileNotFoundException: "+e.getMessage()+" "+e.getCause());
+      LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
       throw new FileNotFoundException(e.getMessage());
     } catch (TException e) {
-      LOG.log(Level.SEVERE, "TException: "+e.getMessage()+" "+e.getCause());
+      LOG.log(Level.SEVERE, "TException: "+e+" "+e.getCause());
       throw new IOException(e.getMessage());
     }
   }
