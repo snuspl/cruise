@@ -7,6 +7,8 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
+import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.fs.service.SurfCacheService;
 import org.apache.reef.inmemory.fs.service.SurfMetaService;
 import org.apache.thrift.TException;
@@ -24,7 +26,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -47,6 +51,9 @@ public final class SurfFS extends FileSystem {
   public static final String BASE_FS_ADDRESS_DEFAULT = "hdfs://localhost:9000";
 
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
+
+  private static final int NUM_TRIES = 4;
+  private static final int WAIT_TRIES = 500;
 
   // These cannot be final, because the empty constructor + intialize() are called externally
   private FileSystem baseFs;
@@ -154,11 +161,35 @@ public final class SurfFS extends FileSystem {
     SurfCacheService.Client client = taskClients.get(location);
 
     LOG.log(Level.INFO, "Sending block request: "+block);
-    return client.getData(block);
+    for (int i = 0; i < NUM_TRIES; i++) {
+      try {
+        return client.getData(block);
+      } catch (BlockLoadingException e) {
+        if (i < NUM_TRIES-1) {
+          LOG.log(Level.FINE, "BlockLoadingException, load started: "+e.getTimeStarted());
+          try {
+            Thread.sleep(WAIT_TRIES);
+          } catch (InterruptedException ie) {
+            LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
+          }
+        }
+      } catch (BlockNotFoundException e) {
+        if (i < NUM_TRIES-1) {
+          LOG.log(Level.FINE, "BlockNotFoundException at "+System.currentTimeMillis());
+          try {
+            Thread.sleep(WAIT_TRIES);
+          } catch (InterruptedException ie) {
+            LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
+          }
+        }
+      }
+    }
+    LOG.log(Level.WARNING, "Exception even after "+NUM_TRIES+" tries. Aborting.");
+    throw new BlockNotFoundException();
   }
 
   @Override
-  public FSDataInputStream open(Path path, final int bufferSize) throws IOException {
+  public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     // Lazy loading (for now)
     if (this.driverClient == null) {
       try {
@@ -171,14 +202,12 @@ public final class SurfFS extends FileSystem {
     try {
       LOG.log(Level.INFO, "getFileMeta called on: "+path+", using: "+path.toUri().getPath());
       FileMeta metadata = driverClient.getFileMeta(path.toUri().getPath());
+      final List<ByteBuffer> blockBuffers = new ArrayList<>(metadata.getBlocksSize());
       for (BlockInfo block : metadata.getBlocks()) {
         LOG.log(Level.INFO, "Retrieve block: {0}", block);
-        ByteBuffer buffer = getBlockBuffer(block);
-        LOG.log(Level.INFO, "Block buffer array length: {0}", buffer.array().length);
-        // TODO: we are just assuming one block for now!
-        return new FSDataInputStream(new SingleBlockInputStream(buffer.array()));
+        blockBuffers.add(getBlockBuffer(block));
       }
-      throw new UnsupportedOperationException();
+      return new FSDataInputStream(new SurfFSInputStream(metadata, blockBuffers));
     } catch (org.apache.reef.inmemory.fs.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
       throw new FileNotFoundException(e.getMessage());

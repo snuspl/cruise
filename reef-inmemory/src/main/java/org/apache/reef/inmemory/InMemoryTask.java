@@ -145,8 +145,10 @@ public class InMemoryTask implements Task, TaskMessageSource {
     @Override
     public void onNext(BlockLoader loader) {
       try {
-        LOG.log(Level.INFO, "Start loading block");
         BlockId blockId = loader.getBlockId();
+        LOG.log(Level.INFO, "Add stub block");
+        cache.putPending(blockId);
+        LOG.log(Level.INFO, "Start loading block");
         ByteBuffer result = loader.loadBlock();
         cache.put(blockId, result.array());
         LOG.log(Level.INFO, "Finish loading block");

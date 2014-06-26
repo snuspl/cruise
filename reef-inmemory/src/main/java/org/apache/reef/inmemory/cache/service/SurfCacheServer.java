@@ -5,6 +5,8 @@ import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.cache.InMemoryCache;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
+import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.fs.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.fs.service.SurfCacheService;
 import org.apache.thrift.TException;
@@ -70,13 +72,8 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   }
 
   @Override
-  public ByteBuffer getData(BlockInfo block) throws FileNotFoundException, TException {
+  public ByteBuffer getData(final BlockInfo block) throws BlockNotFoundException, BlockLoadingException, TException {
     HdfsBlockId blockId = HdfsBlockId.copyBlock(block);
-    byte[] data = cache.get(blockId);
-    if (data == null) {
-      throw new FileNotFoundException();
-    } else {
-      return ByteBuffer.wrap(data);
-    }
+    return ByteBuffer.wrap(cache.get(blockId));
   }
 }

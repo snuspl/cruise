@@ -8,5 +8,5 @@ namespace java org.apache.reef.inmemory.fs.service
  * get data from each Task node.
  */
 service SurfCacheService {
-    binary getData(1:entity.BlockInfo block) throws (1: exceptions.FileNotFoundException fe)
+    binary getData(1:entity.BlockInfo block) throws (1: exceptions.BlockNotFoundException nfe, 2:exceptions.BlockLoadingException le)
 }

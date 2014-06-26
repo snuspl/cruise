@@ -89,6 +89,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       if (LOG.isLoggable(Level.FINE)) {
         LOG.log(Level.FINE, "  " + cacheBlock.toString());
       }
+      fileMeta.setFileSize(locatedBlocks.getFileLength());
       fileMeta.addToBlocks(cacheBlock);
     }
     return fileMeta;
