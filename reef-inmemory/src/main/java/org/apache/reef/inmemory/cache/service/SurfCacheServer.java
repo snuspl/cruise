@@ -20,6 +20,9 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
 
+/**
+ * Serves block data in cache to Surf clients, using Thrift.
+ */
 public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, AutoCloseable {
 
   private static final Logger LOG = Logger.getLogger(SurfCacheServer.class.getName());
@@ -27,7 +30,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   private final InMemoryCache cache;
   private final int port;
   private final int timeout;
-  private final int numThreads; // TODO: this has to be moved out to parameters only for the server
+  private final int numThreads;
   TServer server = null;
 
   @Inject

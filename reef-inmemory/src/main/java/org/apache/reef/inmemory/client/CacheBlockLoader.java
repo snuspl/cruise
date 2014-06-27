@@ -12,7 +12,12 @@ import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class CacheBlockLoader {
+/**
+ * Lazily gets data from Cache Server, using Thrift. Once data is loaded,
+ * it is cached locally, so it will not be fetched again across InputStream
+ * read calls.
+ */
+public final class CacheBlockLoader {
   private static final Logger LOG = Logger.getLogger(CacheBlockLoader.class.getName());
 
   private final BlockInfo block;

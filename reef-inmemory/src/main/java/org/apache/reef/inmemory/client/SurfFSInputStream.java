@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  * methods pass in a buffer. Thus, we end up copying the contents of
  * the ByteBuffer into the passed in buffer which is inefficient.
  */
-public class SurfFSInputStream extends InputStream
+public final class SurfFSInputStream extends InputStream
         implements Seekable, PositionedReadable {
 
   private static final Logger LOG = Logger.getLogger(SurfFSInputStream.class.getName());
