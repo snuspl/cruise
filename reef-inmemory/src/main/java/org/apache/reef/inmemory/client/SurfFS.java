@@ -6,11 +6,7 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
-import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
-import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
-import org.apache.reef.inmemory.fs.service.SurfCacheService;
 import org.apache.reef.inmemory.fs.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -24,11 +20,6 @@ import org.apache.thrift.transport.TTransportException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -63,11 +54,9 @@ public final class SurfFS extends FileSystem {
   // These cannot be final, because the empty constructor + intialize() are called externally
   private FileSystem baseFs;
   private SurfMetaService.Client metaClient;
-  private final Map<String, SurfCacheService.Client> cacheClients = new HashMap<>();
+  private CacheClientManager cacheClientManager;
 
   private String metaserverAddress;
-  private int cacheserverRetries;
-  private int cacheserverRetriesInterval;
 
   private URI uri;
   private URI baseFsUri;
@@ -93,28 +82,15 @@ public final class SurfFS extends FileSystem {
     return new SurfMetaService.Client(protocol);
   }
 
-  private static SurfCacheService.Client getTaskClient(String address)
-          throws TTransportException {
-    HostAndPort taskAddress = HostAndPort.fromString(address);
-
-    TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
-    transport.open();
-    TProtocol protocol = new TMultiplexedProtocol(
-            new TCompactProtocol(transport),
-            SurfCacheService.class.getName());
-    return new SurfCacheService.Client(protocol);
-  }
-
   @Override
   public void initialize(final URI uri,
                          final Configuration conf) throws IOException {
     super.initialize(uri, conf);
 
     metaserverAddress = conf.get(METASERVER_ADDRESS_KEY, METASERVER_ADDRESS_DEFAULT);
-
-    cacheserverRetries = conf.getInt(CACHESERVER_RETRIES_KEY, CACHESERVER_RETRIES_DEFAULT);
-    cacheserverRetriesInterval = conf.getInt(
-            CACHESERVER_RETRIES_INTERVAL_MS_KEY, CACHESERVER_RETRIES_INTERVAL_MS_DEFAULT);
+    cacheClientManager = new CacheClientManager(
+            conf.getInt(CACHESERVER_RETRIES_KEY, CACHESERVER_RETRIES_DEFAULT),
+            conf.getInt(CACHESERVER_RETRIES_INTERVAL_MS_KEY, CACHESERVER_RETRIES_INTERVAL_MS_DEFAULT));
 
     String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
     this.uri = uri;
@@ -158,51 +134,6 @@ public final class SurfFS extends FileSystem {
     return uri;
   }
 
-  /**
-   * Includes retry on BlockLoadingException.
-   *
-   * In this implementation, retry is also done on BlockNotFoundException,
-   * because Driver does not wait until Task confirmation that block loading has been initiated.
-   * This should be fixed on Driver-Task communication side.
-   */
-  private ByteBuffer getBlockBuffer(BlockInfo block) throws TException {
-    String location = block.getLocationsIterator().next();
-
-    if (!cacheClients.containsKey(location)) {
-      LOG.log(Level.INFO, "Connecting to cache service at: "+location);
-      cacheClients.put(location, getTaskClient(location));
-      LOG.log(Level.INFO, "Connected! to cache service at: "+location);
-    }
-    SurfCacheService.Client client = cacheClients.get(location);
-
-    LOG.log(Level.INFO, "Sending block request: "+block);
-    for (int i = 0; i < 1 + cacheserverRetries; i++) {
-      try {
-        return client.getData(block);
-      } catch (BlockLoadingException e) {
-        if (i < cacheserverRetries) {
-          LOG.log(Level.FINE, "BlockLoadingException, load started: "+e.getTimeStarted());
-          try {
-            Thread.sleep(cacheserverRetriesInterval);
-          } catch (InterruptedException ie) {
-            LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
-          }
-        }
-      } catch (BlockNotFoundException e) {
-        if (i < cacheserverRetries) {
-          LOG.log(Level.FINE, "BlockNotFoundException at "+System.currentTimeMillis());
-          try {
-            Thread.sleep(cacheserverRetriesInterval);
-          } catch (InterruptedException ie) {
-            LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
-          }
-        }
-      }
-    }
-    LOG.log(Level.WARNING, "Exception even after "+cacheserverRetries+" retries. Aborting.");
-    throw new BlockNotFoundException();
-  }
-
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     // Lazy loading (for now)
@@ -217,12 +148,7 @@ public final class SurfFS extends FileSystem {
     try {
       LOG.log(Level.INFO, "getFileMeta called on: "+path+", using: "+path.toUri().getPath());
       FileMeta metadata = metaClient.getFileMeta(path.toUri().getPath());
-      final List<ByteBuffer> blockBuffers = new ArrayList<>(metadata.getBlocksSize());
-      for (BlockInfo block : metadata.getBlocks()) {
-        LOG.log(Level.INFO, "Retrieve block: {0}", block);
-        blockBuffers.add(getBlockBuffer(block));
-      }
-      return new FSDataInputStream(new SurfFSInputStream(metadata, blockBuffers));
+      return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager));
     } catch (org.apache.reef.inmemory.fs.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
       throw new FileNotFoundException(e.getMessage());

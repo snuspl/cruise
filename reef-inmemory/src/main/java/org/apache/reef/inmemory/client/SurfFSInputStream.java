@@ -5,13 +5,11 @@ import org.apache.hadoop.fs.Seekable;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 
-import java.io.ByteArrayInputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -31,16 +29,20 @@ public class SurfFSInputStream extends InputStream
   private static final Logger LOG = Logger.getLogger(SurfFSInputStream.class.getName());
 
   private final FileMeta fileMeta;
-  private final List<ByteBuffer> blockBuffers;
+  private final List<CacheBlockLoader> blocks;
 
   private long pos;
 
   private int blockIdx;
   private int blockPos;
 
-  public SurfFSInputStream(FileMeta fileMeta, List<ByteBuffer> blockBuffers) {
+  public SurfFSInputStream(final FileMeta fileMeta,
+                           final CacheClientManager cacheManager) {
     this.fileMeta = fileMeta;
-    this.blockBuffers = blockBuffers;
+    this.blocks = new ArrayList<>(fileMeta.getBlocksSize());
+    for (BlockInfo block : fileMeta.getBlocks()) {
+      blocks.add(new CacheBlockLoader(block, cacheManager));
+    }
 
     this.pos = 0;
     this.blockIdx = 0;
@@ -82,8 +84,9 @@ public class SurfFSInputStream extends InputStream
       assert(blockPosition < currBlock.getLength());
 
       long toCopy = Math.min(remaining, currBlock.getLength() - blockPosition);
+      byte[] block = blocks.get(blockIndex).getBlock();
       for (int i = 0; i < toCopy; i++) {
-        buffer[((int) (position + i))] = blockBuffers.get(blockIndex).get(blockPosition + i);
+        buffer[((int) (position + i))] = block[blockPosition + i];
       }
       remaining -= toCopy;
       blockPosition += toCopy;
@@ -118,7 +121,8 @@ public class SurfFSInputStream extends InputStream
       return -1;
     }
 
-    int val = blockBuffers.get(blockIdx).get(blockPos) & 0xff;
+    byte[] block = blocks.get(blockIdx).getBlock();
+    int val = block[blockPos] & 0xff;
 
     // Update position, without checking validity
     this.pos++;
@@ -168,5 +172,4 @@ public class SurfFSInputStream extends InputStream
   public boolean seekToNewSource(long targetPos) throws IOException {
     return false;
   }
-
 }
