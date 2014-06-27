@@ -13,6 +13,7 @@ Surf can be launched using`run.sh`. E.g., to launch while specifying the base FS
 ```
 ./run.sh org.apache.reef.inmemory.Launch -dfs_address "hdfs://localhost:9000"
 ```
+* You can run the application on YARN runtime, by adding `-local "false"` argument. By default, it runs on local runtime.
 
 ### Launch HDFS
 
