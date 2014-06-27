@@ -92,7 +92,7 @@ public final class InMemoryDriver {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
       InMemoryDriver.this.requestor.submit(EvaluatorRequest.newBuilder()
           .setNumber(1)
-          .setMemory(128)
+          .setMemory(512)
           .build());
 
       executor = Executors.newSingleThreadExecutor();

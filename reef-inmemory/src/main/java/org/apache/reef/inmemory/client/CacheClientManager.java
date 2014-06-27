@@ -3,7 +3,6 @@ package org.apache.reef.inmemory.client;
 import com.google.common.net.HostAndPort;
 import org.apache.reef.inmemory.fs.service.SurfCacheService;
 import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TMultiplexedProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
@@ -40,11 +39,10 @@ public final class CacheClientManager {
           throws TTransportException {
     HostAndPort taskAddress = HostAndPort.fromString(address);
 
-    TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
+    TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()),
+            256 * 1024 * 1024); // TODO: will not work if HDFS block size > 256 MB
     transport.open();
-    TProtocol protocol = new TMultiplexedProtocol(
-            new TCompactProtocol(transport),
-            SurfCacheService.class.getName());
+    TProtocol protocol = new TCompactProtocol(transport);
     return new SurfCacheService.Client(protocol);
   }
 

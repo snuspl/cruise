@@ -7,10 +7,8 @@ import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
-import org.apache.reef.inmemory.fs.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.fs.service.SurfCacheService;
 import org.apache.thrift.TException;
-import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -49,10 +47,8 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     try {
       TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.port, this.timeout);
 
-      TMultiplexedProcessor processor = new TMultiplexedProcessor();
-      SurfCacheService.Processor<SurfCacheService.Iface> metaProcessor =
+      SurfCacheService.Processor<SurfCacheService.Iface> processor =
               new SurfCacheService.Processor<SurfCacheService.Iface>(this);
-      processor.registerProcessor(SurfCacheService.class.getName(), metaProcessor);
 
       this.server = new THsHaServer(
           new THsHaServer.Args(serverTransport).processor(processor)
