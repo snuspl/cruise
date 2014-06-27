@@ -48,7 +48,7 @@ public class Launch
     final JavaConfigurationBuilder confBuilder =
       Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
-    cl.registerShortNameOfClass(Launch.Local.class);
+    cl.registerShortNameOfClass(Local.class);
     cl.registerShortNameOfClass(MetaServerParameters.Port.class);
     cl.registerShortNameOfClass(MetaServerParameters.Timeout.class);
     cl.registerShortNameOfClass(MetaServerParameters.Threads.class);
@@ -95,7 +95,7 @@ public class Launch
    */
   private static Configuration getRuntimeConfiguration(final Configuration clConfig) throws BindException, InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector(clConfig);
-    final boolean isLocal = injector.getNamedInstance(Launch.Local.class);
+    final boolean isLocal = injector.getNamedInstance(Local.class);
     final Configuration runtimeConfig;
     if(isLocal) {
       runtimeConfig = LocalRuntimeConfiguration.CONF
