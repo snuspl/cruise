@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.client;
 
+import com.google.common.net.HostAndPort;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
@@ -20,10 +21,8 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
-import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -41,7 +40,7 @@ import java.util.logging.Logger;
  *   fs.surf.impl: this class (org.apache.reef.inmemory.client.SurfFS)
  *   surf.basefs: base FS address (e.g., hdfs://localhost:9000)
  *
- * In the current design, SurfFS is a read-only filesystem. Thus,
+ * SurfFS is a read-only filesystem. Thus,
  *   create, append, rename, delete, mkdirs
  * throw an UnsupportedOperationException
  */
@@ -50,15 +49,25 @@ public final class SurfFS extends FileSystem {
   public static final String BASE_FS_ADDRESS_KEY = "surf.basefs";
   public static final String BASE_FS_ADDRESS_DEFAULT = "hdfs://localhost:9000";
 
-  private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
+  public static final String METASERVER_ADDRESS_KEY = "surf.metaserver.address";
+  public static final String METASERVER_ADDRESS_DEFAULT = "localhost:18000";
 
-  private static final int NUM_TRIES = 4;
-  private static final int WAIT_TRIES = 500;
+  public static final String CACHESERVER_RETRIES_KEY = "surf.cacheserver.retries";
+  public static final int CACHESERVER_RETRIES_DEFAULT = 3;
+
+  public static final String CACHESERVER_RETRIES_INTERVAL_MS_KEY = "surf.cacheserver.retries.interval.ms";
+  public static final int CACHESERVER_RETRIES_INTERVAL_MS_DEFAULT = 500;
+
+  private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
   // These cannot be final, because the empty constructor + intialize() are called externally
   private FileSystem baseFs;
-  private SurfMetaService.Client driverClient;
-  private final Map<String, SurfCacheService.Client> taskClients = new HashMap<>(); // TODO: this assumes single threaded access
+  private SurfMetaService.Client metaClient;
+  private final Map<String, SurfCacheService.Client> cacheClients = new HashMap<>();
+
+  private String metaserverAddress;
+  private int cacheserverRetries;
+  private int cacheserverRetriesInterval;
 
   private URI uri;
   private URI baseFsUri;
@@ -67,14 +76,16 @@ public final class SurfFS extends FileSystem {
   }
 
   protected SurfFS(final FileSystem baseFs,
-                   final SurfMetaService.Client driverClient) {
+                   final SurfMetaService.Client metaClient) {
     this.baseFs = baseFs;
-    this.driverClient = driverClient;
+    this.metaClient = metaClient;
   }
 
-  private static SurfMetaService.Client getDriverClient(String host, int port)
+  private static SurfMetaService.Client getMetaClient(String address)
           throws TTransportException {
-    TTransport transport = new TFramedTransport(new TSocket(host, port));
+    HostAndPort metaAddress = HostAndPort.fromString(address);
+
+    TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
     transport.open();
     TProtocol protocol = new TMultiplexedProtocol(
             new TCompactProtocol(transport),
@@ -82,23 +93,16 @@ public final class SurfFS extends FileSystem {
     return new SurfMetaService.Client(protocol);
   }
 
-  // TODO: may not be general (e.g., IPv6 addresses)
-  private SurfCacheService.Client getTaskClient(String address)
+  private static SurfCacheService.Client getTaskClient(String address)
           throws TTransportException {
-    String[] split = address.split(":");
-    if (split.length == 2) {
-      String host = split[0];
-      int port = Integer.parseInt(split[1]);
+    HostAndPort taskAddress = HostAndPort.fromString(address);
 
-      TTransport transport = new TFramedTransport(new TSocket(host, port));
-      transport.open();
-      TProtocol protocol = new TMultiplexedProtocol(
-              new TCompactProtocol(transport),
-              SurfCacheService.class.getName());
-      return new SurfCacheService.Client(protocol);
-    } else {
-      throw new RuntimeException("Bad address: "+address);
-    }
+    TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
+    transport.open();
+    TProtocol protocol = new TMultiplexedProtocol(
+            new TCompactProtocol(transport),
+            SurfCacheService.class.getName());
+    return new SurfCacheService.Client(protocol);
   }
 
   @Override
@@ -106,11 +110,15 @@ public final class SurfFS extends FileSystem {
                          final Configuration conf) throws IOException {
     super.initialize(uri, conf);
 
-    String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
+    metaserverAddress = conf.get(METASERVER_ADDRESS_KEY, METASERVER_ADDRESS_DEFAULT);
 
+    cacheserverRetries = conf.getInt(CACHESERVER_RETRIES_KEY, CACHESERVER_RETRIES_DEFAULT);
+    cacheserverRetriesInterval = conf.getInt(
+            CACHESERVER_RETRIES_INTERVAL_MS_KEY, CACHESERVER_RETRIES_INTERVAL_MS_DEFAULT);
+
+    String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
     this.uri = uri;
     this.baseFsUri = URI.create(baseFsAddress);
-
     this.baseFs = new DistributedFileSystem();
     this.baseFs.initialize(this.baseFsUri, conf);
 
@@ -150,50 +158,57 @@ public final class SurfFS extends FileSystem {
     return uri;
   }
 
+  /**
+   * Includes retry on BlockLoadingException.
+   *
+   * In this implementation, retry is also done on BlockNotFoundException,
+   * because Driver does not wait until Task confirmation that block loading has been initiated.
+   * This should be fixed on Driver-Task communication side.
+   */
   private ByteBuffer getBlockBuffer(BlockInfo block) throws TException {
     String location = block.getLocationsIterator().next();
 
-    if (!taskClients.containsKey(location)) {
+    if (!cacheClients.containsKey(location)) {
       LOG.log(Level.INFO, "Connecting to cache service at: "+location);
-      taskClients.put(location, getTaskClient(location));
+      cacheClients.put(location, getTaskClient(location));
       LOG.log(Level.INFO, "Connected! to cache service at: "+location);
     }
-    SurfCacheService.Client client = taskClients.get(location);
+    SurfCacheService.Client client = cacheClients.get(location);
 
     LOG.log(Level.INFO, "Sending block request: "+block);
-    for (int i = 0; i < NUM_TRIES; i++) {
+    for (int i = 0; i < 1 + cacheserverRetries; i++) {
       try {
         return client.getData(block);
       } catch (BlockLoadingException e) {
-        if (i < NUM_TRIES-1) {
+        if (i < cacheserverRetries) {
           LOG.log(Level.FINE, "BlockLoadingException, load started: "+e.getTimeStarted());
           try {
-            Thread.sleep(WAIT_TRIES);
+            Thread.sleep(cacheserverRetriesInterval);
           } catch (InterruptedException ie) {
             LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
           }
         }
       } catch (BlockNotFoundException e) {
-        if (i < NUM_TRIES-1) {
+        if (i < cacheserverRetries) {
           LOG.log(Level.FINE, "BlockNotFoundException at "+System.currentTimeMillis());
           try {
-            Thread.sleep(WAIT_TRIES);
+            Thread.sleep(cacheserverRetriesInterval);
           } catch (InterruptedException ie) {
             LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
           }
         }
       }
     }
-    LOG.log(Level.WARNING, "Exception even after "+NUM_TRIES+" tries. Aborting.");
+    LOG.log(Level.WARNING, "Exception even after "+cacheserverRetries+" retries. Aborting.");
     throw new BlockNotFoundException();
   }
 
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     // Lazy loading (for now)
-    if (this.driverClient == null) {
+    if (this.metaClient == null) {
       try {
-        this.driverClient = getDriverClient("localhost", 18000); // TODO: use conf
+        this.metaClient = getMetaClient(metaserverAddress);
       } catch (TTransportException e) {
         throw new RuntimeException(e);
       }
@@ -201,7 +216,7 @@ public final class SurfFS extends FileSystem {
 
     try {
       LOG.log(Level.INFO, "getFileMeta called on: "+path+", using: "+path.toUri().getPath());
-      FileMeta metadata = driverClient.getFileMeta(path.toUri().getPath());
+      FileMeta metadata = metaClient.getFileMeta(path.toUri().getPath());
       final List<ByteBuffer> blockBuffers = new ArrayList<>(metadata.getBlocksSize());
       for (BlockInfo block : metadata.getBlocks()) {
         LOG.log(Level.INFO, "Retrieve block: {0}", block);

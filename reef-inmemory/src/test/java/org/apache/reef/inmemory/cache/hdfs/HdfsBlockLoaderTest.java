@@ -35,6 +35,9 @@ public class HdfsBlockLoaderTest {
     // Initialize the cluster and write sequential numbers over the blocks to check validity of the data loaded
     Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
+    // Reduce blocksize to 512 bytes, to test multiple blocks
+    hdfsConfig.setInt(DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY, 512);
+    hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 512);
 
     cluster = new MiniDFSCluster.Builder(hdfsConfig).numDataNodes(3).build();
     cluster.waitActive();
