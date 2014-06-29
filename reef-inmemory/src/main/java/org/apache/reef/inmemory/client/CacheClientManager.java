@@ -21,10 +21,14 @@ public final class CacheClientManager {
 
   private final int retries;
   private final int retriesInterval;
+  private final int bufferSize;
 
-  public CacheClientManager(int retries, int retriesInterval) {
+  public CacheClientManager(final int retries,
+                            final int retriesInterval,
+                            final int bufferSize) {
     this.retries = retries;
     this.retriesInterval = retriesInterval;
+    this.bufferSize = bufferSize;
   }
 
   public int getRetries() {
@@ -35,12 +39,15 @@ public final class CacheClientManager {
     return retriesInterval;
   }
 
+  public int getBufferSize() {
+    return bufferSize;
+  }
+
   private static SurfCacheService.Client create(String address)
           throws TTransportException {
     HostAndPort taskAddress = HostAndPort.fromString(address);
 
-    TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()),
-            256 * 1024 * 1024); // TODO: will not work if HDFS block size > 256 MB
+    TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
     transport.open();
     TProtocol protocol = new TCompactProtocol(transport);
     return new SurfCacheService.Client(protocol);

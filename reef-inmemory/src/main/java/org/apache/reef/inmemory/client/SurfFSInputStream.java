@@ -5,9 +5,9 @@ import org.apache.hadoop.fs.Seekable;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -29,6 +29,7 @@ public final class SurfFSInputStream extends InputStream
   private static final Logger LOG = Logger.getLogger(SurfFSInputStream.class.getName());
 
   private final FileMeta fileMeta;
+  private final CacheClientManager cacheManager;
   private final List<CacheBlockLoader> blocks;
 
   private long pos;
@@ -39,9 +40,10 @@ public final class SurfFSInputStream extends InputStream
   public SurfFSInputStream(final FileMeta fileMeta,
                            final CacheClientManager cacheManager) {
     this.fileMeta = fileMeta;
+    this.cacheManager = cacheManager;
     this.blocks = new ArrayList<>(fileMeta.getBlocksSize());
     for (BlockInfo block : fileMeta.getBlocks()) {
-      blocks.add(new CacheBlockLoader(block, cacheManager));
+      blocks.add(new CacheBlockLoader(block, this.cacheManager));
     }
 
     this.pos = 0;
@@ -49,13 +51,12 @@ public final class SurfFSInputStream extends InputStream
     this.blockPos = 0;
   }
 
+  // TODO: the while loop may not belong here; this should just be a best-effort read? But, if we keep reading 0, things get weird
   @Override
   public int read(long position, byte[] buffer, int offset, int length) throws IOException {
     if (position >= fileMeta.getFileSize()) {
       throw new IOException("Read position "+position+" exceeds file size "+fileMeta.getFileSize());
     }
-
-    int copied = 0;
 
     // seek to position
     long remaining = position;
@@ -77,16 +78,18 @@ public final class SurfFSInputStream extends InputStream
     }
 
     // copy data
-    int bufferIndex = offset;
-    remaining = length;
+    int copied = 0;
+    remaining = length - offset; // TODO: is this right?
     while (remaining > 0 && position < fileMeta.getFileSize()) {
       BlockInfo currBlock = fileMeta.getBlocks().get(blockIndex);
       assert(blockPosition < currBlock.getLength());
 
-      long toCopy = Math.min(remaining, currBlock.getLength() - blockPosition);
-      byte[] block = blocks.get(blockIndex).getBlock();
+      final int packetStartPosition =
+              blockPosition - (blockPosition % (cacheManager.getBufferSize()));
+      byte[] data = blocks.get(blockIndex).getData(packetStartPosition);
+      long toCopy = Math.min(remaining, data.length);
       for (int i = 0; i < toCopy; i++) {
-        buffer[((int) (position + i))] = block[blockPosition + i];
+        buffer[offset + copied + i] = data[(blockPosition - packetStartPosition) + i];
       }
       remaining -= toCopy;
       blockPosition += toCopy;
@@ -94,6 +97,7 @@ public final class SurfFSInputStream extends InputStream
       copied += toCopy;
 
       if (blockPosition == currBlock.getLength()) {
+        blocks.get(blockIndex).flushLocalCache();
         blockPosition = 0;
         blockIndex++;
       }
@@ -121,8 +125,9 @@ public final class SurfFSInputStream extends InputStream
       return -1;
     }
 
-    byte[] block = blocks.get(blockIdx).getBlock();
-    int val = block[blockPos] & 0xff;
+    final int packetStartPos = blockPos - (blockPos % cacheManager.getBufferSize());
+    byte[] data = blocks.get(blockIdx).getData(packetStartPos);
+    int val = data[blockPos - packetStartPos] & 0xff;
 
     // Update position, without checking validity
     this.pos++;
@@ -138,7 +143,7 @@ public final class SurfFSInputStream extends InputStream
   @Override
   public void seek(long pos) throws IOException {
     if (pos >= fileMeta.getFileSize()) {
-      throw new IOException("Seek position "+pos+" exceeds file size "+fileMeta.getFileSize());
+      throw new EOFException("Seek position "+pos+" exceeds file size "+fileMeta.getFileSize());
     }
     if (pos < this.pos) { // reset position
       this.pos = 0;

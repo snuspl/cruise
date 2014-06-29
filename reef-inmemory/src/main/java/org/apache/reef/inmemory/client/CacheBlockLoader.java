@@ -8,24 +8,32 @@ import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Lazily gets data from Cache Server, using Thrift. Once data is loaded,
- * it is cached locally, so it will not be fetched again across InputStream
- * read calls.
+ * Lazily gets data from Cache Server, using Thrift. Data is retrieved
+ * not all at once, but rather in chunks.
+ *
+ * The latest chunk is cached locally, until another chunk is read,
+ * or the parent InputStream deems it no longer necessary and calls
+ * flushLocalCache().
  */
 public final class CacheBlockLoader {
   private static final Logger LOG = Logger.getLogger(CacheBlockLoader.class.getName());
+
+  private static final long NO_OFFSET = -1;
 
   private final BlockInfo block;
   private final Iterator<String> locations;
 
   private final CacheClientManager cacheManager;
+  private SurfCacheService.Client client;
 
   private byte[] data;
+  private long offset = NO_OFFSET;
 
   public CacheBlockLoader(final BlockInfo block,
                           final CacheClientManager cacheManager) {
@@ -55,18 +63,24 @@ public final class CacheBlockLoader {
    * because Driver does not wait until Task confirmation that block loading has been initiated.
    * This should be fixed on Driver-Task communication side.
    */
-  public byte[] getBlock() throws IOException {
-    if (data != null) {
-      return data;
+  public synchronized byte[] getData(long offset) throws IOException {
+    if (this.offset == offset && this.data != null) {
+      return this.data;
+    } else if (this.data != null) { // locally cached copy has wrong offset
+      flushLocalCache();
     }
 
-    SurfCacheService.Client client = getNextClient();
+    if (this.client == null) {
+      client = getNextClient();
+    }
 
-    LOG.log(Level.INFO, "Sending block request: "+block);
+    LOG.log(Level.INFO, "Sending block request: "+block+", with offset "+offset);
     for (int i = 0; i < 1 + cacheManager.getRetries(); i++) {
       try {
-        synchronized (client) {
-          this.data = client.getData(block).array();
+        synchronized(client) {
+          ByteBuffer dataBuffer = client.getData(block, offset, cacheManager.getBufferSize());
+          this.data = dataBuffer.array();
+          this.offset = offset;
           return this.data;
         }
       } catch (BlockLoadingException e) {
@@ -94,5 +108,10 @@ public final class CacheBlockLoader {
     }
     LOG.log(Level.WARNING, "Exception after "+(1 + cacheManager.getRetries())+" tries. Aborting.");
     throw new IOException();
+  }
+
+  public synchronized void flushLocalCache() {
+    this.offset = NO_OFFSET;
+    this.data = null;
   }
 }

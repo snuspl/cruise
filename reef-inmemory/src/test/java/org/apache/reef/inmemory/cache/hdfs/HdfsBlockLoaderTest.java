@@ -82,7 +82,7 @@ public class HdfsBlockLoaderTest {
       loader = i.getInstance(BlockLoader.class);
 
       // Load the data as a ByteBuffer
-      ByteBuffer loadedBuf = loader.loadBlock();
+      ByteBuffer loadedBuf = ByteBuffer.wrap(loader.loadBlock());
 
       // Because the size of long is 8 bytes, the offset should be calculated as lIndex * 8
       for(long lIndex = 0; lIndex < block.getBlockSize() / LONG_BYTES; lIndex++)

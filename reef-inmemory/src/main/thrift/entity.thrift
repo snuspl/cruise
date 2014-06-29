@@ -31,3 +31,8 @@ struct FileMeta{
 	9:bool complete,          // Whether the file is complete or not
 	10:User owner             // Owner information of the file.
 }
+
+struct CacheData {
+    1:i64 length,
+    2:binary data
+}

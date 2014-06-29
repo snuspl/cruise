@@ -7,7 +7,6 @@ import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
 
 import javax.inject.Inject;
-import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 
 /**
@@ -39,6 +38,22 @@ public final class InMemoryCacheImpl implements InMemoryCache {
         throw new BlockNotFoundException();
       } else {
         return cache.getIfPresent(blockId);
+      }
+    }
+  }
+
+  @Override
+  public void read(BlockId blockId, ByteBuffer out, long offset)
+          throws BlockLoadingException, BlockNotFoundException {
+    Long pendingTime = pending.getIfPresent(blockId);
+    if (pendingTime != null) {
+      throw new BlockLoadingException(pendingTime);
+    } else {
+      byte[] block = cache.getIfPresent(blockId);
+      if (block == null) {
+        throw new BlockNotFoundException();
+      } else {
+        out.put(block, (int)offset, out.capacity());
       }
     }
   }

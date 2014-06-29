@@ -8,7 +8,6 @@ import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.fs.service.SurfCacheService;
-import org.apache.thrift.TException;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -71,8 +70,13 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   }
 
   @Override
-  public ByteBuffer getData(final BlockInfo block) throws BlockNotFoundException, BlockLoadingException, TException {
-    HdfsBlockId blockId = HdfsBlockId.copyBlock(block);
-    return ByteBuffer.wrap(cache.get(blockId));
+  public ByteBuffer getData(final BlockInfo blockInfo,
+                           final long offset, final long length) throws BlockNotFoundException, BlockLoadingException {
+    HdfsBlockId blockId = HdfsBlockId.copyBlock(blockInfo);
+
+    byte[] block = cache.get(blockId);
+    ByteBuffer buf = ByteBuffer.wrap(block, (int)offset,
+            Math.min(block.length - (int)offset, Math.min((int)length, 8 * 1024 * 1024))); // 8 MB, for now
+    return buf;
   }
 }

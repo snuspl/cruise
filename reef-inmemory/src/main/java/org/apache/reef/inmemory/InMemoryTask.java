@@ -12,7 +12,6 @@ import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
-import com.microsoft.wake.time.event.StartTime;
 import org.apache.reef.inmemory.cache.BlockId;
 import org.apache.reef.inmemory.cache.BlockLoader;
 import org.apache.reef.inmemory.cache.CacheParameters;
@@ -24,7 +23,6 @@ import org.apache.reef.inmemory.cache.service.SurfCacheServer;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -149,8 +147,8 @@ public class InMemoryTask implements Task, TaskMessageSource {
         LOG.log(Level.INFO, "Add stub block");
         cache.putPending(blockId);
         LOG.log(Level.INFO, "Start loading block");
-        ByteBuffer result = loader.loadBlock();
-        cache.put(blockId, result.array());
+        byte[] result = loader.loadBlock();
+        cache.put(blockId, result);
         LOG.log(Level.INFO, "Finish loading block");
       } catch (IOException e) {
         e.printStackTrace();
