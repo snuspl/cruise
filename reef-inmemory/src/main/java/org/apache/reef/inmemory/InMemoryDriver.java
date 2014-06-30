@@ -15,6 +15,7 @@ import com.microsoft.wake.StageConfiguration;
 import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.fs.DfsParameters;
 import org.apache.reef.inmemory.fs.TaskManager;
+import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 import org.apache.reef.inmemory.fs.service.SurfMetaServer;
 
 import com.microsoft.reef.driver.context.ContextConfiguration;
@@ -47,6 +48,8 @@ public final class InMemoryDriver {
   private final SurfMetaServer metaService;
   private final TaskManager taskManager;
   private final String dfsType;
+  private final int initCacheServers;
+  private final int defaultMemCacheServers;
   private final int cachePort;
   private final int cacheServerThreads;
   private final int cacheLoadingThreads;
@@ -61,6 +64,8 @@ public final class InMemoryDriver {
                         final SurfMetaServer metaService,
                         final TaskManager taskManager,
                         final @Parameter(DfsParameters.Type.class) String dfsType,
+                        final @Parameter(MetaServerParameters.InitCacheServers.class) int initCacheServers,
+                        final @Parameter(MetaServerParameters.DefaultMemCacheServers.class) int defaultMemCacheServers,
                         final @Parameter(CacheParameters.Port.class) int cachePort,
                         final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
                         final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads) {
@@ -68,6 +73,8 @@ public final class InMemoryDriver {
     this.metaService = metaService;
     this.taskManager = taskManager;
     this.dfsType = dfsType;
+    this.initCacheServers = initCacheServers;
+    this.defaultMemCacheServers = defaultMemCacheServers;
     this.cachePort = cachePort;
     this.cacheServerThreads = cacheServerThreads;
     this.cacheLoadingThreads = cacheLoadingThreads;
@@ -94,8 +101,8 @@ public final class InMemoryDriver {
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
       InMemoryDriver.this.requestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(1)
-          .setMemory(512)
+          .setNumber(initCacheServers)
+          .setMemory(defaultMemCacheServers)
           .build());
 
       executor = Executors.newSingleThreadExecutor();
