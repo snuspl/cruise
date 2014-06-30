@@ -29,7 +29,7 @@ More details can be found in the [Hadoop documentation](http://hadoop.apache.org
 
 By extending Hadoop's `FileSystem` abstract class, tools and frameworks that were built to use HDFS can be configured to run Surf. In this way, Surf runs as a transparent caching layer above HDFS. A cache management CLI is also provided for manual adjustment of the cache, but this will not be the main production interface.
 
-The usage below assumes that all of Surf's components are running on the local node.
+The usage below assumes that all of Surf's components are running on `localhost`.
 
 ### Run Surf cache management commands from CLI
 
@@ -76,7 +76,14 @@ Then run the dfs command while adding the surf jar to the command line. For exam
 HADOOP_CLASSPATH=$SURF_HOME/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar $HADOOP_HOME/bin/hdfs dfs -Dfs.defaultFS=surf://localhost:9001 -ls
 ```
 
-Note, the actual listing of files is delegated to HDFS. Make sure HDFS is running as well.
+Note, the actual listing of files is delegated to HDFS. Reading data on HDFS through Surf stores that data in memory on the Surf nodes. For example, run the -copyToLocal command twice:
+
+```
+HADOOP_CLASSPATH=$SURF_HOME/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar $HADOOP_HOME/bin/hdfs dfs -Dfs.defaultFS=surf://localhost:9001 -copyToLocal /user/{name}/LICENSE.txt
+```
+
+The first time, the data on HDFS is loaded onto Surf, and then copied to the local filesystem. The second time, the data in memory on Surf is directly copied to the local filesystem.
+
 
 ### Run Spark job with Surf
 
@@ -92,10 +99,8 @@ Once Spark is built, it must be configured. Add the same `core-site.xml` configu
 export SPARK_CLASSPATH=$SURF_HOME/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar:$SPARK_CLASSPATH
 ```
 
-Even a simple job will fail right now, because the `open()` method has not been implemented. To run a simple job, and experience failure:
+An example job with a `surf://` path will succeed: 
 
 ```
 ./bin/run-example HdfsTest HdfsTest surf://localhost:9001/user/{name}/LICENSE.txt
 ```
-
-Make sure to provide a file path that is actually in HDFS. You should see a `UnsupportedOperationException` thrown on `SurfFS.open()`.
