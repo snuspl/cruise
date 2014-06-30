@@ -1,6 +1,8 @@
 package org.apache.reef.inmemory.cache;
 
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
 import org.junit.*;
 
 import java.nio.ByteBuffer;
@@ -41,29 +43,41 @@ public final class InMemoryCacheImplTest {
     return onesBuffer(1 + random.nextInt(10));
   }
 
+  private void assertBlockNotFound(BlockId blockId) {
+    try {
+      cache.get(blockId);
+      fail("Should have thrown BlockNotFoundException");
+    } catch (BlockNotFoundException e) {
+      assertTrue(true);
+    } catch (Exception e) {
+      fail("Should have thrown BlockNotFoundException");
+    }
+  }
+
   /**
    * Put a small buffer in the cache, and check correctness of get after put
    */
   @Test
-  public void testPutAndGet() {
+  public void testPutAndGet() throws BlockLoadingException, BlockNotFoundException {
     BlockId blockId = randomBlockId();
+    assertBlockNotFound(blockId);
+
     ByteBuffer buffer = randomOnesBuffer();
-    assertNull(cache.get(blockId));
-    cache.put(blockId, buffer);
-    ByteBuffer getBuffer = cache.get(blockId);
-    assertEquals(buffer, getBuffer);
+    cache.put(blockId, buffer.array());
+    byte[] getData = cache.get(blockId);
+    assertEquals(buffer.array(), getData);
   }
 
   /**
    * Put a small buffer in the cache, and check correctness of clear
    */
   @Test
-  public void testClear() {
+  public void testClear() throws BlockLoadingException, BlockNotFoundException {
     BlockId blockId = randomBlockId();
     ByteBuffer buffer = randomOnesBuffer();
-    cache.put(blockId, buffer);
+    cache.put(blockId, buffer.array());
     assertNotNull(cache.get(blockId));
     cache.clear();
-    assertNull(cache.get(blockId));
+    assertBlockNotFound(blockId);
   }
 }

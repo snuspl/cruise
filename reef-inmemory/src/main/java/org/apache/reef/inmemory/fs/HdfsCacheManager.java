@@ -54,6 +54,13 @@ public final class HdfsCacheManager implements TaskManager {
     }
   }
 
+  /**
+   * Gets the Cache server's address
+   * This will return the node's address as defined by Wake, based on its network interfaces,
+   * so it can be contacted remotely. This means that you will not see localhost/127.0.0.1
+   * as the hostname even on local deployments.
+   * @See com.microsoft.wake.remote.NetUtils.getLocalAddress()
+   */
   @Override
   public String getCacheAddress(final RunningTask task) {
     return getCacheHost(task) + ":" + cachePort;

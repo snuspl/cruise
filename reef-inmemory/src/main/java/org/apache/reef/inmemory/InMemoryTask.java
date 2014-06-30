@@ -4,24 +4,27 @@ import com.microsoft.reef.task.Task;
 import com.microsoft.reef.task.TaskMessage;
 import com.microsoft.reef.task.TaskMessageSource;
 import com.microsoft.reef.task.events.DriverMessage;
+import com.microsoft.reef.task.events.TaskStart;
 import com.microsoft.reef.util.Optional;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
+import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.cache.BlockId;
 import org.apache.reef.inmemory.cache.BlockLoader;
-import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.cache.InMemoryCache;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.cache.hdfs.HdfsMessage;
+import org.apache.reef.inmemory.cache.service.SurfCacheServer;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,20 +37,22 @@ public class InMemoryTask implements Task, TaskMessageSource {
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
   private static final ObjectSerializableCodec<HdfsMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
-  private final int numThreads;
   private transient Optional<TaskMessage> hbMessage = Optional.empty();
 
   private final InMemoryCache cache;
+
+  private ExecutorService executor;
+  private final SurfCacheServer dataServer;
 
   private boolean isDone = false;
   private EStage<BlockLoader> loadingStage;
 
   @Inject
   InMemoryTask(final InMemoryCache cache,
-               final @Parameter(CacheParameters.NumThreads.class) int numThreads,
+               final SurfCacheServer dataServer,
                final EStage<BlockLoader> loadingStage) throws InjectionException {
     this.cache = cache;
-    this.numThreads = numThreads;
+    this.dataServer = dataServer;
     this.hbMessage.orElse(INIT_MESSAGE).get();
     this.loadingStage = loadingStage;
   }
@@ -77,6 +82,24 @@ public class InMemoryTask implements Task, TaskMessageSource {
   }
 
   /**
+   * Starts the thread for fulfilling data requests from clients
+   */
+  final class StartHandler implements EventHandler<TaskStart> {
+    @Override
+    public void onNext(final TaskStart taskStart) {
+      LOG.log(Level.INFO, "TaskStart: {0}", taskStart);
+      executor = Executors.newSingleThreadExecutor();
+      try {
+        executor.execute(dataServer);
+      } catch (Exception ex) {
+        final String message = "Failed to start Surf Meta Service";
+        LOG.log(Level.SEVERE, message);
+        throw new RuntimeException(message, ex);
+      }
+    }
+  }
+
+  /**
    * Handles messages from the Driver. The message contains the information
    * what this task is supposed to do.
    * TODO Separate Hdfs-specific part
@@ -90,7 +113,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
           LOG.log(Level.INFO, "Received load block msg");
           HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
           try {
-          HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
+            HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
             executeLoad(loader);
           } catch (IOException e ) {
             LOG.log(Level.SEVERE, "Exception occured while loading");
@@ -117,9 +140,11 @@ public class InMemoryTask implements Task, TaskMessageSource {
     @Override
     public void onNext(BlockLoader loader) {
       try {
-        LOG.log(Level.INFO, "Start loading block");
         BlockId blockId = loader.getBlockId();
-        ByteBuffer result = loader.loadBlock();
+        LOG.log(Level.INFO, "Add stub block");
+        cache.putPending(blockId);
+        LOG.log(Level.INFO, "Start loading block");
+        byte[] result = loader.loadBlock();
         cache.put(blockId, result);
         LOG.log(Level.INFO, "Finish loading block");
       } catch (IOException e) {

@@ -7,3 +7,11 @@ exception FileNotFoundException{
 exception FileAlreadyExistsException{
 	1: string message
 }
+
+exception BlockLoadingException{
+    1: i64 timeStarted
+}
+
+exception BlockNotFoundException{
+    1: string message
+}

@@ -1,13 +1,10 @@
 package org.apache.reef.inmemory.cache.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.hdfs.*;
 import org.apache.hadoop.hdfs.net.TcpPeerServer;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
@@ -20,17 +17,12 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
 
 /**
  * This class loads one block from DataNode
  */
 public class HdfsBlockLoader implements BlockLoader {
   // Some Fields are left null, because those types are not public.
-  private static final int BUF_SIZE = 1024;
-  private static final byte[] buf = new byte[BUF_SIZE];
   private static final int START_OFFSET = 0;
   private static final String CLIENT_NAME = "BlockLoader";
   private static final boolean VERIFY_CHECKSUM = true;
@@ -42,6 +34,7 @@ public class HdfsBlockLoader implements BlockLoader {
   private final DatanodeID datanode;
   private final long blockSize;
   private final Token<BlockTokenIdentifier> blockToken;
+  private final byte[] buf;
 
   /**
    * Constructor of BlockLoader
@@ -57,19 +50,19 @@ public class HdfsBlockLoader implements BlockLoader {
     tempToken = new Token<>();
     tempToken.decodeFromUrlString(id.getEncodedToken());
     blockToken = tempToken;
+    buf = new byte[(int)blockSize];
   }
 
   /**
    * Loading a block from HDFS.
    * Too large block size(>2GB) is not supported.
    */
-  public ByteBuffer loadBlock() throws IOException {
+  public byte[] loadBlock() throws IOException {
     final Configuration conf = new HdfsConfiguration();
 
     // Allocate a ByteBuffer as a size of the Block
     if(blockSize > Integer.MAX_VALUE)
       throw new UnsupportedOperationException("Currently we don't support large(>2GB) block");
-    ByteBuffer byteBuffer = ByteBuffer.allocate((int)blockSize);
 
     // Establish a connection against the DataNode
     InetSocketAddress targetAddress = NetUtils.createSocketAddr(datanode.getXferAddr());
@@ -92,13 +85,12 @@ public class HdfsBlockLoader implements BlockLoader {
     // to read the data into ByteBuffer directly, but it caused timeout.
     int totalRead = 0;
     do {
-      int nRead = blockReader.read(buf, 0, BUF_SIZE);
-      byteBuffer.put(buf, 0, nRead);
+      int nRead = blockReader.read(buf, totalRead, buf.length - totalRead);
       totalRead += nRead;
     } while(totalRead < blockSize);
-
     blockReader.close();
-    return byteBuffer;
+
+    return buf;
   }
   public BlockId getBlockId() {
     return this.hdfsBlockId;

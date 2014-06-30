@@ -10,7 +10,8 @@ struct BlockInfo {
 	3: i64 length,             // Size of the block in bytes
 	4: list<string> locations, // Block location. These are server ip addresses containing the block.
 	5: string namespaceId,     // The namespace, e.g. HDFS block pool ID
-	6: i64 generationStamp     // Version number for append-able FSes, e.g. HDFS (set to 0 when not append-able)
+	6: i64 generationStamp,    // Version number for append-able FSes, e.g. HDFS (set to 0 when not append-able)
+	7: string token            // Token
 }
 
 struct User {
@@ -29,4 +30,9 @@ struct FileMeta{
 	8:list<BlockInfo> blocks, // Information of blocks consisting of the file.
 	9:bool complete,          // Whether the file is complete or not
 	10:User owner             // Owner information of the file.
+}
+
+struct CacheData {
+    1:i64 length,
+    2:binary data
 }

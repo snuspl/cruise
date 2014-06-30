@@ -5,6 +5,7 @@ import com.google.common.cache.LoadingCache;
 import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.RequiredParameter;
+import com.microsoft.wake.StageConfiguration;
 import org.apache.reef.inmemory.cache.*;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.fs.*;
@@ -16,8 +17,11 @@ import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
 
   public static final RequiredParameter<Integer> METASERVER_PORT = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> INIT_CACHE_SERVERS = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> DEFAULT_MEM_CACHE_SERVERS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_PORT = new RequiredParameter<>();
-  public static final RequiredParameter<Integer> NUM_THREADS = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> CACHESERVER_SERVER_THREADS = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
 
   public static final RequiredParameter<String> DFS_TYPE = new RequiredParameter<>();
   public static final RequiredParameter<String> DFS_ADDRESS = new RequiredParameter<>();
@@ -32,8 +36,11 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
 
   private static final ConfigurationModule HDFS_CONF = new InMemoryConfiguration()
           .bindNamedParameter(MetaServerParameters.Port.class, METASERVER_PORT)
+          .bindNamedParameter(MetaServerParameters.InitCacheServers.class, INIT_CACHE_SERVERS)
+          .bindNamedParameter(MetaServerParameters.DefaultMemCacheServers.class, DEFAULT_MEM_CACHE_SERVERS)
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
-          .bindNamedParameter(CacheParameters.NumThreads.class, NUM_THREADS)
+          .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
+          .bindNamedParameter(StageConfiguration.NumberOfThreads.class, CACHESERVER_LOADING_THREADS)
           .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)
           .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
           .bindImplementation(BlockId.class, HdfsBlockId.class)

@@ -15,6 +15,7 @@ import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.CommandLine;
+import com.microsoft.wake.StageConfiguration;
 import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.fs.DfsParameters;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
@@ -44,16 +45,19 @@ public class Launch
   /**
    * Parse the command line arguments.
    */
-  private static Configuration parseCommandLine(final String[] args) throws IOException {
+  public static Configuration parseCommandLine(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder =
       Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(Local.class);
     cl.registerShortNameOfClass(MetaServerParameters.Port.class);
+    cl.registerShortNameOfClass(MetaServerParameters.InitCacheServers.class);
+    cl.registerShortNameOfClass(MetaServerParameters.DefaultMemCacheServers.class);
     cl.registerShortNameOfClass(MetaServerParameters.Timeout.class);
     cl.registerShortNameOfClass(MetaServerParameters.Threads.class);
     cl.registerShortNameOfClass(CacheParameters.Port.class);
-    cl.registerShortNameOfClass(CacheParameters.NumThreads.class);
+    cl.registerShortNameOfClass(CacheParameters.NumServerThreads.class);
+    cl.registerShortNameOfClass(CacheParameters.NumLoadingThreads.class);
     cl.registerShortNameOfClass(DfsParameters.Type.class);
     cl.registerShortNameOfClass(DfsParameters.Address.class);
     cl.processCommandLine(args);
@@ -82,8 +86,11 @@ public class Launch
     final Configuration inMemoryConfig;
     inMemoryConfig = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsParameters.Type.class))
       .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaServerParameters.Port.class))
+      .set(InMemoryConfiguration.INIT_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.InitCacheServers.class))
+      .set(InMemoryConfiguration.DEFAULT_MEM_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.DefaultMemCacheServers.class))
       .set(InMemoryConfiguration.CACHESERVER_PORT, injector.getNamedInstance(CacheParameters.Port.class))
-      .set(InMemoryConfiguration.NUM_THREADS, injector.getNamedInstance(CacheParameters.NumThreads.class))
+      .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, injector.getNamedInstance(CacheParameters.NumServerThreads.class))
+      .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, injector.getNamedInstance(CacheParameters.NumLoadingThreads.class))
       .set(InMemoryConfiguration.DFS_TYPE, injector.getNamedInstance(DfsParameters.Type.class))
       .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class))
       .build();
@@ -110,13 +117,14 @@ public class Launch
   /**
    * Run InMemory Application
    */
-  private static void runInMemory(final Configuration clConfig) throws InjectionException {
+  public static REEF runInMemory(final Configuration clConfig) throws InjectionException {
     final Configuration driverConfig = getDriverConfiguration();
     final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig);
     final Configuration runtimeConfig = getRuntimeConfiguration(clConfig);
     final Injector injector = Tang.Factory.getTang().newInjector(runtimeConfig);
     final REEF reef = injector.getInstance(REEFImplementation.class);
     reef.submit(Tang.Factory.getTang().newConfigurationBuilder(driverConfig, inMemoryConfig).build());
+    return reef;
   }
 
   public static void main(String[] args) throws BindException, InjectionException, IOException {
