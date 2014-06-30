@@ -11,10 +11,10 @@ import javax.inject.Inject;
 import com.microsoft.reef.driver.task.RunningTask;
 import com.microsoft.tang.Tang;
 import com.microsoft.tang.annotations.Parameter;
+import com.microsoft.wake.StageConfiguration;
 import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.fs.DfsParameters;
 import org.apache.reef.inmemory.fs.TaskManager;
-import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 import org.apache.reef.inmemory.fs.service.SurfMetaServer;
 
 import com.microsoft.reef.driver.context.ContextConfiguration;
@@ -48,7 +48,8 @@ public final class InMemoryDriver {
   private final TaskManager taskManager;
   private final String dfsType;
   private final int cachePort;
-  private final int numThreads;
+  private final int cacheServerThreads;
+  private final int cacheLoadingThreads;
 
   private ExecutorService executor;
 
@@ -61,13 +62,15 @@ public final class InMemoryDriver {
                         final TaskManager taskManager,
                         final @Parameter(DfsParameters.Type.class) String dfsType,
                         final @Parameter(CacheParameters.Port.class) int cachePort,
-                        final @Parameter(CacheParameters.NumThreads.class) int numThreads) {
+                        final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
+                        final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads) {
     this.requestor = requestor;
     this.metaService = metaService;
     this.taskManager = taskManager;
     this.dfsType = dfsType;
     this.cachePort = cachePort;
-    this.numThreads = numThreads;
+    this.cacheServerThreads = cacheServerThreads;
+    this.cacheLoadingThreads = cacheLoadingThreads;
   }
 
   /**
@@ -84,7 +87,7 @@ public final class InMemoryDriver {
   }
 
   /**
-   * Handler of StartTime event: Request as a single Evaluator
+   * Handler of StartTime event: Request Evaluators
    */
   final class StartHandler implements EventHandler<StartTime> {
     @Override
@@ -120,7 +123,8 @@ public final class InMemoryDriver {
         final Configuration taskConf = getTaskConfiguration();
         final Configuration taskInMemoryConf = InMemoryTaskConfiguration.getConf(dfsType)
                 .set(InMemoryTaskConfiguration.CACHESERVER_PORT, cachePort)
-                .set(InMemoryTaskConfiguration.NUM_THREADS, numThreads)
+                .set(InMemoryTaskConfiguration.CACHESERVER_SERVER_THREADS, cacheServerThreads)
+                .set(InMemoryTaskConfiguration.CACHESERVER_LOADING_THREADS, cacheLoadingThreads)
                 .build();
 
         allocatedEvaluator.submitContextAndTask(contextConf,

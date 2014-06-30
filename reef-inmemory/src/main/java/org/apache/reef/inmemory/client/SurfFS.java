@@ -40,14 +40,14 @@ public final class SurfFS extends FileSystem {
   public static final String BASE_FS_ADDRESS_KEY = "surf.basefs";
   public static final String BASE_FS_ADDRESS_DEFAULT = "hdfs://localhost:9000";
 
-  public static final String METASERVER_ADDRESS_KEY = "surf.metaserver.address";
+  public static final String METASERVER_ADDRESS_KEY = "surf.meta.server.address";
   public static final String METASERVER_ADDRESS_DEFAULT = "localhost:18000";
 
-  public static final String CACHESERVER_RETRIES_KEY = "surf.cache.server.retries";
-  public static final int CACHESERVER_RETRIES_DEFAULT = 3;
+  public static final String CACHECLIENT_RETRIES_KEY = "surf.cache.client.retries";
+  public static final int CACHECLIENT_RETRIES_DEFAULT = 3;
 
-  public static final String CACHESERVER_RETRIES_INTERVAL_MS_KEY = "surf.cache.server.retries.interval.ms";
-  public static final int CACHESERVER_RETRIES_INTERVAL_MS_DEFAULT = 500;
+  public static final String CACHECLIENT_RETRIES_INTERVAL_MS_KEY = "surf.cache.client.retries.interval.ms";
+  public static final int CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT = 500;
 
   public static final String CACHECLIENT_BUFFER_SIZE_KEY = "surf.cache.client.buffer.size";
   public static final int CACHECLIENT_BUFFER_SIZE_DEFAULT = 8 * 1024 * 1024;
@@ -92,8 +92,8 @@ public final class SurfFS extends FileSystem {
 
     metaserverAddress = conf.get(METASERVER_ADDRESS_KEY, METASERVER_ADDRESS_DEFAULT);
     cacheClientManager = new CacheClientManager(
-            conf.getInt(CACHESERVER_RETRIES_KEY, CACHESERVER_RETRIES_DEFAULT),
-            conf.getInt(CACHESERVER_RETRIES_INTERVAL_MS_KEY, CACHESERVER_RETRIES_INTERVAL_MS_DEFAULT),
+            conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
+            conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
             conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
 
     String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);

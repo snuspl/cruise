@@ -34,7 +34,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   public SurfCacheServer(final InMemoryCache cache,
                          final @Parameter(CacheParameters.Port.class) int port,
                          final @Parameter(CacheParameters.Timeout.class) int timeout,
-                         final @Parameter(CacheParameters.NumThreads.class) int numThreads) {
+                         final @Parameter(CacheParameters.NumServerThreads.class) int numThreads) {
     this.cache = cache;
     this.port = port;
     this.timeout = timeout;

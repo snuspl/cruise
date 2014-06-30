@@ -18,7 +18,8 @@ import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
 public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder {
 
   public static final RequiredParameter<Integer> CACHESERVER_PORT = new RequiredParameter<>();
-  public static final RequiredParameter<Integer> NUM_THREADS = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> CACHESERVER_SERVER_THREADS = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
 
   public static final ConfigurationModule getConf(String dfsType) {
     if ("hdfs".equals(dfsType)) {
@@ -30,11 +31,11 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
 
   private static final ConfigurationModule HDFS_CONF = new InMemoryTaskConfiguration()
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
-          .bindNamedParameter(CacheParameters.NumThreads.class, NUM_THREADS)
+          .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
+          .bindNamedParameter(StageConfiguration.NumberOfThreads.class, CACHESERVER_LOADING_THREADS)
+          .bindNamedParameter(StageConfiguration.StageHandler.class, InMemoryTask.LoadExecutor.class)
           .bindImplementation(InMemoryCache.class, InMemoryCacheImpl.class)
           .bindImplementation(BlockLoader.class, HdfsBlockLoader.class)
           .bindImplementation(EStage.class, ThreadPoolStage.class)
-          .bindNamedParameter(StageConfiguration.NumberOfThreads.class, NUM_THREADS)
-          .bindNamedParameter(StageConfiguration.StageHandler.class, InMemoryTask.LoadExecutor.class)
           .build();
 }

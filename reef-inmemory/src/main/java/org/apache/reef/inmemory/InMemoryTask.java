@@ -11,10 +11,10 @@ import com.microsoft.tang.annotations.Unit;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
+import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.cache.BlockId;
 import org.apache.reef.inmemory.cache.BlockLoader;
-import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.cache.InMemoryCache;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
@@ -37,7 +37,6 @@ public class InMemoryTask implements Task, TaskMessageSource {
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
   private static final ObjectSerializableCodec<HdfsMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
-  private final int numThreads;
   private transient Optional<TaskMessage> hbMessage = Optional.empty();
 
   private final InMemoryCache cache;
@@ -51,11 +50,9 @@ public class InMemoryTask implements Task, TaskMessageSource {
   @Inject
   InMemoryTask(final InMemoryCache cache,
                final SurfCacheServer dataServer,
-               final @Parameter(CacheParameters.NumThreads.class) int numThreads,
                final EStage<BlockLoader> loadingStage) throws InjectionException {
     this.cache = cache;
     this.dataServer = dataServer;
-    this.numThreads = numThreads;
     this.hbMessage.orElse(INIT_MESSAGE).get();
     this.loadingStage = loadingStage;
   }
@@ -116,7 +113,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
           LOG.log(Level.INFO, "Received load block msg");
           HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
           try {
-          HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
+            HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
             executeLoad(loader);
           } catch (IOException e ) {
             LOG.log(Level.SEVERE, "Exception occured while loading");

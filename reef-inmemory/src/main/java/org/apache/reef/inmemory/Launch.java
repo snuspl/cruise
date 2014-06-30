@@ -15,6 +15,7 @@ import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.CommandLine;
+import com.microsoft.wake.StageConfiguration;
 import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.fs.DfsParameters;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
@@ -53,7 +54,8 @@ public class Launch
     cl.registerShortNameOfClass(MetaServerParameters.Timeout.class);
     cl.registerShortNameOfClass(MetaServerParameters.Threads.class);
     cl.registerShortNameOfClass(CacheParameters.Port.class);
-    cl.registerShortNameOfClass(CacheParameters.NumThreads.class);
+    cl.registerShortNameOfClass(CacheParameters.NumServerThreads.class);
+    cl.registerShortNameOfClass(CacheParameters.NumLoadingThreads.class);
     cl.registerShortNameOfClass(DfsParameters.Type.class);
     cl.registerShortNameOfClass(DfsParameters.Address.class);
     cl.processCommandLine(args);
@@ -83,7 +85,8 @@ public class Launch
     inMemoryConfig = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsParameters.Type.class))
       .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaServerParameters.Port.class))
       .set(InMemoryConfiguration.CACHESERVER_PORT, injector.getNamedInstance(CacheParameters.Port.class))
-      .set(InMemoryConfiguration.NUM_THREADS, injector.getNamedInstance(CacheParameters.NumThreads.class))
+      .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, injector.getNamedInstance(CacheParameters.NumServerThreads.class))
+      .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, injector.getNamedInstance(CacheParameters.NumLoadingThreads.class))
       .set(InMemoryConfiguration.DFS_TYPE, injector.getNamedInstance(DfsParameters.Type.class))
       .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class))
       .build();
