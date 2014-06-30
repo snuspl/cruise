@@ -8,6 +8,7 @@ import org.apache.reef.inmemory.fs.entity.FileMeta;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -84,13 +85,10 @@ public final class SurfFSInputStream extends InputStream
       BlockInfo currBlock = fileMeta.getBlocks().get(blockIndex);
       assert(blockPosition < currBlock.getLength());
 
-      final int packetStartPosition =
-              blockPosition - (blockPosition % (cacheManager.getBufferSize()));
-      byte[] data = blocks.get(blockIndex).getData(packetStartPosition);
-      long toCopy = Math.min(remaining, data.length);
-      for (int i = 0; i < toCopy; i++) {
-        buffer[offset + copied + i] = data[(blockPosition - packetStartPosition) + i];
-      }
+      ByteBuffer data = blocks.get(blockIndex).getData(blockPosition);
+      int toCopy = (int)Math.min(remaining, data.remaining());
+      data.get(buffer, offset + copied, toCopy);
+
       remaining -= toCopy;
       blockPosition += toCopy;
       position += toCopy;
@@ -125,9 +123,8 @@ public final class SurfFSInputStream extends InputStream
       return -1;
     }
 
-    final int packetStartPos = blockPos - (blockPos % cacheManager.getBufferSize());
-    byte[] data = blocks.get(blockIdx).getData(packetStartPos);
-    int val = data[blockPos - packetStartPos] & 0xff;
+    ByteBuffer data = blocks.get(blockIdx).getData(blockPos);
+    int val = data.get() & 0xff;
 
     // Update position, without checking validity
     this.pos++;

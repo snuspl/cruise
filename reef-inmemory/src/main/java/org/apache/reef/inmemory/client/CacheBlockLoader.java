@@ -43,6 +43,10 @@ public final class CacheBlockLoader {
     this.cacheManager = cacheManager;
   }
 
+  /**
+   * This client must be used within a synchronized (client) block,
+   * as other BlockLoaders may try to concurrently access the same client.
+   */
   private SurfCacheService.Client getNextClient() throws IOException {
     if (locations.hasNext()) {
       try {
@@ -57,16 +61,25 @@ public final class CacheBlockLoader {
   }
 
   /**
+   * Returns a ByteBuffer containing a chunk of the block, including the offset requested.
+   * The amount of data returned is given with ByteBuffer.remaining() and should be read
+   * starting from ByteBuffer.position().
+   *
    * Includes retry on BlockLoadingException.
    *
    * In this implementation, retry is also done on BlockNotFoundException,
    * because Driver does not wait until Task confirmation that block loading has been initiated.
-   * This should be fixed on Driver-Task communication side.
+   * This should be fixed on Driver-Task communication side, once immediate communication
+   * from Task to Driver is implemented in REEF.
    */
-  public synchronized byte[] getData(long offset) throws IOException {
-    if (this.offset == offset && this.data != null) {
-      return this.data;
-    } else if (this.data != null) { // locally cached copy has wrong offset
+  public synchronized ByteBuffer getData(long offset) throws IOException {
+    long startOffset = offset - (offset % cacheManager.getBufferSize());
+
+    if (this.offset == startOffset && this.data != null) {
+      ByteBuffer dataBuffer = ByteBuffer.wrap(this.data);
+      dataBuffer.position((int) offset - (int) startOffset);
+      return dataBuffer;
+    } else if (this.data != null) { // locally cached copy has different offset
       flushLocalCache();
     }
 
@@ -74,14 +87,15 @@ public final class CacheBlockLoader {
       client = getNextClient();
     }
 
-    LOG.log(Level.INFO, "Sending block request: "+block+", with offset "+offset);
+    LOG.log(Level.INFO, "Sending block request: "+block+", with startOffset "+startOffset);
     for (int i = 0; i < 1 + cacheManager.getRetries(); i++) {
       try {
         synchronized(client) {
-          ByteBuffer dataBuffer = client.getData(block, offset, cacheManager.getBufferSize());
+          ByteBuffer dataBuffer = client.getData(block, startOffset, cacheManager.getBufferSize());
           this.data = dataBuffer.array();
-          this.offset = offset;
-          return this.data;
+          this.offset = startOffset;
+          dataBuffer.position((int)offset - (int)startOffset);
+          return dataBuffer;
         }
       } catch (BlockLoadingException e) {
         if (i < cacheManager.getRetries()) {
