@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.fs;
 
+import com.google.common.cache.CacheStats;
 import com.microsoft.reef.driver.catalog.NodeDescriptor;
 import com.microsoft.reef.driver.context.ActiveContext;
 import com.microsoft.reef.driver.evaluator.EvaluatorDescriptor;
@@ -12,6 +13,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.reef.inmemory.cache.CacheStatusMessage;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.junit.*;
 import org.omg.PortableInterceptor.ACTIVE;
@@ -38,32 +40,18 @@ public final class HdfsCacheLoaderTest {
   private HdfsCacheLoader loader;
   private HdfsTaskSelectionPolicy selector;
 
-  private RunningTask getMockRunningTask(String hostString) {
-    RunningTask runningTask = mock(RunningTask.class);
-    ActiveContext activeContext = mock(ActiveContext.class);
-    EvaluatorDescriptor evaluatorDescriptor = mock(EvaluatorDescriptor.class);
-    NodeDescriptor nodeDescriptor = mock(NodeDescriptor.class);
-    // Mockito can't mock the final method getHostString(), so using real object
-    InetSocketAddress inetSocketAddress = new InetSocketAddress(hostString, 18001);
-
-    doReturn(activeContext).when(runningTask).getActiveContext();
-    doReturn(evaluatorDescriptor).when(activeContext).getEvaluatorDescriptor();
-    doReturn(nodeDescriptor).when(evaluatorDescriptor).getNodeDescriptor();
-    doReturn(inetSocketAddress).when(nodeDescriptor).getInetSocketAddress();
-
-    return runningTask;
-  }
-
   @Before
   public void setUp() throws IOException {
     selector = mock(HdfsTaskSelectionPolicy.class);
-    manager = new HdfsCacheManager(selector, 18001);
+    manager = new HdfsCacheManager(selector);
 
     List<RunningTask> tasksToCache = new ArrayList<>(3);
     for (int i = 0; i < 3; i++) {
-      RunningTask task = getMockRunningTask("host"+i+":18001");
-      manager.getCacheAddress(task);
+      RunningTask task = TestUtils.mockRunningTask(""+i, "host"+i);
       tasksToCache.add(task);
+
+      manager.addRunningTask(task);
+      manager.handleUpdate(task.getId(), TestUtils.cacheStatusMessage(18001));
     }
     when(selector.select(any(LocatedBlock.class), any(Collection.class))).thenReturn(tasksToCache);
 

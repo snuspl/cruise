@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory;
 
+import com.google.common.cache.CacheStats;
 import com.microsoft.reef.task.Task;
 import com.microsoft.reef.task.TaskMessage;
 import com.microsoft.reef.task.TaskMessageSource;
@@ -15,6 +16,7 @@ import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.cache.BlockId;
 import org.apache.reef.inmemory.cache.BlockLoader;
+import org.apache.reef.inmemory.cache.CacheStatusMessage;
 import org.apache.reef.inmemory.cache.InMemoryCache;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
@@ -35,6 +37,7 @@ import java.util.logging.Logger;
 public class InMemoryTask implements Task, TaskMessageSource {
   private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
+  private static final ObjectSerializableCodec<CacheStatusMessage> STATUS_CODEC = new ObjectSerializableCodec<>();
   private static final ObjectSerializableCodec<HdfsMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
   private transient Optional<TaskMessage> hbMessage = Optional.empty();
@@ -53,7 +56,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
                final EStage<BlockLoader> loadingStage) throws InjectionException {
     this.cache = cache;
     this.dataServer = dataServer;
-    this.hbMessage.orElse(INIT_MESSAGE).get();
+    this.hbMessage.orElse(INIT_MESSAGE).get(); // TODO: Is this necessary?
     this.loadingStage = loadingStage;
   }
 
@@ -76,9 +79,9 @@ public class InMemoryTask implements Task, TaskMessageSource {
 
   @Override
   public Optional<TaskMessage> getMessage() {
-    final byte[] report = cache.getReport();
-    InMemoryTask.this.hbMessage = Optional.of(TaskMessage.from(this.toString(), report));
-    return this.hbMessage;
+    final CacheStatusMessage message = new CacheStatusMessage(dataServer.getBindPort());
+    return Optional.of(TaskMessage.from(this.toString(),
+            STATUS_CODEC.encode(message)));
   }
 
   /**
@@ -90,6 +93,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
       LOG.log(Level.INFO, "TaskStart: {0}", taskStart);
       executor = Executors.newSingleThreadExecutor();
       try {
+        int bindPort = dataServer.initBindPort();
         executor.execute(dataServer);
       } catch (Exception ex) {
         final String message = "Failed to start Surf Meta Service";

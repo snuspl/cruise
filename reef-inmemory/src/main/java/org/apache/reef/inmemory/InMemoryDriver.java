@@ -13,6 +13,7 @@ import com.microsoft.tang.Tang;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.StageConfiguration;
 import org.apache.reef.inmemory.cache.CacheParameters;
+import org.apache.reef.inmemory.cache.CacheStatusMessage;
 import org.apache.reef.inmemory.fs.DfsParameters;
 import org.apache.reef.inmemory.fs.TaskManager;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
@@ -42,7 +43,7 @@ import com.microsoft.wake.time.event.StopTime;
 @Unit
 public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
-  private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
+  private static final ObjectSerializableCodec<CacheStatusMessage> CODEC = new ObjectSerializableCodec<>();
 
   private final EvaluatorRequestor requestor;
   private final SurfMetaServer metaService;
@@ -196,6 +197,7 @@ public final class InMemoryDriver {
     }
   }
 
+  // TODO: extract to a top-level class?
   /**
    * Handler of TaskMessage event: Receive a message from Task
    * TODO Distinguish the type of messages by ID
@@ -205,6 +207,8 @@ public final class InMemoryDriver {
     public void onNext(TaskMessage msg) {
       LOG.log(Level.INFO, "TaskMessage: from {0}: {1}",
           new Object[]{msg.getId(), CODEC.decode(msg.get())});
+
+      taskManager.handleUpdate(msg.getId(), CODEC.decode(msg.get()));
     }
   }
 }

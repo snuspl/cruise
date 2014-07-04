@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.cache;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheStats;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
@@ -15,7 +16,7 @@ import java.nio.ByteBuffer;
 public final class InMemoryCacheImpl implements InMemoryCache {
   private Cache<BlockId, byte[]> cache = null;
   private Cache<BlockId, Long> pending = null;
-  private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
+  // private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   @Inject
   public InMemoryCacheImpl() {
@@ -75,7 +76,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public byte[] getReport() {
-    return CODEC.encode(cache.stats().toString());
+  public CacheStats getReport() {
+    return cache.stats();
   }
 }

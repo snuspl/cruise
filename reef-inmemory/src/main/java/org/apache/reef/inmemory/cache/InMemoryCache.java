@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.cache;
 
+import com.google.common.cache.CacheStats;
 import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
 
@@ -17,5 +18,5 @@ public interface InMemoryCache {
   void putPending(BlockId blockId);
 
   public void clear();
-  public byte[] getReport();
+  public CacheStats getReport(); // TODO: Dependency on Google cache implementation -- change to new class?
 }

@@ -9,4 +9,6 @@ namespace java org.apache.reef.inmemory.fs.service
 service SurfManagementService {
     i64 clear()
     bool load(1:string path) throws (1: exceptions.FileNotFoundException ex)
+    string addCacheNode(1:string host, 2:i32 port) throws (1: exceptions.AllocationFailedException afe,
+                                                           2: exceptions.SubmissionFailedException sfe)
 }

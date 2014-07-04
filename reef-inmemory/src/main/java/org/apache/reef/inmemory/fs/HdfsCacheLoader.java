@@ -83,7 +83,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       final BlockInfo cacheBlock = copyBlockInfo(locatedBlock);
       for (final RunningTask task : cacheManager.getTasksToCache(locatedBlock)) {
         cacheManager.sendToTask(task, msg);
-        cacheBlock.addToLocations(cacheManager.getCacheAddress(task));
+        cacheBlock.addToLocations(cacheManager.getCacheAddress(task.getId()));
       }
 
       if (LOG.isLoggable(Level.FINE)) {

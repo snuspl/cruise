@@ -6,8 +6,9 @@ import org.apache.reef.inmemory.fs.SurfMetaManager;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
-import org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException;
+import org.apache.reef.inmemory.fs.exceptions.AllocationFailedException;
 import org.apache.reef.inmemory.fs.exceptions.FileNotFoundException;
+import org.apache.reef.inmemory.fs.exceptions.SubmissionFailedException;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -79,6 +80,11 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       LOG.log(Level.SEVERE, "Load failed for "+path, e);
       return false;
     }
+  }
+
+  @Override
+  public String addCacheNode(String host, int port) throws AllocationFailedException, SubmissionFailedException, TException {
+    throw new UnsupportedOperationException();
   }
 
   @Override

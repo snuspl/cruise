@@ -3,15 +3,21 @@ package org.apache.reef.inmemory.fs;
 import com.microsoft.reef.driver.task.RunningTask;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.commons.collections.Unmodifiable;
+import org.apache.commons.collections.collection.UnmodifiableCollection;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.cache.CacheClearMessage;
 import org.apache.reef.inmemory.cache.CacheParameters;
+import org.apache.reef.inmemory.cache.CacheStatusMessage;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.cache.hdfs.HdfsMessage;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Implements HDFS-specific
@@ -19,25 +25,29 @@ import java.util.*;
  */
 public final class HdfsCacheManager implements TaskManager {
 
+  private static final Logger LOG = Logger.getLogger(HdfsCacheManager.class.getName());
+
   private static final ObjectSerializableCodec<HdfsMessage> CODEC = new ObjectSerializableCodec<>();
 
   private final HdfsTaskSelectionPolicy taskSelectionPolicy;
-  private final int cachePort;
+
+  // Tasks are first added to pendingTasks, then moved to tasks after receiving the server port
   private final Map<String, RunningTask> tasks = new HashMap<>();
+  private final Map<String, RunningTask> pendingTasks = new HashMap<>();
+  private final Map<String, Integer> cachePorts = new HashMap<>();
 
   @Inject
-  public HdfsCacheManager(final HdfsTaskSelectionPolicy taskSelectionPolicy,
-                          final @Parameter(CacheParameters.Port.class) int cachePort) {
+  public HdfsCacheManager(final HdfsTaskSelectionPolicy taskSelectionPolicy) {
     this.taskSelectionPolicy = taskSelectionPolicy;
-    this.cachePort = cachePort;
   }
 
   @Override
   public synchronized boolean addRunningTask(RunningTask task) {
-    if (tasks.containsKey(task.getId())) {
+    if (tasks.containsKey(task.getId()) || pendingTasks.containsKey(task.getId())) {
       return false;
     } else {
-      tasks.put(task.getId(), task);
+      pendingTasks.put(task.getId(), task);
+      LOG.log(Level.INFO, "Add pending task "+task.getId()+" at host "+getCacheHost(task));
       return true;
     }
   }
@@ -62,11 +72,15 @@ public final class HdfsCacheManager implements TaskManager {
    * @See com.microsoft.wake.remote.NetUtils.getLocalAddress()
    */
   @Override
-  public String getCacheAddress(final RunningTask task) {
-    return getCacheHost(task) + ":" + cachePort;
+  public synchronized String getCacheAddress(final String taskId) throws IOException {
+    if (cachePorts.containsKey(taskId)) {
+      return getCacheHost(tasks.get(taskId)) + ":" + cachePorts.get(taskId);
+    } else {
+      throw new IOException("Cache port is unknown, may not have started.");
+    }
   }
 
-  private String getCacheHost(final RunningTask task) {
+  private static String getCacheHost(final RunningTask task) {
     return task.getActiveContext().getEvaluatorDescriptor()
             .getNodeDescriptor().getInetSocketAddress().getHostString();
   }
@@ -78,12 +92,26 @@ public final class HdfsCacheManager implements TaskManager {
    * Any future implementations that require more logic should consider whether
    * this synchronized method does not block other methods.
    */
-  public synchronized List<RunningTask> getTasksToCache(final LocatedBlock block) {
-    return taskSelectionPolicy.select(block, Collections.unmodifiableCollection(tasks.values()));
-
+  public List<RunningTask> getTasksToCache(final LocatedBlock block) {
+    final List<RunningTask> taskList;
+    synchronized (this) {
+      taskList = new ArrayList<>(tasks.values());
+    }
+    return taskSelectionPolicy.select(block, taskList);
   }
 
   public void sendToTask(RunningTask task, HdfsBlockMessage blockMsg) {
     task.send(CODEC.encode(new HdfsMessage(blockMsg)));
+  }
+
+  @Override
+  public synchronized void handleUpdate(String taskId, CacheStatusMessage msg) {
+    // TODO: eventually, the cache manager should remove Caches that have not been heard from for a long time
+    if (pendingTasks.containsKey(taskId) && msg.getBindPort() != 0) {
+      cachePorts.put(taskId, msg.getBindPort());
+      RunningTask task = pendingTasks.remove(taskId);
+      tasks.put(taskId, task);
+      LOG.log(Level.INFO, "Add bindPort "+msg.getBindPort()+" to "+getCacheHost(tasks.get(taskId)));
+    }
   }
 }
