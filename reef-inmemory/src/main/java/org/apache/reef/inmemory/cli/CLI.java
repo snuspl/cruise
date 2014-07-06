@@ -53,6 +53,16 @@ public final class CLI {
   public static final class Port implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "InMemory new Cache Server port",
+          short_name = "cache_port", default_value = "0")
+  public static final class CacheServerPort implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "InMemory new Cache Server memory amount in MB",
+          short_name = "cache_memory", default_value = "128")
+  public static final class CacheServerMemory implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "DFS file path for load operation",
           short_name = "path")
   public static final class Path implements Name<String> {
@@ -74,17 +84,21 @@ public final class CLI {
     String cmd = injector.getNamedInstance(Command.class);
     String hostname = injector.getNamedInstance(Hostname.class);
     int port = injector.getNamedInstance(Port.class);
+    int cachePort = injector.getNamedInstance(CacheServerPort.class);
+    int cacheMemory = injector.getNamedInstance(CacheServerMemory.class);
+    SurfManagementService.Client client = getClient(hostname, port);
 
     if ("clear".equals(cmd)) {
-      SurfManagementService.Client client = getClient(hostname, port);
       LOG.log(Level.INFO, "Connected to surf");
       long numCleared = client.clear();
       LOG.log(Level.INFO, "Cleared {0} items from cache", numCleared);
       return true;
     } else if ("load".equals(cmd)) {
-      SurfManagementService.Client client = getClient(hostname, port);
       String path = injector.getNamedInstance(Path.class);
       return client.load(path);
+    } else if ("addcache".equals(cmd)) {
+      String result = client.addCacheNode(cachePort, cacheMemory);
+      return true;
     } else {
       return false;
     }

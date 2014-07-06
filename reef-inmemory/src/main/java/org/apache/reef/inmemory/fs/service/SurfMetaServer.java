@@ -1,5 +1,7 @@
 package org.apache.reef.inmemory.fs.service;
 
+import com.microsoft.reef.driver.evaluator.EvaluatorRequest;
+import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
@@ -35,13 +37,16 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   TServer server = null;
 
   private final SurfMetaManager metaManager;
+  private final EvaluatorRequestor evaluatorRequestor;
 
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
+                        final EvaluatorRequestor evaluatorRequestor,
                         final @Parameter(MetaServerParameters.Port.class) int port,
                         final @Parameter(MetaServerParameters.Timeout.class) int timeout,
                         final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
     this.metaManager = metaManager;
+    this.evaluatorRequestor = evaluatorRequestor;
 
     this.port = port;
     this.timeout = timeout;
@@ -62,12 +67,14 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public long clear() throws TException {
+    LOG.log(Level.INFO, "CLI clear command");
     return metaManager.clear();
   }
 
   // TODO: return loaded Task address and absolute path
   @Override
   public boolean load(String path) throws TException {
+    LOG.log(Level.INFO, "CLI load command for path {0}", path);
     try {
       List<BlockInfo> blocks = metaManager.getBlocks(new Path(path), new User()).getBlocks();
       for (BlockInfo block : blocks) {
@@ -83,8 +90,16 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public String addCacheNode(String host, int port) throws AllocationFailedException, SubmissionFailedException, TException {
-    throw new UnsupportedOperationException();
+  public String addCacheNode(int port, int memory)
+          throws AllocationFailedException, SubmissionFailedException, TException {
+    LOG.log(Level.INFO, "CLI addCacheNode command with port {0}, memory {1}",
+            new Object[]{port, memory});
+    evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
+            .setNumber(1)
+            .setMemory(memory)
+            .build());
+    // TODO: wait until node is created, and then return
+    return "Submitted";
   }
 
   @Override

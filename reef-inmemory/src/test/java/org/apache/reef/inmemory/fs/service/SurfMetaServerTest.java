@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.fs.service;
 
 import com.google.common.cache.LoadingCache;
+import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
 import org.apache.reef.inmemory.fs.TaskManager;
@@ -29,11 +30,12 @@ public final class SurfMetaServerTest {
     LoadingCache loadingCache = mock(LoadingCache.class);
     when(loadingCache.get(anyObject())).thenThrow(java.io.FileNotFoundException.class);
     TaskManager taskManager = mock(TaskManager.class);
+    EvaluatorRequestor evaluatorRequestor = mock(EvaluatorRequestor.class);
 
     SurfMetaManager metaManager = new SurfMetaManager(loadingCache, taskManager);
 
     try {
-      SurfMetaServer metaService = new SurfMetaServer(metaManager, 18000, 10, 1);
+      SurfMetaServer metaService = new SurfMetaServer(metaManager, evaluatorRequestor, 18000, 10, 1);
       metaService.load("/nonexistent/path");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof org.apache.reef.inmemory.fs.exceptions.FileNotFoundException);
