@@ -3,16 +3,16 @@ package org.apache.reef.inmemory.fs;
 import com.google.common.cache.CacheLoader;
 import com.microsoft.reef.driver.task.RunningTask;
 import com.microsoft.tang.annotations.Parameter;
+import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
-import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.cache.hdfs.HdfsDatanodeInfo;
+import org.apache.reef.inmemory.cache.hdfs.HdfsMessage;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 
@@ -20,7 +20,6 @@ import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,14 +33,22 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
   private static final Logger LOG = Logger.getLogger(HdfsCacheLoader.class.getName());
 
-  private final HdfsCacheManager cacheManager;
+  private static final ObjectSerializableCodec<HdfsMessage> CODEC = new ObjectSerializableCodec<>();
+
+  private final CacheManagerImpl cacheManager;
+  private final HdfsCacheMessenger cacheMessenger;
+  private final HdfsCacheSelectionPolicy cacheSelector;
   private final String dfsAddress;
   private final DFSClient dfsClient;
 
   @Inject
-  public HdfsCacheLoader(final HdfsCacheManager cacheManager,
+  public HdfsCacheLoader(final CacheManagerImpl cacheManager,
+                         final HdfsCacheMessenger cacheMessenger,
+                         final HdfsCacheSelectionPolicy cacheSelector,
                          final @Parameter(DfsParameters.Address.class) String dfsAddress) {
     this.cacheManager = cacheManager;
+    this.cacheMessenger = cacheMessenger;
+    this.cacheSelector = cacheSelector;
     this.dfsAddress = dfsAddress;
     try {
       this.dfsClient = new DFSClient(new URI(this.dfsAddress), new Configuration());
@@ -81,9 +88,11 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos);
 
       final BlockInfo cacheBlock = copyBlockInfo(locatedBlock);
-      for (final RunningTask task : cacheManager.getTasksToCache(locatedBlock)) {
-        cacheManager.sendToTask(task, msg);
-        cacheBlock.addToLocations(cacheManager.getCacheAddress(task));
+      final List<CacheNode> cacheNodes = cacheManager.getCaches();
+      final List<CacheNode> selectedNodes = cacheSelector.select(locatedBlock, cacheNodes);
+      for (final CacheNode cacheNode : selectedNodes) {
+        cacheMessenger.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?
+        cacheBlock.addToLocations(cacheNode.getAddress());
       }
 
       if (LOG.isLoggable(Level.FINE)) {

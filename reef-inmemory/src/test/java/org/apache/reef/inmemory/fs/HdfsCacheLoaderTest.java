@@ -1,8 +1,6 @@
 package org.apache.reef.inmemory.fs;
 
-import com.microsoft.reef.driver.catalog.NodeDescriptor;
-import com.microsoft.reef.driver.context.ActiveContext;
-import com.microsoft.reef.driver.evaluator.EvaluatorDescriptor;
+import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -14,11 +12,9 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.junit.*;
-import org.omg.PortableInterceptor.ACTIVE;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -34,38 +30,26 @@ public final class HdfsCacheLoaderTest {
 
   private MiniDFSCluster cluster;
   private FileSystem fs;
-  private HdfsCacheManager manager;
+  private CacheManagerImpl manager;
+  private HdfsCacheMessenger messenger;
   private HdfsCacheLoader loader;
-  private HdfsTaskSelectionPolicy selector;
-
-  private RunningTask getMockRunningTask(String hostString) {
-    RunningTask runningTask = mock(RunningTask.class);
-    ActiveContext activeContext = mock(ActiveContext.class);
-    EvaluatorDescriptor evaluatorDescriptor = mock(EvaluatorDescriptor.class);
-    NodeDescriptor nodeDescriptor = mock(NodeDescriptor.class);
-    // Mockito can't mock the final method getHostString(), so using real object
-    InetSocketAddress inetSocketAddress = new InetSocketAddress(hostString, 18001);
-
-    doReturn(activeContext).when(runningTask).getActiveContext();
-    doReturn(evaluatorDescriptor).when(activeContext).getEvaluatorDescriptor();
-    doReturn(nodeDescriptor).when(evaluatorDescriptor).getNodeDescriptor();
-    doReturn(inetSocketAddress).when(nodeDescriptor).getInetSocketAddress();
-
-    return runningTask;
-  }
+  private HdfsCacheSelectionPolicy selector;
 
   @Before
   public void setUp() throws IOException {
-    selector = mock(HdfsTaskSelectionPolicy.class);
-    manager = new HdfsCacheManager(selector, 18001);
+    selector = mock(HdfsCacheSelectionPolicy.class);
+    manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0);
+    messenger = new HdfsCacheMessenger(manager);
 
-    List<RunningTask> tasksToCache = new ArrayList<>(3);
     for (int i = 0; i < 3; i++) {
-      RunningTask task = getMockRunningTask("host"+i+":18001");
-      manager.getCacheAddress(task);
-      tasksToCache.add(task);
+      RunningTask task = TestUtils.mockRunningTask(""+i, "host"+i);
+
+      manager.addRunningTask(task);
+      manager.handleUpdate(task.getId(), TestUtils.cacheStatusMessage(18001));
     }
-    when(selector.select(any(LocatedBlock.class), any(Collection.class))).thenReturn(tasksToCache);
+    List<CacheNode> selectedNodes = manager.getCaches();
+    assertEquals(3, selectedNodes.size());
+    when(selector.select(any(LocatedBlock.class), any(List.class))).thenReturn(selectedNodes);
 
     Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
@@ -74,7 +58,7 @@ public final class HdfsCacheLoaderTest {
     cluster.waitActive();
     fs = cluster.getFileSystem();
 
-    loader = new HdfsCacheLoader(manager, fs.getUri().toString());
+    loader = new HdfsCacheLoader(manager, messenger, selector, fs.getUri().toString());
   }
 
   @After
@@ -101,11 +85,11 @@ public final class HdfsCacheLoaderTest {
    */
   @Test
   public void testLoadDirectory() throws IOException {
-    Path directory = new Path("/existing/directory");
+    final Path directory = new Path("/existing/directory");
 
     fs.mkdirs(directory);
     try {
-      FileMeta fileMeta = loader.load(directory);
+      final FileMeta fileMeta = loader.load(directory);
       fail("FileNotFoundException was expected");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof FileNotFoundException);
@@ -119,13 +103,13 @@ public final class HdfsCacheLoaderTest {
    */
   @Test
   public void testLoadSmallFile() throws IOException {
-    Path smallFile = new Path("/existing/file");
+    final Path smallFile = new Path("/existing/file");
 
-    FSDataOutputStream outputStream = fs.create(smallFile);
+    final FSDataOutputStream outputStream = fs.create(smallFile);
     outputStream.write(1);
     outputStream.close();
 
-    FileMeta fileMeta = loader.load(smallFile);
+    final FileMeta fileMeta = loader.load(smallFile);
     assertNotNull(fileMeta);
     assertNotNull(fileMeta.getBlocks());
     assertEquals(3, fileMeta.getBlocksIterator().next().getLocationsSize());

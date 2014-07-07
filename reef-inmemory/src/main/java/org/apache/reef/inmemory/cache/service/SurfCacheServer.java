@@ -14,7 +14,10 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
 import javax.inject.Inject;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.ByteBuffer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -28,7 +31,9 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   private final int port;
   private final int timeout;
   private final int numThreads;
-  TServer server = null;
+
+  private TServer server = null;
+  private int bindPort;
 
   @Inject
   public SurfCacheServer(final InMemoryCache cache,
@@ -41,12 +46,34 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     this.numThreads = numThreads;
   }
 
+  public int getBindPort() {
+    return this.bindPort;
+  }
+
+  /**
+   * Initialize the port to bind. If cache port is 0, will return a new ephemeral port.
+   * If cache port is specified, it will return the port.
+   *
+   * The ephemeral port is not guaranteed to be open when run is called.
+   * But must do this because Thrift will not return a bound port number.
+   */
+  public int initBindPort() throws IOException {
+    if (this.port == 0) {
+      final ServerSocket reservation = new ServerSocket(0, 1);
+      this.bindPort = reservation.getLocalPort();
+      reservation.close();
+    } else {
+      this.bindPort = this.port;
+    }
+    return this.bindPort;
+  }
+
   @Override
   public void run() {
     try {
-      TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.port, this.timeout);
+      final TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.bindPort, this.timeout);
 
-      SurfCacheService.Processor<SurfCacheService.Iface> processor =
+      final SurfCacheService.Processor<SurfCacheService.Iface> processor =
               new SurfCacheService.Processor<SurfCacheService.Iface>(this);
 
       this.server = new THsHaServer(
@@ -56,7 +83,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
       this.server.serve();
     } catch (Exception e) {
-      e.printStackTrace();
+      LOG.log(Level.SEVERE, "Exception while serving "+e);
     } finally {
       if (this.server != null && this.server.isServing())
         this.server.stop();
@@ -70,12 +97,12 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   }
 
   @Override
-  public ByteBuffer getData(final BlockInfo blockInfo,
-                           final long offset, final long length) throws BlockNotFoundException, BlockLoadingException {
-    HdfsBlockId blockId = HdfsBlockId.copyBlock(blockInfo);
+  public ByteBuffer getData(final BlockInfo blockInfo, final long offset, final long length)
+          throws BlockNotFoundException, BlockLoadingException {
+    final HdfsBlockId blockId = HdfsBlockId.copyBlock(blockInfo);
 
-    byte[] block = cache.get(blockId);
-    ByteBuffer buf = ByteBuffer.wrap(block, (int)offset,
+    final byte[] block = cache.get(blockId);
+    final ByteBuffer buf = ByteBuffer.wrap(block, (int)offset,
             Math.min(block.length - (int)offset, Math.min((int)length, 8 * 1024 * 1024))); // 8 MB, for now
     return buf;
   }

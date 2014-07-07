@@ -2,12 +2,14 @@ package org.apache.reef.inmemory.fs.service;
 
 import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.fs.CacheManager;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
-import org.apache.reef.inmemory.fs.exceptions.FileAlreadyExistsException;
+import org.apache.reef.inmemory.fs.exceptions.AllocationFailedException;
 import org.apache.reef.inmemory.fs.exceptions.FileNotFoundException;
+import org.apache.reef.inmemory.fs.exceptions.SubmissionFailedException;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -34,13 +36,16 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   TServer server = null;
 
   private final SurfMetaManager metaManager;
+  private final CacheManager cacheManager;
 
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
+                        final CacheManager cacheManager,
                         final @Parameter(MetaServerParameters.Port.class) int port,
                         final @Parameter(MetaServerParameters.Timeout.class) int timeout,
                         final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
     this.metaManager = metaManager;
+    this.cacheManager = cacheManager;
 
     this.port = port;
     this.timeout = timeout;
@@ -48,7 +53,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public FileMeta getFileMeta(String path) throws FileNotFoundException, TException {
+  public FileMeta getFileMeta(final String path) throws FileNotFoundException, TException {
     try {
       return metaManager.getBlocks(new Path(path), new User());
     } catch (java.io.FileNotFoundException e) {
@@ -61,15 +66,17 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public long clear() throws TException {
+    LOG.log(Level.INFO, "CLI clear command");
     return metaManager.clear();
   }
 
   // TODO: return loaded Task address and absolute path
   @Override
-  public boolean load(String path) throws TException {
+  public boolean load(final String path) throws TException {
+    LOG.log(Level.INFO, "CLI load command for path {0}", path);
     try {
-      List<BlockInfo> blocks = metaManager.getBlocks(new Path(path), new User()).getBlocks();
-      for (BlockInfo block : blocks) {
+      final List<BlockInfo> blocks = metaManager.getBlocks(new Path(path), new User()).getBlocks();
+      for (final BlockInfo block : blocks) {
         LOG.log(Level.INFO, "Loaded block " + block.getBlockId() + " for " + path);
       }
       return true;
@@ -82,15 +89,27 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
+  public String addCacheNode(final int memory)
+          throws AllocationFailedException, SubmissionFailedException, TException {
+    LOG.log(Level.INFO, "CLI addCacheNode command with memory {0}", memory);
+    if (memory == 0) {
+      cacheManager.requestEvaluator(1);
+    } else {
+      cacheManager.requestEvaluator(1, memory);
+    }
+    return "Submitted";
+  }
+
+  @Override
   public void run() {
     try {
-      TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.port, this.timeout);
+      final TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.port, this.timeout);
 
-      TMultiplexedProcessor processor = new TMultiplexedProcessor();
-      SurfMetaService.Processor<SurfMetaService.Iface> metaProcessor =
+      final TMultiplexedProcessor processor = new TMultiplexedProcessor();
+      final SurfMetaService.Processor<SurfMetaService.Iface> metaProcessor =
               new SurfMetaService.Processor<SurfMetaService.Iface>(this);
       processor.registerProcessor(SurfMetaService.class.getName(), metaProcessor);
-      SurfManagementService.Processor<SurfManagementService.Iface> managementProcessor =
+      final SurfManagementService.Processor<SurfManagementService.Iface> managementProcessor =
               new SurfManagementService.Processor<SurfManagementService.Iface>(this);
       processor.registerProcessor(SurfManagementService.class.getName(), managementProcessor);
 

@@ -53,6 +53,11 @@ public final class CLI {
   public static final class Port implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "InMemory new Cache Server memory amount in MB",
+          short_name = "cache_memory", default_value = "0")
+  public static final class CacheServerMemory implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "DFS file path for load operation",
           short_name = "path")
   public static final class Path implements Name<String> {
@@ -60,9 +65,9 @@ public final class CLI {
 
   private static SurfManagementService.Client getClient(String host, int port)
           throws TTransportException {
-    TTransport transport = new TFramedTransport(new TSocket(host, port));
+    final TTransport transport = new TFramedTransport(new TSocket(host, port));
     transport.open();
-    TProtocol protocol = new TMultiplexedProtocol(
+    final TProtocol protocol = new TMultiplexedProtocol(
             new TCompactProtocol(transport),
             SurfManagementService.class.getName());
     return new SurfManagementService.Client(protocol);
@@ -71,20 +76,23 @@ public final class CLI {
   private static boolean runCommand(final Configuration config)
           throws InjectionException, TException {
     final Injector injector = Tang.Factory.getTang().newInjector(config);
-    String cmd = injector.getNamedInstance(Command.class);
-    String hostname = injector.getNamedInstance(Hostname.class);
-    int port = injector.getNamedInstance(Port.class);
+    final String cmd = injector.getNamedInstance(Command.class);
+    final String hostname = injector.getNamedInstance(Hostname.class);
+    final int port = injector.getNamedInstance(Port.class);
+    final int cacheMemory = injector.getNamedInstance(CacheServerMemory.class);
+    final SurfManagementService.Client client = getClient(hostname, port);
 
     if ("clear".equals(cmd)) {
-      SurfManagementService.Client client = getClient(hostname, port);
       LOG.log(Level.INFO, "Connected to surf");
-      long numCleared = client.clear();
+      final long numCleared = client.clear();
       LOG.log(Level.INFO, "Cleared {0} items from cache", numCleared);
       return true;
     } else if ("load".equals(cmd)) {
-      SurfManagementService.Client client = getClient(hostname, port);
-      String path = injector.getNamedInstance(Path.class);
+      final String path = injector.getNamedInstance(Path.class);
       return client.load(path);
+    } else if ("addcache".equals(cmd)) {
+      final String result = client.addCacheNode(cacheMemory);
+      return true;
     } else {
       return false;
     }
@@ -99,6 +107,7 @@ public final class CLI {
             .registerShortNameOfClass(Hostname.class)
             .registerShortNameOfClass(Port.class)
             .registerShortNameOfClass(Path.class)
+            .registerShortNameOfClass(CacheServerMemory.class)
             .processCommandLine(args);
     return confBuilder.build();
   }

@@ -15,3 +15,11 @@ exception BlockLoadingException{
 exception BlockNotFoundException{
     1: string message
 }
+
+exception AllocationFailedException{
+    1: string message
+}
+
+exception SubmissionFailedException{
+    1: string message
+}

@@ -5,6 +5,7 @@ import com.microsoft.reef.client.REEF;
 import com.microsoft.reef.runtime.common.client.REEFImplementation;
 import com.microsoft.reef.runtime.local.client.LocalRuntimeConfiguration;
 import com.microsoft.reef.runtime.yarn.client.YarnClientConfiguration;
+import com.microsoft.reef.runtime.yarn.driver.YarnMasterConfiguration;
 import com.microsoft.reef.util.EnvironmentUtils;
 import com.microsoft.tang.Configuration;
 import com.microsoft.tang.Injector;
@@ -42,6 +43,11 @@ public class Launch
   public static final class Local implements Name<Boolean> {
   }
 
+  @NamedParameter(doc = "Number of threads to support for local runtime",
+    short_name = "local_threads", default_value = "2")
+  public static final class LocalThreads implements Name<Integer> {
+  }
+
   /**
    * Parse the command line arguments.
    */
@@ -50,6 +56,7 @@ public class Launch
       Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(Local.class);
+    cl.registerShortNameOfClass(LocalThreads.class);
     cl.registerShortNameOfClass(MetaServerParameters.Port.class);
     cl.registerShortNameOfClass(MetaServerParameters.InitCacheServers.class);
     cl.registerShortNameOfClass(MetaServerParameters.DefaultMemCacheServers.class);
@@ -105,8 +112,9 @@ public class Launch
     final boolean isLocal = injector.getNamedInstance(Local.class);
     final Configuration runtimeConfig;
     if(isLocal) {
+      final int localThreads = injector.getNamedInstance(LocalThreads.class);
       runtimeConfig = LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, 2)
+        .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, localThreads)
         .build();
     } else {
       runtimeConfig = YarnClientConfiguration.CONF.build();

@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.cache;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheStats;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
@@ -15,7 +16,6 @@ import java.nio.ByteBuffer;
 public final class InMemoryCacheImpl implements InMemoryCache {
   private Cache<BlockId, byte[]> cache = null;
   private Cache<BlockId, Long> pending = null;
-  private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
 
   @Inject
   public InMemoryCacheImpl() {
@@ -28,12 +28,13 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public byte[] get(final BlockId blockId) throws BlockLoadingException, BlockNotFoundException {
-    Long pendingTime = pending.getIfPresent(blockId);
+  public byte[] get(final BlockId blockId)
+          throws BlockLoadingException, BlockNotFoundException {
+    final Long pendingTime = pending.getIfPresent(blockId);
     if (pendingTime != null) {
       throw new BlockLoadingException(pendingTime);
     } else {
-      byte[] data = cache.getIfPresent(blockId);
+      final byte[] data = cache.getIfPresent(blockId);
       if (data == null) {
         throw new BlockNotFoundException();
       } else {
@@ -43,13 +44,13 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void read(BlockId blockId, ByteBuffer out, long offset)
+  public void read(final BlockId blockId, final ByteBuffer out, final long offset)
           throws BlockLoadingException, BlockNotFoundException {
-    Long pendingTime = pending.getIfPresent(blockId);
+    final Long pendingTime = pending.getIfPresent(blockId);
     if (pendingTime != null) {
       throw new BlockLoadingException(pendingTime);
     } else {
-      byte[] block = cache.getIfPresent(blockId);
+      final byte[] block = cache.getIfPresent(blockId);
       if (block == null) {
         throw new BlockNotFoundException();
       } else {
@@ -75,7 +76,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public byte[] getReport() {
-    return CODEC.encode(cache.stats().toString());
+  public CacheStats getReport() {
+    return cache.stats();
   }
 }

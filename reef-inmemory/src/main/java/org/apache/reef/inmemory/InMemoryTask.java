@@ -6,15 +6,14 @@ import com.microsoft.reef.task.TaskMessageSource;
 import com.microsoft.reef.task.events.DriverMessage;
 import com.microsoft.reef.task.events.TaskStart;
 import com.microsoft.reef.util.Optional;
-import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
-import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.cache.BlockId;
 import org.apache.reef.inmemory.cache.BlockLoader;
+import org.apache.reef.inmemory.cache.CacheStatusMessage;
 import org.apache.reef.inmemory.cache.InMemoryCache;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
@@ -35,6 +34,7 @@ import java.util.logging.Logger;
 public class InMemoryTask implements Task, TaskMessageSource {
   private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
+  private static final ObjectSerializableCodec<CacheStatusMessage> STATUS_CODEC = new ObjectSerializableCodec<>();
   private static final ObjectSerializableCodec<HdfsMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
   private transient Optional<TaskMessage> hbMessage = Optional.empty();
@@ -53,7 +53,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
                final EStage<BlockLoader> loadingStage) throws InjectionException {
     this.cache = cache;
     this.dataServer = dataServer;
-    this.hbMessage.orElse(INIT_MESSAGE).get();
+    this.hbMessage.orElse(INIT_MESSAGE).get(); // TODO: Is this necessary?
     this.loadingStage = loadingStage;
   }
 
@@ -76,20 +76,22 @@ public class InMemoryTask implements Task, TaskMessageSource {
 
   @Override
   public Optional<TaskMessage> getMessage() {
-    final byte[] report = cache.getReport();
-    InMemoryTask.this.hbMessage = Optional.of(TaskMessage.from(this.toString(), report));
-    return this.hbMessage;
+    final CacheStatusMessage message = new CacheStatusMessage(dataServer.getBindPort());
+    return Optional.of(TaskMessage.from(this.toString(),
+            STATUS_CODEC.encode(message)));
   }
 
   /**
    * Starts the thread for fulfilling data requests from clients
    */
-  final class StartHandler implements EventHandler<TaskStart> {
+  public final class StartHandler implements EventHandler<TaskStart> {
     @Override
     public void onNext(final TaskStart taskStart) {
       LOG.log(Level.INFO, "TaskStart: {0}", taskStart);
       executor = Executors.newSingleThreadExecutor();
       try {
+        final int bindPort = dataServer.initBindPort();
+        LOG.log(Level.INFO, "Cache bound to port: {0}"+bindPort);
         executor.execute(dataServer);
       } catch (Exception ex) {
         final String message = "Failed to start Surf Meta Service";
@@ -108,12 +110,12 @@ public class InMemoryTask implements Task, TaskMessageSource {
     @Override
     public void onNext(DriverMessage driverMessage) {
       if (driverMessage.get().isPresent()) {
-        HdfsMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
+        final HdfsMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
         if (msg.getBlockMessage().isPresent()) {
           LOG.log(Level.INFO, "Received load block msg");
-          HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
+          final HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
           try {
-            HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
+            final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
             executeLoad(loader);
           } catch (IOException e ) {
             LOG.log(Level.SEVERE, "Exception occured while loading");
@@ -140,11 +142,11 @@ public class InMemoryTask implements Task, TaskMessageSource {
     @Override
     public void onNext(BlockLoader loader) {
       try {
-        BlockId blockId = loader.getBlockId();
+        final BlockId blockId = loader.getBlockId();
         LOG.log(Level.INFO, "Add stub block");
         cache.putPending(blockId);
         LOG.log(Level.INFO, "Start loading block");
-        byte[] result = loader.loadBlock();
+        final byte[] result = loader.loadBlock();
         cache.put(blockId, result);
         LOG.log(Level.INFO, "Finish loading block");
       } catch (IOException e) {

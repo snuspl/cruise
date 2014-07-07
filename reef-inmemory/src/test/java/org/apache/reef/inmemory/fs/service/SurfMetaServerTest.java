@@ -1,10 +1,10 @@
 package org.apache.reef.inmemory.fs.service;
 
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.fs.Path;
+import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.inmemory.fs.CacheManager;
+import org.apache.reef.inmemory.fs.CacheMessenger;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
-import org.apache.reef.inmemory.fs.TaskManager;
-import org.apache.reef.inmemory.fs.entity.User;
 import org.junit.*;
 
 import static org.junit.Assert.*;
@@ -26,14 +26,15 @@ public final class SurfMetaServerTest {
   @Test
   public void testExceptionTranslation() throws Throwable {
 
-    LoadingCache loadingCache = mock(LoadingCache.class);
+    final LoadingCache loadingCache = mock(LoadingCache.class);
     when(loadingCache.get(anyObject())).thenThrow(java.io.FileNotFoundException.class);
-    TaskManager taskManager = mock(TaskManager.class);
+    final CacheMessenger cacheMessenger = mock(CacheMessenger.class);
+    final CacheManager cacheManager = mock(CacheManager.class);
 
-    SurfMetaManager metaManager = new SurfMetaManager(loadingCache, taskManager);
+    final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheMessenger);
 
     try {
-      SurfMetaServer metaService = new SurfMetaServer(metaManager, 18000, 10, 1);
+      final SurfMetaServer metaService = new SurfMetaServer(metaManager, cacheManager, 18000, 10, 1);
       metaService.load("/nonexistent/path");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof org.apache.reef.inmemory.fs.exceptions.FileNotFoundException);
