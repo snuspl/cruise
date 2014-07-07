@@ -5,15 +5,9 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import junit.framework.TestCase;
 import org.apache.hadoop.fs.Path;
-import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.apache.reef.inmemory.fs.entity.User;
 import org.junit.Test;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.List;
 
 import static org.mockito.Mockito.*;
 
@@ -23,7 +17,7 @@ import static org.mockito.Mockito.*;
 public final class SurfMetaManagerTest extends TestCase {
   SurfMetaManager metaManager;
   CacheLoader<Path, FileMeta> cacheLoader;
-  TaskManager taskManager;
+  CacheManager cacheManager;
   Path path;
   User user;
 
@@ -39,14 +33,14 @@ public final class SurfMetaManagerTest extends TestCase {
     cacheLoader = mock(CacheLoader.class);
     when(cacheLoader.load(path)).thenReturn(new FileMeta());
 
-    taskManager = mock(TaskManager.class);
-    doNothing().when(taskManager).clearCaches();
+    cacheManager = mock(CacheManager.class);
+    doNothing().when(cacheManager).clearAll();
 
     LoadingCache<Path, FileMeta> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(4)
             .build(cacheLoader);
 
-    metaManager = new SurfMetaManager(cache, taskManager);
+    metaManager = new SurfMetaManager(cache, cacheManager);
     user = new User();
     user.setId("surf");
     user.setGroup("surf");

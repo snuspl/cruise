@@ -20,37 +20,37 @@ public final class HdfsRandomTaskSelectionPolicyTest {
     return mock(LocatedBlock.class);
   }
 
-  private List<RunningTask> getMockTasks(int size) {
-    ArrayList<RunningTask> mockTasks = new ArrayList<>(size);
+  private List<CacheNode> getMockCacheNodes(int size) {
+    ArrayList<CacheNode> mockNodes = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      mockTasks.add(mock(RunningTask.class));
+      mockNodes.add(mock(CacheNode.class));
     }
-    return mockTasks;
+    return mockNodes;
   }
 
   @Test
   public void testLessThanDefault() {
-    HdfsRandomTaskSelectionPolicy policy = new HdfsRandomTaskSelectionPolicy(3);
-    List<RunningTask> tasks = getMockTasks(1);
-    List<RunningTask> selected = policy.select(getMockBlock(), tasks);
-    assertTrue(tasks.containsAll(selected));
-    assertTrue(tasks.containsAll(selected));
+    HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy(3);
+
+    List<CacheNode> nodes = getMockCacheNodes(1);
+    List<CacheNode> selected = policy.select(getMockBlock(), nodes);
+    assertTrue(nodes.containsAll(selected));
     assertEquals(1, selected.size());
   }
 
   @Test
   public void testIsShuffled() {
-    HdfsRandomTaskSelectionPolicy policy = new HdfsRandomTaskSelectionPolicy(3);
-    List<RunningTask> tasks = getMockTasks(100);
+    HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy(3);
+    List<CacheNode> nodes = getMockCacheNodes(100);
     for (int i = 0; i < 10; i++) { // With high probability
-      List<RunningTask> selected = policy.select(getMockBlock(), tasks);
-      assertTrue(tasks.containsAll(selected));
+      List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes));
+      assertTrue(nodes.containsAll(selected));
       for (int j = 0; j < 3; j++) {
-        if (tasks.get(j) != selected.get(j)) {
-          return;
+        if (nodes.get(j) != selected.get(j)) {
+          return; // selected was not in the same order as nodes
         }
       }
     }
-    assertTrue("Selected tasks do not appear to be shuffled", false);
+    assertTrue("Selected nodes do not appear to be shuffled", false);
   }
 }

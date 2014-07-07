@@ -1,9 +1,5 @@
 package org.apache.reef.inmemory.fs;
 
-import com.google.common.cache.CacheStats;
-import com.microsoft.reef.driver.catalog.NodeDescriptor;
-import com.microsoft.reef.driver.context.ActiveContext;
-import com.microsoft.reef.driver.evaluator.EvaluatorDescriptor;
 import com.microsoft.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -13,14 +9,11 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.reef.inmemory.cache.CacheStatusMessage;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
 import org.junit.*;
-import org.omg.PortableInterceptor.ACTIVE;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -38,22 +31,22 @@ public final class HdfsCacheLoaderTest {
   private FileSystem fs;
   private HdfsCacheManager manager;
   private HdfsCacheLoader loader;
-  private HdfsTaskSelectionPolicy selector;
+  private HdfsCacheSelectionPolicy selector;
 
   @Before
   public void setUp() throws IOException {
-    selector = mock(HdfsTaskSelectionPolicy.class);
-    manager = new HdfsCacheManager(selector);
+    selector = mock(HdfsCacheSelectionPolicy.class);
+    manager = new HdfsCacheManager();
 
-    List<RunningTask> tasksToCache = new ArrayList<>(3);
     for (int i = 0; i < 3; i++) {
       RunningTask task = TestUtils.mockRunningTask(""+i, "host"+i);
-      tasksToCache.add(task);
 
       manager.addRunningTask(task);
       manager.handleUpdate(task.getId(), TestUtils.cacheStatusMessage(18001));
     }
-    when(selector.select(any(LocatedBlock.class), any(Collection.class))).thenReturn(tasksToCache);
+    List<CacheNode> selectedNodes = manager.getCaches();
+    assertEquals(3, selectedNodes.size());
+    when(selector.select(any(LocatedBlock.class), any(List.class))).thenReturn(selectedNodes);
 
     Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
@@ -62,7 +55,7 @@ public final class HdfsCacheLoaderTest {
     cluster.waitActive();
     fs = cluster.getFileSystem();
 
-    loader = new HdfsCacheLoader(manager, fs.getUri().toString());
+    loader = new HdfsCacheLoader(manager, selector, fs.getUri().toString());
   }
 
   @After

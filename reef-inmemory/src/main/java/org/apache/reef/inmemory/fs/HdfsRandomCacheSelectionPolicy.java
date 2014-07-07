@@ -11,31 +11,33 @@ import java.util.*;
 /**
  * Simple random policy for Task selection
  */
-public final class HdfsRandomTaskSelectionPolicy implements HdfsTaskSelectionPolicy {
+public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionPolicy {
 
   private final int numReplicas;
 
   @Inject
-  public HdfsRandomTaskSelectionPolicy(final @Parameter(MetaServerParameters.Replicas.class) int numReplicas) {
+  public HdfsRandomCacheSelectionPolicy(final @Parameter(MetaServerParameters.Replicas.class) int numReplicas) {
     if (numReplicas < 1) {
       throw new IllegalArgumentException("Must select at least one replica");
     }
     this.numReplicas = numReplicas;
   }
 
+  /**
+   * Return random blocks. The number selected is min of numReplicas and tasks.size()
+   */
   @Override
-  public List<RunningTask> select(final LocatedBlock block,
-                                  final Collection<RunningTask> tasks) {
-    List<RunningTask> orderedTasks = new LinkedList<>(tasks);
-    Collections.shuffle(orderedTasks);
+  public List<CacheNode> select(final LocatedBlock block,
+                                final List<CacheNode> tasks) {
+    Collections.shuffle(tasks);
 
-    final List<RunningTask> tasksToCache = new ArrayList<>(numReplicas);
+    final List<CacheNode> chosenNodes = new ArrayList<>(numReplicas);
     int replicasAdded = 0;
-    for (RunningTask task : orderedTasks) {
+    for (CacheNode node : tasks) {
       if (replicasAdded >= numReplicas) break;
-      tasksToCache.add(task);
+      chosenNodes.add(node);
       replicasAdded++;
     }
-    return tasksToCache;
+    return chosenNodes;
   }
 }

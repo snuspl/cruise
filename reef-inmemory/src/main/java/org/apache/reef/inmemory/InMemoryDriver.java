@@ -14,8 +14,8 @@ import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.StageConfiguration;
 import org.apache.reef.inmemory.cache.CacheParameters;
 import org.apache.reef.inmemory.cache.CacheStatusMessage;
+import org.apache.reef.inmemory.fs.CacheManager;
 import org.apache.reef.inmemory.fs.DfsParameters;
-import org.apache.reef.inmemory.fs.TaskManager;
 import org.apache.reef.inmemory.fs.service.MetaServerParameters;
 import org.apache.reef.inmemory.fs.service.SurfMetaServer;
 
@@ -47,7 +47,7 @@ public final class InMemoryDriver {
 
   private final EvaluatorRequestor requestor;
   private final SurfMetaServer metaService;
-  private final TaskManager taskManager;
+  private final CacheManager cacheManager;
   private final String dfsType;
   private final int initCacheServers;
   private final int defaultMemCacheServers;
@@ -63,7 +63,7 @@ public final class InMemoryDriver {
   @Inject
   public InMemoryDriver(final EvaluatorRequestor requestor,
                         final SurfMetaServer metaService,
-                        final TaskManager taskManager,
+                        final CacheManager cacheManager,
                         final @Parameter(DfsParameters.Type.class) String dfsType,
                         final @Parameter(MetaServerParameters.InitCacheServers.class) int initCacheServers,
                         final @Parameter(MetaServerParameters.DefaultMemCacheServers.class) int defaultMemCacheServers,
@@ -72,7 +72,7 @@ public final class InMemoryDriver {
                         final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads) {
     this.requestor = requestor;
     this.metaService = metaService;
-    this.taskManager = taskManager;
+    this.cacheManager = cacheManager;
     this.dfsType = dfsType;
     this.initCacheServers = initCacheServers;
     this.defaultMemCacheServers = defaultMemCacheServers;
@@ -152,7 +152,7 @@ public final class InMemoryDriver {
     @Override
     public void onNext(RunningTask task) {
       LOG.log(Level.INFO, "Task {0} Running", task.getId());
-      taskManager.addRunningTask(task);
+      cacheManager.addRunningTask(task);
     }
   }
 
@@ -163,7 +163,7 @@ public final class InMemoryDriver {
     @Override
     public void onNext(CompletedTask task) {
       LOG.log(Level.INFO, "Task {0} Completed", task.getId());
-      taskManager.removeRunningTask(task.getId());
+      cacheManager.removeRunningTask(task.getId());
     }
   }
 
@@ -208,7 +208,7 @@ public final class InMemoryDriver {
       LOG.log(Level.INFO, "TaskMessage: from {0}: {1}",
           new Object[]{msg.getId(), CODEC.decode(msg.get())});
 
-      taskManager.handleUpdate(msg.getId(), CODEC.decode(msg.get()));
+      cacheManager.handleUpdate(msg.getId(), CODEC.decode(msg.get()));
     }
   }
 }

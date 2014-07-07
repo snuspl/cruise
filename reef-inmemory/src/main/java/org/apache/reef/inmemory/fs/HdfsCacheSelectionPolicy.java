@@ -10,12 +10,11 @@ import java.util.List;
  * Policy for choosing Tasks for replicated caching, based on the block
  * info (including locations) provided by HDFS.
  */
-public interface HdfsTaskSelectionPolicy {
+public interface HdfsCacheSelectionPolicy {
   /**
-   *
-   * The caller should guarantee that tasks do not change
-   * (e.g., called within a synchronized block).
+   * Return the Tasks to place cache replicas on.
+   * Note, the Task list may be modified in place.
    */
-  public List<RunningTask> select(final LocatedBlock block,
-                                  final Collection<RunningTask> tasks);
+  public List<CacheNode> select(final LocatedBlock block,
+                                final List<CacheNode> tasks);
 }

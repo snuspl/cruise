@@ -1,8 +1,6 @@
 package org.apache.reef.inmemory.fs;
 
-import com.google.common.cache.CacheStats;
 import com.microsoft.reef.driver.task.RunningTask;
-import org.apache.reef.inmemory.cache.CacheStatusMessage;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -15,23 +13,20 @@ public class HdfsCacheManagerTest {
 
   @Test
   public void testBindPortUpdate() throws IOException {
-    HdfsTaskSelectionPolicy selector = mock(HdfsTaskSelectionPolicy.class);
-    HdfsCacheManager manager = new HdfsCacheManager(selector);
+    HdfsCacheSelectionPolicy selector = mock(HdfsCacheSelectionPolicy.class);
+    HdfsCacheManager manager = new HdfsCacheManager();
 
     RunningTask task = TestUtils.mockRunningTask("a", "hosta");
 
     manager.addRunningTask(task);
-    try {
-      manager.getCacheAddress(task.getId());
-      fail("Expected IOException when port not assigned");
-    } catch (IOException e) {
-      // Expected exception
-    }
+    assertEquals("Expected cache not added when port unassigned", 0, manager.getCaches().size());
 
     manager.handleUpdate(task.getId(), TestUtils.cacheStatusMessage(18001));
-    assertEquals("hosta:18001", manager.getCacheAddress(task.getId()));
+    assertEquals(1, manager.getCaches().size());
+    assertEquals("hosta:18001", manager.getCaches().get(0).getAddress());
 
     manager.handleUpdate(task.getId(), TestUtils.cacheStatusMessage(18001));
-    assertEquals("hosta:18001", manager.getCacheAddress(task.getId()));
+    assertEquals(1, manager.getCaches().size());
+    assertEquals("hosta:18001", manager.getCaches().get(0).getAddress());
   }
 }
