@@ -1,38 +1,29 @@
 package org.apache.reef.inmemory;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import javax.inject.Inject;
-
-import com.microsoft.reef.driver.task.RunningTask;
-import com.microsoft.tang.Tang;
-import com.microsoft.tang.annotations.Parameter;
-import com.microsoft.wake.StageConfiguration;
-import org.apache.reef.inmemory.cache.CacheParameters;
-import org.apache.reef.inmemory.cache.CacheStatusMessage;
-import org.apache.reef.inmemory.fs.CacheManager;
-import org.apache.reef.inmemory.fs.DfsParameters;
-import org.apache.reef.inmemory.fs.service.MetaServerParameters;
-import org.apache.reef.inmemory.fs.service.SurfMetaServer;
-
-import com.microsoft.reef.driver.context.ContextConfiguration;
 import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
-import com.microsoft.reef.driver.evaluator.EvaluatorRequest;
-import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.reef.driver.task.CompletedTask;
+import com.microsoft.reef.driver.task.RunningTask;
 import com.microsoft.reef.driver.task.TaskConfiguration;
 import com.microsoft.reef.driver.task.TaskMessage;
 import com.microsoft.tang.Configuration;
+import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
+import org.apache.reef.inmemory.cache.CacheStatusMessage;
+import org.apache.reef.inmemory.fs.CacheManager;
+import org.apache.reef.inmemory.fs.service.MetaServerParameters;
+import org.apache.reef.inmemory.fs.service.SurfMetaServer;
+
+import javax.inject.Inject;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The Driver for InMemory Application
@@ -45,15 +36,9 @@ public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
   private static final ObjectSerializableCodec<CacheStatusMessage> CODEC = new ObjectSerializableCodec<>();
 
-  private final EvaluatorRequestor requestor;
   private final SurfMetaServer metaService;
   private final CacheManager cacheManager;
-  private final String dfsType;
   private final int initCacheServers;
-  private final int defaultMemCacheServers;
-  private final int cachePort;
-  private final int cacheServerThreads;
-  private final int cacheLoadingThreads;
 
   private ExecutorService executor;
 
@@ -61,24 +46,12 @@ public final class InMemoryDriver {
    * Job Driver. Instantiated by TANG.
    */
   @Inject
-  public InMemoryDriver(final EvaluatorRequestor requestor,
-                        final SurfMetaServer metaService,
+  public InMemoryDriver(final SurfMetaServer metaService,
                         final CacheManager cacheManager,
-                        final @Parameter(DfsParameters.Type.class) String dfsType,
-                        final @Parameter(MetaServerParameters.InitCacheServers.class) int initCacheServers,
-                        final @Parameter(MetaServerParameters.DefaultMemCacheServers.class) int defaultMemCacheServers,
-                        final @Parameter(CacheParameters.Port.class) int cachePort,
-                        final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
-                        final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads) {
-    this.requestor = requestor;
+                        final @Parameter(MetaServerParameters.InitCacheServers.class) int initCacheServers) {
     this.metaService = metaService;
     this.cacheManager = cacheManager;
-    this.dfsType = dfsType;
     this.initCacheServers = initCacheServers;
-    this.defaultMemCacheServers = defaultMemCacheServers;
-    this.cachePort = cachePort;
-    this.cacheServerThreads = cacheServerThreads;
-    this.cacheLoadingThreads = cacheLoadingThreads;
   }
 
   /**
@@ -101,10 +74,8 @@ public final class InMemoryDriver {
     @Override
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
-      InMemoryDriver.this.requestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(initCacheServers)
-          .setMemory(defaultMemCacheServers)
-          .build());
+
+      cacheManager.requestEvaluator(initCacheServers);
 
       executor = Executors.newSingleThreadExecutor();
       try {
@@ -124,24 +95,7 @@ public final class InMemoryDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       LOG.log(Level.INFO, "Submitting Task to AllocatedEvaluator: {0}", allocatedEvaluator);
-      try {
-        final Configuration contextConf = ContextConfiguration.CONF
-            .set(ContextConfiguration.IDENTIFIER, "InMemoryContext")
-            .build();
-        final Configuration taskConf = getTaskConfiguration();
-        final Configuration taskInMemoryConf = InMemoryTaskConfiguration.getConf(dfsType)
-                .set(InMemoryTaskConfiguration.CACHESERVER_PORT, cachePort)
-                .set(InMemoryTaskConfiguration.CACHESERVER_SERVER_THREADS, cacheServerThreads)
-                .set(InMemoryTaskConfiguration.CACHESERVER_LOADING_THREADS, cacheLoadingThreads)
-                .build();
-
-        allocatedEvaluator.submitContextAndTask(contextConf,
-                Tang.Factory.getTang().newConfigurationBuilder(taskConf, taskInMemoryConf).build());
-      } catch (final BindException ex) {
-        final String message = "Failed to bind Task.";
-        LOG.log(Level.SEVERE, message);
-        throw new RuntimeException(message, ex);
-      }
+      cacheManager.submitContextAndTask(allocatedEvaluator);
     }
   }
 

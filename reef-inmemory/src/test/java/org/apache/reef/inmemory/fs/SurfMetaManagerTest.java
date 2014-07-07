@@ -17,7 +17,7 @@ import static org.mockito.Mockito.*;
 public final class SurfMetaManagerTest extends TestCase {
   SurfMetaManager metaManager;
   CacheLoader<Path, FileMeta> cacheLoader;
-  CacheManager cacheManager;
+  CacheMessenger cacheMessenger;
   Path path;
   User user;
 
@@ -33,14 +33,14 @@ public final class SurfMetaManagerTest extends TestCase {
     cacheLoader = mock(CacheLoader.class);
     when(cacheLoader.load(path)).thenReturn(new FileMeta());
 
-    cacheManager = mock(CacheManager.class);
-    doNothing().when(cacheManager).clearAll();
+    cacheMessenger = mock(CacheMessenger.class);
+    doNothing().when(cacheMessenger).clearAll();
 
     LoadingCache<Path, FileMeta> cache = CacheBuilder.newBuilder()
             .concurrencyLevel(4)
             .build(cacheLoader);
 
-    metaManager = new SurfMetaManager(cache, cacheManager);
+    metaManager = new SurfMetaManager(cache, cacheMessenger);
     user = new User();
     user.setId("surf");
     user.setGroup("surf");

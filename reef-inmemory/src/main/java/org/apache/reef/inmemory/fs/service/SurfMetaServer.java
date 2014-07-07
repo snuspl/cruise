@@ -1,9 +1,8 @@
 package org.apache.reef.inmemory.fs.service;
 
-import com.microsoft.reef.driver.evaluator.EvaluatorRequest;
-import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.fs.CacheManager;
 import org.apache.reef.inmemory.fs.SurfMetaManager;
 import org.apache.reef.inmemory.fs.entity.BlockInfo;
 import org.apache.reef.inmemory.fs.entity.FileMeta;
@@ -37,16 +36,16 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   TServer server = null;
 
   private final SurfMetaManager metaManager;
-  private final EvaluatorRequestor evaluatorRequestor;
+  private final CacheManager cacheManager;
 
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
-                        final EvaluatorRequestor evaluatorRequestor,
+                        final CacheManager cacheManager,
                         final @Parameter(MetaServerParameters.Port.class) int port,
                         final @Parameter(MetaServerParameters.Timeout.class) int timeout,
                         final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
     this.metaManager = metaManager;
-    this.evaluatorRequestor = evaluatorRequestor;
+    this.cacheManager = cacheManager;
 
     this.port = port;
     this.timeout = timeout;
@@ -90,15 +89,14 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public String addCacheNode(int port, int memory)
+  public String addCacheNode(int memory)
           throws AllocationFailedException, SubmissionFailedException, TException {
-    LOG.log(Level.INFO, "CLI addCacheNode command with port {0}, memory {1}",
-            new Object[]{port, memory});
-    evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-            .setNumber(1)
-            .setMemory(memory)
-            .build());
-    // TODO: wait until node is created, and then return
+    LOG.log(Level.INFO, "CLI addCacheNode command with memory {0}", memory);
+    if (memory == 0) {
+      cacheManager.requestEvaluator(1);
+    } else {
+      cacheManager.requestEvaluator(1, memory);
+    }
     return "Submitted";
   }
 

@@ -1,18 +1,15 @@
 package org.apache.reef.inmemory;
 
-import com.google.common.cache.CacheStats;
 import com.microsoft.reef.task.Task;
 import com.microsoft.reef.task.TaskMessage;
 import com.microsoft.reef.task.TaskMessageSource;
 import com.microsoft.reef.task.events.DriverMessage;
 import com.microsoft.reef.task.events.TaskStart;
 import com.microsoft.reef.util.Optional;
-import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
-import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.cache.BlockId;
 import org.apache.reef.inmemory.cache.BlockLoader;
@@ -87,7 +84,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
   /**
    * Starts the thread for fulfilling data requests from clients
    */
-  final class StartHandler implements EventHandler<TaskStart> {
+  public final class StartHandler implements EventHandler<TaskStart> {
     @Override
     public void onNext(final TaskStart taskStart) {
       LOG.log(Level.INFO, "TaskStart: {0}", taskStart);

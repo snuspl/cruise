@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.fs;
 
+import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.reef.driver.task.RunningTask;
 import org.junit.Test;
 
@@ -14,7 +15,7 @@ public class HdfsCacheManagerTest {
   @Test
   public void testBindPortUpdate() throws IOException {
     HdfsCacheSelectionPolicy selector = mock(HdfsCacheSelectionPolicy.class);
-    HdfsCacheManager manager = new HdfsCacheManager();
+    CacheManager manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0);
 
     RunningTask task = TestUtils.mockRunningTask("a", "hosta");
 

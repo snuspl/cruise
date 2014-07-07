@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.fs;
 
+import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -29,14 +30,16 @@ public final class HdfsCacheLoaderTest {
 
   private MiniDFSCluster cluster;
   private FileSystem fs;
-  private HdfsCacheManager manager;
+  private CacheManagerImpl manager;
+  private HdfsCacheMessenger messenger;
   private HdfsCacheLoader loader;
   private HdfsCacheSelectionPolicy selector;
 
   @Before
   public void setUp() throws IOException {
     selector = mock(HdfsCacheSelectionPolicy.class);
-    manager = new HdfsCacheManager();
+    manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0);
+    messenger = new HdfsCacheMessenger(manager);
 
     for (int i = 0; i < 3; i++) {
       RunningTask task = TestUtils.mockRunningTask(""+i, "host"+i);
@@ -55,7 +58,7 @@ public final class HdfsCacheLoaderTest {
     cluster.waitActive();
     fs = cluster.getFileSystem();
 
-    loader = new HdfsCacheLoader(manager, selector, fs.getUri().toString());
+    loader = new HdfsCacheLoader(manager, messenger, selector, fs.getUri().toString());
   }
 
   @After

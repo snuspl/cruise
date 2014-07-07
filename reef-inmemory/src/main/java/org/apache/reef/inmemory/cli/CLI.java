@@ -53,13 +53,8 @@ public final class CLI {
   public static final class Port implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "InMemory new Cache Server port",
-          short_name = "cache_port", default_value = "0")
-  public static final class CacheServerPort implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "InMemory new Cache Server memory amount in MB",
-          short_name = "cache_memory", default_value = "128")
+          short_name = "cache_memory", default_value = "0")
   public static final class CacheServerMemory implements Name<Integer> {
   }
 
@@ -84,7 +79,6 @@ public final class CLI {
     String cmd = injector.getNamedInstance(Command.class);
     String hostname = injector.getNamedInstance(Hostname.class);
     int port = injector.getNamedInstance(Port.class);
-    int cachePort = injector.getNamedInstance(CacheServerPort.class);
     int cacheMemory = injector.getNamedInstance(CacheServerMemory.class);
     SurfManagementService.Client client = getClient(hostname, port);
 
@@ -97,7 +91,7 @@ public final class CLI {
       String path = injector.getNamedInstance(Path.class);
       return client.load(path);
     } else if ("addcache".equals(cmd)) {
-      String result = client.addCacheNode(cachePort, cacheMemory);
+      String result = client.addCacheNode(cacheMemory);
       return true;
     } else {
       return false;

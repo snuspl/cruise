@@ -11,6 +11,10 @@ public final class CacheParameters {
   public static final class Port implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "InMemory Cache memory in MB", short_name = "cache_memory", default_value = "512")
+  public static final class Memory implements Name<Integer> {
+  }
+
   @NamedParameter(doc = "InMemory Cache timeout", short_name = "cache_timeout", default_value = "30000")
   public static final class Timeout implements Name<Integer> {
   }

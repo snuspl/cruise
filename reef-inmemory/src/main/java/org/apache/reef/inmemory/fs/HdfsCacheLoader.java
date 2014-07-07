@@ -35,16 +35,19 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
   private static final ObjectSerializableCodec<HdfsMessage> CODEC = new ObjectSerializableCodec<>();
 
-  private final HdfsCacheManager cacheManager;
+  private final CacheManagerImpl cacheManager;
+  private final HdfsCacheMessenger cacheMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
   private final String dfsAddress;
   private final DFSClient dfsClient;
 
   @Inject
-  public HdfsCacheLoader(final HdfsCacheManager cacheManager,
+  public HdfsCacheLoader(final CacheManagerImpl cacheManager,
+                         final HdfsCacheMessenger cacheMessenger,
                          final HdfsCacheSelectionPolicy cacheSelector,
                          final @Parameter(DfsParameters.Address.class) String dfsAddress) {
     this.cacheManager = cacheManager;
+    this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;
     this.dfsAddress = dfsAddress;
     try {
@@ -88,7 +91,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       final List<CacheNode> cacheNodes = cacheManager.getCaches();
       final List<CacheNode> selectedNodes = cacheSelector.select(locatedBlock, cacheNodes);
       for (final CacheNode cacheNode : selectedNodes) {
-        cacheManager.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?
+        cacheMessenger.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?
         cacheBlock.addToLocations(cacheNode.getAddress());
       }
 

@@ -14,14 +14,14 @@ import java.util.concurrent.ExecutionException;
  */
 public final class SurfMetaManager {
   private final LoadingCache<Path, FileMeta> metadataIndex;
-  private final CacheManager cacheManager;
+  private final CacheMessenger cacheMessenger;
   public static String USERS_HOME = "/user";
 
   @Inject
   public SurfMetaManager(final LoadingCache metadataIndex,
-                         final CacheManager cacheManager) {
+                         final CacheMessenger cacheMessenger) {
     this.metadataIndex = metadataIndex;
-    this.cacheManager = cacheManager;
+    this.cacheMessenger = cacheMessenger;
   }
 
   public FileMeta getBlocks(Path path, User creator) throws FileNotFoundException, Throwable {
@@ -36,7 +36,7 @@ public final class SurfMetaManager {
   public long clear() {
     long numEntries = metadataIndex.size();
     metadataIndex.invalidateAll();
-    cacheManager.clearAll();
+    cacheMessenger.clearAll();
     return numEntries;
   }
 
