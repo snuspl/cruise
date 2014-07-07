@@ -24,7 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * InMemory Task. Wait until receiving a signal from driver.
+ * InMemory Task. Wait until receiving a signal from Driver.
  */
 @Unit
 public class InMemoryTask implements Task, TaskMessageSource {
@@ -98,7 +98,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
   }
 
   /**
-   * Handles messages from the driver. The message contains the information
+   * Handles messages from the Driver. The message contains the information
    * what this task is supposed to do.
    * TODO Separate Hdfs-specific part
    */
@@ -117,7 +117,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
             LOG.log(Level.SEVERE, "Exception occured while loading");
           }
         } else if (msg.getClearMessage().isPresent()) {
-          LOG.log(Level.INFO, "Received task clear msg");
+          LOG.log(Level.INFO, "Received cache clear msg");
           cache.clear();
         }
       }

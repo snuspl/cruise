@@ -16,7 +16,7 @@ import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 
 /**
- * Builder that creates a Configuration Module to be used at the driver, based on underlying FS type
+ * Builder that creates a Configuration Module to be used at the Driver, based on underlying FS type
  */
 public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
 
