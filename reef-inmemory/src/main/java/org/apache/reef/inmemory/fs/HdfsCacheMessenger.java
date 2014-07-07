@@ -9,8 +9,7 @@ import javax.inject.Inject;
 import java.util.List;
 
 /**
- * Implements HDFS-specific
- * general Task/Cache management methods,
+ * Implements HDFS-specific messaging
  */
 
 public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage> {
@@ -28,7 +27,7 @@ public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage
   public void clear(String taskId) {
     CacheNode node = cacheManager.getCache(taskId);
     if (node != null) {
-      node.getTask().send(CODEC.encode(new HdfsMessage(new CacheClearMessage())));
+      node.send(CODEC.encode(new HdfsMessage(new CacheClearMessage())));
     }
   }
 
@@ -36,7 +35,7 @@ public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage
   public void clearAll() {
     List<CacheNode> nodes = cacheManager.getCaches();
     for (CacheNode node : nodes) {
-      node.getTask().send(CODEC.encode(new HdfsMessage(new CacheClearMessage())));
+      node.send(CODEC.encode(new HdfsMessage(new CacheClearMessage())));
     }
   }
 
@@ -44,7 +43,7 @@ public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage
   public void addBlock(String taskId, HdfsBlockMessage msg) {
     CacheNode node = cacheManager.getCache(taskId);
     if (node != null) {
-      node.getTask().send(CODEC.encode(new HdfsMessage(msg)));
+      node.send(CODEC.encode(new HdfsMessage(msg)));
     }
   }
 }

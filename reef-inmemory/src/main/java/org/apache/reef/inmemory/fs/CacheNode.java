@@ -2,6 +2,9 @@ package org.apache.reef.inmemory.fs;
 
 import com.microsoft.reef.driver.task.RunningTask;
 
+/**
+ * Encapsulates cache node information
+ */
 public class CacheNode {
   private final RunningTask task;
   private final String address;
@@ -11,16 +14,16 @@ public class CacheNode {
     this.address = getCacheHost(this.task) + ":" + port;
   }
 
-  public RunningTask getTask() {
-    return task;
-  }
-
   public String getTaskId() {
     return task.getId();
   }
 
   public String getAddress() {
     return address;
+  }
+
+  public void send(byte[] msg) {
+    task.send(msg);
   }
 
   /**

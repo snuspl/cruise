@@ -25,8 +25,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Provides an implementation for CacheManager, excluding messaging which
- * should be implemented per Base FS.
+ * Provides an implementation for CacheManager. Messaging is taken care of
+ * at CacheMessenger, because it must be implemented per Base FS.
  */
 public class CacheManagerImpl implements CacheManager {
 

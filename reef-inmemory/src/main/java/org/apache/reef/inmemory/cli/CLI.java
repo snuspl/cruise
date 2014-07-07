@@ -107,6 +107,7 @@ public final class CLI {
             .registerShortNameOfClass(Hostname.class)
             .registerShortNameOfClass(Port.class)
             .registerShortNameOfClass(Path.class)
+            .registerShortNameOfClass(CacheServerMemory.class)
             .processCommandLine(args);
     return confBuilder.build();
   }
