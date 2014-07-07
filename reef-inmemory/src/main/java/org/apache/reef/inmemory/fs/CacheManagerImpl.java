@@ -28,7 +28,7 @@ import java.util.logging.Logger;
  * Provides an implementation for CacheManager. Messaging is taken care of
  * at CacheMessenger, because it must be implemented per Base FS.
  */
-public class CacheManagerImpl implements CacheManager {
+public final class CacheManagerImpl implements CacheManager {
 
   private static final Logger LOG = Logger.getLogger(CacheManagerImpl.class.getName());
 
@@ -61,7 +61,7 @@ public class CacheManagerImpl implements CacheManager {
   /**
    * Get a Task Configuration
    */
-  protected static final Configuration getTaskConfiguration() throws BindException {
+  protected static Configuration getTaskConfiguration() throws BindException {
     return TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
             .set(TaskConfiguration.TASK, InMemoryTask.class)
@@ -72,7 +72,7 @@ public class CacheManagerImpl implements CacheManager {
   }
 
   @Override
-  public final synchronized void requestEvaluator(int count, int memory) {
+  public synchronized void requestEvaluator(final int count, final int memory) {
     evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
             .setNumber(count)
             .setMemory(memory)
@@ -80,15 +80,16 @@ public class CacheManagerImpl implements CacheManager {
   }
 
   @Override
-  public final synchronized void requestEvaluator(int count) {
+  public synchronized void requestEvaluator(final int count) {
     requestEvaluator(count, cacheMemory);
   }
 
   @Override
-  public final synchronized void submitContextAndTask(final AllocatedEvaluator allocatedEvaluator) {
+  public synchronized void submitContextAndTask(final AllocatedEvaluator allocatedEvaluator) {
     try {
       final Configuration contextConf = ContextConfiguration.CONF
               .set(ContextConfiguration.IDENTIFIER, "InMemoryContext")
+
               .build();
       final Configuration taskConf = getTaskConfiguration();
       final Configuration taskInMemoryConf = InMemoryTaskConfiguration.getConf(dfsType)
@@ -102,12 +103,11 @@ public class CacheManagerImpl implements CacheManager {
     } catch (final BindException ex) {
       final String message = "Failed to bind Task.";
       LOG.log(Level.SEVERE, message);
-      throw new RuntimeException(message, ex);
     }
   }
 
   @Override
-  public final synchronized boolean addRunningTask(RunningTask task) {
+  public synchronized boolean addRunningTask(final RunningTask task) {
     if (caches.containsKey(task.getId()) || pendingTasks.containsKey(task.getId())) {
       return false;
     } else {
@@ -118,22 +118,22 @@ public class CacheManagerImpl implements CacheManager {
   }
 
   @Override
-  public final synchronized void removeRunningTask(String taskId) {
+  public synchronized void removeRunningTask(final String taskId) {
     caches.remove(taskId);
   }
 
   @Override
-  public final synchronized List<CacheNode> getCaches() {
+  public synchronized List<CacheNode> getCaches() {
     return new ArrayList<>(caches.values());
   }
 
   @Override
-  public final synchronized CacheNode getCache(String taskId) {
+  public synchronized CacheNode getCache(final String taskId) {
     return caches.get(taskId);
   }
 
   @Override
-  public final synchronized void handleUpdate(String taskId, CacheStatusMessage msg) {
+  public synchronized void handleUpdate(final String taskId, final CacheStatusMessage msg) {
     // TODO: eventually, the cache manager should remove Caches that have not been heard from for a long time
     if (pendingTasks.containsKey(taskId) && msg.getBindPort() != 0) {
       final RunningTask task = pendingTasks.remove(taskId);

@@ -85,11 +85,11 @@ public final class HdfsCacheLoaderTest {
    */
   @Test
   public void testLoadDirectory() throws IOException {
-    Path directory = new Path("/existing/directory");
+    final Path directory = new Path("/existing/directory");
 
     fs.mkdirs(directory);
     try {
-      FileMeta fileMeta = loader.load(directory);
+      final FileMeta fileMeta = loader.load(directory);
       fail("FileNotFoundException was expected");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof FileNotFoundException);
@@ -103,13 +103,13 @@ public final class HdfsCacheLoaderTest {
    */
   @Test
   public void testLoadSmallFile() throws IOException {
-    Path smallFile = new Path("/existing/file");
+    final Path smallFile = new Path("/existing/file");
 
-    FSDataOutputStream outputStream = fs.create(smallFile);
+    final FSDataOutputStream outputStream = fs.create(smallFile);
     outputStream.write(1);
     outputStream.close();
 
-    FileMeta fileMeta = loader.load(smallFile);
+    final FileMeta fileMeta = loader.load(smallFile);
     assertNotNull(fileMeta);
     assertNotNull(fileMeta.getBlocks());
     assertEquals(3, fileMeta.getBlocksIterator().next().getLocationsSize());

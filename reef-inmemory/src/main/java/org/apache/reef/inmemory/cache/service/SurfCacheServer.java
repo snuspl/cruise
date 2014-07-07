@@ -59,7 +59,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
    */
   public int initBindPort() throws IOException {
     if (this.port == 0) {
-      ServerSocket reservation = new ServerSocket(0, 1);
+      final ServerSocket reservation = new ServerSocket(0, 1);
       this.bindPort = reservation.getLocalPort();
       reservation.close();
     } else {
@@ -71,9 +71,9 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   @Override
   public void run() {
     try {
-      TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.bindPort, this.timeout);
+      final TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.bindPort, this.timeout);
 
-      SurfCacheService.Processor<SurfCacheService.Iface> processor =
+      final SurfCacheService.Processor<SurfCacheService.Iface> processor =
               new SurfCacheService.Processor<SurfCacheService.Iface>(this);
 
       this.server = new THsHaServer(
@@ -97,12 +97,12 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   }
 
   @Override
-  public ByteBuffer getData(final BlockInfo blockInfo,
-                           final long offset, final long length) throws BlockNotFoundException, BlockLoadingException {
-    HdfsBlockId blockId = HdfsBlockId.copyBlock(blockInfo);
+  public ByteBuffer getData(final BlockInfo blockInfo, final long offset, final long length)
+          throws BlockNotFoundException, BlockLoadingException {
+    final HdfsBlockId blockId = HdfsBlockId.copyBlock(blockInfo);
 
-    byte[] block = cache.get(blockId);
-    ByteBuffer buf = ByteBuffer.wrap(block, (int)offset,
+    final byte[] block = cache.get(blockId);
+    final ByteBuffer buf = ByteBuffer.wrap(block, (int)offset,
             Math.min(block.length - (int)offset, Math.min((int)length, 8 * 1024 * 1024))); // 8 MB, for now
     return buf;
   }

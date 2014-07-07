@@ -21,7 +21,7 @@ public final class HdfsRandomTaskSelectionPolicyTest {
   }
 
   private List<CacheNode> getMockCacheNodes(int size) {
-    ArrayList<CacheNode> mockNodes = new ArrayList<>(size);
+    final ArrayList<CacheNode> mockNodes = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       mockNodes.add(mock(CacheNode.class));
     }
@@ -30,20 +30,20 @@ public final class HdfsRandomTaskSelectionPolicyTest {
 
   @Test
   public void testLessThanDefault() {
-    HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy(3);
+    final HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy(3);
 
-    List<CacheNode> nodes = getMockCacheNodes(1);
-    List<CacheNode> selected = policy.select(getMockBlock(), nodes);
+    final List<CacheNode> nodes = getMockCacheNodes(1);
+    final List<CacheNode> selected = policy.select(getMockBlock(), nodes);
     assertTrue(nodes.containsAll(selected));
     assertEquals(1, selected.size());
   }
 
   @Test
   public void testIsShuffled() {
-    HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy(3);
-    List<CacheNode> nodes = getMockCacheNodes(100);
+    final HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy(3);
+    final List<CacheNode> nodes = getMockCacheNodes(100);
     for (int i = 0; i < 10; i++) { // With high probability
-      List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes));
+      final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes));
       assertTrue(nodes.containsAll(selected));
       for (int j = 0; j < 3; j++) {
         if (nodes.get(j) != selected.get(j)) {

@@ -90,7 +90,8 @@ public class InMemoryTask implements Task, TaskMessageSource {
       LOG.log(Level.INFO, "TaskStart: {0}", taskStart);
       executor = Executors.newSingleThreadExecutor();
       try {
-        int bindPort = dataServer.initBindPort();
+        final int bindPort = dataServer.initBindPort();
+        LOG.log(Level.INFO, "Cache bound to port: {0}"+bindPort);
         executor.execute(dataServer);
       } catch (Exception ex) {
         final String message = "Failed to start Surf Meta Service";
@@ -109,12 +110,12 @@ public class InMemoryTask implements Task, TaskMessageSource {
     @Override
     public void onNext(DriverMessage driverMessage) {
       if (driverMessage.get().isPresent()) {
-        HdfsMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
+        final HdfsMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
         if (msg.getBlockMessage().isPresent()) {
           LOG.log(Level.INFO, "Received load block msg");
-          HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
+          final HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
           try {
-            HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
+            final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
             executeLoad(loader);
           } catch (IOException e ) {
             LOG.log(Level.SEVERE, "Exception occured while loading");
@@ -141,11 +142,11 @@ public class InMemoryTask implements Task, TaskMessageSource {
     @Override
     public void onNext(BlockLoader loader) {
       try {
-        BlockId blockId = loader.getBlockId();
+        final BlockId blockId = loader.getBlockId();
         LOG.log(Level.INFO, "Add stub block");
         cache.putPending(blockId);
         LOG.log(Level.INFO, "Start loading block");
-        byte[] result = loader.loadBlock();
+        final byte[] result = loader.loadBlock();
         cache.put(blockId, result);
         LOG.log(Level.INFO, "Finish loading block");
       } catch (IOException e) {

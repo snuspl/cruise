@@ -9,7 +9,8 @@ public class CacheNode {
   private final RunningTask task;
   private final String address;
 
-  public CacheNode(RunningTask task, int port) {
+  public CacheNode(final RunningTask task,
+                   final int port) {
     this.task = task;
     this.address = getCacheHost(this.task) + ":" + port;
   }
@@ -22,7 +23,7 @@ public class CacheNode {
     return address;
   }
 
-  public void send(byte[] msg) {
+  public void send(final byte[] msg) {
     task.send(msg);
   }
 

@@ -33,7 +33,7 @@ public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionP
 
     final List<CacheNode> chosenNodes = new ArrayList<>(numReplicas);
     int replicasAdded = 0;
-    for (CacheNode node : tasks) {
+    for (final CacheNode node : tasks) {
       if (replicasAdded >= numReplicas) break;
       chosenNodes.add(node);
       replicasAdded++;

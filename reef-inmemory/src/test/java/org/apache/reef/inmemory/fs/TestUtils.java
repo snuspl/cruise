@@ -12,13 +12,13 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 public class TestUtils {
-  public static RunningTask mockRunningTask(String id, String hostString) {
-    RunningTask runningTask = mock(RunningTask.class);
-    ActiveContext activeContext = mock(ActiveContext.class);
-    EvaluatorDescriptor evaluatorDescriptor = mock(EvaluatorDescriptor.class);
-    NodeDescriptor nodeDescriptor = mock(NodeDescriptor.class);
+  public static RunningTask mockRunningTask(final String id, final String hostString) {
+    final RunningTask runningTask = mock(RunningTask.class);
+    final ActiveContext activeContext = mock(ActiveContext.class);
+    final EvaluatorDescriptor evaluatorDescriptor = mock(EvaluatorDescriptor.class);
+    final NodeDescriptor nodeDescriptor = mock(NodeDescriptor.class);
     // Mockito can't mock the final method getHostString(), so using real object
-    InetSocketAddress inetSocketAddress = new InetSocketAddress(hostString, 0);
+    final InetSocketAddress inetSocketAddress = new InetSocketAddress(hostString, 0);
 
     doReturn(id).when(runningTask).getId();
     doReturn(activeContext).when(runningTask).getActiveContext();
@@ -29,7 +29,7 @@ public class TestUtils {
     return runningTask;
   }
 
-  public static CacheStatusMessage cacheStatusMessage(int port) {
+  public static CacheStatusMessage cacheStatusMessage(final int port) {
     return new CacheStatusMessage(port);
   }
 }

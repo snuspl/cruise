@@ -65,9 +65,9 @@ public final class CLI {
 
   private static SurfManagementService.Client getClient(String host, int port)
           throws TTransportException {
-    TTransport transport = new TFramedTransport(new TSocket(host, port));
+    final TTransport transport = new TFramedTransport(new TSocket(host, port));
     transport.open();
-    TProtocol protocol = new TMultiplexedProtocol(
+    final TProtocol protocol = new TMultiplexedProtocol(
             new TCompactProtocol(transport),
             SurfManagementService.class.getName());
     return new SurfManagementService.Client(protocol);
@@ -76,22 +76,22 @@ public final class CLI {
   private static boolean runCommand(final Configuration config)
           throws InjectionException, TException {
     final Injector injector = Tang.Factory.getTang().newInjector(config);
-    String cmd = injector.getNamedInstance(Command.class);
-    String hostname = injector.getNamedInstance(Hostname.class);
-    int port = injector.getNamedInstance(Port.class);
-    int cacheMemory = injector.getNamedInstance(CacheServerMemory.class);
-    SurfManagementService.Client client = getClient(hostname, port);
+    final String cmd = injector.getNamedInstance(Command.class);
+    final String hostname = injector.getNamedInstance(Hostname.class);
+    final int port = injector.getNamedInstance(Port.class);
+    final int cacheMemory = injector.getNamedInstance(CacheServerMemory.class);
+    final SurfManagementService.Client client = getClient(hostname, port);
 
     if ("clear".equals(cmd)) {
       LOG.log(Level.INFO, "Connected to surf");
-      long numCleared = client.clear();
+      final long numCleared = client.clear();
       LOG.log(Level.INFO, "Cleared {0} items from cache", numCleared);
       return true;
     } else if ("load".equals(cmd)) {
-      String path = injector.getNamedInstance(Path.class);
+      final String path = injector.getNamedInstance(Path.class);
       return client.load(path);
     } else if ("addcache".equals(cmd)) {
-      String result = client.addCacheNode(cacheMemory);
+      final String result = client.addCacheNode(cacheMemory);
       return true;
     } else {
       return false;

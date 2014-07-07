@@ -12,22 +12,22 @@ public class SurfCacheServerTest {
 
   @Test
   public void testFindEphemeralPort() throws IOException {
-    SurfCacheServer cacheServer = new SurfCacheServer(null, 0, 0, 1);
+    final SurfCacheServer cacheServer = new SurfCacheServer(null, 0, 0, 1);
 
-    int bindPort = cacheServer.initBindPort();
+    final int bindPort = cacheServer.initBindPort();
     assertEquals(bindPort, cacheServer.getBindPort());
     assertNotEquals(0, cacheServer.getBindPort());
 
-    SurfCacheServer secondServer = new SurfCacheServer(null, 0, 0, 1);
+    final SurfCacheServer secondServer = new SurfCacheServer(null, 0, 0, 1);
 
     // Should not immediately give back the same port
-    int secondPort = secondServer.initBindPort();
+    final int secondPort = secondServer.initBindPort();
     assertEquals(secondPort, secondServer.getBindPort());
     assertNotEquals(0, secondServer.getBindPort());
     assertNotEquals(cacheServer.getBindPort(), secondServer.getBindPort());
 
     // Reuse port; should not throw Exception
-    ServerSocket socket = new ServerSocket(secondServer.getBindPort());
+    final ServerSocket socket = new ServerSocket(secondServer.getBindPort());
     socket.close();
   }
 }

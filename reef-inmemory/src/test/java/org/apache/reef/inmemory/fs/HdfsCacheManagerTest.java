@@ -14,10 +14,10 @@ public class HdfsCacheManagerTest {
 
   @Test
   public void testBindPortUpdate() throws IOException {
-    HdfsCacheSelectionPolicy selector = mock(HdfsCacheSelectionPolicy.class);
-    CacheManager manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0);
+    final HdfsCacheSelectionPolicy selector = mock(HdfsCacheSelectionPolicy.class);
+    final CacheManager manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0);
 
-    RunningTask task = TestUtils.mockRunningTask("a", "hosta");
+    final RunningTask task = TestUtils.mockRunningTask("a", "hosta");
 
     manager.addRunningTask(task);
     assertEquals("Expected cache not added when port unassigned", 0, manager.getCaches().size());
