@@ -1,4 +1,4 @@
-namespace java org.apache.reef.inmemory.fs.exceptions
+namespace java org.apache.reef.inmemory.driver.exceptions
 
 exception FileNotFoundException{
 	1: string message

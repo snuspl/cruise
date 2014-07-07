@@ -1,7 +1,7 @@
 include "entity.thrift"
 include "exceptions.thrift"
 
-namespace java org.apache.reef.inmemory.fs.service
+namespace java org.apache.reef.inmemory.driver.service
 
 /**
  * Cache retrieval from Tasks. These are called by the Surf client to

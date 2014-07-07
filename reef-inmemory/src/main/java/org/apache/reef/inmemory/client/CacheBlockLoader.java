@@ -1,9 +1,9 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.inmemory.fs.entity.BlockInfo;
-import org.apache.reef.inmemory.fs.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.fs.exceptions.BlockNotFoundException;
-import org.apache.reef.inmemory.fs.service.SurfCacheService;
+import org.apache.reef.inmemory.driver.entity.BlockInfo;
+import org.apache.reef.inmemory.driver.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.driver.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.driver.service.SurfCacheService;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 
@@ -68,9 +68,9 @@ public final class CacheBlockLoader {
    * Includes retry on BlockLoadingException.
    *
    * In this implementation, retry is also done on BlockNotFoundException,
-   * because Driver does not wait until Task confirmation that block loading has been initiated.
-   * This should be fixed on Driver-Task communication side, once immediate communication
-   * from Task to Driver is implemented in REEF.
+   * because driver does not wait until Task confirmation that block loading has been initiated.
+   * This should be fixed on driver-Task communication side, once immediate communication
+   * from Task to driver is implemented in REEF.
    */
   public synchronized ByteBuffer getData(long offset) throws IOException {
     long startOffset = offset - (offset % cacheManager.getBufferSize());

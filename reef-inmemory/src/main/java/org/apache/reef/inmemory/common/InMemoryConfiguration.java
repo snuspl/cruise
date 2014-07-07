@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory;
+package org.apache.reef.inmemory.common;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -6,13 +6,17 @@ import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.RequiredParameter;
 import com.microsoft.wake.StageConfiguration;
-import org.apache.reef.inmemory.cache.*;
-import org.apache.reef.inmemory.cache.hdfs.HdfsBlockId;
-import org.apache.reef.inmemory.fs.*;
-import org.apache.reef.inmemory.fs.service.MetaServerParameters;
+import org.apache.reef.inmemory.driver.*;
+import org.apache.reef.inmemory.driver.hdfs.HdfsCacheLoader;
+import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
+import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
+import org.apache.reef.inmemory.driver.hdfs.HdfsRandomCacheSelectionPolicy;
+import org.apache.reef.inmemory.task.*;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 
 /**
- * Builder that creates a Configuration Module to be used at the Driver, based on underlying FS type
+ * Builder that creates a Configuration Module to be used at the driver, based on underlying FS type
  */
 public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
 

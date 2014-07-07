@@ -6,8 +6,8 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
-import org.apache.reef.inmemory.fs.entity.FileMeta;
-import org.apache.reef.inmemory.fs.service.SurfMetaService;
+import org.apache.reef.inmemory.driver.entity.FileMeta;
+import org.apache.reef.inmemory.driver.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TMultiplexedProtocol;
@@ -27,8 +27,8 @@ import java.util.logging.Logger;
  * Provides a transparent caching layer on top of a base FS (e.g. HDFS).
  * Surf can be configured for access under the surf:// scheme by Hadoop FileSystem-compatible
  * tools and frameworks, by setting the following:
- *   fs.defaultFS: the driver's address (e.g., surf://localhost:9001)
- *   fs.surf.impl: this class (org.apache.reef.inmemory.client.SurfFS)
+ *   driver.defaultFS: the driver's address (e.g., surf://localhost:9001)
+ *   driver.surf.impl: this class (org.apache.reef.inmemory.client.SurfFS)
  *   surf.basefs: base FS address (e.g., hdfs://localhost:9000)
  *
  * SurfFS is a read-only filesystem. Thus,
@@ -43,13 +43,13 @@ public final class SurfFS extends FileSystem {
   public static final String METASERVER_ADDRESS_KEY = "surf.meta.server.address";
   public static final String METASERVER_ADDRESS_DEFAULT = "localhost:18000";
 
-  public static final String CACHECLIENT_RETRIES_KEY = "surf.cache.client.retries";
+  public static final String CACHECLIENT_RETRIES_KEY = "surf.task.client.retries";
   public static final int CACHECLIENT_RETRIES_DEFAULT = 3;
 
-  public static final String CACHECLIENT_RETRIES_INTERVAL_MS_KEY = "surf.cache.client.retries.interval.ms";
+  public static final String CACHECLIENT_RETRIES_INTERVAL_MS_KEY = "surf.task.client.retries.interval.ms";
   public static final int CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT = 500;
 
-  public static final String CACHECLIENT_BUFFER_SIZE_KEY = "surf.cache.client.buffer.size";
+  public static final String CACHECLIENT_BUFFER_SIZE_KEY = "surf.task.client.buffer.size";
   public static final int CACHECLIENT_BUFFER_SIZE_DEFAULT = 8 * 1024 * 1024;
 
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
@@ -153,7 +153,7 @@ public final class SurfFS extends FileSystem {
       LOG.log(Level.INFO, "getFileMeta called on: "+path+", using: "+path.toUri().getPath());
       FileMeta metadata = metaClient.getFileMeta(path.toUri().getPath());
       return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager));
-    } catch (org.apache.reef.inmemory.fs.exceptions.FileNotFoundException e) {
+    } catch (org.apache.reef.inmemory.driver.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
       throw new FileNotFoundException(e.getMessage());
     } catch (TException e) {

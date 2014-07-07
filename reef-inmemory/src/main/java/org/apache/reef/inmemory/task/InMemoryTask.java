@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory;
+package org.apache.reef.inmemory.task;
 
 import com.microsoft.reef.task.Task;
 import com.microsoft.reef.task.TaskMessage;
@@ -11,14 +11,10 @@ import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
-import org.apache.reef.inmemory.cache.BlockId;
-import org.apache.reef.inmemory.cache.BlockLoader;
-import org.apache.reef.inmemory.cache.CacheStatusMessage;
-import org.apache.reef.inmemory.cache.InMemoryCache;
-import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
-import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
-import org.apache.reef.inmemory.cache.hdfs.HdfsMessage;
-import org.apache.reef.inmemory.cache.service.SurfCacheServer;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.task.hdfs.HdfsMessage;
+import org.apache.reef.inmemory.task.service.SurfCacheServer;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -28,7 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * InMemory Task. Wait until receiving a signal from Driver.
+ * InMemory Task. Wait until receiving a signal from driver.
  */
 @Unit
 public class InMemoryTask implements Task, TaskMessageSource {
@@ -102,7 +98,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
   }
 
   /**
-   * Handles messages from the Driver. The message contains the information
+   * Handles messages from the driver. The message contains the information
    * what this task is supposed to do.
    * TODO Separate Hdfs-specific part
    */
@@ -121,7 +117,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
             LOG.log(Level.SEVERE, "Exception occured while loading");
           }
         } else if (msg.getClearMessage().isPresent()) {
-          LOG.log(Level.INFO, "Received cache clear msg");
+          LOG.log(Level.INFO, "Received task clear msg");
           cache.clear();
         }
       }
