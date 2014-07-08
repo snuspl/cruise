@@ -3,8 +3,8 @@ package org.apache.reef.inmemory.task;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
-import org.apache.reef.inmemory.driver.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.driver.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;

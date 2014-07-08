@@ -1,10 +1,8 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.CacheStats;
-import org.apache.reef.inmemory.driver.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.driver.exceptions.BlockNotFoundException;
-
-import java.nio.ByteBuffer;
+import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
 /**
  * Interface for InMemory Cache.

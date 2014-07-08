@@ -2,8 +2,8 @@ package org.apache.reef.inmemory.client;
 
 import org.apache.hadoop.fs.PositionedReadable;
 import org.apache.hadoop.fs.Seekable;
-import org.apache.reef.inmemory.driver.entity.BlockInfo;
-import org.apache.reef.inmemory.driver.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.FileMeta;
 
 import java.io.EOFException;
 import java.io.IOException;

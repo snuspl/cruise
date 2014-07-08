@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory.common;
+package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;

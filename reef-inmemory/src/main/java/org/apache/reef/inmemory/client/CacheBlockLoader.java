@@ -1,9 +1,9 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.inmemory.driver.entity.BlockInfo;
-import org.apache.reef.inmemory.driver.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.driver.exceptions.BlockNotFoundException;
-import org.apache.reef.inmemory.driver.service.SurfCacheService;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 

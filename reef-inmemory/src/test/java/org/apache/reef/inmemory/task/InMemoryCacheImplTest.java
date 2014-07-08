@@ -1,8 +1,8 @@
 package org.apache.reef.inmemory.task;
 
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
-import org.apache.reef.inmemory.driver.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.driver.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.junit.*;
 
 import java.nio.ByteBuffer;
@@ -80,4 +80,8 @@ public final class InMemoryCacheImplTest {
     cache.clear();
     assertBlockNotFound(blockId);
   }
+
+  /**
+   * Make sure
+   */
 }

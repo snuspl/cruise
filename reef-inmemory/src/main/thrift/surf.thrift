@@ -1,7 +1,7 @@
 include "entity.thrift"
 include "exceptions.thrift"
 
-namespace java org.apache.reef.inmemory.driver.service
+namespace java org.apache.reef.inmemory.common.service
 
 /**
  * Cache operations supported by the Driver. These are called by the Surf
