@@ -20,17 +20,6 @@ public interface InMemoryCache {
   public byte[] get(BlockId fileBlock) throws BlockLoadingException, BlockNotFoundException;
 
   /**
-   * Read the content of a block into ByteBuffer with given offset
-   * @param fileBlock Block identifier to read
-   * @param out The ByteBuffer to hold the data
-   * @param offset The offset inside the block
-   * @throws BlockLoadingException If the block is loading at the moment of trial
-   * @throws BlockNotFoundException If the block does not exist in the cache
-   */
-  public void read(BlockId fileBlock, ByteBuffer out, long offset)
-          throws BlockLoadingException, BlockNotFoundException;
-
-  /**
    * Put data into the cache when loading a block is completed
    * @param fileBlock Block identifier to read
    * @param data Data to put into the cache
