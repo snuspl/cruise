@@ -12,9 +12,9 @@ import org.apache.reef.inmemory.driver.CacheManagerImpl;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
-import org.apache.reef.inmemory.task.hdfs.HdfsMessage;
+import org.apache.reef.inmemory.common.hdfs.HdfsMessage;
 import org.apache.reef.inmemory.driver.entity.BlockInfo;
 import org.apache.reef.inmemory.driver.entity.FileMeta;
 

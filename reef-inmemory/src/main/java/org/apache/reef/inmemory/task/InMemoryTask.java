@@ -13,8 +13,8 @@ import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockMessage;
-import org.apache.reef.inmemory.task.hdfs.HdfsMessage;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.common.hdfs.HdfsMessage;
 import org.apache.reef.inmemory.task.service.SurfCacheServer;
 
 import javax.inject.Inject;

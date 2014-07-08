@@ -1,7 +1,8 @@
-package org.apache.reef.inmemory.task.hdfs;
+package org.apache.reef.inmemory.common.hdfs;
 
 import com.microsoft.reef.util.Optional;
 import org.apache.reef.inmemory.common.CacheClearMessage;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 
 import java.io.Serializable;
 

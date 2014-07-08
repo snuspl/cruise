@@ -1,4 +1,7 @@
-package org.apache.reef.inmemory.task.hdfs;
+package org.apache.reef.inmemory.common.hdfs;
+
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 
 import java.io.Serializable;
 import java.util.List;

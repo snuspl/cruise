@@ -5,8 +5,8 @@ import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheMessenger;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.common.CacheClearMessage;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockMessage;
-import org.apache.reef.inmemory.task.hdfs.HdfsMessage;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.common.hdfs.HdfsMessage;
 
 import javax.inject.Inject;
 import java.util.List;
