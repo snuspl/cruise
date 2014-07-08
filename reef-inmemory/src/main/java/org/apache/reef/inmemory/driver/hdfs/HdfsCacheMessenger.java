@@ -30,7 +30,7 @@ public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage
   public void clear(final String taskId) {
     final CacheNode node = cacheManager.getCache(taskId);
     if (node != null) {
-      node.send(CODEC.encode(new CacheMessage(new CacheClearMessage())));
+      node.send(CODEC.encode(CacheMessage.clearMessage(new CacheClearMessage())));
     }
   }
 
@@ -38,7 +38,7 @@ public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage
   public void clearAll() {
     final List<CacheNode> nodes = cacheManager.getCaches();
     for (final CacheNode node : nodes) {
-      node.send(CODEC.encode(new CacheMessage(new CacheClearMessage())));
+      node.send(CODEC.encode(CacheMessage.clearMessage(new CacheClearMessage())));
     }
   }
 
@@ -46,7 +46,7 @@ public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage
   public void addBlock(final String taskId, final HdfsBlockMessage msg) {
     final CacheNode node = cacheManager.getCache(taskId);
     if (node != null) {
-      node.send(CODEC.encode(new CacheMessage(msg)));
+      node.send(CODEC.encode(CacheMessage.hdfsBlockMessage(msg)));
     }
   }
 }

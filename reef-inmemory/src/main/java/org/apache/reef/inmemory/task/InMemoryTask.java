@@ -108,9 +108,9 @@ public class InMemoryTask implements Task, TaskMessageSource {
     public void onNext(DriverMessage driverMessage) {
       if (driverMessage.get().isPresent()) {
         final CacheMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
-        if (msg.getBlockMessage().isPresent()) {
+        if (msg.getHdfsBlockMessage().isPresent()) {
           LOG.log(Level.INFO, "Received load block msg");
-          final HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
+          final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
 
           // TODO: pass request to InMemoryCache. IMC can check if block already exists, call executeLoad if not.
 

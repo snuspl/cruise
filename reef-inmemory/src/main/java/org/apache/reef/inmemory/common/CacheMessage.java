@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.common;
 
 import com.microsoft.reef.util.Optional;
-import org.apache.reef.inmemory.common.CacheClearMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 
 import java.io.Serializable;
@@ -12,21 +11,26 @@ import java.io.Serializable;
  */
 public final class CacheMessage implements Serializable {
 
-  private final Optional<HdfsBlockMessage> blockMessage;
-  private final Optional<CacheClearMessage> clearMessage;
+  private Optional<HdfsBlockMessage> hdfsBlockMessage = Optional.empty();
+  private Optional<CacheClearMessage> clearMessage = Optional.empty();
 
-  public CacheMessage(HdfsBlockMessage blockMessage) {
-    this.blockMessage = Optional.of(blockMessage);
-    this.clearMessage = Optional.empty();
+  public CacheMessage() {
   }
 
-  public CacheMessage(CacheClearMessage clearMessage) {
-    this.blockMessage = Optional.empty();
-    this.clearMessage = Optional.of(clearMessage);
+  public static CacheMessage hdfsBlockMessage(HdfsBlockMessage hdfsBlockMessage) {
+    CacheMessage msg = new CacheMessage();
+    msg.hdfsBlockMessage = Optional.of(hdfsBlockMessage);
+    return msg;
   }
 
-  public Optional<HdfsBlockMessage> getBlockMessage() {
-    return blockMessage;
+  public static CacheMessage clearMessage(CacheClearMessage clearMessage) {
+    CacheMessage msg = new CacheMessage();
+    msg.clearMessage = Optional.of(clearMessage);
+    return msg;
+  }
+
+  public Optional<HdfsBlockMessage> getHdfsBlockMessage() {
+    return hdfsBlockMessage;
   }
 
   public Optional<CacheClearMessage> getClearMessage() {
