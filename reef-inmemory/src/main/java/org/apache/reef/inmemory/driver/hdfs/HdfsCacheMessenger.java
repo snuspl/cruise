@@ -4,7 +4,7 @@ import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheMessenger;
 import org.apache.reef.inmemory.driver.CacheNode;
-import org.apache.reef.inmemory.task.CacheClearMessage;
+import org.apache.reef.inmemory.common.CacheClearMessage;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.task.hdfs.HdfsMessage;
 

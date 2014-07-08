@@ -14,7 +14,7 @@ import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
 import org.apache.reef.inmemory.task.InMemoryTask;
-import org.apache.reef.inmemory.task.CacheStatusMessage;
+import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 import org.apache.reef.inmemory.driver.service.SurfMetaServer;
 

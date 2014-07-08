@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory.task;
+package org.apache.reef.inmemory.common;
 
 import java.io.Serializable;
 

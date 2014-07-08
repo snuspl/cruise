@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.driver;
 
 import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
 import com.microsoft.reef.driver.task.RunningTask;
-import org.apache.reef.inmemory.task.CacheStatusMessage;
+import org.apache.reef.inmemory.common.CacheStatusMessage;
 
 import java.util.List;
 

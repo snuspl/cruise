@@ -11,6 +11,7 @@ import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.task.hdfs.HdfsMessage;

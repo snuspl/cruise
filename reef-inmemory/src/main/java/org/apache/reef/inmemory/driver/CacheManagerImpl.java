@@ -15,7 +15,7 @@ import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.task.InMemoryTask;
 import org.apache.reef.inmemory.task.InMemoryTaskConfiguration;
 import org.apache.reef.inmemory.task.CacheParameters;
-import org.apache.reef.inmemory.task.CacheStatusMessage;
+import org.apache.reef.inmemory.common.CacheStatusMessage;
 
 import javax.inject.Inject;
 import java.util.ArrayList;

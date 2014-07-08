@@ -1,7 +1,10 @@
-package org.apache.reef.inmemory.task;
+package org.apache.reef.inmemory.common;
 
 import java.io.Serializable;
 
+/**
+ * Task sends this message to report the status of Cache to Driver
+ */
 public final class CacheStatusMessage implements Serializable {
 
   // TODO: Add memory usage
