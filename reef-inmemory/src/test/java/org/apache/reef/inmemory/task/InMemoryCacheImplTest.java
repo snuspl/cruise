@@ -80,8 +80,4 @@ public final class InMemoryCacheImplTest {
     cache.clear();
     assertBlockNotFound(blockId);
   }
-
-  /**
-   * Make sure
-   */
 }
