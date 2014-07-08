@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory;
+package org.apache.reef.inmemory.driver;
 
 import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
 import com.microsoft.reef.driver.task.CompletedTask;
@@ -13,10 +13,10 @@ import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
-import org.apache.reef.inmemory.cache.CacheStatusMessage;
-import org.apache.reef.inmemory.fs.CacheManager;
-import org.apache.reef.inmemory.fs.service.MetaServerParameters;
-import org.apache.reef.inmemory.fs.service.SurfMetaServer;
+import org.apache.reef.inmemory.task.InMemoryTask;
+import org.apache.reef.inmemory.common.CacheStatusMessage;
+import org.apache.reef.inmemory.driver.service.MetaServerParameters;
+import org.apache.reef.inmemory.driver.service.SurfMetaServer;
 
 import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;
@@ -26,7 +26,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The Driver for InMemory Application
+ * The driver for InMemory Application
  *  - Point of contact for client
  *  - Contains metadata indicating where cached files are stored
  *  - Manages Tasks
@@ -43,7 +43,7 @@ public final class InMemoryDriver {
   private ExecutorService executor;
 
   /**
-   * Job Driver. Instantiated by TANG.
+   * Job driver. Instantiated by TANG.
    */
   @Inject
   public InMemoryDriver(final SurfMetaServer metaService,
@@ -70,7 +70,7 @@ public final class InMemoryDriver {
   /**
    * Handler of StartTime event: Request Evaluators
    */
-  final class StartHandler implements EventHandler<StartTime> {
+  public final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
@@ -91,7 +91,7 @@ public final class InMemoryDriver {
   /**
    * Handler of AllocatedEvaluator event: Submit an Task to the allocated evaluator
    */
-  final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+  public final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       LOG.log(Level.INFO, "Submitting Task to AllocatedEvaluator: {0}", allocatedEvaluator);
@@ -102,7 +102,7 @@ public final class InMemoryDriver {
   /**
    * Handler of RunningTask event.
    */
-  final class RunningTaskHandler implements EventHandler<RunningTask> {
+  public final class RunningTaskHandler implements EventHandler<RunningTask> {
     @Override
     public void onNext(RunningTask task) {
       LOG.log(Level.INFO, "Task {0} Running", task.getId());
@@ -113,7 +113,7 @@ public final class InMemoryDriver {
   /**
    * Handler of CompletedTask event.
    */
-  final class CompletedTaskHandler implements EventHandler<CompletedTask> {
+  public final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(CompletedTask task) {
       LOG.log(Level.INFO, "Task {0} Completed", task.getId());

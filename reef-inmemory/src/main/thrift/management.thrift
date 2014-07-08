@@ -1,6 +1,6 @@
 include "exceptions.thrift"
 
-namespace java org.apache.reef.inmemory.fs.service
+namespace java org.apache.reef.inmemory.driver.service
 
 /**
  * Management operations supported by the Driver. The management CLI is used

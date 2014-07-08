@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.client;
 
 import com.google.common.net.HostAndPort;
-import org.apache.reef.inmemory.fs.service.SurfCacheService;
+import org.apache.reef.inmemory.driver.service.SurfCacheService;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFramedTransport;

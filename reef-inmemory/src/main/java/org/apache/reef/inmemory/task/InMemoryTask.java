@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory;
+package org.apache.reef.inmemory.task;
 
 import com.microsoft.reef.task.Task;
 import com.microsoft.reef.task.TaskMessage;
@@ -11,14 +11,11 @@ import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
-import org.apache.reef.inmemory.cache.BlockId;
-import org.apache.reef.inmemory.cache.BlockLoader;
-import org.apache.reef.inmemory.cache.CacheStatusMessage;
-import org.apache.reef.inmemory.cache.InMemoryCache;
-import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
-import org.apache.reef.inmemory.cache.hdfs.HdfsBlockMessage;
-import org.apache.reef.inmemory.cache.hdfs.HdfsMessage;
-import org.apache.reef.inmemory.cache.service.SurfCacheServer;
+import org.apache.reef.inmemory.common.CacheStatusMessage;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.common.hdfs.HdfsMessage;
+import org.apache.reef.inmemory.task.service.SurfCacheServer;
 
 import javax.inject.Inject;
 import java.io.IOException;

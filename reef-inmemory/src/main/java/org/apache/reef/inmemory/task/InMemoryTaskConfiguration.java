@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory;
+package org.apache.reef.inmemory.task;
 
 import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
@@ -6,11 +6,7 @@ import com.microsoft.tang.formats.RequiredParameter;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.impl.ThreadPoolStage;
-import org.apache.reef.inmemory.cache.BlockLoader;
-import org.apache.reef.inmemory.cache.CacheParameters;
-import org.apache.reef.inmemory.cache.InMemoryCache;
-import org.apache.reef.inmemory.cache.InMemoryCacheImpl;
-import org.apache.reef.inmemory.cache.hdfs.HdfsBlockLoader;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
 
 /**
  * Builder that creates a Configuration Module to be used at each Task, based on underlying FS type
