@@ -6,16 +6,13 @@ import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import java.io.Serializable;
 
 /**
- * Parent object for messages sent from driver to Task. Each message will only
+ * Parent object for messages sent from Driver to Task. Each message will only
  * hold a single child message.
  */
 public final class CacheMessage implements Serializable {
 
   private Optional<HdfsBlockMessage> hdfsBlockMessage = Optional.empty();
   private Optional<CacheClearMessage> clearMessage = Optional.empty();
-
-  public CacheMessage() {
-  }
 
   public static CacheMessage hdfsBlockMessage(HdfsBlockMessage hdfsBlockMessage) {
     CacheMessage msg = new CacheMessage();

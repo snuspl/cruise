@@ -14,7 +14,6 @@ import java.util.List;
 /**
  * Implements HDFS-specific messaging
  */
-
 public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage> {
 
   private static final ObjectSerializableCodec<CacheMessage> CODEC = new ObjectSerializableCodec<>();
