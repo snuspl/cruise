@@ -13,7 +13,7 @@ import java.io.Serializable;
  * experience with HDFS.
  */
 
-public final class HdfsBlockId extends BlockId implements Serializable {
+public final class HdfsBlockId implements BlockId, Serializable {
 
   private final String fs = "hdfs";
 
@@ -71,11 +71,6 @@ public final class HdfsBlockId extends BlockId implements Serializable {
 
   public String getEncodedToken() {
     return encodedToken;
-  }
-
-  @Override
-  public String getFs() {
-    return fs;
   }
 
   @Override

@@ -1,12 +1,22 @@
 package org.apache.reef.inmemory.task;
 
 /**
- * An abstract Block ID, to be used to identify blocks cached at each Task.
+ * An interface for Block ID, to be used to identify blocks cached at each Task.
  */
-public abstract class BlockId {
-  public abstract String getFs();
+public interface BlockId {
+  /**
+   * Compares this BlockId to the specified object. The result is {@code true}
+   * if and only if the argument is not {@code null} and is a {@code BlockId}
+   * object that represents the same information as this object.
+   * @param other The object to compare this {@code BlockId} against
+   * @return {@code true} if the given object represents a {@code BlockId}
+   * equivalent to this string, {@code false} otherwise
+   */
+  public boolean equals(Object other);
 
-  // Equals should include unique getFs() String
-  public abstract boolean equals(Object other);
-  public abstract int hashCode();
+  /**
+   * Returns a hash code for this {@code BlockId}
+   * @return  a hash code value for this object.
+   */
+  public int hashCode();
 }
