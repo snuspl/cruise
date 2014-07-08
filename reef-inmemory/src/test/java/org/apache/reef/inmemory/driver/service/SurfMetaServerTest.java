@@ -36,7 +36,7 @@ public final class SurfMetaServerTest {
       final SurfMetaServer metaService = new SurfMetaServer(metaManager, cacheManager, 18000, 10, 1);
       metaService.load("/nonexistent/path");
     } catch (Exception e) {
-      assertTrue("Unexpected exception "+e, e instanceof org.apache.reef.inmemory.driver.exceptions.FileNotFoundException);
+      assertTrue("Unexpected exception "+e, e instanceof org.apache.reef.inmemory.common.exceptions.FileNotFoundException);
     }
     assertEquals(0, metaManager.clear());
   }

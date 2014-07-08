@@ -1,4 +1,4 @@
-namespace java org.apache.reef.inmemory.driver.entity
+namespace java org.apache.reef.inmemory.common.entity
 
 /*
  * Contains relevant block information to be stored as Metadata.

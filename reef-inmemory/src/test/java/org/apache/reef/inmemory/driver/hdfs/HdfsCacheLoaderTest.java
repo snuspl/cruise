@@ -13,7 +13,7 @@ import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.driver.CacheManagerImpl;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.TestUtils;
-import org.apache.reef.inmemory.driver.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheLoader;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;

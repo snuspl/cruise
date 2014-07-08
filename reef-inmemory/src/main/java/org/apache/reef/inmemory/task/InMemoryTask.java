@@ -11,10 +11,10 @@ import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.inmemory.common.CacheMessage;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
-import org.apache.reef.inmemory.common.hdfs.HdfsMessage;
 import org.apache.reef.inmemory.task.service.SurfCacheServer;
 
 import javax.inject.Inject;
@@ -32,7 +32,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
   private static final Logger LOG = Logger.getLogger(InMemoryTask.class.getName());
   private static final ObjectSerializableCodec<String> CODEC = new ObjectSerializableCodec<>();
   private static final ObjectSerializableCodec<CacheStatusMessage> STATUS_CODEC = new ObjectSerializableCodec<>();
-  private static final ObjectSerializableCodec<HdfsMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
+  private static final ObjectSerializableCodec<CacheMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
   private transient Optional<TaskMessage> hbMessage = Optional.empty();
 
@@ -107,10 +107,13 @@ public class InMemoryTask implements Task, TaskMessageSource {
     @Override
     public void onNext(DriverMessage driverMessage) {
       if (driverMessage.get().isPresent()) {
-        final HdfsMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
-        if (msg.getBlockMessage().isPresent()) {
+        final CacheMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
+        if (msg.getHdfsBlockMessage().isPresent()) {
           LOG.log(Level.INFO, "Received load block msg");
-          final HdfsBlockMessage blockMsg = msg.getBlockMessage().get();
+          final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
+
+          // TODO: pass request to InMemoryCache. IMC can check if block already exists, call executeLoad if not.
+
           try {
             final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
             executeLoad(loader);

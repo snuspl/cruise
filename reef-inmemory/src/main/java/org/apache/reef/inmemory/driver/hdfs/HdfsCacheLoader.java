@@ -8,15 +8,15 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.reef.inmemory.common.CacheMessage;
 import org.apache.reef.inmemory.driver.CacheManagerImpl;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
-import org.apache.reef.inmemory.common.hdfs.HdfsMessage;
-import org.apache.reef.inmemory.driver.entity.BlockInfo;
-import org.apache.reef.inmemory.driver.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.FileMeta;
 
 import javax.inject.Inject;
 import java.io.FileNotFoundException;
@@ -35,7 +35,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
   private static final Logger LOG = Logger.getLogger(HdfsCacheLoader.class.getName());
 
-  private static final ObjectSerializableCodec<HdfsMessage> CODEC = new ObjectSerializableCodec<>();
+  private static final ObjectSerializableCodec<CacheMessage> CODEC = new ObjectSerializableCodec<>();
 
   private final CacheManagerImpl cacheManager;
   private final HdfsCacheMessenger cacheMessenger;

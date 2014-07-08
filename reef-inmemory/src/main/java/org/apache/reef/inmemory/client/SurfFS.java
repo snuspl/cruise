@@ -6,8 +6,8 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
-import org.apache.reef.inmemory.driver.entity.FileMeta;
-import org.apache.reef.inmemory.driver.service.SurfMetaService;
+import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TMultiplexedProtocol;
@@ -153,7 +153,7 @@ public final class SurfFS extends FileSystem {
       LOG.log(Level.INFO, "getFileMeta called on: "+path+", using: "+path.toUri().getPath());
       FileMeta metadata = metaClient.getFileMeta(path.toUri().getPath());
       return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager));
-    } catch (org.apache.reef.inmemory.driver.exceptions.FileNotFoundException e) {
+    } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
       throw new FileNotFoundException(e.getMessage());
     } catch (TException e) {

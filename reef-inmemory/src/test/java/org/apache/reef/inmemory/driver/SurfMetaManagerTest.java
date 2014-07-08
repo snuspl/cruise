@@ -5,8 +5,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import junit.framework.TestCase;
 import org.apache.hadoop.fs.Path;
-import org.apache.reef.inmemory.driver.entity.FileMeta;
-import org.apache.reef.inmemory.driver.entity.User;
+import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.User;
 import org.junit.Test;
 
 import static org.mockito.Mockito.*;

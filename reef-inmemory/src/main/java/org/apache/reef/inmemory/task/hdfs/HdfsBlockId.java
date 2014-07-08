@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.task.hdfs;
 
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.task.BlockId;
-import org.apache.reef.inmemory.driver.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -11,11 +11,15 @@ import java.io.Serializable;
  * Implementation of Block identification for HDFS, based on blockId.
  * The implementation may have to change in the future, based on
  * experience with HDFS.
+ *
+ * Block information is copied to this class because of deficiencies
+ * in the other block classes:
+ * - A Thrift-generated class cannot be used, as it returns a
+ *   hashCode() of 0.
+ * - HDFS's LocatedBlock cannot be used, as it does not define an equals()
+ *   method.
  */
-
 public final class HdfsBlockId implements BlockId, Serializable {
-
-  private final String fs = "hdfs";
 
   private final long blockId;
   private final long blockSize;
@@ -83,19 +87,15 @@ public final class HdfsBlockId implements BlockId, Serializable {
     if (blockId != that.blockId) return false;
     if (blockSize != that.blockSize) return false;
     if (generationTimestamp != that.generationTimestamp) return false;
-    if (encodedToken != null ? !encodedToken.equals(that.encodedToken) : that.encodedToken != null)
-      return false;
-    if (fs != null ? !fs.equals(that.fs) : that.fs != null) return false;
-    if (poolId != null ? !poolId.equals(that.poolId) : that.poolId != null)
-      return false;
+    if (encodedToken != null ? !encodedToken.equals(that.encodedToken) : that.encodedToken != null) return false;
+    if (poolId != null ? !poolId.equals(that.poolId) : that.poolId != null) return false;
 
     return true;
   }
 
   @Override
   public int hashCode() {
-    int result = fs != null ? fs.hashCode() : 0;
-    result = 31 * result + (int) (blockId ^ (blockId >>> 32));
+    int result = (int) (blockId ^ (blockId >>> 32));
     result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
     result = 31 * result + (int) (generationTimestamp ^ (generationTimestamp >>> 32));
     result = 31 * result + (poolId != null ? poolId.hashCode() : 0);
@@ -105,8 +105,7 @@ public final class HdfsBlockId implements BlockId, Serializable {
 
   @Override
   public String toString() {
-    return fs + ", "
-            + blockId + ", "
+    return blockId + ", "
             + blockSize + ", "
             + generationTimestamp + ", "
             + poolId + ", "

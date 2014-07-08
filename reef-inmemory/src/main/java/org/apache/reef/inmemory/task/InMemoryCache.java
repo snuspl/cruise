@@ -1,10 +1,8 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.CacheStats;
-import org.apache.reef.inmemory.driver.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.driver.exceptions.BlockNotFoundException;
-
-import java.nio.ByteBuffer;
+import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
 /**
  * Interface for InMemory Cache.
@@ -18,17 +16,6 @@ public interface InMemoryCache {
    * @throws BlockNotFoundException If the block does not exist in the cache
    */
   public byte[] get(BlockId fileBlock) throws BlockLoadingException, BlockNotFoundException;
-
-  /**
-   * Read the content of a block into ByteBuffer with given offset
-   * @param fileBlock Block identifier to read
-   * @param out The ByteBuffer to hold the data
-   * @param offset The offset inside the block
-   * @throws BlockLoadingException If the block is loading at the moment of trial
-   * @throws BlockNotFoundException If the block does not exist in the cache
-   */
-  public void read(BlockId fileBlock, ByteBuffer out, long offset)
-          throws BlockLoadingException, BlockNotFoundException;
 
   /**
    * Put data into the cache when loading a block is completed

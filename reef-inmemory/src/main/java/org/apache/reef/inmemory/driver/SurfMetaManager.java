@@ -2,8 +2,8 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.Path;
-import org.apache.reef.inmemory.driver.entity.FileMeta;
-import org.apache.reef.inmemory.driver.entity.User;
+import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.User;
 
 import javax.inject.Inject;
 import java.io.FileNotFoundException;

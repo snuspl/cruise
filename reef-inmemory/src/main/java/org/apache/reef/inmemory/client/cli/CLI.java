@@ -8,7 +8,7 @@ import com.microsoft.tang.annotations.Name;
 import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.CommandLine;
-import org.apache.reef.inmemory.driver.service.SurfManagementService;
+import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TMultiplexedProtocol;
