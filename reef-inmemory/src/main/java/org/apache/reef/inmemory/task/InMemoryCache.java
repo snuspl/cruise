@@ -4,12 +4,14 @@ import com.google.common.cache.CacheStats;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
+import java.io.IOException;
+
 /**
  * Interface for InMemory Cache.
  */
 public interface InMemoryCache {
   /**
-   * Retrives the content of a block with given blockId
+   * Retrieves the content of a block with given blockId.
    * @param fileBlock Block identifier to read
    * @return The byte array containing the data of the block
    * @throws BlockLoadingException If the block is loading at the moment of trial
@@ -18,17 +20,13 @@ public interface InMemoryCache {
   public byte[] get(BlockId fileBlock) throws BlockLoadingException, BlockNotFoundException;
 
   /**
-   * Put data into the cache when loading a block is completed
-   * @param fileBlock Block identifier to read
-   * @param data Data to put into the cache
+   * Load data into the cache using the given block loader.
+   * For efficiency reasons, implementations should assure that
+   * multiple block loaders do not simultaneously load the same block.
+   * @param fileBlock
+   * @param blockLoader
    */
-  public void put(BlockId fileBlock, byte[] data);
-
-  /**
-   * Mark the block is in pending state (loading the data)
-   * @param blockId Block identifier to read
-   */
-  void putPending(BlockId blockId);
+  public void load(BlockLoader blockLoader) throws IOException;
 
   /**
    * Clears the cache

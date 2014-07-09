@@ -5,11 +5,14 @@ import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.junit.*;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests for HdfsCache
@@ -55,15 +58,19 @@ public final class InMemoryCacheImplTest {
   }
 
   /**
-   * Put a small buffer in the task, and check correctness of get after put
+   * Put a small buffer in the task, and check correctness of get after load
    */
   @Test
-  public void testPutAndGet() throws BlockLoadingException, BlockNotFoundException {
-    BlockId blockId = randomBlockId();
+  public void testPutAndGet() throws BlockLoadingException, BlockNotFoundException, IOException {
+    final BlockId blockId = randomBlockId();
     assertBlockNotFound(blockId);
+    final ByteBuffer buffer = randomOnesBuffer();
 
-    ByteBuffer buffer = randomOnesBuffer();
-    cache.put(blockId, buffer.array());
+    final BlockLoader loader = mock(BlockLoader.class);
+    when(loader.getBlockId()).thenReturn(blockId);
+    when(loader.loadBlock()).thenReturn(buffer.array());
+
+    cache.load(loader);
     byte[] getData = cache.get(blockId);
     assertEquals(buffer.array(), getData);
   }
@@ -72,10 +79,15 @@ public final class InMemoryCacheImplTest {
    * Put a small buffer in the task, and check correctness of clear
    */
   @Test
-  public void testClear() throws BlockLoadingException, BlockNotFoundException {
-    BlockId blockId = randomBlockId();
-    ByteBuffer buffer = randomOnesBuffer();
-    cache.put(blockId, buffer.array());
+  public void testClear() throws BlockLoadingException, BlockNotFoundException, IOException {
+    final BlockId blockId = randomBlockId();
+    final ByteBuffer buffer = randomOnesBuffer();
+
+    final BlockLoader loader = mock(BlockLoader.class);
+    when(loader.getBlockId()).thenReturn(blockId);
+    when(loader.loadBlock()).thenReturn(buffer.array());
+
+    cache.load(loader);
     assertNotNull(cache.get(blockId));
     cache.clear();
     assertBlockNotFound(blockId);

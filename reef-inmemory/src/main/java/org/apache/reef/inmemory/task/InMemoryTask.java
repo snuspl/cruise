@@ -115,6 +115,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
           // TODO: pass request to InMemoryCache. IMC can check if block already exists, call executeLoad if not.
 
           try {
+            // TODO: loader should receive all block locations
             final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
             executeLoad(loader);
           } catch (IOException e ) {
@@ -142,12 +143,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
     @Override
     public void onNext(BlockLoader loader) {
       try {
-        final BlockId blockId = loader.getBlockId();
-        LOG.log(Level.INFO, "Add stub block");
-        cache.putPending(blockId);
-        LOG.log(Level.INFO, "Start loading block");
-        final byte[] result = loader.loadBlock();
-        cache.put(blockId, result);
+        cache.load(loader);
         LOG.log(Level.INFO, "Finish loading block");
       } catch (IOException e) {
         e.printStackTrace();

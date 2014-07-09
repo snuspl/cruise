@@ -7,31 +7,34 @@ import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
 import javax.inject.Inject;
-import java.nio.ByteBuffer;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Implementation of Cache class using Google Cache interface. 
  */
 public final class InMemoryCacheImpl implements InMemoryCache {
+  private final Logger LOG = Logger.getLogger(InMemoryCacheImpl.class.getName());
+
   private final Cache<BlockId, byte[]> cache;
-  private final Cache<BlockId, Long> pending;
+  private final Cache<BlockId, BlockLoader> loading;
 
   @Inject
   public InMemoryCacheImpl() {
     cache = CacheBuilder.newBuilder()
         .concurrencyLevel(4)
         .build();
-    pending = CacheBuilder.newBuilder()
+    loading = CacheBuilder.newBuilder()
         .concurrencyLevel(4)
         .build();
   }
 
   @Override
-  public byte[] get(final BlockId blockId)
+  public synchronized byte[] get(final BlockId blockId)
           throws BlockLoadingException, BlockNotFoundException {
-    final Long pendingTime = pending.getIfPresent(blockId);
-    if (pendingTime != null) {
-      throw new BlockLoadingException(pendingTime);
+    if (loading.getIfPresent(blockId) != null) {
+      throw new BlockLoadingException(); // TODO: add block load start time
     } else {
       final byte[] data = cache.getIfPresent(blockId);
       if (data == null) {
@@ -43,18 +46,31 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void put(final BlockId blockId, final byte[] data) {
-    cache.put(blockId, data);
-    pending.invalidate(blockId);
+  public void load(BlockLoader blockLoader) throws IOException {
+    final BlockId blockId = blockLoader.getBlockId();
+    synchronized (this) {
+      if (loading.getIfPresent(blockId) != null) {
+        LOG.log(Level.WARNING, "Block load request for already loading block "+blockId);
+        return;
+      } else {
+        loading.put(blockId, blockLoader);
+      }
+    }
+
+    final byte[] data = blockLoader.loadBlock();
+
+    synchronized (this) {
+      if (loading.getIfPresent(blockId) == null) {
+        LOG.log(Level.WARNING, "Block load completed but no longer needed "+blockId);
+      } else {
+        cache.put(blockId, data);
+        loading.invalidate(blockId);
+      }
+    }
   }
 
   @Override
-  public void putPending(final BlockId blockId) {
-    pending.put(blockId, System.currentTimeMillis());
-  }
-
-  @Override
-  public void clear() {
+  public synchronized void clear() {
     cache.invalidateAll();
   }
 
