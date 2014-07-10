@@ -48,7 +48,7 @@ public final class CacheBlockLoader {
    * as other BlockLoaders may try to concurrently access the same client.
    */
   private SurfCacheService.Client getNextClient() throws IOException {
-    if (locations.hasNext()) {
+    if (locations == null || locations.hasNext()) {
       try {
         return cacheManager.get(locations.next());
       } catch (TTransportException e) {
@@ -56,7 +56,7 @@ public final class CacheBlockLoader {
         throw new IOException("TTransportException");
       }
     } else {
-      throw new IOException("No more locations available.");
+      throw new IOException("No more locations available. LocationsIterator: "+locations);
     }
   }
 
