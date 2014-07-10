@@ -34,7 +34,6 @@ public class HdfsBlockLoader implements BlockLoader {
   private final DatanodeID datanode;
   private final long blockSize;
   private final Token<BlockTokenIdentifier> blockToken;
-  private final byte[] buf;
 
   /**
    * Constructor of BlockLoader
@@ -50,7 +49,6 @@ public class HdfsBlockLoader implements BlockLoader {
     tempToken = new Token<>();
     tempToken.decodeFromUrlString(id.getEncodedToken());
     blockToken = tempToken;
-    buf = new byte[(int)blockSize];
   }
 
   /**
@@ -58,6 +56,7 @@ public class HdfsBlockLoader implements BlockLoader {
    * Too large block size(>2GB) is not supported.
    */
   public byte[] loadBlock() throws IOException {
+    final byte[] buf = new byte[(int)blockSize];
     final Configuration conf = new HdfsConfiguration();
 
     // Allocate a ByteBuffer as a size of the Block
