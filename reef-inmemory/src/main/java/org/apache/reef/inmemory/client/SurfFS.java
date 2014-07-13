@@ -40,9 +40,6 @@ public final class SurfFS extends FileSystem {
   public static final String BASE_FS_ADDRESS_KEY = "surf.basefs";
   public static final String BASE_FS_ADDRESS_DEFAULT = "hdfs://localhost:9000";
 
-  public static final String METASERVER_ADDRESS_KEY = "surf.meta.server.address";
-  public static final String METASERVER_ADDRESS_DEFAULT = "localhost:18000";
-
   public static final String CACHECLIENT_RETRIES_KEY = "surf.cache.client.retries";
   public static final int CACHECLIENT_RETRIES_DEFAULT = 3;
 
@@ -90,8 +87,8 @@ public final class SurfFS extends FileSystem {
                          final Configuration conf) throws IOException {
     super.initialize(uri, conf);
 
-    metaserverAddress = conf.get(METASERVER_ADDRESS_KEY, METASERVER_ADDRESS_DEFAULT);
-    cacheClientManager = new CacheClientManager(
+    this.metaserverAddress = resolveMetaserverAddress(uri, conf);
+    this.cacheClientManager = new CacheClientManager(
             conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
             conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
             conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
@@ -103,6 +100,21 @@ public final class SurfFS extends FileSystem {
     this.baseFs.initialize(this.baseFsUri, conf);
 
     this.setConf(conf);
+  }
+
+  private String resolveMetaserverAddress(final URI uri,
+                                          final Configuration conf) throws IOException {
+    final String address = uri.getAuthority();
+
+    MetaserverResolver metaserverResolver;
+    if (address.startsWith("localhost")) {
+      metaserverResolver = new LocalMetaserverResolver(address);
+    } else if (address.startsWith("yarn.")) {
+      metaserverResolver = new YarnMetaserverResolver(address, conf);
+    } else {
+      throw new IOException("Cannot resolve address: "+address);
+    }
+    return metaserverResolver.getAddress();
   }
 
   protected Path pathToSurf(final Path baseFsPath) {
