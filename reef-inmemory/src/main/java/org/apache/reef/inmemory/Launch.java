@@ -6,16 +6,16 @@ import com.microsoft.reef.runtime.common.client.REEFImplementation;
 import com.microsoft.reef.runtime.local.client.LocalRuntimeConfiguration;
 import com.microsoft.reef.runtime.yarn.client.YarnClientConfiguration;
 import com.microsoft.reef.util.EnvironmentUtils;
-import com.microsoft.tang.Configuration;
-import com.microsoft.tang.Injector;
-import com.microsoft.tang.JavaConfigurationBuilder;
-import com.microsoft.tang.Tang;
+import com.microsoft.reef.webserver.HttpEventHandlers;
+import com.microsoft.reef.webserver.HttpHandlerConfiguration;
+import com.microsoft.tang.*;
 import com.microsoft.tang.annotations.Name;
 import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.CommandLine;
 import com.microsoft.tang.formats.ConfigurationModule;
+import org.apache.reef.inmemory.client.YarnMetaserverResolver;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.InMemoryConfiguration;
 import org.apache.reef.inmemory.driver.InMemoryDriver;
@@ -95,14 +95,20 @@ public class Launch
     final boolean isLocal = injector.getNamedInstance(Local.class);
     final Configuration driverConfig;
     if(isLocal) {
-      driverConfig = Tang.Factory.getTang().newConfigurationBuilder(driverCommonConfig)
+      final Configuration driverRegistryConfig = Tang.Factory.getTang().newConfigurationBuilder()
         .bind(ServiceRegistry.class, InetServiceRegistry.class)
         .build();
+      driverConfig = Configurations.merge(driverCommonConfig, driverRegistryConfig);
     } else {
-      driverConfig = Tang.Factory.getTang().newConfigurationBuilder(driverCommonConfig)
+      final Configuration driverRegistryConfig = Tang.Factory.getTang().newConfigurationBuilder()
         .bind(ServiceRegistry.class, YarnServiceRegistry.class)
         .build();
+      final Configuration driverHttpConfig = HttpHandlerConfiguration.CONF
+        .set(HttpHandlerConfiguration.HTTP_HANDLERS, YarnServiceRegistry.AddressHttpHandler.class)
+        .build();
+      driverConfig = Configurations.merge(driverCommonConfig, driverRegistryConfig, driverHttpConfig);
     }
+    // TODO: make ConfigurationModule for driverRegistryConfig?
 
     return driverConfig;
   }

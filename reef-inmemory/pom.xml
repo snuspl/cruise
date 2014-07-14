@@ -97,12 +97,17 @@
             <artifactId>reef-webserver</artifactId>
             <version>${reef.version}</version>
         </dependency>
+        <!-- End of REEF -->
         <dependency>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
             <version>${thrift.version}</version>
         </dependency>
-        <!-- End of REEF -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.2.5</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
