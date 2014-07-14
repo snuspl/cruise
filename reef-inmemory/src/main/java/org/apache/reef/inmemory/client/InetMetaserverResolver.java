@@ -2,11 +2,11 @@ package org.apache.reef.inmemory.client;
 
 import org.apache.hadoop.conf.Configuration;
 
-public final class LocalMetaserverResolver implements MetaserverResolver {
+public final class InetMetaserverResolver implements MetaserverResolver {
 
   final String metaserverAddress;
 
-  public LocalMetaserverResolver(final String metaserverAddress) {
+  public InetMetaserverResolver(final String metaserverAddress) {
     this.metaserverAddress = metaserverAddress;
   }
 

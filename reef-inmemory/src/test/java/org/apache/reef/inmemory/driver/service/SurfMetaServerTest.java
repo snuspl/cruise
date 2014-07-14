@@ -29,11 +29,12 @@ public final class SurfMetaServerTest {
     when(loadingCache.get(anyObject())).thenThrow(java.io.FileNotFoundException.class);
     final CacheMessenger cacheMessenger = mock(CacheMessenger.class);
     final CacheManager cacheManager = mock(CacheManager.class);
+    final ServiceRegistry serviceRegistry = mock(ServiceRegistry.class);
 
     final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheMessenger);
 
     try {
-      final SurfMetaServer metaService = new SurfMetaServer(metaManager, cacheManager, 18000, 10, 1);
+      final SurfMetaServer metaService = new SurfMetaServer(metaManager, cacheManager, serviceRegistry, 18000, 10, 1);
       metaService.load("/nonexistent/path");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof org.apache.reef.inmemory.common.exceptions.FileNotFoundException);

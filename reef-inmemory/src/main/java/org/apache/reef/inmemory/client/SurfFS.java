@@ -107,12 +107,10 @@ public final class SurfFS extends FileSystem {
     final String address = uri.getAuthority();
 
     MetaserverResolver metaserverResolver;
-    if (address.startsWith("localhost")) {
-      metaserverResolver = new LocalMetaserverResolver(address);
-    } else if (address.startsWith("yarn.")) {
+    if (address.startsWith("yarn.")) {
       metaserverResolver = new YarnMetaserverResolver(address, conf);
     } else {
-      throw new IOException("Cannot resolve address: "+address);
+      metaserverResolver = new InetMetaserverResolver(address);
     }
     return metaserverResolver.getAddress();
   }

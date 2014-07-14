@@ -11,7 +11,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <logging>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config</logging>
         <hadoop.version>2.2.0</hadoop.version>
-        <reef.version>0.5</reef.version>
+        <reef.version>0.6-SNAPSHOT</reef.version>
         <thrift.version>0.9.1</thrift.version>
         <junit.version>4.11</junit.version>
     </properties>
@@ -90,6 +90,11 @@
         <dependency>
             <groupId>com.microsoft.reef</groupId>
             <artifactId>reef-runtime-yarn</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.reef</groupId>
+            <artifactId>reef-webserver</artifactId>
             <version>${reef.version}</version>
         </dependency>
         <dependency>

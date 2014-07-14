@@ -5,6 +5,7 @@ import com.microsoft.reef.driver.task.CompletedTask;
 import com.microsoft.reef.driver.task.RunningTask;
 import com.microsoft.reef.driver.task.TaskConfiguration;
 import com.microsoft.reef.driver.task.TaskMessage;
+import com.microsoft.reef.webserver.HttpServer;
 import com.microsoft.tang.Configuration;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;

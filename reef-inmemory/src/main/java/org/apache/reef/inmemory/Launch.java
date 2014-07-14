@@ -15,10 +15,14 @@ import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.CommandLine;
+import com.microsoft.tang.formats.ConfigurationModule;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.InMemoryConfiguration;
 import org.apache.reef.inmemory.driver.InMemoryDriver;
+import org.apache.reef.inmemory.driver.service.InetServiceRegistry;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
+import org.apache.reef.inmemory.driver.service.ServiceRegistry;
+import org.apache.reef.inmemory.driver.service.YarnServiceRegistry;
 import org.apache.reef.inmemory.task.CacheParameters;
 
 import java.io.IOException;
@@ -74,16 +78,32 @@ public class Launch
   /**
    * Build Driver Configuration
    */
-  private static Configuration getDriverConfiguration() {
+  private static Configuration getDriverConfiguration(final Configuration clConfig) throws InjectionException {
+    // Common
+    final Configuration driverCommonConfig =
+      EnvironmentUtils.addClasspath(DriverConfiguration.CONF, DriverConfiguration.GLOBAL_LIBRARIES)
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_TASK_RUNNING, InMemoryDriver.RunningTaskHandler.class)
+        .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_TASK_MESSAGE, InMemoryDriver.TaskMessageHandler.class)
+        .build();
+
+    // Per-runtime configurations
+    final Injector injector = Tang.Factory.getTang().newInjector(clConfig);
+    final boolean isLocal = injector.getNamedInstance(Local.class);
     final Configuration driverConfig;
-    driverConfig = EnvironmentUtils.addClasspath(DriverConfiguration.CONF, DriverConfiguration.GLOBAL_LIBRARIES)
-      .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
-      .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
-      .set(DriverConfiguration.ON_TASK_RUNNING, InMemoryDriver.RunningTaskHandler.class)
-      .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class)
-      .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
-      .set(DriverConfiguration.ON_TASK_MESSAGE, InMemoryDriver.TaskMessageHandler.class)
-      .build();
+    if(isLocal) {
+      driverConfig = Tang.Factory.getTang().newConfigurationBuilder(driverCommonConfig)
+        .bind(ServiceRegistry.class, InetServiceRegistry.class)
+        .build();
+    } else {
+      driverConfig = Tang.Factory.getTang().newConfigurationBuilder(driverCommonConfig)
+        .bind(ServiceRegistry.class, YarnServiceRegistry.class)
+        .build();
+    }
+
     return driverConfig;
   }
 
@@ -126,7 +146,7 @@ public class Launch
    * Run InMemory Application
    */
   public static REEF runInMemory(final Configuration clConfig) throws InjectionException {
-    final Configuration driverConfig = getDriverConfiguration();
+    final Configuration driverConfig = getDriverConfiguration(clConfig);
     final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig);
     final Configuration runtimeConfig = getRuntimeConfiguration(clConfig);
     final Injector injector = Tang.Factory.getTang().newInjector(runtimeConfig);

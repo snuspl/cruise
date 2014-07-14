@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.driver.service;
 
 import com.microsoft.tang.annotations.Parameter;
+import com.microsoft.wake.remote.NetUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
@@ -39,15 +40,18 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   private final SurfMetaManager metaManager;
   private final CacheManager cacheManager;
+  private final ServiceRegistry serviceRegistry;
 
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
                         final CacheManager cacheManager,
+                        final ServiceRegistry serviceRegistry,
                         final @Parameter(MetaServerParameters.Port.class) int port,
                         final @Parameter(MetaServerParameters.Timeout.class) int timeout,
                         final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
     this.metaManager = metaManager;
     this.cacheManager = cacheManager;
+    this.serviceRegistry = serviceRegistry;
 
     this.port = port;
     this.timeout = timeout;
@@ -119,6 +123,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
           new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
               .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
               .workerThreads(this.numThreads));
+
+      // Register just before serving
+      serviceRegistry.register(NetUtils.getLocalAddress(), port);
 
       this.server.serve();
     } catch (Exception e) {
