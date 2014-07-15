@@ -48,9 +48,13 @@ public final class CacheBlockLoader {
    * as other BlockLoaders may try to concurrently access the same client.
    */
   private SurfCacheService.Client getNextClient() throws IOException {
-    if (locations == null || locations.hasNext()) {
+    if (locations != null && locations.hasNext()) {
       try {
-        return cacheManager.get(locations.next());
+        final String location = locations.next();
+        final SurfCacheService.Client client = cacheManager.get(location);
+        LOG.log(Level.INFO, "Connected to client at {0} for data from block {1}",
+                new String[]{location, Long.toString(block.getBlockId())});
+        return client;
       } catch (TTransportException e) {
         LOG.log(Level.SEVERE, "TException "+e);
         throw new IOException("TTransportException");
@@ -75,9 +79,16 @@ public final class CacheBlockLoader {
   public synchronized ByteBuffer getData(long offset) throws IOException {
     long startOffset = offset - (offset % cacheManager.getBufferSize());
 
+    LOG.log(Level.FINE, "Start get data from block {0}, with offset {1}, startOffset {2}",
+            new String[]{Long.toString(block.getBlockId()), Long.toString(offset), Long.toString(startOffset)});
+
     if (this.offset == startOffset && this.data != null) {
       ByteBuffer dataBuffer = ByteBuffer.wrap(this.data);
       dataBuffer.position((int) offset - (int) startOffset);
+
+      LOG.log(Level.FINE, "Done get cached data from block {0}, with offset {1}, startOffset {2}",
+              new String[]{Long.toString(block.getBlockId()), Long.toString(offset), Long.toString(startOffset)});
+
       return dataBuffer;
     } else if (this.data != null) { // locally cached copy has different offset
       flushLocalCache();
@@ -87,14 +98,19 @@ public final class CacheBlockLoader {
       client = getNextClient();
     }
 
-    LOG.log(Level.INFO, "Sending block request: "+block+", with startOffset "+startOffset);
     for (int i = 0; i < 1 + cacheManager.getRetries(); i++) {
       try {
         synchronized(client) {
+          LOG.log(Level.INFO, "Start data transfer from block {0}, with startOffset {1}",
+                  new String[]{Long.toString(block.getBlockId()), Long.toString(startOffset)});
+
           ByteBuffer dataBuffer = client.getData(block, startOffset, cacheManager.getBufferSize());
           this.data = dataBuffer.array();
           this.offset = startOffset;
           dataBuffer.position((int)offset - (int)startOffset);
+
+          LOG.log(Level.INFO, "Done data transfer from block {0}, with startOffset {1}",
+                  new String[]{Long.toString(block.getBlockId()), Long.toString(startOffset)});
           return dataBuffer;
         }
       } catch (BlockLoadingException e) {

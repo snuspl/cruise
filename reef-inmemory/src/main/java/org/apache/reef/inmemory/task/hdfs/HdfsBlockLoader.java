@@ -17,11 +17,15 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * This class loads one block from DataNode
  */
 public class HdfsBlockLoader implements BlockLoader {
+  private static final Logger LOG = Logger.getLogger(HdfsBlockLoader.class.getName());
+
   // Some Fields are left null, because those types are not public.
   private static final int START_OFFSET = 0;
   private static final String CLIENT_NAME = "BlockLoader";
@@ -56,6 +60,8 @@ public class HdfsBlockLoader implements BlockLoader {
    * Too large block size(>2GB) is not supported.
    */
   public byte[] loadBlock() throws IOException {
+    LOG.log(Level.INFO, "Start loading block {0} from datanode at {1}",
+            new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
     final byte[] buf = new byte[(int)blockSize];
     final Configuration conf = new HdfsConfiguration();
 
@@ -80,6 +86,8 @@ public class HdfsBlockLoader implements BlockLoader {
       datanode, null, null, null, ALLOW_SHORT_CIRCUIT_LOCAL_READS,
       CachingStrategy.newDefaultStrategy());
 
+    LOG.log(Level.INFO, "Data transfer loading block {0} from datanode at {1}",
+            new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
     // Read the data using byte array buffer. BlockReader supports a method
     // to read the data into ByteBuffer directly, but it caused timeout.
     int totalRead = 0;
@@ -89,6 +97,8 @@ public class HdfsBlockLoader implements BlockLoader {
     } while(totalRead < blockSize);
     blockReader.close();
 
+    LOG.log(Level.INFO, "Done loading block {0} from datanode at {1}",
+            new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
     return buf;
   }
   public BlockId getBlockId() {

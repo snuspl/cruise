@@ -40,7 +40,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
       if (data == null) {
         throw new BlockNotFoundException();
       } else {
-        return cache.getIfPresent(blockId);
+        return data;
       }
     }
   }
