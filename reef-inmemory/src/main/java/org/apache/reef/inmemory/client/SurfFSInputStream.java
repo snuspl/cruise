@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -56,21 +57,24 @@ public final class SurfFSInputStream extends InputStream
   @Override
   public int read(long position, byte[] buffer, int offset, int length) throws IOException {
     if (position >= fileMeta.getFileSize()) {
-      throw new IOException("Read position "+position+" exceeds file size "+fileMeta.getFileSize());
+      throw new EOFException("Read position "+position+" exceeds file size "+fileMeta.getFileSize());
     }
 
+    LOG.log(Level.FINE, "Start read at position {0} with length {1}",
+            new String[] {Long.toString(position), Integer.toString(length)});
+
     // seek to position
-    long remaining = position;
+    long seekRemaining = position;
     int blockIndex = 0;
     int blockPosition = 0;
-    while (remaining > 0 && position < fileMeta.getFileSize()) {
+    while (seekRemaining > 0) {
       BlockInfo currBlock = fileMeta.getBlocks().get(blockIndex);
       assert(blockPosition < currBlock.getLength());
+      assert(blockIndex < fileMeta.getBlocksSize());
 
-      long toSeek = Math.min(remaining, currBlock.getLength() - blockPosition);
-      remaining -= toSeek;
+      long toSeek = Math.min(seekRemaining, currBlock.getLength() - blockPosition);
+      seekRemaining -= toSeek;
       blockPosition += toSeek;
-      position += toSeek;
 
       if (blockPosition == currBlock.getLength()) {
         blockPosition = 0;
@@ -80,16 +84,17 @@ public final class SurfFSInputStream extends InputStream
 
     // copy data
     int copied = 0;
-    remaining = length - offset; // TODO: is this right?
-    while (remaining > 0 && position < fileMeta.getFileSize()) {
+    long copyRemaining = length - offset;
+    while (copyRemaining > 0 && position < fileMeta.getFileSize()) {
       BlockInfo currBlock = fileMeta.getBlocks().get(blockIndex);
       assert(blockPosition < currBlock.getLength());
+      assert(blockIndex < fileMeta.getBlocksSize());
 
       ByteBuffer data = blocks.get(blockIndex).getData(blockPosition);
-      int toCopy = (int)Math.min(remaining, data.remaining());
+      int toCopy = (int)Math.min(copyRemaining, data.remaining());
       data.get(buffer, offset + copied, toCopy);
 
-      remaining -= toCopy;
+      copyRemaining -= toCopy;
       blockPosition += toCopy;
       position += toCopy;
       copied += toCopy;
@@ -100,13 +105,30 @@ public final class SurfFSInputStream extends InputStream
         blockIndex++;
       }
     }
+
+    LOG.log(Level.FINE, "Done read at position {0} with length {1}",
+            new String[] {Long.toString(position), Integer.toString(length)});
+    return copied;
+  }
+
+  /**
+   * Read the entire buffer.
+   */
+  @Override
+  public synchronized int read(final byte buf[], int off, int len) throws IOException {
+    if (this.pos >= fileMeta.getFileSize()) {
+      return -1;
+    }
+
+    int copied = read(this.pos, buf, off, len);
+    seek(this.pos + copied); // update this.pos
     return copied;
   }
 
   @Override
   public void readFully(long position, byte[] buffer, int offset, int length) throws IOException {
-    if (length + offset >= fileMeta.getFileSize()) {
-      throw new IOException("Length "+length+ " + offset "+offset+" exceeds file size "+fileMeta.getFileSize());
+    if (length - offset > fileMeta.getFileSize()) {
+      throw new IOException("Length "+length+ " - offset "+offset+" exceeds file size "+fileMeta.getFileSize());
     }
 
     read(position, buffer, offset, length);
@@ -118,7 +140,7 @@ public final class SurfFSInputStream extends InputStream
   }
 
   @Override
-  public int read() throws IOException {
+  public synchronized int read() throws IOException {
     if (pos >= fileMeta.getFileSize()) {
       return -1;
     }
@@ -138,10 +160,11 @@ public final class SurfFSInputStream extends InputStream
   }
 
   @Override
-  public void seek(long pos) throws IOException {
-    if (pos >= fileMeta.getFileSize()) {
+  public synchronized void seek(long pos) throws IOException {
+    if (pos > fileMeta.getFileSize()) {
       throw new EOFException("Seek position "+pos+" exceeds file size "+fileMeta.getFileSize());
     }
+
     if (pos < this.pos) { // reset position
       this.pos = 0;
       blockIdx = 0;
