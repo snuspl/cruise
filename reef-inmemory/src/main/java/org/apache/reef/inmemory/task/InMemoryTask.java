@@ -13,8 +13,11 @@ import com.microsoft.wake.EventHandler;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.CacheMessage;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
+import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
+import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.task.hdfs.TokenDecodeFailedException;
 import org.apache.reef.inmemory.task.service.SurfCacheServer;
 
 import javax.inject.Inject;
@@ -34,12 +37,10 @@ public class InMemoryTask implements Task, TaskMessageSource {
   private static final ObjectSerializableCodec<CacheStatusMessage> STATUS_CODEC = new ObjectSerializableCodec<>();
   private static final ObjectSerializableCodec<CacheMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
   private static final TaskMessage INIT_MESSAGE = TaskMessage.from("", CODEC.encode("MESSAGE::INIT"));
-  private transient Optional<TaskMessage> hbMessage = Optional.empty();
 
-  private final InMemoryCache cache;
-
-  private ExecutorService executor;
+  private ExecutorService executor; // TODO shouldn't we shutdown this executor when the Task is finished?
   private final SurfCacheServer dataServer;
+  private final InMemoryCache cache;
 
   private boolean isDone = false;
   private EStage<BlockLoader> loadingStage;
@@ -50,7 +51,6 @@ public class InMemoryTask implements Task, TaskMessageSource {
                final EStage<BlockLoader> loadingStage) throws InjectionException {
     this.cache = cache;
     this.dataServer = dataServer;
-    this.hbMessage.orElse(INIT_MESSAGE).get(); // TODO: Is this necessary?
     this.loadingStage = loadingStage;
   }
 
@@ -75,7 +75,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
   public Optional<TaskMessage> getMessage() {
     final CacheStatusMessage message = new CacheStatusMessage(dataServer.getBindPort());
     return Optional.of(TaskMessage.from(this.toString(),
-            STATUS_CODEC.encode(message)));
+      STATUS_CODEC.encode(message)));
   }
 
   /**
@@ -113,14 +113,10 @@ public class InMemoryTask implements Task, TaskMessageSource {
           final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
 
           // TODO: pass request to InMemoryCache. IMC can check if block already exists, call executeLoad if not.
+          // TODO: loader should receive all block locations
+          final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
+          executeLoad(loader);
 
-          try {
-            // TODO: loader should receive all block locations
-            final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
-            executeLoad(loader);
-          } catch (IOException e ) {
-            LOG.log(Level.SEVERE, "Exception occured while loading");
-          }
         } else if (msg.getClearMessage().isPresent()) {
           LOG.log(Level.INFO, "Received cache clear msg");
           cache.clear();
@@ -142,11 +138,20 @@ public class InMemoryTask implements Task, TaskMessageSource {
     }
     @Override
     public void onNext(BlockLoader loader) {
+      // TODO would it be better to report to driver?
+      // It seems possible either to send an message directly or
+      // to keep the failure info and send via Heartbeat
       try {
         cache.load(loader);
         LOG.log(Level.INFO, "Finish loading block");
+      } catch (ConnectionFailedException e) {
+        LOG.log(Level.SEVERE, "Failed to load block {0} because of connection failure", loader.getBlockId());
+      } catch (TokenDecodeFailedException e) {
+        LOG.log(Level.SEVERE, "Failed to load block {0}, HdfsToken is not valid", loader.getBlockId());
+      } catch (TransferFailedException e) {
+        LOG.log(Level.SEVERE, "An error occurred while transferring the block {0} from the Datanode", loader.getBlockId());
       } catch (IOException e) {
-        e.printStackTrace();
+        LOG.log(Level.SEVERE, "Unhandled Exception :", e.getCause());
       }
     }
   }
