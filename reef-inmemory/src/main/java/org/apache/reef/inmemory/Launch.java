@@ -78,46 +78,25 @@ public class Launch
   /**
    * Build Driver Configuration
    */
-  private static Configuration getDriverConfiguration(final Configuration clConfig) throws InjectionException {
-    // Common
-    final Configuration driverCommonConfig =
-      EnvironmentUtils.addClasspath(DriverConfiguration.CONF, DriverConfiguration.GLOBAL_LIBRARIES)
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
-        .set(DriverConfiguration.ON_TASK_RUNNING, InMemoryDriver.RunningTaskHandler.class)
-        .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_TASK_MESSAGE, InMemoryDriver.TaskMessageHandler.class)
-        .build();
-
-    // Per-runtime configurations
-    final Injector injector = Tang.Factory.getTang().newInjector(clConfig);
-    final boolean isLocal = injector.getNamedInstance(Local.class);
+  private static Configuration getDriverConfiguration() {
     final Configuration driverConfig;
-    if(isLocal) {
-      final Configuration driverRegistryConfig = Tang.Factory.getTang().newConfigurationBuilder()
-        .bind(ServiceRegistry.class, InetServiceRegistry.class)
-        .build();
-      driverConfig = Configurations.merge(driverCommonConfig, driverRegistryConfig);
-    } else {
-      final Configuration driverRegistryConfig = Tang.Factory.getTang().newConfigurationBuilder()
-        .bind(ServiceRegistry.class, YarnServiceRegistry.class)
-        .build();
-      final Configuration driverHttpConfig = HttpHandlerConfiguration.CONF
-        .set(HttpHandlerConfiguration.HTTP_HANDLERS, YarnServiceRegistry.AddressHttpHandler.class)
-        .build();
-      driverConfig = Configurations.merge(driverCommonConfig, driverRegistryConfig, driverHttpConfig);
-    }
-    // TODO: make ConfigurationModule for driverRegistryConfig?
-
+    driverConfig = EnvironmentUtils.addClasspath(DriverConfiguration.CONF, DriverConfiguration.GLOBAL_LIBRARIES)
+      .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
+      .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
+      .set(DriverConfiguration.ON_TASK_RUNNING, InMemoryDriver.RunningTaskHandler.class)
+      .set(DriverConfiguration.ON_TASK_COMPLETED, InMemoryDriver.CompletedTaskHandler.class)
+      .set(DriverConfiguration.ON_DRIVER_STARTED, InMemoryDriver.StartHandler.class)
+      .set(DriverConfiguration.ON_TASK_MESSAGE, InMemoryDriver.TaskMessageHandler.class)
+      .build();
     return driverConfig;
   }
 
   private static Configuration getInMemoryConfiguration(final Configuration clConf)
     throws InjectionException, BindException {
     final Injector injector = Tang.Factory.getTang().newInjector(clConf);
+
     final Configuration inMemoryConfig;
-    inMemoryConfig = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsParameters.Type.class))
+    final ConfigurationModule inMemoryConfigModule = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsParameters.Type.class))
       .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaServerParameters.Port.class))
       .set(InMemoryConfiguration.INIT_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.InitCacheServers.class))
       .set(InMemoryConfiguration.DEFAULT_MEM_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.DefaultMemCacheServers.class))
@@ -125,8 +104,26 @@ public class Launch
       .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, injector.getNamedInstance(CacheParameters.NumServerThreads.class))
       .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, injector.getNamedInstance(CacheParameters.NumLoadingThreads.class))
       .set(InMemoryConfiguration.DFS_TYPE, injector.getNamedInstance(DfsParameters.Type.class))
-      .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class))
-      .build();
+      .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class));
+
+    final boolean isLocal = injector.getNamedInstance(Local.class);
+    if (isLocal) {
+      final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
+        .bind(ServiceRegistry.class, InetServiceRegistry.class)
+        .build();
+
+      inMemoryConfig = Configurations.merge(inMemoryConfigModule.build(), registryConfig);
+    } else {
+      final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
+        .bind(ServiceRegistry.class, YarnServiceRegistry.class)
+        .build();
+      final Configuration httpConfig = HttpHandlerConfiguration.CONF
+        .set(HttpHandlerConfiguration.HTTP_HANDLERS, YarnServiceRegistry.AddressHttpHandler.class)
+        .build();
+
+      inMemoryConfig = Configurations.merge(inMemoryConfigModule.build(), registryConfig, httpConfig);
+    }
+
     return inMemoryConfig;
   }
 
@@ -152,7 +149,7 @@ public class Launch
    * Run InMemory Application
    */
   public static REEF runInMemory(final Configuration clConfig) throws InjectionException {
-    final Configuration driverConfig = getDriverConfiguration(clConfig);
+    final Configuration driverConfig = getDriverConfiguration();
     final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig);
     final Configuration runtimeConfig = getRuntimeConfiguration(clConfig);
     final Injector injector = Tang.Factory.getTang().newInjector(runtimeConfig);

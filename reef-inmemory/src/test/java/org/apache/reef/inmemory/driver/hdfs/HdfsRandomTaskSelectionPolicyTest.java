@@ -34,7 +34,7 @@ public final class HdfsRandomTaskSelectionPolicyTest {
     final HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy(3);
 
     final List<CacheNode> nodes = getMockCacheNodes(1);
-    final List<CacheNode> selected = policy.select(getMockBlock(), nodes);
+    final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes));
     assertTrue(nodes.containsAll(selected));
     assertEquals(1, selected.size());
   }

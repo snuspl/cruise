@@ -21,6 +21,7 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -64,6 +65,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       return metaManager.getBlocks(new Path(path), new User());
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);
+    } catch (IOException e) {
+      throw new FileNotFoundException(e.getMessage());
     } catch (Throwable e) {
       LOG.log(Level.SEVERE, "Get metadata failed for "+path, e);
       throw new TException(e);

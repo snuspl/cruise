@@ -9,14 +9,14 @@ import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.CacheMessage;
-import org.apache.reef.inmemory.driver.CacheManagerImpl;
-import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.common.DfsParameters;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
-import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.driver.CacheManager;
+import org.apache.reef.inmemory.driver.CacheNode;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 
 import javax.inject.Inject;
 import java.io.FileNotFoundException;
@@ -37,14 +37,14 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
   private static final ObjectSerializableCodec<CacheMessage> CODEC = new ObjectSerializableCodec<>();
 
-  private final CacheManagerImpl cacheManager;
+  private final CacheManager cacheManager;
   private final HdfsCacheMessenger cacheMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
   private final String dfsAddress;
   private final DFSClient dfsClient;
 
   @Inject
-  public HdfsCacheLoader(final CacheManagerImpl cacheManager,
+  public HdfsCacheLoader(final CacheManager cacheManager,
                          final HdfsCacheMessenger cacheMessenger,
                          final HdfsCacheSelectionPolicy cacheSelector,
                          final @Parameter(DfsParameters.Address.class) String dfsAddress) {
@@ -88,10 +88,18 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
               HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
       final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos);
-
       final BlockInfo cacheBlock = copyBlockInfo(locatedBlock);
+
       final List<CacheNode> cacheNodes = cacheManager.getCaches();
+      if (cacheNodes.size() == 0) {
+        throw new IOException("Surf has zero caches");
+      }
+
       final List<CacheNode> selectedNodes = cacheSelector.select(locatedBlock, cacheNodes);
+      if (selectedNodes.size() == 0) {
+        throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
+      }
+
       for (final CacheNode cacheNode : selectedNodes) {
         cacheMessenger.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?
         cacheBlock.addToLocations(cacheNode.getAddress());
