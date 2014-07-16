@@ -9,10 +9,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.*;
-import org.apache.hadoop.hdfs.protocol.ClientProtocol;
-import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.hdfs.protocol.*;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.task.BlockLoader;
 import org.junit.After;
@@ -22,6 +19,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class HdfsBlockLoaderTest {
   private static final String PATH = "/temp/HDFSBlockLoaderTest";
@@ -73,7 +72,7 @@ public class HdfsBlockLoaderTest {
 
       // Retrieve the information for block and datanode
       HdfsBlockId blockId = HdfsBlockId.copyBlock(block);
-      HdfsDatanodeInfo datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfo(block.getLocations()[0]);
+      List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
 
       // Instantiate HdfsBlockLoader via TANG
       BlockLoader loader = injectBlockLoader(blockId, datanodeInfo);
@@ -92,10 +91,9 @@ public class HdfsBlockLoaderTest {
   @Test(expected = UnsupportedOperationException.class)
   public void testInvalidSize() throws InjectionException, IOException {
     LocatedBlock block = blocks.get(0);
-
     HdfsBlockId blockId = HdfsBlockId.copyBlock(block);
     HdfsBlockId dummyBlockId = new HdfsBlockId(blockId.getBlockId(), Integer.MAX_VALUE+(long)1, blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
-    HdfsDatanodeInfo datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfo(block.getLocations()[0]);
+    List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = injectBlockLoader(dummyBlockId, datanodeInfo);
     loader.loadBlock();
   }
@@ -107,9 +105,24 @@ public class HdfsBlockLoaderTest {
     LocatedBlock block = blocks.get(0);
 
     HdfsBlockId blockId = HdfsBlockId.copyBlock(block);
-    HdfsDatanodeInfo dummyDatanodeInfo = new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", "", 0, 0, 0, 0);
+    List<HdfsDatanodeInfo> dummyDatanodeInfo = new ArrayList<HdfsDatanodeInfo>();
+    dummyDatanodeInfo.add(new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", "", 0, 0, 0, 0));
     BlockLoader loader = injectBlockLoader(blockId, dummyDatanodeInfo);
     loader.loadBlock();
+  }
+
+  // This test covers the case when it needs retrying with another datanode
+  // Datanode list : the first datanode info is invalid, others are valid
+  @Test
+  public void testRetry() throws InjectionException, IOException {
+    LocatedBlock block = blocks.get(0);
+
+    HdfsBlockId blockId = HdfsBlockId.copyBlock(block);
+    List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
+    datanodeInfo.add(0, new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", "", 0, 0, 0, 0));
+    BlockLoader loader = injectBlockLoader(blockId, datanodeInfo);
+    loader.loadBlock();
+
   }
 
   // This case covers when the BlockId is invalid
@@ -120,8 +133,7 @@ public class HdfsBlockLoaderTest {
 
     HdfsBlockId blockId = HdfsBlockId.copyBlock(block);
     HdfsBlockId dummyBlockId = new HdfsBlockId((long)-1, blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
-    HdfsDatanodeInfo datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfo(block.getLocations()[0]);
-
+    List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = injectBlockLoader(dummyBlockId, datanodeInfo);
     loader.loadBlock();
   }
@@ -134,8 +146,7 @@ public class HdfsBlockLoaderTest {
 
     HdfsBlockId blockId = HdfsBlockId.copyBlock(block);
     HdfsBlockId dummyBlockId = new HdfsBlockId(blockId.getBlockId(), blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), "");
-    HdfsDatanodeInfo datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfo(block.getLocations()[0]);
-
+    List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = injectBlockLoader(dummyBlockId, datanodeInfo);
     loader.loadBlock();
   }
@@ -147,12 +158,12 @@ public class HdfsBlockLoaderTest {
    * @return BlockLoader object with given block id and datanode information
    * @throws InjectionException If it fails to inject the constructor
    */
-  public BlockLoader injectBlockLoader(HdfsBlockId blockId, HdfsDatanodeInfo datanodeInfo) throws InjectionException {
+  public BlockLoader injectBlockLoader(HdfsBlockId blockId, List<HdfsDatanodeInfo> datanodeInfo) throws InjectionException {
     JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     cb.bindImplementation(BlockLoader.class, HdfsBlockLoader.class);
     Injector i = Tang.Factory.getTang().newInjector(cb.build());
     i.bindVolatileInstance(HdfsBlockId.class, blockId);
-    i.bindVolatileInstance(HdfsDatanodeInfo.class, datanodeInfo);
+    i.bindVolatileInstance(List.class, datanodeInfo);
     return i.getInstance(BlockLoader.class);
   }
 

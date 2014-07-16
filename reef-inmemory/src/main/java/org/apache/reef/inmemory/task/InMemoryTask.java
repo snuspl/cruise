@@ -114,7 +114,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
 
           // TODO: pass request to InMemoryCache. IMC can check if block already exists, call executeLoad if not.
           // TODO: loader should receive all block locations
-          final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));
+          final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations());
           executeLoad(loader);
 
         } else if (msg.getClearMessage().isPresent()) {
