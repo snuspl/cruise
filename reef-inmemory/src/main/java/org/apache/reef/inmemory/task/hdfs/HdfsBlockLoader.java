@@ -90,6 +90,8 @@ public class HdfsBlockLoader implements BlockLoader {
         blockReader = getBlockReader(conf, fileName, blockToken, socket, datanode);
 
         LOG.log(Level.INFO, "Transfer the data from datanode at {0}", datanode.getXferAddr());
+
+        // Transfer data to read the block
         readBlock(blockReader, buf, datanode);
       } catch (TokenDecodeFailedException | ConnectionFailedException | TransferFailedException ex) {
         if (dnInfoIter.hasNext()) {
@@ -99,7 +101,7 @@ public class HdfsBlockLoader implements BlockLoader {
         throw ex;
       }
 
-      // If loading done, the loop terminates. Close the connections and break the while loop.
+      // If loading done, close the connections and break the while loop.
       try {
         blockReader.close();
         socket.close();
@@ -123,6 +125,14 @@ public class HdfsBlockLoader implements BlockLoader {
     return this.hdfsBlockId;
   }
 
+  /**
+   * Connect to Datanode
+   * @param conf Hadoop Configuration
+   * @param targetAddress Socket address to connect to Datanode
+   * @param datanode Datanode to connect to
+   * @return Socket object connecting to datanode
+   * @throws ConnectionFailedException When failed to to connect to Datanode
+   */
   private Socket connectToDN(Configuration conf, InetSocketAddress targetAddress, DatanodeID datanode)
     throws ConnectionFailedException {
     Socket socket;
@@ -161,8 +171,8 @@ public class HdfsBlockLoader implements BlockLoader {
 
   /**
    *
-   * @param conf The hadoop Configuration
-   * @param fileName The filename which the block belongs to
+   * @param conf Hadoop Configuration
+   * @param fileName Filename which the block belongs to
    * @param blockToken Token Identifier used to load the block
    * @param socket Socket object connecting to datanode
    * @param datanode Datanode to load the data from
