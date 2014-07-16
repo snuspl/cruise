@@ -69,105 +69,47 @@ public class HdfsBlockLoader implements BlockLoader {
 
     Iterator<HdfsDatanodeInfo> dnInfoIter = dnInfoList.iterator();
     do {
+      // Prepare the variables to be used - datanodeInfo, datanode, targetAddress, fileName.
       HdfsDatanodeInfo datanodeInfo = dnInfoIter.next();
       DatanodeID datanode = new DatanodeID(datanodeInfo.getIpAddr(), datanodeInfo.getHostName(), datanodeInfo.getStorageID(),
         datanodeInfo.getXferPort(), datanodeInfo.getInfoPort(), datanodeInfo.getInfoSecurePort(), datanodeInfo.getIpcPort());
+      InetSocketAddress targetAddress = NetUtils.createSocketAddr(datanode.getXferAddr());
+      String fileName = targetAddress.toString() + ":" + block.getBlockId();
 
       LOG.log(Level.INFO, "Start loading block {0} from datanode at {1}",
         new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
 
-      // Establish a connection against the DataNode
-      InetSocketAddress targetAddress;
+      // Declare socket and blockReader object to close them in the future.
       Socket socket = null;
-      try {
-        targetAddress = NetUtils.createSocketAddr(datanode.getXferAddr());
-        socket = NetUtils.getDefaultSocketFactory(conf).createSocket();
-        socket.connect(targetAddress, HdfsServerConstants.READ_TIMEOUT);
-        socket.setSoTimeout(HdfsServerConstants.READ_TIMEOUT);
-      } catch (IOException e) {
-        LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
-          new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
-
-        if (dnInfoIter.hasNext()) {
-          closeSocketToRetry(socket);
-          continue;
-        }
-        throw new ConnectionFailedException(e);
-      }
-
-      // Reproduce BlockToken from BlockId to read the block
-      final Token<BlockTokenIdentifier> blockToken;
-      try {
-        Token<BlockTokenIdentifier> tempToken;
-        tempToken = new Token<>();
-        tempToken.decodeFromUrlString(hdfsBlockId.getEncodedToken());
-        blockToken = tempToken;
-      } catch (IOException e) {
-        LOG.log(Level.WARNING, "Token decode error while loading block {0} from datanode at {1}. Retry with next datanode",
-          new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
-
-        if (dnInfoIter.hasNext()) {
-          closeSocketToRetry(socket);
-          continue;
-        }
-        throw new TokenDecodeFailedException(e);
-      }
-
-      // Set up BlockReader.
-      // TODO Tweak config to improve the performance (e.g. utilize local short-circuit/task)
       BlockReader blockReader;
-      String fileName = targetAddress.toString() + ":" + block.getBlockId();
-      try {
-        blockReader = BlockReaderFactory.newBlockReader(
-          new DFSClient.Conf(conf), fileName, block,
-          blockToken, START_OFFSET, blockSize,
-          VERIFY_CHECKSUM, CLIENT_NAME, TcpPeerServer.peerFromSocket(socket),
-          datanode, null, null, null, ALLOW_SHORT_CIRCUIT_LOCAL_READS,
-          CachingStrategy.newDefaultStrategy());
-      } catch (IOException e) {
-        LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
-          new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
 
+      try {
+        // Connect to Datanode and create a Block reader
+        final Token<BlockTokenIdentifier> blockToken = decodeBlockToken(hdfsBlockId, datanode);
+        socket = connectToDN(conf, targetAddress, datanode);
+        blockReader = getBlockReader(conf, fileName, blockToken, socket, datanode);
+
+        LOG.log(Level.INFO, "Transfer the data from datanode at {0}", datanode.getXferAddr());
+        readBlock(blockReader, buf, datanode);
+      } catch (TokenDecodeFailedException | ConnectionFailedException | TransferFailedException ex) {
         if (dnInfoIter.hasNext()) {
           closeSocketToRetry(socket);
           continue;
         }
-        throw new ConnectionFailedException(e);
+        throw ex;
       }
 
-      LOG.log(Level.INFO, "Data transfer loading block {0} from datanode at {1}",
-        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
-
-      // Read the data using byte array buffer. BlockReader supports a method
-      // to read the data into ByteBuffer directly, but it caused timeout.
+      // If loading done, the loop terminates. Close the connections and break the while loop.
       try {
-        int totalRead = 0;
-        do {
-          int nRead = blockReader.read(buf, totalRead, buf.length - totalRead);
-          totalRead += nRead;
-        } while(totalRead < blockSize);
-      } catch (IOException e) {
-        LOG.log(Level.WARNING, "Data transfer error while loading block {0} from datanode at {1}. Retry with next datanode",
-          new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
-
-        if (dnInfoIter.hasNext()) {
-          closeSocketToRetry(socket);
-          continue;
-        }
-        throw new TransferFailedException(e);
-      }
-
-      // Close the BlockReader when done. It will be closed when the socket has closed.
-      try {
-        socket.close();
         blockReader.close();
+        socket.close();
         LOG.log(Level.INFO, "Done loading block {0} from datanode at {1}",
           new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
-        break;
       } catch (IOException e) {
-        LOG.log(Level.SEVERE, "Closing BlockReader for block {0} from datanode at {1} has failed",
+        LOG.log(Level.WARNING, "Closing BlockReader for block {0} from datanode at {1} has failed",
           new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
       }
+      break;
 
     } while(dnInfoIter.hasNext());
     return buf;
@@ -181,8 +123,96 @@ public class HdfsBlockLoader implements BlockLoader {
     return this.hdfsBlockId;
   }
 
+  private Socket connectToDN(Configuration conf, InetSocketAddress targetAddress, DatanodeID datanode)
+    throws ConnectionFailedException {
+    Socket socket;
+    try {
+      socket = NetUtils.getDefaultSocketFactory(conf).createSocket();
+      socket.connect(targetAddress, HdfsServerConstants.READ_TIMEOUT);
+      socket.setSoTimeout(HdfsServerConstants.READ_TIMEOUT);
+    } catch (IOException e) {
+      LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
+        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+      throw new ConnectionFailedException(e);
+    }
+
+    return socket;
+  }
+
   /**
-   * Helper function to close Socket. The catch block is hard to read already.
+   * Decode a BlockToken from the encoded string
+   * @param hdfsBlockId BlockId of the block to read
+   * @param datanode Datanode to load the data from
+   * @return Token Identifier used to load the block
+   * @throws TokenDecodeFailedException When failed to decode the token
+   */
+  private Token<BlockTokenIdentifier> decodeBlockToken(HdfsBlockId hdfsBlockId, DatanodeID datanode) throws TokenDecodeFailedException {
+    Token<BlockTokenIdentifier> blockToken;
+    blockToken = new Token<>();
+    try {
+      blockToken.decodeFromUrlString(hdfsBlockId.getEncodedToken());
+    } catch (IOException e) {
+      LOG.log(Level.WARNING, "Token decode error while loading block {0} from datanode at {1}. Retry with next datanode",
+        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+      throw new TokenDecodeFailedException(e);
+    }
+    return blockToken;
+  }
+
+  /**
+   *
+   * @param conf The hadoop Configuration
+   * @param fileName The filename which the block belongs to
+   * @param blockToken Token Identifier used to load the block
+   * @param socket Socket object connecting to datanode
+   * @param datanode Datanode to load the data from
+   * @return BlockReader to load a block
+   * @throws ConnectionFailedException When failed to to connect to Datanode
+   */
+  private BlockReader getBlockReader(Configuration conf, String fileName, Token<BlockTokenIdentifier>blockToken,
+                                     Socket socket, DatanodeID datanode) throws ConnectionFailedException {
+    BlockReader blockReader;
+    try {
+      // TODO Tweak config to improve the performance (e.g. utilize local short-circuit/task)
+      blockReader = BlockReaderFactory.newBlockReader(
+        new DFSClient.Conf(conf), fileName, block,
+        blockToken, START_OFFSET, blockSize,
+        VERIFY_CHECKSUM, CLIENT_NAME, TcpPeerServer.peerFromSocket(socket),
+        datanode, null, null, null, ALLOW_SHORT_CIRCUIT_LOCAL_READS,
+        CachingStrategy.newDefaultStrategy());
+
+    } catch (IOException e) {
+      LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
+        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+      throw new ConnectionFailedException(e);
+    }
+    return blockReader;
+  }
+
+  /**
+   * Read a block from Datanode
+   * @param blockReader BlockReader to load the data (from hadoop package)
+   * @param buf Byte array buffer
+   * @param datanode Datanode to load the data from
+   * @throws TransferFailedException When an error occurred while transferring data
+   */
+  private void readBlock(BlockReader blockReader, byte[] buf, DatanodeID datanode) throws TransferFailedException {
+    int totalRead = 0;
+    try {
+      do {
+        int nRead = 0;
+        nRead = blockReader.read(buf, totalRead, buf.length - totalRead);
+        totalRead += nRead;
+      } while(totalRead < blockSize);
+    } catch (IOException e) {
+      LOG.log(Level.WARNING, "Data transfer error while loading block {0} from datanode at {1}. Retry with next datanode",
+        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+      throw new TransferFailedException(e);
+    }
+  }
+
+  /**
+   * Helper function to close Socket. The catch block is little bit messy with this logic.
    * @param socket Socket object to close
    */
   private void closeSocketToRetry(Socket socket) {
