@@ -21,6 +21,11 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Resolves a Surf address given the YARN job name. The address should be supplied as:
+ *   surf://yarn.reef-job-InMemory
+ * If you are not using the default job name assigned to Surf, substitute your job name in place of "InMemory"
+ */
 public final class YarnMetaserverResolver implements MetaserverResolver {
 
   private static final Logger LOG = Logger.getLogger(YarnMetaserverResolver.class.getName());
@@ -59,9 +64,13 @@ public final class YarnMetaserverResolver implements MetaserverResolver {
   @Override
   public String getAddress() throws IOException {
     final HttpClient client = new DefaultHttpClient();
-    LOG.log(Level.INFO, "http://"+getTrackingUrl()+"/surf/v1");
-    final HttpGet request = new HttpGet("http://"+getTrackingUrl()+"/surf/v1");
+    final String trackingUrl = "http://"+getTrackingUrl()+"/surf/v1";
+    LOG.log(Level.INFO, "Get address from {0}", trackingUrl);
+    final HttpGet request = new HttpGet(trackingUrl);
+
     final HttpResponse response = client.execute(request);
-    return IOUtils.toString(response.getEntity().getContent());
+    final String address = IOUtils.toString(response.getEntity().getContent());
+    LOG.log(Level.INFO, "Using address {0}", address);
+    return address;
   }
 }

@@ -55,7 +55,7 @@ This will load data from the given path in HDFS into the cache.
 
 ### Access Surf FileSystem interface using Hadoop dfs command line
 
-Add configuration at `$HADOOP_HOME/etc/hadoop/core-site.xml` to specify the `SurfFS` as the implementation of the `surf://` scheme, and give Surf the base HDFS address:
+Add configuration at `$HADOOP_HOME/etc/hadoop/core-site.xml` to specify the `SurfFS` class as the implementation of the `surf://` scheme, and give Surf the base HDFS address:
 
 ```
 <configuration>
@@ -70,19 +70,21 @@ Add configuration at `$HADOOP_HOME/etc/hadoop/core-site.xml` to specify the `Sur
 </configuration>
 ```
 
-Then run the dfs command while adding the surf jar to the command line. For example, run the -ls command:
+Running the dfs command with Surf requires some additional configuration to be passed in on the command line. The jar must be added to `HADOOP_CLASSPATH`. The address is specified by configuring `fs.defaultFS`. The address can be specified as a well-known address, e.g. `surf://localhost:18000`, or by using Surf's YARN job identifier, prefixed with `yarn.`: `surf://yarn.reef-job-InMemory`.
+
+For example, run the -ls command:
 
 ```
-HADOOP_CLASSPATH=$SURF_HOME/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar $HADOOP_HOME/bin/hdfs dfs -Dfs.defaultFS=surf://localhost:9001 -ls
+HADOOP_CLASSPATH=$SURF_HOME/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar $HADOOP_HOME/bin/hdfs dfs -Dfs.defaultFS=surf://yarn.reef-job-InMemory -ls
 ```
 
 Note, the actual listing of files is delegated to HDFS. Reading data on HDFS through Surf stores that data in memory on the Surf nodes. For example, run the -copyToLocal command twice:
 
 ```
-HADOOP_CLASSPATH=$SURF_HOME/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar $HADOOP_HOME/bin/hdfs dfs -Dfs.defaultFS=surf://localhost:9001 -copyToLocal /user/{name}/LICENSE.txt
+HADOOP_CLASSPATH=$SURF_HOME/target/reef-inmemory-1.0-SNAPSHOT-shaded.jar $HADOOP_HOME/bin/hdfs dfs -Dfs.defaultFS=surf://yarn.reef-job-InMemory -copyToLocal /user/{name}/LICENSE.txt
 ```
 
-The first time, the data on HDFS is loaded onto Surf, and then copied to the local filesystem. The second time, the data in memory on Surf is directly copied to the local filesystem.
+The first time the command is run, the data on HDFS is loaded onto Surf, and then copied to the local filesystem. The second time, the data previously loaded into memory on Surf is immediately copied to the local filesystem.
 
 
 ### Run Spark job with Surf

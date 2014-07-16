@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  * Provides a transparent caching layer on top of a base FS (e.g. HDFS).
  * Surf can be configured for access under the surf:// scheme by Hadoop FileSystem-compatible
  * tools and frameworks, by setting the following:
- *   fs.defaultFS: the driver's address (e.g., surf://localhost:9001)
+ *   fs.defaultFS: the driver's address (e.g., surf://localhost:18000, surf://yarn.reef-job-InMemory)
  *   fs.surf.impl: this class (org.apache.reef.inmemory.client.SurfFS)
  *   surf.basefs: base FS address (e.g., hdfs://localhost:9000)
  *
@@ -86,34 +86,32 @@ public final class SurfFS extends FileSystem {
   public void initialize(final URI uri,
                          final Configuration conf) throws IOException {
     super.initialize(uri, conf);
-
-    this.metaserverAddress = resolveMetaserverAddress(uri, conf);
-    LOG.log(Level.FINE, "SurfFs address resolved to: "+this.metaserverAddress);
-    this.cacheClientManager = new CacheClientManager(
-            conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
-            conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
-            conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
-
     String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
     this.uri = uri;
     this.baseFsUri = URI.create(baseFsAddress);
     this.baseFs = new DistributedFileSystem();
     this.baseFs.initialize(this.baseFsUri, conf);
-
     this.setConf(conf);
+
+    this.metaserverAddress = getMetaserverResolver().getAddress();
+    LOG.log(Level.FINE, "SurfFs address resolved to: "+this.metaserverAddress);
+    this.cacheClientManager = new CacheClientManager(
+            conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
+            conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
+            conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
   }
 
-  private String resolveMetaserverAddress(final URI uri,
-                                          final Configuration conf) throws IOException {
+  /**
+   * Get the MetaserverResolver based on the provided uri
+   */
+  public MetaserverResolver getMetaserverResolver() {
     final String address = uri.getAuthority();
 
-    MetaserverResolver metaserverResolver;
     if (address.startsWith("yarn.")) {
-      metaserverResolver = new YarnMetaserverResolver(address, conf);
+      return new YarnMetaserverResolver(address, getConf());
     } else {
-      metaserverResolver = new InetMetaserverResolver(address);
+      return new InetMetaserverResolver(address);
     }
-    return metaserverResolver.getAddress();
   }
 
   protected Path pathToSurf(final Path baseFsPath) {
