@@ -65,6 +65,7 @@ public class Launch
     cl.registerShortNameOfClass(CacheParameters.Port.class);
     cl.registerShortNameOfClass(CacheParameters.NumServerThreads.class);
     cl.registerShortNameOfClass(CacheParameters.NumLoadingThreads.class);
+    cl.registerShortNameOfClass(CacheParameters.Memory.class);
     cl.registerShortNameOfClass(DfsParameters.Type.class);
     cl.registerShortNameOfClass(DfsParameters.Address.class);
     cl.processCommandLine(args);
@@ -98,6 +99,7 @@ public class Launch
       .set(InMemoryConfiguration.CACHESERVER_PORT, injector.getNamedInstance(CacheParameters.Port.class))
       .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, injector.getNamedInstance(CacheParameters.NumServerThreads.class))
       .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, injector.getNamedInstance(CacheParameters.NumLoadingThreads.class))
+      .set(InMemoryConfiguration.CACHE_MEMORY_SIZE, injector.getNamedInstance(CacheParameters.Memory.class))
       .set(InMemoryConfiguration.DFS_TYPE, injector.getNamedInstance(DfsParameters.Type.class))
       .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class))
       .build();
