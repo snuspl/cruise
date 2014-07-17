@@ -86,7 +86,7 @@ public class HdfsBlockLoader implements BlockLoader {
       try {
         // Connect to Datanode and create a Block reader
         final Token<BlockTokenIdentifier> blockToken = decodeBlockToken(hdfsBlockId, datanode);
-        socket = connectToDN(conf, targetAddress, datanode);
+        socket = connectToDatanode(conf, targetAddress, datanode);
         blockReader = getBlockReader(conf, fileName, blockToken, socket, datanode);
 
         LOG.log(Level.INFO, "Transfer the data from datanode at {0}", datanode.getXferAddr());
@@ -133,7 +133,7 @@ public class HdfsBlockLoader implements BlockLoader {
    * @return Socket object connecting to datanode
    * @throws ConnectionFailedException When failed to to connect to Datanode
    */
-  private Socket connectToDN(Configuration conf, InetSocketAddress targetAddress, DatanodeID datanode)
+  private Socket connectToDatanode(Configuration conf, InetSocketAddress targetAddress, DatanodeID datanode)
     throws ConnectionFailedException {
     Socket socket;
     try {
@@ -150,7 +150,8 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * Decode a BlockToken from the encoded string
+   * Decode a BlockToken which is necessary to create BlockReader. Because Token itself is not serializable,
+   * the Token is encoded when stored in {@link org.apache.reef.inmemory.task.hdfs.HdfsBlockId}
    * @param hdfsBlockId BlockId of the block to read
    * @param datanode Datanode to load the data from
    * @return Token Identifier used to load the block
@@ -170,13 +171,13 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   *
+   * Retrieve a BlockReader (included in hadoop.hdfs package)
    * @param conf Hadoop Configuration
    * @param fileName Filename which the block belongs to
    * @param blockToken Token Identifier used to load the block
    * @param socket Socket object connecting to datanode
    * @param datanode Datanode to load the data from
-   * @return BlockReader to load a block
+   * @return BlockReader object to read data
    * @throws ConnectionFailedException When failed to to connect to Datanode
    */
   private BlockReader getBlockReader(Configuration conf, String fileName, Token<BlockTokenIdentifier>blockToken,
