@@ -8,6 +8,11 @@ namespace java org.apache.reef.inmemory.common.service
  */
 service SurfManagementService {
     /**
+     * Get the status of Cache Nodes
+     */
+    string getStatus()
+
+    /**
      * Clear blocks from all Caches
      */
     i64 clear()

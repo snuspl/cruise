@@ -10,6 +10,7 @@ import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
+import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -62,6 +63,19 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       LOG.log(Level.SEVERE, "Get metadata failed for "+path, e);
       throw new TException(e);
     }
+  }
+
+  @Override
+  public String getStatus() throws TException {
+    LOG.log(Level.INFO, "CLI status command");
+    StringBuilder builder = new StringBuilder();
+    for (CacheNode cache : cacheManager.getCaches()) {
+      builder.append(cache.getAddress())
+             .append(" : ")
+             .append(cache.getLatestStatistics())
+             .append('\n');
+    }
+    return builder.toString();
   }
 
   @Override
