@@ -7,6 +7,7 @@ namespace java org.apache.reef.inmemory.common.service
  * to call these.
  */
 service SurfManagementService {
+    string getStatus()
     i64 clear()
     bool load(1:string path) throws (1: exceptions.FileNotFoundException ex)
     /**

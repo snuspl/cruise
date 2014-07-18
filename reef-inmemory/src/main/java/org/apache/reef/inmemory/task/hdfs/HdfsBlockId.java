@@ -61,6 +61,7 @@ public final class HdfsBlockId implements BlockId, Serializable {
     return blockId;
   }
 
+  @Override
   public long getBlockSize() {
     return blockSize;
   }
