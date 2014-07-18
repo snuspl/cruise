@@ -8,6 +8,9 @@ namespace java org.apache.reef.inmemory.common.service
  * get data from each Task node.
  */
 service SurfCacheService {
+    /**
+     * Transfer block data from Task to Client
+     */
     binary getData(1:entity.BlockInfo block, 2:i64 offset, 3:i64 length)
         throws (1: exceptions.BlockNotFoundException nfe, 2:exceptions.BlockLoadingException le)
 }

@@ -1,6 +1,6 @@
 namespace java org.apache.reef.inmemory.common.entity
 
-/*
+/**
  * Contains relevant block information to be stored as Metadata.
  * Currently takes after o.a.h.hdfs.protocol.ExtendedBlock
  */
@@ -14,11 +14,17 @@ struct BlockInfo {
 	7: string token            // Token
 }
 
+/**
+ * TODO: revisit when implementing ls commands at Surf Driver
+ */
 struct User {
 	1: string id,             // User id
 	2: string group           // User group
 }
 
+/**
+ * TODO: revisit when implementing ls commands at Surf Driver
+ */
 struct FileMeta{
 	1:i64 fileId,             // File id (unique)
 	2:string fileName,        // File name
@@ -30,9 +36,4 @@ struct FileMeta{
 	8:list<BlockInfo> blocks, // Information of blocks consisting of the file.
 	9:bool complete,          // Whether the file is complete or not
 	10:User owner             // Owner information of the file.
-}
-
-struct CacheData {
-    1:i64 length,
-    2:binary data
 }

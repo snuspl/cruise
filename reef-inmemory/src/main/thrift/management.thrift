@@ -12,6 +12,5 @@ service SurfManagementService {
     /**
      * Add a new cache node. To use default Surf memory size, specify memory as 0.
      */
-    string addCacheNode(1:i32 memory) throws (1: exceptions.AllocationFailedException afe,
-                                              2: exceptions.SubmissionFailedException sfe)
+    string addCacheNode(1:i32 memory)
 }

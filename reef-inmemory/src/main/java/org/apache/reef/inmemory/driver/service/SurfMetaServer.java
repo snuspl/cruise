@@ -2,16 +2,14 @@ package org.apache.reef.inmemory.driver.service;
 
 import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.User;
+import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
-import org.apache.reef.inmemory.common.entity.FileMeta;
-import org.apache.reef.inmemory.common.entity.User;
-import org.apache.reef.inmemory.common.exceptions.AllocationFailedException;
-import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
-import org.apache.reef.inmemory.common.exceptions.SubmissionFailedException;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -91,8 +89,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public String addCacheNode(final int memory)
-          throws AllocationFailedException, SubmissionFailedException, TException {
+  public String addCacheNode(final int memory) throws TException {
     LOG.log(Level.INFO, "CLI addCacheNode command with memory {0}", memory);
     if (memory == 0) {
       cacheManager.requestEvaluator(1);
