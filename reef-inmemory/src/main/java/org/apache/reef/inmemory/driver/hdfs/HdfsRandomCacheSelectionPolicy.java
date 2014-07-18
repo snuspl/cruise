@@ -16,7 +16,7 @@ public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionP
   private final int numReplicas;
 
   @Inject
-  public HdfsRandomCacheSelectionPolicy(final @Parameter(MetaServerParameters.Replicas.class) int numReplicas) {
+  public HdfsRandomCacheSelectionPolicy(final @Parameter(MetaServerParameters.DefaultReplicas.class) int numReplicas) {
     if (numReplicas < 1) {
       throw new IllegalArgumentException("Must select at least one replica");
     }
@@ -24,7 +24,7 @@ public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionP
   }
 
   /**
-   * Return random blocks. The number selected is min of numReplicas and tasks.size()
+   * Return random nodes. The number selected is min of numReplicas and tasks.size()
    */
   @Override
   public List<CacheNode> select(final LocatedBlock block,

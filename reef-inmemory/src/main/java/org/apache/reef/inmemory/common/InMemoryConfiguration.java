@@ -7,10 +7,7 @@ import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.RequiredParameter;
 import com.microsoft.wake.StageConfiguration;
 import org.apache.reef.inmemory.driver.*;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheLoader;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
-import org.apache.reef.inmemory.driver.hdfs.HdfsRandomCacheSelectionPolicy;
+import org.apache.reef.inmemory.driver.hdfs.*;
 import org.apache.reef.inmemory.task.*;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
@@ -23,6 +20,7 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
   public static final RequiredParameter<Integer> METASERVER_PORT = new RequiredParameter<>();
   public static final RequiredParameter<Integer> INIT_CACHE_SERVERS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> DEFAULT_MEM_CACHE_SERVERS = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> DEFAULT_REPLICAS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_PORT = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_SERVER_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
@@ -43,6 +41,7 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
           .bindNamedParameter(MetaServerParameters.Port.class, METASERVER_PORT)
           .bindNamedParameter(MetaServerParameters.InitCacheServers.class, INIT_CACHE_SERVERS)
           .bindNamedParameter(MetaServerParameters.DefaultMemCacheServers.class, DEFAULT_MEM_CACHE_SERVERS)
+          .bindNamedParameter(MetaServerParameters.DefaultReplicas.class, DEFAULT_REPLICAS)
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
           .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
           .bindNamedParameter(CacheParameters.Memory.class, CACHE_MEMORY_SIZE)
@@ -53,7 +52,7 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
           .bindImplementation(CacheLoader.class, HdfsCacheLoader.class)
           .bindImplementation(CacheMessenger.class, HdfsCacheMessenger.class)
           .bindImplementation(CacheManager.class, CacheManagerImpl.class)
-          .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsRandomCacheSelectionPolicy.class)
+          .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsMemoryRemainingSelectionPolicy.class)
           .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
           .build();
 }
