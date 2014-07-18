@@ -7,8 +7,16 @@ namespace java org.apache.reef.inmemory.common.service
  * to call these.
  */
 service SurfManagementService {
+    /**
+     * Clear blocks from all Caches
+     */
     i64 clear()
+
+    /**
+     * Load path into Surf
+     */
     bool load(1:string path) throws (1: exceptions.FileNotFoundException ex)
+
     /**
      * Add a new cache node. To use default Surf memory size, specify memory as 0.
      */
