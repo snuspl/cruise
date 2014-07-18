@@ -24,6 +24,7 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
   public static final RequiredParameter<Integer> CACHESERVER_PORT = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_SERVER_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
+  public static final RequiredParameter<Integer> CACHE_MEMORY_SIZE = new RequiredParameter<>();
 
   public static final RequiredParameter<String> DFS_TYPE = new RequiredParameter<>();
   public static final RequiredParameter<String> DFS_ADDRESS = new RequiredParameter<>();
@@ -43,6 +44,7 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
           .bindNamedParameter(MetaServerParameters.DefaultReplicas.class, DEFAULT_REPLICAS)
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
           .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
+          .bindNamedParameter(CacheParameters.Memory.class, CACHE_MEMORY_SIZE)
           .bindNamedParameter(StageConfiguration.NumberOfThreads.class, CACHESERVER_LOADING_THREADS)
           .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)
           .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
