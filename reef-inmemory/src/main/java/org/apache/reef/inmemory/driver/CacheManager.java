@@ -11,11 +11,30 @@ import java.util.List;
  * support concurrent calls from multiple threads.
  */
 public interface CacheManager {
+
+  /**
+   * Request the specified number of evaluators with the memory size
+   */
   void requestEvaluator(int count, int memory);
+
+  /**
+   * Request the specified number of evaluators with the default memory size
+   */
   void requestEvaluator(int count);
+
+  /**
+   * Submit the Cache's context and task on the allocated evaluator
+   */
   void submitContextAndTask(AllocatedEvaluator allocatedEvaluator);
 
+  /**
+   * Add the running task to be managed
+   */
   public boolean addRunningTask(RunningTask task);
+
+  /**
+   * Remove the task from the manager
+   */
   public void removeRunningTask(String taskId);
 
   /**
@@ -24,7 +43,13 @@ public interface CacheManager {
    */
   public List<CacheNode> getCaches();
 
+  /**
+   * Get the cache running at the specified task
+   */
   CacheNode getCache(String taskId);
 
+  /**
+   * Pass a cache status update to the cache manager
+   */
   public void handleUpdate(String taskId, CacheStatusMessage status);
 }
