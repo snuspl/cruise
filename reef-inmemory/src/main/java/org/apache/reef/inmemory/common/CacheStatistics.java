@@ -3,29 +3,34 @@ package org.apache.reef.inmemory.common;
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CacheStatistics implements Serializable {
+/**
+ * A set of statistics for the Cache.
+ * - cacheMB: total amount of memory stored in the cache
+ * - loadingMB: amount of memory currently being loading into the cache
+ */
+public final class CacheStatistics implements Serializable {
 
   private AtomicInteger cacheMB = new AtomicInteger();
   private AtomicInteger loadingMB = new AtomicInteger();
 
-  public void addCacheMB(int add) {
-    cacheMB.addAndGet(add);
+  public void addCacheMB(int amount) {
+    cacheMB.addAndGet(amount);
   }
 
-  public void subtractCacheMB(int sub) {
-    cacheMB.addAndGet(-sub);
+  public void subtractCacheMB(int amount) {
+    cacheMB.addAndGet(-amount);
   }
 
   public void resetCacheMB() {
     cacheMB.set(0);
   }
 
-  public void addLoadingMB(int add) {
-    loadingMB.addAndGet(add);
+  public void addLoadingMB(int amount) {
+    loadingMB.addAndGet(amount);
   }
 
-  public synchronized void subtractLoadingMB(int sub) {
-    loadingMB.addAndGet(-sub);
+  public void subtractLoadingMB(int amount) {
+    loadingMB.addAndGet(-amount);
   }
 
   public void resetLoadingMB() {
