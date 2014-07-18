@@ -62,6 +62,7 @@ public class Launch
     cl.registerShortNameOfClass(MetaServerParameters.DefaultMemCacheServers.class);
     cl.registerShortNameOfClass(MetaServerParameters.Timeout.class);
     cl.registerShortNameOfClass(MetaServerParameters.Threads.class);
+    cl.registerShortNameOfClass(MetaServerParameters.DefaultReplicas.class);
     cl.registerShortNameOfClass(CacheParameters.Port.class);
     cl.registerShortNameOfClass(CacheParameters.NumServerThreads.class);
     cl.registerShortNameOfClass(CacheParameters.NumLoadingThreads.class);
@@ -95,6 +96,7 @@ public class Launch
       .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaServerParameters.Port.class))
       .set(InMemoryConfiguration.INIT_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.InitCacheServers.class))
       .set(InMemoryConfiguration.DEFAULT_MEM_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.DefaultMemCacheServers.class))
+      .set(InMemoryConfiguration.DEFAULT_REPLICAS, injector.getNamedInstance(MetaServerParameters.DefaultReplicas.class))
       .set(InMemoryConfiguration.CACHESERVER_PORT, injector.getNamedInstance(CacheParameters.Port.class))
       .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, injector.getNamedInstance(CacheParameters.NumServerThreads.class))
       .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, injector.getNamedInstance(CacheParameters.NumLoadingThreads.class))

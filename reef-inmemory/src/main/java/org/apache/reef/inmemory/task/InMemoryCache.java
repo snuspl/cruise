@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.task;
 
-import com.google.common.cache.CacheStats;
+import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
@@ -37,5 +37,5 @@ public interface InMemoryCache {
    * Retrieve information about the cache status
    * @return The status of Cache
    */
-  public CacheStats getReport(); // TODO: Dependency on Google task implementation -- change to new class?
+  public CacheStatistics getStatistics();
 }

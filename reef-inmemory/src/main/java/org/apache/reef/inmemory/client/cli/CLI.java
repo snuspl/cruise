@@ -82,8 +82,11 @@ public final class CLI {
     final int cacheMemory = injector.getNamedInstance(CacheServerMemory.class);
     final SurfManagementService.Client client = getClient(hostname, port);
 
-    if ("clear".equals(cmd)) {
-      LOG.log(Level.INFO, "Connected to surf");
+    if ("status".equals(cmd)) {
+      final String status = client.getStatus();
+      LOG.log(Level.INFO, '\n'+status);
+      return true;
+    } else if ("clear".equals(cmd)) {
       final long numCleared = client.clear();
       LOG.log(Level.INFO, "Cleared {0} items from task", numCleared);
       return true;

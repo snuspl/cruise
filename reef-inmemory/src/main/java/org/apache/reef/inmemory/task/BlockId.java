@@ -7,6 +7,11 @@ package org.apache.reef.inmemory.task;
  */
 public interface BlockId {
   /**
+   * Return size of the block, in MB
+   */
+  public long getBlockSize();
+
+  /**
    * Compares this BlockId to the specified object. The result is {@code true}
    * if and only if the argument is not {@code null} and is a {@code BlockId}
    * object that represents the same information as this object.

@@ -73,7 +73,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
 
   @Override
   public Optional<TaskMessage> getMessage() {
-    final CacheStatusMessage message = new CacheStatusMessage(dataServer.getBindPort());
+    final CacheStatusMessage message = new CacheStatusMessage(cache.getStatistics(), dataServer.getBindPort());
     return Optional.of(TaskMessage.from(this.toString(),
             STATUS_CODEC.encode(message)));
   }
@@ -111,9 +111,6 @@ public class InMemoryTask implements Task, TaskMessageSource {
         if (msg.getHdfsBlockMessage().isPresent()) {
           LOG.log(Level.INFO, "Received load block msg");
           final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
-
-          // TODO: pass request to InMemoryCache. IMC can check if block already exists, call executeLoad if not.
-
           try {
             // TODO: loader should receive all block locations
             final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations().get(0));

@@ -19,8 +19,11 @@ public final class MetaServerParameters {
   public static final class Threads implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Default task replicas", short_name = "num_replicas", default_value = "1")
-  public static final class Replicas implements Name<Integer> {
+  /**
+   * The replication factor used for files that do not have an assigned per-file replication factor.
+   */
+  @NamedParameter(doc = "Default task replicas", short_name = "default_num_replicas", default_value = "1")
+  public static final class DefaultReplicas implements Name<Integer> {
   }
 
   @NamedParameter(doc = "Number of task servers to allocate on startup", short_name = "cache_servers_num_init", default_value = "1")
