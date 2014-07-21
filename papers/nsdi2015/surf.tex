@@ -78,6 +78,15 @@
 \begin{itemize}
 \item Why in-memory caching tier for Big Data Analytics?
 
+\begin{itemize}
+\item Performance gains of in-memory processing e.g., Spark.
+\item Big Data workloads are PBs of data, still requiring disks to play a big role in computations e.g., Hadoop MR.
+\item Many application-level requirements are a combination of the two (need examples and/or references).
+But each application has its own memory/disk space and performance tradeoffs.
+Hard to provision memory resources before-hand, and across multiple frameworks.
+\item Need a flexible in-memory layer that allows applications to make use of scarce memory resources.
+\end{itemize}
+
 \item Our new approach: a generic, transparent caching service backed by a backend distributed file system \\
 
 cache: soft-state\\
@@ -92,7 +101,7 @@ how file system clients use surf? Use surf:// instead of hdfs:// in their file s
 \item Elastic cluster-level memory pool provisioning: increase or decrease the number of caching servers depending on caching load
 \end{itemize}
 
-\item Implementation: built upon REEF~\cite{}, lines of code; 
+\item Implementation: built upon REEF~\cite{reef}, lines of code; 
 In-production use, contributed to Apache
 
 \item Evaluation: how Surf beats HDFS, HDFS caching
@@ -108,6 +117,7 @@ In-production use, contributed to Apache
 
 \begin{itemize}
 \item Maybe an overview of Surf?
+\item With a good motivating application (SKT?) we could give a brief example of it running with Surf. Compare it to running without Surf.
 \end{itemize}
 
 \section{Surf Design}
