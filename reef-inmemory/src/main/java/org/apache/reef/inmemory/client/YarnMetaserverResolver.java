@@ -65,12 +65,12 @@ public final class YarnMetaserverResolver implements MetaserverResolver {
   public String getAddress() throws IOException {
     final HttpClient client = new DefaultHttpClient();
     final String trackingUrl = "http://"+getTrackingUrl()+"/surf/v1";
-    LOG.log(Level.INFO, "Get address from {0}", trackingUrl);
+    LOG.log(Level.FINE, "Get address from {0}", trackingUrl);
     final HttpGet request = new HttpGet(trackingUrl);
 
     final HttpResponse response = client.execute(request);
     final String address = IOUtils.toString(response.getEntity().getContent());
-    LOG.log(Level.INFO, "Using address {0}", address);
+    LOG.log(Level.FINE, "Using address {0}", address);
     return address;
   }
 }
