@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.driver.service;
 
 import com.microsoft.tang.annotations.Parameter;
+import com.microsoft.wake.remote.NetUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
@@ -19,6 +20,7 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,15 +40,18 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   private final SurfMetaManager metaManager;
   private final CacheManager cacheManager;
+  private final ServiceRegistry serviceRegistry;
 
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
                         final CacheManager cacheManager,
+                        final ServiceRegistry serviceRegistry,
                         final @Parameter(MetaServerParameters.Port.class) int port,
                         final @Parameter(MetaServerParameters.Timeout.class) int timeout,
                         final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
     this.metaManager = metaManager;
     this.cacheManager = cacheManager;
+    this.serviceRegistry = serviceRegistry;
 
     this.port = port;
     this.timeout = timeout;
@@ -59,6 +64,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       return metaManager.getBlocks(new Path(path), new User());
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);
+    } catch (IOException e) {
+      throw new FileNotFoundException(e.getMessage());
     } catch (Throwable e) {
       LOG.log(Level.SEVERE, "Get metadata failed for "+path, e);
       throw new TException(e);
@@ -130,6 +137,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
           new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
               .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
               .workerThreads(this.numThreads));
+
+      // Register just before serving
+      serviceRegistry.register(NetUtils.getLocalAddress(), port);
 
       this.server.serve();
     } catch (Exception e) {

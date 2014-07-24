@@ -6,19 +6,23 @@ import com.microsoft.reef.runtime.common.client.REEFImplementation;
 import com.microsoft.reef.runtime.local.client.LocalRuntimeConfiguration;
 import com.microsoft.reef.runtime.yarn.client.YarnClientConfiguration;
 import com.microsoft.reef.util.EnvironmentUtils;
-import com.microsoft.tang.Configuration;
-import com.microsoft.tang.Injector;
-import com.microsoft.tang.JavaConfigurationBuilder;
-import com.microsoft.tang.Tang;
+import com.microsoft.reef.webserver.HttpEventHandlers;
+import com.microsoft.reef.webserver.HttpHandlerConfiguration;
+import com.microsoft.tang.*;
 import com.microsoft.tang.annotations.Name;
 import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.CommandLine;
+import com.microsoft.tang.formats.ConfigurationModule;
+import org.apache.reef.inmemory.client.YarnMetaserverResolver;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.InMemoryConfiguration;
 import org.apache.reef.inmemory.driver.InMemoryDriver;
+import org.apache.reef.inmemory.driver.service.InetServiceRegistry;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
+import org.apache.reef.inmemory.driver.service.ServiceRegistry;
+import org.apache.reef.inmemory.driver.service.YarnServiceRegistry;
 import org.apache.reef.inmemory.task.CacheParameters;
 
 import java.io.IOException;
@@ -92,8 +96,9 @@ public class Launch
   private static Configuration getInMemoryConfiguration(final Configuration clConf)
     throws InjectionException, BindException {
     final Injector injector = Tang.Factory.getTang().newInjector(clConf);
+
     final Configuration inMemoryConfig;
-    inMemoryConfig = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsParameters.Type.class))
+    final ConfigurationModule inMemoryConfigModule = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsParameters.Type.class))
       .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaServerParameters.Port.class))
       .set(InMemoryConfiguration.INIT_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.InitCacheServers.class))
       .set(InMemoryConfiguration.DEFAULT_MEM_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.DefaultMemCacheServers.class))
@@ -103,8 +108,26 @@ public class Launch
       .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, injector.getNamedInstance(CacheParameters.NumLoadingThreads.class))
       .set(InMemoryConfiguration.CACHE_MEMORY_SIZE, injector.getNamedInstance(CacheParameters.Memory.class))
       .set(InMemoryConfiguration.DFS_TYPE, injector.getNamedInstance(DfsParameters.Type.class))
-      .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class))
-      .build();
+      .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class));
+
+    final boolean isLocal = injector.getNamedInstance(Local.class);
+    if (isLocal) {
+      final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
+        .bind(ServiceRegistry.class, InetServiceRegistry.class)
+        .build();
+
+      inMemoryConfig = Configurations.merge(inMemoryConfigModule.build(), registryConfig);
+    } else {
+      final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
+        .bind(ServiceRegistry.class, YarnServiceRegistry.class)
+        .build();
+      final Configuration httpConfig = HttpHandlerConfiguration.CONF
+        .set(HttpHandlerConfiguration.HTTP_HANDLERS, YarnServiceRegistry.AddressHttpHandler.class)
+        .build();
+
+      inMemoryConfig = Configurations.merge(inMemoryConfigModule.build(), registryConfig, httpConfig);
+    }
+
     return inMemoryConfig;
   }
 
