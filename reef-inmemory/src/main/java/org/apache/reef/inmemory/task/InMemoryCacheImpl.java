@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheStats;
+import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
@@ -20,13 +20,16 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final Cache<BlockId, byte[]> cache;
   private final Cache<BlockId, BlockLoader> loading;
 
+  private final CacheStatistics statistics = new CacheStatistics();
+
   @Inject
   public InMemoryCacheImpl() {
+    final int concurrencyLevel = 2; // synchronized ops (1)  + statistics (1) = 2
     cache = CacheBuilder.newBuilder()
-        .concurrencyLevel(4)
+        .concurrencyLevel(concurrencyLevel)
         .build();
     loading = CacheBuilder.newBuilder()
-        .concurrencyLevel(4)
+        .concurrencyLevel(concurrencyLevel)
         .build();
   }
 
@@ -40,7 +43,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
       if (data == null) {
         throw new BlockNotFoundException();
       } else {
-        return cache.getIfPresent(blockId);
+        return data;
       }
     }
   }
@@ -54,17 +57,23 @@ public final class InMemoryCacheImpl implements InMemoryCache {
         return;
       } else {
         loading.put(blockId, blockLoader);
+
+        statistics.addLoadingMB((int)blockId.getBlockSize());
       }
     }
 
     final byte[] data = blockLoader.loadBlock();
 
     synchronized (this) {
+      statistics.subtractLoadingMB((int)blockId.getBlockSize());
+
       if (loading.getIfPresent(blockId) == null) {
         LOG.log(Level.WARNING, "Block load completed but no longer needed "+blockId);
       } else {
-        cache.put(blockId, data);
         loading.invalidate(blockId);
+
+        cache.put(blockId, data);
+        statistics.addCacheMB((int) blockId.getBlockSize());
       }
     }
   }
@@ -72,10 +81,12 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Override
   public synchronized void clear() {
     cache.invalidateAll();
+
+    statistics.resetCacheMB();
   }
 
   @Override
-  public CacheStats getReport() {
-    return cache.stats();
+  public synchronized CacheStatistics getStatistics() {
+    return statistics;
   }
 }

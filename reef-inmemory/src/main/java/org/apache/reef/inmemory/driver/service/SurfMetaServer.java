@@ -3,16 +3,15 @@ package org.apache.reef.inmemory.driver.service;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.NetUtils;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.User;
+import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
-import org.apache.reef.inmemory.common.entity.FileMeta;
-import org.apache.reef.inmemory.common.entity.User;
-import org.apache.reef.inmemory.common.exceptions.AllocationFailedException;
-import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
-import org.apache.reef.inmemory.common.exceptions.SubmissionFailedException;
+import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -74,6 +73,19 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
+  public String getStatus() throws TException {
+    LOG.log(Level.INFO, "CLI status command");
+    StringBuilder builder = new StringBuilder();
+    for (CacheNode cache : cacheManager.getCaches()) {
+      builder.append(cache.getAddress())
+             .append(" : ")
+             .append(cache.getLatestStatistics())
+             .append('\n');
+    }
+    return builder.toString();
+  }
+
+  @Override
   public long clear() throws TException {
     LOG.log(Level.INFO, "CLI clear command");
     return metaManager.clear();
@@ -98,8 +110,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public String addCacheNode(final int memory)
-          throws AllocationFailedException, SubmissionFailedException, TException {
+  public String addCacheNode(final int memory) throws TException {
     LOG.log(Level.INFO, "CLI addCacheNode command with memory {0}", memory);
     if (memory == 0) {
       cacheManager.requestEvaluator(1);

@@ -56,19 +56,6 @@ public final class InMemoryDriver {
   }
 
   /**
-   * Get a Task Configuration
-   */
-  final Configuration getTaskConfiguration() throws BindException {
-    return TaskConfiguration.CONF
-        .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
-        .set(TaskConfiguration.TASK, InMemoryTask.class)
-        .set(TaskConfiguration.ON_TASK_STARTED, InMemoryTask.StartHandler.class)
-        .set(TaskConfiguration.ON_MESSAGE, InMemoryTask.DriverMessageHandler.class)
-        .set(TaskConfiguration.ON_SEND_MESSAGE, InMemoryTask.class)
-        .build();
-  }
-
-  /**
    * Handler of StartTime event: Request Evaluators
    */
   public final class StartHandler implements EventHandler<StartTime> {
@@ -160,7 +147,7 @@ public final class InMemoryDriver {
   public class TaskMessageHandler implements EventHandler<TaskMessage> {
     @Override
     public void onNext(TaskMessage msg) {
-      LOG.log(Level.INFO, "TaskMessage: from {0}: {1}",
+      LOG.log(Level.FINE, "TaskMessage: from {0}: {1}",
           new Object[]{msg.getId(), CODEC.decode(msg.get())});
 
       cacheManager.handleUpdate(msg.getId(), CODEC.decode(msg.get()));

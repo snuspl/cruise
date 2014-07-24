@@ -1,0 +1,215 @@
+\documentclass[twocolumn,10pt]{article}
+\usepackage[usenix,nocopyright,10pt]{sigmin}
+
+\usepackage{endnotes,verbatim}
+%\usepackage{setspace}
+%\doublespacing
+ 
+% Page layout and spacing
+%\usepackage[margin=1in]{geometry}
+%\usepackage[medium,compact]{titlesec}
+
+% Formatting
+%\usepackage{alltt}
+\usepackage{url}
+% Type1 fonts please!
+\usepackage[T1]{fontenc}
+%\usepackage{times,courier,mathptmx}
+\usepackage{times}
+\usepackage{textcomp}
+
+\usepackage[tight]{subfigure}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{epsfig}
+
+\usepackage{cite}
+\usepackage{color}
+\usepackage{xspace}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proof}{Proof}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}{Definition}
+
+%\newcommand{\note}[1]{}
+\newcommand{\note}[1]{[\textcolor{red}{\textit{#1}}]}
+\newcommand{\msg}[1]{{\textsc{\small #1}}}
+\newcommand{\method}[1]{{\texttt{\small #1}}}
+\newcommand{\stitle}[1]{\vspace{.5pt}{\noindent\bf #1:}}
+
+\newcommand{\lbft}{LBFT\xspace}
+\newcommand{\lbftparen}{(LBFT)\xspace}
+
+\newcommand{\eat}[1]{}
+
+\title{Surf}
+
+\author{XYZ}
+
+%\date{}
+
+% make the bibliography compact
+\let\oldthebibliography=\thebibliography
+\let\endoldthebibliography=\endthebibliography
+\renewenvironment{thebibliography}[1]{%
+    \begin{oldthebibliography}{#1}%
+    \setlength{\parskip}{0ex}%
+    \setlength{\itemsep}{0ex}%
+}%
+{%
+    \end{oldthebibliography}%
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+
+\end{abstract}
+
+\section{Introduction}
+
+\begin{itemize}
+\item Why in-memory caching tier for Big Data Analytics?
+
+\begin{itemize}
+\item Performance gains of in-memory processing e.g., Spark.
+\item Big Data workloads are PBs of data, still requiring disks to play a big role in computations e.g., Hadoop MR.
+\item Many application-level requirements are a combination of the two (need examples and/or references).
+But each application has its own memory/disk space and performance tradeoffs.
+Hard to provision memory resources before-hand, and across multiple frameworks.
+\item Need a flexible in-memory layer that allows applications to make use of scarce memory resources.
+\end{itemize}
+
+\item Our new approach: a generic, transparent caching service backed by a backend distributed file system \\
+
+cache: soft-state\\
+
+support for multi-frameworks\\
+
+how file system clients use surf? Use surf:// instead of hdfs:// in their file system call, and the rest of things are handled by surf.
+
+\item Unique features of Surf
+\begin{itemize}
+\item Application-driven data replication : per-file replication policy
+\item Elastic cluster-level memory pool provisioning: increase or decrease the number of caching servers depending on caching load
+\end{itemize}
+
+\item Implementation: built upon REEF~\cite{reef}, lines of code; 
+In-production use, contributed to Apache
+
+\item Evaluation: how Surf beats HDFS, HDFS caching
+
+\item Paper roadmap
+
+\end{itemize}
+
+
+\section{Overview}
+
+\noindent We need a nice transition between Intro and Design
+
+\begin{itemize}
+\item Maybe an overview of Surf?
+\item With a good motivating application (SKT?) we could give a brief example of it running with Surf. Compare it to running without Surf.
+\end{itemize}
+
+\section{Surf Design}
+
+\begin{itemize}
+\item Basic Design - non-elastic, non-replication version
+\begin{itemize}
+\item Pinning
+\item Cache eviction
+\end{itemize}
+\item Adding flexible replication - cache all, cache one, cache a few 
+\item Adding elasticity
+\item Discussion?
+\end{itemize}
+
+
+\section{Implementation}
+
+Surf is built atop REEF\cite{reef}.
+
+\begin{itemize}
+\item Lines of code
+\item Client library exposing the file system interface, Thrift between client and caching task
+\item Server
+\end{itemize}
+
+\section{Evaluation}
+
+\noindent Experiment setup - how many nodes, the spec. of each node
+
+\noindent What do we compare with Surf: HDFS, HDFS caching
+
+\noindent Summary of what we want to show from the experiments
+
+\begin{itemize}
+\item Microbenchmarks - explain
+\begin{itemize}
+\item Result 1 (Each graph should make a point. )
+\item Result 2 
+\item ...
+\end{itemize}
+
+\item Macrobenchmarks - Hadoop MR jobs
+\begin{itemize}
+\item Result 1
+\item Result 2
+\item ...
+\end{itemize}
+
+\item Macrobenchmarks - SKT workloads (Shark/Spark jobs)  
+\begin{itemize}
+\item Result 1
+\item Result 2
+\item ...
+\end{itemize}
+
+\end{itemize}
+
+\section{Related Work}
+
+\begin{itemize}
+\item In-memory work in Big Data Analytics
+\begin{itemize}
+\item HDFS caching: tied to OS page cache, not elastic, not flexible
+\item Spark RDD~\cite{sparknsdi}: tied to a particular framework, surf: independent of frameworks
+\item PacMan~\cite{pacman}
+\item Tachyon - in-memory file system~\cite{tachyon}: only a single copy in memory, file system semantics, recovery etc., surf: soft-state
+\end{itemize}
+\item Caching in other domains: Memcache, Web caching, CDN, etc.
+\end{itemize}
+
+\section{Conclusion and Future Work}
+
+\begin{itemize}
+\item Contribution
+\item Summary of the numbers
+\item Say it's in production use in SKT
+\item Say it's contributed to the Apache incubation project
+\item Future work
+\begin{itemize}
+\item write path? - anything we do to improve write performance?
+\item How to handle intermediate data (written) that's not backed by the distributed file system
+\item running code in the same JVM that hosts the cached data,
+\end{itemize}
+
+\end{itemize}
+
+\bibliographystyle{abbrv}
+\bibliography{surf}
+
+\end{document}
+
+
+
+

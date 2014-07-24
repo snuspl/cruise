@@ -62,9 +62,9 @@ public final class CacheManagerImpl implements CacheManager {
   /**
    * Get a Task Configuration
    */
-  protected static Configuration getTaskConfiguration() throws BindException {
+  protected static Configuration getTaskConfiguration(String uniqueId) throws BindException {
     return TaskConfiguration.CONF
-            .set(TaskConfiguration.IDENTIFIER, "InMemoryTask")
+            .set(TaskConfiguration.IDENTIFIER, "InMemoryTask-"+uniqueId)
             .set(TaskConfiguration.TASK, InMemoryTask.class)
             .set(TaskConfiguration.ON_TASK_STARTED, InMemoryTask.StartHandler.class)
             .set(TaskConfiguration.ON_MESSAGE, InMemoryTask.DriverMessageHandler.class)
@@ -89,10 +89,10 @@ public final class CacheManagerImpl implements CacheManager {
   public synchronized void submitContextAndTask(final AllocatedEvaluator allocatedEvaluator) {
     try {
       final Configuration contextConf = ContextConfiguration.CONF
-              .set(ContextConfiguration.IDENTIFIER, "InMemoryContext")
+              .set(ContextConfiguration.IDENTIFIER, "InMemoryContext-"+allocatedEvaluator.getId())
 
               .build();
-      final Configuration taskConf = getTaskConfiguration();
+      final Configuration taskConf = getTaskConfiguration(allocatedEvaluator.getId());
       final Configuration taskInMemoryConf = InMemoryTaskConfiguration.getConf(dfsType)
               .set(InMemoryTaskConfiguration.CACHESERVER_PORT, cachePort)
               .set(InMemoryTaskConfiguration.CACHESERVER_SERVER_THREADS, cacheServerThreads)
@@ -141,6 +141,8 @@ public final class CacheManagerImpl implements CacheManager {
       final CacheNode cache = new CacheNode(task, msg.getBindPort());
       caches.put(taskId, cache);
       LOG.log(Level.INFO, "Cache "+cache.getAddress()+" added from task "+cache.getTaskId());
+    } else if (caches.containsKey(taskId)) {
+      caches.get(taskId).setLatestStatistics(msg.getStatistics());
     }
   }
 }

@@ -7,18 +7,24 @@ import java.io.Serializable;
  */
 public final class CacheStatusMessage implements Serializable {
 
-  // TODO: Add memory usage
   /**
    * The port number which the cache is bound to
    */
+  private final CacheStatistics statistics;
   private final int bindPort;
 
-  public CacheStatusMessage(final int bindPort) {
+  public CacheStatusMessage(final CacheStatistics statistics,
+                            final int bindPort) {
+    this.statistics = statistics;
     this.bindPort = bindPort;
   }
 
+  public CacheStatistics getStatistics() {
+    return statistics;
+  }
+
   /**
-   * Retrives port the Cache bound to
+   * Retrieves port the Cache bound to
    * @return Port number
    */
   public int getBindPort() {

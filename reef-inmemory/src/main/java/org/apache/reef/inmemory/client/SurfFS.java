@@ -74,6 +74,7 @@ public final class SurfFS extends FileSystem {
 
   private static SurfMetaService.Client getMetaClient(String address)
           throws TTransportException {
+    LOG.log(Level.INFO, "Connecting to metaserver at {0}", address);
     HostAndPort metaAddress = HostAndPort.fromString(address);
 
     TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
@@ -151,6 +152,9 @@ public final class SurfFS extends FileSystem {
 
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
+    LOG.log(Level.INFO, "Open called on {0}, using {1}",
+            new String[]{path.toString(), path.toUri().getPath().toString()});
+
     // Lazy loading (for now)
     if (this.metaClient == null) {
       try {
@@ -161,7 +165,6 @@ public final class SurfFS extends FileSystem {
     }
 
     try {
-      LOG.log(Level.INFO, "getFileMeta called on: "+path+", using: "+path.toUri().getPath());
       FileMeta metadata = metaClient.getFileMeta(path.toUri().getPath());
       return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
