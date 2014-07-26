@@ -21,6 +21,9 @@ import org.apache.thrift.transport.TTransportException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -228,5 +231,61 @@ public final class SurfFS extends FileSystem {
     FileStatus status = baseFs.getFileStatus(pathToBase(path));
     setStatusToSurf(status);
     return status;
+  }
+
+  private BlockLocation getBlockLocation(List<String> addresses, long start, long len) {
+    List<String> hosts = new ArrayList<>(addresses.size());
+    for (String address : addresses) {
+      hosts.add(HostAndPort.fromString(address).getHostText());
+    }
+    return new BlockLocation(addresses.toArray(new String[addresses.size()]),
+            hosts.toArray(new String[hosts.size()]), start, len);
+  }
+
+  /**
+   * Note: this triggers a pre-load on the file itself, if it's not yet in Surf
+   */
+  @Override
+  public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
+    // TODO: How do we resolve symlinks?
+
+    List<BlockLocation> blockLocations = new LinkedList<>();
+
+    try {
+      final FileMeta metadata = metaClient.getFileMeta(file.getPath().toUri().getPath());
+      long startRemaining = start;
+      Iterator<BlockInfo> iter = metadata.getBlocksIterator();
+
+      // Find the first block and add its locations
+      while (iter.hasNext()) {
+        final BlockInfo block = iter.next();
+        startRemaining -= block.getLength();
+        if (startRemaining < 0) {
+          // TODO: Add topology information!
+          blockLocations.add(getBlockLocation(block.getLocations(), block.getOffSet(), block.getLength()));
+          break;
+        }
+      }
+
+      // Add locations of blocks after that, up to len
+      long lenRemaining = len + startRemaining;
+      while (lenRemaining > 0 && iter.hasNext()) {
+        final BlockInfo block = iter.next();
+        lenRemaining -= block.getLength();
+        blockLocations.add(getBlockLocation(block.getLocations(), block.getOffSet(), block.getLength()));
+      }
+
+      return blockLocations.toArray(new BlockLocation[blockLocations.size()]);
+
+    } catch (TException e) {
+      // TODO: more specific Exception
+      throw new IOException();
+    }
+  }
+
+  @Override
+  protected RemoteIterator<LocatedFileStatus> listLocatedStatus(Path f, PathFilter filter) throws FileNotFoundException, IOException {
+    // TODO: How can we apply the PathFilter?
+    return null;
   }
 }
