@@ -75,17 +75,30 @@ public final class SurfFS extends FileSystem {
     this.metaClient = metaClient;
   }
 
-  private static SurfMetaService.Client getMetaClient(String address)
-          throws TTransportException {
-    LOG.log(Level.INFO, "Connecting to metaserver at {0}", address);
-    HostAndPort metaAddress = HostAndPort.fromString(address);
+  /**
+   * Return current Client, or lazy load if not assigned.
+   * Throws runtime exception if Client cannot be found, because we cannot make progress without a Client.
+   */
+  private SurfMetaService.Client getMetaClient() {
 
-    TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
-    transport.open();
-    TProtocol protocol = new TMultiplexedProtocol(
-            new TCompactProtocol(transport),
-            SurfMetaService.class.getName());
-    return new SurfMetaService.Client(protocol);
+    if (this.metaClient != null) {
+      return this.metaClient;
+    } else {
+      try {
+        LOG.log(Level.INFO, "Connecting to metaserver at {0}", metaserverAddress);
+        HostAndPort metaAddress = HostAndPort.fromString(metaserverAddress);
+
+        TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
+        transport.open();
+        TProtocol protocol = new TMultiplexedProtocol(
+                new TCompactProtocol(transport),
+                SurfMetaService.class.getName());
+        this.metaClient = new SurfMetaService.Client(protocol);
+        return this.metaClient;
+      } catch (TTransportException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   @Override
@@ -161,17 +174,8 @@ public final class SurfFS extends FileSystem {
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
             new String[]{path.toString(), path.toUri().getPath().toString()});
 
-    // Lazy loading (for now)
-    if (this.metaClient == null) {
-      try {
-        this.metaClient = getMetaClient(metaserverAddress);
-      } catch (TTransportException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
     try {
-      FileMeta metadata = metaClient.getFileMeta(path.toUri().getPath());
+      FileMeta metadata = getMetaClient().getFileMeta(path.toUri().getPath());
       return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
@@ -258,10 +262,13 @@ public final class SurfFS extends FileSystem {
   @Override
   public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
 
+    LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
+            new String[]{file.getPath().toString(), file.getPath().toUri().getPath().toString()});
+
     List<BlockLocation> blockLocations = new LinkedList<>();
 
     try {
-      final FileMeta metadata = metaClient.getFileMeta(file.getPath().toUri().getPath());
+      final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath());
       long startRemaining = start;
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
 
