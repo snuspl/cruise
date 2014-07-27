@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.driver;
 
 import com.microsoft.reef.driver.catalog.NodeDescriptor;
+import com.microsoft.reef.driver.catalog.RackDescriptor;
 import com.microsoft.reef.driver.context.ActiveContext;
 import com.microsoft.reef.driver.evaluator.EvaluatorDescriptor;
 import com.microsoft.reef.driver.task.RunningTask;
@@ -18,6 +19,7 @@ public class TestUtils {
     final ActiveContext activeContext = mock(ActiveContext.class);
     final EvaluatorDescriptor evaluatorDescriptor = mock(EvaluatorDescriptor.class);
     final NodeDescriptor nodeDescriptor = mock(NodeDescriptor.class);
+    final RackDescriptor rackDescriptor = mock(RackDescriptor.class);
     // Mockito can't mock the final method getHostString(), so using real object
     final InetSocketAddress inetSocketAddress = new InetSocketAddress(hostString, 0);
 
@@ -25,6 +27,8 @@ public class TestUtils {
     doReturn(activeContext).when(runningTask).getActiveContext();
     doReturn(evaluatorDescriptor).when(activeContext).getEvaluatorDescriptor();
     doReturn(nodeDescriptor).when(evaluatorDescriptor).getNodeDescriptor();
+    doReturn(rackDescriptor).when(nodeDescriptor).getRackDescriptor();
+    doReturn("/test-rack").when(rackDescriptor).getName();
     doReturn(inetSocketAddress).when(nodeDescriptor).getInetSocketAddress();
 
     return runningTask;

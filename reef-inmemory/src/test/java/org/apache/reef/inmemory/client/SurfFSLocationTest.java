@@ -7,6 +7,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.junit.Before;
@@ -48,7 +49,8 @@ public final class SurfFSLocationTest {
       blockInfo.setOffSet(blockLength * i);
       blockInfo.setLength(blockLength);
       for (int j = 0; j < numLocations; j++) {
-        blockInfo.addToLocations("location-" + i + "-" + j + ":" + port);
+        final NodeInfo location = new NodeInfo("location-" + i + "-" + j + ":" + port, null);
+        blockInfo.addToLocations(location);
       }
       fileMeta.addToBlocks(blockInfo);
     }

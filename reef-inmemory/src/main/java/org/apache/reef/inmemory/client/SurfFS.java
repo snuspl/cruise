@@ -8,6 +8,7 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -21,7 +22,6 @@ import org.apache.thrift.transport.TTransportException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -153,6 +153,9 @@ public final class SurfFS extends FileSystem {
     return uri;
   }
 
+  /**
+   * Note: calling open triggers a load on the file itself, if it's not yet in Surf
+   */
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
@@ -233,21 +236,27 @@ public final class SurfFS extends FileSystem {
     return status;
   }
 
-  private BlockLocation getBlockLocation(List<String> addresses, long start, long len) {
-    List<String> hosts = new ArrayList<>(addresses.size());
-    for (String address : addresses) {
-      hosts.add(HostAndPort.fromString(address).getHostText());
+  private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
+    final String[] addresses = new String[locations.size()];
+    final String[] hosts = new String[locations.size()];
+    final String[] racks = new String[locations.size()];
+
+    int idx = 0;
+    for (NodeInfo location : locations) {
+      addresses[idx] = location.getAddress();
+      hosts[idx] = HostAndPort.fromString(location.getAddress()).getHostText();
+      racks[idx] = location.getRack();
+      idx++;
     }
-    return new BlockLocation(addresses.toArray(new String[addresses.size()]),
-            hosts.toArray(new String[hosts.size()]), start, len);
+
+    return new BlockLocation(addresses, hosts, racks, start, len);
   }
 
   /**
-   * Note: this triggers a pre-load on the file itself, if it's not yet in Surf
+   * Note: calling getFileBlockLocations triggers a pre-load on the file itself, if it's not yet in Surf
    */
   @Override
   public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
-    // TODO: How do we resolve symlinks?
 
     List<BlockLocation> blockLocations = new LinkedList<>();
 
@@ -256,12 +265,11 @@ public final class SurfFS extends FileSystem {
       long startRemaining = start;
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
 
-      // Find the first block and add its locations
+      // Find the block that contains start and add its locations
       while (iter.hasNext()) {
         final BlockInfo block = iter.next();
         startRemaining -= block.getLength();
         if (startRemaining < 0) {
-          // TODO: Add topology information!
           blockLocations.add(getBlockLocation(block.getLocations(), block.getOffSet(), block.getLength()));
           break;
         }
@@ -277,15 +285,12 @@ public final class SurfFS extends FileSystem {
 
       return blockLocations.toArray(new BlockLocation[blockLocations.size()]);
 
+    } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
+      LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
+      throw new FileNotFoundException(e.getMessage());
     } catch (TException e) {
-      // TODO: more specific Exception
-      throw new IOException();
+      LOG.log(Level.SEVERE, "TException: "+e+" "+e.getCause());
+      throw new IOException(e.getMessage());
     }
-  }
-
-  @Override
-  protected RemoteIterator<LocatedFileStatus> listLocatedStatus(Path f, PathFilter filter) throws FileNotFoundException, IOException {
-    // TODO: How can we apply the PathFilter?
-    return null;
   }
 }
