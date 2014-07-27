@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.client;
 
 import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
@@ -27,7 +28,7 @@ public final class CacheBlockLoader {
   private static final long NO_OFFSET = -1;
 
   private final BlockInfo block;
-  private final Iterator<String> locations;
+  private final Iterator<NodeInfo> locations;
 
   private final CacheClientManager cacheManager;
   private SurfCacheService.Client client;
@@ -50,10 +51,12 @@ public final class CacheBlockLoader {
   private SurfCacheService.Client getNextClient() throws IOException {
     if (locations != null && locations.hasNext()) {
       try {
-        final String location = locations.next();
-        final SurfCacheService.Client client = cacheManager.get(location);
+        final NodeInfo location = locations.next();
+        final String address = location.getAddress();
+        // TODO: Make use of rack-locality using location.getRack();
+        final SurfCacheService.Client client = cacheManager.get(address);
         LOG.log(Level.INFO, "Connected to client at {0} for data from block {1}",
-                new String[]{location, Long.toString(block.getBlockId())});
+                new String[]{address, Long.toString(block.getBlockId())});
         return client;
       } catch (TTransportException e) {
         LOG.log(Level.SEVERE, "TException "+e);

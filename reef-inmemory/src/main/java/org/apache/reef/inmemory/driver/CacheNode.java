@@ -9,6 +9,7 @@ import org.apache.reef.inmemory.common.CacheStatistics;
 public class CacheNode {
   private final RunningTask task;
   private final String address;
+  private final String rack;
   private final int memory;
   private CacheStatistics latestStatistics;
 
@@ -16,6 +17,7 @@ public class CacheNode {
                    final int port) {
     this.task = task;
     this.address = getCacheHost(this.task) + ":" + port;
+    this.rack = getCacheRack(this.task);
     this.memory = this.task.getActiveContext().getEvaluatorDescriptor().getMemory();
   }
 
@@ -25,6 +27,10 @@ public class CacheNode {
 
   public String getAddress() {
     return address;
+  }
+
+  public String getRack() {
+    return rack;
   }
 
   public void send(final byte[] msg) {
@@ -41,6 +47,11 @@ public class CacheNode {
   private static String getCacheHost(final RunningTask task) {
     return task.getActiveContext().getEvaluatorDescriptor()
             .getNodeDescriptor().getInetSocketAddress().getHostString();
+  }
+
+  private static String getCacheRack(final RunningTask task) {
+    return task.getActiveContext().getEvaluatorDescriptor()
+            .getNodeDescriptor().getRackDescriptor().getName();
   }
 
   public CacheStatistics getLatestStatistics() {

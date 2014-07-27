@@ -12,6 +12,7 @@ import org.apache.reef.inmemory.common.CacheMessage;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheNode;
@@ -102,7 +103,9 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
       for (final CacheNode cacheNode : selectedNodes) {
         cacheMessenger.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?
-        cacheBlock.addToLocations(cacheNode.getAddress());
+
+        final NodeInfo location = new NodeInfo(cacheNode.getAddress(), cacheNode.getRack());
+        cacheBlock.addToLocations(location);
       }
 
       if (LOG.isLoggable(Level.FINE)) {

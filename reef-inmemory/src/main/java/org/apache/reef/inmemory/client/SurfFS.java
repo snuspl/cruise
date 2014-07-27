@@ -8,6 +8,7 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -21,6 +22,8 @@ import org.apache.thrift.transport.TTransportException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -72,17 +75,30 @@ public final class SurfFS extends FileSystem {
     this.metaClient = metaClient;
   }
 
-  private static SurfMetaService.Client getMetaClient(String address)
-          throws TTransportException {
-    LOG.log(Level.INFO, "Connecting to metaserver at {0}", address);
-    HostAndPort metaAddress = HostAndPort.fromString(address);
+  /**
+   * Return current Client, or lazy load if not assigned.
+   * Throws runtime exception if Client cannot be found, because we cannot make progress without a Client.
+   */
+  private SurfMetaService.Client getMetaClient() {
 
-    TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
-    transport.open();
-    TProtocol protocol = new TMultiplexedProtocol(
-            new TCompactProtocol(transport),
-            SurfMetaService.class.getName());
-    return new SurfMetaService.Client(protocol);
+    if (this.metaClient != null) {
+      return this.metaClient;
+    } else {
+      try {
+        LOG.log(Level.INFO, "Connecting to metaserver at {0}", metaserverAddress);
+        HostAndPort metaAddress = HostAndPort.fromString(metaserverAddress);
+
+        TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
+        transport.open();
+        TProtocol protocol = new TMultiplexedProtocol(
+                new TCompactProtocol(transport),
+                SurfMetaService.class.getName());
+        this.metaClient = new SurfMetaService.Client(protocol);
+        return this.metaClient;
+      } catch (TTransportException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   @Override
@@ -150,22 +166,16 @@ public final class SurfFS extends FileSystem {
     return uri;
   }
 
+  /**
+   * Note: calling open triggers a load on the file, if it's not yet in Surf
+   */
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
             new String[]{path.toString(), path.toUri().getPath().toString()});
 
-    // Lazy loading (for now)
-    if (this.metaClient == null) {
-      try {
-        this.metaClient = getMetaClient(metaserverAddress);
-      } catch (TTransportException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
     try {
-      FileMeta metadata = metaClient.getFileMeta(path.toUri().getPath());
+      FileMeta metadata = getMetaClient().getFileMeta(path.toUri().getPath());
       return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
@@ -228,5 +238,66 @@ public final class SurfFS extends FileSystem {
     FileStatus status = baseFs.getFileStatus(pathToBase(path));
     setStatusToSurf(status);
     return status;
+  }
+
+  private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
+    final String[] addresses = new String[locations.size()];
+    final String[] hosts = new String[locations.size()];
+    final String[] racks = new String[locations.size()];
+
+    int idx = 0;
+    for (NodeInfo location : locations) {
+      addresses[idx] = location.getAddress();
+      hosts[idx] = HostAndPort.fromString(location.getAddress()).getHostText();
+      racks[idx] = location.getRack();
+      idx++;
+    }
+
+    return new BlockLocation(addresses, hosts, racks, start, len);
+  }
+
+  /**
+   * Note: calling getFileBlockLocations triggers a pre-load on the file, if it's not yet in Surf
+   */
+  @Override
+  public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
+
+    LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
+            new String[]{file.getPath().toString(), file.getPath().toUri().getPath().toString()});
+
+    List<BlockLocation> blockLocations = new LinkedList<>();
+
+    try {
+      final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath());
+      long startRemaining = start;
+      Iterator<BlockInfo> iter = metadata.getBlocksIterator();
+
+      // Find the block that contains start and add its locations
+      while (iter.hasNext()) {
+        final BlockInfo block = iter.next();
+        startRemaining -= block.getLength();
+        if (startRemaining < 0) {
+          blockLocations.add(getBlockLocation(block.getLocations(), block.getOffSet(), block.getLength()));
+          break;
+        }
+      }
+
+      // Add locations of blocks after that, up to len
+      long lenRemaining = len + startRemaining;
+      while (lenRemaining > 0 && iter.hasNext()) {
+        final BlockInfo block = iter.next();
+        lenRemaining -= block.getLength();
+        blockLocations.add(getBlockLocation(block.getLocations(), block.getOffSet(), block.getLength()));
+      }
+
+      return blockLocations.toArray(new BlockLocation[blockLocations.size()]);
+
+    } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
+      LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
+      throw new FileNotFoundException(e.getMessage());
+    } catch (TException e) {
+      LOG.log(Level.SEVERE, "TException: "+e+" "+e.getCause());
+      throw new IOException(e.getMessage());
+    }
   }
 }

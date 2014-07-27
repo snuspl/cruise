@@ -1,17 +1,25 @@
 namespace java org.apache.reef.inmemory.common.entity
 
 /**
+ * Contains information about cache server location and rack
+ */
+struct NodeInfo {
+    1: string address,               // server host:port
+    2: string rack                   // rack where address is located, used for locality
+}
+
+/**
  * Contains relevant block information to be stored as Metadata.
  * Currently takes after o.a.h.hdfs.protocol.ExtendedBlock
  */
 struct BlockInfo {
-	1: i64 blockId,            // Block id (unique)
-	2: i64 offSet,             // Order of the block
-	3: i64 length,             // Size of the block in bytes
-	4: list<string> locations, // Block location. These are server ip addresses containing the block.
-	5: string namespaceId,     // The namespace, e.g. HDFS block pool ID
-	6: i64 generationStamp,    // Version number for append-able FSes, e.g. HDFS (set to 0 when not append-able)
-	7: string token            // Token
+	1: i64 blockId,                  // Block id (unique)
+	2: i64 offSet,                   // Order of the block
+	3: i64 length,                   // Size of the block in bytes
+	4: list<NodeInfo> locations, // Block location. Contains address and rack.
+	5: string namespaceId,           // The namespace, e.g. HDFS block pool ID
+	6: i64 generationStamp,          // Version number for append-able FSes, e.g. HDFS (set to 0 when not append-able)
+	7: string token                  // Token
 }
 
 /**
