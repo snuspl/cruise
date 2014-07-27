@@ -21,6 +21,9 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests for SurfFS methods that retrieve block locations from the Driver.
+ */
 public final class SurfFSLocationTest {
   private static FileSystem surfFs;
   private static final int port = 5000;

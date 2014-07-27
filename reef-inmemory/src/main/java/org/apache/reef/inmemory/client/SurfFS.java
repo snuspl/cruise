@@ -167,7 +167,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Note: calling open triggers a load on the file itself, if it's not yet in Surf
+   * Note: calling open triggers a load on the file, if it's not yet in Surf
    */
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
@@ -257,7 +257,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Note: calling getFileBlockLocations triggers a pre-load on the file itself, if it's not yet in Surf
+   * Note: calling getFileBlockLocations triggers a pre-load on the file, if it's not yet in Surf
    */
   @Override
   public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
