@@ -35,7 +35,6 @@ public class HdfsBlockLoader implements BlockLoader {
   private static final String CLIENT_NAME = "BlockLoader";
   private static final boolean VERIFY_CHECKSUM = true;
   private static final boolean ALLOW_SHORT_CIRCUIT_LOCAL_READS = false;
-  private static final CachingStrategy STRATEGY = CachingStrategy.newDefaultStrategy();
 
   private final HdfsBlockId hdfsBlockId;
   private final ExtendedBlock block;
