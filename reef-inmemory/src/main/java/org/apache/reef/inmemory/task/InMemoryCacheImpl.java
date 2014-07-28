@@ -36,8 +36,9 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Override
   public synchronized byte[] get(final BlockId blockId)
           throws BlockLoadingException, BlockNotFoundException {
-    if (loading.getIfPresent(blockId) != null) {
-      throw new BlockLoadingException(); // TODO: add block load start time
+    final BlockLoader activeLoader = loading.getIfPresent(blockId);
+    if (activeLoader != null) {
+      throw new BlockLoadingException(activeLoader.getBytesLoaded());
     } else {
       final byte[] data = cache.getIfPresent(blockId);
       if (data == null) {

@@ -117,8 +117,9 @@ public final class CacheBlockLoader {
           return dataBuffer;
         }
       } catch (BlockLoadingException e) {
+        // TODO: handle the Loading Exception
         if (i < cacheManager.getRetries()) {
-          LOG.log(Level.FINE, "BlockLoadingException, load started: "+e.getTimeStarted());
+          LOG.log(Level.FINE, "BlockLoadingException, blocks loaded: "+e.getBytesLoaded());
           try {
             Thread.sleep(cacheManager.getRetriesInterval());
           } catch (InterruptedException ie) {
