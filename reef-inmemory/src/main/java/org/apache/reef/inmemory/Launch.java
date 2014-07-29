@@ -6,16 +6,15 @@ import com.microsoft.reef.runtime.common.client.REEFImplementation;
 import com.microsoft.reef.runtime.local.client.LocalRuntimeConfiguration;
 import com.microsoft.reef.runtime.yarn.client.YarnClientConfiguration;
 import com.microsoft.reef.util.EnvironmentUtils;
-import com.microsoft.reef.webserver.HttpEventHandlers;
 import com.microsoft.reef.webserver.HttpHandlerConfiguration;
 import com.microsoft.tang.*;
 import com.microsoft.tang.annotations.Name;
 import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.tang.exceptions.InjectionException;
+import com.microsoft.tang.formats.AvroConfigurationSerializer;
 import com.microsoft.tang.formats.CommandLine;
 import com.microsoft.tang.formats.ConfigurationModule;
-import org.apache.reef.inmemory.client.YarnMetaserverResolver;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.InMemoryConfiguration;
 import org.apache.reef.inmemory.driver.InMemoryDriver;
@@ -25,6 +24,7 @@ import org.apache.reef.inmemory.driver.service.ServiceRegistry;
 import org.apache.reef.inmemory.driver.service.YarnServiceRegistry;
 import org.apache.reef.inmemory.task.CacheParameters;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,8 +40,10 @@ public class Launch
   private static final Logger LOG = Logger.getLogger(Launch.class.getName());
 
   /**
-   * Parameter for runtime configuration
+   * The file is located at "./conf/config.json" as a JSON format
    */
+  private static final String CONFIG_FILE = "conf/config.json";
+
   @NamedParameter(doc = "Whether the application runs on local runtime",
     short_name = "local", default_value = "true")
   public static final class Local implements Name<Boolean> {
@@ -53,7 +55,18 @@ public class Launch
   }
 
   /**
-   * Parse the command line arguments.
+   * Parse the configuration file
+   * @return Configuration described in config file
+   * @throws IOException If failed to parse the config file
+   */
+  public static Configuration parseConfigFile() throws IOException {
+    return new AvroConfigurationSerializer().fromTextFile(new File(CONFIG_FILE));
+  }
+
+  /**
+   * Parse the command line arguments
+   * @return Configuration given via command line
+   * @throws IOException If failed to parse the command line
    */
   public static Configuration parseCommandLine(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder =
@@ -78,6 +91,19 @@ public class Launch
   }
 
   /**
+   * Choose which configuration to use for each Parameter
+   * The arguments given from the command line overwrites the one from configuration file
+   * @param clazz The Parameter class to set the value
+   * @param clConfigInjector The injector of Command line configuration
+   * @param fileConfigInjector The injector of Config file configuration
+   * @return The instance for given Parameter
+   * @throws InjectionException If failed to get instance
+   */
+  private static <T> T chooseNamedInstance(Class<? extends Name<T>> clazz, Injector clConfigInjector, Injector fileConfigInjector) throws InjectionException {
+    return clConfigInjector.isParameterSet(clazz) ? clConfigInjector.getNamedInstance(clazz) : fileConfigInjector.getNamedInstance(clazz);
+  }
+
+  /**
    * Build Driver Configuration
    */
   private static Configuration getDriverConfiguration() {
@@ -93,24 +119,28 @@ public class Launch
     return driverConfig;
   }
 
-  private static Configuration getInMemoryConfiguration(final Configuration clConf)
+  /**
+   * Build InMemory Configuration which is used in application
+   */
+  private static Configuration getInMemoryConfiguration(final Configuration clConf, final Configuration fileConf)
     throws InjectionException, BindException {
-    final Injector injector = Tang.Factory.getTang().newInjector(clConf);
+    final Injector clInjector = Tang.Factory.getTang().newInjector(clConf);
+    final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
 
     final Configuration inMemoryConfig;
-    final ConfigurationModule inMemoryConfigModule = InMemoryConfiguration.getConf(injector.getNamedInstance(DfsParameters.Type.class))
-      .set(InMemoryConfiguration.METASERVER_PORT, injector.getNamedInstance(MetaServerParameters.Port.class))
-      .set(InMemoryConfiguration.INIT_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.InitCacheServers.class))
-      .set(InMemoryConfiguration.DEFAULT_MEM_CACHE_SERVERS, injector.getNamedInstance(MetaServerParameters.DefaultMemCacheServers.class))
-      .set(InMemoryConfiguration.DEFAULT_REPLICAS, injector.getNamedInstance(MetaServerParameters.DefaultReplicas.class))
-      .set(InMemoryConfiguration.CACHESERVER_PORT, injector.getNamedInstance(CacheParameters.Port.class))
-      .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, injector.getNamedInstance(CacheParameters.NumServerThreads.class))
-      .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, injector.getNamedInstance(CacheParameters.NumLoadingThreads.class))
-      .set(InMemoryConfiguration.CACHE_MEMORY_SIZE, injector.getNamedInstance(CacheParameters.Memory.class))
-      .set(InMemoryConfiguration.DFS_TYPE, injector.getNamedInstance(DfsParameters.Type.class))
-      .set(InMemoryConfiguration.DFS_ADDRESS, injector.getNamedInstance(DfsParameters.Address.class));
+    final ConfigurationModule inMemoryConfigModule = InMemoryConfiguration.getConf(clInjector.getNamedInstance(DfsParameters.Type.class))
+      .set(InMemoryConfiguration.METASERVER_PORT, chooseNamedInstance(MetaServerParameters.Port.class, clInjector, fileInjector))
+      .set(InMemoryConfiguration.INIT_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.InitCacheServers.class, clInjector, fileInjector))
+      .set(InMemoryConfiguration.DEFAULT_MEM_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.DefaultMemCacheServers.class, clInjector, fileInjector))
+      .set(InMemoryConfiguration.DEFAULT_REPLICAS, chooseNamedInstance(MetaServerParameters.DefaultReplicas.class, clInjector, fileInjector))
+      .set(InMemoryConfiguration.CACHESERVER_PORT, chooseNamedInstance(CacheParameters.Port.class, clInjector, fileInjector))
+      .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, chooseNamedInstance(CacheParameters.NumServerThreads.class, clInjector, fileInjector))
+      .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, chooseNamedInstance(CacheParameters.NumLoadingThreads.class, clInjector, fileInjector))
+      .set(InMemoryConfiguration.CACHE_MEMORY_SIZE, chooseNamedInstance(CacheParameters.Memory.class, clInjector, fileInjector))
+      .set(InMemoryConfiguration.DFS_TYPE, chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
+      .set(InMemoryConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
 
-    final boolean isLocal = injector.getNamedInstance(Local.class);
+    final boolean isLocal = clInjector.getNamedInstance(Local.class);
     if (isLocal) {
       final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
         .bind(ServiceRegistry.class, InetServiceRegistry.class)
@@ -152,9 +182,9 @@ public class Launch
   /**
    * Run InMemory Application
    */
-  public static REEF runInMemory(final Configuration clConfig) throws InjectionException {
+  public static REEF runInMemory(final Configuration clConfig, final Configuration fileConfig) throws InjectionException {
     final Configuration driverConfig = getDriverConfiguration();
-    final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig);
+    final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig, fileConfig);
     final Configuration runtimeConfig = getRuntimeConfiguration(clConfig);
     final Injector injector = Tang.Factory.getTang().newInjector(runtimeConfig);
     final REEF reef = injector.getInstance(REEFImplementation.class);
@@ -164,8 +194,8 @@ public class Launch
 
   public static void main(String[] args) throws BindException, InjectionException, IOException {
     final Configuration clConfig = parseCommandLine(args);
-    runInMemory(clConfig);
+    final Configuration fileConfig = parseConfigFile();
+    runInMemory(clConfig, fileConfig);
     LOG.log(Level.INFO, "Job Submitted");
   }
-
 }
