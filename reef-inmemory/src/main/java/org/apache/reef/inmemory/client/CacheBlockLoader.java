@@ -56,7 +56,6 @@ public final class CacheBlockLoader {
     clientAddress = progressManager.getNextCache();
     if (clientAddress != null) {
       try {
-        // TODO: Make use of rack-locality using location.getRack();
         final SurfCacheService.Client client = cacheManager.get(clientAddress);
         LOG.log(Level.INFO, "Connected to client at {0} for data from block {1}",
                 new String[]{clientAddress, Long.toString(block.getBlockId())});
@@ -117,7 +116,6 @@ public final class CacheBlockLoader {
           return dataBuffer;
         }
       } catch (BlockLoadingException e) {
-        // TODO: handle the Loading Exception
         LOG.log(Level.FINE, "BlockLoadingException at "+clientAddress+" loaded "+e.getBytesLoaded());
         progressManager.loadingProgress(clientAddress, e.getBytesLoaded());
         try {

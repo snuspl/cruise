@@ -10,6 +10,10 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Default implementation for LoadProgressManager.
+ * Thresholds and maximum number of tries should be set as Hadoop configurations.
+ */
 public final class LoadProgressManagerImpl implements LoadProgressManager {
 
   private static final Logger LOG = Logger.getLogger(LoadProgressManagerImpl.class.getName());
@@ -144,6 +148,9 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
     }
   }
 
+  /**
+   * Keep track of number of tries and bytes loaded at the previous measured time
+   */
   private static class Progress {
     private long time;
     private long bytesLoaded;

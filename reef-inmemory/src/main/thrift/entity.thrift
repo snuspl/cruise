@@ -16,7 +16,7 @@ struct BlockInfo {
 	1: i64 blockId,                  // Block id (unique)
 	2: i64 offSet,                   // Order of the block
 	3: i64 length,                   // Size of the block in bytes
-	4: list<NodeInfo> locations, // Block location. Contains address and rack.
+	4: list<NodeInfo> locations,     // Block locations. Metaserver should return a sorted list according to locality.
 	5: string namespaceId,           // The namespace, e.g. HDFS block pool ID
 	6: i64 generationStamp,          // Version number for append-able FSes, e.g. HDFS (set to 0 when not append-able)
 	7: string token                  // Token

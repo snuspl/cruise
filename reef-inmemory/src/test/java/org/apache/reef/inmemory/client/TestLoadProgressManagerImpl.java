@@ -10,10 +10,12 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
+/**
+ * Test for default implementation of load progress manager
+ */
 public final class TestLoadProgressManagerImpl {
 
   public static final String[] hostArr = new String[]{"hostA", "hostB", "hostC"};
-  public static final int length = 128 * 1024 * 1024;
 
   public List<NodeInfo> hosts;
   private Configuration conf;
@@ -27,6 +29,9 @@ public final class TestLoadProgressManagerImpl {
     conf = new Configuration();
   }
 
+  /**
+   * Test that caches that are not connected get removed after max number of tries
+   */
   @Test
   public void testNotConnected() {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
@@ -43,6 +48,9 @@ public final class TestLoadProgressManagerImpl {
     assertNull(host);
   }
 
+  /**
+   * Test that caches where files cannot be found are removed after max number of tries
+   */
   @Test
   public void testNotFound() {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
@@ -59,6 +67,9 @@ public final class TestLoadProgressManagerImpl {
     assertNull(host);
   }
 
+  /**
+   * Test that cache showing OK loading progress does not get switched to another cache
+   */
   @Test
   public void testOKLoadingProgress() throws InterruptedException {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
@@ -71,7 +82,7 @@ public final class TestLoadProgressManagerImpl {
       assertNotNull(host);
 
       Thread.sleep(100);
-      progressManager.loadingProgress(host, (j+1) * 2 * 1024 * 1024); // about 20 Mbps
+      progressManager.loadingProgress(host, (j+1) * LoadProgressManagerImpl.LOAD_OK_PROGRESS_DEFAULT); // 10 * OK
 
       if (prevHost != null) {
         assertEquals(prevHost, host);
@@ -80,6 +91,9 @@ public final class TestLoadProgressManagerImpl {
     }
   }
 
+  /**
+   * Test that caches showing not OK (but better than none) progress gets switched to another cache
+   */
   @Test
   public void testNotOKLoadingProgress() throws InterruptedException {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
@@ -92,7 +106,10 @@ public final class TestLoadProgressManagerImpl {
       assertNotNull(host);
 
       Thread.sleep(100);
-      progressManager.loadingProgress(host, (j+1) * 2 * 1024); // about 20 Kbps
+      final long bytesLoaded = (long) (1.0 / 10.0 * (j+1) *
+                    (LoadProgressManagerImpl.LOAD_NO_PROGRESS_DEFAULT +
+                            LoadProgressManagerImpl.LOAD_OK_PROGRESS_DEFAULT) / 2); // Halfway between NO and OK
+      progressManager.loadingProgress(host, bytesLoaded);
 
       if (prevHost != null) {
         assertNotEquals("Values should be different, iteration "+j, prevHost, host);
