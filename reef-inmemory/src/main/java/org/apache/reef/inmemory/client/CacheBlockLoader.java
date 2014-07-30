@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.client;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
@@ -38,12 +39,13 @@ public final class CacheBlockLoader {
 
   public CacheBlockLoader(final BlockInfo block,
                           final CacheClientManager cacheManager,
-                          final LoadProgressManager progressManager) {
+                          final LoadProgressManager progressManager,
+                          final Configuration conf) {
     this.block = block;
 
     this.cacheManager = cacheManager;
     this.progressManager = progressManager;
-    this.progressManager.initialize(block.getLocations(), block.getLength());
+    this.progressManager.initialize(block.getLocations(), conf);
   }
 
   /**

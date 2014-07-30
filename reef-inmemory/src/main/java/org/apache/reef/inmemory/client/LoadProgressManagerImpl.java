@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.client;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 
 import java.util.ArrayList;
@@ -13,14 +14,42 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
 
   private static final Logger LOG = Logger.getLogger(LoadProgressManagerImpl.class.getName());
 
-  // TODO: make these configurable?
-  // bytes per second
-  public static final long NO_PROGRESS = 1024;
-  public static final long OK_PROGRESS = 10 * 1024 * 1024;
+  /**
+   * The epsilon below which a cache is considered to not make progress (in bytes per second)
+   */
+  public static final String LOAD_NO_PROGRESS_KEY = "surf.load.progress.no.bps";
+  public static final long LOAD_NO_PROGRESS_DEFAULT = 1024;
 
-  public static final int MAX_NO_PROGRESS = 2;
-  public static final int MAX_NOT_FOUND = 2;
-  public static final int MAX_NOT_CONNECTED = 1;
+  /**
+   * The threshold above which a cache is considered to make OK progress (in bytes per second).
+   * When below this threshold and above no progress, a new cache will be tried.
+   */
+  public static final String LOAD_OK_PROGRESS_KEY = "surf.load.progress.ok.bps";
+  public static final long LOAD_OK_PROGRESS_DEFAULT = 10 * 1024 * 1024;
+
+  /**
+   * When no progress is made this number of times, the cache is no longer considered
+   */
+  public static final String LOAD_MAX_NO_PROGRESS_KEY = "surf.load.progress.no.max";
+  public static final int LOAD_MAX_NO_PROGRESS_DEFAULT = 2;
+
+  /**
+   * When file is not found this number of times, the cache is no longer considered
+   */
+  public static final String LOAD_MAX_NOT_FOUND_KEY = "surf.load.notfound.max";
+  public static final int LOAD_MAX_NOT_FOUND_DEFAULT = 2;
+
+  /**
+   * When connection fails this number of times, the cache is no longer considered
+   */
+  public static final String LOAD_MAX_NOT_CONNECTED_KEY = "surf.load.notconnected.max";
+  public static final int LOAD_MAX_NOT_CONNECTED_DEFAULT = 1;
+
+  private long noProgress;
+  private long okProgress;
+  private int maxNoProgress;
+  private int maxNotFound;
+  private int maxNotConnected;
 
   private List<String> activeCaches;
 
@@ -28,7 +57,7 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
   private Map<String, Progress> cacheProgress;
 
   @Override
-  public void initialize(final List<NodeInfo> addresses, long length) {
+  public void initialize(final List<NodeInfo> addresses, Configuration conf) {
     activeCaches = new ArrayList<>(addresses.size());
     for (NodeInfo node : addresses) {
       activeCaches.add(node.getAddress());
@@ -36,6 +65,12 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
 
     startTime = System.currentTimeMillis();
     cacheProgress = new HashMap<>();
+
+    noProgress = conf.getLong(LOAD_NO_PROGRESS_KEY, LOAD_NO_PROGRESS_DEFAULT);
+    okProgress = conf.getLong(LOAD_OK_PROGRESS_KEY, LOAD_OK_PROGRESS_DEFAULT);
+    maxNoProgress = conf.getInt(LOAD_MAX_NO_PROGRESS_KEY, LOAD_MAX_NO_PROGRESS_DEFAULT);
+    maxNotFound = conf.getInt(LOAD_MAX_NOT_FOUND_KEY, LOAD_MAX_NOT_FOUND_DEFAULT);
+    maxNotConnected = conf.getInt(LOAD_MAX_NOT_CONNECTED_KEY, LOAD_MAX_NOT_CONNECTED_DEFAULT);
   }
 
   @Override
@@ -49,17 +84,19 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
     progress.setBytesLoaded(bytesLoaded);
 
     final long bytesPerSecond = (long) (1000.0 * (bytesLoaded - prevBytes) / (time - prevTime));
-    LOG.log(Level.INFO, "Bytes per second "+bytesPerSecond);
-    if (bytesPerSecond < NO_PROGRESS) {
+    LOG.log(Level.FINE, "From address {0}, loading bytes per second {1}",
+            new String[]{address, Long.toString(bytesPerSecond)});
+
+    if (bytesPerSecond < noProgress) {
       final int noProgressCount = progress.getNoProgressCount() + 1;
 
-      if (noProgressCount == MAX_NO_PROGRESS) {
+      if (noProgressCount == maxNoProgress) {
         activeCaches.remove(address);
         cacheProgress.remove(address);
       } else {
         progress.setNoProgressCount(noProgressCount);
       }
-    } else if (bytesPerSecond < OK_PROGRESS) {
+    } else if (bytesPerSecond < okProgress) {
       // Move to back, so another cache can be chosen
       activeCaches.remove(address);
       activeCaches.add(address);
@@ -71,7 +108,7 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
     final Progress currProgress = cacheProgress.get(address);
     final int notFoundCount = currProgress.getNotFoundCount() + 1;
 
-    if (notFoundCount == MAX_NOT_FOUND) {
+    if (notFoundCount == maxNotFound) {
       activeCaches.remove(address);
       cacheProgress.remove(address);
     } else {
@@ -85,7 +122,7 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
     final int notConnectedCount = currProgress.getNotConnectedCount() + 1;
     currProgress.setNotConnectedCount(notConnectedCount);
 
-    if (notConnectedCount == MAX_NOT_CONNECTED) {
+    if (notConnectedCount == maxNotConnected) {
       activeCaches.remove(address);
       cacheProgress.remove(address);
     } else {

@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.client;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 
 import java.util.List;
@@ -15,9 +16,9 @@ public interface LoadProgressManager {
   /**
    * Initialize
    * @param addresses List of caches that contain this block
-   * @param length Length of the block that is currently loading
+   * @param conf Hadoop configuration
    */
-  void initialize(List<NodeInfo> addresses, long length);
+  void initialize(List<NodeInfo> addresses, Configuration conf);
 
   /**
    * Report block's loading progress

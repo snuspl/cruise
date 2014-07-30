@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.client;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.PositionedReadable;
 import org.apache.hadoop.fs.Seekable;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -40,13 +41,14 @@ public final class SurfFSInputStream extends InputStream
   private int blockPos;
 
   public SurfFSInputStream(final FileMeta fileMeta,
-                           final CacheClientManager cacheManager) {
+                           final CacheClientManager cacheManager,
+                           final Configuration conf) {
     this.fileMeta = fileMeta;
     this.cacheManager = cacheManager;
     this.blocks = new ArrayList<>(fileMeta.getBlocksSize());
     for (BlockInfo block : fileMeta.getBlocks()) {
       final LoadProgressManager progressManager = new LoadProgressManagerImpl();
-      blocks.add(new CacheBlockLoader(block, this.cacheManager, progressManager));
+      blocks.add(new CacheBlockLoader(block, this.cacheManager, progressManager, conf));
     }
 
     this.pos = 0;

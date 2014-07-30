@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.client;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,6 +16,7 @@ public final class TestLoadProgressManagerImpl {
   public static final int length = 128 * 1024 * 1024;
 
   public List<NodeInfo> hosts;
+  private Configuration conf;
 
   @Before
   public void setUp() {
@@ -22,15 +24,16 @@ public final class TestLoadProgressManagerImpl {
     for (String host : hostArr) {
       hosts.add(new NodeInfo(host, "/test-rack"));
     }
+    conf = new Configuration();
   }
 
   @Test
   public void testNotConnected() {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
-    progressManager.initialize(hosts, length);
+    progressManager.initialize(hosts, conf);
 
     for (int i = 0; i < hosts.size(); i++) {
-      for (int j = 0; j < LoadProgressManagerImpl.MAX_NOT_CONNECTED; j++) {
+      for (int j = 0; j < LoadProgressManagerImpl.LOAD_MAX_NOT_CONNECTED_DEFAULT; j++) {
         final String host = progressManager.getNextCache();
         assertNotNull(host);
         progressManager.notConnected(host);
@@ -43,10 +46,10 @@ public final class TestLoadProgressManagerImpl {
   @Test
   public void testNotFound() {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
-    progressManager.initialize(hosts, length);
+    progressManager.initialize(hosts, conf);
 
     for (int i = 0; i < hosts.size(); i++) {
-      for (int j = 0; j < LoadProgressManagerImpl.MAX_NOT_FOUND; j++) {
+      for (int j = 0; j < LoadProgressManagerImpl.LOAD_MAX_NOT_FOUND_DEFAULT; j++) {
         final String host = progressManager.getNextCache();
         assertNotNull(host);
         progressManager.notFound(host);
@@ -59,7 +62,7 @@ public final class TestLoadProgressManagerImpl {
   @Test
   public void testOKLoadingProgress() throws InterruptedException {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
-    progressManager.initialize(hosts, length);
+    progressManager.initialize(hosts, conf);
 
     // When progress is OK, continue using same host
     String prevHost = null;
@@ -80,7 +83,7 @@ public final class TestLoadProgressManagerImpl {
   @Test
   public void testNotOKLoadingProgress() throws InterruptedException {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
-    progressManager.initialize(hosts, length);
+    progressManager.initialize(hosts, conf);
 
     // When progress is less than OK but not NONE, switch host
     String prevHost = null;
