@@ -45,7 +45,8 @@ public final class SurfFSInputStream extends InputStream
     this.cacheManager = cacheManager;
     this.blocks = new ArrayList<>(fileMeta.getBlocksSize());
     for (BlockInfo block : fileMeta.getBlocks()) {
-      blocks.add(new CacheBlockLoader(block, this.cacheManager));
+      final LoadProgressManager progressManager = new LoadProgressManagerImpl();
+      blocks.add(new CacheBlockLoader(block, this.cacheManager, progressManager));
     }
 
     this.pos = 0;

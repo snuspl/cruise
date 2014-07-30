@@ -28,20 +28,22 @@ public final class CacheBlockLoader {
   private static final long NO_OFFSET = -1;
 
   private final BlockInfo block;
-  private final Iterator<NodeInfo> locations;
 
   private final CacheClientManager cacheManager;
-  private SurfCacheService.Client client;
+  private final LoadProgressManager progressManager;
+  private String clientAddress;
 
   private byte[] data;
   private long offset = NO_OFFSET;
 
   public CacheBlockLoader(final BlockInfo block,
-                          final CacheClientManager cacheManager) {
+                          final CacheClientManager cacheManager,
+                          final LoadProgressManager progressManager) {
     this.block = block;
-    this.locations = block.getLocationsIterator();
 
     this.cacheManager = cacheManager;
+    this.progressManager = progressManager;
+    this.progressManager.initialize(block.getLocations(), block.getLength());
   }
 
   /**
@@ -49,21 +51,20 @@ public final class CacheBlockLoader {
    * as other BlockLoaders may try to concurrently access the same client.
    */
   private SurfCacheService.Client getNextClient() throws IOException {
-    if (locations != null && locations.hasNext()) {
+    clientAddress = progressManager.getNextCache();
+    if (clientAddress != null) {
       try {
-        final NodeInfo location = locations.next();
-        final String address = location.getAddress();
         // TODO: Make use of rack-locality using location.getRack();
-        final SurfCacheService.Client client = cacheManager.get(address);
+        final SurfCacheService.Client client = cacheManager.get(clientAddress);
         LOG.log(Level.INFO, "Connected to client at {0} for data from block {1}",
-                new String[]{address, Long.toString(block.getBlockId())});
+                new String[]{clientAddress, Long.toString(block.getBlockId())});
         return client;
       } catch (TTransportException e) {
         LOG.log(Level.SEVERE, "TException "+e);
         throw new IOException("TTransportException");
       }
     } else {
-      throw new IOException("No more locations available. LocationsIterator: "+locations);
+      throw new IOException("No more locations available.");
     }
   }
 
@@ -97,11 +98,8 @@ public final class CacheBlockLoader {
       flushLocalCache();
     }
 
-    if (this.client == null) {
-      client = getNextClient();
-    }
-
-    for (int i = 0; i < 1 + cacheManager.getRetries(); i++) {
+    for ( ; ; ) {
+      final SurfCacheService.Client client = getNextClient();
       try {
         synchronized(client) {
           LOG.log(Level.INFO, "Start data transfer from block {0}, with startOffset {1}",
@@ -118,30 +116,26 @@ public final class CacheBlockLoader {
         }
       } catch (BlockLoadingException e) {
         // TODO: handle the Loading Exception
-        if (i < cacheManager.getRetries()) {
-          LOG.log(Level.FINE, "BlockLoadingException, blocks loaded: "+e.getBytesLoaded());
-          try {
-            Thread.sleep(cacheManager.getRetriesInterval());
-          } catch (InterruptedException ie) {
-            LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
-          }
+        LOG.log(Level.FINE, "BlockLoadingException at "+clientAddress+" loaded "+e.getBytesLoaded());
+        progressManager.loadingProgress(clientAddress, e.getBytesLoaded());
+        try {
+          Thread.sleep(cacheManager.getRetriesInterval());
+        } catch (InterruptedException ie) {
+          LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
         }
       } catch (BlockNotFoundException e) {
-        if (i < cacheManager.getRetries()) {
-          LOG.log(Level.FINE, "BlockNotFoundException at "+System.currentTimeMillis());
-          try {
-            Thread.sleep(cacheManager.getRetriesInterval());
-          } catch (InterruptedException ie) {
-            LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
-          }
+        LOG.log(Level.INFO, "BlockNotFoundException at "+System.currentTimeMillis());
+        progressManager.notFound(clientAddress);
+        try {
+          Thread.sleep(cacheManager.getRetriesInterval());
+        } catch (InterruptedException ie) {
+          LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
         }
       } catch (TException e) {
         LOG.log(Level.SEVERE, "TException "+e);
-        throw new IOException("TException");
+        progressManager.notConnected(clientAddress);
       }
     }
-    LOG.log(Level.WARNING, "Exception after "+(1 + cacheManager.getRetries())+" tries. Aborting.");
-    throw new IOException();
   }
 
   public synchronized void flushLocalCache() {
