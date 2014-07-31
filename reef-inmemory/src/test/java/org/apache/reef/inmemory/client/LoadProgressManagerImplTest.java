@@ -5,6 +5,7 @@ import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,7 +14,7 @@ import static org.junit.Assert.*;
 /**
  * Test for default implementation of load progress manager
  */
-public final class TestLoadProgressManagerImpl {
+public final class LoadProgressManagerImplTest {
 
   public static final String[] hostArr = new String[]{"hostA", "hostB", "hostC"};
 
@@ -33,7 +34,7 @@ public final class TestLoadProgressManagerImpl {
    * Test that caches that are not connected get removed after max number of tries
    */
   @Test
-  public void testNotConnected() {
+  public void testNotConnected() throws IOException {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
     progressManager.initialize(hosts, conf);
 
@@ -44,15 +45,20 @@ public final class TestLoadProgressManagerImpl {
         progressManager.notConnected(host);
       }
     }
-    final String host = progressManager.getNextCache();
-    assertNull(host);
+
+    try {
+      final String host = progressManager.getNextCache();
+      fail("Expected no more candidates");
+    } catch (IOException e) {
+      // expected
+    }
   }
 
   /**
    * Test that caches where files cannot be found are removed after max number of tries
    */
   @Test
-  public void testNotFound() {
+  public void testNotFound() throws IOException {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
     progressManager.initialize(hosts, conf);
 
@@ -63,15 +69,20 @@ public final class TestLoadProgressManagerImpl {
         progressManager.notFound(host);
       }
     }
-    final String host = progressManager.getNextCache();
-    assertNull(host);
+    try {
+      final String host = progressManager.getNextCache();
+      fail("Expected no more candidates");
+    } catch (IOException e) {
+      // expected
+    }
+
   }
 
   /**
    * Test that cache showing OK loading progress does not get switched to another cache
    */
   @Test
-  public void testOKLoadingProgress() throws InterruptedException {
+  public void testOKLoadingProgress() throws InterruptedException, IOException {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
     progressManager.initialize(hosts, conf);
 
@@ -95,7 +106,7 @@ public final class TestLoadProgressManagerImpl {
    * Test that caches showing not OK (but better than none) progress gets switched to another cache
    */
   @Test
-  public void testNotOKLoadingProgress() throws InterruptedException {
+  public void testNotOKLoadingProgress() throws InterruptedException, IOException {
     final LoadProgressManager progressManager = new LoadProgressManagerImpl();
     progressManager.initialize(hosts, conf);
 

@@ -3,6 +3,7 @@ package org.apache.reef.inmemory.client;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -41,7 +42,8 @@ public interface LoadProgressManager {
 
   /**
    * Return the cache that the next block load should be attempted on
-   * @return Address of the cache, null if no more caches are
+   * @return Address of the cache
+   * @throws IOException No more cache candidates exist
    */
-  String getNextCache();
+  String getNextCache() throws IOException;
 }

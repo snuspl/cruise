@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.client;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
-import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
@@ -11,7 +10,6 @@ import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -32,7 +30,6 @@ public final class CacheBlockLoader {
 
   private final CacheClientManager cacheManager;
   private final LoadProgressManager progressManager;
-  private String clientAddress;
 
   private byte[] data;
   private long offset = NO_OFFSET;
@@ -52,21 +49,11 @@ public final class CacheBlockLoader {
    * This client must be used within a synchronized (client) block,
    * as other BlockLoaders may try to concurrently access the same client.
    */
-  private SurfCacheService.Client getNextClient() throws IOException {
-    clientAddress = progressManager.getNextCache();
-    if (clientAddress != null) {
-      try {
-        final SurfCacheService.Client client = cacheManager.get(clientAddress);
-        LOG.log(Level.INFO, "Connected to client at {0} for data from block {1}",
-                new String[]{clientAddress, Long.toString(block.getBlockId())});
-        return client;
-      } catch (TTransportException e) {
-        LOG.log(Level.SEVERE, "TException "+e);
-        throw new IOException("TTransportException");
-      }
-    } else {
-      throw new IOException("No more locations available.");
-    }
+  private SurfCacheService.Client getClient(final String cacheAddress) throws IOException, TTransportException {
+    final SurfCacheService.Client client = cacheManager.get(cacheAddress);
+    LOG.log(Level.INFO, "Connected to client at {0} for data from block {1}",
+            new String[]{cacheAddress, Long.toString(block.getBlockId())});
+    return client;
   }
 
   /**
@@ -99,9 +86,20 @@ public final class CacheBlockLoader {
       flushLocalCache();
     }
 
+    /**
+     * Retrieve the block. The cache locations for this block are tried in the order given by progressManager.
+     * If the connection fails, block is unavaiable, or block is still loading from the base FS at the cache node,
+     * this status is reported to the progressManager. The progressManager may remove the cache as a candidate
+     * or give another cache on getNextCache depending on the reported status.
+     *
+     * If there are no more caches remaining to try, the progressManager throws an IOException.
+     */
     for ( ; ; ) {
-      final SurfCacheService.Client client = getNextClient();
+
+      final String cacheAddress = progressManager.getNextCache();
+
       try {
+        final SurfCacheService.Client client = getClient(cacheAddress);
         synchronized(client) {
           LOG.log(Level.INFO, "Start data transfer from block {0}, with startOffset {1}",
                   new String[]{Long.toString(block.getBlockId()), Long.toString(startOffset)});
@@ -116,8 +114,8 @@ public final class CacheBlockLoader {
           return dataBuffer;
         }
       } catch (BlockLoadingException e) {
-        LOG.log(Level.FINE, "BlockLoadingException at "+clientAddress+" loaded "+e.getBytesLoaded());
-        progressManager.loadingProgress(clientAddress, e.getBytesLoaded());
+        LOG.log(Level.FINE, "BlockLoadingException at "+cacheAddress+" loaded "+e.getBytesLoaded());
+        progressManager.loadingProgress(cacheAddress, e.getBytesLoaded());
         try {
           Thread.sleep(cacheManager.getRetriesInterval());
         } catch (InterruptedException ie) {
@@ -125,7 +123,7 @@ public final class CacheBlockLoader {
         }
       } catch (BlockNotFoundException e) {
         LOG.log(Level.INFO, "BlockNotFoundException at "+System.currentTimeMillis());
-        progressManager.notFound(clientAddress);
+        progressManager.notFound(cacheAddress);
         try {
           Thread.sleep(cacheManager.getRetriesInterval());
         } catch (InterruptedException ie) {
@@ -133,7 +131,7 @@ public final class CacheBlockLoader {
         }
       } catch (TException e) {
         LOG.log(Level.SEVERE, "TException "+e);
-        progressManager.notConnected(clientAddress);
+        progressManager.notConnected(cacheAddress);
       }
     }
   }

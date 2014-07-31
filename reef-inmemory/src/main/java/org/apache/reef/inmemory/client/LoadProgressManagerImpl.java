@@ -3,6 +3,7 @@ package org.apache.reef.inmemory.client;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -135,9 +136,9 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
   }
 
   @Override
-  public String getNextCache() {
+  public String getNextCache() throws IOException {
     if (activeCaches.size() == 0) {
-      return null;
+      throw new IOException("No Cache available");
     } else {
       final String nextCache = activeCaches.get(0);
       if (!cacheProgress.containsKey(nextCache)) {
