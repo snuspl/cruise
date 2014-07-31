@@ -176,7 +176,7 @@ public final class SurfFS extends FileSystem {
 
     try {
       FileMeta metadata = getMetaClient().getFileMeta(path.toUri().getPath());
-      return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager));
+      return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager, getConf()));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
       throw new FileNotFoundException(e.getMessage());

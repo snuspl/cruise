@@ -17,4 +17,9 @@ public interface BlockLoader {
    * @return Block Identifier
    */
   public BlockId getBlockId();
+
+  /**
+   * @return the number of bytes loaded so far
+   */
+  public long getBytesLoaded();
 }

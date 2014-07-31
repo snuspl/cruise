@@ -35,12 +35,13 @@ public class HdfsBlockLoader implements BlockLoader {
   private static final String CLIENT_NAME = "BlockLoader";
   private static final boolean VERIFY_CHECKSUM = true;
   private static final boolean ALLOW_SHORT_CIRCUIT_LOCAL_READS = false;
-  private static final CachingStrategy STRATEGY = CachingStrategy.newDefaultStrategy();
 
   private final HdfsBlockId hdfsBlockId;
   private final ExtendedBlock block;
   private final List<HdfsDatanodeInfo> dnInfoList;
   private final long blockSize;
+
+  private int totalRead;
 
   /**
    * Constructor of BlockLoader
@@ -52,6 +53,7 @@ public class HdfsBlockLoader implements BlockLoader {
     block = new ExtendedBlock(id.getPoolId(), id.getBlockId(), id.getBlockSize(), id.getGenerationTimestamp());
     dnInfoList = infoList;
     blockSize = id.getBlockSize();
+    totalRead = 0;
   }
 
   /**
@@ -208,7 +210,6 @@ public class HdfsBlockLoader implements BlockLoader {
    * @throws TransferFailedException When an error occurred while transferring data
    */
   private void readBlock(BlockReader blockReader, byte[] buf, DatanodeID datanode) throws TransferFailedException {
-    int totalRead = 0;
     try {
       do {
         int nRead = 0;
@@ -234,5 +235,10 @@ public class HdfsBlockLoader implements BlockLoader {
         LOG.log(Level.WARNING, "Closing Socket failed. Retry anyway");
       }
     }
+  }
+
+  @Override
+  public long getBytesLoaded() {
+    return totalRead;
   }
 }

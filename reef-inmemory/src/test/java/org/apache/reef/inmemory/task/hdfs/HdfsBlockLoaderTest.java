@@ -80,13 +80,16 @@ public class HdfsBlockLoaderTest {
 
       // Instantiate HdfsBlockLoader via TANG
       BlockLoader loader = getBlockLoader(blockId, datanodeInfo);
+      Assert.assertEquals(0, loader.getBytesLoaded());
 
       // Load the data as a ByteBuffer
       ByteBuffer loadedBuf = ByteBuffer.wrap(loader.loadBlock());
 
       // Because the size of long is 8 bytes, the offset should be calculated as lIndex * 8
-      for(long lIndex = 0; lIndex < block.getBlockSize() / LONG_BYTES; lIndex++)
-        Assert.assertEquals(String.format("Test the %d th long in %d th block", lIndex, blockIndex), lIndex + blockIndex, loadedBuf.getLong((int)lIndex * LONG_BYTES));
+      for(long lIndex = 0; lIndex < block.getBlockSize() / LONG_BYTES; lIndex++) {
+        Assert.assertEquals(String.format("Test the %d th long in %d th block", lIndex, blockIndex), lIndex + blockIndex, loadedBuf.getLong((int) lIndex * LONG_BYTES));
+      }
+      Assert.assertEquals(blockSize, loader.getBytesLoaded());
     }
   }
 

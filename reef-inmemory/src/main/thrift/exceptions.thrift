@@ -18,7 +18,7 @@ exception FileAlreadyExistsException{
  * The Cache block could not be retrieved, because it is loading from the Base FS
  */
 exception BlockLoadingException{
-    1: i64 timeStarted
+    1: i64 bytesLoaded,
 }
 
 /**
