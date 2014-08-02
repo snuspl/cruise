@@ -1,0 +1,42 @@
+{
+  "rules" : [
+    {
+      "id" : "daily-small",
+      "conditions" : [
+        {
+          "type"     : "path",
+          "operator" : "recursive",
+          "operand"  : "/daily/"
+        },
+        {
+          "type"     : "size",
+          "operator" : "lt",
+          "operand"  : "128M"
+        }
+      ],
+      "factor" : 5,
+      "pin"    : true
+    },
+    {
+      "id" : "hourly-no-png",
+      "conditions" : [
+        {
+          "type"     : "path",
+          "operator" : "recursive",
+          "operand"  : "/hourly/"
+        },
+        {
+          "type"     : "filter",
+          "operator" : "exclude",
+          "operand"  : "*.png"
+        }
+      ],
+      "factor" : -1,
+      "pin"    : false
+    }
+  ],
+  "default" : {
+    "factor" : 2,
+    "pin"    : false
+  }
+}
