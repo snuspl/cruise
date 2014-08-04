@@ -106,3 +106,74 @@ An example job with a `surf://` path will succeed:
 ```
 ./bin/run-example HdfsTest HdfsTest surf://localhost:9001/user/{name}/LICENSE.txt
 ```
+
+## Configuring Surf
+
+Some of the ways in which to configure Surf are covered here.
+
+### Configure Replication Policy
+
+A replication policy is given as a list of rules, and the default action for when none of the rules can be applied. Rules consist of a conjunction of conditions which all must be satistifed, and the action that is taken when all conditions are met.
+
+When a file is added to Surf, the replication rules are considered one-by-one, in the order they are listed, until an action is taken.
+
+To specify a replication policy, create a policy file in json, and then pass it in as a command line argument in the form `-replication_rules conf/replication.json`. An example json file looks like:
+
+```json
+{
+  "rules" : [
+    {
+      "id" : "daily-small",
+      "conditions" : [
+        {
+          "type"     : "path",
+          "operator" : "recursive",
+          "operand"  : "/daily/"
+        },
+        {
+          "type"     : "size",
+          "operator" : "lt",
+          "operand"  : "128M"
+        }
+      ],
+      "action" : {
+        "factor" : 4,
+        "pin"    : true
+      }
+    },
+    {
+      "id" : "hourly",
+      "conditions" : [
+        {
+          "type"     : "path",
+          "operator" : "recursive",
+          "operand"  : "/hourly/"
+        }
+      ],
+      "action" : {
+        "factor" : -1,
+        "pin"    : false
+      }
+    }
+  ],
+  "default" : {
+    "factor" : 2,
+    "pin"    : false
+  }
+}
+```
+
+The current types of conditions available are:
+
+- Path conditions -- NOTE: all rules should start with a path condition
+  - type: `path`
+  - operator: {`exact`, `recursive`}
+  - operand: (path)
+- Size conditions
+  - type: `size`
+  - operator: {`lt`, `leq`, `gt`, `geq`}
+  - operand: (size in raw bytes or (num){k, m, g}
+- In the near future, filters will also be provided:
+  - type: `filter`
+  - operator: {`include`, `exclude`}
+  - operand: glob -- following rsync include/exclude rules
