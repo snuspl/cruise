@@ -1,9 +1,7 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.driver.CacheNode;
-import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 
 import javax.inject.Inject;
 import java.util.*;

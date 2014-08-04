@@ -11,6 +11,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
+/**
+ * Test functionality of ReplicationPolicyImpl
+ */
 public final class ReplicationPolicyImplTest {
 
   private Action defaultAction;
@@ -20,6 +23,9 @@ public final class ReplicationPolicyImplTest {
     defaultAction = new Action(1, false);
   }
 
+  /**
+   * Test Exact Path matching
+   */
   @Test
   public void testExactPath() {
     final String path = "/exact/matching/path";
@@ -40,6 +46,9 @@ public final class ReplicationPolicyImplTest {
     assertEquals(defaultAction, noMatch2);
   }
 
+  /**
+   * Test Recursive Path matching
+   */
   @Test
   public void testRecursivePath() {
     final String path = "/recursive/dir";
@@ -64,6 +73,9 @@ public final class ReplicationPolicyImplTest {
     assertEquals(defaultAction, noMatch2);
   }
 
+  /**
+   * Test human readable size (e.g., 128K, 56m) matching
+   */
   @Test
   public void testSizeHumanReadable() {
     final String path = "/recursive/dir";
@@ -76,9 +88,12 @@ public final class ReplicationPolicyImplTest {
 
     final ReplicationPolicy policy = new ReplicationPolicyImpl(rules);
 
-    test128M(policy, path, action);
+    doTest128M(policy, path, action);
   }
 
+  /**
+   * Test size in bytes matching
+   */
   @Test
   public void testSizeRaw() {
     final String path = "/recursive/dir";
@@ -91,9 +106,12 @@ public final class ReplicationPolicyImplTest {
 
     final ReplicationPolicy policy = new ReplicationPolicyImpl(rules);
 
-    test128M(policy, path, action);
+    doTest128M(policy, path, action);
   }
 
+  /**
+   * Test that matching on a bad condition returns false
+   */
   @Test
   public void testSizeBad() {
     final String path = "/recursive/dir";
@@ -112,7 +130,7 @@ public final class ReplicationPolicyImplTest {
     assertEquals(defaultAction, policyAction1);
   }
 
-  private void test128M(ReplicationPolicy policy, String path, Action action) {
+  private void doTest128M(ReplicationPolicy policy, String path, Action action) {
     final FileMeta metadata1 = new FileMeta();
     metadata1.setFileSize(1 * 1024 * 1024);
     final Action policyAction1 = policy.getReplicationAction(path + "/file1", metadata1);

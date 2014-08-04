@@ -14,6 +14,13 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Concrete implementation of Replication Policies.
+ * Supports:
+ * - type: path, operator: {exact, recursive}, operand: (path) -- NOTE: all rules should start with a path condition
+ * - type: size, operator: {lt, leq, gt, geq}, operand: (size: raw bytes or (num){k, m, g}
+ * TODO: type: filter, operator: {include, exclude}, operand: glob -- following rsync include/exclude rules
+ */
 public final class ReplicationPolicyImpl implements ReplicationPolicy {
 
   private static final Logger LOG = Logger.getLogger(ReplicationPolicyImpl.class.getName());
@@ -69,28 +76,23 @@ public final class ReplicationPolicyImpl implements ReplicationPolicy {
 
   private boolean matches(Condition condition, String path, FileMeta metadata) {
     if ("path".equals(condition.getType().toString())) {
-      // TODO: should we check the metadata to tell apart files from directories?
 
       final Path matchPath = new Path(path);
       final Path conditionPath = new Path(condition.getOperand().toString());
       if ("exact".equals(condition.getOperator().toString())) {
-        LOG.log(Level.INFO, "1, "+matchPath+" =? "+conditionPath);
         return matchPath.equals(conditionPath);
       } else if ("recursive".equals(condition.getOperator().toString())) {
         final int matchDepth = matchPath.depth();
         final int conditionDepth = conditionPath.depth();
         if (matchPath.equals(conditionPath)) {
-          LOG.log(Level.INFO, "2");
           return true;
         } else if (conditionDepth >= matchDepth) {
-          LOG.log(Level.INFO, "3");
           return false;
         } else {
           Path matchAtConditionDepth = matchPath;
           for (int i = 0; i < matchDepth - conditionDepth; i++) {
             matchAtConditionDepth = matchAtConditionDepth.getParent();
           }
-          LOG.log(Level.INFO, "4, "+matchAtConditionDepth+" =? "+conditionPath);
           return matchAtConditionDepth.equals(conditionPath);
         }
       }
@@ -105,8 +107,6 @@ public final class ReplicationPolicyImpl implements ReplicationPolicy {
       final String operator = condition.getOperator().toString();
       final long size = metadata.getFileSize();
 
-      LOG.log(Level.INFO, "operator "+operator+", operand "+operand+", size "+size);
-
       if ("lt".equals(operator)) {
         return size < operand;
       } else if ("leq".equals(operator)) {
@@ -120,7 +120,6 @@ public final class ReplicationPolicyImpl implements ReplicationPolicy {
       }
     }
 
-    LOG.log(Level.INFO, "5");
     return false;
   }
 

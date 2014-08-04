@@ -127,6 +127,21 @@ public class Launch
     return driverConfig;
   }
 
+  private static ConfigurationModule setReplicationRules(final ConfigurationModule configModule,
+                                                         final Injector injector) {
+    try {
+      final String replicationRulesPath = injector.getNamedInstance(ReplicationRulesPath.class);
+      final String replicationRules = FileUtils.readFileToString(new File(replicationRulesPath));
+      LOG.log(Level.FINER, "Replication Rules: "+replicationRules);
+      return configModule.set(InMemoryConfiguration.REPLICATION_RULES, replicationRules);
+    } catch (InjectionException e) {
+      LOG.log(Level.FINE, "Replication Rules not set, will use default");
+      return configModule;
+    } catch (IOException e) {
+      throw new BindException("Replication Rules could not be read", e);
+    }
+  }
+
   /**
    * Build InMemory Configuration which is used in application
    */
@@ -146,18 +161,8 @@ public class Launch
       .set(InMemoryConfiguration.CACHE_MEMORY_SIZE, chooseNamedInstance(CacheParameters.Memory.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.DFS_TYPE, chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
+    inMemoryConfigModule = setReplicationRules(inMemoryConfigModule, clInjector);
 
-    try {
-      final String replicationRulesPath = clInjector.getNamedInstance(ReplicationRulesPath.class);
-      final String replicationRules = FileUtils.readFileToString(new File(replicationRulesPath));
-      LOG.log(Level.INFO, "Replication Rules: "+replicationRules);
-      inMemoryConfigModule = inMemoryConfigModule.set(InMemoryConfiguration.REPLICATION_RULES, replicationRules);
-    } catch (InjectionException e) {
-      // TODO: is actually optional
-      throw new BindException("Replication Rules not set", e);
-    } catch (IOException e) {
-      throw new BindException("Replication Rules could not be read", e);
-    }
     final boolean isLocal = clInjector.getNamedInstance(Local.class);
     if (isLocal) {
       final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()

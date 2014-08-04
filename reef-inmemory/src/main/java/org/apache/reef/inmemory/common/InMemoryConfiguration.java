@@ -4,6 +4,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
+import com.microsoft.tang.formats.OptionalParameter;
 import com.microsoft.tang.formats.RequiredParameter;
 import com.microsoft.wake.StageConfiguration;
 import org.apache.reef.inmemory.driver.*;
@@ -26,7 +27,7 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
   public static final RequiredParameter<Integer> CACHESERVER_SERVER_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHE_MEMORY_SIZE = new RequiredParameter<>();
-  public static final RequiredParameter<String> REPLICATION_RULES = new RequiredParameter<>();
+  public static final OptionalParameter<String> REPLICATION_RULES = new OptionalParameter<>();
 
   public static final RequiredParameter<String> DFS_TYPE = new RequiredParameter<>();
   public static final RequiredParameter<String> DFS_ADDRESS = new RequiredParameter<>();
