@@ -15,6 +15,7 @@ import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.AvroConfigurationSerializer;
 import com.microsoft.tang.formats.CommandLine;
 import com.microsoft.tang.formats.ConfigurationModule;
+import org.apache.commons.io.FileUtils;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.InMemoryConfiguration;
 import org.apache.reef.inmemory.driver.InMemoryDriver;
@@ -147,7 +148,7 @@ public class Launch
       .set(InMemoryConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
 
     try {
-      final String replicationRulesPath = injector.getNamedInstance(ReplicationRulesPath.class);
+      final String replicationRulesPath = clInjector.getNamedInstance(ReplicationRulesPath.class);
       final String replicationRules = FileUtils.readFileToString(new File(replicationRulesPath));
       LOG.log(Level.INFO, "Replication Rules: "+replicationRules);
       inMemoryConfigModule = inMemoryConfigModule.set(InMemoryConfiguration.REPLICATION_RULES, replicationRules);
