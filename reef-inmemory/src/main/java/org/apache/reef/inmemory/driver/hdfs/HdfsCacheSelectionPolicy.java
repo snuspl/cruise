@@ -15,5 +15,6 @@ public interface HdfsCacheSelectionPolicy {
    * Note, the Task list may be modified in place.
    */
   public List<CacheNode> select(final LocatedBlock block,
-                                final List<CacheNode> tasks);
+                                final List<CacheNode> tasks,
+                                final int numReplicas);
 }

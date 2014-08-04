@@ -55,6 +55,15 @@ public class Launch
   }
 
   /**
+   * File path of a replication rules JSON file. The file will be read at the client and added to the server configuration as a String.
+   */
+  @NamedParameter(doc = "Replication rules JSON file path", short_name = "replication_rules")
+  public static final class ReplicationRulesPath implements Name<String> {
+  }
+
+  /**
+
+  /**
    * Parse the configuration file
    * @return Configuration described in config file
    * @throws IOException If failed to parse the config file
@@ -64,9 +73,7 @@ public class Launch
   }
 
   /**
-   * Parse the command line arguments
-   * @return Configuration given via command line
-   * @throws IOException If failed to parse the command line
+   * Parse the command line arguments.
    */
   public static Configuration parseCommandLine(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder =
@@ -74,12 +81,12 @@ public class Launch
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(Local.class);
     cl.registerShortNameOfClass(LocalThreads.class);
+    cl.registerShortNameOfClass(ReplicationRulesPath.class);
     cl.registerShortNameOfClass(MetaServerParameters.Port.class);
     cl.registerShortNameOfClass(MetaServerParameters.InitCacheServers.class);
     cl.registerShortNameOfClass(MetaServerParameters.DefaultMemCacheServers.class);
     cl.registerShortNameOfClass(MetaServerParameters.Timeout.class);
     cl.registerShortNameOfClass(MetaServerParameters.Threads.class);
-    cl.registerShortNameOfClass(MetaServerParameters.DefaultReplicas.class);
     cl.registerShortNameOfClass(CacheParameters.Port.class);
     cl.registerShortNameOfClass(CacheParameters.NumServerThreads.class);
     cl.registerShortNameOfClass(CacheParameters.NumLoadingThreads.class);
@@ -128,11 +135,10 @@ public class Launch
     final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
 
     final Configuration inMemoryConfig;
-    final ConfigurationModule inMemoryConfigModule = InMemoryConfiguration.getConf(clInjector.getNamedInstance(DfsParameters.Type.class))
+    ConfigurationModule inMemoryConfigModule = InMemoryConfiguration.getConf(clInjector.getNamedInstance(DfsParameters.Type.class))
       .set(InMemoryConfiguration.METASERVER_PORT, chooseNamedInstance(MetaServerParameters.Port.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.INIT_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.InitCacheServers.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.DEFAULT_MEM_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.DefaultMemCacheServers.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.DEFAULT_REPLICAS, chooseNamedInstance(MetaServerParameters.DefaultReplicas.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.CACHESERVER_PORT, chooseNamedInstance(CacheParameters.Port.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, chooseNamedInstance(CacheParameters.NumServerThreads.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, chooseNamedInstance(CacheParameters.NumLoadingThreads.class, clInjector, fileInjector))
@@ -140,6 +146,17 @@ public class Launch
       .set(InMemoryConfiguration.DFS_TYPE, chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
 
+    try {
+      final String replicationRulesPath = injector.getNamedInstance(ReplicationRulesPath.class);
+      final String replicationRules = FileUtils.readFileToString(new File(replicationRulesPath));
+      LOG.log(Level.INFO, "Replication Rules: "+replicationRules);
+      inMemoryConfigModule = inMemoryConfigModule.set(InMemoryConfiguration.REPLICATION_RULES, replicationRules);
+    } catch (InjectionException e) {
+      // TODO: is actually optional
+      throw new BindException("Replication Rules not set", e);
+    } catch (IOException e) {
+      throw new BindException("Replication Rules could not be read", e);
+    }
     final boolean isLocal = clInjector.getNamedInstance(Local.class);
     if (isLocal) {
       final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()

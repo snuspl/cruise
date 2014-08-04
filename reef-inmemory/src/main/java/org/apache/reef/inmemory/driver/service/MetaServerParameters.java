@@ -19,11 +19,8 @@ public final class MetaServerParameters {
   public static final class Threads implements Name<Integer> {
   }
 
-  /**
-   * The replication factor used for files that do not have an assigned per-file replication factor.
-   */
-  @NamedParameter(doc = "Default task replicas", short_name = "default_num_replicas", default_value = "1")
-  public static final class DefaultReplicas implements Name<Integer> {
+  @NamedParameter(doc = "Replication rules", short_name = "replication_rules_json", default_value = "{\"rules\":[],\"default\":{\"factor\":1,\"pin\":false}}")
+  public static final class ReplicationRulesJson implements Name<String> {
   }
 
   @NamedParameter(doc = "Number of task servers to allocate on startup", short_name = "cache_servers_num_init", default_value = "1")

@@ -24,13 +24,12 @@ public final class AvroReadWriteTest {
   public void testRulesRead() throws IOException {
     URL url = this.getClass().getResource("/replication.json");
     final File json = new File(url.getFile());
+    final Rules rules = AvroReplicationSerializer.fromStream(new FileInputStream(json));
 
-    final DatumReader<Rules> reader = new SpecificDatumReader<>(Rules.class);
-    final JsonDecoder decoder = DecoderFactory.get().jsonDecoder(Rules.getClassSchema(),
-            new FileInputStream(json));
-    final Rules rules = reader.read(null, decoder);
+    assertEquals("path", rules.getRules().get(0).getConditions().get(0).getType().toString());
   }
 
+  // TODO: fix test
   @Test
   public void testRulesWrite() {
     final Condition conditionA1 = new Condition("size", "lt", "128M");
@@ -47,15 +46,18 @@ public final class AvroReadWriteTest {
     conditionListB.add(conditionB1);
     conditionListB.add(conditionB2);
 
-    final Rule ruleA = new Rule("conditionA", conditionListA, 5, true);
-    final Rule ruleB = new Rule("conditionB", conditionListB, -1, false);
-    final DefaultRule defaultRule = new DefaultRule(2, false);
+    final Action actionA = new Action(5, true);
+    final Action actionB = new Action(-1, false);
+
+    final Rule ruleA = new Rule("conditionA", conditionListA, actionA);
+    final Rule ruleB = new Rule("conditionB", conditionListB, actionB);
+    final Action defaultAction = new Action(2, false);
 
     final List<Rule> ruleList = new LinkedList<>();
     ruleList.add(ruleA);
     ruleList.add(ruleB);
 
-    final Rules rules = new Rules(ruleList, defaultRule);
+    final Rules rules = new Rules(ruleList, defaultAction);
 
     final DatumWriter<Rules> rulesWriter = new SpecificDatumWriter<>(Rules.class);
     final String result;

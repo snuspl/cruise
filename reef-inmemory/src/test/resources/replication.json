@@ -14,8 +14,10 @@
           "operand"  : "128M"
         }
       ],
-      "factor" : 5,
-      "pin"    : true
+      "action" : {
+        "factor" : 5,
+        "pin"    : true
+      }
     },
     {
       "id" : "hourly-no-png",
@@ -31,8 +33,10 @@
           "operand"  : "*.png"
         }
       ],
-      "factor" : -1,
-      "pin"    : false
+      "action" : {
+        "factor" : -1,
+        "pin"    : false
+      }
     }
   ],
   "default" : {

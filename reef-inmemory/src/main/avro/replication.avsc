@@ -13,6 +13,16 @@
 {
   "namespace" : "org.apache.reef.inmemory.common.replication",
   "type" : "record",
+  "name" : "Action",
+  "fields" :
+  [
+    { "name" : "factor", "type" : "int" },
+    { "name" : "pin", "type" : "boolean" }
+  ]
+},
+{
+  "namespace" : "org.apache.reef.inmemory.common.replication",
+  "type" : "record",
   "name" : "Rule",
   "fields" :
   [
@@ -25,18 +35,7 @@
         "items" : "Condition"
       }
     },
-    { "name" : "factor", "type" : "int" },
-    { "name" : "pin", "type" : "boolean" }
-  ]
-},
-{
-  "namespace" : "org.apache.reef.inmemory.common.replication",
-  "type" : "record",
-  "name" : "DefaultRule",
-  "fields" :
-  [
-    { "name" : "factor", "type" : "int" },
-    { "name" : "pin", "type" : "boolean" }
+    { "name" : "action", "type" : "Action" }
   ]
 },
 {
@@ -53,7 +52,7 @@
         "items" : "Rule"
       }
     },
-    { "name" : "default", "type" : "DefaultRule" }
+    { "name" : "default", "type" : "Action" }
   ]
 }
 ]
