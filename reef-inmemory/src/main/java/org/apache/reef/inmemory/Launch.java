@@ -63,8 +63,6 @@ public class Launch
   }
 
   /**
-
-  /**
    * Parse the configuration file
    * @return Configuration described in config file
    * @throws IOException If failed to parse the config file
@@ -75,6 +73,8 @@ public class Launch
 
   /**
    * Parse the command line arguments.
+   * @return Configuration given via command line
+   * @throws IOException If failed to parse the command line
    */
   public static Configuration parseCommandLine(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder =

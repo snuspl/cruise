@@ -20,17 +20,12 @@
       }
     },
     {
-      "id" : "hourly-no-png",
+      "id" : "hourly",
       "conditions" : [
         {
           "type"     : "path",
           "operator" : "recursive",
           "operand"  : "/hourly/"
-        },
-        {
-          "type"     : "filter",
-          "operator" : "exclude",
-          "operand"  : "*.png"
         }
       ],
       "action" : {
