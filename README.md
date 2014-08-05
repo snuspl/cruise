@@ -117,7 +117,9 @@ A replication policy is given as a list of rules, and the default action for whe
 
 When a file is added to Surf, the replication rules are considered one-by-one, in the order they are listed, until an action is taken.
 
-To specify a replication policy, create a policy file in json, and then pass it in as a command line argument in the form `-replication_rules conf/replication.json`. An example json file looks like:
+To specify a replication policy, create a policy file in json, and then pass it in as a command line argument in the form `-replication_rules conf/replication.json`. The policy can also be listed and uploaded via the CLI, using the arguments `-cmd replication-list` and `-cmd replication-upload -path <path>`, respectively.
+
+An example json file looks like:
 
 ```json
 {
