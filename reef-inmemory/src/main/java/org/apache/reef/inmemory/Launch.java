@@ -15,6 +15,7 @@ import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.AvroConfigurationSerializer;
 import com.microsoft.tang.formats.CommandLine;
 import com.microsoft.tang.formats.ConfigurationModule;
+import org.apache.commons.io.FileUtils;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.InMemoryConfiguration;
 import org.apache.reef.inmemory.driver.InMemoryDriver;
@@ -55,6 +56,13 @@ public class Launch
   }
 
   /**
+   * File path of a replication rules JSON file. The file will be read at the client and added to the server configuration as a String.
+   */
+  @NamedParameter(doc = "Replication rules JSON file path", short_name = "replication_rules")
+  public static final class ReplicationRulesPath implements Name<String> {
+  }
+
+  /**
    * Parse the configuration file
    * @return Configuration described in config file
    * @throws IOException If failed to parse the config file
@@ -64,7 +72,7 @@ public class Launch
   }
 
   /**
-   * Parse the command line arguments
+   * Parse the command line arguments.
    * @return Configuration given via command line
    * @throws IOException If failed to parse the command line
    */
@@ -74,12 +82,12 @@ public class Launch
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(Local.class);
     cl.registerShortNameOfClass(LocalThreads.class);
+    cl.registerShortNameOfClass(ReplicationRulesPath.class);
     cl.registerShortNameOfClass(MetaServerParameters.Port.class);
     cl.registerShortNameOfClass(MetaServerParameters.InitCacheServers.class);
     cl.registerShortNameOfClass(MetaServerParameters.DefaultMemCacheServers.class);
     cl.registerShortNameOfClass(MetaServerParameters.Timeout.class);
     cl.registerShortNameOfClass(MetaServerParameters.Threads.class);
-    cl.registerShortNameOfClass(MetaServerParameters.DefaultReplicas.class);
     cl.registerShortNameOfClass(CacheParameters.Port.class);
     cl.registerShortNameOfClass(CacheParameters.NumServerThreads.class);
     cl.registerShortNameOfClass(CacheParameters.NumLoadingThreads.class);
@@ -119,6 +127,21 @@ public class Launch
     return driverConfig;
   }
 
+  private static ConfigurationModule setReplicationRules(final ConfigurationModule configModule,
+                                                         final Injector injector) {
+    try {
+      final String replicationRulesPath = injector.getNamedInstance(ReplicationRulesPath.class);
+      final String replicationRules = FileUtils.readFileToString(new File(replicationRulesPath));
+      LOG.log(Level.FINER, "Replication Rules: "+replicationRules);
+      return configModule.set(InMemoryConfiguration.REPLICATION_RULES, replicationRules);
+    } catch (InjectionException e) {
+      LOG.log(Level.FINE, "Replication Rules not set, will use default");
+      return configModule;
+    } catch (IOException e) {
+      throw new BindException("Replication Rules could not be read", e);
+    }
+  }
+
   /**
    * Build InMemory Configuration which is used in application
    */
@@ -128,17 +151,17 @@ public class Launch
     final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
 
     final Configuration inMemoryConfig;
-    final ConfigurationModule inMemoryConfigModule = InMemoryConfiguration.getConf(clInjector.getNamedInstance(DfsParameters.Type.class))
+    ConfigurationModule inMemoryConfigModule = InMemoryConfiguration.getConf(clInjector.getNamedInstance(DfsParameters.Type.class))
       .set(InMemoryConfiguration.METASERVER_PORT, chooseNamedInstance(MetaServerParameters.Port.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.INIT_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.InitCacheServers.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.DEFAULT_MEM_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.DefaultMemCacheServers.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.DEFAULT_REPLICAS, chooseNamedInstance(MetaServerParameters.DefaultReplicas.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.CACHESERVER_PORT, chooseNamedInstance(CacheParameters.Port.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, chooseNamedInstance(CacheParameters.NumServerThreads.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, chooseNamedInstance(CacheParameters.NumLoadingThreads.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.CACHE_MEMORY_SIZE, chooseNamedInstance(CacheParameters.Memory.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.DFS_TYPE, chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
       .set(InMemoryConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
+    inMemoryConfigModule = setReplicationRules(inMemoryConfigModule, clInjector);
 
     final boolean isLocal = clInjector.getNamedInstance(Local.class);
     if (isLocal) {

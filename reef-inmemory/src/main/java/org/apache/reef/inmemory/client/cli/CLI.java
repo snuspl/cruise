@@ -8,6 +8,8 @@ import com.microsoft.tang.annotations.Name;
 import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.CommandLine;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -18,6 +20,7 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -74,7 +77,7 @@ public final class CLI {
   }
 
   private static boolean runCommand(final Configuration config)
-          throws InjectionException, TException {
+          throws InjectionException, TException, IOException {
     final Injector injector = Tang.Factory.getTang().newInjector(config);
     final String cmd = injector.getNamedInstance(Command.class);
     final String hostname = injector.getNamedInstance(Hostname.class);
@@ -96,6 +99,15 @@ public final class CLI {
     } else if ("addcache".equals(cmd)) {
       final String result = client.addCacheNode(cacheMemory);
       return true;
+    } else if ("replication-list".equals(cmd)) {
+      final String result = client.getReplication();
+      LOG.log(Level.INFO, "\n"+result);
+      return true;
+    } else if ("replication-upload".equals(cmd)) {
+      final String path = injector.getNamedInstance(Path.class);
+      final File file = new File(path);
+      String rules = FileUtils.readFileToString(file);
+      return client.setReplication(rules);
     } else {
       return false;
     }

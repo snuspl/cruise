@@ -1,9 +1,7 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.driver.CacheNode;
-import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -17,19 +15,16 @@ public final class HdfsMemoryRemainingSelectionPolicy implements HdfsCacheSelect
 
   private static final Logger LOG = Logger.getLogger(HdfsMemoryRemainingSelectionPolicy.class.getName());
 
-  private final int numReplicas;
   private final RemainingComparator comparator = new RemainingComparator();
 
   @Inject
-  public HdfsMemoryRemainingSelectionPolicy(final @Parameter(MetaServerParameters.DefaultReplicas.class) int numReplicas) {
-    if (numReplicas < 1) {
-      throw new IllegalArgumentException("Must select at least one replica");
-    }
-    this.numReplicas = numReplicas;
+  public HdfsMemoryRemainingSelectionPolicy() {
   }
 
   @Override
-  public List<CacheNode> select(LocatedBlock block, List<CacheNode> nodes) {
+  public List<CacheNode> select(final LocatedBlock block,
+                                final List<CacheNode> nodes,
+                                final int numReplicas) {
     final SortedSet<CacheNode> selected = new TreeSet<>(comparator);
 
     for (CacheNode node: nodes) {

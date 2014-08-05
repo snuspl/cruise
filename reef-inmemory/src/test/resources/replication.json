@@ -1,0 +1,41 @@
+{
+  "rules" : [
+    {
+      "id" : "daily-small",
+      "conditions" : [
+        {
+          "type"     : "path",
+          "operator" : "recursive",
+          "operand"  : "/daily/"
+        },
+        {
+          "type"     : "size",
+          "operator" : "lt",
+          "operand"  : "128M"
+        }
+      ],
+      "action" : {
+        "factor" : 5,
+        "pin"    : true
+      }
+    },
+    {
+      "id" : "hourly",
+      "conditions" : [
+        {
+          "type"     : "path",
+          "operator" : "recursive",
+          "operand"  : "/hourly/"
+        }
+      ],
+      "action" : {
+        "factor" : -1,
+        "pin"    : false
+      }
+    }
+  ],
+  "default" : {
+    "factor" : 2,
+    "pin"    : false
+  }
+}

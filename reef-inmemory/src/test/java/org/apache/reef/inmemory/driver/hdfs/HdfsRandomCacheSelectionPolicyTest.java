@@ -15,7 +15,9 @@ import static org.mockito.Mockito.mock;
 /**
  * Test simple random policy
  */
-public final class HdfsRandomTaskSelectionPolicyTest {
+public final class HdfsRandomCacheSelectionPolicyTest {
+
+  private static final int numReplicas = 3;
 
   private LocatedBlock getMockBlock() {
     return mock(LocatedBlock.class);
@@ -31,20 +33,20 @@ public final class HdfsRandomTaskSelectionPolicyTest {
 
   @Test
   public void testLessThanDefault() {
-    final HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy(3);
+    final HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy();
 
     final List<CacheNode> nodes = getMockCacheNodes(1);
-    final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes));
+    final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes), numReplicas);
     assertTrue(nodes.containsAll(selected));
     assertEquals(1, selected.size());
   }
 
   @Test
   public void testIsShuffled() {
-    final HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy(3);
+    final HdfsRandomCacheSelectionPolicy policy = new HdfsRandomCacheSelectionPolicy();
     final List<CacheNode> nodes = getMockCacheNodes(100);
     for (int i = 0; i < 10; i++) { // With high probability
-      final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes));
+      final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes), numReplicas);
       assertTrue(nodes.containsAll(selected));
       for (int j = 0; j < 3; j++) {
         if (nodes.get(j) != selected.get(j)) {

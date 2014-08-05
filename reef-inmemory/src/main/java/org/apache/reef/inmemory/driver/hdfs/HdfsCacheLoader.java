@@ -14,8 +14,10 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheNode;
+import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 
@@ -41,6 +43,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   private final CacheManager cacheManager;
   private final HdfsCacheMessenger cacheMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
+  private final ReplicationPolicy replicationPolicy;
   private final String dfsAddress;
   private final DFSClient dfsClient;
 
@@ -48,10 +51,12 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   public HdfsCacheLoader(final CacheManager cacheManager,
                          final HdfsCacheMessenger cacheMessenger,
                          final HdfsCacheSelectionPolicy cacheSelector,
+                         final ReplicationPolicy replicationPolicy,
                          final @Parameter(DfsParameters.Address.class) String dfsAddress) {
     this.cacheManager = cacheManager;
     this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;
+    this.replicationPolicy = replicationPolicy;
     this.dfsAddress = dfsAddress;
     try {
       this.dfsClient = new DFSClient(new URI(this.dfsAddress), new Configuration());
@@ -81,9 +86,11 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   public FileMeta load(Path path) throws FileNotFoundException, IOException {
     LOG.log(Level.INFO, "Load in memory: {0}", path);
 
-    FileMeta fileMeta = new FileMeta();
+    final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0);
 
-    LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0);
+    final FileMeta fileMeta = new FileMeta();
+    fileMeta.setFileSize(locatedBlocks.getFileLength());
+
     for (final LocatedBlock locatedBlock : locatedBlocks.getLocatedBlocks()) {
       final HdfsBlockId hdfsBlock = HdfsBlockId.copyBlock(locatedBlock);
       final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
@@ -96,7 +103,16 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
         throw new IOException("Surf has zero caches");
       }
 
-      final List<CacheNode> selectedNodes = cacheSelector.select(locatedBlock, cacheNodes);
+      // TODO: add pinning
+      final Action action = replicationPolicy.getReplicationAction(path.toString(), fileMeta);
+      final int numReplicas;
+      if (replicationPolicy.isBroadcast(action)) {
+        numReplicas = cacheNodes.size();
+      } else {
+        numReplicas = action.getFactor();
+      }
+
+      final List<CacheNode> selectedNodes = cacheSelector.select(locatedBlock, cacheNodes, numReplicas);
       if (selectedNodes.size() == 0) {
         throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
       }
@@ -111,7 +127,6 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       if (LOG.isLoggable(Level.FINE)) {
         LOG.log(Level.FINE, "  " + cacheBlock.toString());
       }
-      fileMeta.setFileSize(locatedBlocks.getFileLength());
       fileMeta.addToBlocks(cacheBlock);
     }
     return fileMeta;

@@ -13,14 +13,8 @@ import java.util.*;
  */
 public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionPolicy {
 
-  private final int numReplicas;
-
   @Inject
-  public HdfsRandomCacheSelectionPolicy(final @Parameter(MetaServerParameters.DefaultReplicas.class) int numReplicas) {
-    if (numReplicas < 1) {
-      throw new IllegalArgumentException("Must select at least one replica");
-    }
-    this.numReplicas = numReplicas;
+  public HdfsRandomCacheSelectionPolicy() {
   }
 
   /**
@@ -28,7 +22,8 @@ public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionP
    */
   @Override
   public List<CacheNode> select(final LocatedBlock block,
-                                final List<CacheNode> tasks) {
+                                final List<CacheNode> tasks,
+                                final int numReplicas) {
     Collections.shuffle(tasks);
 
     final List<CacheNode> chosenNodes = new ArrayList<>(numReplicas);

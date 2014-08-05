@@ -7,11 +7,14 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
+import org.apache.reef.inmemory.common.replication.AvroReplicationSerializer;
+import org.apache.reef.inmemory.common.replication.Rules;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
 import org.apache.reef.inmemory.driver.CacheNode;
+import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -20,6 +23,8 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
 import javax.inject.Inject;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
@@ -41,17 +46,20 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   private final SurfMetaManager metaManager;
   private final CacheManager cacheManager;
   private final ServiceRegistry serviceRegistry;
+  private final ReplicationPolicy replicationPolicy;
 
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
                         final CacheManager cacheManager,
                         final ServiceRegistry serviceRegistry,
+                        final ReplicationPolicy replicationPolicy,
                         final @Parameter(MetaServerParameters.Port.class) int port,
                         final @Parameter(MetaServerParameters.Timeout.class) int timeout,
                         final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
     this.metaManager = metaManager;
     this.cacheManager = cacheManager;
     this.serviceRegistry = serviceRegistry;
+    this.replicationPolicy = replicationPolicy;
 
     this.port = port;
     this.timeout = timeout;
@@ -118,6 +126,34 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       cacheManager.requestEvaluator(1, memory);
     }
     return "Submitted";
+  }
+
+  @Override
+  public String getReplication() throws org.apache.reef.inmemory.common.exceptions.IOException, TException {
+    LOG.log(Level.INFO, "CLI replicationList command");
+    final Rules rules = replicationPolicy.getRules();
+    if (rules == null) {
+      return "null";
+    } else {
+      try {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        AvroReplicationSerializer.toStream(rules, out);
+        return out.toString();
+      } catch (IOException e) {
+        throw new org.apache.reef.inmemory.common.exceptions.IOException(e.getMessage());
+      }
+    }
+  }
+
+  @Override
+  public boolean setReplication(String rulesString) throws org.apache.reef.inmemory.common.exceptions.IOException {
+    try {
+      final Rules rules = AvroReplicationSerializer.fromString(rulesString);
+      replicationPolicy.setRules(rules);
+      return true;
+    } catch (IOException e) {
+      throw new org.apache.reef.inmemory.common.exceptions.IOException(e.getMessage());
+    }
   }
 
   @Override

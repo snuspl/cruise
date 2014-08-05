@@ -21,6 +21,7 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
 
   private static final Random random = new Random();
   private static int nodeId = 0;
+  private static int numReplicas = 3;
 
   private LocatedBlock getMockBlock() {
     return mock(LocatedBlock.class);
@@ -77,12 +78,12 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
    */
   @Test
   public void testAllTied() {
-    final HdfsMemoryRemainingSelectionPolicy policy = new HdfsMemoryRemainingSelectionPolicy(3);
+    final HdfsMemoryRemainingSelectionPolicy policy = new HdfsMemoryRemainingSelectionPolicy();
 
     final List<CacheNode> nodes = getFreshCacheNodes(10);
-    final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes));
+    final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes), numReplicas);
     assertTrue(nodes.containsAll(selected));
-    assertEquals(3, selected.size());
+    assertEquals(numReplicas, selected.size());
   }
 
   /**
@@ -90,10 +91,10 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
    */
   @Test
   public void testLessThanDefault() {
-    final HdfsMemoryRemainingSelectionPolicy policy = new HdfsMemoryRemainingSelectionPolicy(3);
+    final HdfsMemoryRemainingSelectionPolicy policy = new HdfsMemoryRemainingSelectionPolicy();
 
     final List<CacheNode> nodes = getRandomCacheNodes(2);
-    final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes));
+    final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes), numReplicas);
     assertTrue(nodes.containsAll(selected));
     assertEquals(2, selected.size());
 
@@ -110,12 +111,12 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
    */
   @Test
   public void testLargestSelected() {
-    final HdfsMemoryRemainingSelectionPolicy policy = new HdfsMemoryRemainingSelectionPolicy(3);
+    final HdfsMemoryRemainingSelectionPolicy policy = new HdfsMemoryRemainingSelectionPolicy();
     final List<CacheNode> nodes = getRandomCacheNodes(100);
 
-    final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes));
+    final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes), numReplicas);
     assertTrue(nodes.containsAll(selected));
-    assertEquals(3, selected.size());
+    assertEquals(numReplicas, selected.size());
 
     for (final CacheNode sel : selected) {
       final int selectedRemaining = getRemaining(sel);
