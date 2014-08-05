@@ -15,6 +15,13 @@ exception FileAlreadyExistsException{
 }
 
 /**
+ * Generic IO Exception
+ */
+exception IOException{
+    1: string message
+}
+
+/**
  * The Cache block could not be retrieved, because it is loading from the Base FS
  */
 exception BlockLoadingException{

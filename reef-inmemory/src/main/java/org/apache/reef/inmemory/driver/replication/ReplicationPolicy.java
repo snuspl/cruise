@@ -25,6 +25,11 @@ public interface ReplicationPolicy {
   public boolean isBroadcast(Action action);
 
   /**
+   * Get the currently set rules
+   */
+  public Rules getRules();
+
+  /**
    * Set the rules for this replication policy
    */
   public void setRules(Rules rules);

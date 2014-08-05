@@ -150,6 +150,11 @@ public final class ReplicationPolicyImpl implements ReplicationPolicy {
   }
 
   @Override
+  public Rules getRules() {
+    return rules;
+  }
+
+  @Override
   public void setRules(Rules rules) {
     this.rules = rules;
   }
