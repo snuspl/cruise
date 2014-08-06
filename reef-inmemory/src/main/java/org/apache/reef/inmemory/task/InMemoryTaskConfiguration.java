@@ -7,6 +7,7 @@ import com.microsoft.wake.EStage;
 import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.impl.ThreadPoolStage;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
+import org.apache.reef.inmemory.task.hdfs.HdfsDriverMessageHandler;
 
 /**
  * Builder that creates a Configuration Module to be used at each Task, based on underlying FS type
@@ -29,9 +30,10 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
           .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
           .bindNamedParameter(StageConfiguration.NumberOfThreads.class, CACHESERVER_LOADING_THREADS)
-          .bindNamedParameter(StageConfiguration.StageHandler.class, InMemoryTask.LoadExecutor.class)
+          .bindNamedParameter(StageConfiguration.StageHandler.class, BlockLoaderExecutor.class)
           .bindImplementation(InMemoryCache.class, InMemoryCacheImpl.class)
           .bindImplementation(BlockLoader.class, HdfsBlockLoader.class)
+          .bindImplementation(DriverMessageHandler.class, HdfsDriverMessageHandler.class)
           .bindImplementation(EStage.class, ThreadPoolStage.class)
           .build();
 }

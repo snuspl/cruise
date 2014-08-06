@@ -8,7 +8,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.reef.inmemory.common.CacheMessage;
+import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
@@ -38,7 +38,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
   private static final Logger LOG = Logger.getLogger(HdfsCacheLoader.class.getName());
 
-  private static final ObjectSerializableCodec<CacheMessage> CODEC = new ObjectSerializableCodec<>();
+  private static final ObjectSerializableCodec<HdfsDriverTaskMessage> CODEC = new ObjectSerializableCodec<>();
 
   private final CacheManager cacheManager;
   private final HdfsCacheMessenger cacheMessenger;

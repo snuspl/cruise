@@ -67,7 +67,7 @@ public final class CacheManagerImpl implements CacheManager {
             .set(TaskConfiguration.IDENTIFIER, "InMemoryTask-"+uniqueId)
             .set(TaskConfiguration.TASK, InMemoryTask.class)
             .set(TaskConfiguration.ON_TASK_STARTED, InMemoryTask.StartHandler.class)
-            .set(TaskConfiguration.ON_MESSAGE, InMemoryTask.DriverMessageHandler.class)
+            .set(TaskConfiguration.ON_MESSAGE, InMemoryTask.DelegatingDriverMessageHandler.class)
             .set(TaskConfiguration.ON_SEND_MESSAGE, InMemoryTask.class)
             .build();
   }
