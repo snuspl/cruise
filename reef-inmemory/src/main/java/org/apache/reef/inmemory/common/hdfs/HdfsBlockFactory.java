@@ -15,6 +15,9 @@ public final class HdfsBlockFactory implements BlockFactory {
   public HdfsBlockFactory() {
   }
 
+  /**
+   * Create a new HdfsBlockId using information from BlockInfo
+   */
   @Override
   public BlockId newBlockId(BlockInfo blockInfo) {
     return new HdfsBlockId(
@@ -25,6 +28,9 @@ public final class HdfsBlockFactory implements BlockFactory {
             blockInfo.getToken());
   }
 
+  /**
+   * Create a new HdfsBlockId using information from LocatedBlock
+   */
   public HdfsBlockId newBlockId(LocatedBlock locatedBlock) throws IOException {
     return new HdfsBlockId(
             locatedBlock.getBlock().getBlockId(),
@@ -35,7 +41,7 @@ public final class HdfsBlockFactory implements BlockFactory {
   }
 
   /**
-   * Copies block identifying information from LocatedBlock into BlockInfo. Does /not/ copy
+   * Create a new BlockInfo using identifying information from LocatedBlock. Does /not/ copy
    * location information (as it is not identifying information).
    */
   public BlockInfo newBlockInfo(LocatedBlock locatedBlock) throws IOException {
