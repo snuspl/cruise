@@ -46,7 +46,6 @@ public class HdfsBlockLoader implements BlockLoader {
   /**
    * Constructor of BlockLoader
    */
-  @Inject
   public HdfsBlockLoader(final HdfsBlockId id,
                          final List<HdfsDatanodeInfo> infoList) {
     hdfsBlockId = id;

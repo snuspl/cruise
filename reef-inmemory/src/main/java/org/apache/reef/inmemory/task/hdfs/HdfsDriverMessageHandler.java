@@ -39,8 +39,6 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
       if (msg.getHdfsBlockMessage().isPresent()) {
         LOG.log(Level.INFO, "Received load block msg");
         final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
-
-        // TODO: pass request to InMemoryCache. IMC can check if block already exists, call executeLoad if not.
         final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations());
         loadingStage.onNext(loader);
       } else if (msg.getClearMessage().isPresent()) {

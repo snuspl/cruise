@@ -1,13 +1,14 @@
 package org.apache.reef.inmemory.task.service;
 
 import com.microsoft.tang.annotations.Parameter;
-import org.apache.reef.inmemory.task.CacheParameters;
-import org.apache.reef.inmemory.task.InMemoryCache;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.common.BlockFactory;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
+import org.apache.reef.inmemory.task.BlockId;
+import org.apache.reef.inmemory.task.CacheParameters;
+import org.apache.reef.inmemory.task.InMemoryCache;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -28,6 +29,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   private static final Logger LOG = Logger.getLogger(SurfCacheServer.class.getName());
 
   private final InMemoryCache cache;
+  private final BlockFactory blockFactory;
   private final int port;
   private final int timeout;
   private final int numThreads;
@@ -37,10 +39,12 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Inject
   public SurfCacheServer(final InMemoryCache cache,
+                         final BlockFactory blockFactory,
                          final @Parameter(CacheParameters.Port.class) int port,
                          final @Parameter(CacheParameters.Timeout.class) int timeout,
                          final @Parameter(CacheParameters.NumServerThreads.class) int numThreads) {
     this.cache = cache;
+    this.blockFactory = blockFactory;
     this.port = port;
     this.timeout = timeout;
     this.numThreads = numThreads;
@@ -99,7 +103,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   @Override
   public ByteBuffer getData(final BlockInfo blockInfo, final long offset, final long length)
           throws BlockNotFoundException, BlockLoadingException {
-    final HdfsBlockId blockId = HdfsBlockId.copyBlock(blockInfo);
+    final BlockId blockId = blockFactory.newBlockId(blockInfo);
 
     final byte[] block = cache.get(blockId);
     final ByteBuffer buf = ByteBuffer.wrap(block, (int)offset,

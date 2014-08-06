@@ -1,14 +1,13 @@
 package org.apache.reef.inmemory.task;
 
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.*;
@@ -17,7 +16,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests for HdfsCache
+ * Tests for InMemoryCacheImpl
  */
 public final class InMemoryCacheImplTest {
 
@@ -30,11 +29,7 @@ public final class InMemoryCacheImplTest {
   }
 
   private BlockId randomBlockId() {
-    return new HdfsBlockId(random.nextLong(),
-            random.nextLong(),
-            random.nextLong(),
-            Long.toString(random.nextLong()),
-            Long.toString(random.nextLong()));
+    return new MockBlockId(Long.toString(random.nextLong()), random.nextLong());
   }
 
   private byte[] ones(int length) {
@@ -221,6 +216,43 @@ public final class InMemoryCacheImplTest {
     // Verify loaders for different blockId called once
     for (int i = numThreads/2; i < numThreads; i++) {
       verify(loaders[i], times(1)).loadBlock();
+    }
+  }
+
+  private static final class MockBlockId implements BlockId {
+
+    private final String blockId;
+    private final long blockSize;
+
+    public MockBlockId(final String blockId,
+                       final long blockSize) {
+      this.blockId = blockId;
+      this.blockSize = blockSize;
+    }
+
+    @Override
+    public long getBlockSize() {
+      return 0;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      MockBlockId that = (MockBlockId) o;
+
+      if (blockSize != that.blockSize) return false;
+      if (!blockId.equals(that.blockId)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = blockId.hashCode();
+      result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
+      return result;
     }
   }
 }

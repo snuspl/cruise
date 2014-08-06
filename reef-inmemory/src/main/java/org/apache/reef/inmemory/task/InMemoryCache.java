@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.task;
 
 import org.apache.reef.inmemory.common.CacheStatistics;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 

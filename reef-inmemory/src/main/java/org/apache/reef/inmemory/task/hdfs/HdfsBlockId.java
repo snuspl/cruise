@@ -39,24 +39,6 @@ public final class HdfsBlockId implements BlockId, Serializable {
     this.encodedToken = encodedToken;
   }
 
-  public static HdfsBlockId copyBlock(LocatedBlock locatedBlock) throws IOException {
-    return new HdfsBlockId(
-            locatedBlock.getBlock().getBlockId(),
-            locatedBlock.getBlockSize(),
-            locatedBlock.getBlock().getGenerationStamp(),
-            locatedBlock.getBlock().getBlockPoolId(),
-            locatedBlock.getBlockToken().encodeToUrlString());
-  }
-
-  public static HdfsBlockId copyBlock(BlockInfo blockInfo) {
-    return new HdfsBlockId(
-            blockInfo.getBlockId(),
-            blockInfo.getLength(),
-            blockInfo.getGenerationStamp(),
-            blockInfo.getNamespaceId(),
-            blockInfo.getToken());
-  }
-
   public long getBlockId() {
     return blockId;
   }

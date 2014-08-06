@@ -17,7 +17,7 @@ import com.microsoft.tang.formats.CommandLine;
 import com.microsoft.tang.formats.ConfigurationModule;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.inmemory.common.DfsParameters;
-import org.apache.reef.inmemory.common.InMemoryConfiguration;
+import org.apache.reef.inmemory.driver.InMemoryDriverConfiguration;
 import org.apache.reef.inmemory.driver.InMemoryDriver;
 import org.apache.reef.inmemory.driver.service.InetServiceRegistry;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
@@ -133,7 +133,7 @@ public class Launch
       final String replicationRulesPath = injector.getNamedInstance(ReplicationRulesPath.class);
       final String replicationRules = FileUtils.readFileToString(new File(replicationRulesPath));
       LOG.log(Level.FINER, "Replication Rules: "+replicationRules);
-      return configModule.set(InMemoryConfiguration.REPLICATION_RULES, replicationRules);
+      return configModule.set(InMemoryDriverConfiguration.REPLICATION_RULES, replicationRules);
     } catch (InjectionException e) {
       LOG.log(Level.FINE, "Replication Rules not set, will use default");
       return configModule;
@@ -151,16 +151,16 @@ public class Launch
     final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
 
     final Configuration inMemoryConfig;
-    ConfigurationModule inMemoryConfigModule = InMemoryConfiguration.getConf(clInjector.getNamedInstance(DfsParameters.Type.class))
-      .set(InMemoryConfiguration.METASERVER_PORT, chooseNamedInstance(MetaServerParameters.Port.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.INIT_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.InitCacheServers.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.DEFAULT_MEM_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.DefaultMemCacheServers.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.CACHESERVER_PORT, chooseNamedInstance(CacheParameters.Port.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.CACHESERVER_SERVER_THREADS, chooseNamedInstance(CacheParameters.NumServerThreads.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.CACHESERVER_LOADING_THREADS, chooseNamedInstance(CacheParameters.NumLoadingThreads.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.CACHE_MEMORY_SIZE, chooseNamedInstance(CacheParameters.Memory.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.DFS_TYPE, chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
-      .set(InMemoryConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
+    ConfigurationModule inMemoryConfigModule = InMemoryDriverConfiguration.getConf(clInjector.getNamedInstance(DfsParameters.Type.class))
+      .set(InMemoryDriverConfiguration.METASERVER_PORT, chooseNamedInstance(MetaServerParameters.Port.class, clInjector, fileInjector))
+      .set(InMemoryDriverConfiguration.INIT_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.InitCacheServers.class, clInjector, fileInjector))
+      .set(InMemoryDriverConfiguration.DEFAULT_MEM_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.DefaultMemCacheServers.class, clInjector, fileInjector))
+      .set(InMemoryDriverConfiguration.CACHESERVER_PORT, chooseNamedInstance(CacheParameters.Port.class, clInjector, fileInjector))
+      .set(InMemoryDriverConfiguration.CACHESERVER_SERVER_THREADS, chooseNamedInstance(CacheParameters.NumServerThreads.class, clInjector, fileInjector))
+      .set(InMemoryDriverConfiguration.CACHESERVER_LOADING_THREADS, chooseNamedInstance(CacheParameters.NumLoadingThreads.class, clInjector, fileInjector))
+      .set(InMemoryDriverConfiguration.CACHE_MEMORY_SIZE, chooseNamedInstance(CacheParameters.Memory.class, clInjector, fileInjector))
+      .set(InMemoryDriverConfiguration.DFS_TYPE, chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
+      .set(InMemoryDriverConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
     inMemoryConfigModule = setReplicationRules(inMemoryConfigModule, clInjector);
 
     final boolean isLocal = clInjector.getNamedInstance(Local.class);

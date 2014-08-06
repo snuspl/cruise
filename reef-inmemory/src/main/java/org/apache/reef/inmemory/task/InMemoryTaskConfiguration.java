@@ -6,6 +6,8 @@ import com.microsoft.tang.formats.RequiredParameter;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.impl.ThreadPoolStage;
+import org.apache.reef.inmemory.common.BlockFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockFactory;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.task.hdfs.HdfsDriverMessageHandler;
 
@@ -33,6 +35,7 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
           .bindNamedParameter(StageConfiguration.StageHandler.class, BlockLoaderExecutor.class)
           .bindImplementation(InMemoryCache.class, InMemoryCacheImpl.class)
           .bindImplementation(BlockLoader.class, HdfsBlockLoader.class)
+          .bindImplementation(BlockFactory.class, HdfsBlockFactory.class)
           .bindImplementation(DriverMessageHandler.class, HdfsDriverMessageHandler.class)
           .bindImplementation(EStage.class, ThreadPoolStage.class)
           .build();
