@@ -8,7 +8,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -44,7 +44,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   private final CacheManager cacheManager;
   private final HdfsCacheMessenger cacheMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
-  private final HdfsBlockFactory blockFactory;
+  private final HdfsBlockIdFactory blockFactory;
   private final ReplicationPolicy replicationPolicy;
   private final String dfsAddress;
   private final DFSClient dfsClient;
@@ -53,7 +53,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   public HdfsCacheLoader(final CacheManager cacheManager,
                          final HdfsCacheMessenger cacheMessenger,
                          final HdfsCacheSelectionPolicy cacheSelector,
-                         final HdfsBlockFactory blockFactory,
+                         final HdfsBlockIdFactory blockFactory,
                          final ReplicationPolicy replicationPolicy,
                          final @Parameter(DfsParameters.Address.class) String dfsAddress) {
     this.cacheManager = cacheManager;

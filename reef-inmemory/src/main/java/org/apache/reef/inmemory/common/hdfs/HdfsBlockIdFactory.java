@@ -2,24 +2,23 @@ package org.apache.reef.inmemory.common.hdfs;
 
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
-import org.apache.reef.inmemory.common.BlockFactory;
-import org.apache.reef.inmemory.task.BlockId;
+import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 
 import javax.inject.Inject;
 import java.io.IOException;
 
-public final class HdfsBlockFactory implements BlockFactory {
+public final class HdfsBlockIdFactory implements BlockIdFactory<LocatedBlock, HdfsBlockId> {
 
   @Inject
-  public HdfsBlockFactory() {
+  public HdfsBlockIdFactory() {
   }
 
   /**
    * Create a new HdfsBlockId using information from BlockInfo
    */
   @Override
-  public BlockId newBlockId(BlockInfo blockInfo) {
+  public HdfsBlockId newBlockId(BlockInfo blockInfo) {
     return new HdfsBlockId(
             blockInfo.getBlockId(),
             blockInfo.getLength(),
@@ -31,6 +30,7 @@ public final class HdfsBlockFactory implements BlockFactory {
   /**
    * Create a new HdfsBlockId using information from LocatedBlock
    */
+  @Override
   public HdfsBlockId newBlockId(LocatedBlock locatedBlock) throws IOException {
     return new HdfsBlockId(
             locatedBlock.getBlock().getBlockId(),
@@ -44,6 +44,7 @@ public final class HdfsBlockFactory implements BlockFactory {
    * Create a new BlockInfo using identifying information from LocatedBlock. Does /not/ copy
    * location information (as it is not identifying information).
    */
+  @Override
   public BlockInfo newBlockInfo(LocatedBlock locatedBlock) throws IOException {
     BlockInfo blockInfo = new BlockInfo();
 

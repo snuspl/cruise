@@ -11,7 +11,7 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.common.entity.FileMeta;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.driver.CacheManagerImpl;
 import org.apache.reef.inmemory.driver.CacheNode;
@@ -40,7 +40,7 @@ public final class HdfsCacheLoaderTest {
   private HdfsCacheMessenger messenger;
   private HdfsCacheLoader loader;
   private HdfsCacheSelectionPolicy selector;
-  private HdfsBlockFactory blockFactory;
+  private HdfsBlockIdFactory blockFactory;
   private ReplicationPolicy replicationPolicy;
 
   @Before
@@ -48,7 +48,7 @@ public final class HdfsCacheLoaderTest {
     manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0);
     messenger = new HdfsCacheMessenger(manager);
     selector = mock(HdfsCacheSelectionPolicy.class);
-    blockFactory = new HdfsBlockFactory();
+    blockFactory = new HdfsBlockIdFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
     for (int i = 0; i < 3; i++) {

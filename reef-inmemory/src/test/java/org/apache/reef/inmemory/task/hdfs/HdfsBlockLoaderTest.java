@@ -10,7 +10,7 @@ import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.task.BlockLoader;
 import org.junit.After;
 import org.junit.Assert;
@@ -27,7 +27,7 @@ public class HdfsBlockLoaderTest {
   private static final int NUM_BLOCK = 3;
   private static final int LONG_BYTES = 8;
 
-  private HdfsBlockFactory blockFactory = new HdfsBlockFactory();
+  private HdfsBlockIdFactory blockFactory = new HdfsBlockIdFactory();
 
   private MiniDFSCluster cluster;
   private FileSystem fs;
