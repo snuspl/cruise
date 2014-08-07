@@ -1,7 +1,7 @@
-package org.apache.reef.inmemory.common;
+package org.apache.reef.inmemory.common.hdfs;
 
 import com.microsoft.reef.util.Optional;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
+import org.apache.reef.inmemory.common.CacheClearMessage;
 
 import java.io.Serializable;
 
@@ -9,19 +9,19 @@ import java.io.Serializable;
  * Parent object for messages sent from Driver to Task. Each message will only
  * hold a single child message.
  */
-public final class CacheMessage implements Serializable {
+public final class HdfsDriverTaskMessage implements Serializable {
 
   private Optional<HdfsBlockMessage> hdfsBlockMessage = Optional.empty();
   private Optional<CacheClearMessage> clearMessage = Optional.empty();
 
-  public static CacheMessage hdfsBlockMessage(HdfsBlockMessage hdfsBlockMessage) {
-    CacheMessage msg = new CacheMessage();
+  public static HdfsDriverTaskMessage hdfsBlockMessage(HdfsBlockMessage hdfsBlockMessage) {
+    HdfsDriverTaskMessage msg = new HdfsDriverTaskMessage();
     msg.hdfsBlockMessage = Optional.of(hdfsBlockMessage);
     return msg;
   }
 
-  public static CacheMessage clearMessage(CacheClearMessage clearMessage) {
-    CacheMessage msg = new CacheMessage();
+  public static HdfsDriverTaskMessage clearMessage(CacheClearMessage clearMessage) {
+    HdfsDriverTaskMessage msg = new HdfsDriverTaskMessage();
     msg.clearMessage = Optional.of(clearMessage);
     return msg;
   }

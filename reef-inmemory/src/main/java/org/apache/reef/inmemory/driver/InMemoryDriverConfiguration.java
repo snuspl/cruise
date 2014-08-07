@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory.common;
+package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -7,7 +7,7 @@ import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.OptionalParameter;
 import com.microsoft.tang.formats.RequiredParameter;
 import com.microsoft.wake.StageConfiguration;
-import org.apache.reef.inmemory.driver.*;
+import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.driver.hdfs.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicyImpl;
@@ -18,7 +18,7 @@ import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 /**
  * Builder that creates a Configuration Module to be used at the Driver, based on underlying FS type
  */
-public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
+public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilder {
 
   public static final RequiredParameter<Integer> METASERVER_PORT = new RequiredParameter<>();
   public static final RequiredParameter<Integer> INIT_CACHE_SERVERS = new RequiredParameter<>();
@@ -40,7 +40,7 @@ public final class InMemoryConfiguration extends ConfigurationModuleBuilder {
     }
   }
 
-  private static final ConfigurationModule HDFS_CONF = new InMemoryConfiguration()
+  private static final ConfigurationModule HDFS_CONF = new InMemoryDriverConfiguration()
           .bindNamedParameter(MetaServerParameters.Port.class, METASERVER_PORT)
           .bindNamedParameter(MetaServerParameters.InitCacheServers.class, INIT_CACHE_SERVERS)
           .bindNamedParameter(MetaServerParameters.DefaultMemCacheServers.class, DEFAULT_MEM_CACHE_SERVERS)
