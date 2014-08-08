@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.common;
 
 import java.io.Serializable;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A set of statistics for the Cache.
@@ -10,14 +10,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class CacheStatistics implements Serializable {
 
-  private AtomicInteger cacheMB = new AtomicInteger();
-  private AtomicInteger loadingMB = new AtomicInteger();
+  private AtomicLong cacheMB = new AtomicLong();
+  private AtomicLong loadingMB = new AtomicLong();
 
-  public void addCacheMB(int amount) {
+  public void addCacheMB(long amount) {
     cacheMB.addAndGet(amount);
   }
 
-  public void subtractCacheMB(int amount) {
+  public void subtractCacheMB(long amount) {
     cacheMB.addAndGet(-amount);
   }
 
@@ -25,11 +25,11 @@ public final class CacheStatistics implements Serializable {
     cacheMB.set(0);
   }
 
-  public void addLoadingMB(int amount) {
+  public void addLoadingMB(long amount) {
     loadingMB.addAndGet(amount);
   }
 
-  public void subtractLoadingMB(int amount) {
+  public void subtractLoadingMB(long amount) {
     loadingMB.addAndGet(-amount);
   }
 
@@ -37,11 +37,11 @@ public final class CacheStatistics implements Serializable {
     loadingMB.set(0);
   }
 
-  public int getCacheMB() {
+  public long getCacheMB() {
     return cacheMB.get();
   }
 
-  public int getLoadingMB() {
+  public long getLoadingMB() {
     return loadingMB.get();
   }
 

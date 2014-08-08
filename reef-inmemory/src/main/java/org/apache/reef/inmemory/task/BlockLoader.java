@@ -1,5 +1,7 @@
 package org.apache.reef.inmemory.task;
 
+import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
+
 import java.io.IOException;
 
 /**
@@ -8,10 +10,10 @@ import java.io.IOException;
 public interface BlockLoader {
   /**
    * Load a block assigned to this Loader.
-   * @return byteBuffer holds the data it loaded.
+   * This method will only be called once per BlockLoader.
    * @throws IOException
    */
-  public byte[] loadBlock() throws IOException;
+  public void loadBlock() throws IOException;
 
   /**
    * @return Block Identifier
@@ -22,4 +24,10 @@ public interface BlockLoader {
    * @return the number of bytes loaded so far
    */
   public long getBytesLoaded();
+
+  /**
+   * @return the data loaded by BlockLoader
+   * @throws BlockLoadingException
+   */
+  public byte[] getData() throws BlockLoadingException;
 }

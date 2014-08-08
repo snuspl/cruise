@@ -10,6 +10,7 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.token.Token;
+import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
 import org.apache.reef.inmemory.task.BlockId;
@@ -21,6 +22,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,6 +43,7 @@ public class HdfsBlockLoader implements BlockLoader {
   private final List<HdfsDatanodeInfo> dnInfoList;
   private final long blockSize;
 
+  private byte[] data = null;
   private int totalRead;
 
   /**
@@ -59,14 +62,15 @@ public class HdfsBlockLoader implements BlockLoader {
    * Loading a block from HDFS.
    * Too large block size(>2GB) is not supported.
    */
-  public byte[] loadBlock() throws ConnectionFailedException, TokenDecodeFailedException, TransferFailedException {
-    final byte[] buf;
+  @Override
+  public void loadBlock() throws ConnectionFailedException, TokenDecodeFailedException, TransferFailedException {
+
     final Configuration conf = new HdfsConfiguration();
 
     // Allocate a Byte array of the Block size.
     if(blockSize > Integer.MAX_VALUE)
       throw new UnsupportedOperationException("Currently we don't support large(>2GB) block");
-    buf = new byte[(int)blockSize];
+    final byte[] buf = new byte[(int)blockSize];
 
     Iterator<HdfsDatanodeInfo> dnInfoIter = dnInfoList.iterator();
     do {
@@ -82,7 +86,7 @@ public class HdfsBlockLoader implements BlockLoader {
 
       // Declare socket and blockReader object to close them in the future.
       Socket socket = null;
-      BlockReader blockReader;
+      final BlockReader blockReader;
 
       try {
         // Connect to Datanode and create a Block reader
@@ -115,7 +119,7 @@ public class HdfsBlockLoader implements BlockLoader {
       break;
 
     } while(dnInfoIter.hasNext());
-    return buf;
+    data = buf;
   }
 
   /**
@@ -233,6 +237,15 @@ public class HdfsBlockLoader implements BlockLoader {
       } catch (IOException e1) {
         LOG.log(Level.WARNING, "Closing Socket failed. Retry anyway");
       }
+    }
+  }
+
+  @Override
+  public byte[] getData() throws BlockLoadingException {
+    if (data == null) {
+      throw new BlockLoadingException(totalRead);
+    } else {
+      return data;
     }
   }
 

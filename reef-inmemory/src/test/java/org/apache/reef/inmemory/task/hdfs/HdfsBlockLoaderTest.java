@@ -64,7 +64,7 @@ public class HdfsBlockLoaderTest {
    * This case covers the case to load a block successfully
    */
   @Test
-  public void testLoadBlock() throws IOException {
+  public void testLoadBlock() throws Exception {
     long blockSize = fs.getDefaultBlockSize(new Path(PATH));
 
     /*
@@ -85,7 +85,8 @@ public class HdfsBlockLoaderTest {
       Assert.assertEquals(0, loader.getBytesLoaded());
 
       // Load the data as a ByteBuffer
-      ByteBuffer loadedBuf = ByteBuffer.wrap(loader.loadBlock());
+      loader.loadBlock();
+      ByteBuffer loadedBuf = ByteBuffer.wrap(loader.getData());
 
       // Because the size of long is 8 bytes, the offset should be calculated as lIndex * 8
       for(long lIndex = 0; lIndex < block.getBlockSize() / LONG_BYTES; lIndex++) {

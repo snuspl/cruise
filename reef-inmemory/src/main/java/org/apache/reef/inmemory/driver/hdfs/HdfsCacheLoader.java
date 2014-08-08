@@ -79,25 +79,26 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
     fileMeta.setFileSize(locatedBlocks.getFileLength());
 
     for (final LocatedBlock locatedBlock : locatedBlocks.getLocatedBlocks()) {
-      final HdfsBlockId hdfsBlock = blockFactory.newBlockId(locatedBlock);
-      final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
-              HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
-      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos);
-      final BlockInfo cacheBlock = blockFactory.newBlockInfo(locatedBlock);
-
       final List<CacheNode> cacheNodes = cacheManager.getCaches();
       if (cacheNodes.size() == 0) {
         throw new IOException("Surf has zero caches");
       }
 
-      // TODO: add pinning
+      // Resolve replication policy
       final Action action = replicationPolicy.getReplicationAction(path.toString(), fileMeta);
+      final boolean pinned = action.getPin();
       final int numReplicas;
       if (replicationPolicy.isBroadcast(action)) {
         numReplicas = cacheNodes.size();
       } else {
         numReplicas = action.getFactor();
       }
+
+      final HdfsBlockId hdfsBlock = blockFactory.newBlockId(locatedBlock);
+      final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
+              HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
+      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos, pinned);
+      final BlockInfo cacheBlock = blockFactory.newBlockInfo(locatedBlock);
 
       final List<CacheNode> selectedNodes = cacheSelector.select(locatedBlock, cacheNodes, numReplicas);
       if (selectedNodes.size() == 0) {

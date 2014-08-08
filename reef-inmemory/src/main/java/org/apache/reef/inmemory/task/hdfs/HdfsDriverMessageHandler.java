@@ -1,15 +1,19 @@
 package org.apache.reef.inmemory.task.hdfs;
 
+import com.google.common.cache.Cache;
 import com.microsoft.reef.task.events.DriverMessage;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
+import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 import org.apache.reef.inmemory.task.DriverMessageHandler;
 import org.apache.reef.inmemory.task.InMemoryCache;
 
 import javax.inject.Inject;
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,13 +27,10 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
   private static final ObjectSerializableCodec<HdfsDriverTaskMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
 
   private final InMemoryCache cache;
-  private final EStage<BlockLoader> loadingStage;
 
   @Inject
-  public HdfsDriverMessageHandler(final InMemoryCache cache,
-                                  final EStage<BlockLoader> loadingStage) {
+  public HdfsDriverMessageHandler(final InMemoryCache cache) {
     this.cache = cache;
-    this.loadingStage = loadingStage;
   }
 
   @Override
@@ -40,10 +41,16 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
         LOG.log(Level.INFO, "Received load block msg");
         final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
         final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations());
-        loadingStage.onNext(loader);
+
+        try {
+          cache.load(loader, blockMsg.isPinned());
+        } catch (IOException e) {
+          LOG.log(Level.SEVERE, "Could not load block", e);
+        }
+
       } else if (msg.getClearMessage().isPresent()) {
         LOG.log(Level.INFO, "Received cache clear msg");
-        cache.clear();
+        // Invalidate only those not in pin cache, OR clear all
       }
     }
   }

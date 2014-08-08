@@ -14,11 +14,14 @@ public final class HdfsBlockMessage implements Serializable {
 
   private final HdfsBlockId blockId;
   private final List<HdfsDatanodeInfo> locations;
+  private final boolean pinned;
 
   public HdfsBlockMessage(final HdfsBlockId blockId,
-                          final List<HdfsDatanodeInfo> locations) {
+                          final List<HdfsDatanodeInfo> locations,
+                          final boolean pinned) {
     this.blockId = blockId;
     this.locations = locations;
+    this.pinned = pinned;
   }
 
   public HdfsBlockId getBlockId() {
@@ -27,5 +30,9 @@ public final class HdfsBlockMessage implements Serializable {
 
   public List<HdfsDatanodeInfo> getLocations() {
     return locations;
+  }
+
+  public boolean isPinned() {
+    return pinned;
   }
 }

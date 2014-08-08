@@ -2,12 +2,15 @@ package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -17,77 +20,66 @@ import java.util.logging.Logger;
 public final class InMemoryCacheImpl implements InMemoryCache {
   private final Logger LOG = Logger.getLogger(InMemoryCacheImpl.class.getName());
 
-  private final Cache<BlockId, byte[]> cache;
-  private final Cache<BlockId, BlockLoader> loading;
+  private final CacheStatistics statistics;
+  private final EStage<BlockLoader> loadingStage;
 
-  private final CacheStatistics statistics = new CacheStatistics();
+  private final Cache<BlockId, BlockLoader> cache;
+  private final Cache<BlockId, BlockLoader> pinCache;
 
   @Inject
-  public InMemoryCacheImpl() {
-    final int concurrencyLevel = 2; // synchronized ops (1)  + statistics (1) = 2
+  public InMemoryCacheImpl(final CacheStatistics statistics,
+                           final EStage<BlockLoader> loadingStage) {
     cache = CacheBuilder.newBuilder()
-        .concurrencyLevel(concurrencyLevel)
-        .build();
-    loading = CacheBuilder.newBuilder()
-        .concurrencyLevel(concurrencyLevel)
-        .build();
+            .softValues()
+            .concurrencyLevel(10)
+            .build();
+    pinCache = CacheBuilder.newBuilder()
+            .concurrencyLevel(10)
+            .build();
+
+    this.statistics = statistics;
+    this.loadingStage = loadingStage;
   }
 
   @Override
-  public synchronized byte[] get(final BlockId blockId)
+  public byte[] get(final BlockId blockId)
           throws BlockLoadingException, BlockNotFoundException {
-    final BlockLoader activeLoader = loading.getIfPresent(blockId);
-    if (activeLoader != null) {
-      throw new BlockLoadingException(activeLoader.getBytesLoaded());
+    final BlockLoader loader = cache.getIfPresent(blockId);
+    if (loader == null) {
+      throw new BlockNotFoundException();
     } else {
-      final byte[] data = cache.getIfPresent(blockId);
-      if (data == null) {
-        throw new BlockNotFoundException();
-      } else {
-        return data;
-      }
+      // getData throws BlockLoadingException if load has not completed
+      return loader.getData();
     }
   }
 
   @Override
-  public void load(BlockLoader blockLoader) throws IOException {
-    final BlockId blockId = blockLoader.getBlockId();
-    synchronized (this) {
-      if (loading.getIfPresent(blockId) != null) {
-        LOG.log(Level.WARNING, "Block load request for already loading block "+blockId);
-        return;
-      } else {
-        loading.put(blockId, blockLoader);
-
-        statistics.addLoadingMB((int)blockId.getBlockSize());
-      }
+  public void load(final BlockLoader loader, final boolean pin) throws IOException {
+    final Callable<BlockLoader> callable = new BlockLoaderCaller(loader, pin, pinCache);
+    final BlockLoader returnedLoader;
+    try {
+      returnedLoader = cache.get(loader.getBlockId(), callable);
+    } catch (ExecutionException e) {
+      throw new IOException(e);
     }
 
-    final byte[] data = blockLoader.loadBlock();
-
-    synchronized (this) {
-      statistics.subtractLoadingMB((int)blockId.getBlockSize());
-
-      if (loading.getIfPresent(blockId) == null) {
-        LOG.log(Level.WARNING, "Block load completed but no longer needed "+blockId);
-      } else {
-        loading.invalidate(blockId);
-
-        cache.put(blockId, data);
-        statistics.addCacheMB((int) blockId.getBlockSize());
-      }
+    // Only run loadBlock if our loader entered the cache
+    if (loader == returnedLoader) {
+      LOG.log(Level.INFO, "Add loading block {0}", loader.getBlockId());
+      loadingStage.onNext(loader);
     }
   }
 
   @Override
-  public synchronized void clear() {
+  public void clear() {
     cache.invalidateAll();
+    pinCache.invalidateAll();
 
     statistics.resetCacheMB();
   }
 
   @Override
-  public synchronized CacheStatistics getStatistics() {
+  public CacheStatistics getStatistics() {
     return statistics;
   }
 }
