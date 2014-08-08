@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
@@ -28,13 +29,14 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   @Inject
   public InMemoryCacheImpl(final CacheStatistics statistics,
-                           final EStage<BlockLoader> loadingStage) {
+                           final EStage<BlockLoader> loadingStage,
+                           final @Parameter(CacheParameters.NumServerThreads.class) int numThreads) {
     cache = CacheBuilder.newBuilder()
             .softValues()
-            .concurrencyLevel(10)
+            .concurrencyLevel(numThreads)
             .build();
     pinCache = CacheBuilder.newBuilder()
-            .concurrencyLevel(10)
+            .concurrencyLevel(numThreads)
             .build();
 
     this.statistics = statistics;
@@ -75,7 +77,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     cache.invalidateAll();
     pinCache.invalidateAll();
 
-    statistics.resetCacheMB();
+    statistics.resetCacheBytes();
   }
 
   @Override

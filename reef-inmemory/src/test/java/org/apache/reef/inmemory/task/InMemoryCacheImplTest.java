@@ -1,14 +1,11 @@
 package org.apache.reef.inmemory.task;
 
-import com.google.common.cache.Cache;
 import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -20,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
@@ -37,7 +33,7 @@ public final class InMemoryCacheImplTest {
   public void setUp() {
     statistics = new CacheStatistics();
     loadingStage = new MockStage(statistics);
-    cache = new InMemoryCacheImpl(statistics, loadingStage);
+    cache = new InMemoryCacheImpl(statistics, loadingStage, 3);
   }
 
   private BlockId randomBlockId(long length) {
@@ -127,12 +123,12 @@ public final class InMemoryCacheImplTest {
     final BlockLoader loader = mockBlockLoader(blockId, buffer);
 
     cache.load(loader, false);
-    assertEquals(buffer.length, cache.getStatistics().getCacheMB());
-    assertEquals(0, cache.getStatistics().getLoadingMB());
+    assertEquals(buffer.length, cache.getStatistics().getCacheBytes());
+    assertEquals(0, cache.getStatistics().getLoadingBytes());
 
     cache.clear();
-    assertEquals(0, cache.getStatistics().getCacheMB());
-    assertEquals(0, cache.getStatistics().getLoadingMB());
+    assertEquals(0, cache.getStatistics().getCacheBytes());
+    assertEquals(0, cache.getStatistics().getLoadingBytes());
   }
 
   /**
@@ -217,9 +213,9 @@ public final class InMemoryCacheImplTest {
           // First test if there is a block not found exception as expected
           try {
             cache.get(randomId);
-            fail("Expected BlockNotFoundException");
+            fail("Expected BlockNotFoundException but did not get an exception");
           } catch (BlockLoadingException e1) {
-            fail("Expected BlockNotFoundException");
+            fail("Expected BlockNotFoundException but received BlockLoadingException");
           } catch (BlockNotFoundException e1) {
             // Expected
           }
@@ -365,7 +361,7 @@ public final class InMemoryCacheImplTest {
       System.out.println("Start load while sleeping");
 
       try {
-        Thread.sleep(milliseconds); // Sleep 3 seconds
+        Thread.sleep(milliseconds);
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
       }
@@ -377,11 +373,6 @@ public final class InMemoryCacheImplTest {
     @Override
     public BlockId getBlockId() {
       return blockId;
-    }
-
-    @Override
-    public long getBytesLoaded() {
-      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -415,11 +406,6 @@ public final class InMemoryCacheImplTest {
     @Override
     public BlockId getBlockId() {
       return blockId;
-    }
-
-    @Override
-    public long getBytesLoaded() {
-      throw new UnsupportedOperationException();
     }
 
     @Override

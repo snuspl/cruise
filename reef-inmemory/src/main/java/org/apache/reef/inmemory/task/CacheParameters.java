@@ -19,7 +19,7 @@ public final class CacheParameters {
   public static final class Timeout implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Number of threads assigned to the Cache server", short_name = "cache_server_threads", default_value = "3")
+  @NamedParameter(doc = "Number of threads assigned to the Cache server", short_name = "cache_server_threads", default_value = "10")
   public static class NumServerThreads implements Name<Integer>{
   }
 

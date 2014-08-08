@@ -5,49 +5,49 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A set of statistics for the Cache.
- * - cacheMB: total amount of memory stored in the cache
- * - loadingMB: amount of memory currently being loading into the cache
+ * - cacheBytes: total amount of memory stored in the cache
+ * - loadingBytes: amount of memory currently being loading into the cache
  */
 public final class CacheStatistics implements Serializable {
 
-  private AtomicLong cacheMB = new AtomicLong();
-  private AtomicLong loadingMB = new AtomicLong();
+  private AtomicLong cacheBytes = new AtomicLong();
+  private AtomicLong loadingBytes = new AtomicLong();
 
-  public void addCacheMB(long amount) {
-    cacheMB.addAndGet(amount);
+  public void addCacheBytes(long amount) {
+    cacheBytes.addAndGet(amount);
   }
 
-  public void subtractCacheMB(long amount) {
-    cacheMB.addAndGet(-amount);
+  public void subtractCacheBytes(long amount) {
+    cacheBytes.addAndGet(-amount);
   }
 
-  public void resetCacheMB() {
-    cacheMB.set(0);
+  public void resetCacheBytes() {
+    cacheBytes.set(0);
   }
 
-  public void addLoadingMB(long amount) {
-    loadingMB.addAndGet(amount);
+  public void addLoadingBytes(long amount) {
+    loadingBytes.addAndGet(amount);
   }
 
-  public void subtractLoadingMB(long amount) {
-    loadingMB.addAndGet(-amount);
+  public void subtractLoadingBytes(long amount) {
+    loadingBytes.addAndGet(-amount);
   }
 
-  public void resetLoadingMB() {
-    loadingMB.set(0);
+  public void resetLoadingBytes() {
+    loadingBytes.set(0);
   }
 
-  public long getCacheMB() {
-    return cacheMB.get();
+  public long getCacheBytes() {
+    return cacheBytes.get();
   }
 
-  public long getLoadingMB() {
-    return loadingMB.get();
+  public long getLoadingBytes() {
+    return loadingBytes.get();
   }
 
   @Override
   public String toString() {
     return String.format("{ cache : %d, loading : %d }",
-            cacheMB.get(), loadingMB.get());
+            cacheBytes.get(), loadingBytes.get());
   }
 }

@@ -82,7 +82,6 @@ public class HdfsBlockLoaderTest {
 
       // Instantiate HdfsBlockLoader via TANG
       BlockLoader loader = new HdfsBlockLoader(blockId, datanodeInfo);
-      Assert.assertEquals(0, loader.getBytesLoaded());
 
       // Load the data as a ByteBuffer
       loader.loadBlock();
@@ -92,7 +91,6 @@ public class HdfsBlockLoaderTest {
       for(long lIndex = 0; lIndex < block.getBlockSize() / LONG_BYTES; lIndex++) {
         Assert.assertEquals(String.format("Test the %d th long in %d th block", lIndex, blockIndex), lIndex + blockIndex, loadedBuf.getLong((int) lIndex * LONG_BYTES));
       }
-      Assert.assertEquals(blockSize, loader.getBytesLoaded());
     }
   }
 

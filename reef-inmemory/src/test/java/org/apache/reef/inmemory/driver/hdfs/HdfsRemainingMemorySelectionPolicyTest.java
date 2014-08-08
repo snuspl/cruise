@@ -29,8 +29,8 @@ public final class HdfsRemainingMemorySelectionPolicyTest {
 
   private CacheNode getRandomCacheNode() {
     CacheStatistics statistics = new CacheStatistics();
-    statistics.addCacheMB(random.nextInt(8095)+1);
-    statistics.addLoadingMB(random.nextInt(8095)+1);
+    statistics.addCacheBytes(random.nextInt(8095) + 1);
+    statistics.addLoadingBytes(random.nextInt(8095) + 1);
 
     CacheNode cacheNode = mock(CacheNode.class);
     when(cacheNode.getLatestStatistics()).thenReturn(statistics);
@@ -41,8 +41,8 @@ public final class HdfsRemainingMemorySelectionPolicyTest {
 
   private CacheNode getFreshCacheNode() {
     CacheStatistics statistics = new CacheStatistics();
-    statistics.addCacheMB(0);
-    statistics.addLoadingMB(0);
+    statistics.addCacheBytes(0);
+    statistics.addLoadingBytes(0);
 
     CacheNode cacheNode = mock(CacheNode.class);
     when(cacheNode.getLatestStatistics()).thenReturn(statistics);
@@ -54,7 +54,7 @@ public final class HdfsRemainingMemorySelectionPolicyTest {
 
   private long getRemaining(CacheNode node) {
     return node.getMemory() -
-            (node.getLatestStatistics().getCacheMB() + node.getLatestStatistics().getLoadingMB());
+            (node.getLatestStatistics().getCacheBytes() + node.getLatestStatistics().getLoadingBytes());
   }
 
   private List<CacheNode> getRandomCacheNodes(int size) {

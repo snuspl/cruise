@@ -86,7 +86,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
       // Resolve replication policy
       final Action action = replicationPolicy.getReplicationAction(path.toString(), fileMeta);
-      final boolean pinned = action.getPin();
+      final boolean pin = action.getPin();
       final int numReplicas;
       if (replicationPolicy.isBroadcast(action)) {
         numReplicas = cacheNodes.size();
@@ -97,7 +97,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       final HdfsBlockId hdfsBlock = blockFactory.newBlockId(locatedBlock);
       final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
               HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
-      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos, pinned);
+      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos, pin);
       final BlockInfo cacheBlock = blockFactory.newBlockInfo(locatedBlock);
 
       final List<CacheNode> selectedNodes = cacheSelector.select(locatedBlock, cacheNodes, numReplicas);

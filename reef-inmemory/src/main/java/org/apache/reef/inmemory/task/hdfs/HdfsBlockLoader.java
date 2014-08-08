@@ -16,13 +16,11 @@ import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 
-import javax.inject.Inject;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -247,10 +245,5 @@ public class HdfsBlockLoader implements BlockLoader {
     } else {
       return data;
     }
-  }
-
-  @Override
-  public long getBytesLoaded() {
-    return totalRead;
   }
 }

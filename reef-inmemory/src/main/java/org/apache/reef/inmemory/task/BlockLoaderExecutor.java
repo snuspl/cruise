@@ -32,24 +32,24 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
     // It seems possible either to send an message directly or
     // to keep the failure info and send via Heartbeat
     LOG.log(Level.INFO, "Start loading block {0}", loader.getBlockId());
-    statistics.addLoadingMB(loader.getBlockId().getBlockSize());
+    statistics.addLoadingBytes(loader.getBlockId().getBlockSize());
     try {
       loader.loadBlock();
 
-      statistics.addCacheMB(loader.getBlockId().getBlockSize());
-      statistics.subtractLoadingMB(loader.getBlockId().getBlockSize());
+      statistics.addCacheBytes(loader.getBlockId().getBlockSize());
+      statistics.subtractLoadingBytes(loader.getBlockId().getBlockSize());
       LOG.log(Level.INFO, "Finish loading block {0}", loader.getBlockId());
     } catch (ConnectionFailedException e) {
-      statistics.subtractLoadingMB(loader.getBlockId().getBlockSize());
+      statistics.subtractLoadingBytes(loader.getBlockId().getBlockSize());
       LOG.log(Level.SEVERE, "Failed to load block {0} because of connection failure", loader.getBlockId());
     } catch (TokenDecodeFailedException e) {
-      statistics.subtractLoadingMB(loader.getBlockId().getBlockSize());
+      statistics.subtractLoadingBytes(loader.getBlockId().getBlockSize());
       LOG.log(Level.SEVERE, "Failed to load block {0}, HdfsToken is not valid", loader.getBlockId());
     } catch (TransferFailedException e) {
-      statistics.subtractLoadingMB(loader.getBlockId().getBlockSize());
+      statistics.subtractLoadingBytes(loader.getBlockId().getBlockSize());
       LOG.log(Level.SEVERE, "An error occurred while transferring the block {0} from the Datanode", loader.getBlockId());
     } catch (IOException e) {
-      statistics.subtractLoadingMB(loader.getBlockId().getBlockSize());
+      statistics.subtractLoadingBytes(loader.getBlockId().getBlockSize());
       LOG.log(Level.SEVERE, "Unhandled Exception :", e.getCause());
     }
   }

@@ -1,19 +1,14 @@
 package org.apache.reef.inmemory.task.hdfs;
 
-import com.google.common.cache.Cache;
 import com.microsoft.reef.task.events.DriverMessage;
-import com.microsoft.wake.EStage;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
-import org.apache.reef.inmemory.task.BlockId;
-import org.apache.reef.inmemory.task.BlockLoader;
 import org.apache.reef.inmemory.task.DriverMessageHandler;
 import org.apache.reef.inmemory.task.InMemoryCache;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,7 +38,7 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
         final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations());
 
         try {
-          cache.load(loader, blockMsg.isPinned());
+          cache.load(loader, blockMsg.isPin());
         } catch (IOException e) {
           LOG.log(Level.SEVERE, "Could not load block", e);
         }
