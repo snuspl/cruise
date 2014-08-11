@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.common;
 
+import javax.inject.Inject;
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -9,6 +10,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * - loadingBytes: amount of memory currently being loading into the cache
  */
 public final class CacheStatistics implements Serializable {
+
+  @Inject
+  public CacheStatistics() {
+  }
 
   private AtomicLong cacheBytes = new AtomicLong();
   private AtomicLong loadingBytes = new AtomicLong();
