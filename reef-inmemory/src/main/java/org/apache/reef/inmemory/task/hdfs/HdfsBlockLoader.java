@@ -61,14 +61,20 @@ public class HdfsBlockLoader implements BlockLoader {
    * Too large block size(>2GB) is not supported.
    */
   @Override
-  public void loadBlock() throws ConnectionFailedException, TokenDecodeFailedException, TransferFailedException {
+  public void loadBlock() throws IOException {
 
     final Configuration conf = new HdfsConfiguration();
 
     // Allocate a Byte array of the Block size.
     if(blockSize > Integer.MAX_VALUE)
       throw new UnsupportedOperationException("Currently we don't support large(>2GB) block");
-    final byte[] buf = new byte[(int)blockSize];
+    final byte[] buf;
+    try {
+      buf = new byte[(int) blockSize];
+    } catch (OutOfMemoryError e) {
+      LOG.log(Level.SEVERE, "Closing BlockReader for block {0} from datanode at {1} has failed", e);
+      throw new IOException(e);
+    }
 
     Iterator<HdfsDatanodeInfo> dnInfoIter = dnInfoList.iterator();
     do {
