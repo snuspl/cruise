@@ -45,7 +45,7 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
 
       } else if (msg.getClearMessage().isPresent()) {
         LOG.log(Level.INFO, "Received cache clear msg");
-        // Invalidate only those not in pin cache, OR clear all
+        cache.clear();
       }
     }
   }
