@@ -10,10 +10,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
@@ -29,6 +26,8 @@ public final class InMemoryCacheImplTest {
   private EStage<BlockLoader> loadingStage;
   private InMemoryCache cache;
   private Random random = new Random();
+
+  private static final long maxMemory = Runtime.getRuntime().maxMemory();
 
   @Before
   public void setUp() {
@@ -115,7 +114,6 @@ public final class InMemoryCacheImplTest {
 
   /**
    * Test statistics after load
-   * TODO: test statistics during load
    */
   @Test
   public void testStatistics() throws Exception {
@@ -131,6 +129,43 @@ public final class InMemoryCacheImplTest {
     cache.clear();
     assertEquals(0, cache.getStatistics().getCacheBytes());
     assertEquals(0, cache.getStatistics().getLoadingBytes());
+  }
+
+  /**
+   * Test statistics during load
+   */
+  @Test
+  public void testStatisticsDuringLoad() throws InterruptedException {
+    final int numThreads = 2;
+    final ExecutorService e = Executors.newFixedThreadPool(numThreads);
+
+    final byte[] firstLoadBuffer = twos(1024);
+    final BlockId blockId = randomBlockId(firstLoadBuffer.length);
+    assertBlockNotFound(blockId);
+
+    // Start long-running block load
+    final AtomicInteger firstNumLoads = new AtomicInteger(0);
+    final BlockLoader firstLoader;
+    {
+      firstLoader = new SleepingBlockLoader(blockId, false, firstLoadBuffer, 3000, firstNumLoads);
+      e.submit(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            cache.load(firstLoader, false);
+          } catch (IOException e1) {
+            fail("IOException " + e1);
+          }
+        }
+      });
+    }
+
+    Thread.sleep(500); // Allow first block load to start
+
+    assertEquals(1024, cache.getStatistics().getLoadingBytes());
+    assertEquals(0, cache.getStatistics().getCacheBytes());
+    assertEquals(0, cache.getStatistics().getPinnedBytes());
+    assertEquals(0, cache.getStatistics().getEvictedBytes());
   }
 
   /**
@@ -256,15 +291,14 @@ public final class InMemoryCacheImplTest {
     }
   }
 
-
   /**
    * Test that pinning too many blocks gives an OutOfMemoryError.
    * If this test does not pass, then the unit test is running with too much memory!
-   * TODO: base the amount of memory added on the Runtime max memory * multiplier
    */
   @Test(expected=OutOfMemoryError.class)
   public void testTooManyPinned() throws Exception {
-    for (int i = 0; i < 20; i++) {
+    final long iterations = maxMemory / (128 * 1024 * 1024) * 2;
+    for (int i = 0; i < iterations; i++) {
       final byte[] buffer = ones(128 * 1024 * 1024);
       final BlockId blockId = randomBlockId(buffer.length);
       final BlockLoader loader = new MockBlockLoader(blockId, true, buffer);
@@ -279,7 +313,8 @@ public final class InMemoryCacheImplTest {
    */
   @Test
   public void testEviction() throws IOException {
-    for (int i = 0; i < 20; i++) {
+    final long iterations = maxMemory / (128 * 1024 * 1024) * 2;
+    for (int i = 0; i < iterations; i++) {
       final byte[] buffer = ones(128 * 1024 * 1024);
       final BlockId blockId = randomBlockId(buffer.length);
       final BlockLoader loader = new MockBlockLoader(blockId, false, buffer);
@@ -287,6 +322,46 @@ public final class InMemoryCacheImplTest {
       cache.load(loader, false);
       System.out.println("Loaded " + (128 * (i+1)) + "M");
     }
+  }
+
+  /**
+   * Test that adding 20 * 128 MB = 2.5 GB of blocks concurrently does not cause an OutOfMemory exception
+   */
+  @Test
+  public void testConcurrentEviction() throws IOException, ExecutionException, InterruptedException {
+
+    final int numThreads = 10;
+    final ExecutorService e = Executors.newFixedThreadPool(numThreads);
+
+    final int iterations = (int) (maxMemory / (128 * 1024 * 1024) * 2);
+
+    final BlockLoader[] loaders = new BlockLoader[iterations];
+    final Future<?>[] futures = new Future<?>[iterations];
+
+    for (int i = 0; i < iterations; i++) {
+      final int iteration = i;
+      futures[i] = e.submit(new Runnable() {
+        @Override
+        public void run() {
+          final byte[] buffer = ones(128 * 1024 * 1024);
+          final BlockId blockId = randomBlockId(buffer.length);
+          final BlockLoader loader = new MockBlockLoader(blockId, false, buffer);
+
+          try {
+            cache.load(loader, false);
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+          System.out.println("Loaded " + (128 * (iteration + 1)) + "M");
+        }
+      });
+    }
+
+    for (int i = 0; i < iterations; i++) {
+      futures[i].get();
+    }
+
+    assertTrue(true); // No exceptions were encountered
   }
 
   /**
@@ -303,7 +378,8 @@ public final class InMemoryCacheImplTest {
     cache.load(pinnedLoader, true);
     assertEquals(pinnedBuffer, cache.get(pinnedId));
 
-    for (int i = 0; i < 20; i++) {
+    final long iterations = maxMemory / (128 * 1024 * 1024) * 2;
+    for (int i = 0; i < iterations; i++) {
       final byte[] buffer = ones(128 * 1024 * 1024);
       final BlockId blockId = randomBlockId(buffer.length);
 
