@@ -39,13 +39,12 @@ public final class MemoryManager {
     boolean canLoad = false;
     while (!canLoad) {
 
-      // TODO: refactor into a memory management module
       final long loading = blockSize + statistics.getLoadingBytes();
       final long pinned = statistics.getPinnedBytes();
       canLoad = maxHeap - slack - loading - pinned > 0;
 
       if (!canLoad) {
-        LOG.log(Level.WARNING, "Unable to load block, maxHeap: " + maxHeap + ", loading: " + loading + ", pinned: " + pinned);
+        LOG.log(Level.WARNING, "Waiting to load block, maxHeap: " + maxHeap + ", loading: " + loading + ", pinned: " + pinned);
         try {
           wait();
         } catch (InterruptedException e) {
@@ -97,12 +96,19 @@ public final class MemoryManager {
   }
 
   /**
-   * Call on cache clear, to reset statistics.
-   * Loading bytes are not reset on a cache reset (it is subtracted as loaders finish).
+   * Call on pin cache removal.
+   * No actual memory gets freed up on pin removal, so no notification is given.
+   * Updates statistics.
+   * @param blockSize
    */
-  public synchronized void reset() {
-    statistics.resetCacheBytes();
-    statistics.resetPinnedBytes();
+  public synchronized void removePin(final long blockSize) {
+    statistics.subtractPinnedBytes(blockSize);
+  }
+
+  /**
+   * Clear statistics related to history, e.g. bytes evicted
+   */
+  public synchronized void clearHistory() {
     statistics.resetEvictedBytes();
   }
 

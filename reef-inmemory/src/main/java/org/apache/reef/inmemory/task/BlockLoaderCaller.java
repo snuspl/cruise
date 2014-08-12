@@ -22,7 +22,8 @@ public final class BlockLoaderCaller implements Callable<BlockLoader> {
   }
 
   /**
-   * This call will load a reference to the loader in the soft cache, but will not actually start the load.
+   * This call will load a reference to the loader in the soft cache.
+   * The actual loading is not initiated here, but rather by the BlockLoaderExecutor.
    * The call to pinCache will pin the BlockLoader, by adding it to a companion strong referenced cache.
    */
   @Override

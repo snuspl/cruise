@@ -41,6 +41,18 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     }
   };
 
+  /**
+   * Update statistics on cache removal
+   */
+  private final RemovalListener<BlockId, BlockLoader> pinRemovalListener = new RemovalListener<BlockId, BlockLoader>() {
+    @Override
+    public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
+      LOG.log(Level.FINE, "Removed pin: "+notification.getKey());
+      final long blockSize = notification.getKey().getBlockSize();
+      memoryManager.removePin(blockSize);
+    }
+  };
+
   @Inject
   public InMemoryCacheImpl(final MemoryManager memoryManager,
                            final EStage<BlockLoader> loadingStage,
@@ -51,6 +63,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
             .concurrencyLevel(numThreads)
             .build();
     pinCache = CacheBuilder.newBuilder()
+            .removalListener(pinRemovalListener)
             .concurrencyLevel(numThreads)
             .build();
 
@@ -92,7 +105,10 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     cache.invalidateAll();
     pinCache.invalidateAll();
 
-    memoryManager.reset();
+    cache.cleanUp();
+    pinCache.cleanUp();
+
+    memoryManager.clearHistory();
   }
 
   @Override
