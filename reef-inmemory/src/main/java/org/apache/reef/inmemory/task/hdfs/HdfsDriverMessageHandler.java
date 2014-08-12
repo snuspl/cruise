@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.task.hdfs;
 
 import com.microsoft.reef.task.events.DriverMessage;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
 import org.apache.reef.inmemory.task.DriverMessageHandler;
@@ -35,7 +36,7 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
       if (msg.getHdfsBlockMessage().isPresent()) {
         LOG.log(Level.INFO, "Received load block msg");
         final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
-        final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations());
+        final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations(), blockMsg.isPin());
 
         try {
           cache.load(loader, blockMsg.isPin());

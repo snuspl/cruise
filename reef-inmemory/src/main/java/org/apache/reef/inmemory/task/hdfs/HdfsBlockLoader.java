@@ -40,6 +40,7 @@ public class HdfsBlockLoader implements BlockLoader {
   private final ExtendedBlock block;
   private final List<HdfsDatanodeInfo> dnInfoList;
   private final long blockSize;
+  private final boolean pinned;
 
   private byte[] data = null;
   private int totalRead;
@@ -48,12 +49,14 @@ public class HdfsBlockLoader implements BlockLoader {
    * Constructor of BlockLoader
    */
   public HdfsBlockLoader(final HdfsBlockId id,
-                         final List<HdfsDatanodeInfo> infoList) {
+                         final List<HdfsDatanodeInfo> infoList,
+                         final boolean pin) {
     hdfsBlockId = id;
     block = new ExtendedBlock(id.getPoolId(), id.getBlockId(), id.getBlockSize(), id.getGenerationTimestamp());
     dnInfoList = infoList;
     blockSize = id.getBlockSize();
     totalRead = 0;
+    this.pinned = pin;
   }
 
   /**
@@ -68,13 +71,8 @@ public class HdfsBlockLoader implements BlockLoader {
     // Allocate a Byte array of the Block size.
     if(blockSize > Integer.MAX_VALUE)
       throw new UnsupportedOperationException("Currently we don't support large(>2GB) block");
-    final byte[] buf;
-    try {
-      buf = new byte[(int) blockSize];
-    } catch (OutOfMemoryError e) {
-      LOG.log(Level.SEVERE, "Closing BlockReader for block {0} from datanode at {1} has failed", e);
-      throw new IOException(e);
-    }
+
+    final byte[] buf = new byte[(int) blockSize];
 
     Iterator<HdfsDatanodeInfo> dnInfoIter = dnInfoList.iterator();
     do {
@@ -123,6 +121,7 @@ public class HdfsBlockLoader implements BlockLoader {
       break;
 
     } while(dnInfoIter.hasNext());
+
     data = buf;
   }
 
@@ -242,6 +241,11 @@ public class HdfsBlockLoader implements BlockLoader {
         LOG.log(Level.WARNING, "Closing Socket failed. Retry anyway");
       }
     }
+  }
+
+  @Override
+  public boolean isPinned() {
+    return pinned;
   }
 
   @Override

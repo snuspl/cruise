@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
-import org.apache.reef.inmemory.common.CacheStatistics;
 
 import java.util.concurrent.Callable;
 

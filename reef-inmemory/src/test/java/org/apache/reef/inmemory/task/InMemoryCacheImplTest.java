@@ -25,6 +25,7 @@ import static org.mockito.Mockito.*;
 public final class InMemoryCacheImplTest {
 
   private CacheStatistics statistics;
+  private MemoryManager memoryManager;
   private EStage<BlockLoader> loadingStage;
   private InMemoryCache cache;
   private Random random = new Random();
@@ -32,8 +33,9 @@ public final class InMemoryCacheImplTest {
   @Before
   public void setUp() {
     statistics = new CacheStatistics();
-    loadingStage = new MockStage(statistics);
-    cache = new InMemoryCacheImpl(statistics, loadingStage, 3);
+    memoryManager = new MemoryManager(statistics, 100 * 1024 * 1024);
+    loadingStage = new MockStage(memoryManager);
+    cache = new InMemoryCacheImpl(memoryManager, loadingStage, 3);
   }
 
   private BlockId randomBlockId(long length) {
@@ -155,7 +157,7 @@ public final class InMemoryCacheImplTest {
     final AtomicInteger firstNumLoads = new AtomicInteger(0);
     final BlockLoader firstLoader;
     {
-      firstLoader = new SleepingBlockLoader(blockId, firstLoadBuffer, 3000, firstNumLoads);
+      firstLoader = new SleepingBlockLoader(blockId, false, firstLoadBuffer, 3000, firstNumLoads);
 
       loaders[0] = firstLoader;
       futures[0] = e.submit(new Runnable() {
@@ -265,7 +267,7 @@ public final class InMemoryCacheImplTest {
     for (int i = 0; i < 20; i++) {
       final byte[] buffer = ones(128 * 1024 * 1024);
       final BlockId blockId = randomBlockId(buffer.length);
-      final BlockLoader loader = new MockBlockLoader(blockId, buffer);
+      final BlockLoader loader = new MockBlockLoader(blockId, true, buffer);
 
       cache.load(loader, true);
       System.out.println("Loaded " + (128 * (i+1)) + "M");
@@ -280,7 +282,7 @@ public final class InMemoryCacheImplTest {
     for (int i = 0; i < 20; i++) {
       final byte[] buffer = ones(128 * 1024 * 1024);
       final BlockId blockId = randomBlockId(buffer.length);
-      final BlockLoader loader = new MockBlockLoader(blockId, buffer);
+      final BlockLoader loader = new MockBlockLoader(blockId, false, buffer);
 
       cache.load(loader, false);
       System.out.println("Loaded " + (128 * (i+1)) + "M");
@@ -296,7 +298,7 @@ public final class InMemoryCacheImplTest {
     final byte[] pinnedBuffer = twos(128 * 1024 * 1024);
     final BlockId pinnedId = randomBlockId(pinnedBuffer.length);
 
-    final BlockLoader pinnedLoader = new MockBlockLoader(pinnedId, pinnedBuffer);
+    final BlockLoader pinnedLoader = new MockBlockLoader(pinnedId, true, pinnedBuffer);
 
     cache.load(pinnedLoader, true);
     assertEquals(pinnedBuffer, cache.get(pinnedId));
@@ -305,7 +307,7 @@ public final class InMemoryCacheImplTest {
       final byte[] buffer = ones(128 * 1024 * 1024);
       final BlockId blockId = randomBlockId(buffer.length);
 
-      final BlockLoader loader = new MockBlockLoader(blockId, buffer);
+      final BlockLoader loader = new MockBlockLoader(blockId, false, buffer);
 
       cache.load(loader, false);
       System.out.println("Loaded " + (128 * (i + 1)) + "M");
@@ -321,8 +323,8 @@ public final class InMemoryCacheImplTest {
 
     private final BlockLoaderExecutor blockLoaderExecutor;
 
-    public MockStage(final CacheStatistics statistics) {
-      this.blockLoaderExecutor = new BlockLoaderExecutor(statistics);
+    public MockStage(final MemoryManager memoryManager) {
+      this.blockLoaderExecutor = new BlockLoaderExecutor(memoryManager);
     }
 
     @Override
@@ -338,6 +340,7 @@ public final class InMemoryCacheImplTest {
   private static class SleepingBlockLoader implements BlockLoader {
 
     private final BlockId blockId;
+    private final boolean pinned;
     private final byte[] data;
     private final int milliseconds;
     private boolean loadDone;
@@ -345,10 +348,12 @@ public final class InMemoryCacheImplTest {
     private final AtomicInteger numLoadCalled;
 
     public SleepingBlockLoader(final BlockId blockId,
+                               final boolean pin,
                                final byte[] data,
                                final int milliseconds,
                                final AtomicInteger numLoadCalled) {
       this.blockId = blockId;
+      this.pinned = pin;
       this.data = data;
       this.milliseconds = milliseconds;
       this.numLoadCalled = numLoadCalled;
@@ -376,6 +381,11 @@ public final class InMemoryCacheImplTest {
     }
 
     @Override
+    public boolean isPinned() {
+      return pinned;
+    }
+
+    @Override
     public byte[] getData() throws BlockLoadingException {
       if (loadDone) {
         return data;
@@ -391,10 +401,12 @@ public final class InMemoryCacheImplTest {
   private static class MockBlockLoader implements BlockLoader {
 
     private final BlockId blockId;
+    private final boolean pinned;
     private final byte[] data;
 
-    public MockBlockLoader(final BlockId blockId, final byte[] data) {
+    public MockBlockLoader(final BlockId blockId, final boolean pin, final byte[] data) {
       this.blockId = blockId;
+      this.pinned = pin;
       this.data = data;
     }
 
@@ -406,6 +418,11 @@ public final class InMemoryCacheImplTest {
     @Override
     public BlockId getBlockId() {
       return blockId;
+    }
+
+    @Override
+    public boolean isPinned() {
+      return pinned;
     }
 
     @Override
