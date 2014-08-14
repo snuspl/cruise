@@ -24,7 +24,7 @@ public final class SurfMetaManager {
     this.cacheMessenger = cacheMessenger;
   }
 
-  public FileMeta getBlocks(Path path, User creator) throws FileNotFoundException, Throwable {
+  public FileMeta getFile(Path path, User creator) throws FileNotFoundException, Throwable {
     try {
       FileMeta metadata = metadataIndex.get(getAbsolutePath(path, creator));
       return metadata;

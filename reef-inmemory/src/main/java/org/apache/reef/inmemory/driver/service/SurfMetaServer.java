@@ -68,7 +68,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   @Override
   public FileMeta getFileMeta(final String path) throws FileNotFoundException, TException {
     try {
-      return metaManager.getBlocks(new Path(path), new User());
+      return metaManager.getFile(new Path(path), new User());
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);
     } catch (IOException e) {
@@ -98,12 +98,15 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     return metaManager.clear();
   }
 
-  // TODO: return loaded Task address and absolute path
   @Override
   public boolean load(final String path) throws TException {
     LOG.log(Level.INFO, "CLI load command for path {0}", path);
     try {
-      final List<BlockInfo> blocks = metaManager.getBlocks(new Path(path), new User()).getBlocks();
+      final List<BlockInfo> blocks = metaManager.getFile(new Path(path), new User()).getBlocks();
+      if (blocks == null) {
+        return true;
+      }
+
       for (final BlockInfo block : blocks) {
         LOG.log(Level.INFO, "Loaded block " + block.getBlockId() + " for " + path);
       }
@@ -112,7 +115,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       throw new FileNotFoundException("File not found at "+path);
     } catch (Throwable e) {
       LOG.log(Level.SEVERE, "Load failed for "+path, e);
-      return false;
+      throw new TException(e);
     }
   }
 

@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.client.cli;
 
+import com.google.common.net.HostAndPort;
 import com.microsoft.tang.Configuration;
 import com.microsoft.tang.Injector;
 import com.microsoft.tang.JavaConfigurationBuilder;
@@ -9,7 +10,8 @@ import com.microsoft.tang.annotations.NamedParameter;
 import com.microsoft.tang.exceptions.InjectionException;
 import com.microsoft.tang.formats.CommandLine;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.reef.inmemory.client.SurfFS;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -22,6 +24,8 @@ import org.apache.thrift.transport.TTransportException;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,14 +50,9 @@ public final class CLI {
   public static final class Command implements Name<String> {
   }
 
-  @NamedParameter(doc = "InMemory Cache driver hostname",
-          short_name = "hostname", default_value = "localhost")
-  public static final class Hostname implements Name<String> {
-  }
-
-  @NamedParameter(doc = "InMemory Cache driver port",
-          short_name = "port", default_value = "18000")
-  public static final class Port implements Name<Integer> {
+  @NamedParameter(doc = "InMemory Cache driver address",
+          short_name = "address", default_value = "yarn.reef-job-InMemory")
+  public static final class Address implements Name<String> {
   }
 
   @NamedParameter(doc = "InMemory new Cache Server memory amount in MB",
@@ -66,9 +65,14 @@ public final class CLI {
   public static final class Path implements Name<String> {
   }
 
-  private static SurfManagementService.Client getClient(String host, int port)
+  @NamedParameter(doc = "Recursively apply path", short_name = "recursive", default_value = "false")
+  public static final class Recursive implements Name<Boolean> {
+  }
+
+  public static SurfManagementService.Client getClient(String address)
           throws TTransportException {
-    final TTransport transport = new TFramedTransport(new TSocket(host, port));
+    final HostAndPort metaAddress = HostAndPort.fromString(address);
+    final TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
     transport.open();
     final TProtocol protocol = new TMultiplexedProtocol(
             new TCompactProtocol(transport),
@@ -76,14 +80,22 @@ public final class CLI {
     return new SurfManagementService.Client(protocol);
   }
 
+  private static SurfFS getFileSystem(String address) throws IOException {
+    final SurfFS surfFs = new SurfFS();
+    surfFs.initialize(URI.create("surf://" + address), new org.apache.hadoop.conf.Configuration());
+    return surfFs;
+  }
+
   private static boolean runCommand(final Configuration config)
           throws InjectionException, TException, IOException {
     final Injector injector = Tang.Factory.getTang().newInjector(config);
     final String cmd = injector.getNamedInstance(Command.class);
-    final String hostname = injector.getNamedInstance(Hostname.class);
-    final int port = injector.getNamedInstance(Port.class);
+    final String address = injector.getNamedInstance(Address.class);
     final int cacheMemory = injector.getNamedInstance(CacheServerMemory.class);
-    final SurfManagementService.Client client = getClient(hostname, port);
+
+    final SurfFS surfFs = getFileSystem(address);
+    final String rawAddress = surfFs.getMetaserverResolver().getAddress();
+    final SurfManagementService.Client client = getClient(rawAddress);
 
     if ("status".equals(cmd)) {
       final String status = client.getStatus();
@@ -95,7 +107,16 @@ public final class CLI {
       return true;
     } else if ("load".equals(cmd)) {
       final String path = injector.getNamedInstance(Path.class);
-      return client.load(path);
+      final boolean recursive = injector.getNamedInstance(Recursive.class);
+      if (recursive) {
+        final List<FileStatus> statuses = CLIUtils.getRecursiveList(surfFs, path);
+        for (final FileStatus status : statuses) {
+          client.load(status.getPath().toUri().getPath());
+        }
+        return true;
+      } else {
+        return client.load(path);
+      }
     } else if ("addcache".equals(cmd)) {
       final String result = client.addCacheNode(cacheMemory);
       return true;
@@ -119,9 +140,9 @@ public final class CLI {
             Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder)
             .registerShortNameOfClass(Command.class)
-            .registerShortNameOfClass(Hostname.class)
-            .registerShortNameOfClass(Port.class)
+            .registerShortNameOfClass(Address.class)
             .registerShortNameOfClass(Path.class)
+            .registerShortNameOfClass(Recursive.class)
             .registerShortNameOfClass(CacheServerMemory.class)
             .processCommandLine(args);
     return confBuilder.build();

@@ -271,6 +271,9 @@ public final class SurfFS extends FileSystem {
       final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath());
       long startRemaining = start;
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
+      if (iter == null) {
+        return new BlockLocation[0];
+      }
 
       // Find the block that contains start and add its locations
       while (iter.hasNext()) {
