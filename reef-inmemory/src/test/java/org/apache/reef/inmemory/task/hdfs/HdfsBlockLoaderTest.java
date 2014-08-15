@@ -64,7 +64,7 @@ public class HdfsBlockLoaderTest {
    * This case covers the case to load a block successfully
    */
   @Test
-  public void testLoadBlock() throws IOException {
+  public void testLoadBlock() throws Exception {
     long blockSize = fs.getDefaultBlockSize(new Path(PATH));
 
     /*
@@ -81,17 +81,16 @@ public class HdfsBlockLoaderTest {
       List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
 
       // Instantiate HdfsBlockLoader via TANG
-      BlockLoader loader = new HdfsBlockLoader(blockId, datanodeInfo);
-      Assert.assertEquals(0, loader.getBytesLoaded());
+      BlockLoader loader = new HdfsBlockLoader(blockId, datanodeInfo, false);
 
       // Load the data as a ByteBuffer
-      ByteBuffer loadedBuf = ByteBuffer.wrap(loader.loadBlock());
+      loader.loadBlock();
+      ByteBuffer loadedBuf = ByteBuffer.wrap(loader.getData());
 
       // Because the size of long is 8 bytes, the offset should be calculated as lIndex * 8
       for(long lIndex = 0; lIndex < block.getBlockSize() / LONG_BYTES; lIndex++) {
         Assert.assertEquals(String.format("Test the %d th long in %d th block", lIndex, blockIndex), lIndex + blockIndex, loadedBuf.getLong((int) lIndex * LONG_BYTES));
       }
-      Assert.assertEquals(blockSize, loader.getBytesLoaded());
     }
   }
 
@@ -105,7 +104,7 @@ public class HdfsBlockLoaderTest {
     HdfsBlockId blockId = blockFactory.newBlockId(block);
     HdfsBlockId dummyBlockId = new HdfsBlockId(blockId.getBlockId(), Integer.MAX_VALUE+(long)1, blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
-    BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo);
+    BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false);
     loader.loadBlock();
   }
 
@@ -120,7 +119,7 @@ public class HdfsBlockLoaderTest {
     HdfsBlockId blockId = blockFactory.newBlockId(block);
     List<HdfsDatanodeInfo> dummyDatanodeInfo = new ArrayList<HdfsDatanodeInfo>();
     dummyDatanodeInfo.add(new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", "", 0, 0, 0, 0));
-    BlockLoader loader = new HdfsBlockLoader(blockId, dummyDatanodeInfo);
+    BlockLoader loader = new HdfsBlockLoader(blockId, dummyDatanodeInfo, false);
     loader.loadBlock();
   }
 
@@ -135,7 +134,7 @@ public class HdfsBlockLoaderTest {
     HdfsBlockId blockId = blockFactory.newBlockId(block);
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     datanodeInfo.add(0, new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", "", 0, 0, 0, 0));
-    BlockLoader loader = new HdfsBlockLoader(blockId, datanodeInfo);
+    BlockLoader loader = new HdfsBlockLoader(blockId, datanodeInfo, false);
     loader.loadBlock();
 
   }
@@ -151,7 +150,7 @@ public class HdfsBlockLoaderTest {
     HdfsBlockId blockId = blockFactory.newBlockId(block);
     HdfsBlockId dummyBlockId = new HdfsBlockId((long)-1, blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
-    BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo);
+    BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false);
     loader.loadBlock();
   }
 
@@ -166,7 +165,7 @@ public class HdfsBlockLoaderTest {
     HdfsBlockId blockId = blockFactory.newBlockId(block);
     HdfsBlockId dummyBlockId = new HdfsBlockId(blockId.getBlockId(), blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), "");
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
-    BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo);
+    BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false);
     loader.loadBlock();
   }
 

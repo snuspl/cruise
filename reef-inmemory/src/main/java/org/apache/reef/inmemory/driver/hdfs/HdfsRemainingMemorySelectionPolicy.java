@@ -11,14 +11,14 @@ import java.util.logging.Logger;
 /**
  * Selects the CacheNodes with the most memory remaining
  */
-public final class HdfsMemoryRemainingSelectionPolicy implements HdfsCacheSelectionPolicy {
+public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelectionPolicy {
 
-  private static final Logger LOG = Logger.getLogger(HdfsMemoryRemainingSelectionPolicy.class.getName());
+  private static final Logger LOG = Logger.getLogger(HdfsRemainingMemorySelectionPolicy.class.getName());
 
   private final RemainingComparator comparator = new RemainingComparator();
 
   @Inject
-  public HdfsMemoryRemainingSelectionPolicy() {
+  public HdfsRemainingMemorySelectionPolicy() {
   }
 
   @Override
@@ -53,16 +53,16 @@ public final class HdfsMemoryRemainingSelectionPolicy implements HdfsCacheSelect
 
     @Override
     public int compare(CacheNode n1, CacheNode n2) {
-      final int used1 = n1.getLatestStatistics().getCacheMB() +
-              n1.getLatestStatistics().getLoadingMB();
-      final int remaining1 = n1.getMemory() - used1;
+      final long used1 = n1.getLatestStatistics().getCacheBytes() +
+              n1.getLatestStatistics().getLoadingBytes();
+      final long remaining1 = n1.getMemory() - used1;
 
-      final int used2 = n2.getLatestStatistics().getCacheMB() +
-              n2.getLatestStatistics().getLoadingMB();
-      final int remaining2 = n2.getMemory() - used2;
+      final long used2 = n2.getLatestStatistics().getCacheBytes() +
+              n2.getLatestStatistics().getLoadingBytes();
+      final long remaining2 = n2.getMemory() - used2;
 
       if (remaining1 != remaining2) {
-        return remaining1 - remaining2;
+        return Long.compare(remaining1, remaining2);
       } else {
         // Break ties using taskId
         return n1.getTaskId().compareTo(n2.getTaskId());

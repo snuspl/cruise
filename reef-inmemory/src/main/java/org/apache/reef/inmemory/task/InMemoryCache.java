@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.task;
 
 import org.apache.reef.inmemory.common.CacheStatistics;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
@@ -24,10 +23,11 @@ public interface InMemoryCache {
    * Load data into the cache using the given block loader.
    * For efficiency reasons, implementations should assure that
    * multiple block loaders do not simultaneously load the same block.
-   * @param fileBlock
-   * @param blockLoader
+   * @param loader The FS-specific block loader
+   * @param pin Whether to pin the block
+   * @throws IOException If block loading fails
    */
-  public void load(BlockLoader blockLoader) throws IOException;
+  public void load(BlockLoader loader, boolean pin) throws IOException;
 
   /**
    * Clears the cache

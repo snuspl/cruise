@@ -55,7 +55,7 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
           .bindImplementation(CacheLoader.class, HdfsCacheLoader.class)
           .bindImplementation(CacheMessenger.class, HdfsCacheMessenger.class)
           .bindImplementation(CacheManager.class, CacheManagerImpl.class)
-          .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsMemoryRemainingSelectionPolicy.class)
+          .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsRemainingMemorySelectionPolicy.class)
           .bindImplementation(ReplicationPolicy.class, ReplicationPolicyImpl.class)
           .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
           .build();

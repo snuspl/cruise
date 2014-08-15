@@ -17,7 +17,7 @@ import static org.mockito.Mockito.when;
 /**
  * Test simple random policy
  */
-public final class HdfsMemoryRemainingSelectionPolicyTest {
+public final class HdfsRemainingMemorySelectionPolicyTest {
 
   private static final Random random = new Random();
   private static int nodeId = 0;
@@ -29,8 +29,8 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
 
   private CacheNode getRandomCacheNode() {
     CacheStatistics statistics = new CacheStatistics();
-    statistics.addCacheMB(random.nextInt(8095)+1);
-    statistics.addLoadingMB(random.nextInt(8095)+1);
+    statistics.addCacheBytes(random.nextInt(8095) + 1);
+    statistics.addLoadingBytes(random.nextInt(8095) + 1);
 
     CacheNode cacheNode = mock(CacheNode.class);
     when(cacheNode.getLatestStatistics()).thenReturn(statistics);
@@ -41,8 +41,8 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
 
   private CacheNode getFreshCacheNode() {
     CacheStatistics statistics = new CacheStatistics();
-    statistics.addCacheMB(0);
-    statistics.addLoadingMB(0);
+    statistics.addCacheBytes(0);
+    statistics.addLoadingBytes(0);
 
     CacheNode cacheNode = mock(CacheNode.class);
     when(cacheNode.getLatestStatistics()).thenReturn(statistics);
@@ -52,9 +52,9 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
   }
 
 
-  private int getRemaining(CacheNode node) {
+  private long getRemaining(CacheNode node) {
     return node.getMemory() -
-            (node.getLatestStatistics().getCacheMB() + node.getLatestStatistics().getLoadingMB());
+            (node.getLatestStatistics().getCacheBytes() + node.getLatestStatistics().getLoadingBytes());
   }
 
   private List<CacheNode> getRandomCacheNodes(int size) {
@@ -78,7 +78,7 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
    */
   @Test
   public void testAllTied() {
-    final HdfsMemoryRemainingSelectionPolicy policy = new HdfsMemoryRemainingSelectionPolicy();
+    final HdfsRemainingMemorySelectionPolicy policy = new HdfsRemainingMemorySelectionPolicy();
 
     final List<CacheNode> nodes = getFreshCacheNodes(10);
     final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes), numReplicas);
@@ -91,14 +91,14 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
    */
   @Test
   public void testLessThanDefault() {
-    final HdfsMemoryRemainingSelectionPolicy policy = new HdfsMemoryRemainingSelectionPolicy();
+    final HdfsRemainingMemorySelectionPolicy policy = new HdfsRemainingMemorySelectionPolicy();
 
     final List<CacheNode> nodes = getRandomCacheNodes(2);
     final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes), numReplicas);
     assertTrue(nodes.containsAll(selected));
     assertEquals(2, selected.size());
 
-    final int selectedRemaining = getRemaining(selected.get(0));
+    final long selectedRemaining = getRemaining(selected.get(0));
     for (final CacheNode node : nodes) {
       if (!selected.contains(node)) {
         assertTrue(selectedRemaining >= getRemaining(node));
@@ -111,7 +111,7 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
    */
   @Test
   public void testLargestSelected() {
-    final HdfsMemoryRemainingSelectionPolicy policy = new HdfsMemoryRemainingSelectionPolicy();
+    final HdfsRemainingMemorySelectionPolicy policy = new HdfsRemainingMemorySelectionPolicy();
     final List<CacheNode> nodes = getRandomCacheNodes(100);
 
     final List<CacheNode> selected = policy.select(getMockBlock(), new ArrayList<>(nodes), numReplicas);
@@ -119,7 +119,7 @@ public final class HdfsMemoryRemainingSelectionPolicyTest {
     assertEquals(numReplicas, selected.size());
 
     for (final CacheNode sel : selected) {
-      final int selectedRemaining = getRemaining(sel);
+      final long selectedRemaining = getRemaining(sel);
       for (final CacheNode node : nodes) {
         if (!selected.contains(node)) {
           assertTrue(selectedRemaining >= getRemaining(node));

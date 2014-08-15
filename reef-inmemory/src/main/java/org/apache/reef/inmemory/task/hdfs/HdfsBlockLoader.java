@@ -10,12 +10,12 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.token.Token;
+import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 
-import javax.inject.Inject;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -40,33 +40,39 @@ public class HdfsBlockLoader implements BlockLoader {
   private final ExtendedBlock block;
   private final List<HdfsDatanodeInfo> dnInfoList;
   private final long blockSize;
+  private final boolean pinned;
 
+  private byte[] data = null;
   private int totalRead;
 
   /**
    * Constructor of BlockLoader
    */
   public HdfsBlockLoader(final HdfsBlockId id,
-                         final List<HdfsDatanodeInfo> infoList) {
+                         final List<HdfsDatanodeInfo> infoList,
+                         final boolean pin) {
     hdfsBlockId = id;
     block = new ExtendedBlock(id.getPoolId(), id.getBlockId(), id.getBlockSize(), id.getGenerationTimestamp());
     dnInfoList = infoList;
     blockSize = id.getBlockSize();
     totalRead = 0;
+    this.pinned = pin;
   }
 
   /**
    * Loading a block from HDFS.
    * Too large block size(>2GB) is not supported.
    */
-  public byte[] loadBlock() throws ConnectionFailedException, TokenDecodeFailedException, TransferFailedException {
-    final byte[] buf;
+  @Override
+  public void loadBlock() throws IOException {
+
     final Configuration conf = new HdfsConfiguration();
 
     // Allocate a Byte array of the Block size.
     if(blockSize > Integer.MAX_VALUE)
       throw new UnsupportedOperationException("Currently we don't support large(>2GB) block");
-    buf = new byte[(int)blockSize];
+
+    final byte[] buf = new byte[(int) blockSize];
 
     Iterator<HdfsDatanodeInfo> dnInfoIter = dnInfoList.iterator();
     do {
@@ -82,7 +88,7 @@ public class HdfsBlockLoader implements BlockLoader {
 
       // Declare socket and blockReader object to close them in the future.
       Socket socket = null;
-      BlockReader blockReader;
+      final BlockReader blockReader;
 
       try {
         // Connect to Datanode and create a Block reader
@@ -115,7 +121,8 @@ public class HdfsBlockLoader implements BlockLoader {
       break;
 
     } while(dnInfoIter.hasNext());
-    return buf;
+
+    data = buf;
   }
 
   /**
@@ -237,7 +244,16 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   @Override
-  public long getBytesLoaded() {
-    return totalRead;
+  public boolean isPinned() {
+    return pinned;
+  }
+
+  @Override
+  public byte[] getData() throws BlockLoadingException {
+    if (data == null) {
+      throw new BlockLoadingException(totalRead);
+    } else {
+      return data;
+    }
   }
 }
