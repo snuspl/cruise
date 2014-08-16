@@ -10,14 +10,17 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * Utility methods for use by the CLI
+ */
 public final class CLIUtils {
 
   /**
    * Return the recursive list of files under a directory.
-   * If the pathString provided is not a directory, an empty list is provided with that status.
+   * If the pathString provided is not a directory, a list with only the status of that path is returned.
    * @param surfFs
-   * @param pathString Path the recursively list
-   * @return
+   * @param pathString Path to recursively list
+   * @return Recursive constructed list of files
    * @throws IOException
    * @throws TException
    */

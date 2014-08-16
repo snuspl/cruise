@@ -21,6 +21,9 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
+/**
+ * Test CLI utility methods
+ */
 public final class CLIUtilsTest {
 
   private static MiniDFSCluster cluster;
@@ -32,6 +35,10 @@ public final class CLIUtilsTest {
   private final static String[] dirPaths = new String[] {"/1", "/1/2", "/1/2/3"};
   private final static String[] filePaths = new String[] {"A", "B", "C"};
 
+  /**
+   * Setup base mini DFS cluster once, because it takes a long time.
+   * Tests should not run any destructive operations on the base DFS.
+   */
   @BeforeClass
   public static void setUpClass() throws Exception {
     Configuration hdfsConfig = new HdfsConfiguration();
@@ -61,6 +68,9 @@ public final class CLIUtilsTest {
     }
   }
 
+  /**
+   * Test that returned recursive listing is correct when given a directory
+   */
   @Test
   public void testRecursiveList() throws Exception {
     final List<FileStatus> fileList = CLIUtils.getRecursiveList(surfFs, dirPaths[0]);
@@ -76,6 +86,9 @@ public final class CLIUtilsTest {
     }
   }
 
+  /**
+   * Test that returned recursive listing is correct when given a file: only the listing for the file should be returned
+   */
   @Test
   public void testSingleFileList() throws Exception {
     final String file = dirPaths[0] + "/" + filePaths[0];
@@ -84,8 +97,11 @@ public final class CLIUtilsTest {
     assertEquals(file, fileList.get(0).getPath().toUri().getPath());
   }
 
+  /**
+   * Test that FileNotFoundException is thrown for a path that does not exist
+   */
   @Test(expected = FileNotFoundException.class)
-  public void testNonExistentList() throws IOException, TException {
+  public void testNonExistentList() throws Exception {
     final List<FileStatus> fileList = CLIUtils.getRecursiveList(surfFs, "/nonexistent/path");
   }
 }
