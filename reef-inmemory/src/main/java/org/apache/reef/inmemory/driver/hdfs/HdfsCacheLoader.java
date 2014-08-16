@@ -6,6 +6,7 @@ import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
@@ -72,7 +73,12 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   @Override
   public FileMeta load(Path path) throws FileNotFoundException, IOException {
     LOG.log(Level.INFO, "Load in memory: {0}", path);
-    final long len = dfsClient.getFileInfo(path.toString()).getLen();
+    // getFileInfo returns null if FileNotFound, as stated in its javadoc
+    final HdfsFileStatus hdfsFileStatus = dfsClient.getFileInfo(path.toString());
+    if (hdfsFileStatus == null) {
+      throw new FileNotFoundException(path.toString());
+    }
+    final long len = hdfsFileStatus.getLen();
     final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0, len);
 
     final FileMeta fileMeta = new FileMeta();

@@ -80,31 +80,21 @@ public final class HdfsCacheLoaderTest {
   /**
    * Test load of a non-existing path correctly throws FileNotFoundException
    */
-  @Test
-  public void testLoadNonexistingPath() {
-    try {
-      loader.load(new Path("/nonexistent/path"));
-      fail("FileNotFoundException was expected");
-    } catch (Exception e) {
-      assertTrue("Unexpected exception "+e, e instanceof FileNotFoundException);
-    }
+  @Test(expected = FileNotFoundException.class)
+  public void testLoadNonexistingPath() throws IOException {
+    loader.load(new Path("/nonexistent/path"));
   }
 
   /**
    * Test load of a directory (not a file) correctly throws FileNotFoundException
    * @throws IOException
    */
-  @Test
+  @Test(expected = FileNotFoundException.class)
   public void testLoadDirectory() throws IOException {
     final Path directory = new Path("/existing/directory");
 
     fs.mkdirs(directory);
-    try {
-      final FileMeta fileMeta = loader.load(directory);
-      fail("FileNotFoundException was expected");
-    } catch (Exception e) {
-      assertTrue("Unexpected exception "+e, e instanceof FileNotFoundException);
-    }
+    final FileMeta fileMeta = loader.load(directory);
   }
 
   /**

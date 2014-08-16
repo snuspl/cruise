@@ -52,9 +52,9 @@ public final class SurfMetaManagerTest extends TestCase {
    */
   @Test
   public void testGet() throws Throwable {
-    metaManager.getBlocks(path, user);
+    metaManager.getFile(path, user);
     verify(cacheLoader, times(1)).load(path);
-    metaManager.getBlocks(path, user);
+    metaManager.getFile(path, user);
     verify(cacheLoader, times(1)).load(path);
   }
 
@@ -66,7 +66,7 @@ public final class SurfMetaManagerTest extends TestCase {
   @Test
   public void testClear() throws Throwable {
     assertEquals(0, metaManager.clear());
-    metaManager.getBlocks(path, user);
+    metaManager.getFile(path, user);
     assertEquals(1, metaManager.clear());
     assertEquals(0, metaManager.clear());
   }
