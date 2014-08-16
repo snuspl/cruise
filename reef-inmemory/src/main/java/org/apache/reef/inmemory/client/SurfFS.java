@@ -258,6 +258,7 @@ public final class SurfFS extends FileSystem {
 
   /**
    * Note: calling getFileBlockLocations triggers a pre-load on the file, if it's not yet in Surf
+   * @return The {@code BlockLocation}s of blocks containing file. It returns an empty array if the file size is 0.
    */
   @Override
   public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
@@ -274,6 +275,10 @@ public final class SurfFS extends FileSystem {
       if (iter == null) {
         return new BlockLocation[0];
       }
+
+      // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
+      if(iter==null)
+        return new BlockLocation[0];
 
       // Find the block that contains start and add its locations
       while (iter.hasNext()) {

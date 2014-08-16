@@ -72,8 +72,8 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
   @Override
   public FileMeta load(Path path) throws FileNotFoundException, IOException {
     LOG.log(Level.INFO, "Load in memory: {0}", path);
-
-    final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0);
+    final long len = dfsClient.getFileInfo(path.toString()).getLen();
+    final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0, len);
 
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFileSize(locatedBlocks.getFileLength());

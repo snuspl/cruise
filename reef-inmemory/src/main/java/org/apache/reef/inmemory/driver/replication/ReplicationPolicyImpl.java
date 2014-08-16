@@ -98,7 +98,7 @@ public final class ReplicationPolicyImpl implements ReplicationPolicy {
       }
     } else if ("size".equals(condition.getType().toString())) {
 
-      final int operand;
+      final long operand;
       try {
         operand = parseSize(condition.getOperand().toString());
       } catch (NumberFormatException e) {
@@ -123,11 +123,11 @@ public final class ReplicationPolicyImpl implements ReplicationPolicy {
     return false;
   }
 
-  private int parseSize(String s) throws NumberFormatException {
+  private long parseSize(String s) throws NumberFormatException {
     final Matcher matcher = sizePattern.matcher(s);
     if (matcher.find()) {
       final int number = Integer.parseInt(matcher.group(1));
-      final int multiplier;
+      final long multiplier;
 
       if (matcher.group(2) == null) {
         multiplier = 1;
