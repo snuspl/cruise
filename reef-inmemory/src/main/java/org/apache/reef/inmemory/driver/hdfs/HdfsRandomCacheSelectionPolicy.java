@@ -19,16 +19,16 @@ public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionP
   }
 
   /**
-   * Return random nodes. The number selected is min of numReplicas and tasks.size()
+   * Return random nodes. The number selected is min of numReplicas and nodes.size()
    */
   private List<CacheNode> select(final LocatedBlock block,
-                                final List<CacheNode> tasks,
-                                final int numReplicas) {
-    Collections.shuffle(tasks);
+                                 final List<CacheNode> nodes,
+                                 final int numReplicas) {
+    Collections.shuffle(nodes);
 
     final List<CacheNode> chosenNodes = new ArrayList<>(numReplicas);
     int replicasAdded = 0;
-    for (final CacheNode node : tasks) {
+    for (final CacheNode node : nodes) {
       if (replicasAdded >= numReplicas) break;
       chosenNodes.add(node);
       replicasAdded++;
@@ -37,15 +37,15 @@ public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionP
   }
 
   /**
-   * Return map of random nodes. The number of nodes selected per block is min of numReplicas and tasks.size()
+   * Return map of random nodes. The number of nodes selected per block is min of numReplicas and nodes.size()
    */
   @Override
   public Map<LocatedBlock, List<CacheNode>> select(final LocatedBlocks blocks,
-                                                   final List<CacheNode> tasks,
+                                                   final List<CacheNode> nodes,
                                                    final int numReplicas) {
     final Map<LocatedBlock, List<CacheNode>> selected = new HashMap<>();
     for (final LocatedBlock locatedBlock : blocks.getLocatedBlocks()) {
-      selected.put(locatedBlock, select(locatedBlock, tasks, numReplicas));
+      selected.put(locatedBlock, select(locatedBlock, nodes, numReplicas));
     }
     return selected;
   }

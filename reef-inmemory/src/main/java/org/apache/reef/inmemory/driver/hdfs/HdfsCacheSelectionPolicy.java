@@ -8,15 +8,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Policy for choosing Tasks for replicated caching, based on the block
+ * Policy for choosing CacheNodes for replicated caching, based on the block
  * info (including locations) provided by HDFS.
  */
 public interface HdfsCacheSelectionPolicy {
   /**
-   * Return the Tasks to place task replicas on.
-   * Note, the Task list may be modified in place.
+   * For each block, return the CacheNodes to place replicas on.
+   * Note, the CacheNodes list may be modified in place.
    */
   public Map<LocatedBlock, List<CacheNode>> select(final LocatedBlocks blocks,
-                                                   final List<CacheNode> tasks,
+                                                   final List<CacheNode> nodes,
                                                    final int numReplicas);
 }

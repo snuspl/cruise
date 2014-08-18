@@ -42,32 +42,30 @@ public final class HdfsRemainingMemorySelectionPolicyTest {
   }
 
   private CacheNode getRandomCacheNode() {
-    CacheStatistics statistics = new CacheStatistics();
+    CacheStatistics statistics = new CacheStatistics((random.nextInt(8095)+1) * 1024L * 1024L);
     statistics.addCacheBytes(random.nextInt(8095) + 1);
     statistics.addLoadingBytes(random.nextInt(8095) + 1);
 
     CacheNode cacheNode = mock(CacheNode.class);
     when(cacheNode.getLatestStatistics()).thenReturn(statistics);
     when(cacheNode.getTaskId()).thenReturn(Integer.toString(++nodeId));
-    when(cacheNode.getMemory()).thenReturn(random.nextInt(8095)+1); // Stats may show more memory used than exists
     return cacheNode;
   }
 
   private CacheNode getFreshCacheNode() {
-    CacheStatistics statistics = new CacheStatistics();
+    CacheStatistics statistics = new CacheStatistics(8096 * 1024L * 1024L);
     statistics.addCacheBytes(0);
     statistics.addLoadingBytes(0);
 
     CacheNode cacheNode = mock(CacheNode.class);
     when(cacheNode.getLatestStatistics()).thenReturn(statistics);
     when(cacheNode.getTaskId()).thenReturn(Integer.toString(++nodeId));
-    when(cacheNode.getMemory()).thenReturn(8096); // Stats may show more memory used than exists
     return cacheNode;
   }
 
 
   private long getRemaining(CacheNode node) {
-    return node.getMemory() * 1024L * 1024L -
+    return node.getLatestStatistics().getMaxBytes() -
             (node.getLatestStatistics().getCacheBytes() + node.getLatestStatistics().getLoadingBytes());
   }
 

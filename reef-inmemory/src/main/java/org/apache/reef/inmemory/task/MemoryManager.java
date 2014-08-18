@@ -17,8 +17,6 @@ public final class MemoryManager {
 
   private static final Logger LOG = Logger.getLogger(MemoryManager.class.getName());
 
-  private static final long maxHeap = Runtime.getRuntime().maxMemory();
-
   private final CacheStatistics statistics;
   private final int slack;
 
@@ -39,6 +37,7 @@ public final class MemoryManager {
     boolean canLoad = false;
     while (!canLoad) {
 
+      final long maxHeap = statistics.getMaxBytes();
       final long loading = blockSize + statistics.getLoadingBytes();
       final long pinned = statistics.getPinnedBytes();
       canLoad = maxHeap - slack - loading - pinned > 0;

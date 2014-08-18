@@ -22,9 +22,9 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
   }
 
   private List<CacheNode> select(final LocatedBlock block,
-                                final PriorityQueue<RemainingMemory> remainings,
-                                final int numReplicas) {
-    // Select top replicas, and remove for update
+                                 final PriorityQueue<RemainingMemory> remainings,
+                                 final int numReplicas) {
+    // Select top remaining, and remove for update
     final List<RemainingMemory> selected = new ArrayList<>(numReplicas);
     for (int i = 0; i < numReplicas; i++) {
       if (remainings.size() > 0) {
@@ -61,6 +61,10 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
     return selected;
   }
 
+  /**
+   * Store and compare the remaining memory. Used to keep the prioirity queue in descending order.
+   * Ties are broken by taskId.
+   */
   private static class RemainingMemory implements Comparable<RemainingMemory> {
 
     private final CacheNode node;
@@ -69,8 +73,8 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
 
     private RemainingMemory(final CacheNode node) {
       this.node = node;
-      this.max = node.getMemory() * 1024L * 1024L; // TODO: should we receive task's actual maxMemory?
       final CacheStatistics statistics = node.getLatestStatistics();
+      this.max = statistics.getMaxBytes();
       this.used = statistics.getCacheBytes() + statistics.getLoadingBytes();
     }
 
@@ -91,7 +95,7 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
     }
 
     /**
-     * Used to sort memory remaining in descending order
+     * Sort memory remaining in descending order
      */
     @Override
     public int compareTo(RemainingMemory that) {

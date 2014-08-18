@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * NOTE: changes should only be made to statistics through MemoryManager
  */
 public final class CacheStatistics implements Serializable {
+  private final long maxBytes;
   private long cacheBytes = 0;
   private long loadingBytes = 0;
   private long pinnedBytes = 0;
@@ -19,6 +20,11 @@ public final class CacheStatistics implements Serializable {
 
   @Inject
   public CacheStatistics() {
+    maxBytes = Runtime.getRuntime().maxMemory();
+  }
+
+  public CacheStatistics(final long maxBytes) {
+    this.maxBytes = maxBytes;
   }
 
   public void addCacheBytes(long amount) {
@@ -69,6 +75,10 @@ public final class CacheStatistics implements Serializable {
     evictedBytes = 0;
   }
 
+  public long getMaxBytes() {
+    return maxBytes;
+  }
+
   public long getCacheBytes() {
     return cacheBytes;
   }
@@ -87,7 +97,7 @@ public final class CacheStatistics implements Serializable {
 
   @Override
   public String toString() {
-    return String.format("{ cache : %d, pinned: %d, loading : %d, evicted : %d}",
-            cacheBytes, pinnedBytes, loadingBytes, evictedBytes);
+    return String.format("{ max: %d, cache : %d, pinned: %d, loading : %d, evicted : %d}",
+            maxBytes, cacheBytes, pinnedBytes, loadingBytes, evictedBytes);
   }
 }
