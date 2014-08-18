@@ -47,7 +47,7 @@ public final class HdfsCacheLoaderTest {
   public void setUp() throws IOException {
     manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0);
     messenger = new HdfsCacheMessenger(manager);
-    selector = mock(HdfsCacheSelectionPolicy.class);
+    selector = new HdfsRandomCacheSelectionPolicy();
     blockFactory = new HdfsBlockIdFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
@@ -59,7 +59,6 @@ public final class HdfsCacheLoaderTest {
     }
     List<CacheNode> selectedNodes = manager.getCaches();
     assertEquals(3, selectedNodes.size());
-    when(selector.select(any(LocatedBlock.class), any(List.class), anyInt())).thenReturn(selectedNodes);
     when(replicationPolicy.getReplicationAction(anyString(), any(FileMeta.class))).thenReturn(new Action(3, false));
 
     Configuration hdfsConfig = new HdfsConfiguration();
