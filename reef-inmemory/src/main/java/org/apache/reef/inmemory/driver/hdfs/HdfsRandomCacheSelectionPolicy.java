@@ -1,9 +1,8 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.driver.CacheNode;
-import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -18,21 +17,34 @@ public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionP
   }
 
   /**
-   * Return random nodes. The number selected is min of numReplicas and tasks.size()
+   * Return random nodes. The number selected is min of numReplicas and nodes.size()
    */
-  @Override
-  public List<CacheNode> select(final LocatedBlock block,
-                                final List<CacheNode> tasks,
-                                final int numReplicas) {
-    Collections.shuffle(tasks);
+  private List<CacheNode> select(final LocatedBlock block,
+                                 final List<CacheNode> nodes,
+                                 final int numReplicas) {
+    Collections.shuffle(nodes);
 
     final List<CacheNode> chosenNodes = new ArrayList<>(numReplicas);
     int replicasAdded = 0;
-    for (final CacheNode node : tasks) {
+    for (final CacheNode node : nodes) {
       if (replicasAdded >= numReplicas) break;
       chosenNodes.add(node);
       replicasAdded++;
     }
     return chosenNodes;
+  }
+
+  /**
+   * Return map of random nodes. The number of nodes selected per block is min of numReplicas and nodes.size()
+   */
+  @Override
+  public Map<LocatedBlock, List<CacheNode>> select(final LocatedBlocks blocks,
+                                                   final List<CacheNode> nodes,
+                                                   final int numReplicas) {
+    final Map<LocatedBlock, List<CacheNode>> selected = new HashMap<>();
+    for (final LocatedBlock locatedBlock : blocks.getLocatedBlocks()) {
+      selected.put(locatedBlock, select(locatedBlock, nodes, numReplicas));
+    }
+    return selected;
   }
 }

@@ -28,6 +28,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -84,20 +85,26 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFileSize(locatedBlocks.getFileLength());
 
-    for (final LocatedBlock locatedBlock : locatedBlocks.getLocatedBlocks()) {
-      final List<CacheNode> cacheNodes = cacheManager.getCaches();
-      if (cacheNodes.size() == 0) {
-        throw new IOException("Surf has zero caches");
-      }
+    final List<CacheNode> cacheNodes = cacheManager.getCaches();
+    if (cacheNodes.size() == 0) {
+      throw new IOException("Surf has zero caches");
+    }
 
-      // Resolve replication policy
-      final Action action = replicationPolicy.getReplicationAction(path.toString(), fileMeta);
-      final boolean pin = action.getPin();
-      final int numReplicas;
-      if (replicationPolicy.isBroadcast(action)) {
-        numReplicas = cacheNodes.size();
-      } else {
-        numReplicas = action.getFactor();
+    // Resolve replication policy
+    final Action action = replicationPolicy.getReplicationAction(path.toString(), fileMeta);
+    final boolean pin = action.getPin();
+    final int numReplicas;
+    if (replicationPolicy.isBroadcast(action)) {
+      numReplicas = cacheNodes.size();
+    } else {
+      numReplicas = action.getFactor();
+    }
+
+    final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(locatedBlocks, cacheNodes, numReplicas);
+    for (final LocatedBlock locatedBlock : selected.keySet()) {
+      final List<CacheNode> selectedNodes = selected.get(locatedBlock);
+      if (selectedNodes.size() == 0) {
+        throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
       }
 
       final HdfsBlockId hdfsBlock = blockFactory.newBlockId(locatedBlock);
@@ -105,11 +112,6 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
               HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
       final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos, pin);
       final BlockInfo cacheBlock = blockFactory.newBlockInfo(locatedBlock);
-
-      final List<CacheNode> selectedNodes = cacheSelector.select(locatedBlock, cacheNodes, numReplicas);
-      if (selectedNodes.size() == 0) {
-        throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
-      }
 
       for (final CacheNode cacheNode : selectedNodes) {
         cacheMessenger.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?

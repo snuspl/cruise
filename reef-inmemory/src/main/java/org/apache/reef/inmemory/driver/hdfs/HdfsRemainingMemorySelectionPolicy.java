@@ -1,6 +1,8 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.driver.CacheNode;
 
 import javax.inject.Inject;
@@ -15,57 +17,93 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
 
   private static final Logger LOG = Logger.getLogger(HdfsRemainingMemorySelectionPolicy.class.getName());
 
-  private final RemainingComparator comparator = new RemainingComparator();
-
   @Inject
   public HdfsRemainingMemorySelectionPolicy() {
   }
 
-  @Override
-  public List<CacheNode> select(final LocatedBlock block,
-                                final List<CacheNode> nodes,
-                                final int numReplicas) {
-    final SortedSet<CacheNode> selected = new TreeSet<>(comparator);
-
-    for (CacheNode node: nodes) {
-      if (selected.size() < numReplicas || comparator.compare(node, selected.first()) > 0) {
-        selected.add(node);
-        if (selected.size() > numReplicas) {
-          selected.remove(selected.first());
-        }
+  private List<CacheNode> select(final LocatedBlock block,
+                                 final PriorityQueue<RemainingMemory> remainings,
+                                 final int numReplicas) {
+    // Select top remaining, and remove for update
+    final List<RemainingMemory> selected = new ArrayList<>(numReplicas);
+    for (int i = 0; i < numReplicas; i++) {
+      if (remainings.size() > 0) {
+        selected.add(remainings.poll());
       }
     }
 
-    for (CacheNode sel : selected) {
-      LOG.log(Level.INFO, "Selected: {0}", sel.getAddress());
+    // Update remaining memory, insert back, and add to return list
+    final List<CacheNode> selectedNodes = new ArrayList<>(selected.size());
+    for (final RemainingMemory remaining : selected) {
+      final long used = block.getBlockSize() + remaining.getUsed();
+      remaining.setUsed(used);
+      remainings.add(remaining);
+      selectedNodes.add(remaining.getNode());
+    }
+    return selectedNodes;
+  }
+
+  @Override
+  public Map<LocatedBlock, List<CacheNode>> select(final LocatedBlocks blocks,
+                                                   final List<CacheNode> nodes,
+                                                   final int numReplicas) {
+    final Map<LocatedBlock, List<CacheNode>> selected = new HashMap<>();
+
+    final PriorityQueue<RemainingMemory> remainings = new PriorityQueue<>();
+    for (final CacheNode node : nodes) {
+      remainings.add(new RemainingMemory(node));
     }
 
-    return new ArrayList<>(selected);
+    for (final LocatedBlock block : blocks.getLocatedBlocks()) {
+      selected.put(block, select(block, remainings, numReplicas));
+    }
+
+    return selected;
   }
 
   /**
-   * Compare the remaining memory. Ties are broken by taskId, because a return value of
-   * 0 implies equals for SortedSet.
-   *
-   * If running this comparison every time is too slow, may need to memoize or otherwise use another strategy.
+   * Store and compare the remaining memory. Used to keep the prioirity queue in descending order.
+   * Ties are broken by taskId.
    */
-  private static class RemainingComparator implements Comparator<CacheNode> {
+  private static class RemainingMemory implements Comparable<RemainingMemory> {
 
+    private final CacheNode node;
+    private final long max;
+    private long used;
+
+    private RemainingMemory(final CacheNode node) {
+      this.node = node;
+      final CacheStatistics statistics = node.getLatestStatistics();
+      this.max = statistics.getMaxBytes();
+      this.used = statistics.getCacheBytes() + statistics.getLoadingBytes();
+    }
+
+    public CacheNode getNode() {
+      return node;
+    }
+
+    public long getUsed() {
+      return used;
+    }
+
+    public void setUsed(long used) {
+      this.used = used;
+    }
+
+    public long getRemaining() {
+      return max - used;
+    }
+
+    /**
+     * Sort memory remaining in descending order
+     */
     @Override
-    public int compare(CacheNode n1, CacheNode n2) {
-      final long used1 = n1.getLatestStatistics().getCacheBytes() +
-              n1.getLatestStatistics().getLoadingBytes();
-      final long remaining1 = n1.getMemory() - used1;
-
-      final long used2 = n2.getLatestStatistics().getCacheBytes() +
-              n2.getLatestStatistics().getLoadingBytes();
-      final long remaining2 = n2.getMemory() - used2;
-
-      if (remaining1 != remaining2) {
-        return Long.compare(remaining1, remaining2);
+    public int compareTo(RemainingMemory that) {
+      final int comparison = Long.compare(that.getRemaining(), this.getRemaining());
+      if (comparison == 0) {
+        return that.getNode().getTaskId().compareTo(this.getNode().getTaskId());
       } else {
-        // Break ties using taskId
-        return n1.getTaskId().compareTo(n2.getTaskId());
+        return comparison;
       }
     }
   }
