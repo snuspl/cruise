@@ -4,16 +4,13 @@ import com.google.common.collect.Lists;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.driver.CacheNode;
-import org.apache.reef.inmemory.driver.hdfs.HdfsRandomCacheSelectionPolicy;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -51,6 +48,7 @@ public final class HdfsRandomCacheSelectionPolicyTest {
     final List<CacheNode> nodes = getMockCacheNodes(1);
     final Map<LocatedBlock, List<CacheNode>> selected =
             policy.select(blocks, new ArrayList<>(nodes), numReplicas);
+    assertNotNull(selected.get(block));
     assertTrue(nodes.containsAll(selected.get(block)));
     assertEquals(1, selected.size());
   }

@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.common;
 
 import javax.inject.Inject;
 import java.io.Serializable;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A set of statistics for the Cache.
