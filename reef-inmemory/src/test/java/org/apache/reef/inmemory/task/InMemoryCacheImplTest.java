@@ -4,6 +4,7 @@ import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -35,6 +36,16 @@ public final class InMemoryCacheImplTest {
     memoryManager = new MemoryManager(statistics, 100 * 1024 * 1024);
     loadingStage = new MockStage(memoryManager);
     cache = new InMemoryCacheImpl(memoryManager, loadingStage, 3);
+  }
+
+  @After
+  public void tearDown() {
+    statistics = null;
+    memoryManager = null;
+    loadingStage = null;
+    cache = null;
+
+    System.gc();
   }
 
   private BlockId randomBlockId(long length) {
@@ -281,23 +292,6 @@ public final class InMemoryCacheImplTest {
     // Verify loaders for different blockId called once
     for (int i = numThreads/2; i < numThreads; i++) {
       assertEquals(1, loadCounts[i].get());
-    }
-  }
-
-  /**
-   * Test that pinning too many blocks gives an OutOfMemoryError.
-   * If this test does not pass, then the unit test is running with too much memory!
-   */
-  @Test(expected=OutOfMemoryError.class)
-  public void testTooManyPinned() throws Exception {
-    final long iterations = maxMemory / (128 * 1024 * 1024) * 2;
-    for (int i = 0; i < iterations; i++) {
-      final byte[] buffer = ones(128 * 1024 * 1024);
-      final BlockId blockId = randomBlockId(buffer.length);
-      final BlockLoader loader = new MockBlockLoader(blockId, buffer, true);
-
-      cache.load(loader, true);
-      System.out.println("Loaded " + (128 * (i+1)) + "M");
     }
   }
 

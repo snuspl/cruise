@@ -12,8 +12,7 @@ import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,6 +27,19 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   private final Cache<BlockId, BlockLoader> cache;
   private final Cache<BlockId, BlockLoader> pinCache;
+
+  private final ScheduledExecutorService cleanupScheduler;
+
+  /**
+   * Clean up statistics, scheduled periodically
+   */
+  private final Runnable cleanup = new Runnable() {
+    @Override
+    public void run() {
+      cache.cleanUp();
+      pinCache.cleanUp();
+    }
+  };
 
   /**
    * Update statistics on cache removal
@@ -57,18 +69,21 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   public InMemoryCacheImpl(final MemoryManager memoryManager,
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads) {
-    cache = CacheBuilder.newBuilder()
-            .softValues()
-            .removalListener(removalListener)
-            .concurrencyLevel(numThreads)
-            .build();
-    pinCache = CacheBuilder.newBuilder()
-            .removalListener(pinRemovalListener)
-            .concurrencyLevel(numThreads)
-            .build();
+    this.cache = CacheBuilder.newBuilder()
+                 .softValues()
+                 .removalListener(removalListener)
+                 .concurrencyLevel(numThreads)
+                 .build();
+    this.pinCache = CacheBuilder.newBuilder()
+                    .removalListener(pinRemovalListener)
+                    .concurrencyLevel(numThreads)
+                    .build();
 
     this.memoryManager = memoryManager;
     this.loadingStage = loadingStage;
+
+    this.cleanupScheduler = Executors.newScheduledThreadPool(1);
+    this.cleanupScheduler.scheduleAtFixedRate(cleanup, 5, 5, TimeUnit.SECONDS);
   }
 
   @Override
@@ -113,7 +128,6 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   @Override
   public CacheStatistics getStatistics() {
-    cache.cleanUp();
     return memoryManager.getStatistics();
   }
 }
