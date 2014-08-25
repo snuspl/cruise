@@ -3,19 +3,13 @@ package org.apache.reef.inmemory.driver;
 import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
 import com.microsoft.reef.driver.task.CompletedTask;
 import com.microsoft.reef.driver.task.RunningTask;
-import com.microsoft.reef.driver.task.TaskConfiguration;
 import com.microsoft.reef.driver.task.TaskMessage;
-import com.microsoft.reef.webserver.HttpServer;
-import com.microsoft.tang.Configuration;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.annotations.Unit;
-import com.microsoft.tang.exceptions.BindException;
+import com.microsoft.wake.EStage;
 import com.microsoft.wake.EventHandler;
-import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import com.microsoft.wake.time.event.StartTime;
 import com.microsoft.wake.time.event.StopTime;
-import org.apache.reef.inmemory.task.InMemoryTask;
-import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 import org.apache.reef.inmemory.driver.service.SurfMetaServer;
 
@@ -35,10 +29,10 @@ import java.util.logging.Logger;
 @Unit
 public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
-  private static final ObjectSerializableCodec<CacheStatusMessage> CODEC = new ObjectSerializableCodec<>();
 
   private final SurfMetaServer metaService;
   private final CacheManager cacheManager;
+  private final EStage<TaskMessage> taskMessageEStage;
   private final int initCacheServers;
 
   private ExecutorService executor;
@@ -49,9 +43,11 @@ public final class InMemoryDriver {
   @Inject
   public InMemoryDriver(final SurfMetaServer metaService,
                         final CacheManager cacheManager,
+                        final EStage<TaskMessage> taskMessageEStage,
                         final @Parameter(MetaServerParameters.InitCacheServers.class) int initCacheServers) {
     this.metaService = metaService;
     this.cacheManager = cacheManager;
+    this.taskMessageEStage = taskMessageEStage;
     this.initCacheServers = initCacheServers;
   }
 
@@ -147,10 +143,7 @@ public final class InMemoryDriver {
   public class TaskMessageHandler implements EventHandler<TaskMessage> {
     @Override
     public void onNext(TaskMessage msg) {
-      LOG.log(Level.FINE, "TaskMessage: from {0}: {1}",
-          new Object[]{msg.getId(), CODEC.decode(msg.get())});
-
-      cacheManager.handleUpdate(msg.getId(), CODEC.decode(msg.get()));
+      taskMessageEStage.onNext(msg);
     }
   }
 }
