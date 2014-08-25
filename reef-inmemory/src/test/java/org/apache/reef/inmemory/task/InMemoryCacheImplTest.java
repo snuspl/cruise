@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.task;
 
 import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
+import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.junit.After;
@@ -295,8 +296,23 @@ public final class InMemoryCacheImplTest {
     }
   }
 
+  private void assertRemovalsNotFound(final CacheUpdates updates) {
+    assertTrue(updates.getRemovals().size() > 0);
+    for (final BlockId blockId : updates.getRemovals()) {
+      try {
+        cache.get(blockId);
+        assertTrue("BlockNotFoundException was excepted, but no exception was raised", false);
+      } catch (BlockNotFoundException e) {
+        assertTrue("BlockNotFoundException, as expected", true);
+      } catch (BlockLoadingException e) {
+        assertTrue("BlockNotFoundException was expected, but BlockLoadingException was raised", false);
+      }
+    }
+  }
+
   /**
-   * Test that adding 20 * 128 MB = 2.5 GB of blocks does not cause an OutOfMemory exception
+   * Test that adding 20 * 128 MB = 2.5 GB of blocks does not cause an OutOfMemory exception.
+   * Test that updates reflect the evictions.
    */
   @Test
   public void testEviction() throws IOException {
@@ -309,10 +325,14 @@ public final class InMemoryCacheImplTest {
       cache.load(loader, false);
       System.out.println("Loaded " + (128 * (i+1)) + "M");
     }
+
+    final CacheUpdates updates = cache.pullUpdates();
+    assertRemovalsNotFound(updates);
   }
 
   /**
-   * Test that adding 20 * 128 MB = 2.5 GB of blocks concurrently does not cause an OutOfMemory exception
+   * Test that adding 20 * 128 MB = 2.5 GB of blocks concurrently does not cause an OutOfMemory exception.
+   * Test that updates reflect the evictions.
    */
   @Test
   public void testConcurrentEviction() throws IOException, ExecutionException, InterruptedException {
@@ -349,6 +369,9 @@ public final class InMemoryCacheImplTest {
     }
 
     assertTrue(true); // No exceptions were encountered
+
+    final CacheUpdates updates = cache.pullUpdates();
+    assertRemovalsNotFound(updates);
   }
 
   /**

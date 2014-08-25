@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.task;
 
 import org.apache.reef.inmemory.common.CacheStatistics;
+import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
@@ -39,4 +40,6 @@ public interface InMemoryCache {
    * @return The status of Cache
    */
   public CacheStatistics getStatistics();
+
+  public CacheUpdates pullUpdates();
 }

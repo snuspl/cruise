@@ -7,6 +7,7 @@ import com.microsoft.reef.driver.evaluator.EvaluatorDescriptor;
 import com.microsoft.reef.driver.task.RunningTask;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
+import org.apache.reef.inmemory.common.CacheUpdates;
 
 import java.net.InetSocketAddress;
 
@@ -35,6 +36,6 @@ public class TestUtils {
   }
 
   public static CacheStatusMessage cacheStatusMessage(final int port) {
-    return new CacheStatusMessage(new CacheStatistics(), port);
+    return new CacheStatusMessage(new CacheStatistics(), new CacheUpdates(), port);
   }
 }

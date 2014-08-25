@@ -30,40 +30,35 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
   /**
    * Load the block and update statistics.
    * This method will wait if there is too much memory pressure.
+   * Failures will be reported to Driver on the next Heartbeat.
    * @param loader
    */
   @Override
   public void onNext(BlockLoader loader) {
-    // TODO would it be better to report to driver?
-    // It seems possible either to send an message directly or
-    // to keep the failure info and send via Heartbeat
-
     LOG.log(Level.INFO, "Start loading block {0}", loader.getBlockId());
+    final BlockId blockId = loader.getBlockId();
     final long blockSize = loader.getBlockId().getBlockSize();
 
     memoryManager.loadStart(blockSize);
 
-    boolean loadSuccess;
     try {
       loader.loadBlock();
 
-      loadSuccess = true;
       LOG.log(Level.INFO, "Finish loading block {0}", loader.getBlockId());
     } catch (ConnectionFailedException e) {
-      loadSuccess = false;
+      memoryManager.loadFail(blockId, e);
       LOG.log(Level.SEVERE, "Failed to load block {0} because of connection failure", loader.getBlockId());
+      return;
     } catch (TransferFailedException e) {
-      loadSuccess = false;
+      memoryManager.loadFail(blockId, e);
       LOG.log(Level.SEVERE, "An error occurred while transferring the block {0} from the Datanode", loader.getBlockId());
+      return;
     } catch (IOException e) {
-      loadSuccess = false;
+      memoryManager.loadFail(blockId, e);
       LOG.log(Level.SEVERE, "Failed to load block "+loader.getBlockId(), e);
+      return;
     }
 
-    if (loadSuccess) {
-      memoryManager.loadSuccess(blockSize, loader.isPinned());
-    } else {
-      memoryManager.loadFail(blockSize);
-    }
+    memoryManager.loadSuccess(blockSize, loader.isPinned());
   }
 }

@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.task;
 
 import com.microsoft.tang.annotations.Parameter;
 import org.apache.reef.inmemory.common.CacheStatistics;
+import org.apache.reef.inmemory.common.CacheUpdates;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
@@ -19,12 +20,14 @@ public final class MemoryManager {
 
   private final CacheStatistics statistics;
   private final int slack;
+  private CacheUpdates updates;
 
   @Inject
   public MemoryManager(final CacheStatistics statistics,
                        final @Parameter(CacheParameters.HeapSlack.class) int slack) {
     this.statistics = statistics;
     this.slack = slack;
+    this.updates = new CacheUpdates();
   }
 
   /**
@@ -77,8 +80,9 @@ public final class MemoryManager {
    * Updates statistics.
    * @param blockSize
    */
-  public synchronized void loadFail(final long blockSize) {
-    statistics.subtractLoadingBytes(blockSize);
+  public synchronized void loadFail(final BlockId blockId, final Exception exception) {
+    updates.addFailure(blockId, exception);
+    statistics.subtractLoadingBytes(blockId.getBlockSize());
     notifyAll();
   }
 
@@ -86,9 +90,11 @@ public final class MemoryManager {
    * Call on cache removal (eviction).
    * Notifies threads waiting for memory to free up.
    * Updates statistics.
-   * @param blockSize
+   * @param blockId
    */
-  public synchronized void remove(final long blockSize) {
+  public synchronized void remove(final BlockId blockId) {
+    final long blockSize = blockId.getBlockSize();
+    updates.addRemoval(blockId);
     statistics.subtractCacheBytes(blockSize);
     statistics.addEvictedBytes(blockSize);
     notifyAll();
@@ -113,5 +119,11 @@ public final class MemoryManager {
 
   public CacheStatistics getStatistics() {
     return statistics;
+  }
+
+  public synchronized CacheUpdates pullUpdates() {
+    final CacheUpdates current = this.updates;
+    this.updates = new CacheUpdates();
+    return current;
   }
 }
