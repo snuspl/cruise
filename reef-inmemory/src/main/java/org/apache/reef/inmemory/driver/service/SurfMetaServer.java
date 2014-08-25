@@ -3,6 +3,7 @@ package org.apache.reef.inmemory.driver.service;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.NetUtils;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.User;
@@ -155,6 +156,15 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       return true;
     } catch (IOException e) {
       throw new org.apache.reef.inmemory.common.exceptions.IOException(e.getMessage());
+    }
+  }
+
+  public synchronized void handleUpdate(final String taskId, final CacheStatusMessage msg) {
+    cacheManager.handleHeartbeat(taskId, msg);
+    final CacheNode cache = cacheManager.getCache(taskId);
+    if (cache != null) {
+      final String address = cache.getAddress();
+      metaManager.applyUpdates(address, msg.getUpdates());
     }
   }
 

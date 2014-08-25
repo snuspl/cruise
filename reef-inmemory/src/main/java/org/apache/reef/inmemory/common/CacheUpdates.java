@@ -27,7 +27,7 @@ public final class CacheUpdates implements Serializable {
     return removals;
   }
 
-  private final static class Failure implements Serializable {
+  public final static class Failure implements Serializable {
     private final BlockId blockId;
     private final Exception exception;
 

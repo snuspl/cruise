@@ -51,5 +51,5 @@ public interface CacheManager {
   /**
    * Pass a cache status update to the cache manager
    */
-  public void handleUpdate(String taskId, CacheStatusMessage status);
+  public void handleHeartbeat(String taskId, CacheStatusMessage status);
 }

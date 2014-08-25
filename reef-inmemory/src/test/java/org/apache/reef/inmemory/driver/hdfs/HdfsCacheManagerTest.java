@@ -5,7 +5,6 @@ import com.microsoft.reef.driver.task.RunningTask;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheManagerImpl;
 import org.apache.reef.inmemory.driver.TestUtils;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -26,11 +25,11 @@ public class HdfsCacheManagerTest {
     manager.addRunningTask(task);
     assertEquals("Expected task not added when port unassigned", 0, manager.getCaches().size());
 
-    manager.handleUpdate(task.getId(), TestUtils.cacheStatusMessage(18001));
+    manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001));
     assertEquals(1, manager.getCaches().size());
     assertEquals("hosta:18001", manager.getCaches().get(0).getAddress());
 
-    manager.handleUpdate(task.getId(), TestUtils.cacheStatusMessage(18001));
+    manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001));
     assertEquals(1, manager.getCaches().size());
     assertEquals("hosta:18001", manager.getCaches().get(0).getAddress());
   }
