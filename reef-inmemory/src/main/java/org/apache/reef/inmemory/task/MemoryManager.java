@@ -121,6 +121,10 @@ public final class MemoryManager {
     return statistics;
   }
 
+  /**
+   * Pull the cache updates. The returned updates are removed.
+   * @return The latest updates from the cache Task
+   */
   public synchronized CacheUpdates pullUpdates() {
     final CacheUpdates current = this.updates;
     this.updates = new CacheUpdates();

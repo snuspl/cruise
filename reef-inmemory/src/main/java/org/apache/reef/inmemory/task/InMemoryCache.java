@@ -41,5 +41,9 @@ public interface InMemoryCache {
    */
   public CacheStatistics getStatistics();
 
+  /**
+   * Pull the cache updates. The returned updates are removed.
+   * @return The latest updates from the cache Task
+   */
   public CacheUpdates pullUpdates();
 }

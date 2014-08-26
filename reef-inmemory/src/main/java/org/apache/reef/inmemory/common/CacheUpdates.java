@@ -6,6 +6,11 @@ import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * Block updates at the Task:
+ * - failures: blocks that failed during load
+ * - removals: blocks that were removed due to eviction or clear
+ */
 public final class CacheUpdates implements Serializable {
 
   private final List<Failure> failures = new LinkedList<>();

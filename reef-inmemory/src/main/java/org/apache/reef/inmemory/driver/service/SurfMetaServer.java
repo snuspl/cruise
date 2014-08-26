@@ -159,6 +159,10 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
+  /**
+   * Handle the update/heartbeat message from the cache Task, by passing to
+   * the CacheManager and SurfMetaManager.
+   */
   public synchronized void handleUpdate(final String taskId, final CacheStatusMessage msg) {
     cacheManager.handleHeartbeat(taskId, msg);
     final CacheNode cache = cacheManager.getCache(taskId);

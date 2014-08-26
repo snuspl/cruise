@@ -13,7 +13,7 @@ struct NodeInfo {
  * Currently takes after o.a.h.hdfs.protocol.ExtendedBlock
  */
 struct BlockInfo {
-    1: string filePath,              // File's absolute path
+	1: string filePath,              // File's absolute path
 	2: i64 blockId,                  // Block id (unique)
 	3: i64 offSet,                   // Order of the block
 	4: i64 length,                   // Size of the block in bytes

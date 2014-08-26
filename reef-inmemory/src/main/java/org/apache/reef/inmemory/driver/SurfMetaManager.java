@@ -33,8 +33,11 @@ public final class SurfMetaManager {
     this.cacheMessenger = cacheMessenger;
   }
 
+  /**
+   * Retreive metadata of the file at the path.
+   * This will load the file if it has not been loaded.
+   */
   public FileMeta getFile(Path path, User creator) throws FileNotFoundException, Throwable {
-    LOG.log(Level.INFO, "Absolute path: "+getAbsolutePath(path, creator));
     try {
       FileMeta metadata = metadataIndex.get(getAbsolutePath(path, creator));
       return metadata;
@@ -43,6 +46,10 @@ public final class SurfMetaManager {
     }
   }
 
+  /**
+   * Clear all cached entries
+   * @return number of entries cleared
+   */
   public long clear() {
     long numEntries = metadataIndex.size();
     metadataIndex.invalidateAll();
@@ -61,6 +68,11 @@ public final class SurfMetaManager {
     return newPath;
   }
 
+  /**
+   * Apply updates from a cache node.
+   * Synchronized on the cache, so that only one a single set of updates
+   * can be applied at once from the same cache.
+   */
   public void applyUpdates(final CacheNode cache, final CacheUpdates updates) {
     synchronized (cache) {
       final String address = cache.getAddress();

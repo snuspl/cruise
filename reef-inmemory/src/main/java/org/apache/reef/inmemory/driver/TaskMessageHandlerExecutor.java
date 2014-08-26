@@ -10,6 +10,13 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Handler for the update handling stage. The update is handled
+ * with a thread in the stage pool. Updates from the same cache
+ * may be dispatched concurrently (although not likely with a large enough heartbeat).
+ * If concurrent processing is not desired,
+ * downstream methods must implement synchronization to prevent it.
+ */
 public final class TaskMessageHandlerExecutor implements EventHandler<TaskMessage> {
 
   private static final Logger LOG = Logger.getLogger(TaskMessageHandlerExecutor.class.getName());

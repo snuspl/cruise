@@ -135,10 +135,8 @@ public final class InMemoryDriver {
     }
   }
 
-  // TODO: extract to a top-level class?
   /**
-   * Handler of TaskMessage event: Receive a message from Task
-   * TODO Distinguish the type of messages by ID
+   * Delegate handling to the EStage
    */
   public class TaskMessageHandler implements EventHandler<TaskMessage> {
     @Override

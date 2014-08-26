@@ -22,17 +22,23 @@ public final class CacheStatusMessage implements Serializable {
     this.bindPort = bindPort;
   }
 
+  /**
+   * @return Statistics received with the message
+   */
   public CacheStatistics getStatistics() {
     return statistics;
   }
 
+  /**
+   * @return Updates received with the message
+   */
   public CacheUpdates getUpdates() {
     return updates;
   }
 
   /**
    * Retrieves port the Cache bound to
-   * @return Port number
+   * @return Port number received with the message
    */
   public int getBindPort() {
     return bindPort;

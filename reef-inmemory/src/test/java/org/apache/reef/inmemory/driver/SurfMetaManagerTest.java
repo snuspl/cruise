@@ -130,7 +130,7 @@ public final class SurfMetaManagerTest {
   }
 
   /**
-   * Test that updates are removal and failure updates are reflected in the cache.
+   * Test that removal and failure updates are reflected in the cache.
    */
   @Test
   public void testApplyUpdates() throws Throwable {
@@ -206,8 +206,8 @@ public final class SurfMetaManagerTest {
   }
 
   /**
-   * Test that updates are removal and failure updates are reflected in the cache,
-   * even under concurrent operations.
+   * Test that removal and failure updates are reflected in the cache,
+   * under concurrent operations.
    */
   @Test
   public void testConcurrentUpdates() throws Throwable {
