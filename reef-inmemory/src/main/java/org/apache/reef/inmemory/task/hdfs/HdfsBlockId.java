@@ -21,17 +21,20 @@ import java.io.Serializable;
  */
 public final class HdfsBlockId implements BlockId, Serializable {
 
+  private final String filePath;
   private final long blockId;
   private final long blockSize;
   private final long generationTimestamp;
   private final String poolId;
   private final String encodedToken;
 
-  public HdfsBlockId(final long blockId,
+  public HdfsBlockId(final String filePath,
+                     final long blockId,
                      final long blockSize,
                      final long generationTimestamp,
                      final String poolId,
                      final String encodedToken) {
+    this.filePath = filePath;
     this.blockId = blockId;
     this.blockSize = blockSize;
     this.generationTimestamp = generationTimestamp;
@@ -39,7 +42,13 @@ public final class HdfsBlockId implements BlockId, Serializable {
     this.encodedToken = encodedToken;
   }
 
-  public long getBlockId() {
+  @Override
+  public String getFilePath() {
+    return filePath;
+  }
+
+  @Override
+  public long getUniqueId() {
     return blockId;
   }
 

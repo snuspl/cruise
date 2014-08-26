@@ -3,12 +3,15 @@ package org.apache.reef.inmemory.driver;
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheUpdates;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
 import java.io.FileNotFoundException;
+import java.util.Iterator;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,6 +34,7 @@ public final class SurfMetaManager {
   }
 
   public FileMeta getFile(Path path, User creator) throws FileNotFoundException, Throwable {
+    LOG.log(Level.INFO, "Absolute path: "+getAbsolutePath(path, creator));
     try {
       FileMeta metadata = metadataIndex.get(getAbsolutePath(path, creator));
       return metadata;
@@ -57,13 +61,63 @@ public final class SurfMetaManager {
     return newPath;
   }
 
-  public void applyUpdates(final String address, final CacheUpdates updates) {
-    // TODO: apply updates to actual metadata cache
-    for (final CacheUpdates.Failure failure: updates.getFailures()) {
-      LOG.log(Level.WARNING, "Block loading failure: "+failure.getBlockId(), failure.getException());
+  public void applyUpdates(final CacheNode cache, final CacheUpdates updates) {
+    synchronized (cache) {
+      final String address = cache.getAddress();
+      for (final CacheUpdates.Failure failure : updates.getFailures()) {
+        LOG.log(Level.WARNING, "Block loading failure: " + failure.getBlockId(), failure.getException());
+        removeLocation(address, new Path(failure.getBlockId().getFilePath()), failure.getBlockId().getUniqueId());
+      }
+      for (final BlockId removed : updates.getRemovals()) {
+        LOG.log(Level.INFO, "Block removed: " + removed);
+        removeLocation(address, new Path(removed.getFilePath()), removed.getUniqueId());
+      }
     }
-    for (final BlockId removed : updates.getRemovals()) {
-      LOG.log(Level.INFO, "Block removed: "+removed);
+  }
+
+  // TODO: consider creating a <blockid, blockinfo> map to make the linear search into a lookup
+  private void removeLocation(final String address, final Path filePath, final long uniqueId) {
+    final FileMeta fileMeta = metadataIndex.getIfPresent(filePath);
+    if (fileMeta == null) {
+      LOG.log(Level.INFO, "FileMeta null for path "+filePath);
+      return;
+    }
+    if (fileMeta.getBlocks() == null) {
+      LOG.log(Level.INFO, "FileMeta blocks null for path "+filePath);
+      return;
+    }
+
+    BlockInfo found = null;
+    synchronized (fileMeta) {
+      for (final BlockInfo blockInfo : fileMeta.getBlocks()) {
+        if (blockInfo.getBlockId() == uniqueId) {
+          found = blockInfo;
+          break;
+        }
+      }
+    }
+    if (found == null | found.getLocations() == null) {
+      LOG.log(Level.INFO, "Found null");
+      return;
+    }
+
+    boolean removed = false;
+    synchronized(found) {
+      final Iterator<NodeInfo> iterator = found.getLocationsIterator();
+      while (iterator.hasNext()) {
+        final NodeInfo nodeInfo = iterator.next();
+        if (nodeInfo.getAddress().equals(address)) {
+          iterator.remove();
+          removed = true;
+          break;
+        }
+      }
+    }
+
+    if (removed) {
+      LOG.log(Level.INFO, "Removed "+address+", "+found.getLocationsSize()+" locations remaining.");
+    } else {
+      LOG.log(Level.INFO, "Did not remove "+address);
     }
   }
 }

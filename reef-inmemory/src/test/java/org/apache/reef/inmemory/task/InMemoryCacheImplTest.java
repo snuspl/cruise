@@ -50,7 +50,7 @@ public final class InMemoryCacheImplTest {
   }
 
   private BlockId randomBlockId(long length) {
-    return new MockBlockId(Long.toString(random.nextLong()), length);
+    return new MockBlockId(random.nextLong(), length);
   }
 
   private byte[] ones(int length) {
@@ -525,13 +525,23 @@ public final class InMemoryCacheImplTest {
 
   private static final class MockBlockId implements BlockId {
 
-    private final String blockId;
+    private final long blockId;
     private final long blockSize;
 
-    public MockBlockId(final String blockId,
+    public MockBlockId(final long blockId,
                        final long blockSize) {
       this.blockId = blockId;
       this.blockSize = blockSize;
+    }
+
+    @Override
+    public String getFilePath() {
+      return "/mock/"+blockId;
+    }
+
+    @Override
+    public long getUniqueId() {
+      return blockId;
     }
 
     @Override
@@ -546,15 +556,15 @@ public final class InMemoryCacheImplTest {
 
       MockBlockId that = (MockBlockId) o;
 
+      if (blockId != that.blockId) return false;
       if (blockSize != that.blockSize) return false;
-      if (!blockId.equals(that.blockId)) return false;
 
       return true;
     }
 
     @Override
     public int hashCode() {
-      int result = blockId.hashCode();
+      int result = (int) (blockId ^ (blockId >>> 32));
       result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
       return result;
     }

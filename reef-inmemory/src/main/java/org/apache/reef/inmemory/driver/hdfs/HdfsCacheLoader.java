@@ -107,11 +107,11 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
         throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
       }
 
-      final HdfsBlockId hdfsBlock = blockFactory.newBlockId(locatedBlock);
+      final HdfsBlockId hdfsBlock = blockFactory.newBlockId(path.toString(), locatedBlock);
       final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
               HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
       final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos, pin);
-      final BlockInfo cacheBlock = blockFactory.newBlockInfo(locatedBlock);
+      final BlockInfo cacheBlock = blockFactory.newBlockInfo(path.toString(), locatedBlock);
 
       for (final CacheNode cacheNode : selectedNodes) {
         cacheMessenger.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?

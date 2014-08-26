@@ -52,7 +52,7 @@ public class HdfsBlockLoader implements BlockLoader {
                          final List<HdfsDatanodeInfo> infoList,
                          final boolean pin) {
     hdfsBlockId = id;
-    block = new ExtendedBlock(id.getPoolId(), id.getBlockId(), id.getBlockSize(), id.getGenerationTimestamp());
+    block = new ExtendedBlock(id.getPoolId(), id.getUniqueId(), id.getBlockSize(), id.getGenerationTimestamp());
     dnInfoList = infoList;
     blockSize = id.getBlockSize();
     totalRead = 0;
@@ -84,7 +84,7 @@ public class HdfsBlockLoader implements BlockLoader {
       String fileName = targetAddress.toString() + ":" + block.getBlockId();
 
       LOG.log(Level.INFO, "Start loading block {0} from datanode at {1}",
-        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
 
       // Declare socket and blockReader object to close them in the future.
       Socket socket = null;
@@ -113,10 +113,10 @@ public class HdfsBlockLoader implements BlockLoader {
         blockReader.close();
         socket.close();
         LOG.log(Level.INFO, "Done loading block {0} from datanode at {1}",
-          new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+          new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
       } catch (IOException e) {
         LOG.log(Level.WARNING, "Closing BlockReader for block {0} from datanode at {1} has failed",
-          new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+          new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
       }
       break;
 
@@ -150,7 +150,7 @@ public class HdfsBlockLoader implements BlockLoader {
       socket.setSoTimeout(HdfsServerConstants.READ_TIMEOUT);
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
-        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
       throw new ConnectionFailedException(e);
     }
 
@@ -172,7 +172,7 @@ public class HdfsBlockLoader implements BlockLoader {
       blockToken.decodeFromUrlString(hdfsBlockId.getEncodedToken());
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Token decode error while loading block {0} from datanode at {1}. Retry with next datanode",
-        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
       throw new TokenDecodeFailedException(e);
     }
     return blockToken;
@@ -202,7 +202,7 @@ public class HdfsBlockLoader implements BlockLoader {
 
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
-        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
       throw new ConnectionFailedException(e);
     }
     return blockReader;
@@ -224,7 +224,7 @@ public class HdfsBlockLoader implements BlockLoader {
       } while(totalRead < blockSize);
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Data transfer error while loading block {0} from datanode at {1}. Retry with next datanode",
-        new String[]{Long.toString(hdfsBlockId.getBlockId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
       throw new TransferFailedException(e);
     }
   }

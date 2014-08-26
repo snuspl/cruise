@@ -20,11 +20,11 @@ public interface BlockIdFactory<FsMetadata, FsBlockId extends BlockId> {
    * Create a new BlockId from the FS-specific metadata.
    * BlockId implements equals() and hashCode(), which is suitable for use as a key.
    */
-  public FsBlockId newBlockId(FsMetadata metadata) throws IOException;
+  public FsBlockId newBlockId(String filePath, FsMetadata metadata) throws IOException;
 
   /**
    * Create a new BlockInfo from the FS-specific metadata.
    * BlockInfo is a Thrift data structure, used in communication with the Client.
    */
-  public BlockInfo newBlockInfo(FsMetadata metadata) throws IOException;
+  public BlockInfo newBlockInfo(String filePath, FsMetadata metadata) throws IOException;
 }
