@@ -540,6 +540,11 @@ public final class InMemoryCacheImplTest {
     }
 
     @Override
+    public long getOffset() {
+      return 0;
+    }
+
+    @Override
     public long getUniqueId() {
       return blockId;
     }

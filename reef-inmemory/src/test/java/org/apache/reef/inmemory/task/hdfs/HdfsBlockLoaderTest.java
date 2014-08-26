@@ -102,7 +102,7 @@ public class HdfsBlockLoaderTest {
   public void testInvalidSize() throws IOException {
     LocatedBlock block = blocks.get(0);
     HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
-    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, blockId.getUniqueId(), Integer.MAX_VALUE+(long)1, blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
+    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, 0, blockId.getUniqueId(), Integer.MAX_VALUE+(long)1, blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false);
     loader.loadBlock();
@@ -148,7 +148,7 @@ public class HdfsBlockLoaderTest {
     LocatedBlock block = blocks.get(0);
 
     HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
-    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, (long)-1, blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
+    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, 0, (long)-1, blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false);
     loader.loadBlock();
@@ -163,7 +163,7 @@ public class HdfsBlockLoaderTest {
     LocatedBlock block = blocks.get(0);
 
     HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
-    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, blockId.getUniqueId(), blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), "");
+    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, 0, blockId.getUniqueId(), blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), "");
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false);
     loader.loadBlock();

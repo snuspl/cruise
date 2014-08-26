@@ -21,6 +21,7 @@ public final class HdfsBlockIdFactory implements BlockIdFactory<LocatedBlock, Hd
   public HdfsBlockId newBlockId(final BlockInfo blockInfo) {
     return new HdfsBlockId(
             blockInfo.getFilePath(),
+            blockInfo.getOffSet(),
             blockInfo.getBlockId(),
             blockInfo.getLength(),
             blockInfo.getGenerationStamp(),
@@ -35,6 +36,7 @@ public final class HdfsBlockIdFactory implements BlockIdFactory<LocatedBlock, Hd
   public HdfsBlockId newBlockId(final String filePath, final LocatedBlock locatedBlock) throws IOException {
     return new HdfsBlockId(
             filePath,
+            locatedBlock.getStartOffset(),
             locatedBlock.getBlock().getBlockId(),
             locatedBlock.getBlockSize(),
             locatedBlock.getBlock().getGenerationStamp(),
@@ -51,6 +53,7 @@ public final class HdfsBlockIdFactory implements BlockIdFactory<LocatedBlock, Hd
     BlockInfo blockInfo = new BlockInfo();
 
     blockInfo.setFilePath(filePath);
+    blockInfo.setOffSet(locatedBlock.getStartOffset());
     blockInfo.setBlockId(locatedBlock.getBlock().getBlockId());
     blockInfo.setOffSet(locatedBlock.getStartOffset());
     blockInfo.setLength(locatedBlock.getBlockSize());

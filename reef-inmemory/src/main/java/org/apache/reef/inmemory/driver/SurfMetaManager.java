@@ -66,17 +66,20 @@ public final class SurfMetaManager {
       final String address = cache.getAddress();
       for (final CacheUpdates.Failure failure : updates.getFailures()) {
         LOG.log(Level.WARNING, "Block loading failure: " + failure.getBlockId(), failure.getException());
-        removeLocation(address, new Path(failure.getBlockId().getFilePath()), failure.getBlockId().getUniqueId());
+        final BlockId blockId = failure.getBlockId();
+        removeLocation(address, new Path(blockId.getFilePath()), blockId.getOffset(), blockId.getUniqueId());
       }
       for (final BlockId removed : updates.getRemovals()) {
         LOG.log(Level.INFO, "Block removed: " + removed);
-        removeLocation(address, new Path(removed.getFilePath()), removed.getUniqueId());
+        removeLocation(address, new Path(removed.getFilePath()), removed.getOffset(), removed.getUniqueId());
       }
     }
   }
 
-  // TODO: consider creating a <blockid, blockinfo> map to make the linear search into a lookup
-  private void removeLocation(final String address, final Path filePath, final long uniqueId) {
+  private void removeLocation(final String nodeAddress,
+                              final Path filePath,
+                              final long offset,
+                              final long uniqueId) {
     final FileMeta fileMeta = metadataIndex.getIfPresent(filePath);
     if (fileMeta == null) {
       LOG.log(Level.INFO, "FileMeta null for path "+filePath);
@@ -87,26 +90,29 @@ public final class SurfMetaManager {
       return;
     }
 
-    BlockInfo found = null;
+    final BlockInfo blockInfo;
     synchronized (fileMeta) {
-      for (final BlockInfo blockInfo : fileMeta.getBlocks()) {
-        if (blockInfo.getBlockId() == uniqueId) {
-          found = blockInfo;
-          break;
-        }
+      final int index = (int) (offset / fileMeta.getBlockSize());
+      if (fileMeta.getBlocksSize() < index) {
+        LOG.log(Level.WARNING, "Block index out of bounds: "+index+", "+fileMeta.getBlocksSize());
+        return;
       }
+      blockInfo = fileMeta.getBlocks().get(index);
     }
-    if (found == null | found.getLocations() == null) {
-      LOG.log(Level.INFO, "Found null");
+    if (blockInfo.getBlockId() != uniqueId) {
+      LOG.log(Level.WARNING, "Block IDs did not match: "+blockInfo.getBlockId()+", "+uniqueId);
+      return;
+    } else if (blockInfo.getLocations() == null) {
+      LOG.log(Level.WARNING, "No locations for block "+blockInfo);
       return;
     }
 
     boolean removed = false;
-    synchronized(found) {
-      final Iterator<NodeInfo> iterator = found.getLocationsIterator();
+    synchronized(blockInfo) {
+      final Iterator<NodeInfo> iterator = blockInfo.getLocationsIterator();
       while (iterator.hasNext()) {
         final NodeInfo nodeInfo = iterator.next();
-        if (nodeInfo.getAddress().equals(address)) {
+        if (nodeInfo.getAddress().equals(nodeAddress)) {
           iterator.remove();
           removed = true;
           break;
@@ -115,9 +121,9 @@ public final class SurfMetaManager {
     }
 
     if (removed) {
-      LOG.log(Level.INFO, "Removed "+address+", "+found.getLocationsSize()+" locations remaining.");
+      LOG.log(Level.INFO, "Removed "+nodeAddress+", "+blockInfo.getLocationsSize()+" locations remaining.");
     } else {
-      LOG.log(Level.INFO, "Did not remove "+address);
+      LOG.log(Level.INFO, "Did not remove "+nodeAddress);
     }
   }
 }

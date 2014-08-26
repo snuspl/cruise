@@ -12,6 +12,11 @@ public interface BlockId {
   public String getFilePath();
 
   /**
+   * Return offset within file.
+   */
+  public long getOffset();
+
+  /**
    * Return unique ID. The complementing BlockInfo has the same unique ID.
    */
   public long getUniqueId();
