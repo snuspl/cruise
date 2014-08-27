@@ -77,7 +77,7 @@ public class HdfsBlockLoaderTest {
       Assert.assertEquals("Test block size : ", blockSize, block.getBlockSize());
 
       // Retrieve the information for block and datanode
-      HdfsBlockId blockId = blockFactory.newBlockId(block);
+      HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
       List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
 
       // Instantiate HdfsBlockLoader via TANG
@@ -101,8 +101,8 @@ public class HdfsBlockLoaderTest {
   @Test(expected = UnsupportedOperationException.class)
   public void testInvalidSize() throws IOException {
     LocatedBlock block = blocks.get(0);
-    HdfsBlockId blockId = blockFactory.newBlockId(block);
-    HdfsBlockId dummyBlockId = new HdfsBlockId(blockId.getBlockId(), Integer.MAX_VALUE+(long)1, blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
+    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
+    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, 0, blockId.getUniqueId(), Integer.MAX_VALUE+(long)1, blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false);
     loader.loadBlock();
@@ -116,7 +116,7 @@ public class HdfsBlockLoaderTest {
   public void testInvalidAddress() throws IOException{
     LocatedBlock block = blocks.get(0);
 
-    HdfsBlockId blockId = blockFactory.newBlockId(block);
+    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
     List<HdfsDatanodeInfo> dummyDatanodeInfo = new ArrayList<HdfsDatanodeInfo>();
     dummyDatanodeInfo.add(new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", "", 0, 0, 0, 0));
     BlockLoader loader = new HdfsBlockLoader(blockId, dummyDatanodeInfo, false);
@@ -131,7 +131,7 @@ public class HdfsBlockLoaderTest {
   public void testRetry() throws IOException {
     LocatedBlock block = blocks.get(0);
 
-    HdfsBlockId blockId = blockFactory.newBlockId(block);
+    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     datanodeInfo.add(0, new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", "", 0, 0, 0, 0));
     BlockLoader loader = new HdfsBlockLoader(blockId, datanodeInfo, false);
@@ -147,8 +147,8 @@ public class HdfsBlockLoaderTest {
   public void testInvalidId() throws IOException {
     LocatedBlock block = blocks.get(0);
 
-    HdfsBlockId blockId = blockFactory.newBlockId(block);
-    HdfsBlockId dummyBlockId = new HdfsBlockId((long)-1, blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
+    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
+    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, 0, (long)-1, blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false);
     loader.loadBlock();
@@ -162,8 +162,8 @@ public class HdfsBlockLoaderTest {
   public void testInvalidToken() throws IOException {
     LocatedBlock block = blocks.get(0);
 
-    HdfsBlockId blockId = blockFactory.newBlockId(block);
-    HdfsBlockId dummyBlockId = new HdfsBlockId(blockId.getBlockId(), blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), "");
+    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
+    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, 0, blockId.getUniqueId(), blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), "");
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false);
     loader.loadBlock();

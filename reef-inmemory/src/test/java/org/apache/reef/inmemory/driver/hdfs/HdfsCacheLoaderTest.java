@@ -9,7 +9,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.replication.Action;
@@ -55,7 +54,7 @@ public final class HdfsCacheLoaderTest {
       RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
 
       manager.addRunningTask(task);
-      manager.handleUpdate(task.getId(), TestUtils.cacheStatusMessage(18001));
+      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001));
     }
     List<CacheNode> selectedNodes = manager.getCaches();
     assertEquals(3, selectedNodes.size());

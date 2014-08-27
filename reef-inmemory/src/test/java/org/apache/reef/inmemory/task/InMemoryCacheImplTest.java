@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.task;
 
 import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
+import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.junit.After;
@@ -49,7 +50,7 @@ public final class InMemoryCacheImplTest {
   }
 
   private BlockId randomBlockId(long length) {
-    return new MockBlockId(Long.toString(random.nextLong()), length);
+    return new MockBlockId(random.nextLong(), length);
   }
 
   private byte[] ones(int length) {
@@ -295,8 +296,23 @@ public final class InMemoryCacheImplTest {
     }
   }
 
+  private void assertRemovalsNotFound(final CacheUpdates updates) {
+    assertTrue(updates.getRemovals().size() > 0);
+    for (final BlockId blockId : updates.getRemovals()) {
+      try {
+        cache.get(blockId);
+        assertTrue("BlockNotFoundException was excepted, but no exception was raised", false);
+      } catch (BlockNotFoundException e) {
+        assertTrue("BlockNotFoundException, as expected", true);
+      } catch (BlockLoadingException e) {
+        assertTrue("BlockNotFoundException was expected, but BlockLoadingException was raised", false);
+      }
+    }
+  }
+
   /**
-   * Test that adding 20 * 128 MB = 2.5 GB of blocks does not cause an OutOfMemory exception
+   * Test that adding 20 * 128 MB = 2.5 GB of blocks does not cause an OutOfMemory exception.
+   * Test that updates reflect the evictions.
    */
   @Test
   public void testEviction() throws IOException {
@@ -309,10 +325,14 @@ public final class InMemoryCacheImplTest {
       cache.load(loader, false);
       System.out.println("Loaded " + (128 * (i+1)) + "M");
     }
+
+    final CacheUpdates updates = cache.pullUpdates();
+    assertRemovalsNotFound(updates);
   }
 
   /**
-   * Test that adding 20 * 128 MB = 2.5 GB of blocks concurrently does not cause an OutOfMemory exception
+   * Test that adding 20 * 128 MB = 2.5 GB of blocks concurrently does not cause an OutOfMemory exception.
+   * Test that updates reflect the evictions.
    */
   @Test
   public void testConcurrentEviction() throws IOException, ExecutionException, InterruptedException {
@@ -349,6 +369,9 @@ public final class InMemoryCacheImplTest {
     }
 
     assertTrue(true); // No exceptions were encountered
+
+    final CacheUpdates updates = cache.pullUpdates();
+    assertRemovalsNotFound(updates);
   }
 
   /**
@@ -502,13 +525,28 @@ public final class InMemoryCacheImplTest {
 
   private static final class MockBlockId implements BlockId {
 
-    private final String blockId;
+    private final long blockId;
     private final long blockSize;
 
-    public MockBlockId(final String blockId,
+    public MockBlockId(final long blockId,
                        final long blockSize) {
       this.blockId = blockId;
       this.blockSize = blockSize;
+    }
+
+    @Override
+    public String getFilePath() {
+      return "/mock/"+blockId;
+    }
+
+    @Override
+    public long getOffset() {
+      return 0;
+    }
+
+    @Override
+    public long getUniqueId() {
+      return blockId;
     }
 
     @Override
@@ -523,15 +561,15 @@ public final class InMemoryCacheImplTest {
 
       MockBlockId that = (MockBlockId) o;
 
+      if (blockId != that.blockId) return false;
       if (blockSize != that.blockSize) return false;
-      if (!blockId.equals(that.blockId)) return false;
 
       return true;
     }
 
     @Override
     public int hashCode() {
-      int result = blockId.hashCode();
+      int result = (int) (blockId ^ (blockId >>> 32));
       result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
       return result;
     }

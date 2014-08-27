@@ -7,6 +7,21 @@ package org.apache.reef.inmemory.task;
  */
 public interface BlockId {
   /**
+   * Return file path.
+   */
+  public String getFilePath();
+
+  /**
+   * Return offset within file.
+   */
+  public long getOffset();
+
+  /**
+   * Return unique ID. The complementing BlockInfo has the same unique ID.
+   */
+  public long getUniqueId();
+
+  /**
    * Return size of the block, in MB
    */
   public long getBlockSize();

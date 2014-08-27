@@ -7,6 +7,7 @@ import com.google.common.cache.RemovalNotification;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
+import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
@@ -48,8 +49,8 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     @Override
     public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
       LOG.log(Level.FINE, "Removed: "+notification.getKey());
-      final long blockSize = notification.getKey().getBlockSize();
-      memoryManager.remove(blockSize);
+      final BlockId blockId = notification.getKey();
+      memoryManager.remove(blockId);
     }
   };
 
@@ -129,5 +130,10 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Override
   public CacheStatistics getStatistics() {
     return memoryManager.getStatistics();
+  }
+
+  @Override
+  public CacheUpdates pullUpdates() {
+    return memoryManager.pullUpdates();
   }
 }
