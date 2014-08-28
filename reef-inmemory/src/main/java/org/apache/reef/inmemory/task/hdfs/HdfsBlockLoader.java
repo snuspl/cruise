@@ -270,8 +270,12 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   @Override
   public byte[] getData(int index) throws BlockLoadingException {
-    if(data == null || (data.size() / bufferSize) < index)
+    if(blockSize < bufferSize * index) {
+      throw new IndexOutOfBoundsException();
+    }
+    else if(data == null || data.size() < index) {
       throw new BlockLoadingException(totalRead);
+    }
     return data.get(index);
   }
 }

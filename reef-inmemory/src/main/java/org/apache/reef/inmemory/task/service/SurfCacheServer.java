@@ -110,17 +110,17 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
     // The first and last index to load blocks
     final int indexStart = (int)offset / bufferSize;
-    final int indexEnd = (int)(offset + length) / bufferSize;
 
     int nWrite = 0;
     ByteBuffer buf = ByteBuffer.allocate((int)length);
-    for(int i = indexStart; i < indexEnd; i++) {
+    for(int i = indexStart; i * bufferSize < (int)(offset + length); i++) {
       byte[] temp = cache.get(blockId, i);
 
-      // InnerOffset : starting point inside the chunk
-      int innerOffset = (i == indexStart) ? (int)offset % bufferSize : 0;
-      buf.put(temp, innerOffset, temp.length).position(0);
-      nWrite += temp.length;
+      int startOffset = (i == indexStart) ? (int)offset % bufferSize : 0;
+      int endOffset = Math.max(0, (i + 1) * bufferSize - (int)(offset + length));
+      int innerLength = bufferSize - (startOffset + endOffset);
+      buf.put(temp, startOffset, innerLength);
+      nWrite += innerLength;
     }
 
     /*
@@ -128,7 +128,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
      * Otherwise when {@code length} is larger than actual file size, it could cause an Exception
      * while reading the data using this ByteBuffer.
      */
-    buf.limit(nWrite);
+    buf.limit(nWrite).position(0);
     return buf;
   }
 }
