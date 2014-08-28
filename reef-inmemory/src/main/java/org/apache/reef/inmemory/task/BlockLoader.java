@@ -26,8 +26,14 @@ public interface BlockLoader {
   public boolean isPinned();
 
   /**
-   * @return the data loaded by BlockLoader
-   * @throws BlockLoadingException
+   * @param index Index of the chunk to load
+   * @return Part of the data loaded by BlockLoader
+   * @throws BlockLoadingException If the chunk of index has not been loaded yet
    */
-  public byte[] getData() throws BlockLoadingException;
+  public byte[] getData(int index) throws BlockLoadingException;
+
+  /**
+   * @return Size of buffer used in block loading
+   */
+  public int getBufferSize();
 }
