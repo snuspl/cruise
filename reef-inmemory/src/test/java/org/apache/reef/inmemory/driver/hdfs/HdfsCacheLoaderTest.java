@@ -19,6 +19,7 @@ import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.*;
  * Tests for HdfsCacheLoader. All Hdfs operations are performed on a live
  * MiniDFSCluster.
  */
+@Category(org.apache.reef.inmemory.common.IntensiveTests.class)
 public final class HdfsCacheLoaderTest {
 
   private MiniDFSCluster cluster;

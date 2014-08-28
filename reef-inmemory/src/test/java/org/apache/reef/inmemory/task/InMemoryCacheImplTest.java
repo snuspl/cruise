@@ -8,6 +8,7 @@ import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -315,6 +316,7 @@ public final class InMemoryCacheImplTest {
    * Test that updates reflect the evictions.
    */
   @Test
+  @Category(org.apache.reef.inmemory.common.IntensiveTests.class)
   public void testEviction() throws IOException {
     final long iterations = maxMemory / (128 * 1024 * 1024) * 2;
     for (int i = 0; i < iterations; i++) {
@@ -335,6 +337,7 @@ public final class InMemoryCacheImplTest {
    * Test that updates reflect the evictions.
    */
   @Test
+  @Category(org.apache.reef.inmemory.common.IntensiveTests.class)
   public void testConcurrentEviction() throws IOException, ExecutionException, InterruptedException {
 
     final int numThreads = 10;
@@ -378,6 +381,7 @@ public final class InMemoryCacheImplTest {
    * Test that a pinned block remains, even after adding 20 * 128 MB = 2.5 GB of blocks
    */
   @Test
+  @Category(org.apache.reef.inmemory.common.IntensiveTests.class)
   public void testPinned() throws IOException, BlockLoadingException, BlockNotFoundException {
     // Different from other buffers, to tell them apart
     final byte[] pinnedBuffer = twos(128 * 1024 * 1024);

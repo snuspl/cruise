@@ -16,12 +16,14 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+@Category(org.apache.reef.inmemory.common.IntensiveTests.class)
 public class HdfsBlockLoaderTest {
   private static final String PATH = "/temp/HDFSBlockLoaderTest";
   private static final int NUM_BLOCK = 3;

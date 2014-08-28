@@ -12,6 +12,7 @@ import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.thrift.TException;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -24,6 +25,7 @@ import static org.junit.Assert.*;
 /**
  * Test CLI utility methods
  */
+@Category(org.apache.reef.inmemory.common.IntensiveTests.class)
 public final class CLIUtilsTest {
 
   private static MiniDFSCluster cluster;
