@@ -10,12 +10,16 @@ import com.microsoft.wake.EStage;
 import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.impl.ThreadPoolStage;
 import org.apache.reef.inmemory.common.DfsParameters;
-import org.apache.reef.inmemory.driver.hdfs.*;
+import org.apache.reef.inmemory.driver.hdfs.HdfsCacheLoader;
+import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
+import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
+import org.apache.reef.inmemory.driver.hdfs.HdfsRemainingMemorySelectionPolicy;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicyImpl;
-import org.apache.reef.inmemory.task.*;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
+import org.apache.reef.inmemory.task.BlockId;
+import org.apache.reef.inmemory.task.CacheParameters;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 
 /**
  * Builder that creates a Configuration Module to be used at the Driver, based on underlying FS type

@@ -5,10 +5,10 @@ import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheMessenger;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
-import org.junit.*;
+import org.junit.Test;
 
-import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

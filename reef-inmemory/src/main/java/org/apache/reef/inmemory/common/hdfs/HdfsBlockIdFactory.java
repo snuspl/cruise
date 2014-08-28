@@ -1,8 +1,8 @@
 package org.apache.reef.inmemory.common.hdfs;
 
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.BlockIdFactory;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 
 import javax.inject.Inject;
