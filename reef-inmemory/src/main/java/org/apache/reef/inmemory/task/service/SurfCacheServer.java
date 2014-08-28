@@ -33,6 +33,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   private final int port;
   private final int timeout;
   private final int numThreads;
+  private final int bufferSize;
 
   private TServer server = null;
   private int bindPort;
@@ -42,12 +43,14 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
                          final BlockIdFactory blockIdFactory,
                          final @Parameter(CacheParameters.Port.class) int port,
                          final @Parameter(CacheParameters.Timeout.class) int timeout,
-                         final @Parameter(CacheParameters.NumServerThreads.class) int numThreads) {
+                         final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
+                         final @Parameter(CacheParameters.LoadingBuffer.class) int bufferSize) {
     this.cache = cache;
     this.blockIdFactory = blockIdFactory;
     this.port = port;
     this.timeout = timeout;
     this.numThreads = numThreads;
+    this.bufferSize = bufferSize;
   }
 
   public int getBindPort() {
@@ -78,12 +81,12 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
       final TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.bindPort, this.timeout);
 
       final SurfCacheService.Processor<SurfCacheService.Iface> processor =
-              new SurfCacheService.Processor<SurfCacheService.Iface>(this);
+        new SurfCacheService.Processor<SurfCacheService.Iface>(this);
 
       this.server = new THsHaServer(
-          new THsHaServer.Args(serverTransport).processor(processor)
-              .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
-              .workerThreads(this.numThreads));
+        new THsHaServer.Args(serverTransport).processor(processor)
+          .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
+          .workerThreads(this.numThreads));
 
       this.server.serve();
     } catch (Exception e) {
@@ -102,12 +105,30 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Override
   public ByteBuffer getData(final BlockInfo blockInfo, final long offset, final long length)
-          throws BlockNotFoundException, BlockLoadingException {
+    throws BlockLoadingException, BlockNotFoundException {
     final BlockId blockId = blockIdFactory.newBlockId(blockInfo);
 
-    final byte[] block = cache.get(blockId);
-    final ByteBuffer buf = ByteBuffer.wrap(block, (int)offset,
-            Math.min(block.length - (int)offset, Math.min((int)length, 8 * 1024 * 1024))); // 8 MB, for now
+    // The first and last index to load blocks
+    final int indexStart = (int)offset / bufferSize;
+    final int indexEnd = (int)(offset + length) / bufferSize;
+
+    int nWrite = 0;
+    ByteBuffer buf = ByteBuffer.allocate((int)length);
+    for(int i = indexStart; i < indexEnd; i++) {
+      byte[] temp = cache.get(blockId, i);
+
+      // InnerOffset : starting point inside the chunk
+      int innerOffset = (i == indexStart) ? (int)offset % bufferSize : 0;
+      buf.put(temp, innerOffset, temp.length).position(0);
+      nWrite += temp.length;
+    }
+
+    /*
+     * We need to limit the size of ByteBuffer into the size of actual file.
+     * Otherwise when {@code length} is larger than actual file size, it could cause an Exception
+     * while reading the data using this ByteBuffer.
+     */
+    buf.limit(nWrite);
     return buf;
   }
 }
