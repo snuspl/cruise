@@ -6,6 +6,7 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.junit.*;
+import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.net.URI;
@@ -16,6 +17,7 @@ import static org.junit.Assert.*;
  * Tests for SurfFS methods that delegate to a Base FS.
  * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
  */
+@Category(org.apache.reef.inmemory.common.IntensiveTests.class)
 public final class SurfFSDelegationTest {
 
   private static MiniDFSCluster cluster;
