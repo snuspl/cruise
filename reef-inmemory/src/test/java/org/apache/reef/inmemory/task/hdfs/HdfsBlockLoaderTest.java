@@ -90,9 +90,9 @@ public class HdfsBlockLoaderTest {
       for(int chunkIndex = 0; chunkIndex * BUFFER_SIZE < blockSize; chunkIndex++) {
         ByteBuffer loadedBuf = ByteBuffer.wrap(loader.getData(chunkIndex));
         // Because the size of long is 8 bytes, the offset should be calculated as lIndex * 8
-        for (long lIndex = 0; lIndex < block.getBlockSize() / LONG_BYTES; lIndex++) {
+        for (long lIndex = 0; lIndex < loadedBuf.limit() / LONG_BYTES; lIndex++) {
           Assert.assertEquals(String.format("Test the %d th long in %d th block", lIndex, blockIndex),
-            BUFFER_SIZE * chunkIndex +lIndex + blockIndex, loadedBuf.getLong((int) lIndex * LONG_BYTES));
+            blockIndex + chunkIndex * (blockSize / BUFFER_SIZE) + lIndex, loadedBuf.getLong((int) lIndex * LONG_BYTES));
         }
       }
     }

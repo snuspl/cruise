@@ -117,10 +117,8 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
       byte[] temp = cache.get(blockId, i);
 
       int startOffset = (i == indexStart) ? (int)offset % bufferSize : 0;
-      int endOffset = Math.max(0, (i + 1) * bufferSize - (int)(offset + length));
-      int innerLength = bufferSize - (startOffset + endOffset);
-      buf.put(temp, startOffset, innerLength);
-      nWrite += innerLength;
+      buf.put(temp, startOffset, temp.length);
+      nWrite += temp.length;
     }
 
     /*
