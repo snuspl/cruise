@@ -104,7 +104,7 @@ public class HdfsBlockLoader implements BlockLoader {
         LOG.log(Level.INFO, "Transfer the data from datanode at {0}", datanode.getXferAddr());
 
         // Transfer data to read the block
-        while(totalRead < blockSize) {
+        while (totalRead < blockSize) {
           int length = Math.min((int)blockSize - totalRead, bufferSize);
           byte[] buf = new byte[length];
           int nRead = readChunk(blockReader, buf, datanode);
@@ -131,7 +131,7 @@ public class HdfsBlockLoader implements BlockLoader {
       }
       break;
 
-    } while(dnInfoIter.hasNext());
+    } while (dnInfoIter.hasNext());
   }
 
   /**
@@ -270,10 +270,9 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   @Override
   public byte[] getData(int index) throws BlockLoadingException {
-    if(blockSize < bufferSize * index) {
-      throw new IndexOutOfBoundsException();
-    }
-    else if(data == null || data.size() < index) {
+    if (blockSize <= bufferSize * index) {
+      throw new IndexOutOfBoundsException("The requested index exceeded the capacity.");
+    } else if (data == null || data.size() < index) {
       throw new BlockLoadingException(totalRead);
     }
     return data.get(index);
