@@ -11,14 +11,17 @@ public final class BlockLoaderCaller implements Callable<BlockLoader> {
 
   private final BlockLoader loader;
   private final boolean pin;
-  private Cache<BlockId, BlockLoader> pinCache;
+  private final Cache<BlockId, BlockLoader> pinCache;
+  private final MemoryManager memoryManager;
 
   public BlockLoaderCaller(final BlockLoader loader,
                            final boolean pin,
-                           final Cache<BlockId, BlockLoader> pinCache) {
+                           final Cache<BlockId, BlockLoader> pinCache,
+                           final MemoryManager memoryManager) {
     this.loader = loader;
     this.pin = pin;
     this.pinCache = pinCache;
+    this.memoryManager = memoryManager;
   }
 
   /**
@@ -28,9 +31,11 @@ public final class BlockLoaderCaller implements Callable<BlockLoader> {
    */
   @Override
   public BlockLoader call() throws Exception {
+    final BlockId blockId = loader.getBlockId();
     if (pin) {
-      pinCache.put(loader.getBlockId(), loader);
+      pinCache.put(blockId, loader);
     }
+    memoryManager.cacheInsert(blockId);
     return loader;
   }
 }

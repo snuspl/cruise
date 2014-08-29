@@ -1,9 +1,6 @@
 package org.apache.reef.inmemory.task;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.RemovalListener;
-import com.google.common.cache.RemovalNotification;
+import com.google.common.cache.*;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
@@ -48,7 +45,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final RemovalListener<BlockId, BlockLoader> removalListener = new RemovalListener<BlockId, BlockLoader>() {
     @Override
     public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
-      LOG.log(Level.FINE, "Removed: "+notification.getKey());
+      LOG.log(Level.INFO, "Removed: "+notification.getKey());
       final BlockId blockId = notification.getKey();
       memoryManager.remove(blockId);
     }
@@ -60,9 +57,17 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final RemovalListener<BlockId, BlockLoader> pinRemovalListener = new RemovalListener<BlockId, BlockLoader>() {
     @Override
     public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
-      LOG.log(Level.FINE, "Removed pin: "+notification.getKey());
+      LOG.log(Level.INFO, "Removed pin: "+notification.getKey());
       final long blockSize = notification.getKey().getBlockSize();
       memoryManager.removePin(blockSize);
+    }
+  };
+
+  private final Weigher<BlockId, BlockLoader> weigher = new Weigher<BlockId, BlockLoader>() {
+    @Override
+    public int weigh(BlockId key, BlockLoader value) {
+      LOG.log(Level.INFO, "Weight: "+key.getBlockSize()+", maxWeight: "+memoryManager.getCacheSize());
+      return (int) key.getBlockSize();
     }
   };
 
@@ -71,7 +76,8 @@ public final class InMemoryCacheImpl implements InMemoryCache {
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads) {
     this.cache = CacheBuilder.newBuilder()
-                 .softValues()
+                 .maximumWeight(memoryManager.getCacheSize())
+                 .weigher(weigher)
                  .removalListener(removalListener)
                  .concurrencyLevel(numThreads)
                  .build();
@@ -92,7 +98,13 @@ public final class InMemoryCacheImpl implements InMemoryCache {
           throws BlockLoadingException, BlockNotFoundException {
     final BlockLoader loader = cache.getIfPresent(blockId);
     if (loader == null) {
-      throw new BlockNotFoundException();
+      final BlockLoader pinLoader = pinCache.getIfPresent(blockId);
+      if (pinLoader != null) {
+        cache.put(blockId, pinLoader);
+        return pinLoader.getData();
+      } else {
+        throw new BlockNotFoundException();
+      }
     } else {
       // getData throws BlockLoadingException if load has not completed
       return loader.getData();
@@ -101,7 +113,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   @Override
   public void load(final BlockLoader loader, final boolean pin) throws IOException {
-    final Callable<BlockLoader> callable = new BlockLoaderCaller(loader, pin, pinCache);
+    final Callable<BlockLoader> callable = new BlockLoaderCaller(loader, pin, pinCache, memoryManager);
     final BlockLoader returnedLoader;
     try {
       returnedLoader = cache.get(loader.getBlockId(), callable);
