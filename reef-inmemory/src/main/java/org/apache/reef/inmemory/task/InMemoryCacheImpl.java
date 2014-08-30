@@ -71,7 +71,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   public InMemoryCacheImpl(final MemoryManager memoryManager,
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
-                           final @Parameter(CacheParameters.LoadingBuffer.class) int loadingBufferSize) {
+                           final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize) {
     this.cache =
       CacheBuilder.newBuilder()
         .softValues()

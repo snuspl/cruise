@@ -32,6 +32,6 @@ public final class CacheParameters {
   }
 
   @NamedParameter(doc = "Size of buffer used when loading a block", short_name = "loading_buffer", default_value = "8388608") // 8 MB
-  public static class LoadingBuffer implements Name<Integer>{
+  public static class LoadingBufferSize implements Name<Integer>{
   }
 }
