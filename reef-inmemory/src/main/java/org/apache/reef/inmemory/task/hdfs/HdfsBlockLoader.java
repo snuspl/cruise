@@ -1,7 +1,10 @@
 package org.apache.reef.inmemory.task.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.*;
+import org.apache.hadoop.hdfs.BlockReader;
+import org.apache.hadoop.hdfs.BlockReaderFactory;
+import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.net.TcpPeerServer;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
@@ -19,6 +22,7 @@ import org.apache.reef.inmemory.task.BlockLoader;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
@@ -41,8 +45,9 @@ public class HdfsBlockLoader implements BlockLoader {
   private final List<HdfsDatanodeInfo> dnInfoList;
   private final long blockSize;
   private final boolean pinned;
+  private final int bufferSize;
 
-  private byte[] data = null;
+  private List<byte[]> data = null;
   private int totalRead;
 
   /**
@@ -50,13 +55,16 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   public HdfsBlockLoader(final HdfsBlockId id,
                          final List<HdfsDatanodeInfo> infoList,
-                         final boolean pin) {
+                         final boolean pin,
+                         final int bufferSize) {
     hdfsBlockId = id;
     block = new ExtendedBlock(id.getPoolId(), id.getUniqueId(), id.getBlockSize(), id.getGenerationTimestamp());
     dnInfoList = infoList;
     blockSize = id.getBlockSize();
+    data = new ArrayList<>();
     totalRead = 0;
     this.pinned = pin;
+    this.bufferSize = bufferSize;
   }
 
   /**
@@ -65,14 +73,11 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   @Override
   public void loadBlock() throws IOException {
-
     final Configuration conf = new HdfsConfiguration();
 
     // Allocate a Byte array of the Block size.
     if(blockSize > Integer.MAX_VALUE)
       throw new UnsupportedOperationException("Currently we don't support large(>2GB) block");
-
-    final byte[] buf = new byte[(int) blockSize];
 
     Iterator<HdfsDatanodeInfo> dnInfoIter = dnInfoList.iterator();
     do {
@@ -99,7 +104,13 @@ public class HdfsBlockLoader implements BlockLoader {
         LOG.log(Level.INFO, "Transfer the data from datanode at {0}", datanode.getXferAddr());
 
         // Transfer data to read the block
-        readBlock(blockReader, buf, datanode);
+        while (totalRead < blockSize) {
+          int length = Math.min((int)blockSize - totalRead, bufferSize);
+          byte[] buf = new byte[length];
+          int nRead = readChunk(blockReader, buf, datanode);
+          totalRead += nRead;
+          data.add(buf);
+        }
       } catch (TokenDecodeFailedException | ConnectionFailedException | TransferFailedException ex) {
         if (dnInfoIter.hasNext()) {
           closeSocketToRetry(socket);
@@ -120,9 +131,7 @@ public class HdfsBlockLoader implements BlockLoader {
       }
       break;
 
-    } while(dnInfoIter.hasNext());
-
-    data = buf;
+    } while (dnInfoIter.hasNext());
   }
 
   /**
@@ -192,14 +201,12 @@ public class HdfsBlockLoader implements BlockLoader {
                                      Socket socket, DatanodeID datanode) throws ConnectionFailedException {
     BlockReader blockReader;
     try {
-      // TODO Tweak config to improve the performance (e.g. utilize local short-circuit/task)
       blockReader = BlockReaderFactory.newBlockReader(
         new DFSClient.Conf(conf), fileName, block,
         blockToken, START_OFFSET, blockSize,
         VERIFY_CHECKSUM, CLIENT_NAME, TcpPeerServer.peerFromSocket(socket),
         datanode, null, null, null, ALLOW_SHORT_CIRCUIT_LOCAL_READS,
         CachingStrategy.newDefaultStrategy());
-
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
         new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
@@ -209,19 +216,15 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * Read a block from Datanode
+   * Read a chunk of block from Datanode
    * @param blockReader BlockReader to load the data (from hadoop package)
-   * @param buf Byte array buffer
+   * @param buf Byte buffer to load bytes
    * @param datanode Datanode to load the data from
    * @throws TransferFailedException When an error occurred while transferring data
    */
-  private void readBlock(BlockReader blockReader, byte[] buf, DatanodeID datanode) throws TransferFailedException {
+  private int readChunk(BlockReader blockReader, byte[] buf, DatanodeID datanode) throws TransferFailedException {
     try {
-      do {
-        int nRead = 0;
-        nRead = blockReader.read(buf, totalRead, buf.length - totalRead);
-        totalRead += nRead;
-      } while(totalRead < blockSize);
+      return blockReader.readAll(buf, 0, buf.length);
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Data transfer error while loading block {0} from datanode at {1}. Retry with next datanode",
         new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
@@ -243,17 +246,35 @@ public class HdfsBlockLoader implements BlockLoader {
     }
   }
 
+  /**
+   * @return {@code true} if the block is requested to pin.
+   */
   @Override
   public boolean isPinned() {
     return pinned;
   }
 
+  /**
+   * @return Size of buffer used in block loading
+   */
   @Override
-  public byte[] getData() throws BlockLoadingException {
-    if (data == null) {
+  public int getBufferSize() {
+    return bufferSize;
+  }
+
+  /**
+   * Get data split from cache with an offset of {@code index * bufferSize}
+   * @param index Index of the chunk to load
+   * @return Cached byte array
+   * @throws BlockLoadingException
+   */
+  @Override
+  public byte[] getData(int index) throws BlockLoadingException {
+    if (blockSize <= bufferSize * index) {
+      throw new IndexOutOfBoundsException("The requested index exceeded the capacity.");
+    } else if (data == null || data.size() < index) {
       throw new BlockLoadingException(totalRead);
-    } else {
-      return data;
     }
+    return data.get(index);
   }
 }

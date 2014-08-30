@@ -25,6 +25,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   private final MemoryManager memoryManager;
   private final EStage<BlockLoader> loadingStage;
+  private final int loadingBufferSize;
 
   private final Cache<BlockId, BlockLoader> cache;
   private final Cache<BlockId, BlockLoader> pinCache;
@@ -69,33 +70,36 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Inject
   public InMemoryCacheImpl(final MemoryManager memoryManager,
                            final EStage<BlockLoader> loadingStage,
-                           final @Parameter(CacheParameters.NumServerThreads.class) int numThreads) {
-    this.cache = CacheBuilder.newBuilder()
-                 .softValues()
-                 .removalListener(removalListener)
-                 .concurrencyLevel(numThreads)
-                 .build();
-    this.pinCache = CacheBuilder.newBuilder()
-                    .removalListener(pinRemovalListener)
-                    .concurrencyLevel(numThreads)
-                    .build();
+                           final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
+                           final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize) {
+    this.cache =
+      CacheBuilder.newBuilder()
+        .softValues()
+        .removalListener(removalListener)
+        .concurrencyLevel(numThreads)
+        .build();
+    this.pinCache =
+      CacheBuilder.newBuilder()
+        .removalListener(pinRemovalListener)
+        .concurrencyLevel(numThreads)
+        .build();
 
     this.memoryManager = memoryManager;
     this.loadingStage = loadingStage;
-
+    this.loadingBufferSize = loadingBufferSize;
     this.cleanupScheduler = Executors.newScheduledThreadPool(1);
     this.cleanupScheduler.scheduleAtFixedRate(cleanup, 5, 5, TimeUnit.SECONDS);
   }
 
   @Override
-  public byte[] get(final BlockId blockId)
-          throws BlockLoadingException, BlockNotFoundException {
+  public byte[] get(BlockId blockId, int index)
+    throws BlockLoadingException, BlockNotFoundException {
     final BlockLoader loader = cache.getIfPresent(blockId);
     if (loader == null) {
       throw new BlockNotFoundException();
     } else {
-      // getData throws BlockLoadingException if load has not completed
-      return loader.getData();
+      // getData throws BlockLoadingException if load has not completed for the requested chunk
+      return loader.getData(index);
     }
   }
 
@@ -114,6 +118,11 @@ public final class InMemoryCacheImpl implements InMemoryCache {
       LOG.log(Level.INFO, "Add loading block {0}", loader.getBlockId());
       loadingStage.onNext(loader);
     }
+  }
+
+  @Override
+  public int getLoadingBufferSize() {
+    return loadingBufferSize;
   }
 
   @Override

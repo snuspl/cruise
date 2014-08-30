@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.task;
 
 
 import com.microsoft.wake.EventHandler;
-import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
 
