@@ -21,6 +21,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final Logger LOG = Logger.getLogger(InMemoryCacheImpl.class.getName());
 
   private final MemoryManager memoryManager;
+  private final LRUEvictionManager lruEvictionManager;
   private final EStage<BlockLoader> loadingStage;
 
   private final Cache<BlockId, BlockLoader> cache;
@@ -42,18 +43,6 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   /**
    * Update statistics on cache removal
    */
-  private final RemovalListener<BlockId, BlockLoader> removalListener = new RemovalListener<BlockId, BlockLoader>() {
-    @Override
-    public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
-      LOG.log(Level.INFO, "Removed: "+notification.getKey());
-      final BlockId blockId = notification.getKey();
-      memoryManager.remove(blockId);
-    }
-  };
-
-  /**
-   * Update statistics on cache removal
-   */
   private final RemovalListener<BlockId, BlockLoader> pinRemovalListener = new RemovalListener<BlockId, BlockLoader>() {
     @Override
     public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
@@ -63,30 +52,20 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     }
   };
 
-  private final Weigher<BlockId, BlockLoader> weigher = new Weigher<BlockId, BlockLoader>() {
-    @Override
-    public int weigh(BlockId key, BlockLoader value) {
-      LOG.log(Level.INFO, "Weight: "+key.getBlockSize()+", maxWeight: "+memoryManager.getCacheSize());
-      return (int) key.getBlockSize();
-    }
-  };
-
   @Inject
-  public InMemoryCacheImpl(final MemoryManager memoryManager,
+  public InMemoryCacheImpl(final Cache<BlockId, BlockLoader> cache,
+                           final MemoryManager memoryManager,
+                           final LRUEvictionManager lruEvictionManager,
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads) {
-    this.cache = CacheBuilder.newBuilder()
-                 .maximumWeight(memoryManager.getCacheSize())
-                 .weigher(weigher)
-                 .removalListener(removalListener)
-                 .concurrencyLevel(numThreads)
-                 .build();
+    this.cache = cache;
     this.pinCache = CacheBuilder.newBuilder()
                     .removalListener(pinRemovalListener)
                     .concurrencyLevel(numThreads)
                     .build();
 
     this.memoryManager = memoryManager;
+    this.lruEvictionManager = lruEvictionManager;
     this.loadingStage = loadingStage;
 
     this.cleanupScheduler = Executors.newScheduledThreadPool(1);
@@ -96,11 +75,11 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Override
   public byte[] get(final BlockId blockId)
           throws BlockLoadingException, BlockNotFoundException {
+    lruEvictionManager.use(blockId);
     final BlockLoader loader = cache.getIfPresent(blockId);
     if (loader == null) {
       final BlockLoader pinLoader = pinCache.getIfPresent(blockId);
       if (pinLoader != null) {
-        cache.put(blockId, pinLoader);
         return pinLoader.getData();
       } else {
         throw new BlockNotFoundException();

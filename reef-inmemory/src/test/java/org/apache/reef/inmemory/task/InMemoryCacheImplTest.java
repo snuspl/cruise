@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.task;
 
+import com.google.common.cache.Cache;
 import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
@@ -25,6 +26,8 @@ import static org.mockito.Mockito.*;
 public final class InMemoryCacheImplTest {
 
   private CacheStatistics statistics;
+  private Cache<BlockId, BlockLoader> internalCache;
+  private LRUEvictionManager lruEvictionManager;
   private MemoryManager memoryManager;
   private EStage<BlockLoader> loadingStage;
   private InMemoryCache cache;
@@ -35,9 +38,12 @@ public final class InMemoryCacheImplTest {
   @Before
   public void setUp() {
     statistics = new CacheStatistics();
-    memoryManager = new MemoryManager(statistics, 384 * 1024 * 1024); // Should run in junit fork mode
+    final CacheConstructor constructor = new CacheConstructor(memoryManager, 5);
+    internalCache = constructor.newInstance();
+    lruEvictionManager = new LRUEvictionManager(internalCache);
+    memoryManager = new MemoryManager(lruEvictionManager, statistics, 384 * 1024 * 1024); // Should run in junit fork mode
     loadingStage = new MockStage(memoryManager);
-    cache = new InMemoryCacheImpl(memoryManager, loadingStage, 3);
+    cache = new InMemoryCacheImpl(internalCache, memoryManager, lruEvictionManager, loadingStage, 3);
   }
 
   @After

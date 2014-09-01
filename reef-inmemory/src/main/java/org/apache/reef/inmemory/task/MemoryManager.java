@@ -6,8 +6,7 @@ import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,7 +19,9 @@ import java.util.logging.Logger;
 public final class MemoryManager {
 
   private static final Logger LOG = Logger.getLogger(MemoryManager.class.getName());
+  private static final Integer ACCESS = Integer.valueOf(0);
 
+  private final LRUEvictionManager lruEvictionManager;
   private final CacheStatistics statistics;
   private final int slack;
   private CacheUpdates updates;
@@ -28,8 +29,10 @@ public final class MemoryManager {
   private Map<BlockId, CacheEntryState> cacheEntries = new HashMap<>();
 
   @Inject
-  public MemoryManager(final CacheStatistics statistics,
+  public MemoryManager(final LRUEvictionManager lruEvictionManager,
+                       final CacheStatistics statistics,
                        final @Parameter(CacheParameters.HeapSlack.class) int slack) {
+    this.lruEvictionManager = lruEvictionManager;
     this.statistics = statistics;
     this.slack = slack;
     this.updates = new CacheUpdates();
@@ -52,14 +55,22 @@ public final class MemoryManager {
     if (isState(blockId, CacheEntryState.INSERTED)) {
       throw new RuntimeException(blockId+" has been previously inserted");
     }
+    final long blockSize = blockId.getBlockSize();
 
+    final long maxHeap = statistics.getMaxBytes();
+    final long loading = statistics.getLoadingBytes();
     final long cached = statistics.getCacheBytes();
     if (cached < 0) {
       throw new RuntimeException(blockId+" cached is less than zero: "+cached);
     }
 
+    final long spaceNeeded = (blockSize + cached) - (maxHeap - slack);
+    if (spaceNeeded > 0) {
+      lruEvictionManager.evict(spaceNeeded);
+    }
+    lruEvictionManager.add(blockId);
     setState(blockId, CacheEntryState.INSERTED);
-    LOG.log(Level.INFO, blockId+" statistics on insert: "+statistics);
+    LOG.log(Level.INFO, blockId + " statistics on insert: " + statistics);
   }
 
   /**
@@ -109,6 +120,7 @@ public final class MemoryManager {
     LOG.log(Level.INFO, blockId+" statistics after loadStart: "+statistics);
   }
 
+  // TODO: make sure updates are working (in all methods)
   private void loadFinishAfterRemoved(final BlockId blockId) {
     final long blockSize = blockId.getBlockSize();
     statistics.subtractLoadingBytes(blockSize);
@@ -219,7 +231,7 @@ public final class MemoryManager {
         throw new RuntimeException(blockId+" unexpected state on remove: "+state);
     }
 
-    LOG.log(Level.INFO, blockId+" statistics after remove: "+statistics);
+    LOG.log(Level.INFO, blockId + " statistics after remove: " + statistics);
   }
 
   private void setState(final BlockId blockId, final CacheEntryState state) {
