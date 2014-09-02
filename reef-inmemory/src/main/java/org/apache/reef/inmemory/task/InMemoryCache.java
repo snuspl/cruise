@@ -14,12 +14,12 @@ public interface InMemoryCache {
   /**
    * Retrieves the content of a block with given blockId.
    * @param fileBlock Block identifier to read
+   * @param index Chunk index inside block
    * @return The byte array containing the data of the block
    * @throws BlockLoadingException If the block is loading at the moment of trial
    * @throws BlockNotFoundException If the block does not exist in the cache
    */
-  public byte[] get(BlockId fileBlock) throws BlockLoadingException, BlockNotFoundException;
-
+  public byte[] get(BlockId fileBlock, int index) throws BlockLoadingException, BlockNotFoundException;
   /**
    * Load data into the cache using the given block loader.
    * For efficiency reasons, implementations should assure that
@@ -29,6 +29,11 @@ public interface InMemoryCache {
    * @throws IOException If block loading fails
    */
   public void load(BlockLoader loader, boolean pin) throws IOException;
+
+  /**
+   * @return Length of buffer loading data from Underlying File Systemss
+   */
+  public int getLoadingBufferSize();
 
   /**
    * Clears the cache

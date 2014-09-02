@@ -35,7 +35,7 @@ public final class BlockLoaderCaller implements Callable<BlockLoader> {
     if (pin) {
       pinCache.put(blockId, loader);
     }
-    if (memoryManager.getEvictionList())
+    // if (memoryManager.getEvictionList())
     memoryManager.cacheInsert(blockId);
     return loader;
   }

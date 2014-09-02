@@ -1,10 +1,7 @@
 package org.apache.reef.inmemory.task.hdfs;
 
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.task.BlockId;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
 
-import java.io.IOException;
 import java.io.Serializable;
 
 /**

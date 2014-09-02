@@ -7,7 +7,6 @@ import org.apache.reef.inmemory.driver.CacheNode;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**

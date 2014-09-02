@@ -11,11 +11,11 @@ import com.microsoft.tang.Tang;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.tang.exceptions.BindException;
 import com.microsoft.wake.StageConfiguration;
+import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.DfsParameters;
+import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.InMemoryTask;
 import org.apache.reef.inmemory.task.InMemoryTaskConfiguration;
-import org.apache.reef.inmemory.task.CacheParameters;
-import org.apache.reef.inmemory.common.CacheStatusMessage;
 
 import javax.inject.Inject;
 import java.util.ArrayList;

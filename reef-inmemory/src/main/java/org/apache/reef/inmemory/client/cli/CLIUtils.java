@@ -3,7 +3,6 @@ package org.apache.reef.inmemory.client.cli;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.client.SurfFS;
-import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.thrift.TException;
 
 import java.io.IOException;

@@ -73,7 +73,6 @@ public final class CacheBlockLoader {
 
     LOG.log(Level.FINE, "Start get data from block {0}, with offset {1}, startOffset {2}",
             new String[]{Long.toString(block.getBlockId()), Long.toString(offset), Long.toString(startOffset)});
-
     if (this.offset == startOffset && this.data != null) {
       ByteBuffer dataBuffer = ByteBuffer.wrap(this.data);
       dataBuffer.position((int) offset - (int) startOffset);
@@ -88,7 +87,7 @@ public final class CacheBlockLoader {
 
     /**
      * Retrieve the block. The cache locations for this block are tried in the order given by progressManager.
-     * If the connection fails, block is unavaiable, or block is still loading from the base FS at the cache node,
+     * If the connection fails, block is unavailable, or block is still loading from the base FS at the cache node,
      * this status is reported to the progressManager. The progressManager may remove the cache as a candidate
      * or give another cache on getNextCache depending on the reported status.
      *
