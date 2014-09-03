@@ -14,12 +14,15 @@ public final class LRUEvictionManager {
   private static final Logger LOG = Logger.getLogger(LRUEvictionManager.class.getName());
   private static final Integer ACCESS = Integer.valueOf(0);
 
-  private final Cache<BlockId, BlockLoader> cache;
   private final LinkedHashMap<BlockId, Integer> accessOrder = new LinkedHashMap<>(16, 0.75f, true); // TODO: default sizes for now
 
+  /**
+   * Accesses synchronized by MemoryManager
+   */
+  private long evictingBytes = 0;
+
   @Inject
-  public LRUEvictionManager(final Cache<BlockId, BlockLoader> cache) {
-    this.cache = cache;
+  public LRUEvictionManager() {
   }
 
   public void add(final BlockId blockId) {
@@ -30,27 +33,38 @@ public final class LRUEvictionManager {
     accessOrder.get(blockId);
   }
 
-  public boolean evict(final long spaceNeeded) {
-    LOG.log(Level.INFO, spaceNeeded+" to be evicted");
+  public List<BlockId> evict(final long spaceNeeded) {
+    final long evictionNeeded = spaceNeeded - evictingBytes;
+    LOG.log(Level.INFO, evictionNeeded+" to be evicted");
 
     long chosenSize = 0;
     final List<BlockId> chosen = new LinkedList<>();
     final Iterator<BlockId> it = accessOrder.keySet().iterator();
-    while (it.hasNext() && chosenSize < spaceNeeded) {
+    while (it.hasNext() && chosenSize < evictionNeeded) {
       final BlockId blockId = it.next();
       chosen.add(blockId);
       chosenSize += blockId.getBlockSize();
     }
-    if (chosenSize >= spaceNeeded) {
+    if (chosenSize >= evictionNeeded) {
       for (final BlockId blockId : chosen) {
         accessOrder.remove(blockId);
-        // Cache invalidations only take place here, and this is locked
-        cache.invalidate(blockId);
+        addEvictingBytes(blockId.getBlockSize());
       }
-      return true;
+      return chosen;
     } else {
-      LOG.log(Level.SEVERE, spaceNeeded+" eviction was not possible."); // TODO: throw an exception
-      return false;
+      throw new RuntimeException(evictionNeeded+" eviction was unsuccessful.");
     }
+  }
+
+  public long getEvictingBytes() {
+    return evictingBytes;
+  }
+
+  public void subtractEvictingBytes(long amount) {
+    evictingBytes -= amount;
+  }
+
+  private void addEvictingBytes(long amount) {
+    evictingBytes += amount;
   }
 }

@@ -4,6 +4,7 @@ import com.microsoft.tang.annotations.Parameter;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.exceptions.MemoryLimitException;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -19,9 +20,8 @@ import java.util.logging.Logger;
 public final class MemoryManager {
 
   private static final Logger LOG = Logger.getLogger(MemoryManager.class.getName());
-  private static final Integer ACCESS = Integer.valueOf(0);
 
-  private final LRUEvictionManager lruEvictionManager;
+  private final LRUEvictionManager lru;
   private final CacheStatistics statistics;
   private final int slack;
   private CacheUpdates updates;
@@ -29,10 +29,10 @@ public final class MemoryManager {
   private Map<BlockId, CacheEntryState> cacheEntries = new HashMap<>();
 
   @Inject
-  public MemoryManager(final LRUEvictionManager lruEvictionManager,
+  public MemoryManager(final LRUEvictionManager lru,
                        final CacheStatistics statistics,
                        final @Parameter(CacheParameters.HeapSlack.class) int slack) {
-    this.lruEvictionManager = lruEvictionManager;
+    this.lru = lru;
     this.statistics = statistics;
     this.slack = slack;
     this.updates = new CacheUpdates();
@@ -50,25 +50,26 @@ public final class MemoryManager {
 
   /**
    * Call during cache insert call.
+   * TODO: INSERTED == LOAD_PENDING --> remove it eventually
    */
-  public synchronized void cacheInsert(final BlockId blockId) {
+  public synchronized void cacheInsert(final BlockId blockId, final boolean pin) {
     if (isState(blockId, CacheEntryState.INSERTED)) {
       throw new RuntimeException(blockId+" has been previously inserted");
     }
     final long blockSize = blockId.getBlockSize();
 
     final long maxHeap = statistics.getMaxBytes();
-    final long loading = statistics.getLoadingBytes();
     final long cached = statistics.getCacheBytes();
     if (cached < 0) {
       throw new RuntimeException(blockId+" cached is less than zero: "+cached);
     }
 
-    final long spaceNeeded = (blockSize + cached) - (maxHeap - slack);
-    if (spaceNeeded > 0) {
-      lruEvictionManager.evict(spaceNeeded);
+    if (pin) {
+      statistics.addPinnedBytes(blockSize);
+    } else {
+      lru.add(blockId);
     }
-    lruEvictionManager.add(blockId);
+
     setState(blockId, CacheEntryState.INSERTED);
     LOG.log(Level.INFO, blockId + " statistics on insert: " + statistics);
   }
@@ -79,13 +80,18 @@ public final class MemoryManager {
    * Updates statistics.
    * @param blockSize
    */
-  public synchronized void loadStart(final BlockId blockId) throws BlockNotFoundException {
+  public synchronized List<BlockId> loadStart(final BlockId blockId, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
     LOG.log(Level.INFO, blockId+" statistics before loadStart: "+statistics);
     final long blockSize = blockId.getBlockSize();
 
     // Check before entering loop
     if (isState(blockId, CacheEntryState.REMOVED)) {
-      throw new BlockNotFoundException(blockId+" was removed during LOAD_PENDING"); // TODO: make a new exception?
+      if (pin) {
+        statistics.subtractPinnedBytes(blockSize);
+      } else {
+        // nothing
+      }
+      throw new BlockNotFoundException(blockId+" was removed during INSERTED");
     }
     setState(blockId, CacheEntryState.LOAD_PENDING);
 
@@ -93,16 +99,32 @@ public final class MemoryManager {
     while (!canLoad) {
       // Check every iteration
       if (isState(blockId, CacheEntryState.REMOVED)) {
-        throw new BlockNotFoundException(blockId+" was removed during LOAD_PENDING"); // TODO: make a new exception?
+        if (pin) {
+          statistics.subtractPinnedBytes(blockSize);
+        } else {
+          // nothing
+        }
+        throw new BlockNotFoundException(blockId+" was removed during LOAD_PENDING");
       }
 
-      final long maxHeap = statistics.getMaxBytes();
-      final long loading = blockSize + statistics.getLoadingBytes();
       final long cached = statistics.getCacheBytes();
       if (cached < 0) {
         throw new RuntimeException(blockId+" cached is less than zero: "+cached);
       }
-      canLoad = (loading) <= (maxHeap - slack);
+
+      final long usableCache = (statistics.getMaxBytes() - slack) - statistics.getPinnedBytes();
+      final long freeCache = usableCache - statistics.getCacheBytes() - statistics.getLoadingBytes();
+      LOG.log(Level.INFO, blockId+" size: "+blockSize+" free cache: "+freeCache+" usable cache: "+usableCache);
+      if (blockSize > usableCache) {
+        throw new MemoryLimitException(blockId+" ran out of usable cache: "+usableCache);
+      } else if (blockSize > freeCache) {
+        final List<BlockId> toEvict = lru.evict(blockSize - freeCache);
+        if (toEvict.size() > 0) {
+          return toEvict;
+        }
+      }
+
+      canLoad = (blockSize + statistics.getLoadingBytes()) <= usableCache;
       LOG.log(Level.INFO, blockId+" statistics during loadStart: "+statistics);
 
       if (!canLoad) {
@@ -115,15 +137,39 @@ public final class MemoryManager {
       }
     }
 
-    statistics.addLoadingBytes(blockSize);
+    if (pin) {
+      // nothing
+    } else {
+      statistics.addLoadingBytes(blockSize);
+    }
     setState(blockId, CacheEntryState.LOAD_STARTED);
     LOG.log(Level.INFO, blockId+" statistics after loadStart: "+statistics);
+    return null; // No need to evict, can start loading
+  }
+
+  public void loadStartFail(final BlockId blockId, final boolean pinned, final Exception exception) {
+    LOG.log(Level.INFO, blockId+" statistics before loadNotStarted: "+statistics);
+    final long blockSize = blockId.getBlockSize();
+    if (statistics.getCacheBytes() < 0) {
+      throw new RuntimeException(blockId+" cached is less than zero");
+    }
+
+    if (pinned) {
+      statistics.subtractPinnedBytes(blockSize);
+    } else {
+      // nothing
+    }
   }
 
   // TODO: make sure updates are working (in all methods)
-  private void loadFinishAfterRemoved(final BlockId blockId) {
+  private void loadFinishAfterRemoved(final BlockId blockId, final boolean pinned) {
     final long blockSize = blockId.getBlockSize();
-    statistics.subtractLoadingBytes(blockSize);
+    if (pinned) {
+      statistics.subtractPinnedBytes(blockSize);
+    } else {
+      statistics.subtractLoadingBytes(blockSize);
+    }
+    lru.subtractEvictingBytes(blockSize);
     statistics.addEvictedBytes(blockSize);
     setState(blockId, CacheEntryState.REMOVED);
     notifyAll();
@@ -146,13 +192,17 @@ public final class MemoryManager {
     final CacheEntryState state = getState(blockId);
     switch(state) {
       case LOAD_STARTED:
-        statistics.subtractLoadingBytes(blockSize);
-        statistics.addCacheBytes(blockSize);
+        if (pinned) {
+          // nothing
+        } else {
+          statistics.subtractLoadingBytes(blockSize);
+          statistics.addCacheBytes(blockSize);
+        }
         setState(blockId, CacheEntryState.LOAD_SUCCEEDED);
         notifyAll();
         break;
       case REMOVED_DURING_LOAD:
-        loadFinishAfterRemoved(blockId);
+        loadFinishAfterRemoved(blockId, pinned);
         break;
       default:
         throw new RuntimeException(blockId+" unexpected state on loadSuccess "+getState(blockId));
@@ -167,7 +217,7 @@ public final class MemoryManager {
    * Updates statistics.
    * @param blockSize
    */
-  public synchronized void loadFail(final BlockId blockId, final Exception exception) {
+  public synchronized void loadFail(final BlockId blockId, final boolean pinned, final Exception exception) {
     LOG.log(Level.INFO, blockId+" statistics before loadFail: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -177,12 +227,16 @@ public final class MemoryManager {
     final CacheEntryState state = getState(blockId);
     switch(state) {
       case LOAD_STARTED:
-        statistics.subtractLoadingBytes(blockSize);
+        if (pinned) {
+          statistics.subtractPinnedBytes(blockSize);
+        } else {
+          statistics.subtractLoadingBytes(blockSize);
+        }
         setState(blockId, CacheEntryState.LOAD_FAILED);
         notifyAll();
         break;
       case REMOVED_DURING_LOAD:
-        loadFinishAfterRemoved(blockId);
+        loadFinishAfterRemoved(blockId, pinned);
         break;
       default:
         throw new RuntimeException(blockId+" unexpected state on loadFail "+getState(blockId));
@@ -197,7 +251,7 @@ public final class MemoryManager {
    * Updates statistics.
    * @param blockId
    */
-  public synchronized void remove(final BlockId blockId) {
+  public synchronized void remove(final BlockId blockId, final boolean pinned) {
     LOG.log(Level.INFO, blockId+" statistics before remove: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -207,10 +261,18 @@ public final class MemoryManager {
     final CacheEntryState state = getState(blockId);
     switch(state) {
       case INSERTED:
+        if (pinned) {
+          statistics.subtractPinnedBytes(blockSize);
+        }
+        lru.subtractEvictingBytes(blockSize);
         statistics.addEvictedBytes(blockSize);
         setState(blockId, CacheEntryState.REMOVED);
         break;
       case LOAD_PENDING:
+        if (pinned) {
+          statistics.subtractPinnedBytes(blockSize);
+        }
+        lru.subtractEvictingBytes(blockSize);
         statistics.addEvictedBytes(blockSize);
         setState(blockId, CacheEntryState.REMOVED);
         break;
@@ -218,11 +280,17 @@ public final class MemoryManager {
         setState(blockId, CacheEntryState.REMOVED_DURING_LOAD);
         break;
       case LOAD_FAILED:
+        lru.subtractEvictingBytes(blockSize);
         statistics.addEvictedBytes(blockSize);
         setState(blockId, CacheEntryState.REMOVED);
         break;
       case LOAD_SUCCEEDED:
-        statistics.subtractCacheBytes(blockSize);
+        if (pinned) {
+          statistics.subtractPinnedBytes(blockSize);
+        } else {
+          statistics.subtractCacheBytes(blockSize);
+        }
+        lru.subtractEvictingBytes(blockSize);
         statistics.addEvictedBytes(blockSize);
         setState(blockId, CacheEntryState.REMOVED);
         notifyAll();

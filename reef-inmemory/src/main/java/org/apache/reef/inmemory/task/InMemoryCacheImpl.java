@@ -21,7 +21,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final Logger LOG = Logger.getLogger(InMemoryCacheImpl.class.getName());
 
   private final MemoryManager memoryManager;
-  private final LRUEvictionManager lruEvictionManager;
+  private final LRUEvictionManager lru;
   private final EStage<BlockLoader> loadingStage;
   private final int loadingBufferSize;
 
@@ -56,7 +56,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Inject
   public InMemoryCacheImpl(final Cache<BlockId, BlockLoader> cache,
                            final MemoryManager memoryManager,
-                           final LRUEvictionManager lruEvictionManager,
+                           final LRUEvictionManager lru,
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
                            final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize) {
@@ -67,7 +67,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
                     .build();
 
     this.memoryManager = memoryManager;
-    this.lruEvictionManager = lruEvictionManager;
+    this.lru = lru;
     this.loadingStage = loadingStage;
     this.loadingBufferSize = loadingBufferSize;
     this.cleanupScheduler = Executors.newScheduledThreadPool(1);
@@ -79,13 +79,14 @@ public final class InMemoryCacheImpl implements InMemoryCache {
           throws BlockLoadingException, BlockNotFoundException {
     final BlockLoader loader = cache.getIfPresent(blockId);
     if (loader == null) {
-      final BlockLoader pinLoader = pinCache.getIfPresent(blockId);
+      final BlockLoader pinLoader = pinCache.getIfPresent(blockId); // TODO: cleanup usages of pinCache
       if (pinLoader != null) {
         return pinLoader.getData(index);
       } else {
         throw new BlockNotFoundException();
       }
     } else {
+      lru.use(blockId);
       // getData throws BlockLoadingException if load has not completed for the requested chunk
       return loader.getData(index);
     }
