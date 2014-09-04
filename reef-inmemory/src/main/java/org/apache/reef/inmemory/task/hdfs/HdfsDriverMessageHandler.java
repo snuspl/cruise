@@ -38,7 +38,7 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
         final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getLocations(), blockMsg.isPin(), cache.getLoadingBufferSize());
 
         try {
-          cache.load(loader, blockMsg.isPin());
+          cache.load(loader);
         } catch (IOException e) {
           LOG.log(Level.SEVERE, "Could not load block", e);
         }

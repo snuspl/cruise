@@ -161,20 +161,6 @@ public final class MemoryManager {
     }
   }
 
-  // TODO: make sure updates are working (in all methods)
-  private void loadFinishAfterRemoved(final BlockId blockId, final boolean pinned) {
-    final long blockSize = blockId.getBlockSize();
-    if (pinned) {
-      statistics.subtractPinnedBytes(blockSize);
-    } else {
-      statistics.subtractLoadingBytes(blockSize);
-    }
-    lru.subtractEvictingBytes(blockSize);
-    statistics.addEvictedBytes(blockSize);
-    setState(blockId, CacheEntryState.REMOVED);
-    notifyAll();
-  }
-
   /**
    * Call on load success.
    * Notifies threads waiting for memory to free up.
@@ -202,7 +188,16 @@ public final class MemoryManager {
         notifyAll();
         break;
       case REMOVED_DURING_LOAD:
-        loadFinishAfterRemoved(blockId, pinned);
+        if (pinned) {
+          statistics.subtractPinnedBytes(blockSize);
+        } else {
+          statistics.subtractLoadingBytes(blockSize);
+        }
+        lru.subtractEvictingBytes(blockSize);
+        statistics.addEvictedBytes(blockSize);
+        updates.addRemoval(blockId);
+        setState(blockId, CacheEntryState.REMOVED);
+        notifyAll();
         break;
       default:
         throw new RuntimeException(blockId+" unexpected state on loadSuccess "+getState(blockId));
@@ -232,11 +227,21 @@ public final class MemoryManager {
         } else {
           statistics.subtractLoadingBytes(blockSize);
         }
+        updates.addFailure(blockId, exception);
         setState(blockId, CacheEntryState.LOAD_FAILED);
         notifyAll();
         break;
       case REMOVED_DURING_LOAD:
-        loadFinishAfterRemoved(blockId, pinned);
+        if (pinned) {
+          statistics.subtractPinnedBytes(blockSize);
+        } else {
+          statistics.subtractLoadingBytes(blockSize);
+        }
+        lru.subtractEvictingBytes(blockSize);
+        statistics.addEvictedBytes(blockSize);
+        updates.addFailure(blockId, exception);
+        setState(blockId, CacheEntryState.REMOVED);
+        notifyAll();
         break;
       default:
         throw new RuntimeException(blockId+" unexpected state on loadFail "+getState(blockId));
@@ -266,6 +271,7 @@ public final class MemoryManager {
         }
         lru.subtractEvictingBytes(blockSize);
         statistics.addEvictedBytes(blockSize);
+        updates.addRemoval(blockId);
         setState(blockId, CacheEntryState.REMOVED);
         break;
       case LOAD_PENDING:
@@ -274,6 +280,7 @@ public final class MemoryManager {
         }
         lru.subtractEvictingBytes(blockSize);
         statistics.addEvictedBytes(blockSize);
+        updates.addRemoval(blockId);
         setState(blockId, CacheEntryState.REMOVED);
         break;
       case LOAD_STARTED:
@@ -282,6 +289,7 @@ public final class MemoryManager {
       case LOAD_FAILED:
         lru.subtractEvictingBytes(blockSize);
         statistics.addEvictedBytes(blockSize);
+        // don't update as removed, already updated as failed
         setState(blockId, CacheEntryState.REMOVED);
         break;
       case LOAD_SUCCEEDED:
@@ -292,6 +300,7 @@ public final class MemoryManager {
         }
         lru.subtractEvictingBytes(blockSize);
         statistics.addEvictedBytes(blockSize);
+        updates.addRemoval(blockId);
         setState(blockId, CacheEntryState.REMOVED);
         notifyAll();
         break;
@@ -323,16 +332,6 @@ public final class MemoryManager {
   private boolean isState(final BlockId blockId, final CacheEntryState state) {
     final CacheEntryState currentState = getState(blockId);
     return currentState.equals(state);
-  }
-
-  /**
-   * Call on pin cache removal.
-   * No actual memory gets freed up on pin removal, so no notification is given.
-   * Updates statistics.
-   * @param blockSize
-   */
-  public synchronized void removePin(final long blockSize) {
-    statistics.subtractPinnedBytes(blockSize);
   }
 
   /**

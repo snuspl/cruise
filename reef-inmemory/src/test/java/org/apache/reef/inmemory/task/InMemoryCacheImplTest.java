@@ -71,10 +71,6 @@ public final class InMemoryCacheImplTest {
     return buf;
   }
 
-  private byte[] randomOnesBuffer() {
-    return ones(1 + random.nextInt(10));
-  }
-
   /**
    * Assert that Block is not found. Test with all the chunks in the block.
    */
@@ -126,7 +122,7 @@ public final class InMemoryCacheImplTest {
 
     final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(8096), false);
 
-    cache.load(loader, false);
+    cache.load(loader);
     assertBlockLoaded(loader, blockId);
   }
 
@@ -139,7 +135,7 @@ public final class InMemoryCacheImplTest {
 
     final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(8096), false);
 
-    cache.load(loader, false);
+    cache.load(loader);
     assertBlockLoaded(loader, blockId);
     cache.clear();
     assertBlockNotFound(blockId, 1024);
@@ -158,7 +154,7 @@ public final class InMemoryCacheImplTest {
 
     final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(8096), false);
 
-    cache.load(loader, false);
+    cache.load(loader);
     assertEquals(8096, cache.getStatistics().getCacheBytes());
     assertEquals(0, cache.getStatistics().getLoadingBytes());
 
@@ -187,7 +183,7 @@ public final class InMemoryCacheImplTest {
         @Override
         public void run() {
           try {
-            cache.load(firstLoader, false);
+            cache.load(firstLoader);
           } catch (IOException e1) {
             fail("IOException " + e1);
           }
@@ -235,7 +231,7 @@ public final class InMemoryCacheImplTest {
         @Override
         public void run() {
           try {
-            cache.load(firstLoader, false);
+            cache.load(firstLoader);
           } catch (IOException e1) {
             fail("IOException " + e1);
           }
@@ -265,7 +261,7 @@ public final class InMemoryCacheImplTest {
 
           // Then call load
           try {
-            cache.load(loader, false);
+            cache.load(loader);
           } catch (IOException e1) {
             fail("IOException "+e1);
           }
@@ -294,7 +290,7 @@ public final class InMemoryCacheImplTest {
 
           // Then call load
           try {
-            cache.load(loader, false);
+            cache.load(loader);
             assertBlockLoaded(loader, randomId);
           } catch (final IOException | BlockLoadingException | BlockNotFoundException e1) {
             fail("Exception " + e1);
@@ -353,7 +349,7 @@ public final class InMemoryCacheImplTest {
       final BlockId blockId = randomBlockId(blockSize);
       final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(blockSize), false);
 
-      cache.load(loader, false);
+      cache.load(loader);
       System.out.println("Loaded " + (blockSize / 1024 / 1024 * (i+1)) + "M");
       System.out.println("Statistics: "+cache.getStatistics());
       Thread.sleep(10);
@@ -387,7 +383,7 @@ public final class InMemoryCacheImplTest {
           final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(blockSize), false);
 
           try {
-            cache.load(loader, false);
+            cache.load(loader);
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
@@ -417,7 +413,7 @@ public final class InMemoryCacheImplTest {
 
     final BlockLoader pinnedLoader = new MockBlockLoader(pinnedId, new TwosBufferLoader(blockSize), true);
 
-    cache.load(pinnedLoader, true);
+    cache.load(pinnedLoader);
     assertBlockLoaded(pinnedLoader, pinnedId);
 
     final long iterations = maxMemory / (128 * 1024 * 1024) * 2;
@@ -426,7 +422,7 @@ public final class InMemoryCacheImplTest {
 
       final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(blockSize), false);
 
-      cache.load(loader, false);
+      cache.load(loader);
       System.out.println("Loaded " + (128 * (i + 1)) + "M");
     }
 
@@ -442,7 +438,7 @@ public final class InMemoryCacheImplTest {
       BlockLoader loader =
               new MockBlockLoader(blockId, new OnesBufferLoader(128 * 1024 * 1024), true);
 
-      cache.load(loader, true);
+      cache.load(loader);
       System.out.println("Loaded " + (128 * (i+1)) + "M");
       loader = null;
 
@@ -482,7 +478,7 @@ public final class InMemoryCacheImplTest {
             loadCounts[iteration/20] = loadCount;
           }
           try {
-            cache.load(loader, pin); // TODO: remove redundant pin
+            cache.load(loader); // TODO: remove redundant pin
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
@@ -501,7 +497,7 @@ public final class InMemoryCacheImplTest {
     assertEquals(1, loadCounts[0].get());
     assertEquals(1, loadCounts[1].get());
     assertEquals(1, loadCounts[2].get());
-    assertEquals((long)(iterations - 3) * blockSize, statistics.getCacheBytes() + statistics.getEvictedBytes());
+    assertEquals((long) (iterations - 3) * blockSize, statistics.getCacheBytes() + statistics.getEvictedBytes());
     assertEquals(3 * blockSize, statistics.getPinnedBytes());
   }
 
@@ -699,62 +695,4 @@ public final class InMemoryCacheImplTest {
     }
   }
 
-  private static final class MockBlockId implements BlockId {
-
-    private final long blockId;
-    private final long blockSize;
-
-    public MockBlockId(final long blockId,
-                       final long blockSize) {
-      this.blockId = blockId;
-      this.blockSize = blockSize;
-    }
-
-    @Override
-    public String getFilePath() {
-      return "/mock/"+blockId;
-    }
-
-    @Override
-    public long getOffset() {
-      return 0;
-    }
-
-    @Override
-    public long getUniqueId() {
-      return blockId;
-    }
-
-    @Override
-    public long getBlockSize() {
-      return blockSize;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-
-      MockBlockId that = (MockBlockId) o;
-
-      if (blockId != that.blockId) return false;
-      if (blockSize != that.blockSize) return false;
-
-      return true;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = (int) (blockId ^ (blockId >>> 32));
-      result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
-      return result;
-    }
-
-    @Override
-    public String toString() {
-      return "MockBlockId{" +
-              "blockId='" + blockId + '\'' +
-              '}';
-    }
-  }
 }

@@ -25,10 +25,9 @@ public interface InMemoryCache {
    * For efficiency reasons, implementations should assure that
    * multiple block loaders do not simultaneously load the same block.
    * @param loader The FS-specific block loader
-   * @param pin Whether to pin the block
    * @throws IOException If block loading fails
    */
-  public void load(BlockLoader loader, boolean pin) throws IOException;
+  public void load(BlockLoader loader) throws IOException;
 
   /**
    * @return Length of buffer loading data from Underlying File Systemss

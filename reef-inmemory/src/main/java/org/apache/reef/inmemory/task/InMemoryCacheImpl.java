@@ -26,7 +26,6 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final int loadingBufferSize;
 
   private final Cache<BlockId, BlockLoader> cache;
-  private final Cache<BlockId, BlockLoader> pinCache;
 
   private final ScheduledExecutorService cleanupScheduler;
 
@@ -37,19 +36,6 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     @Override
     public void run() {
       cache.cleanUp();
-      pinCache.cleanUp();
-    }
-  };
-
-  /**
-   * Update statistics on cache removal
-   */
-  private final RemovalListener<BlockId, BlockLoader> pinRemovalListener = new RemovalListener<BlockId, BlockLoader>() {
-    @Override
-    public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
-      LOG.log(Level.INFO, "Removed pin: "+notification.getKey());
-      final long blockSize = notification.getKey().getBlockSize();
-      memoryManager.removePin(blockSize);
     }
   };
 
@@ -61,11 +47,6 @@ public final class InMemoryCacheImpl implements InMemoryCache {
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
                            final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize) {
     this.cache = cache;
-    this.pinCache = CacheBuilder.newBuilder()
-                    .removalListener(pinRemovalListener)
-                    .concurrencyLevel(numThreads)
-                    .build();
-
     this.memoryManager = memoryManager;
     this.lru = lru;
     this.loadingStage = loadingStage;
@@ -79,12 +60,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
           throws BlockLoadingException, BlockNotFoundException {
     final BlockLoader loader = cache.getIfPresent(blockId);
     if (loader == null) {
-      final BlockLoader pinLoader = pinCache.getIfPresent(blockId); // TODO: cleanup usages of pinCache
-      if (pinLoader != null) {
-        return pinLoader.getData(index);
-      } else {
-        throw new BlockNotFoundException();
-      }
+      throw new BlockNotFoundException();
     } else {
       lru.use(blockId);
       // getData throws BlockLoadingException if load has not completed for the requested chunk
@@ -93,8 +69,8 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void load(final BlockLoader loader, final boolean pin) throws IOException {
-    final Callable<BlockLoader> callable = new BlockLoaderCaller(loader, pin, pinCache, memoryManager);
+  public void load(final BlockLoader loader) throws IOException {
+    final Callable<BlockLoader> callable = new BlockLoaderCaller(loader, memoryManager);
     final BlockLoader returnedLoader;
     try {
       returnedLoader = cache.get(loader.getBlockId(), callable);
@@ -117,10 +93,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Override
   public void clear() {
     cache.invalidateAll();
-    pinCache.invalidateAll();
-
     cache.cleanUp();
-    pinCache.cleanUp();
 
     memoryManager.clearHistory();
   }

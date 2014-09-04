@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
+import com.google.common.collect.Iterables;
 
 import javax.inject.Inject;
 import java.util.Iterator;
