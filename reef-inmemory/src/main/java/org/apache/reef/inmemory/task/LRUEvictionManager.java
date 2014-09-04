@@ -4,18 +4,64 @@ import com.google.common.cache.Cache;
 import com.google.common.collect.Iterables;
 
 import javax.inject.Inject;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class LRUEvictionManager {
   private static final Logger LOG = Logger.getLogger(LRUEvictionManager.class.getName());
-  private static final Integer ACCESS = Integer.valueOf(0);
 
-  private final LinkedHashMap<BlockId, Integer> accessOrder = new LinkedHashMap<>(16, 0.75f, true); // TODO: default sizes for now
+  private final Map<BlockId, LRUEntry> index = new HashMap<>();
+
+  // enter() -> tail -> next -> .... -> head -> exit()
+  private LRUEntry head;
+  private LRUEntry tail;
+
+  private final class LRUEntry {
+    public LRUEntry prev;
+    public LRUEntry next;
+    public final BlockId blockId;
+
+    public LRUEntry(final BlockId blockId) {
+      this.blockId = blockId;
+    }
+
+    private void remove() {
+      if (this == tail && this == head) {
+        tail = null;
+        head = null;
+      } else if (this == tail) {
+        next.prev = null;
+        tail = next;
+      } else if (this == head) {
+        prev.next = null;
+        head = prev;
+      } else {
+        prev.next = next;
+        next.prev = prev;
+      }
+    }
+
+    public void use() {
+      this.remove();
+      this.enter();
+    }
+
+    public void enter() {
+      if (tail == null) {
+        tail = this;
+        head = this;
+      } else {
+        next = tail;
+        next.prev = this;
+        tail = this;
+      }
+    }
+
+    public void exit() {
+      this.remove();
+    }
+  }
 
   /**
    * Accesses synchronized by MemoryManager
@@ -27,11 +73,16 @@ public final class LRUEvictionManager {
   }
 
   public void add(final BlockId blockId) {
-    accessOrder.put(blockId, ACCESS);
+    final LRUEntry entry = new LRUEntry(blockId);
+    index.put(blockId, entry);
+    entry.enter();
   }
 
   public void use(final BlockId blockId) {
-    accessOrder.get(blockId);
+    final LRUEntry entry = index.get(blockId);
+    if (entry != null) {
+      entry.use();
+    }
   }
 
   public List<BlockId> evict(final long spaceNeeded) {
@@ -40,16 +91,17 @@ public final class LRUEvictionManager {
 
     long chosenSize = 0;
     final List<BlockId> chosen = new LinkedList<>();
-    final Iterator<BlockId> it = accessOrder.keySet().iterator();
-    while (it.hasNext() && chosenSize < evictionNeeded) {
-      final BlockId blockId = it.next();
-      chosen.add(blockId);
-      chosenSize += blockId.getBlockSize();
+    LRUEntry entry = head;
+    while (entry != null && chosenSize < evictionNeeded) {
+      chosen.add(entry.blockId);
+      chosenSize += entry.blockId.getBlockSize();
+      entry = entry.prev;
     }
     if (chosenSize >= evictionNeeded) {
-      for (final BlockId blockId : chosen) {
-        accessOrder.remove(blockId);
-        addEvictingBytes(blockId.getBlockSize());
+      for (final BlockId blockToEvict : chosen) {
+        final LRUEntry entryToEvict = index.remove(blockToEvict);
+        entryToEvict.exit();
+        addEvictingBytes(blockToEvict.getBlockSize());
       }
       return chosen;
     } else {
