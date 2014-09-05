@@ -28,14 +28,13 @@ public final class InMemoryCacheImplTest {
   private MemoryManager memoryManager;
   private EStage<BlockLoader> loadingStage;
   private InMemoryCache cache;
-  private Random random = new Random();
+  private static final Random random = new Random();
   private static final long maxMemory = Runtime.getRuntime().maxMemory();
+  private static final long slack = 384 * 1024 * 1024;
   private final int bufferSize = 8 * 1024 * 1024;
 
   @Before
   public void setUp() {
-    final int slack = 384 * 1024 * 1024;
-
     statistics = new CacheStatistics();
     final LRUEvictionManager lruEvictionManager = new LRUEvictionManager();
     memoryManager = new MemoryManager(lruEvictionManager, statistics, slack);
@@ -46,10 +45,12 @@ public final class InMemoryCacheImplTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     statistics = null;
+    internalCache = null;
     memoryManager = null;
     loadingStage = null;
+    cache.close();
     cache = null;
 
     System.gc();
@@ -103,7 +104,6 @@ public final class InMemoryCacheImplTest {
   /**
    * Assert that Block is loaded successfully. Test with all the chunks in the block.
    * Loading provided should be same passed in to cache.
-   * TODO: will we have to add assertArrayEquals here?
    */
   private void assertBlockLoaded(BlockLoader loader, BlockId blockId) throws BlockLoadingException, BlockNotFoundException {
     for (int i = 0; i * loader.getBufferSize() < blockId.getBlockSize(); i++) {
@@ -337,7 +337,7 @@ public final class InMemoryCacheImplTest {
   }
 
   /**
-   * Test that adding 20 * 128 MB = 2.5 GB of blocks does not cause an OutOfMemory exception.
+   * Test that adding 50 * 128 MB = 6 GB of blocks does not cause an OutOfMemory exception.
    * Test that updates reflect the evictions.
    */
   @Test
@@ -355,12 +355,18 @@ public final class InMemoryCacheImplTest {
       Thread.sleep(10);
     }
 
-    System.out.println("Statistics: "+cache.getStatistics());
-    assertEquals(iterations * blockSize, statistics.getCacheBytes() + statistics.getEvictedBytes());
+    System.out.println("Statistics: " + cache.getStatistics());
+
+    final long usableCache = maxMemory - slack;
+    final long expectedCached = usableCache - (usableCache % blockSize);
+    final long expectedEvicted = (blockSize * iterations) - expectedCached;
+
+    assertEquals(expectedCached, statistics.getCacheBytes());
+    assertEquals(expectedEvicted, statistics.getEvictedBytes());
   }
 
   /**
-   * Test that adding 20 * 128 MB = 2.5 GB of blocks concurrently does not cause an OutOfMemory exception
+   * Test that adding 50 * 128 MB = 6 GB of blocks concurrently does not cause an OutOfMemory exception
    */
   @Test
   @Category(org.apache.reef.inmemory.common.IntensiveTests.class)
@@ -370,9 +376,9 @@ public final class InMemoryCacheImplTest {
     final int numThreads = 10;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
 
-    final int iterations = 50;
+    final long iterations = 50;
 
-    final Future<?>[] futures = new Future<?>[iterations];
+    final Future<?>[] futures = new Future<?>[(int)iterations];
 
     for (int i = 0; i < iterations; i++) {
       final int iteration = i;
@@ -398,7 +404,66 @@ public final class InMemoryCacheImplTest {
     }
 
     System.out.println("Statistics: "+cache.getStatistics());
-    assertEquals((long)iterations * blockSize, statistics.getCacheBytes() + statistics.getEvictedBytes());
+
+    final long usableCache = maxMemory - slack;
+    final long expectedCached = usableCache - (usableCache % blockSize);
+    final long expectedEvicted = (blockSize * iterations) - expectedCached;
+
+    assertEquals(expectedCached, statistics.getCacheBytes());
+    assertEquals(expectedEvicted, statistics.getEvictedBytes());
+  }
+
+  /**
+   * Test that running a clear() while concurrently loading does not cause errors
+   */
+  @Test
+  @Category(org.apache.reef.inmemory.common.IntensiveTests.class)
+  public void testConcurrentClear() throws IOException, ExecutionException, InterruptedException {
+    final int blockSize = 128 * 1024 * 1024;
+
+    final int numThreads = 10;
+    final ExecutorService e = Executors.newFixedThreadPool(numThreads);
+
+    final long iterations = 50;
+
+    final Future<?>[] futures = new Future<?>[(int)iterations];
+
+    for (int i = 0; i < iterations; i++) {
+      final int iteration = i;
+      futures[i] = e.submit(new Runnable() {
+        @Override
+        public void run() {
+          final BlockId blockId = randomBlockId(blockSize);
+          final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(blockSize), false);
+
+          if (iteration == 9 || iteration == 10) {
+            cache.clear();
+          }
+
+          try {
+            cache.load(loader);
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+          System.out.println("Loaded " + (blockSize / 1024 / 1024 * (iteration + 1)) + "M");
+          System.out.println("Statistics: "+cache.getStatistics());
+        }
+      });
+    }
+
+    for (int i = 0; i < iterations; i++) {
+      futures[i].get();
+    }
+
+    System.out.println("Statistics: "+cache.getStatistics());
+
+    final long usableCache = maxMemory - slack;
+    final long expectedCached = usableCache - (usableCache % blockSize);
+    final long maxEvicted = (blockSize * iterations) - expectedCached;
+
+    assertEquals(expectedCached, statistics.getCacheBytes());
+    assertTrue(statistics.getEvictedBytes()+" of at most "+maxEvicted+" were evicted",
+            maxEvicted >= statistics.getEvictedBytes());
   }
 
   /**
@@ -429,9 +494,14 @@ public final class InMemoryCacheImplTest {
     assertBlockLoaded(pinnedLoader, pinnedId);
   }
 
-  // TODO: check that failure has been added to cache update
   @Test
   public void testTooManyPinned() throws Exception {
+    {
+      final CacheUpdates updates = cache.pullUpdates();
+      assertEquals(0, updates.getFailures().size());
+      assertEquals(0, updates.getRemovals().size());
+    }
+
     final long iterations = 50;
     for (int i = 0; i < iterations; i++) {
       final BlockId blockId = randomBlockId(128 * 1024 * 1024);
@@ -445,6 +515,12 @@ public final class InMemoryCacheImplTest {
       System.out.println("Max Memory: "+Runtime.getRuntime().maxMemory());
       System.out.println("Free Memory: "+Runtime.getRuntime().freeMemory());
       System.out.println("Total Memory: "+Runtime.getRuntime().totalMemory());
+    }
+
+    {
+      final CacheUpdates updates = cache.pullUpdates();
+      assertTrue("Failures exist", updates.getFailures().size() > 0);
+      assertEquals(0, updates.getRemovals().size());
     }
   }
 
@@ -478,7 +554,7 @@ public final class InMemoryCacheImplTest {
             loadCounts[iteration/20] = loadCount;
           }
           try {
-            cache.load(loader); // TODO: remove redundant pin
+            cache.load(loader);
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
@@ -609,7 +685,7 @@ public final class InMemoryCacheImplTest {
 
     @Override
     public List<byte[]> loadBuffer() {
-      List<byte[]> buffer = new LinkedList<>();
+      final List<byte[]> buffer = new LinkedList<>();
       long remaining = length;
       while(remaining > 0) {
         final int writeSize = remaining < bufferSize ? (int)remaining : bufferSize;

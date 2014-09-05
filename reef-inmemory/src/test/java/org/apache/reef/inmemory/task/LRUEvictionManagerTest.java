@@ -9,6 +9,10 @@ import java.util.Random;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * Tests for LRUEvictionManager, checking whether the manager
+ * maintains LRU order and evicts / reports errors correctly.
+ */
 public final class LRUEvictionManagerTest {
   private LRUEvictionManager lru;
   private final Random random = new Random();
@@ -24,7 +28,7 @@ public final class LRUEvictionManagerTest {
   }
 
   /**
-   * Test that eviction happens in add order
+   * Test that eviction happens in add order (with no uses)
    */
   @Test
   public void testAddOrder() {
@@ -49,6 +53,9 @@ public final class LRUEvictionManagerTest {
     }
   }
 
+  /**
+   * Test that eviction happens in use order
+   */
   @Test
   public void testSingleUseOrder() {
     final BlockId[] blockIds = new BlockId[]{
@@ -75,6 +82,9 @@ public final class LRUEvictionManagerTest {
     }
   }
 
+  /**
+   * Test an eviction that requires multiple blocks to execute
+   */
   @Test
   public void testEvictAll() {
     final BlockId[] blockIds = new BlockId[]{
@@ -93,6 +103,10 @@ public final class LRUEvictionManagerTest {
     assertEquals(3, toEvict.size());
   }
 
+  /**
+   * Test a failed eviction, due to not enough memory.
+   * When failed, the eviction should not remove any blocks.
+   */
   @Test
   public void testEvictNotPossible() {
     final BlockId[] blockIds = new BlockId[]{

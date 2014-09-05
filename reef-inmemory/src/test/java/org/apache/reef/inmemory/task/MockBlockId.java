@@ -1,5 +1,8 @@
 package org.apache.reef.inmemory.task;
 
+/**
+ * A simple BlockId implementation for testing
+ */
 final class MockBlockId implements BlockId {
 
   private final long blockId;

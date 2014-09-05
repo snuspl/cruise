@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.task;
 
+import com.google.common.cache.Cache;
 import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.RequiredParameter;
@@ -38,5 +39,6 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
           .bindImplementation(BlockIdFactory.class, HdfsBlockIdFactory.class)
           .bindImplementation(DriverMessageHandler.class, HdfsDriverMessageHandler.class)
           .bindImplementation(EStage.class, ThreadPoolStage.class)
+          .bindConstructor(Cache.class, CacheConstructor.class)
           .build();
 }

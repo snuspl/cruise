@@ -9,7 +9,9 @@ import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
 import javax.inject.Inject;
+import java.io.Closeable;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,6 +33,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   /**
    * Clean up statistics, scheduled periodically
+   * TODO: Is cleanup even necessary anymore?
    */
   private final Runnable cleanup = new Runnable() {
     @Override
@@ -91,10 +94,12 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void clear() {
-    cache.invalidateAll();
+  public void clear() { // TODO: do we need a stage for this as well? For larger caches, it could take awhile
+    final List<BlockId> blockIds = lru.evictAll();
+    for (final BlockId blockId : blockIds) {
+      cache.invalidate(blockId);
+    }
     cache.cleanUp();
-
     memoryManager.clearHistory();
   }
 
@@ -106,5 +111,15 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Override
   public CacheUpdates pullUpdates() {
     return memoryManager.pullUpdates();
+  }
+
+  @Override
+  public void close() throws IOException {
+    cleanupScheduler.shutdownNow();
+    try {
+      cleanupScheduler.awaitTermination(5, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      throw new IOException(e);
+    }
   }
 }

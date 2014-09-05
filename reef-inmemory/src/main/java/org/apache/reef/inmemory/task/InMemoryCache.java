@@ -5,12 +5,13 @@ import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 /**
  * Interface for InMemory Cache.
  */
-public interface InMemoryCache {
+public interface InMemoryCache extends Closeable {
   /**
    * Retrieves the content of a block with given blockId.
    * @param fileBlock Block identifier to read

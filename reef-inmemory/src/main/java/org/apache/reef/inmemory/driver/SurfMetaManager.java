@@ -52,7 +52,7 @@ public final class SurfMetaManager {
    */
   public long clear() {
     long numEntries = metadataIndex.size();
-    metadataIndex.invalidateAll();
+    metadataIndex.invalidateAll(); // TODO: this may not be so accurate
     cacheMessenger.clearAll();
     return numEntries;
   }

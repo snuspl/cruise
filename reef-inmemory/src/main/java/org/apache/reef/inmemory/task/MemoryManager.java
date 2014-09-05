@@ -23,7 +23,7 @@ public final class MemoryManager {
 
   private final LRUEvictionManager lru;
   private final CacheStatistics statistics;
-  private final int slack;
+  private final long slack;
   private CacheUpdates updates;
 
   private Map<BlockId, CacheEntryState> cacheEntries = new HashMap<>();
@@ -31,7 +31,7 @@ public final class MemoryManager {
   @Inject
   public MemoryManager(final LRUEvictionManager lru,
                        final CacheStatistics statistics,
-                       final @Parameter(CacheParameters.HeapSlack.class) int slack) {
+                       final @Parameter(CacheParameters.HeapSlack.class) long slack) {
     this.lru = lru;
     this.statistics = statistics;
     this.slack = slack;
@@ -40,7 +40,6 @@ public final class MemoryManager {
 
   private static enum CacheEntryState {
     INSERTED,
-    LOAD_PENDING,
     LOAD_STARTED,
     LOAD_SUCCEEDED,
     LOAD_FAILED,
@@ -50,7 +49,6 @@ public final class MemoryManager {
 
   /**
    * Call during cache insert call.
-   * TODO: INSERTED == LOAD_PENDING --> remove it eventually
    */
   public synchronized void cacheInsert(final BlockId blockId, final boolean pin) {
     if (isState(blockId, CacheEntryState.INSERTED)) {
@@ -93,7 +91,6 @@ public final class MemoryManager {
       }
       throw new BlockNotFoundException(blockId+" was removed during INSERTED");
     }
-    setState(blockId, CacheEntryState.LOAD_PENDING);
 
     boolean canLoad = false;
     while (!canLoad) {
@@ -124,7 +121,7 @@ public final class MemoryManager {
         }
       }
 
-      canLoad = (blockSize + statistics.getLoadingBytes()) <= usableCache;
+      canLoad = (blockSize + statistics.getLoadingBytes()) <= freeCache; // TODO: ???
       LOG.log(Level.INFO, blockId+" statistics during loadStart: "+statistics);
 
       if (!canLoad) {
@@ -147,8 +144,8 @@ public final class MemoryManager {
     return null; // No need to evict, can start loading
   }
 
-  public void loadStartFail(final BlockId blockId, final boolean pinned, final Exception exception) {
-    LOG.log(Level.INFO, blockId+" statistics before loadNotStarted: "+statistics);
+  public synchronized void loadStartFail(final BlockId blockId, final boolean pinned, final Exception exception) {
+    LOG.log(Level.INFO, blockId+" statistics before loadStartFail: "+statistics);
     final long blockSize = blockId.getBlockSize();
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -159,6 +156,9 @@ public final class MemoryManager {
     } else {
       // nothing
     }
+    updates.addFailure(blockId, exception);
+    setState(blockId, CacheEntryState.REMOVED);
+    notifyAll();
   }
 
   /**
@@ -193,7 +193,7 @@ public final class MemoryManager {
         } else {
           statistics.subtractLoadingBytes(blockSize);
         }
-        lru.subtractEvictingBytes(blockSize);
+        lru.evicted(blockId);
         statistics.addEvictedBytes(blockSize);
         updates.addRemoval(blockId);
         setState(blockId, CacheEntryState.REMOVED);
@@ -237,7 +237,7 @@ public final class MemoryManager {
         } else {
           statistics.subtractLoadingBytes(blockSize);
         }
-        lru.subtractEvictingBytes(blockSize);
+        lru.evicted(blockId);
         statistics.addEvictedBytes(blockSize);
         updates.addFailure(blockId, exception);
         setState(blockId, CacheEntryState.REMOVED);
@@ -269,16 +269,7 @@ public final class MemoryManager {
         if (pinned) {
           statistics.subtractPinnedBytes(blockSize);
         }
-        lru.subtractEvictingBytes(blockSize);
-        statistics.addEvictedBytes(blockSize);
-        updates.addRemoval(blockId);
-        setState(blockId, CacheEntryState.REMOVED);
-        break;
-      case LOAD_PENDING:
-        if (pinned) {
-          statistics.subtractPinnedBytes(blockSize);
-        }
-        lru.subtractEvictingBytes(blockSize);
+        lru.evicted(blockId);
         statistics.addEvictedBytes(blockSize);
         updates.addRemoval(blockId);
         setState(blockId, CacheEntryState.REMOVED);
@@ -287,7 +278,7 @@ public final class MemoryManager {
         setState(blockId, CacheEntryState.REMOVED_DURING_LOAD);
         break;
       case LOAD_FAILED:
-        lru.subtractEvictingBytes(blockSize);
+        lru.evicted(blockId);
         statistics.addEvictedBytes(blockSize);
         // don't update as removed, already updated as failed
         setState(blockId, CacheEntryState.REMOVED);
@@ -298,7 +289,7 @@ public final class MemoryManager {
         } else {
           statistics.subtractCacheBytes(blockSize);
         }
-        lru.subtractEvictingBytes(blockSize);
+        lru.evicted(blockId);
         statistics.addEvictedBytes(blockSize);
         updates.addRemoval(blockId);
         setState(blockId, CacheEntryState.REMOVED);
