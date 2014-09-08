@@ -73,18 +73,23 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
       LOG.log(Level.INFO, "Finish loading block {0}", blockId);
     } catch (ConnectionFailedException e) {
       loader = null;
-      LOG.log(Level.SEVERE, "Failed to load block {0} because of connection failure", blockId);
+      LOG.log(Level.WARNING, "Failed to load block {0} because of connection failure", blockId);
       memoryManager.loadFail(blockId, pin, e);
       return;
     } catch (TransferFailedException e) {
       loader = null;
-      LOG.log(Level.SEVERE, "An error occurred while transferring the block {0} from the Datanode", blockId);
+      LOG.log(Level.WARNING, "An error occurred while transferring the block {0} from the Datanode", blockId);
       memoryManager.loadFail(blockId, pin, e);
       return;
     } catch (IOException e) {
       loader = null;
-      LOG.log(Level.SEVERE, "Failed to load block "+blockId, e);
+      LOG.log(Level.WARNING, "Failed to load block "+blockId, e);
       memoryManager.loadFail(blockId, pin, e);
+      return;
+    } catch (Throwable t) {
+      loader = null;
+      LOG.log(Level.SEVERE, "Unexpected throwable at "+blockId, t);
+      memoryManager.loadFail(blockId, pin, t);
       return;
     }
 

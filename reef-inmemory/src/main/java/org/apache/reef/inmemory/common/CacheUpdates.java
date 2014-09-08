@@ -16,7 +16,7 @@ public final class CacheUpdates implements Serializable {
   private final List<Failure> failures = new LinkedList<>();
   private final List<BlockId> removals = new LinkedList<>();
 
-  public void addFailure(final BlockId blockId, final Exception exception) {
+  public void addFailure(final BlockId blockId, final Throwable exception) {
     failures.add(new Failure(blockId, exception));
   }
 
@@ -34,19 +34,19 @@ public final class CacheUpdates implements Serializable {
 
   public final static class Failure implements Serializable {
     private final BlockId blockId;
-    private final Exception exception;
+    private final Throwable throwable;
 
-    private Failure(BlockId blockId, Exception exception) {
+    private Failure(final BlockId blockId, final Throwable throwable) {
       this.blockId = blockId;
-      this.exception = exception;
+      this.throwable = throwable;
     }
 
     public BlockId getBlockId() {
       return blockId;
     }
 
-    public Exception getException() {
-      return exception;
+    public Throwable getThrowable() {
+      return throwable;
     }
   }
 }

@@ -20,6 +20,7 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
   public static final RequiredParameter<Integer> CACHESERVER_PORT = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_SERVER_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
+  public static final RequiredParameter<Long> CACHESERVER_HEAP_SLACK = new RequiredParameter<>();
 
   public static final ConfigurationModule getConf(String dfsType) {
     if ("hdfs".equals(dfsType)) {
@@ -32,6 +33,7 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
   private static final ConfigurationModule HDFS_CONF = new InMemoryTaskConfiguration()
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
           .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
+          .bindNamedParameter(CacheParameters.HeapSlack.class, CACHESERVER_HEAP_SLACK)
           .bindNamedParameter(StageConfiguration.NumberOfThreads.class, CACHESERVER_LOADING_THREADS)
           .bindNamedParameter(StageConfiguration.StageHandler.class, BlockLoaderExecutor.class)
           .bindImplementation(InMemoryCache.class, InMemoryCacheImpl.class)

@@ -213,7 +213,7 @@ public final class MemoryManager {
    * Updates statistics.
    * @param blockSize
    */
-  public synchronized void loadFail(final BlockId blockId, final boolean pinned, final Exception exception) {
+  public synchronized void loadFail(final BlockId blockId, final boolean pinned, final Throwable throwable) {
     LOG.log(Level.INFO, blockId+" statistics before loadFail: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -228,7 +228,7 @@ public final class MemoryManager {
         } else {
           statistics.subtractLoadingBytes(blockSize);
         }
-        updates.addFailure(blockId, exception);
+        updates.addFailure(blockId, throwable);
         setState(blockId, CacheEntryState.LOAD_FAILED);
         notifyAll();
         break;
@@ -240,7 +240,7 @@ public final class MemoryManager {
         }
         lru.evicted(blockId);
         statistics.addEvictedBytes(blockSize);
-        updates.addFailure(blockId, exception);
+        updates.addFailure(blockId, throwable);
         setState(blockId, CacheEntryState.REMOVED);
         notifyAll();
         break;

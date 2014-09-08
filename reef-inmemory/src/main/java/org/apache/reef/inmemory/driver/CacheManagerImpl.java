@@ -38,6 +38,7 @@ public final class CacheManagerImpl implements CacheManager {
   private final int cachePort;
   private final int cacheMemory;
   private final int cacheServerThreads;
+  private final long cacheHeapSlack;
   private final int cacheLoadingThreads;
 
   // Tasks are first added to pendingTasks, then moved to tasks after receiving the server port
@@ -50,12 +51,14 @@ public final class CacheManagerImpl implements CacheManager {
                           final @Parameter(CacheParameters.Port.class) int cachePort,
                           final @Parameter(CacheParameters.Memory.class) int cacheMemory,
                           final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
+                          final @Parameter(CacheParameters.HeapSlack.class) long cacheHeapSlack,
                           final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.dfsType = dfsType;
     this.cachePort = cachePort;
     this.cacheMemory = cacheMemory;
     this.cacheServerThreads = cacheServerThreads;
+    this.cacheHeapSlack = cacheHeapSlack;
     this.cacheLoadingThreads = cacheLoadingThreads;
   }
 
@@ -97,15 +100,17 @@ public final class CacheManagerImpl implements CacheManager {
               .set(InMemoryTaskConfiguration.CACHESERVER_PORT, cachePort)
               .set(InMemoryTaskConfiguration.CACHESERVER_SERVER_THREADS, cacheServerThreads)
               .set(InMemoryTaskConfiguration.CACHESERVER_LOADING_THREADS, cacheLoadingThreads)
+              .set(InMemoryTaskConfiguration.CACHESERVER_HEAP_SLACK, cacheHeapSlack)
               .build();
 
       allocatedEvaluator.submitContextAndTask(contextConf,
               Tang.Factory.getTang().newConfigurationBuilder(taskConf, taskInMemoryConf).build());
     } catch (final BindException ex) {
-      final String message = "Failed to bind Task.";
-      LOG.log(Level.SEVERE, message);
+      LOG.log(Level.SEVERE, "Failed to bind Task.", ex);
     }
   }
+
+
 
   @Override
   public synchronized boolean addRunningTask(final RunningTask task) {

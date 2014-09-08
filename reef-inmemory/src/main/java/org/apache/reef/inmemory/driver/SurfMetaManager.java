@@ -77,7 +77,7 @@ public final class SurfMetaManager {
     synchronized (cache) {
       final String address = cache.getAddress();
       for (final CacheUpdates.Failure failure : updates.getFailures()) {
-        LOG.log(Level.WARNING, "Block loading failure: " + failure.getBlockId(), failure.getException());
+        LOG.log(Level.WARNING, "Block loading failure: " + failure.getBlockId(), failure.getThrowable());
         final BlockId blockId = failure.getBlockId();
         removeLocation(address, new Path(blockId.getFilePath()), blockId.getOffset(), blockId.getUniqueId());
       }
@@ -104,9 +104,13 @@ public final class SurfMetaManager {
 
     final BlockInfo blockInfo;
     synchronized (fileMeta) {
-      final int index = (int) (offset / fileMeta.getBlockSize());
+      final long blockSize = fileMeta.getBlockSize();
+      if (blockSize <= 0) {
+        LOG.log(Level.WARNING, "Unexpected block size: "+blockSize);
+      }
+      final int index = (int) (offset / blockSize);
       if (fileMeta.getBlocksSize() < index) {
-        LOG.log(Level.WARNING, "Block index out of bounds: "+index+", "+fileMeta.getBlocksSize());
+        LOG.log(Level.WARNING, "Block index out of bounds: "+index+", "+blockSize);
         return;
       }
       blockInfo = fileMeta.getBlocks().get(index);
