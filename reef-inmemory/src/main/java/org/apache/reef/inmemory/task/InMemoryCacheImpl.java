@@ -95,7 +95,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   @Override
   public void clear() { // TODO: do we need a stage for this as well? For larger caches, it could take awhile
-    final List<BlockId> blockIds = lru.evictAll();
+    final List<BlockId> blockIds = lru.evictAll(true); // TODO add CLI options for evicting all except for pinned
     for (final BlockId blockId : blockIds) {
       cache.invalidate(blockId);
     }

@@ -64,6 +64,7 @@ public final class MemoryManager {
 
     if (pin) {
       statistics.addPinnedBytes(blockSize);
+      lru.addPinned(blockId);
     } else {
       lru.add(blockId);
     }
@@ -144,14 +145,14 @@ public final class MemoryManager {
     return null; // No need to evict, can start loading
   }
 
-  public synchronized void loadStartFail(final BlockId blockId, final boolean pinned, final Exception exception) {
+  public synchronized void loadStartFail(final BlockId blockId, final boolean pin, final Exception exception) {
     LOG.log(Level.INFO, blockId+" statistics before loadStartFail: "+statistics);
     final long blockSize = blockId.getBlockSize();
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
     }
 
-    if (pinned) {
+    if (pin) {
       statistics.subtractPinnedBytes(blockSize);
     } else {
       // nothing
@@ -166,9 +167,9 @@ public final class MemoryManager {
    * Notifies threads waiting for memory to free up.
    * Updates statistics.
    * @param blockSize
-   * @param pinned
+   * @param pin
    */
-  public synchronized void loadSuccess(final BlockId blockId, final boolean pinned) {
+  public synchronized void loadSuccess(final BlockId blockId, final boolean pin) {
     LOG.log(Level.INFO, blockId+" statistics before loadSuccess: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -178,7 +179,7 @@ public final class MemoryManager {
     final CacheEntryState state = getState(blockId);
     switch(state) {
       case LOAD_STARTED:
-        if (pinned) {
+        if (pin) {
           // nothing
         } else {
           statistics.subtractLoadingBytes(blockSize);
@@ -188,7 +189,7 @@ public final class MemoryManager {
         notifyAll();
         break;
       case REMOVED_DURING_LOAD:
-        if (pinned) {
+        if (pin) {
           statistics.subtractPinnedBytes(blockSize);
         } else {
           statistics.subtractLoadingBytes(blockSize);

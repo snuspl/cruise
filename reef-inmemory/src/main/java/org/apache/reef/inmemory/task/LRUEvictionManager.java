@@ -16,6 +16,7 @@ public final class LRUEvictionManager {
   private static final Logger LOG = Logger.getLogger(LRUEvictionManager.class.getName());
 
   private final Map<BlockId, LRUEntry> index = new HashMap<>();
+  private final Set<BlockId> pinned = new HashSet<>();
 
   private LRUEntry head;
   private LRUEntry tail;
@@ -55,6 +56,10 @@ public final class LRUEvictionManager {
     evictingBytes -= blockId.getBlockSize();
   }
 
+  public synchronized void addPinned(final BlockId blockId) {
+    pinned.add(blockId);
+  }
+
   /**
    * Evict blocks.
    * A list of Block IDs is returned, and the caller _must_ remove these blocks from the cache.
@@ -90,9 +95,10 @@ public final class LRUEvictionManager {
    * Evict all blocks.
    * A list of Block IDs is returned, and the caller _must_ remove these blocks from the cache.
    * Once returned, the same Block ID will not be considered for eviction again.
+   * @param evictPinned Set true to evict all pinned blocks as well
    * @return List of Block IDs that caller must remove from cache
    */
-  public synchronized List<BlockId> evictAll() {
+  public synchronized List<BlockId> evictAll(final boolean evictPinned) {
     final List<BlockId> chosen = new ArrayList<>(index.size());
     LRUEntry entry = head;
     while (entry != null) {
@@ -104,6 +110,12 @@ public final class LRUEvictionManager {
       entryToEvict.exit();
       evictingBytes += blockToEvict.getBlockSize();
     }
+
+    if (evictPinned) {
+      chosen.addAll(pinned);
+      pinned.clear();
+    }
+
     return chosen;
   }
 
