@@ -27,7 +27,7 @@ public final class CacheParameters {
   public static class NumLoadingThreads implements Name<Integer>{
   }
 
-  @NamedParameter(doc = "Amount of slack given to objects that are NOT in the cache", short_name = "cache_heap_slack", default_value = "0.1")
+  @NamedParameter(doc = "Amount of slack given to objects that are NOT in the cache", short_name = "cache_heap_slack", default_value = "0.15")
   public static class HeapSlack implements Name<Double>{
   }
 

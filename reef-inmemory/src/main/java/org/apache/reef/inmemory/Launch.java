@@ -56,7 +56,7 @@ public class Launch
   }
 
   // See: JVMHeapSlack class
-  @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap.", short_name = "jvm_heap_slack", default_value = "0.1")
+  @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap.", short_name = "jvm_heap_slack", default_value = "0.05")
   public static class ReefJvmHeapSlack implements Name<Double>{
   }
 
