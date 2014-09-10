@@ -14,6 +14,7 @@
         <tests.excluded></tests.excluded>
         <tests.forkCount>1</tests.forkCount>
         <tests.reuseForks>true</tests.reuseForks>
+        <tests.argLine></tests.argLine>
         <hadoop.version>2.2.0</hadoop.version>
         <reef.version>0.6</reef.version>
         <thrift.version>0.9.1</thrift.version>
@@ -232,7 +233,7 @@
                     <excludedGroups>${tests.excluded}</excludedGroups>
                     <forkCount>${tests.forkCount}</forkCount>
                     <reuseForks>${tests.reuseForks}</reuseForks>
-                    <argLine>-Xmx2G -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp</argLine>
+                    <argLine>${tests.argLine}</argLine>
                 </configuration>
             </plugin>
         </plugins>
@@ -324,6 +325,7 @@
                 <tests.excluded></tests.excluded>
                 <tests.forkCount>1</tests.forkCount>
                 <tests.reuseForks>false</tests.reuseForks>
+                <tests.argLine>-Xmx2G -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp</tests.argLine>
             </properties>
         </profile>
         <profile>

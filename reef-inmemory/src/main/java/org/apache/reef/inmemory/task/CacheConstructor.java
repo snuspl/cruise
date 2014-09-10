@@ -11,6 +11,10 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Constructs an instance of the Guava Cache.
+ * Surf's MemoryManager receives all removal notifications through the RemovalListener.
+ */
 public final class CacheConstructor implements ExternalConstructor<Cache> {
 
   private Logger LOG = Logger.getLogger(CacheConstructor.class.getName());
