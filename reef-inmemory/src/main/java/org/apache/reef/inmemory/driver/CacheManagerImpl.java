@@ -147,7 +147,9 @@ public final class CacheManagerImpl implements CacheManager {
       caches.put(taskId, cache);
       LOG.log(Level.INFO, "Cache "+cache.getAddress()+" added from task "+cache.getTaskId());
     } else if (caches.containsKey(taskId)) {
-      caches.get(taskId).setLatestStatistics(msg.getStatistics());
+      final CacheNode cache = caches.get(taskId);
+      cache.setLatestStatistics(msg.getStatistics());
+      cache.setLatestTimestamp(System.currentTimeMillis());
     }
   }
 }

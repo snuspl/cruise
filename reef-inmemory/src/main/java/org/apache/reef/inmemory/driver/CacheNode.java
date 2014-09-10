@@ -12,6 +12,7 @@ public class CacheNode {
   private final String rack;
   private final int memory;
   private CacheStatistics latestStatistics;
+  private long latestTimestamp;
 
   public CacheNode(final RunningTask task,
                    final int port) {
@@ -60,6 +61,14 @@ public class CacheNode {
 
   public void setLatestStatistics(CacheStatistics latestStatistics) {
     this.latestStatistics = latestStatistics;
+  }
+
+  public long getLatestTimestamp() {
+    return latestTimestamp;
+  }
+
+  public void setLatestTimestamp(long latestTimestamp) {
+    this.latestTimestamp = latestTimestamp;
   }
 
   /**
