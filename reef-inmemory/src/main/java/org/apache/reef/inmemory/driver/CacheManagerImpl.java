@@ -38,7 +38,7 @@ public final class CacheManagerImpl implements CacheManager {
   private final int cachePort;
   private final int cacheMemory;
   private final int cacheServerThreads;
-  private final long cacheHeapSlack;
+  private final double cacheHeapSlack;
   private final int cacheLoadingThreads;
 
   // Tasks are first added to pendingTasks, then moved to tasks after receiving the server port
@@ -51,7 +51,7 @@ public final class CacheManagerImpl implements CacheManager {
                           final @Parameter(CacheParameters.Port.class) int cachePort,
                           final @Parameter(CacheParameters.Memory.class) int cacheMemory,
                           final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
-                          final @Parameter(CacheParameters.HeapSlack.class) long cacheHeapSlack,
+                          final @Parameter(CacheParameters.HeapSlack.class) double cacheHeapSlack,
                           final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.dfsType = dfsType;

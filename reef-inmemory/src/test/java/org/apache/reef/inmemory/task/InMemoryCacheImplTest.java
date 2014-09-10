@@ -30,7 +30,7 @@ public final class InMemoryCacheImplTest {
   private InMemoryCache cache;
   private static final Random random = new Random();
   private static final long maxMemory = Runtime.getRuntime().maxMemory();
-  private static final long slack = 384 * 1024 * 1024;
+  private static final double slack = 0.1;
   private final int bufferSize = 8 * 1024 * 1024;
 
   @Before
@@ -357,7 +357,7 @@ public final class InMemoryCacheImplTest {
 
     System.out.println("Statistics: " + cache.getStatistics());
 
-    final long usableCache = maxMemory - slack;
+    final long usableCache = (long) (maxMemory * (1.0 - slack));
     final long expectedCached = usableCache - (usableCache % blockSize);
     final long expectedEvicted = (blockSize * iterations) - expectedCached;
 
@@ -405,7 +405,7 @@ public final class InMemoryCacheImplTest {
 
     System.out.println("Statistics: "+cache.getStatistics());
 
-    final long usableCache = maxMemory - slack;
+    final long usableCache = (long) (maxMemory * (1.0 - slack));
     final long expectedCached = usableCache - (usableCache % blockSize);
     final long expectedEvicted = (blockSize * iterations) - expectedCached;
 
@@ -457,7 +457,7 @@ public final class InMemoryCacheImplTest {
 
     System.out.println("Statistics: "+cache.getStatistics());
 
-    final long usableCache = maxMemory - slack;
+    final long usableCache = (long) (maxMemory * (1.0 - slack));
     final long expectedCached = usableCache - (usableCache % blockSize);
     final long maxEvicted = (blockSize * iterations) - expectedCached;
 
@@ -481,7 +481,7 @@ public final class InMemoryCacheImplTest {
     cache.load(pinnedLoader);
     assertBlockLoaded(pinnedLoader, pinnedId);
 
-    final long iterations = maxMemory / (128 * 1024 * 1024) * 2;
+    final long iterations = 50;
     for (int i = 0; i < iterations; i++) {
       final BlockId blockId = randomBlockId(blockSize);
 

@@ -33,7 +33,7 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
   public static final RequiredParameter<Integer> CACHESERVER_SERVER_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHE_MEMORY_SIZE = new RequiredParameter<>();
-  public static final RequiredParameter<Long> CACHESERVER_HEAP_SLACK = new RequiredParameter<>();
+  public static final RequiredParameter<Double> CACHESERVER_HEAP_SLACK = new RequiredParameter<>();
   public static final OptionalParameter<String> REPLICATION_RULES = new OptionalParameter<>();
 
   public static final RequiredParameter<String> DFS_TYPE = new RequiredParameter<>();

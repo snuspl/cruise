@@ -23,7 +23,7 @@ public final class MemoryManager {
 
   private final LRUEvictionManager lru;
   private final CacheStatistics statistics;
-  private final long slack;
+  private final long cacheSize;
   private CacheUpdates updates;
 
   private Map<BlockId, CacheEntryState> cacheEntries = new HashMap<>();
@@ -31,11 +31,11 @@ public final class MemoryManager {
   @Inject
   public MemoryManager(final LRUEvictionManager lru,
                        final CacheStatistics statistics,
-                       final @Parameter(CacheParameters.HeapSlack.class) long slack) {
+                       final @Parameter(CacheParameters.HeapSlack.class) double slack) {
     this.lru = lru;
     this.statistics = statistics;
-    this.slack = slack;
     this.updates = new CacheUpdates();
+    this.cacheSize = (long)(statistics.getMaxBytes() * (1.0 - slack));
   }
 
   private static enum CacheEntryState {
@@ -56,7 +56,6 @@ public final class MemoryManager {
     }
     final long blockSize = blockId.getBlockSize();
 
-    final long maxHeap = statistics.getMaxBytes();
     final long cached = statistics.getCacheBytes();
     if (cached < 0) {
       throw new RuntimeException(blockId+" cached is less than zero: "+cached);
@@ -110,7 +109,7 @@ public final class MemoryManager {
         throw new RuntimeException(blockId+" cached is less than zero: "+cached);
       }
 
-      final long usableCache = (statistics.getMaxBytes() - slack) - statistics.getPinnedBytes();
+      final long usableCache = cacheSize - statistics.getPinnedBytes();
       final long freeCache = usableCache - statistics.getCacheBytes() - statistics.getLoadingBytes();
       LOG.log(Level.INFO, blockId+" size: "+blockSize+" free cache: "+freeCache+" usable cache: "+usableCache);
       if (blockSize > usableCache) {
@@ -348,6 +347,6 @@ public final class MemoryManager {
   }
 
   public long getCacheSize() {
-    return statistics.getMaxBytes() - slack;
+    return cacheSize;
   }
 }
