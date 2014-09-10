@@ -121,7 +121,7 @@ public final class MemoryManager {
         }
       }
 
-      canLoad = (blockSize + statistics.getLoadingBytes()) <= freeCache; // TODO: ???
+      canLoad = (blockSize <= freeCache);
       LOG.log(Level.INFO, blockId+" statistics during loadStart: "+statistics);
 
       if (!canLoad) {

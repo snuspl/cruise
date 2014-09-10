@@ -29,7 +29,6 @@ public final class InMemoryCacheImplTest {
   private EStage<BlockLoader> loadingStage;
   private InMemoryCache cache;
   private static final Random random = new Random();
-  private static final long maxMemory = Runtime.getRuntime().maxMemory();
   private static final double slack = 0.1;
   private final int bufferSize = 8 * 1024 * 1024;
 
@@ -357,7 +356,7 @@ public final class InMemoryCacheImplTest {
 
     System.out.println("Statistics: " + cache.getStatistics());
 
-    final long usableCache = (long) (maxMemory * (1.0 - slack));
+    final long usableCache = (long) (cache.getStatistics().getMaxBytes() * (1.0 - slack));
     final long expectedCached = usableCache - (usableCache % blockSize);
     final long expectedEvicted = (blockSize * iterations) - expectedCached;
 
@@ -405,7 +404,7 @@ public final class InMemoryCacheImplTest {
 
     System.out.println("Statistics: "+cache.getStatistics());
 
-    final long usableCache = (long) (maxMemory * (1.0 - slack));
+    final long usableCache = (long) (cache.getStatistics().getMaxBytes() * (1.0 - slack));
     final long expectedCached = usableCache - (usableCache % blockSize);
     final long expectedEvicted = (blockSize * iterations) - expectedCached;
 
@@ -457,7 +456,7 @@ public final class InMemoryCacheImplTest {
 
     System.out.println("Statistics: "+cache.getStatistics());
 
-    final long usableCache = (long) (maxMemory * (1.0 - slack));
+    final long usableCache = (long) (cache.getStatistics().getMaxBytes() * (1.0 - slack));
     final long expectedCached = usableCache - (usableCache % blockSize);
     final long maxEvicted = (blockSize * iterations) - expectedCached;
 
