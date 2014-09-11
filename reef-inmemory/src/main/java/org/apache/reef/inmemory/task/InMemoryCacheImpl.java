@@ -29,19 +29,6 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   private final Cache<BlockId, BlockLoader> cache;
 
-  private final ScheduledExecutorService cleanupScheduler;
-
-  /**
-   * Clean up statistics, scheduled periodically
-   * TODO: Is cleanup even necessary anymore?
-   */
-  private final Runnable cleanup = new Runnable() {
-    @Override
-    public void run() {
-      cache.cleanUp();
-    }
-  };
-
   @Inject
   public InMemoryCacheImpl(final Cache<BlockId, BlockLoader> cache,
                            final MemoryManager memoryManager,
@@ -54,8 +41,6 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     this.lru = lru;
     this.loadingStage = loadingStage;
     this.loadingBufferSize = loadingBufferSize;
-    this.cleanupScheduler = Executors.newScheduledThreadPool(1);
-    this.cleanupScheduler.scheduleAtFixedRate(cleanup, 5, 5, TimeUnit.SECONDS);
   }
 
   @Override
@@ -111,15 +96,5 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Override
   public CacheUpdates pullUpdates() {
     return memoryManager.pullUpdates();
-  }
-
-  @Override
-  public void close() throws IOException {
-    cleanupScheduler.shutdownNow();
-    try {
-      cleanupScheduler.awaitTermination(5, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      throw new IOException(e);
-    }
   }
 }

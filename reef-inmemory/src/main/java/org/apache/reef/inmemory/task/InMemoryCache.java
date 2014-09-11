@@ -11,7 +11,7 @@ import java.io.IOException;
 /**
  * Interface for InMemory Cache.
  */
-public interface InMemoryCache extends Closeable {
+public interface InMemoryCache {
   /**
    * Retrieves the content of a block with given blockId.
    * @param fileBlock Block identifier to read

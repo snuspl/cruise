@@ -49,7 +49,6 @@ public final class InMemoryCacheImplTest {
     internalCache = null;
     memoryManager = null;
     loadingStage = null;
-    cache.close();
     cache = null;
 
     System.gc();
