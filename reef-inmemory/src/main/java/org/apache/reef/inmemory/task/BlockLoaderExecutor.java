@@ -46,6 +46,13 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
     final BlockId blockId = loader.getBlockId();
     final boolean pin = loader.isPinned();
 
+    // 1. If the cache is full, an eviction list is returned by loadStart.
+    // 2. Each block in the eviction list is invalidated here.
+    // 3. loadStart must be called again; the Memory Manager then ensures that
+    //    eviction has successfully taken place and been booked, and returns null if true.
+    // TODO: there's a possibility of starvation here:
+    //    Between 2 and 3, a new block can be inserted and obtain memory that has just been evicted.
+    //    If blocks are continually inserted, this will starve the evicting block.
     try {
       boolean needSpace = true;
       while (needSpace) {

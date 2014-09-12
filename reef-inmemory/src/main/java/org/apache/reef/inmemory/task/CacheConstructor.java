@@ -13,7 +13,19 @@ import java.util.logging.Logger;
 
 /**
  * Constructs an instance of the Guava Cache.
- * Surf's MemoryManager receives all removal notifications through the RemovalListener.
+ *
+ * Guava Caches are segmented by key. Guava provides atomic "get-if-absent-compute-and-put" semantics,
+ * with the properties:
+ * - Compute only locks the segment the key is in.
+ *     (The number of segments is decided according to the concurrency level.)
+ * - Reads are non-locking for keys that are not computing.
+ * - Reads wait when keys are computing, preserving the atomic semantics.
+ * In Surf, the "compute" is fast because it simply creates a BlockLoader object. (The actual block
+ * loading is done in a separate stage.) Thus, compute and read operations should never block for a significant time.
+ *
+ * Surf runs its own eviction algorithms, and invalidates keys that are chosen for eviction.
+ * Guava Cache triggers a removal notification when keys are invalidated.
+ * Surf's MemoryManager is then updated through the RemovalListener.
  */
 public final class CacheConstructor implements ExternalConstructor<Cache> {
 
