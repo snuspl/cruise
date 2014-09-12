@@ -1,9 +1,6 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.RemovalListener;
-import com.google.common.cache.RemovalNotification;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
@@ -13,6 +10,7 @@ import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,88 +22,42 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final Logger LOG = Logger.getLogger(InMemoryCacheImpl.class.getName());
 
   private final MemoryManager memoryManager;
+  private final LRUEvictionManager lru;
   private final EStage<BlockLoader> loadingStage;
   private final int loadingBufferSize;
 
   private final Cache<BlockId, BlockLoader> cache;
-  private final Cache<BlockId, BlockLoader> pinCache;
-
-  private final ScheduledExecutorService cleanupScheduler;
-
-  /**
-   * Clean up statistics, scheduled periodically
-   */
-  private final Runnable cleanup = new Runnable() {
-    @Override
-    public void run() {
-      cache.cleanUp();
-      pinCache.cleanUp();
-    }
-  };
-
-  /**
-   * Update statistics on cache removal
-   */
-  private final RemovalListener<BlockId, BlockLoader> removalListener = new RemovalListener<BlockId, BlockLoader>() {
-    @Override
-    public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
-      LOG.log(Level.FINE, "Removed: "+notification.getKey());
-      final BlockId blockId = notification.getKey();
-      memoryManager.remove(blockId);
-    }
-  };
-
-  /**
-   * Update statistics on cache removal
-   */
-  private final RemovalListener<BlockId, BlockLoader> pinRemovalListener = new RemovalListener<BlockId, BlockLoader>() {
-    @Override
-    public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
-      LOG.log(Level.FINE, "Removed pin: "+notification.getKey());
-      final long blockSize = notification.getKey().getBlockSize();
-      memoryManager.removePin(blockSize);
-    }
-  };
 
   @Inject
-  public InMemoryCacheImpl(final MemoryManager memoryManager,
+  public InMemoryCacheImpl(final Cache<BlockId, BlockLoader> cache,
+                           final MemoryManager memoryManager,
+                           final LRUEvictionManager lru,
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
                            final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize) {
-    this.cache =
-      CacheBuilder.newBuilder()
-        .softValues()
-        .removalListener(removalListener)
-        .concurrencyLevel(numThreads)
-        .build();
-    this.pinCache =
-      CacheBuilder.newBuilder()
-        .removalListener(pinRemovalListener)
-        .concurrencyLevel(numThreads)
-        .build();
-
+    this.cache = cache;
     this.memoryManager = memoryManager;
+    this.lru = lru;
     this.loadingStage = loadingStage;
     this.loadingBufferSize = loadingBufferSize;
-    this.cleanupScheduler = Executors.newScheduledThreadPool(1);
-    this.cleanupScheduler.scheduleAtFixedRate(cleanup, 5, 5, TimeUnit.SECONDS);
   }
 
   @Override
-  public byte[] get(BlockId blockId, int index)
-    throws BlockLoadingException, BlockNotFoundException {
+  public byte[] get(final BlockId blockId, int index)
+          throws BlockLoadingException, BlockNotFoundException {
     final BlockLoader loader = cache.getIfPresent(blockId);
     if (loader == null) {
       throw new BlockNotFoundException();
     } else {
+      lru.use(blockId);
       // getData throws BlockLoadingException if load has not completed for the requested chunk
       return loader.getData(index);
     }
   }
 
   @Override
-  public void load(final BlockLoader loader, final boolean pin) throws IOException {
-    final Callable<BlockLoader> callable = new BlockLoaderCaller(loader, pin, pinCache);
+  public void load(final BlockLoader loader) throws IOException {
+    final Callable<BlockLoader> callable = new BlockLoaderCaller(loader, memoryManager);
     final BlockLoader returnedLoader;
     try {
       returnedLoader = cache.get(loader.getBlockId(), callable);
@@ -126,13 +78,12 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void clear() {
-    cache.invalidateAll();
-    pinCache.invalidateAll();
-
+  public void clear() { // TODO: do we need a stage for this as well? For larger caches, it could take awhile
+    final List<BlockId> blockIds = lru.evictAll(true); // TODO add CLI options for evicting all except for pinned
+    for (final BlockId blockId : blockIds) {
+      cache.invalidate(blockId);
+    }
     cache.cleanUp();
-    pinCache.cleanUp();
-
     memoryManager.clearHistory();
   }
 

@@ -12,6 +12,9 @@
         <logging>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config</logging>
         <!-- Defined in each profile. To run all tests use: -P all-tests -->
         <tests.excluded></tests.excluded>
+        <tests.forkCount>1</tests.forkCount>
+        <tests.reuseForks>true</tests.reuseForks>
+        <tests.argLine></tests.argLine>
         <hadoop.version>2.2.0</hadoop.version>
         <reef.version>0.6</reef.version>
         <thrift.version>0.9.1</thrift.version>
@@ -228,6 +231,9 @@
                 <version>2.17</version>
                 <configuration>
                     <excludedGroups>${tests.excluded}</excludedGroups>
+                    <forkCount>${tests.forkCount}</forkCount>
+                    <reuseForks>${tests.reuseForks}</reuseForks>
+                    <argLine>${tests.argLine}</argLine>
                 </configuration>
             </plugin>
         </plugins>
@@ -317,6 +323,9 @@
             <id>all-tests</id>
             <properties>
                 <tests.excluded></tests.excluded>
+                <tests.forkCount>1</tests.forkCount>
+                <tests.reuseForks>false</tests.reuseForks>
+                <tests.argLine>-Xmx2G -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp</tests.argLine>
             </properties>
         </profile>
         <profile>

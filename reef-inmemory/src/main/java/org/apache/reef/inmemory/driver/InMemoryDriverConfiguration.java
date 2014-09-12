@@ -33,6 +33,7 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
   public static final RequiredParameter<Integer> CACHESERVER_SERVER_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHE_MEMORY_SIZE = new RequiredParameter<>();
+  public static final RequiredParameter<Double> CACHESERVER_HEAP_SLACK = new RequiredParameter<>();
   public static final OptionalParameter<String> REPLICATION_RULES = new OptionalParameter<>();
 
   public static final RequiredParameter<String> DFS_TYPE = new RequiredParameter<>();
@@ -53,6 +54,7 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
           .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
           .bindNamedParameter(CacheParameters.Memory.class, CACHE_MEMORY_SIZE)
+          .bindNamedParameter(CacheParameters.HeapSlack.class, CACHESERVER_HEAP_SLACK)
           .bindNamedParameter(StageConfiguration.NumberOfThreads.class, CACHESERVER_LOADING_THREADS)
           .bindNamedParameter(MetaServerParameters.ReplicationRulesJson.class, REPLICATION_RULES)
           .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)

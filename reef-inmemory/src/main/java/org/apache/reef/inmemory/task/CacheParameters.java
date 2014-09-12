@@ -27,8 +27,8 @@ public final class CacheParameters {
   public static class NumLoadingThreads implements Name<Integer>{
   }
 
-  @NamedParameter(doc = "Amount of heap slack allowed before Block Loading is blocked", short_name = "heap_slack", default_value = "104857600") // 100 MB
-  public static class HeapSlack implements Name<Integer>{
+  @NamedParameter(doc = "Amount of slack given to objects that are NOT in the cache", short_name = "cache_heap_slack", default_value = "0.15")
+  public static class HeapSlack implements Name<Double>{
   }
 
   @NamedParameter(doc = "Size of buffer used when loading a block", short_name = "loading_buffer", default_value = "8388608") // 8 MB

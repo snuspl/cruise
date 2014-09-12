@@ -47,7 +47,7 @@ public final class HdfsCacheLoaderTest {
 
   @Before
   public void setUp() throws IOException {
-    manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0);
+    manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0);
     messenger = new HdfsCacheMessenger(manager);
     selector = new HdfsRandomCacheSelectionPolicy();
     blockFactory = new HdfsBlockIdFactory();

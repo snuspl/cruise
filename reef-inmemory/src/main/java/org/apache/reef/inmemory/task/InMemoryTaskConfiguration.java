@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.task;
 
+import com.google.common.cache.Cache;
 import com.microsoft.tang.formats.ConfigurationModule;
 import com.microsoft.tang.formats.ConfigurationModuleBuilder;
 import com.microsoft.tang.formats.RequiredParameter;
@@ -19,6 +20,7 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
   public static final RequiredParameter<Integer> CACHESERVER_PORT = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_SERVER_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
+  public static final RequiredParameter<Double> CACHESERVER_HEAP_SLACK = new RequiredParameter<>();
 
   public static final ConfigurationModule getConf(String dfsType) {
     if ("hdfs".equals(dfsType)) {
@@ -31,6 +33,7 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
   private static final ConfigurationModule HDFS_CONF = new InMemoryTaskConfiguration()
           .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
           .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
+          .bindNamedParameter(CacheParameters.HeapSlack.class, CACHESERVER_HEAP_SLACK)
           .bindNamedParameter(StageConfiguration.NumberOfThreads.class, CACHESERVER_LOADING_THREADS)
           .bindNamedParameter(StageConfiguration.StageHandler.class, BlockLoaderExecutor.class)
           .bindImplementation(InMemoryCache.class, InMemoryCacheImpl.class)
@@ -38,5 +41,6 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
           .bindImplementation(BlockIdFactory.class, HdfsBlockIdFactory.class)
           .bindImplementation(DriverMessageHandler.class, HdfsDriverMessageHandler.class)
           .bindImplementation(EStage.class, ThreadPoolStage.class)
+          .bindConstructor(Cache.class, CacheConstructor.class)
           .build();
 }

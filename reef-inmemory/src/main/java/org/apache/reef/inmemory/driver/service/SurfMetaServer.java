@@ -83,11 +83,15 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   @Override
   public String getStatus() throws TException {
     LOG.log(Level.INFO, "CLI status command");
-    StringBuilder builder = new StringBuilder();
+    final StringBuilder builder = new StringBuilder();
+    final long currentTimestamp = System.currentTimeMillis();
     for (CacheNode cache : cacheManager.getCaches()) {
       builder.append(cache.getAddress())
              .append(" : ")
              .append(cache.getLatestStatistics())
+             .append(" : ")
+             .append(currentTimestamp - cache.getLatestTimestamp())
+             .append(" ms ago")
              .append('\n');
     }
     return builder.toString();

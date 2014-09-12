@@ -55,6 +55,11 @@ public class Launch
   public static final class LocalThreads implements Name<Integer> {
   }
 
+  // See: JVMHeapSlack class
+  @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap.", short_name = "jvm_heap_slack", default_value = "0.05")
+  public static class ReefJvmHeapSlack implements Name<Double>{
+  }
+
   /**
    * File path of a replication rules JSON file. The file will be read at the client and added to the server configuration as a String.
    */
@@ -82,6 +87,7 @@ public class Launch
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(Local.class);
     cl.registerShortNameOfClass(LocalThreads.class);
+    cl.registerShortNameOfClass(ReefJvmHeapSlack.class);
     cl.registerShortNameOfClass(ReplicationRulesPath.class);
     cl.registerShortNameOfClass(MetaServerParameters.Port.class);
     cl.registerShortNameOfClass(MetaServerParameters.InitCacheServers.class);
@@ -92,6 +98,7 @@ public class Launch
     cl.registerShortNameOfClass(CacheParameters.NumServerThreads.class);
     cl.registerShortNameOfClass(CacheParameters.NumLoadingThreads.class);
     cl.registerShortNameOfClass(CacheParameters.Memory.class);
+    cl.registerShortNameOfClass(CacheParameters.HeapSlack.class);
     cl.registerShortNameOfClass(DfsParameters.Type.class);
     cl.registerShortNameOfClass(DfsParameters.Address.class);
     cl.processCommandLine(args);
@@ -159,6 +166,7 @@ public class Launch
       .set(InMemoryDriverConfiguration.CACHESERVER_SERVER_THREADS, chooseNamedInstance(CacheParameters.NumServerThreads.class, clInjector, fileInjector))
       .set(InMemoryDriverConfiguration.CACHESERVER_LOADING_THREADS, chooseNamedInstance(CacheParameters.NumLoadingThreads.class, clInjector, fileInjector))
       .set(InMemoryDriverConfiguration.CACHE_MEMORY_SIZE, chooseNamedInstance(CacheParameters.Memory.class, clInjector, fileInjector))
+      .set(InMemoryDriverConfiguration.CACHESERVER_HEAP_SLACK, chooseNamedInstance(CacheParameters.HeapSlack.class, clInjector, fileInjector))
       .set(InMemoryDriverConfiguration.DFS_TYPE, chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
       .set(InMemoryDriverConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
     inMemoryConfigModule = setReplicationRules(inMemoryConfigModule, clInjector);
@@ -197,7 +205,10 @@ public class Launch
         .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, localThreads)
         .build();
     } else {
-      runtimeConfig = YarnClientConfiguration.CONF.build();
+      final double jvmHeapSlack = injector.getNamedInstance(ReefJvmHeapSlack.class);
+      runtimeConfig = YarnClientConfiguration.CONF
+        .set(YarnClientConfiguration.JVM_HEAP_SLACK, jvmHeapSlack)
+        .build();
     }
     return runtimeConfig;
   }
