@@ -178,11 +178,11 @@ public final class SurfFS extends FileSystem {
       FileMeta metadata = getMetaClient().getFileMeta(path.toUri().getPath());
       return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager, getConf()));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
+      LOG.log(Level.FINE, "FileNotFoundException ", e);
       throw new FileNotFoundException(e.getMessage());
     } catch (TException e) {
-      LOG.log(Level.SEVERE, "TException: "+e+" "+e.getCause());
-      throw new IOException(e.getMessage());
+      LOG.log(Level.SEVERE, "TException", e);
+      throw new IOException(e);
     }
   }
 

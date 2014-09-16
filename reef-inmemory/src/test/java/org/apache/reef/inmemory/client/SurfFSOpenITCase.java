@@ -9,9 +9,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.reef.inmemory.Launch;
+import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -35,9 +35,8 @@ import static org.junit.Assert.fail;
  * TODO: When REEF issue #868 is available, call close using that method
  */
 @Ignore
-public final class SurfFSOpenTest {
+public final class SurfFSOpenITCase {
 
-  private static MiniDFSCluster cluster;
   private static FileSystem baseFs;
   private static SurfFS surfFs;
 
@@ -54,37 +53,34 @@ public final class SurfFSOpenTest {
   private static final int SIZE2 = 70;
 
   private static final String SURF = "surf";
-  private static final String SURF_ADDRESS = "localhost:9001";
+  private static final String SURF_ADDRESS = "localhost:18000";
 
   /**
-   * Setup test environment once, since it's expensive.
+   * Connect to HDFS cluster for integration test, and create test elements.
    * Don't run destructive tests on the elements created here.
+   * Launch REEF instance.
    */
   @BeforeClass
   public static void setUpClass() throws IOException, InjectionException {
-    Configuration hdfsConfig = new HdfsConfiguration();
+    final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
     // Reduce blocksize to 512 bytes, to test multiple blocks
-    hdfsConfig.setInt(DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY, 512);
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 512);
 
-    cluster = new MiniDFSCluster.Builder(hdfsConfig).numDataNodes(3).build();
-    cluster.waitActive();
-
-    baseFs = cluster.getFileSystem();
+    baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
     com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
     com.microsoft.tang.Configuration fileConf = Launch.parseConfigFile();
     reef = Launch.runInMemory(clConf, fileConf);
 
-    FSDataOutputStream stream1 = baseFs.create(new Path(TESTPATH1));
+    final FSDataOutputStream stream1 = baseFs.create(new Path(TESTPATH1));
     for (int i = 0; i < SIZE1; i++) {
       stream1.write(b);
     }
     stream1.close();
 
-    FSDataOutputStream stream2 = baseFs.create(new Path(TESTPATH2));
+    final FSDataOutputStream stream2 = baseFs.create(new Path(TESTPATH2));
     for (int i = 0; i < SIZE2; i++) {
       stream2.write(b);
     }
@@ -96,16 +92,21 @@ public final class SurfFSOpenTest {
       e.printStackTrace();
     }
 
-    Configuration conf = new Configuration();
+    final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64);
+    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64); // TODO: Test fails when this is set; it succeeds when using default
 
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);
   }
 
+  /**
+   * Remove all directories.
+   * Shutdown REEF.
+   */
   @AfterClass
-  public static void cleanUpClass() {
+  public static void tearDownClass() throws IOException {
+    baseFs.delete(new Path("/*"), true);
     System.out.println("Closing REEF...");
     reef.close(); // TODO: does not kill Launchers -- for now, remember to kill from command line
   }

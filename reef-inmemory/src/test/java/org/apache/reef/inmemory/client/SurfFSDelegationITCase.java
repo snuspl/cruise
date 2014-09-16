@@ -7,10 +7,10 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.reef.inmemory.common.ITUtils;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.net.URI;
@@ -22,10 +22,8 @@ import static org.junit.Assert.assertTrue;
  * Tests for SurfFS methods that delegate to a Base FS.
  * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
  */
-@Category(org.apache.reef.inmemory.common.IntensiveTests.class)
-public final class SurfFSDelegationTest {
+public final class SurfFSDelegationITCase {
 
-  private static MiniDFSCluster cluster;
   private static FileSystem baseFs;
   private static SurfFS surfFs;
 
@@ -37,29 +35,34 @@ public final class SurfFSDelegationTest {
   private static final String SURF_ADDRESS = "localhost:9001";
 
   /**
-   * Setup test environment once, since it's expensive.
+   * Connect to HDFS cluster for integration test, and create test elements.
    * Don't run destructive tests on the elements created here.
    */
   @BeforeClass
   public static void setUpClass() throws IOException {
-    Configuration hdfsConfig = new HdfsConfiguration();
+    final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
 
-    cluster = new MiniDFSCluster.Builder(hdfsConfig).numDataNodes(3).build();
-    cluster.waitActive();
-
-    baseFs = cluster.getFileSystem();
+    baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
-    FSDataOutputStream stream = baseFs.create(new Path(ABSPATH));
+    final FSDataOutputStream stream = baseFs.create(new Path(ABSPATH));
     stream.writeUTF("Hello Readme");
     stream.close();
 
-    Configuration conf = new Configuration();
+    final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
 
     surfFs = new SurfFS();
-    surfFs.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);
+    surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
+  }
+
+  /**
+   * Remove all directories.
+   */
+  @AfterClass
+  public static void tearDownClass() throws IOException {
+    baseFs.delete(new Path("/*"), true);
   }
 
   /**

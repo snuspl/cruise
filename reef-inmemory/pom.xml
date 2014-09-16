@@ -10,7 +10,9 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <logging>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config</logging>
-        <!-- Defined in each profile. To run all tests use: -P all-tests -->
+        <!-- Defined in each profile. To run all unit tests use: -P all-tests. -->
+        <!-- To run integration tests use: -P integration-tests. Unit tests will be skipped. -->
+        <tests.skip>false</tests.skip>
         <tests.excluded></tests.excluded>
         <tests.forkCount>1</tests.forkCount>
         <tests.reuseForks>true</tests.reuseForks>
@@ -230,6 +232,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.17</version>
                 <configuration>
+                    <skip>${tests.skip}</skip>
                     <excludedGroups>${tests.excluded}</excludedGroups>
                     <forkCount>${tests.forkCount}</forkCount>
                     <reuseForks>${tests.reuseForks}</reuseForks>
@@ -336,6 +339,72 @@
             <properties>
                 <tests.excluded>org.apache.reef.inmemory.common.IntensiveTests</tests.excluded>
             </properties>
+        </profile>
+        <profile>
+            <id>hdfs-integration-tests</id>
+            <properties>
+                <!-- Skip unit tests -->
+                <tests.skip>true</tests.skip>
+                <integrationtests.namenodePort>10000</integrationtests.namenodePort>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>2.17</version>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <namenodePort>${integrationtests.namenodePort}</namenodePort>
+                            </systemPropertyVariables>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>1.7</version>
+                        <executions>
+                            <execution>
+                                <id>start-minicluster</id>
+                                <phase>pre-integration-test</phase>
+                                <configuration>
+                                    <target>
+                                        <exec executable="src/test/scripts/start-minicluster.sh"
+                                              dir="${basedir}">
+                                            <arg value="${integrationtests.namenodePort}" />
+                                        </exec>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop-minicluster</id>
+                                <phase>post-integration-test</phase>
+                                <configuration>
+                                    <target>
+                                        <exec executable="src/test/scripts/stop-minicluster.sh"
+                                              dir="${basedir}">
+                                        </exec>
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

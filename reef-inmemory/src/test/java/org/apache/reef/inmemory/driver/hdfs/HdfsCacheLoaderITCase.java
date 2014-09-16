@@ -8,7 +8,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.replication.Action;
@@ -19,7 +19,6 @@ import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -31,12 +30,10 @@ import static org.mockito.Mockito.*;
 
 /**
  * Tests for HdfsCacheLoader. All Hdfs operations are performed on a live
- * MiniDFSCluster.
+ * Hadoop minicluster.
  */
-@Category(org.apache.reef.inmemory.common.IntensiveTests.class)
-public final class HdfsCacheLoaderTest {
+public final class HdfsCacheLoaderITCase {
 
-  private MiniDFSCluster cluster;
   private FileSystem fs;
   private CacheManagerImpl manager;
   private HdfsCacheMessenger messenger;
@@ -45,6 +42,9 @@ public final class HdfsCacheLoaderTest {
   private HdfsBlockIdFactory blockFactory;
   private ReplicationPolicy replicationPolicy;
 
+  /**
+   * Connect to HDFS cluster for integration test, and create test elements.
+   */
   @Before
   public void setUp() throws IOException {
     manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0);
@@ -66,16 +66,17 @@ public final class HdfsCacheLoaderTest {
     Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
 
-    cluster = new MiniDFSCluster.Builder(hdfsConfig).numDataNodes(3).build();
-    cluster.waitActive();
-    fs = cluster.getFileSystem();
+    fs = ITUtils.getHdfs(hdfsConfig);
 
     loader = new HdfsCacheLoader(manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString());
   }
 
+  /**
+   * Remove all directories.
+   */
   @After
-  public void tearDown() {
-    cluster.shutdown();
+  public void tearDown() throws IOException {
+    fs.delete(new Path("/*"), true);
   }
 
   /**
