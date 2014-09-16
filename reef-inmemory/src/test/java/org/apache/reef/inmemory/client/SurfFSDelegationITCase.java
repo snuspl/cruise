@@ -62,7 +62,7 @@ public final class SurfFSDelegationITCase {
    */
   @AfterClass
   public static void tearDownClass() throws IOException {
-    baseFs.delete(new Path("/"), true);
+    baseFs.delete(new Path("/*"), true);
   }
 
   /**

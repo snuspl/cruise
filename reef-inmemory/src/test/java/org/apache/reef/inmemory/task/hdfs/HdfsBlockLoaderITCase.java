@@ -62,7 +62,7 @@ public class HdfsBlockLoaderITCase {
    */
   @After
   public void tearDown() throws Exception {
-    fs.delete(new Path("/"), true);
+    fs.delete(new Path("/*"), true);
   }
 
   /*

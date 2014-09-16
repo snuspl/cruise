@@ -76,7 +76,7 @@ public final class HdfsCacheLoaderITCase {
    */
   @After
   public void tearDown() throws IOException {
-    fs.delete(new Path("/"), true);
+    fs.delete(new Path("/*"), true);
   }
 
   /**

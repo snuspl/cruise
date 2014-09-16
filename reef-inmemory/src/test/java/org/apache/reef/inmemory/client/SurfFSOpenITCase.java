@@ -53,7 +53,7 @@ public final class SurfFSOpenITCase {
   private static final int SIZE2 = 70;
 
   private static final String SURF = "surf";
-  private static final String SURF_ADDRESS = "localhost:9001";
+  private static final String SURF_ADDRESS = "localhost:18000";
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -65,7 +65,6 @@ public final class SurfFSOpenITCase {
     final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
     // Reduce blocksize to 512 bytes, to test multiple blocks
-    hdfsConfig.setInt(DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY, 512);
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 512);
 
     baseFs = ITUtils.getHdfs(hdfsConfig);
@@ -95,7 +94,7 @@ public final class SurfFSOpenITCase {
 
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64);
+    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64); // TODO: Test fails when this is set; it succeeds when using default
 
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);
@@ -107,7 +106,7 @@ public final class SurfFSOpenITCase {
    */
   @AfterClass
   public static void tearDownClass() throws IOException {
-    baseFs.delete(new Path("/"), true);
+    baseFs.delete(new Path("/*"), true);
     System.out.println("Closing REEF...");
     reef.close(); // TODO: does not kill Launchers -- for now, remember to kill from command line
   }

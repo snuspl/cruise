@@ -118,7 +118,7 @@ public final class CacheBlockLoader {
         try {
           Thread.sleep(cacheManager.getRetriesInterval());
         } catch (InterruptedException ie) {
-          LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
+          LOG.log(Level.WARNING, "Sleep interrupted", ie);
         }
       } catch (BlockNotFoundException e) {
         LOG.log(Level.INFO, "BlockNotFoundException at "+System.currentTimeMillis());
@@ -126,10 +126,10 @@ public final class CacheBlockLoader {
         try {
           Thread.sleep(cacheManager.getRetriesInterval());
         } catch (InterruptedException ie) {
-          LOG.log(Level.WARNING, "Sleep interrupted: "+ie);
+          LOG.log(Level.WARNING, "Sleep interrupted", ie);
         }
       } catch (TException e) {
-        LOG.log(Level.SEVERE, "TException "+e);
+        LOG.log(Level.SEVERE, "TException", e);
         progressManager.notConnected(cacheAddress);
       }
     }

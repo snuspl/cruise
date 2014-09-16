@@ -65,7 +65,7 @@ public final class CLIUtilsITCase {
    */
   @AfterClass
   public static void tearDownClass() throws IOException {
-    baseFs.delete(new Path("/"), true);
+    baseFs.delete(new Path("/*"), true);
   }
 
   /**

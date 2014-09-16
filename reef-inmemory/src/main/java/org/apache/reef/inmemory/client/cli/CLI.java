@@ -55,6 +55,10 @@ public final class CLI {
   public static final class Address implements Name<String> {
   }
 
+  @NamedParameter(doc = "Underlying DFS address", short_name = "dfs_address", default_value = "hdfs://localhost:9000")
+  public static final class DfsAddress implements Name<String> {
+  }
+
   @NamedParameter(doc = "InMemory new Cache Server memory amount in MB",
           short_name = "cache_memory", default_value = "0")
   public static final class CacheServerMemory implements Name<Integer> {
@@ -80,9 +84,11 @@ public final class CLI {
     return new SurfManagementService.Client(protocol);
   }
 
-  private static SurfFS getFileSystem(String address) throws IOException {
+  private static SurfFS getFileSystem(final String address, final String dfsAddress) throws IOException {
     final SurfFS surfFs = new SurfFS();
-    surfFs.initialize(URI.create("surf://" + address), new org.apache.hadoop.conf.Configuration());
+    final org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
+    conf.set(SurfFS.BASE_FS_ADDRESS_KEY, dfsAddress);
+    surfFs.initialize(URI.create("surf://" + address), conf);
     return surfFs;
   }
 
@@ -91,9 +97,10 @@ public final class CLI {
     final Injector injector = Tang.Factory.getTang().newInjector(config);
     final String cmd = injector.getNamedInstance(Command.class);
     final String address = injector.getNamedInstance(Address.class);
+    final String dfsAddress = injector.getNamedInstance(DfsAddress.class);
     final int cacheMemory = injector.getNamedInstance(CacheServerMemory.class);
 
-    final SurfFS surfFs = getFileSystem(address);
+    final SurfFS surfFs = getFileSystem(address, dfsAddress);
     final String rawAddress = surfFs.getMetaserverResolver().getAddress();
     final SurfManagementService.Client client = getClient(rawAddress);
 
@@ -141,6 +148,7 @@ public final class CLI {
     final CommandLine cl = new CommandLine(confBuilder)
             .registerShortNameOfClass(Command.class)
             .registerShortNameOfClass(Address.class)
+            .registerShortNameOfClass(DfsAddress.class)
             .registerShortNameOfClass(Path.class)
             .registerShortNameOfClass(Recursive.class)
             .registerShortNameOfClass(CacheServerMemory.class)
