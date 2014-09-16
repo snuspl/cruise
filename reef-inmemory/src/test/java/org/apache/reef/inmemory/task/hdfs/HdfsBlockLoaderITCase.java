@@ -9,6 +9,7 @@ import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.task.BlockLoader;
@@ -23,8 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-@Category(org.apache.reef.inmemory.common.IntensiveTests.class)
-public class HdfsBlockLoaderTest {
+public class HdfsBlockLoaderITCase {
   private static final String PATH = "/temp/HDFSBlockLoaderTest";
   private static final int NUM_BLOCK = 3;
   private static final int LONG_BYTES = 8;
@@ -32,35 +32,37 @@ public class HdfsBlockLoaderTest {
 
   private HdfsBlockIdFactory blockFactory = new HdfsBlockIdFactory();
 
-  private MiniDFSCluster cluster;
   private FileSystem fs;
   private LocatedBlocks blocks;
 
+  /**
+   * Connect to HDFS cluster for integration test, and create test elements.
+   */
   @Before
   public void setUp() throws Exception {
-    // Initialize the cluster and write sequential numbers over the blocks to check validity of the data loaded
-    Configuration hdfsConfig = new HdfsConfiguration();
+    final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
     // Reduce blocksize to 512 bytes, to test multiple blocks
-    hdfsConfig.setInt(DFSConfigKeys.DFS_NAMENODE_MIN_BLOCK_SIZE_KEY, 512);
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 512);
 
-    cluster = new MiniDFSCluster.Builder(hdfsConfig).numDataNodes(3).build();
-    cluster.waitActive();
-    fs = cluster.getFileSystem();
+    fs = ITUtils.getHdfs(hdfsConfig);
 
+    // Write sequential numbers over the blocks to check validity of the data loaded
     writeSequentialData(PATH, NUM_BLOCK);
 
-    DFSClient dfsClient = new DFSClient(cluster.getURI(), new Configuration());
-    ClientProtocol nameNode = dfsClient.getNamenode();
-    HdfsFileStatus status =  nameNode.getFileInfo(PATH);
+    final DFSClient dfsClient = new DFSClient(fs.getUri(), new Configuration());
+    final ClientProtocol nameNode = dfsClient.getNamenode();
+    final HdfsFileStatus status =  nameNode.getFileInfo(PATH);
     blocks = nameNode.getBlockLocations(PATH, 0, status.getLen());
     Assert.assertEquals("The number of blocks should be same as the initial value", NUM_BLOCK, blocks.getLocatedBlocks().size());
   }
 
+  /**
+   * Remove all directories.
+   */
   @After
   public void tearDown() throws Exception {
-    cluster.shutdown();
+    fs.delete(new Path("/"), true);
   }
 
   /*
@@ -180,7 +182,6 @@ public class HdfsBlockLoaderTest {
    * @throws IOException
    */
   public void writeSequentialData(String path, int numBlock) throws IOException {
-    DistributedFileSystem fs = cluster.getFileSystem();
     FSDataOutputStream os = fs.create(new Path(path), true);
     for(int index = 0; index < numBlock; index++) {
       for(long offset = 0; offset < fs.getDefaultBlockSize() / LONG_BYTES; offset++)

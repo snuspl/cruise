@@ -6,14 +6,14 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.reef.inmemory.client.SurfFS;
-import org.apache.reef.inmemory.common.service.SurfManagementService;
+import org.apache.reef.inmemory.common.ITUtils;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,32 +24,23 @@ import static org.junit.Assert.assertTrue;
 /**
  * Test CLI utility methods
  */
-@Category(org.apache.reef.inmemory.common.IntensiveTests.class)
-public final class CLIUtilsTest {
+public final class CLIUtilsITCase {
 
-  private static MiniDFSCluster cluster;
   private static FileSystem baseFs;
   private static SurfFS surfFs;
-  private static SurfManagementService.Client client;
   private static List<String> allPaths;
 
   private final static String[] dirPaths = new String[] {"/1", "/1/2", "/1/2/3"};
   private final static String[] filePaths = new String[] {"A", "B", "C"};
 
   /**
-   * Setup base mini DFS cluster once, because it takes a long time.
-   * Tests should not run any destructive operations on the base DFS.
+   * Connect to HDFS cluster for integration test, and create test elements.
+   * Don't run destructive tests on the elements created here.
    */
   @BeforeClass
   public static void setUpClass() throws Exception {
     Configuration hdfsConfig = new HdfsConfiguration();
-    cluster = new MiniDFSCluster.Builder(hdfsConfig).numDataNodes(1).build();
-    cluster.waitActive();
-
-    baseFs = cluster.getFileSystem();
-
-    final String address = baseFs.getUri().getAuthority();
-    client = CLI.getClient(address);
+    baseFs = ITUtils.getHdfs(hdfsConfig);
 
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
@@ -67,6 +58,14 @@ public final class CLIUtilsTest {
         allPaths.add(path.toUri().getPath());
       }
     }
+  }
+
+  /**
+   * Remove all directories.
+   */
+  @AfterClass
+  public static void tearDownClass() throws IOException {
+    baseFs.delete(new Path("/"), true);
   }
 
   /**

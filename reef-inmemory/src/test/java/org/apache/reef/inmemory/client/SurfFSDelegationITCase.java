@@ -6,13 +6,11 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.net.URI;
@@ -36,35 +34,35 @@ public final class SurfFSDelegationITCase {
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:9001";
 
-  private static final String NAMENODE_PORT = System.getProperty("namenodePort");
-
   /**
-   * Setup test environment once, since it's expensive.
+   * Connect to HDFS cluster for integration test, and create test elements.
    * Don't run destructive tests on the elements created here.
    */
   @BeforeClass
   public static void setUpClass() throws IOException {
-    Configuration hdfsConfig = new HdfsConfiguration();
+    final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
 
-    baseFs = new DistributedFileSystem();
-    baseFs.initialize(URI.create("hdfs://localhost:"+NAMENODE_PORT), hdfsConfig);
+    baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
-    FSDataOutputStream stream = baseFs.create(new Path(ABSPATH));
+    final FSDataOutputStream stream = baseFs.create(new Path(ABSPATH));
     stream.writeUTF("Hello Readme");
     stream.close();
 
-    Configuration conf = new Configuration();
+    final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
 
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
   }
 
+  /**
+   * Remove all directories.
+   */
   @AfterClass
   public static void tearDownClass() throws IOException {
-    baseFs.delete(new Path(TESTDIR), true);
+    baseFs.delete(new Path("/"), true);
   }
 
   /**
