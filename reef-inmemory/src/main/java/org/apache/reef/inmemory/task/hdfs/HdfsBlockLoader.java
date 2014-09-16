@@ -197,6 +197,11 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   private BlockReader getBlockReader(final Configuration conf, String fileName, Token<BlockTokenIdentifier> blockToken,
                                      Socket socket, DatanodeID datanode) throws ConnectionFailedException {
+    /*
+     * As BlockReaderFactory is changed to use setX style rather than using Constructor,
+     * creating BlockReader has been more complex. RemotePeerFactory is responsible to connect
+     * to remote peer. Here is the most simplest implementation for the interface.
+     */
     final BlockReader blockReader;
     try {
       blockReader = new BlockReaderFactory(new DFSClient.Conf(conf))
