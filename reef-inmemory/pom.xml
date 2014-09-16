@@ -342,8 +342,8 @@
         </profile>
         <profile>
             <id>hdfs-integration-tests</id>
-            <!-- Skip unit tests -->
             <properties>
+                <!-- Skip unit tests -->
                 <tests.skip>true</tests.skip>
                 <integrationtests.namenodePort>10000</integrationtests.namenodePort>
             </properties>
