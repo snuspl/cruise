@@ -10,10 +10,7 @@ import com.microsoft.wake.EStage;
 import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.impl.ThreadPoolStage;
 import org.apache.reef.inmemory.common.DfsParameters;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheLoader;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
-import org.apache.reef.inmemory.driver.hdfs.HdfsRemainingMemorySelectionPolicy;
+import org.apache.reef.inmemory.driver.hdfs.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicyImpl;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
@@ -64,7 +61,7 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
           .bindImplementation(CacheLoader.class, HdfsCacheLoader.class)
           .bindImplementation(CacheMessenger.class, HdfsCacheMessenger.class)
           .bindImplementation(CacheManager.class, CacheManagerImpl.class)
-          .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsRemainingMemorySelectionPolicy.class)
+          .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsRandomCacheSelectionPolicy.class)
           .bindImplementation(ReplicationPolicy.class, ReplicationPolicyImpl.class)
           .bindImplementation(EStage.class, ThreadPoolStage.class)
           .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)

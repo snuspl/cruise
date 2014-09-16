@@ -14,8 +14,7 @@ public final class HdfsDatanodeInfo implements Serializable {
 
   private final String ipAddr;       // IP address
   private final String hostName;     // hostname claimed by datanode
-  private final String peerHostName; // hostname from the actual connection
-  private final String storageID;    // unique per cluster storageID
+  private final String datanodeUuid; // Uuid of datanode
   private final int xferPort;        // data streaming port
   private final int infoPort;        // info server port
   private final int infoSecurePort;  // info server port
@@ -23,16 +22,14 @@ public final class HdfsDatanodeInfo implements Serializable {
 
   public HdfsDatanodeInfo(final String ipAddr,
                           final String hostName,
-                          final String peerHostName,
-                          final String storageID,
+                          final String datanodeUuid,
                           final int xferPort,
                           final int infoPort,
                           final int infoSecurePort,
                           final int ipcPort) {
     this.ipAddr = ipAddr;
     this.hostName = hostName;
-    this.peerHostName = peerHostName;
-    this.storageID = storageID;
+    this.datanodeUuid = datanodeUuid;
     this.xferPort = xferPort;
     this.infoPort = infoPort;
     this.infoSecurePort = infoSecurePort;
@@ -43,8 +40,7 @@ public final class HdfsDatanodeInfo implements Serializable {
     return new HdfsDatanodeInfo(
             info.getIpAddr(),
             info.getHostName(),
-            info.getPeerHostName(),
-            info.getStorageID(),
+            info.getDatanodeUuid(),
             info.getXferPort(),
             info.getInfoPort(),
             info.getInfoSecurePort(),
@@ -68,12 +64,8 @@ public final class HdfsDatanodeInfo implements Serializable {
     return hostName;
   }
 
-  public String getPeerHostName() {
-    return peerHostName;
-  }
-
-  public String getStorageID() {
-    return storageID;
+  public String getDatanodeUuid() {
+    return datanodeUuid;
   }
 
   public int getXferPort() {

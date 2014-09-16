@@ -125,7 +125,7 @@ public class HdfsBlockLoaderITCase {
 
     HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
     List<HdfsDatanodeInfo> dummyDatanodeInfo = new ArrayList<HdfsDatanodeInfo>();
-    dummyDatanodeInfo.add(new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", "", 0, 0, 0, 0));
+    dummyDatanodeInfo.add(new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", 0, 0, 0, 0));
     BlockLoader loader = new HdfsBlockLoader(blockId, dummyDatanodeInfo, false, BUFFER_SIZE);
     loader.loadBlock();
   }
@@ -140,7 +140,7 @@ public class HdfsBlockLoaderITCase {
 
     HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
-    datanodeInfo.add(0, new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", "", 0, 0, 0, 0));
+    datanodeInfo.add(0, new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", 0, 0, 0, 0));
     BlockLoader loader = new HdfsBlockLoader(blockId, datanodeInfo, false, BUFFER_SIZE);
     loader.loadBlock();
   }

@@ -17,7 +17,7 @@
         <tests.forkCount>1</tests.forkCount>
         <tests.reuseForks>true</tests.reuseForks>
         <tests.argLine></tests.argLine>
-        <hadoop.version>2.2.0</hadoop.version>
+        <hadoop.version>2.4.0</hadoop.version>
         <reef.version>0.6</reef.version>
         <thrift.version>0.9.1</thrift.version>
         <junit.version>4.11</junit.version>

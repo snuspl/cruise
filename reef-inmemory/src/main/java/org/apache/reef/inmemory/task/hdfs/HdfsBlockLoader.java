@@ -1,12 +1,11 @@
 package org.apache.reef.inmemory.task.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.BlockReader;
-import org.apache.hadoop.hdfs.BlockReaderFactory;
-import org.apache.hadoop.hdfs.DFSClient;
-import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.hdfs.*;
+import org.apache.hadoop.hdfs.net.Peer;
 import org.apache.hadoop.hdfs.net.TcpPeerServer;
 import org.apache.hadoop.hdfs.protocol.DatanodeID;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.protocol.ExtendedBlock;
 import org.apache.hadoop.hdfs.security.token.block.BlockTokenIdentifier;
 import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
@@ -38,7 +37,6 @@ public class HdfsBlockLoader implements BlockLoader {
   private static final int START_OFFSET = 0;
   private static final String CLIENT_NAME = "BlockLoader";
   private static final boolean VERIFY_CHECKSUM = true;
-  private static final boolean ALLOW_SHORT_CIRCUIT_LOCAL_READS = false;
 
   private final HdfsBlockId hdfsBlockId;
   private final ExtendedBlock block;
@@ -83,7 +81,7 @@ public class HdfsBlockLoader implements BlockLoader {
     do {
       // Prepare the variables to be used - datanodeInfo, datanode, targetAddress, fileName.
       HdfsDatanodeInfo datanodeInfo = dnInfoIter.next();
-      DatanodeID datanode = new DatanodeID(datanodeInfo.getIpAddr(), datanodeInfo.getHostName(), datanodeInfo.getStorageID(),
+      DatanodeID datanode = new DatanodeID(datanodeInfo.getIpAddr(), datanodeInfo.getHostName(), datanodeInfo.getDatanodeUuid(),
         datanodeInfo.getXferPort(), datanodeInfo.getInfoPort(), datanodeInfo.getInfoSecurePort(), datanodeInfo.getIpcPort());
       InetSocketAddress targetAddress = NetUtils.createSocketAddr(datanode.getXferAddr());
       String fileName = targetAddress.toString() + ":" + block.getBlockId();
@@ -152,7 +150,7 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   private Socket connectToDatanode(Configuration conf, InetSocketAddress targetAddress, DatanodeID datanode)
     throws ConnectionFailedException {
-    Socket socket;
+    final Socket socket;
     try {
       socket = NetUtils.getDefaultSocketFactory(conf).createSocket();
       socket.connect(targetAddress, HdfsServerConstants.READ_TIMEOUT);
@@ -197,16 +195,41 @@ public class HdfsBlockLoader implements BlockLoader {
    * @return BlockReader object to read data
    * @throws ConnectionFailedException When failed to to connect to Datanode
    */
-  private BlockReader getBlockReader(Configuration conf, String fileName, Token<BlockTokenIdentifier>blockToken,
+  private BlockReader getBlockReader(final Configuration conf, String fileName, Token<BlockTokenIdentifier> blockToken,
                                      Socket socket, DatanodeID datanode) throws ConnectionFailedException {
-    BlockReader blockReader;
+    final BlockReader blockReader;
     try {
-      blockReader = BlockReaderFactory.newBlockReader(
-        new DFSClient.Conf(conf), fileName, block,
-        blockToken, START_OFFSET, blockSize,
-        VERIFY_CHECKSUM, CLIENT_NAME, TcpPeerServer.peerFromSocket(socket),
-        datanode, null, null, null, ALLOW_SHORT_CIRCUIT_LOCAL_READS,
-        CachingStrategy.newDefaultStrategy());
+      blockReader = new BlockReaderFactory(new DFSClient.Conf(conf))
+        .setInetSocketAddress(NetUtils.createSocketAddr(datanode.getXferAddr()))
+        .setBlock(block)
+        .setFileName(fileName)
+        .setBlockToken(blockToken)
+        .setConfiguration(conf)
+        .setStartOffset(START_OFFSET)
+        .setLength(blockSize)
+        .setVerifyChecksum(VERIFY_CHECKSUM)
+        .setClientName(CLIENT_NAME)
+        .setDatanodeInfo(new DatanodeInfo(datanode))
+        .setClientCacheContext(ClientContext.getFromConf(conf))
+        .setCachingStrategy(CachingStrategy.newDefaultStrategy())
+        .setRemotePeerFactory(new RemotePeerFactory() {
+          @Override
+          public Peer newConnectedPeer(InetSocketAddress addr) throws IOException {
+            Peer peer = null;
+            Socket sock = NetUtils.getDefaultSocketFactory(conf).createSocket();
+            try {
+              sock.connect(addr, HdfsServerConstants.READ_TIMEOUT);
+              sock.setSoTimeout(HdfsServerConstants.READ_TIMEOUT);
+              peer = TcpPeerServer.peerFromSocket(sock);
+            } finally {
+              if (peer == null) {
+                org.apache.hadoop.io.IOUtils.closeSocket(sock);
+              }
+            }
+            return peer;
+          }
+        })
+        .build();
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
         new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
