@@ -36,7 +36,7 @@ import java.util.logging.Logger;
  *   fs.surf.impl: this class (org.apache.reef.inmemory.client.SurfFS)
  *   surf.basefs: base FS address (e.g., hdfs://localhost:9000)
  *
- * Surf support create, append, rename, delete, mkdirs methods
+ * Surf supports create, append, rename, delete, mkdirs
  * delegating them to the base FS
  */
 public final class SurfFS extends FileSystem {
@@ -265,7 +265,7 @@ public final class SurfFS extends FileSystem {
   public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
 
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
-            new String[]{file.getPath().toString(), file.getPath().toUri().getPath().toString()});
+            new Object[]{file.getPath(), file.getPath().toUri().getPath()});
 
     List<BlockLocation> blockLocations = new LinkedList<>();
 
