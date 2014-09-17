@@ -36,9 +36,8 @@ import java.util.logging.Logger;
  *   fs.surf.impl: this class (org.apache.reef.inmemory.client.SurfFS)
  *   surf.basefs: base FS address (e.g., hdfs://localhost:9000)
  *
- * SurfFS is a read-only filesystem. Thus,
- *   create, append, rename, delete, mkdirs
- * throw an UnsupportedOperationException
+ * Surf support create, append, rename, delete, mkdirs methods
+ * delegating them to the base FS
  */
 public final class SurfFS extends FileSystem {
 
@@ -172,7 +171,7 @@ public final class SurfFS extends FileSystem {
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
-            new String[]{path.toString(), path.toUri().getPath().toString()});
+            new Object[]{path, path.toUri().getPath()});
 
     try {
       FileMeta metadata = getMetaClient().getFileMeta(path.toUri().getPath());
@@ -186,24 +185,29 @@ public final class SurfFS extends FileSystem {
     }
   }
 
+  /*
+   * Methods related to write are delegated
+   * to the Base FS (They will be implemented later)
+   */
   @Override
-  public FSDataOutputStream create(Path path, FsPermission fsPermission, boolean b, int i, short i2, long l, Progressable progressable) throws IOException {
-    throw new UnsupportedOperationException();
+  public FSDataOutputStream create(Path f, FsPermission permission, boolean overwrite, int bufferSize,
+                                   short replication, long blockSize, Progressable progress) throws IOException {
+    return baseFs.create(pathToBase(f), permission, overwrite, bufferSize, replication, blockSize, progress);
   }
 
   @Override
-  public FSDataOutputStream append(Path path, int i, Progressable progressable) throws IOException {
-    throw new UnsupportedOperationException();
+  public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) throws IOException {
+    return baseFs.append(pathToBase(f), bufferSize, progress);
   }
 
   @Override
-  public boolean rename(Path path, Path path2) throws IOException {
-    throw new UnsupportedOperationException();
+  public boolean rename(Path src, Path dst) throws IOException {
+    return baseFs.rename(pathToBase(src), pathToBase(dst));
   }
 
   @Override
-  public boolean delete(Path path, boolean b) throws IOException {
-    throw new UnsupportedOperationException();
+  public boolean delete(Path f, boolean recursive) throws IOException {
+    return baseFs.delete(pathToBase(f), recursive);
   }
 
   @Override
@@ -215,9 +219,6 @@ public final class SurfFS extends FileSystem {
     return statuses;
   }
 
-  /**
-   * Working directory management is delegated to the Base FS
-   */
   @Override
   public void setWorkingDirectory(Path path) {
     baseFs.setWorkingDirectory(pathToBase(path));
@@ -230,7 +231,7 @@ public final class SurfFS extends FileSystem {
 
   @Override
   public boolean mkdirs(Path path, FsPermission fsPermission) throws IOException {
-    throw new UnsupportedOperationException();
+    return baseFs.mkdirs(pathToBase(path), fsPermission);
   }
 
   @Override
