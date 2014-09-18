@@ -84,6 +84,8 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
 
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFileSize(locatedBlocks.getFileLength());
+    fileMeta.setBlockSize(hdfsFileStatus.getBlockSize());
+    fileMeta.setFullPath(path.toString());
 
     final List<CacheNode> cacheNodes = cacheManager.getCaches();
     if (cacheNodes.size() == 0) {
@@ -101,7 +103,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
     }
 
     final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(locatedBlocks, cacheNodes, numReplicas);
-    for (final LocatedBlock locatedBlock : selected.keySet()) {
+    for (final LocatedBlock locatedBlock : locatedBlocks.getLocatedBlocks()) {
       final List<CacheNode> selectedNodes = selected.get(locatedBlock);
       if (selectedNodes.size() == 0) {
         throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
