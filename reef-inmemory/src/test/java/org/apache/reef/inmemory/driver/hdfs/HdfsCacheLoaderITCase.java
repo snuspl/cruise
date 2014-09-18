@@ -3,12 +3,14 @@ package org.apache.reef.inmemory.driver.hdfs;
 import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.ITUtils;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.replication.Action;
@@ -33,6 +35,8 @@ import static org.mockito.Mockito.*;
  * Hadoop minicluster.
  */
 public final class HdfsCacheLoaderITCase {
+
+  private static final int blockSize = 512;
 
   private FileSystem fs;
   private CacheManagerImpl manager;
@@ -65,6 +69,7 @@ public final class HdfsCacheLoaderITCase {
 
     Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
+    hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, blockSize);
 
     fs = ITUtils.getHdfs(hdfsConfig);
 
@@ -106,7 +111,7 @@ public final class HdfsCacheLoaderITCase {
    */
   @Test
   public void testLoadSmallFile() throws IOException {
-    final Path smallFile = new Path("/existing/file");
+    final Path smallFile = new Path("/existing/smallFile");
 
     final FSDataOutputStream outputStream = fs.create(smallFile);
     outputStream.write(1);
@@ -116,6 +121,47 @@ public final class HdfsCacheLoaderITCase {
     assertNotNull(fileMeta);
     assertNotNull(fileMeta.getBlocks());
     assertEquals(3, fileMeta.getBlocksIterator().next().getLocationsSize());
+    assertEquals(blockSize, fileMeta.getBlockSize());
+    assertEquals(smallFile.toString(), fileMeta.getFullPath());
+  }
 
+  /**
+   * Test proper loading of a large file that spans multiple blocks.
+   * Checks that metadata is returned, and correct.
+   * In addition to the small file checks, the order of blocks is checked.
+   * @throws IOException
+   */
+  @Test
+  public void testLoadMultiblockFile() throws IOException {
+    final Path largeFile = new Path("/existing/largeFile");
+
+    final FSDataOutputStream outputStream = fs.create(largeFile);
+
+    final int chunkLength = 2000;
+    final int numChunks = 20;
+    final byte[] writeChunk = new byte[chunkLength];
+    for (int i = 0; i < numChunks; i++) {
+      outputStream.write(writeChunk);
+    }
+    outputStream.close();
+
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
+            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
+
+    final FileMeta fileMeta = loader.load(largeFile);
+    assertNotNull(fileMeta);
+    assertNotNull(fileMeta.getBlocks());
+    assertEquals(blockSize, fileMeta.getBlockSize());
+    assertEquals(largeFile.toString(), fileMeta.getFullPath());
+
+    final List<BlockInfo> blocks = fileMeta.getBlocks();
+    assertEquals(locatedBlocks.getLocatedBlocks().size(), blocks.size());
+    final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
+            ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
+    assertEquals(numBlocksComputed, blocks.size());
+    for (int i = 0; i < blocks.size(); i++) {
+      assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), blocks.get(i).getBlockId());
+      assertEquals(3, blocks.get(i).getLocationsSize());
+    }
   }
 }
