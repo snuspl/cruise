@@ -82,16 +82,6 @@ public final class MemoryManager {
     LOG.log(Level.INFO, blockId+" statistics before loadStart: "+statistics);
     final long blockSize = blockId.getBlockSize();
 
-    // Check before entering loop
-    if (isState(blockId, CacheEntryState.REMOVED)) {
-      if (pin) {
-        statistics.subtractPinnedBytes(blockSize);
-      } else {
-        // nothing
-      }
-      throw new BlockNotFoundException(blockId+" was removed during INSERTED");
-    }
-
     boolean canLoad = false;
     while (!canLoad) {
       // Check every iteration
@@ -101,7 +91,7 @@ public final class MemoryManager {
         } else {
           // nothing
         }
-        throw new BlockNotFoundException(blockId+" was removed during LOAD_PENDING");
+        throw new BlockNotFoundException(blockId+" was removed during INSERTED");
       }
 
       final long cached = statistics.getCacheBytes();
