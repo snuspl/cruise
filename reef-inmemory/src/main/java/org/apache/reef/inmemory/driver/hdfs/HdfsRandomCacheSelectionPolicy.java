@@ -38,11 +38,11 @@ public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionP
    * Return map of random nodes. The number of nodes selected per block is min of numReplicas and nodes.size()
    */
   @Override
-  public Map<LocatedBlock, List<CacheNode>> select(final LocatedBlocks blocks,
+  public Map<LocatedBlock, List<CacheNode>> select(final List<LocatedBlock> blocks,
                                                    final List<CacheNode> nodes,
                                                    final int numReplicas) {
     final Map<LocatedBlock, List<CacheNode>> selected = new HashMap<>();
-    for (final LocatedBlock locatedBlock : blocks.getLocatedBlocks()) {
+    for (final LocatedBlock locatedBlock : blocks) {
       selected.put(locatedBlock, select(locatedBlock, nodes, numReplicas));
     }
     return selected;

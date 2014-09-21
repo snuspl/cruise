@@ -55,7 +55,6 @@ public final class HdfsBlockIdFactory implements BlockIdFactory<LocatedBlock, Hd
     blockInfo.setFilePath(filePath);
     blockInfo.setOffSet(locatedBlock.getStartOffset());
     blockInfo.setBlockId(locatedBlock.getBlock().getBlockId());
-    blockInfo.setOffSet(locatedBlock.getStartOffset());
     blockInfo.setLength(locatedBlock.getBlockSize());
     blockInfo.setNamespaceId(locatedBlock.getBlock().getBlockPoolId());
     blockInfo.setGenerationStamp(locatedBlock.getBlock().getGenerationStamp());

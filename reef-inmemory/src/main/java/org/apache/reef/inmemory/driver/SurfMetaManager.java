@@ -39,7 +39,9 @@ public final class SurfMetaManager {
    */
   public FileMeta getFile(Path path, User creator) throws FileNotFoundException, Throwable {
     try {
-      FileMeta metadata = metadataIndex.get(getAbsolutePath(path, creator));
+      final Path absolutePath = getAbsolutePath(path, creator);
+      metadataIndex.refresh(absolutePath);
+      final FileMeta metadata = metadataIndex.get(getAbsolutePath(path, creator));
       return metadata;
     } catch (ExecutionException e) {
       throw e.getCause();

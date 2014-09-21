@@ -47,7 +47,7 @@ public final class HdfsRandomCacheSelectionPolicyTest {
 
     final List<CacheNode> nodes = getMockCacheNodes(1);
     final Map<LocatedBlock, List<CacheNode>> selected =
-            policy.select(blocks, new ArrayList<>(nodes), numReplicas);
+            policy.select(blocks.getLocatedBlocks(), new ArrayList<>(nodes), numReplicas);
     assertNotNull(selected.get(block));
     assertTrue(nodes.containsAll(selected.get(block)));
     assertEquals(1, selected.size());
@@ -62,7 +62,7 @@ public final class HdfsRandomCacheSelectionPolicyTest {
     final List<CacheNode> nodes = getMockCacheNodes(100);
     for (int i = 0; i < 10; i++) { // With high probability
       final Map<LocatedBlock, List<CacheNode>> selected =
-              policy.select(blocks, new ArrayList<>(nodes), numReplicas);
+              policy.select(blocks.getLocatedBlocks(), new ArrayList<>(nodes), numReplicas);
       assertTrue(nodes.containsAll(selected.get(block)));
       for (int j = 0; j < 3; j++) {
         if (nodes.get(j) != selected.get(j)) {

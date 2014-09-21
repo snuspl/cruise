@@ -1,6 +1,8 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import com.google.common.cache.CacheLoader;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.hadoop.conf.Configuration;
@@ -27,6 +29,8 @@ import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -102,31 +106,126 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       numReplicas = action.getFactor();
     }
 
-    final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(locatedBlocks, cacheNodes, numReplicas);
-    for (final LocatedBlock locatedBlock : locatedBlocks.getLocatedBlocks()) {
+    final List<LocatedBlock> locatedBlockList = locatedBlocks.getLocatedBlocks();
+
+    final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(locatedBlockList, cacheNodes, numReplicas);
+    for (final LocatedBlock locatedBlock : locatedBlockList) {
       final List<CacheNode> selectedNodes = selected.get(locatedBlock);
+
       if (selectedNodes.size() == 0) {
         throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
       }
 
-      final HdfsBlockId hdfsBlock = blockFactory.newBlockId(path.toString(), locatedBlock);
+      final BlockInfo blockInfo = blockFactory.newBlockInfo(path.toString(), locatedBlock);
+      final HdfsBlockId hdfsBlockId = blockFactory.newBlockId(blockInfo);
       final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
               HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
-      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos, pin);
-      final BlockInfo cacheBlock = blockFactory.newBlockInfo(path.toString(), locatedBlock);
+      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlockId, hdfsDatanodeInfos, pin);
 
       for (final CacheNode cacheNode : selectedNodes) {
         cacheMessenger.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?
 
         final NodeInfo location = new NodeInfo(cacheNode.getAddress(), cacheNode.getRack());
-        cacheBlock.addToLocations(location);
+        blockInfo.addToLocations(location);
       }
 
       if (LOG.isLoggable(Level.FINE)) {
-        LOG.log(Level.FINE, "  " + cacheBlock.toString());
+        LOG.log(Level.FINE, "  " + blockInfo.toString());
       }
-      fileMeta.addToBlocks(cacheBlock);
+      fileMeta.addToBlocks(blockInfo);
     }
     return fileMeta;
+  }
+
+  /**
+   * Intentionally synchronous to avoid conflicting updates.
+   * 1. Check if there is at least one replica available.
+   * 2. If not, add one.
+   *
+   * TODO: update asynchronously when 1 <= current replicas < factor
+   * @param path
+   * @param fileMeta
+   * @return
+   * @throws Exception
+   */
+  @Override
+  public ListenableFuture<FileMeta> reload(final Path path, final FileMeta fileMeta) throws Exception {
+    if (fileMeta.getBlocksSize() == 0) {
+      return Futures.immediateFuture(fileMeta);
+    }
+
+    final List<Integer> loadingNeeded = new ArrayList<Integer>();
+    final List<BlockInfo> blockInfos = fileMeta.getBlocks();
+    for (int i = 0; i < blockInfos.size(); i++) {
+      final BlockInfo blockInfo = blockInfos.get(i);
+      if (blockInfo.getLocationsSize() == 0) {
+        loadingNeeded.add(i);
+      }
+    }
+
+    if (loadingNeeded.size() == 0) {
+      return Futures.immediateFuture(fileMeta);
+    }
+
+    final List<CacheNode> cacheNodes = cacheManager.getCaches();
+    if (cacheNodes.size() == 0) {
+      throw new IOException("Surf has zero caches");
+    }
+
+    // Resolve replication policy
+    final Action action = replicationPolicy.getReplicationAction(path.toString(), fileMeta);
+    final boolean pin = action.getPin();
+    final int numReplicas;
+    if (replicationPolicy.isBroadcast(action)) {
+      numReplicas = cacheNodes.size();
+    } else {
+      numReplicas = action.getFactor();
+    }
+
+    final HdfsFileStatus hdfsFileStatus = dfsClient.getFileInfo(path.toString());
+    if (hdfsFileStatus == null) {
+      throw new FileNotFoundException(path.toString());
+    }
+    final long len = hdfsFileStatus.getLen();
+    final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0, len);
+
+    for (final int index : loadingNeeded) {
+      final LocatedBlock locatedBlock = locatedBlocks.get(index);
+      final List<LocatedBlock> locatedBlockList = new ArrayList<LocatedBlock>(1);
+      locatedBlockList.add(locatedBlock);
+      final BlockInfo blockInfo = fileMeta.getBlocks().get(index);
+
+      // TODO: seems like a very inefficient way to do this
+      final List<CacheNode> nodesToChooseFrom = new ArrayList<CacheNode>(cacheNodes);
+      final Iterator<CacheNode> it = nodesToChooseFrom.iterator();
+      while (it.hasNext()) {
+        final CacheNode node = it.next();
+        if (blockInfo.getLocations().contains(new NodeInfo(node.getAddress(), node.getRack()))) {
+          it.remove();
+        }
+      }
+
+      final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(
+              locatedBlockList, nodesToChooseFrom, 1);
+
+      final List<CacheNode> selectedNodes = selected.get(locatedBlock);
+
+      if (selectedNodes.size() == 0) {
+        throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
+      }
+
+      final HdfsBlockId hdfsBlockId = blockFactory.newBlockId(blockInfo);
+      final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
+              HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
+      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlockId, hdfsDatanodeInfos, pin);
+
+      for (final CacheNode cacheNode : selectedNodes) {
+        cacheMessenger.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?
+
+        final NodeInfo location = new NodeInfo(cacheNode.getAddress(), cacheNode.getRack());
+        blockInfo.addToLocations(location);
+      }
+    }
+    return Futures.immediateFuture(fileMeta);
   }
 }
