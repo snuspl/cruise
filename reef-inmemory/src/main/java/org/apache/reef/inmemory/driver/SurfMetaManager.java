@@ -72,14 +72,19 @@ public final class SurfMetaManager {
 
   /**
    * Apply updates from a cache node.
-   * Synchronized on the cache, so that only one a single set of updates
-   * can be applied at once from the same cache.
+   * Synchronized on the cache, so that only a single set of updates
+   * can be applied at once for the same cache.
    */
   public void applyUpdates(final CacheNode cache, final CacheUpdates updates) {
     synchronized (cache) {
       final String address = cache.getAddress();
       for (final CacheUpdates.Failure failure : updates.getFailures()) {
-        LOG.log(Level.WARNING, "Block loading failure: " + failure.getBlockId(), failure.getThrowable());
+        if (failure.getThrowable() instanceof OutOfMemoryError) {
+          LOG.log(Level.SEVERE, "Block loading failure: " + failure.getBlockId(), failure.getThrowable());
+          cache.setStopCause(failure.getThrowable().getClass().getName()+" : "+failure.getThrowable().getMessage());
+        } else {
+          LOG.log(Level.WARNING, "Block loading failure: " + failure.getBlockId(), failure.getThrowable());
+        }
         final BlockId blockId = failure.getBlockId();
         removeLocation(address, new Path(blockId.getFilePath()), blockId.getOffset(), blockId.getUniqueId());
       }

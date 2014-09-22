@@ -80,19 +80,30 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
+  public StringBuilder appendBasicStatus(final StringBuilder builder,
+                                         final CacheNode cache,
+                                         final long currentTimestamp) {
+    builder.append(cache.getAddress())
+           .append(" : ")
+           .append(cache.getLatestStatistics())
+           .append(" : ")
+           .append(currentTimestamp - cache.getLatestTimestamp())
+           .append(" ms ago");
+    return builder;
+  }
+
   @Override
   public String getStatus() throws TException {
     LOG.log(Level.INFO, "CLI status command");
     final StringBuilder builder = new StringBuilder();
     final long currentTimestamp = System.currentTimeMillis();
     for (CacheNode cache : cacheManager.getCaches()) {
-      builder.append(cache.getAddress())
-             .append(" : ")
-             .append(cache.getLatestStatistics())
-             .append(" : ")
-             .append(currentTimestamp - cache.getLatestTimestamp())
-             .append(" ms ago")
-             .append('\n');
+      appendBasicStatus(builder, cache, currentTimestamp);
+      if (cache.getStopCause() != null) {
+        builder.append(" : ")
+               .append(cache.getStopCause());
+      }
+      builder.append('\n');
     }
     return builder.toString();
   }
