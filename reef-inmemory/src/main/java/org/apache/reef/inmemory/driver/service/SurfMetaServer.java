@@ -97,7 +97,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     LOG.log(Level.INFO, "CLI status command");
     final StringBuilder builder = new StringBuilder();
     final long currentTimestamp = System.currentTimeMillis();
-    for (CacheNode cache : cacheManager.getCaches()) {
+    final List<CacheNode> caches = cacheManager.getCaches();
+    builder.append("Number of caches: "+caches.size()+"\n");
+    for (CacheNode cache : caches) {
       appendBasicStatus(builder, cache, currentTimestamp);
       if (cache.getStopCause() != null) {
         builder.append(" : ")
