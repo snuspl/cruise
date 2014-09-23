@@ -12,12 +12,29 @@
 },
 {
   "namespace" : "org.apache.reef.inmemory.common.replication",
+  "type" : "enum",
+  "name" : "SyncMethod",
+  "symbols" : [ "WRITE_BACK", "WRITE_THROUGH" ]
+},
+{
+  "namespace" : "org.apache.reef.inmemory.common.replication",
+  "type" : "record",
+  "name" : "Write",
+  "fields" :
+  [
+    { "name" : "sync", "type" : "SyncMethod" },
+    { "name" : "base_replication_factor", "type" : "int" }
+  ]
+},
+{
+  "namespace" : "org.apache.reef.inmemory.common.replication",
   "type" : "record",
   "name" : "Action",
   "fields" :
   [
-    { "name" : "factor", "type" : "int" },
-    { "name" : "pin", "type" : "boolean" }
+    { "name" : "cache_replication_factor", "type" : "int" },
+    { "name" : "pin", "type" : "boolean" },
+    { "name" : "write", "type" : "Write" }
   ]
 },
 {
