@@ -120,14 +120,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public boolean load(final String path) throws TException {
     LOG.log(Level.INFO, "CLI load command for path {0}", path);
     try {
-      final List<BlockInfo> blocks = metaManager.getFile(new Path(path), new User()).getBlocks();
-      if (blocks == null) {
-        return true;
-      }
-
-      for (final BlockInfo block : blocks) {
-        LOG.log(Level.INFO, "Loaded block " + block.getBlockId() + " for " + path);
-      }
+      metaManager.getFile(new Path(path), new User());
+      LOG.log(Level.INFO, "Load succeeded for "+path);
       return true;
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);

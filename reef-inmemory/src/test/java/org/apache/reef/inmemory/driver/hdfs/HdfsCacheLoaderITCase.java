@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
 import com.microsoft.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
@@ -12,6 +13,7 @@ import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.driver.CacheManagerImpl;
@@ -24,10 +26,10 @@ import org.junit.Test;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -61,7 +63,7 @@ public final class HdfsCacheLoaderITCase {
       RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
 
       manager.addRunningTask(task);
-      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001));
+      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001+i));
     }
     List<CacheNode> selectedNodes = manager.getCaches();
     assertEquals(3, selectedNodes.size());
@@ -72,6 +74,7 @@ public final class HdfsCacheLoaderITCase {
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, blockSize);
 
     fs = ITUtils.getHdfs(hdfsConfig);
+    fs.mkdirs(new Path("/existing"));
 
     loader = new HdfsCacheLoader(manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString());
   }
@@ -125,6 +128,7 @@ public final class HdfsCacheLoaderITCase {
     assertEquals(smallFile.toString(), fileMeta.getFullPath());
   }
 
+
   /**
    * Test proper loading of a large file that spans multiple blocks.
    * Checks that metadata is returned, and correct.
@@ -133,17 +137,9 @@ public final class HdfsCacheLoaderITCase {
    */
   @Test
   public void testLoadMultiblockFile() throws IOException {
-    final Path largeFile = new Path("/existing/largeFile");
-
-    final FSDataOutputStream outputStream = fs.create(largeFile);
-
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final byte[] writeChunk = new byte[chunkLength];
-    for (int i = 0; i < numChunks; i++) {
-      outputStream.write(writeChunk);
-    }
-    outputStream.close();
+    final Path largeFile = ITUtils.writeFile(fs, "/existing/largeFile", chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
@@ -163,5 +159,65 @@ public final class HdfsCacheLoaderITCase {
       assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), blocks.get(i).getBlockId());
       assertEquals(3, blocks.get(i).getLocationsSize());
     }
+  }
+
+  @Test
+  public void testReloadMultiblockFile() throws Exception {
+    final int chunkLength = 2000;
+    final int numChunks = 20;
+    final Path largeFile = ITUtils.writeFile(fs, "/existing/largeFile", chunkLength, numChunks);
+
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
+            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
+
+    final FileMeta fileMeta = loader.load(largeFile);
+    final ListenableFuture<FileMeta> reloadedFuture = loader.reload(largeFile, fileMeta);
+    assertTrue(fileMeta == reloadedFuture.get());
+
+    final List<BlockInfo> blocks = fileMeta.getBlocks();
+    // Remove first location from first block
+    {
+      final BlockInfo block = blocks.get(0);
+      final Iterator<NodeInfo> it = block.getLocationsIterator();
+      it.next();
+      it.remove();
+      assertEquals(2, block.getLocationsSize());
+    }
+    // Remove all locations from second block
+    {
+      final BlockInfo block = blocks.get(1);
+      final Iterator<NodeInfo> it = block.getLocationsIterator();
+      while (it.hasNext()) {
+        it.next();
+        it.remove();
+      }
+      assertEquals(0, block.getLocationsSize());
+    }
+    // (Leave rest of the blocks alone)
+
+    // Reload -- this should reload blocks to the missing locations
+    final ListenableFuture<FileMeta> future = loader.reload(largeFile, fileMeta);
+    // The following passes in practice, but it depends on a race:
+    // that this line is called before the async part of reload finishes. Leaving it in for now.
+    assertFalse(future.isDone());
+
+    final FileMeta reloadedFileMeta = future.get();
+    assertNotEquals(fileMeta, reloadedFileMeta); // Because we called future.get, will be a new
+
+    final List<BlockInfo> reloadedBlocks = reloadedFileMeta.getBlocks();
+    assertEquals(locatedBlocks.getLocatedBlocks().size(), reloadedBlocks.size());
+    final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
+            ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
+    assertEquals(numBlocksComputed, reloadedBlocks.size());
+    for (int i = 0; i < reloadedBlocks.size(); i++) {
+      assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), reloadedBlocks.get(i).getBlockId());
+      assertEquals(3, reloadedBlocks.get(i).getLocationsSize());
+    }
+
+    // Reload -- with no locations missing, this should return with the same FileMeta
+    final ListenableFuture<FileMeta> future2 = loader.reload(largeFile, reloadedFileMeta);
+    assertTrue(future2.isDone());
+    final FileMeta reloadedFileMeta2 = future2.get();
+    assertTrue(reloadedFileMeta == reloadedFileMeta2);
   }
 }
