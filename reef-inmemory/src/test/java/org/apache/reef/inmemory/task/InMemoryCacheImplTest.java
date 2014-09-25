@@ -55,7 +55,7 @@ public final class InMemoryCacheImplTest {
   }
 
   private BlockId randomBlockId(long length) {
-    return new MockBlockId(random.nextLong(), length);
+    return new MockBlockId(random.nextLong(), length, "/path");
   }
 
   private byte[] ones(int length) {
