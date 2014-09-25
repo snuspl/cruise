@@ -255,6 +255,9 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implement
     if (loadingNeeded.size() == 0) {
       return Futures.immediateFuture(fileMeta);
     } else {
+      // TODO: Instead of Async, add the updates to CacheUpdater: cache updater will asynchronously call the cacheMessenger and add to an updates list.
+      // TODO: (but then cacheMessenger must be synchronized...)
+      // TODO: The updates list will be taken care of on the NEXT synchronous reload call
       final ListenableFutureTask<FileMeta> task = ListenableFutureTask.create(new Callable<FileMeta>() {
         @Override
         public FileMeta call() throws Exception {
@@ -269,7 +272,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implement
 
           // To avoid concurrent operation with sync reload operations, create a new FileMeta.
           // (These async operations will never run concurrently because of the synchronized blocks.)
-          final FileMeta newFileMeta = fileMeta.deepCopy();
+          final FileMeta newFileMeta = fileMeta.deepCopy(); // TODO: using a copy could mean we lose removal updates
           for (final int index : loadingNeeded) {
             final BlockInfo blockInfo = newFileMeta.getBlocks().get(index); // TODO: this could cause index out of bounds, when run concurrently with removeLocations!
 

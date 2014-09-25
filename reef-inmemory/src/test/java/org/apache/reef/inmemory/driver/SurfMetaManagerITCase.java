@@ -24,6 +24,8 @@ import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
 import org.apache.reef.inmemory.driver.hdfs.HdfsRandomCacheSelectionPolicy;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.junit.*;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -65,7 +67,7 @@ public final class SurfMetaManagerITCase {
     replicationPolicy = mock(ReplicationPolicy.class);
 
     for (int i = 0; i < 3; i++) {
-      RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
+      final RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
 
       manager.addRunningTask(task);
       manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001+i));
