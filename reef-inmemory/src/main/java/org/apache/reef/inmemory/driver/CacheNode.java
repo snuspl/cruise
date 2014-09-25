@@ -76,10 +76,16 @@ public class CacheNode {
     this.latestTimestamp = latestTimestamp;
   }
 
+  /**
+   * Return description of a (potential) reason that caused the Cache to stop (e.g. OutOfMemoryError)
+   */
   public String getStopCause() {
     return stopCause;
   }
 
+  /**
+   * Set description of a (potential) reason that caused the Cache to stop (e.g. OutOfMemoryError)
+   */
   public void setStopCause(final String stopCause) {
     this.stopCause = stopCause;
   }

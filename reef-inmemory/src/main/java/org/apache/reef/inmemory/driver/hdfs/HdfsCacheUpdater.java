@@ -44,6 +44,15 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   private final String dfsAddress;
   private final DFSClient dfsClient; // Access must be synchronized
 
+  /**
+   * @param cacheManager Provides an updated list of caches
+   * @param cacheMessenger Provides a channel for block replication messages
+   * @param cacheSelector Selects from available caches based on the implemented policy
+   * @param cacheLocationRemover Provides the log of pending removals
+   * @param blockFactory Translates between block representations
+   * @param replicationPolicy Provides the replication policy for each file
+   * @param dfsAddress Address of HDFS, for which a DFSClient connection is made.
+   */
   @Inject
   public HdfsCacheUpdater(final CacheManager cacheManager,
                           final HdfsCacheMessenger cacheMessenger,
@@ -69,14 +78,14 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   /**
    * 0. Apply removes
    * 1. Resolve replication policy
-   * 2. Find blocks that have not fulfilled their replication factor, i.e. need loading
-   * -  Get information from HDFS
+   * 2. Get information from HDFS
    * 3. For each block that needs loading, synchronously add one location
-   * 4. Return the new metadata
+   * 4. Return a copy of the new metadata
    * TODO: 5. If there are still blocks that need replicas,
    * TODO:    then asynchronously add those locations.
    *
    * Steps 1-4 are intentionally synchronous to avoid replying with blocks with zero locations.
+   * Other concurrent requests for the same file will block on this update.
    * TODO: Step 5 is asynchronous, concurrent updates to the same metadata is avoided by using locking.
    *
    * @param path The file's path
@@ -119,7 +128,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       final Map<Integer, List<CacheNode>> indexToSelectedNodes = new HashMap<>(blocksWithRemoves.size());
       final Map<Integer, HdfsBlockMessage> indexToMsg = new HashMap<>(blocksWithRemoves.size());
 
-      // For each block that needs loading, synchronously add one location
+      // 3. For each block that needs loading, synchronously add one location
       final List<BlockInfo> blocksWithNoReplicas = getBlocksWithNoReplicas(blocksWithRemoves);
       if (blocksWithNoReplicas.size() > 0) {
         final long blockSize = fileMeta.getBlockSize();
@@ -162,6 +171,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
           blockInfo.addToLocations(location);
         }
       }
+      // 4. Return a copy of the new metadata
       return fileMeta.deepCopy();
     }
   }

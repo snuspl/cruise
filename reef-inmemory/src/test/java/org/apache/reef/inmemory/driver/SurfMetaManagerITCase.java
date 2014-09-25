@@ -104,6 +104,10 @@ public final class SurfMetaManagerITCase {
     fs.delete(new Path("/*"), true);
   }
 
+  /**
+   * Test concurrent gets on an unloaded file.
+   * Each get should return with metadata of the newly loaded file.
+   */
   @Test
   public void testConcurrentLoad() throws Throwable {
     final int chunkLength = 2000;
@@ -163,6 +167,10 @@ public final class SurfMetaManagerITCase {
     }
   }
 
+  /**
+   * Test concurrent gets on a loaded file, that has missing blocks.
+   * Each get should return with metdata that has loaded at least one location per block.
+   */
   @Test
   public void testConcurrentUpdate() throws Throwable {
     final int chunkLength = 2000;
@@ -237,6 +245,10 @@ public final class SurfMetaManagerITCase {
     }
   }
 
+  /**
+   * Test concurrent gets with block removal updates.
+   * Each get should return with metdata that has loaded at least one location per block.
+   */
   @Test
   public void testConcurrentRemoveAndUpdate() throws Throwable {
     final int chunkLength = 2000;

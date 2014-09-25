@@ -1,9 +1,6 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import com.google.common.cache.CacheLoader;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListenableFutureTask;
 import com.microsoft.tang.annotations.Parameter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -18,11 +15,9 @@ import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.replication.Action;
-import org.apache.reef.inmemory.driver.CacheLocationRemover;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
-import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 
@@ -30,17 +25,17 @@ import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Cache Loader implementation for HDFS. The metadata containing HDFS locations
- * is sent to the Tasks. The metadata containing Task locations is then returned
- * to the LoadingCache.
+ * Cache Loader implementation for HDFS.
+ *
+ * Tasks load data from HDFS based on the HDFS metadata sent here.
+ * The metadata, including Task locations, is then returned
+ * to be stored in the LoadingCache.
  */
 public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implements AutoCloseable {
 
