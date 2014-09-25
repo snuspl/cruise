@@ -1,4 +1,6 @@
-package org.apache.reef.inmemory.task;
+package org.apache.reef.inmemory.common;
+
+import org.apache.reef.inmemory.task.BlockId;
 
 /**
  * A simple BlockId implementation for testing

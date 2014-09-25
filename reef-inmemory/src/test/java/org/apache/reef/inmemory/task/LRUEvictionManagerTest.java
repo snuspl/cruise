@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.task;
 
+import org.apache.reef.inmemory.common.MockBlockId;
 import org.junit.Before;
 import org.junit.Test;
 

@@ -9,7 +9,7 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.task.BlockId;
-import org.apache.reef.inmemory.task.MockBlockId;
+import org.apache.reef.inmemory.common.MockBlockId;
 import org.junit.Before;
 import org.junit.Test;
 
