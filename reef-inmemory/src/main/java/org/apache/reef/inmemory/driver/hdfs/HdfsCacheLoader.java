@@ -99,7 +99,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
     if (replicationPolicy.isBroadcast(action)) {
       numReplicas = cacheNodes.size();
     } else {
-      numReplicas = action.getFactor();
+      numReplicas = action.getCacheReplicationFactor();
     }
 
     final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(locatedBlocks, cacheNodes, numReplicas);
