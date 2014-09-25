@@ -80,19 +80,32 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
+  public StringBuilder appendBasicStatus(final StringBuilder builder,
+                                         final CacheNode cache,
+                                         final long currentTimestamp) {
+    builder.append(cache.getAddress())
+           .append(" : ")
+           .append(cache.getLatestStatistics())
+           .append(" : ")
+           .append(currentTimestamp - cache.getLatestTimestamp())
+           .append(" ms ago");
+    return builder;
+  }
+
   @Override
   public String getStatus() throws TException {
     LOG.log(Level.INFO, "CLI status command");
     final StringBuilder builder = new StringBuilder();
     final long currentTimestamp = System.currentTimeMillis();
-    for (CacheNode cache : cacheManager.getCaches()) {
-      builder.append(cache.getAddress())
-             .append(" : ")
-             .append(cache.getLatestStatistics())
-             .append(" : ")
-             .append(currentTimestamp - cache.getLatestTimestamp())
-             .append(" ms ago")
-             .append('\n');
+    final List<CacheNode> caches = cacheManager.getCaches();
+    builder.append("Number of caches: "+caches.size()+"\n");
+    for (CacheNode cache : caches) {
+      appendBasicStatus(builder, cache, currentTimestamp);
+      if (cache.getStopCause() != null) {
+        builder.append(" : ")
+               .append(cache.getStopCause());
+      }
+      builder.append('\n');
     }
     return builder.toString();
   }
@@ -107,14 +120,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public boolean load(final String path) throws TException {
     LOG.log(Level.INFO, "CLI load command for path {0}", path);
     try {
-      final List<BlockInfo> blocks = metaManager.getFile(new Path(path), new User()).getBlocks();
-      if (blocks == null) {
-        return true;
-      }
-
-      for (final BlockInfo block : blocks) {
-        LOG.log(Level.INFO, "Loaded block " + block.getBlockId() + " for " + path);
-      }
+      metaManager.getFile(new Path(path), new User());
+      LOG.log(Level.INFO, "Load succeeded for "+path);
       return true;
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);

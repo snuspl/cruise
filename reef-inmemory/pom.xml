@@ -10,8 +10,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <logging>-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config</logging>
-        <!-- Defined in each profile. To run all unit tests use: -P all-tests. -->
-        <!-- To run integration tests use: -P integration-tests. Unit tests will be skipped. -->
+        <!-- Defined in each profile. To run all unit tests use: -P all-unit-tests. -->
+        <!-- To run HDFS integration tests use: verify -P hdfs-integration-tests. Unit tests will be skipped. -->
         <tests.skip>false</tests.skip>
         <tests.excluded></tests.excluded>
         <tests.forkCount>1</tests.forkCount>
@@ -323,7 +323,7 @@
             </build>
         </profile>
         <profile>
-            <id>all-tests</id>
+            <id>all-unit-tests</id>
             <properties>
                 <tests.excluded></tests.excluded>
                 <tests.forkCount>1</tests.forkCount>

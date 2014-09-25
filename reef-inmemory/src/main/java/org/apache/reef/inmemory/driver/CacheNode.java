@@ -13,6 +13,7 @@ public class CacheNode {
   private final int memory;
   private CacheStatistics latestStatistics;
   private long latestTimestamp;
+  private String stopCause;
 
   public CacheNode(final RunningTask task,
                    final int port) {
@@ -24,6 +25,10 @@ public class CacheNode {
 
   public String getTaskId() {
     return task.getId();
+  }
+
+  public RunningTask getTask() {
+    return task;
   }
 
   public String getAddress() {
@@ -69,6 +74,20 @@ public class CacheNode {
 
   public void setLatestTimestamp(long latestTimestamp) {
     this.latestTimestamp = latestTimestamp;
+  }
+
+  /**
+   * Return description of a (potential) reason that caused the Cache to stop (e.g. OutOfMemoryError)
+   */
+  public String getStopCause() {
+    return stopCause;
+  }
+
+  /**
+   * Set description of a (potential) reason that caused the Cache to stop (e.g. OutOfMemoryError)
+   */
+  public void setStopCause(final String stopCause) {
+    this.stopCause = stopCause;
   }
 
   /**

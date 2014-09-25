@@ -43,7 +43,7 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
   }
 
   @Override
-  public Map<LocatedBlock, List<CacheNode>> select(final LocatedBlocks blocks,
+  public Map<LocatedBlock, List<CacheNode>> select(final List<LocatedBlock> blocks,
                                                    final List<CacheNode> nodes,
                                                    final int numReplicas) {
     final Map<LocatedBlock, List<CacheNode>> selected = new HashMap<>();
@@ -53,7 +53,7 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
       remainings.add(new RemainingMemory(node));
     }
 
-    for (final LocatedBlock block : blocks.getLocatedBlocks()) {
+    for (final LocatedBlock block : blocks) {
       selected.put(block, select(block, remainings, numReplicas));
     }
 

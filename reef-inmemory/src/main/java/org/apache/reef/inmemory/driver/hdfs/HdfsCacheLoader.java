@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.driver.hdfs;
 
 import com.google.common.cache.CacheLoader;
 import com.microsoft.tang.annotations.Parameter;
-import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
@@ -15,7 +14,6 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
-import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheNode;
@@ -33,15 +31,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Cache Loader implementation for HDFS. The metadata containing HDFS locations
- * is sent to the Tasks. The metadata containing Task locations is then returned
- * to the LoadingCache.
+ * Cache Loader implementation for HDFS.
+ *
+ * Tasks load data from HDFS based on the HDFS metadata sent here.
+ * The metadata, including Task locations, is then returned
+ * to be stored in the LoadingCache.
  */
-public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
+public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implements AutoCloseable {
 
   private static final Logger LOG = Logger.getLogger(HdfsCacheLoader.class.getName());
-
-  private static final ObjectSerializableCodec<HdfsDriverTaskMessage> CODEC = new ObjectSerializableCodec<>();
 
   private final CacheManager cacheManager;
   private final HdfsCacheMessenger cacheMessenger;
@@ -102,31 +100,39 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> {
       numReplicas = action.getCacheReplicationFactor();
     }
 
-    final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(locatedBlocks, cacheNodes, numReplicas);
-    for (final LocatedBlock locatedBlock : locatedBlocks.getLocatedBlocks()) {
+    final List<LocatedBlock> locatedBlockList = locatedBlocks.getLocatedBlocks();
+
+    final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(locatedBlockList, cacheNodes, numReplicas);
+    for (final LocatedBlock locatedBlock : locatedBlockList) {
       final List<CacheNode> selectedNodes = selected.get(locatedBlock);
+
       if (selectedNodes.size() == 0) {
         throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
       }
 
-      final HdfsBlockId hdfsBlock = blockFactory.newBlockId(path.toString(), locatedBlock);
+      final BlockInfo blockInfo = blockFactory.newBlockInfo(path.toString(), locatedBlock);
+      final HdfsBlockId hdfsBlockId = blockFactory.newBlockId(blockInfo);
       final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
               HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
-      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlock, hdfsDatanodeInfos, pin);
-      final BlockInfo cacheBlock = blockFactory.newBlockInfo(path.toString(), locatedBlock);
+      final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlockId, hdfsDatanodeInfos, pin);
 
       for (final CacheNode cacheNode : selectedNodes) {
-        cacheMessenger.addBlock(cacheNode.getTaskId(), msg); // TODO: is addBlock a good name?
+        cacheMessenger.addBlock(cacheNode.getTaskId(), msg);
 
         final NodeInfo location = new NodeInfo(cacheNode.getAddress(), cacheNode.getRack());
-        cacheBlock.addToLocations(location);
+        blockInfo.addToLocations(location);
       }
 
       if (LOG.isLoggable(Level.FINE)) {
-        LOG.log(Level.FINE, "  " + cacheBlock.toString());
+        LOG.log(Level.FINE, "  " + blockInfo.toString());
       }
-      fileMeta.addToBlocks(cacheBlock);
+      fileMeta.addToBlocks(blockInfo);
     }
     return fileMeta;
+  }
+
+  @Override
+  public void close() throws Exception {
+    dfsClient.close();
   }
 }

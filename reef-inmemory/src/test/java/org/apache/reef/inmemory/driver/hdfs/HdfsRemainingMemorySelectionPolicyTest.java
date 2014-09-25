@@ -95,7 +95,7 @@ public final class HdfsRemainingMemorySelectionPolicyTest {
     final List<CacheNode> nodes = getFreshCacheNodes(10);
     final LocatedBlock block = getMockBlock();
     final LocatedBlocks blocks = getMockBlocks(block);
-    final Map<LocatedBlock, List<CacheNode>> selected = policy.select(blocks, new ArrayList<>(nodes), numReplicas);
+    final Map<LocatedBlock, List<CacheNode>> selected = policy.select(blocks.getLocatedBlocks(), new ArrayList<>(nodes), numReplicas);
     final List<CacheNode> selectedList = selected.get(block);
     assertTrue(nodes.containsAll(selectedList));
     assertEquals(numReplicas, selectedList.size());
@@ -111,7 +111,7 @@ public final class HdfsRemainingMemorySelectionPolicyTest {
     final List<CacheNode> nodes = getRandomCacheNodes(2);
     final LocatedBlock block = getMockBlock();
     final LocatedBlocks blocks = getMockBlocks(block);
-    final Map<LocatedBlock, List<CacheNode>> selected = policy.select(blocks, new ArrayList<>(nodes), numReplicas);
+    final Map<LocatedBlock, List<CacheNode>> selected = policy.select(blocks.getLocatedBlocks(), new ArrayList<>(nodes), numReplicas);
     final List<CacheNode> selectedList = selected.get(block);
     assertTrue(nodes.containsAll(selectedList));
     assertEquals(2, selectedList.size());
@@ -134,7 +134,7 @@ public final class HdfsRemainingMemorySelectionPolicyTest {
     final List<CacheNode> nodes = getRandomCacheNodes(100);
     final LocatedBlock block = getMockBlock();
     final LocatedBlocks blocks = getMockBlocks(block);
-    final Map<LocatedBlock, List<CacheNode>> selected = policy.select(blocks, new ArrayList<>(nodes), numReplicas);
+    final Map<LocatedBlock, List<CacheNode>> selected = policy.select(blocks.getLocatedBlocks(), new ArrayList<>(nodes), numReplicas);
     final List<CacheNode> selectedList = selected.get(block);
     assertTrue(nodes.containsAll(selectedList));
     assertEquals(numReplicas, selectedList.size());
@@ -166,7 +166,7 @@ public final class HdfsRemainingMemorySelectionPolicyTest {
       blockList.add(getMockBlock());
     }
     final LocatedBlocks blocks = getMockBlocks(blockList);
-    final Map<LocatedBlock, List<CacheNode>> selected = policy.select(blocks, new ArrayList<>(nodes), numReplicas);
+    final Map<LocatedBlock, List<CacheNode>> selected = policy.select(blocks.getLocatedBlocks(), new ArrayList<>(nodes), numReplicas);
 
     assertEquals(20, selected.size());
 

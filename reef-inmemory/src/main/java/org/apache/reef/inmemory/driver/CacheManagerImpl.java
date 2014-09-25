@@ -110,8 +110,6 @@ public final class CacheManagerImpl implements CacheManager {
     }
   }
 
-
-
   @Override
   public synchronized boolean addRunningTask(final RunningTask task) {
     if (caches.containsKey(task.getId()) || pendingTasks.containsKey(task.getId())) {

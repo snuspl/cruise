@@ -300,7 +300,7 @@ public class HdfsBlockLoader implements BlockLoader {
   public byte[] getData(int index) throws BlockLoadingException {
     if (blockSize <= bufferSize * index) {
       throw new IndexOutOfBoundsException("The requested index exceeded the capacity.");
-    } else if (data == null || data.size() < index) {
+    } else if (data == null || index >= data.size()) {
       throw new BlockLoadingException(totalRead);
     }
     return data.get(index);

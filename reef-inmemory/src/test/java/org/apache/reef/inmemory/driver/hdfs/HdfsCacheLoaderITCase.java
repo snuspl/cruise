@@ -12,6 +12,7 @@ import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
@@ -26,10 +27,10 @@ import org.junit.Test;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -63,7 +64,7 @@ public final class HdfsCacheLoaderITCase {
       RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
 
       manager.addRunningTask(task);
-      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001));
+      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001+i));
     }
     List<CacheNode> selectedNodes = manager.getCaches();
     assertEquals(3, selectedNodes.size());
@@ -74,6 +75,7 @@ public final class HdfsCacheLoaderITCase {
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, blockSize);
 
     fs = ITUtils.getHdfs(hdfsConfig);
+    fs.mkdirs(new Path("/existing"));
 
     loader = new HdfsCacheLoader(manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString());
   }
@@ -127,6 +129,7 @@ public final class HdfsCacheLoaderITCase {
     assertEquals(smallFile.toString(), fileMeta.getFullPath());
   }
 
+
   /**
    * Test proper loading of a large file that spans multiple blocks.
    * Checks that metadata is returned, and correct.
@@ -135,17 +138,9 @@ public final class HdfsCacheLoaderITCase {
    */
   @Test
   public void testLoadMultiblockFile() throws IOException {
-    final Path largeFile = new Path("/existing/largeFile");
-
-    final FSDataOutputStream outputStream = fs.create(largeFile);
-
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final byte[] writeChunk = new byte[chunkLength];
-    for (int i = 0; i < numChunks; i++) {
-      outputStream.write(writeChunk);
-    }
-    outputStream.close();
+    final Path largeFile = ITUtils.writeFile(fs, "/existing/largeFile", chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);

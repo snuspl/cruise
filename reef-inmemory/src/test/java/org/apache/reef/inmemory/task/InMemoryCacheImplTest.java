@@ -4,6 +4,7 @@ import com.google.common.cache.Cache;
 import com.microsoft.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
+import org.apache.reef.inmemory.common.MockBlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.junit.After;
@@ -55,7 +56,7 @@ public final class InMemoryCacheImplTest {
   }
 
   private BlockId randomBlockId(long length) {
-    return new MockBlockId(random.nextLong(), length);
+    return new MockBlockId(random.nextLong(), length, "/path");
   }
 
   private byte[] ones(int length) {
