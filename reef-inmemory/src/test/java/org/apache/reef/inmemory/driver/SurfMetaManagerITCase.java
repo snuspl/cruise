@@ -18,6 +18,8 @@ import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.replication.Action;
+import org.apache.reef.inmemory.common.replication.SyncMethod;
+import org.apache.reef.inmemory.common.replication.Write;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheLoader;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
@@ -78,7 +80,7 @@ public final class SurfMetaManagerITCase {
     }
     List<CacheNode> selectedNodes = manager.getCaches();
     assertEquals(3, selectedNodes.size());
-    when(replicationPolicy.getReplicationAction(anyString(), any(FileMeta.class))).thenReturn(new Action(3, false));
+    when(replicationPolicy.getReplicationAction(anyString(), any(FileMeta.class))).thenReturn(new Action(3, false, new Write(SyncMethod.WRITE_BACK, 1)));
 
     Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
