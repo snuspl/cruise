@@ -119,7 +119,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       if (replicationPolicy.isBroadcast(action)) {
         replicationFactor = cacheNodes.size();
       } else {
-        replicationFactor = action.getFactor();
+        replicationFactor = action.getCacheReplicationFactor();
       }
 
       // 2. Get information from HDFS
