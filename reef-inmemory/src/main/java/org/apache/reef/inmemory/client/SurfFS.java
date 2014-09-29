@@ -244,17 +244,18 @@ public final class SurfFS extends FileSystem {
   private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
     final String[] addresses = new String[locations.size()];
     final String[] hosts = new String[locations.size()];
-    final String[] racks = new String[locations.size()];
+    final String[] topologyPaths = new String[locations.size()];
 
     int idx = 0;
     for (NodeInfo location : locations) {
       addresses[idx] = location.getAddress();
       hosts[idx] = HostAndPort.fromString(location.getAddress()).getHostText();
-      racks[idx] = location.getRack();
+      topologyPaths[idx] = location.getRack() + "/" + location.getAddress();
+      LOG.log(Level.INFO, "BlockLocation: "+addresses[idx]+", "+hosts[idx]+", "+topologyPaths[idx]);
       idx++;
     }
 
-    return new BlockLocation(addresses, hosts, racks, start, len);
+    return new BlockLocation(addresses, hosts, topologyPaths, start, len);
   }
 
   /**
@@ -272,6 +273,7 @@ public final class SurfFS extends FileSystem {
     try {
       final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath());
       long startRemaining = start;
+      LOG.log(Level.INFO, "getBlocksSize: "+metadata.getBlocksSize());
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
       if (iter == null) {
@@ -288,6 +290,8 @@ public final class SurfFS extends FileSystem {
         }
       }
 
+      LOG.log(Level.INFO, "Block locations size: "+blockLocations.size());
+
       // Add locations of blocks after that, up to len
       long lenRemaining = len + startRemaining;
       while (lenRemaining > 0 && iter.hasNext()) {
@@ -295,6 +299,8 @@ public final class SurfFS extends FileSystem {
         lenRemaining -= block.getLength();
         blockLocations.add(getBlockLocation(block.getLocations(), block.getOffSet(), block.getLength()));
       }
+
+      LOG.log(Level.INFO, "Block locations size: "+blockLocations.size());
 
       return blockLocations.toArray(new BlockLocation[blockLocations.size()]);
 
