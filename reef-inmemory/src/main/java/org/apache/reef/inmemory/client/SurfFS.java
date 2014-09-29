@@ -273,7 +273,6 @@ public final class SurfFS extends FileSystem {
     try {
       final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath());
       long startRemaining = start;
-      LOG.log(Level.INFO, "getBlocksSize: "+metadata.getBlocksSize());
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
       if (iter == null) {
@@ -289,8 +288,6 @@ public final class SurfFS extends FileSystem {
           break;
         }
       }
-
-      LOG.log(Level.INFO, "Block locations size: "+blockLocations.size());
 
       // Add locations of blocks after that, up to len
       long lenRemaining = len + startRemaining;
