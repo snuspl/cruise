@@ -53,10 +53,6 @@ public class CacheNode {
   private static String getCacheHost(final RunningTask task) {
     return task.getActiveContext().getEvaluatorDescriptor()
             .getNodeDescriptor().getInetSocketAddress().getHostString();
-/*
-    return task.getActiveContext().getEvaluatorDescriptor()
-            .getNodeDescriptor().getInetSocketAddress().getAddress().getHostAddress();
-*/
   }
 
   private static String getCacheRack(final RunningTask task) {

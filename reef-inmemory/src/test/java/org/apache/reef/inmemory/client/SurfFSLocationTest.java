@@ -37,6 +37,7 @@ public final class SurfFSLocationTest {
   private static final int numLocations = 3;
   private static final long len = blockLength * numBlocks;
   private static final String pathString = "/path/of/test";
+  private static final String rack = "/rack-a";
 
   final Path path = new Path(pathString);
   final FileStatus fileStatus = new FileStatus(
@@ -52,7 +53,7 @@ public final class SurfFSLocationTest {
       blockInfo.setOffSet(blockLength * i);
       blockInfo.setLength(blockLength);
       for (int j = 0; j < numLocations; j++) {
-        final NodeInfo location = new NodeInfo("location-" + i + "-" + j + ":" + port, null);
+        final NodeInfo location = new NodeInfo("location-" + i + "-" + j + ":" + port, rack);
         blockInfo.addToLocations(location);
       }
       fileMeta.addToBlocks(blockInfo);
@@ -71,6 +72,7 @@ public final class SurfFSLocationTest {
   private void assertLocationsCorrect(final BlockLocation blockLocation, final String prefix, long start, long len) throws IOException {
     final String[] names = blockLocation.getNames();
     final String[] hosts = blockLocation.getHosts();
+    final String[] topologyPaths = blockLocation.getTopologyPaths();
 
     assertEquals(numLocations, names.length);
     for (int j = 0; j < numLocations; j++) {
@@ -79,6 +81,11 @@ public final class SurfFSLocationTest {
     assertEquals(numLocations, hosts.length);
     for (int j = 0; j < numLocations; j++) {
       assertEquals(prefix+"-"+j, hosts[j]);
+    }
+
+    assertEquals(numLocations, topologyPaths.length);
+    for (int j = 0; j < numLocations; j++) {
+      assertEquals(rack+"/"+prefix+"-"+j+":"+port, topologyPaths[j]);
     }
 
     assertEquals(start, blockLocation.getOffset());
