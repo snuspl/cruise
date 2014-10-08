@@ -2,11 +2,13 @@ package org.apache.reef.inmemory.driver.service;
 
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.NetUtils;
+import org.apache.commons.io.FileExistsException;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.User;
+import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.replication.AvroReplicationSerializer;
 import org.apache.reef.inmemory.common.replication.Rules;
@@ -27,6 +29,7 @@ import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -77,6 +80,35 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     } catch (Throwable e) {
       LOG.log(Level.SEVERE, "Get metadata failed for "+path, e);
       throw new TException(e);
+    }
+  }
+
+  @Override
+  public boolean exists(String path) throws TException {
+    try {
+      return metaManager.exists(new Path(path), new User());
+    } catch (ExecutionException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public boolean registerFileMeta(FileMeta fileMeta) throws FileAlreadyExistsException, TException {
+    if (exists(fileMeta.getFullPath())) {
+      throw new FileAlreadyExistsException();
+    } else {
+      metaManager.update(fileMeta, new User());
+      return true;
+    }
+  }
+
+  @Override
+  public boolean updateFileMeta(FileMeta fileMeta) throws FileNotFoundException, TException {
+    if (exists(fileMeta.getFullPath())) {
+      throw new FileNotFoundException();
+    } else {
+      metaManager.update(fileMeta, new User());
+      return true;
     }
   }
 

@@ -90,8 +90,8 @@ public final class SurfFS extends FileSystem {
         TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
         transport.open();
         TProtocol protocol = new TMultiplexedProtocol(
-                new TCompactProtocol(transport),
-                SurfMetaService.class.getName());
+          new TCompactProtocol(transport),
+          SurfMetaService.class.getName());
         this.metaClient = new SurfMetaService.Client(protocol);
         return this.metaClient;
       } catch (TTransportException e) {
@@ -114,9 +114,9 @@ public final class SurfFS extends FileSystem {
     this.metaserverAddress = getMetaserverResolver().getAddress();
     LOG.log(Level.FINE, "SurfFs address resolved to: "+this.metaserverAddress);
     this.cacheClientManager = new CacheClientManager(
-            conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
-            conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
-            conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
+      conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
+      conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
+      conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
   }
 
   /**
@@ -152,7 +152,7 @@ public final class SurfFS extends FileSystem {
 
   protected void setStatusToSurf(FileStatus status) {
     status.setPath(
-            pathToSurf(status.getPath()));
+      pathToSurf(status.getPath()));
   }
 
   @Override
@@ -171,7 +171,7 @@ public final class SurfFS extends FileSystem {
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
-            new Object[]{path, path.toUri().getPath()});
+      new Object[]{path, path.toUri().getPath()});
 
     try {
       FileMeta metadata = getMetaClient().getFileMeta(path.toUri().getPath());
@@ -190,9 +190,22 @@ public final class SurfFS extends FileSystem {
    * to the Base FS (They will be implemented later)
    */
   @Override
-  public FSDataOutputStream create(Path f, FsPermission permission, boolean overwrite, int bufferSize,
+  public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
-    return baseFs.create(pathToBase(f), permission, overwrite, bufferSize, replication, blockSize, progress);
+    // TODO resolve directories
+    SurfMetaService.Client metaClient = getMetaClient();
+    try {
+      if(metaClient.exists(path.toString())){
+        if(overwrite) {
+          // TODO delete the file if we support overwrite
+        } else {
+          throw new IOException("File " + path + " already exists");
+        }
+      }
+      return new SurfFSOutputStream(path, metaClient, blockSize);
+    } catch (TException e) {
+      throw new IOException("Failed to create a file in "+path.toString());
+    }
   }
 
   @Override
@@ -266,7 +279,7 @@ public final class SurfFS extends FileSystem {
   public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
 
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
-            new Object[]{file.getPath(), file.getPath().toUri().getPath()});
+      new Object[]{file.getPath(), file.getPath().toUri().getPath()});
 
     List<BlockLocation> blockLocations = new LinkedList<>();
 
@@ -307,6 +320,21 @@ public final class SurfFS extends FileSystem {
     } catch (TException e) {
       LOG.log(Level.SEVERE, "TException: "+e+" "+e.getCause());
       throw new IOException(e.getMessage());
+    }
+  }
+
+  /**
+   * @return {@code true} if the metadata exists for the path
+   */
+  private boolean exists(SurfMetaService.Client metaClient, Path f) {
+    try {
+      // TODO maybe later we can use getFileStatus
+      return metaClient.getFileMeta(f.toString()) != null;
+    } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
+      return false;
+    } catch (TException e) {
+      LOG.log(Level.SEVERE, "Failed to check existence.");
+      throw new RuntimeException(e);
     }
   }
 }
