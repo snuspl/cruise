@@ -5,12 +5,10 @@ import com.microsoft.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.Launch;
-import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -24,7 +22,6 @@ import static org.junit.Assert.fail;
 @Ignore
 public class SurfFSCreateITCase {
 
-  private static FileSystem baseFs;
   private static SurfFS surfFs;
 
   private static REEF reef;
@@ -47,15 +44,11 @@ public class SurfFSCreateITCase {
     final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
 
-    baseFs = ITUtils.getHdfs(hdfsConfig);
-    baseFs.mkdirs(new Path(TESTDIR));
-
-    com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
+    com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{});
     com.microsoft.tang.Configuration fileConf = Launch.parseConfigFile();
     reef = Launch.runInMemory(clConf, fileConf);
 
     final Configuration conf = new Configuration();
-    conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
     conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64); // TODO: Test fails when this is set; it succeeds when using default
 
     surfFs = new SurfFS();
