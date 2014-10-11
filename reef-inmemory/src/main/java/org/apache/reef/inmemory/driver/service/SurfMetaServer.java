@@ -112,6 +112,11 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
+  @Override
+  public String allocateBlock(String path) throws TException {
+    return null;
+  }
+
   public StringBuilder appendBasicStatus(final StringBuilder builder,
                                          final CacheNode cache,
                                          final long currentTimestamp) {
