@@ -13,4 +13,9 @@ service SurfCacheService {
      */
     binary getData(1:entity.BlockInfo block, 2:i64 offset, 3:i64 length)
         throws (1: exceptions.BlockNotFoundException nfe, 2:exceptions.BlockLoadingException le)
+
+    /**
+     * Transfer block data from Client to Task
+     **/
+    bool writeData(1:i64 blockId, 2:i64 offset, 3:binary data)
 }
