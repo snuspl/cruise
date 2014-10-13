@@ -28,6 +28,7 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -93,10 +94,15 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public boolean registerFileMeta(FileMeta fileMeta) throws FileAlreadyExistsException, TException {
-    if (exists(fileMeta.getFullPath())) {
+  public boolean registerFileMeta(String path, long blockSize) throws FileAlreadyExistsException, TException {
+    if (exists(path)) {
       throw new FileAlreadyExistsException();
     } else {
+      FileMeta fileMeta = new FileMeta();
+      fileMeta.setFullPath(path);
+      fileMeta.setBlockSize(blockSize);
+      fileMeta.setBlocks(new ArrayList<BlockInfo>());
+      fileMeta.setFileSize(0);
       metaManager.update(fileMeta, new User());
       return true;
     }
@@ -104,7 +110,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public boolean updateFileMeta(FileMeta fileMeta) throws FileNotFoundException, TException {
-    if (exists(fileMeta.getFullPath())) {
+    if (!exists(fileMeta.getFullPath())) {
       throw new FileNotFoundException();
     } else {
       metaManager.update(fileMeta, new User());
@@ -114,18 +120,23 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public String allocateBlock(String path) throws TException {
-    return null;
+    if (!exists(path)) {
+      throw new FileNotFoundException();
+    }
+    // TODO Update to reserve the space
+    // TODO Return a proper cache node's address
+    return cacheManager.getCaches().get(0).getAddress();
   }
 
   public StringBuilder appendBasicStatus(final StringBuilder builder,
                                          final CacheNode cache,
                                          final long currentTimestamp) {
     builder.append(cache.getAddress())
-           .append(" : ")
-           .append(cache.getLatestStatistics())
-           .append(" : ")
-           .append(currentTimestamp - cache.getLatestTimestamp())
-           .append(" ms ago");
+      .append(" : ")
+      .append(cache.getLatestStatistics())
+      .append(" : ")
+      .append(currentTimestamp - cache.getLatestTimestamp())
+      .append(" ms ago");
     return builder;
   }
 
@@ -140,7 +151,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       appendBasicStatus(builder, cache, currentTimestamp);
       if (cache.getStopCause() != null) {
         builder.append(" : ")
-               .append(cache.getStopCause());
+          .append(cache.getStopCause());
       }
       builder.append('\n');
     }
@@ -226,16 +237,16 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
       final TMultiplexedProcessor processor = new TMultiplexedProcessor();
       final SurfMetaService.Processor<SurfMetaService.Iface> metaProcessor =
-              new SurfMetaService.Processor<SurfMetaService.Iface>(this);
+        new SurfMetaService.Processor<SurfMetaService.Iface>(this);
       processor.registerProcessor(SurfMetaService.class.getName(), metaProcessor);
       final SurfManagementService.Processor<SurfManagementService.Iface> managementProcessor =
-              new SurfManagementService.Processor<SurfManagementService.Iface>(this);
+        new SurfManagementService.Processor<SurfManagementService.Iface>(this);
       processor.registerProcessor(SurfManagementService.class.getName(), managementProcessor);
 
       this.server = new THsHaServer(
-          new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
-              .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
-              .workerThreads(this.numThreads));
+        new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
+          .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
+          .workerThreads(this.numThreads));
 
       // Register just before serving
       serviceRegistry.register(NetUtils.getLocalAddress(), port);

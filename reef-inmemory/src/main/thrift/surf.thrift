@@ -22,7 +22,7 @@ service SurfMetaService {
   /**
    * Register FileMeta to enable data access
    */
-  bool registerFileMeta(1:entity.FileMeta fileMeta) throws (1: exceptions.FileAlreadyExistsException fae)
+  bool registerFileMeta(1:string path, 2:i64 blockSize) throws (1: exceptions.FileAlreadyExistsException fae)
 
   /**
    * Update metadata with a new FileMeta

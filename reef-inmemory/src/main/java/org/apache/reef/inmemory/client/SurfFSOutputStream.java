@@ -49,13 +49,7 @@ public class SurfFSOutputStream extends FSDataOutputStream {
     this(new SurfOutputStream(), new FileSystem.Statistics("surf"));
     this.path = path;
     this.metaClient = metaClient;
-
-    FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(path.toString());
-    fileMeta.setBlockSize(blockSize);
-    fileMeta.setBlocks(new ArrayList<BlockInfo>());
-    fileMeta.setFileSize(0);
-    metaClient.registerFileMeta(fileMeta);
+    metaClient.registerFileMeta(path.toString(), blockSize);
   }
 
   /**
