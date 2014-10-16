@@ -19,7 +19,7 @@ import java.net.URI;
 
 import static org.junit.Assert.fail;
 
-@Ignore
+
 public class SurfFSCreateITCase {
 
   private static SurfFS surfFs;

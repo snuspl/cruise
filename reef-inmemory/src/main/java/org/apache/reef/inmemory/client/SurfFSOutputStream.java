@@ -20,25 +20,11 @@ import java.util.List;
  * data to the target block. When it fills the block, update metadata
  * and repeat this step until close is called.
  */
-public class SurfFSOutputStream extends FSDataOutputStream {
+public class SurfFSOutputStream extends OutputStream {
   private Path path;
   private SurfMetaService.Client metaClient;
-
-  /**
-   * Implementation of OutputStream to work inside the SurfFSOutputStream
-   */
-  private static class SurfOutputStream extends OutputStream implements Closeable {
-
-    @Override
-    public void write(int b) throws IOException {
-    }
-
-    @Override
-    public void close() throws IOException {
-      // TODO Investigate what a proper action is
-      super.close();
-    }
-  }
+  private byte localBuf[];
+  private byte packeBuf[];
 
   /**
    * This constructor is called outside with the information to create a file
@@ -46,7 +32,6 @@ public class SurfFSOutputStream extends FSDataOutputStream {
    */
   public SurfFSOutputStream(Path path, SurfMetaService.Client metaClient, long blockSize) throws IOException, TException {
     // Assumption : File is visible right after it is created
-    this(new SurfOutputStream(), new FileSystem.Statistics("surf"));
     this.path = path;
     this.metaClient = metaClient;
 
@@ -58,10 +43,28 @@ public class SurfFSOutputStream extends FSDataOutputStream {
     metaClient.registerFileMeta(fileMeta);
   }
 
-  /**
-   * This is internal to call the constructor of super class
-   */
-  private SurfFSOutputStream(OutputStream out, FileSystem.Statistics stats) throws IOException {
-    super(out, stats);
+  @Override
+  public void write(int b) throws IOException {
+  }
+
+  @Override
+  public void close() throws IOException {
+    // TODO Investigate what a proper action is
+    super.close();
+  }
+
+  class DataStreamer implements Runnable {
+    @Override
+    public void run() {
+      while(true) {
+        FileMeta
+        BlockInfo
+        // Address = metaClient.allocateBlock(path)
+        // client = SurfCacheService.getClient(address)
+        // client.writeData(new BlockId(file+offset), offset, data)
+        this.wait(5);
+      }
+
+    }
   }
 }
