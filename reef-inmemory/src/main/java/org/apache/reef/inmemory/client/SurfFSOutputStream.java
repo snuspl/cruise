@@ -1,12 +1,21 @@
 package org.apache.reef.inmemory.client;
 
+import com.google.common.net.HostAndPort;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
+import org.apache.reef.inmemory.task.service.SurfCacheServer;
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -45,6 +54,10 @@ public class SurfFSOutputStream extends OutputStream {
 
   @Override
   public void write(int b) throws IOException {
+ }
+
+  @Override
+  public void flush() throws IOException {
   }
 
   @Override
@@ -55,16 +68,19 @@ public class SurfFSOutputStream extends OutputStream {
 
   class DataStreamer implements Runnable {
     @Override
-    public void run() {
+    public void run() throws TTransportException{
       while(true) {
-        FileMeta
-        BlockInfo
-        // Address = metaClient.allocateBlock(path)
-        // client = SurfCacheService.getClient(address)
-        // client.writeData(new BlockId(file+offset), offset, data)
+        final String address = metaClient.allocateBlock(path);
+        final HostAndPort taskAddress = HostAndPort.fromString(address);
+        final TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
+        transport.open();
+        final TProtocol protocol = new TCompactProtocol(transport);
+        SurfCacheService.Client cacheClient = new SurfCacheService.Client(protocol);
+
+        cacheClient.writeData(block);
+
         this.wait(5);
       }
-
     }
   }
 }
