@@ -31,9 +31,11 @@ import java.util.Queue;
  * and repeat this step until close is called.
  */
 public class SurfFSOutputStream extends OutputStream {
+  DataStreamer streamer;
   private Path path;
   private SurfMetaService.Client metaClient;
   private byte localBuf[];
+  private int count;
   private Queue<Packet> packetQueue;
 
   /**
@@ -43,6 +45,10 @@ public class SurfFSOutputStream extends OutputStream {
   public SurfFSOutputStream(Path path, SurfMetaService.Client metaClient, long blockSize) throws IOException, TException {
     this.path = path;
     this.metaClient = metaClient;
+    this.localBuf = new byte[packetsize]; // 512B(packet size) X 80(queue size) = 40KB
+    this.count = 0;
+    this.streamer = new DataStreamer();
+
 
     // move the filemeta logic to the Driver
     FileMeta fileMeta = new FileMeta();
@@ -55,18 +61,16 @@ public class SurfFSOutputStream extends OutputStream {
 
   @Override
   public void write(int b) throws IOException {
-    // if localBuf full, flush
-    if (4 < localBuf.length) {
+    localBuf[count++] = (byte)b;
+    if (count == localBuf.length) {
       flush();
     }
-
-    // localbuf[i] = b;
  }
 
   @Override
   public void flush() throws IOException {
-    // localBuf --> packetBuf
     packetQueue.add(new Packet(localBuf));
+    count = 0;
   }
 
   @Override
@@ -90,7 +94,7 @@ public class SurfFSOutputStream extends OutputStream {
           }
           final TProtocol protocol = new TCompactProtocol(transport);
           SurfCacheService.Client cacheClient = new SurfCacheService.Client(protocol);
-          cacheClient.writeData(packetQueue.remove());
+          cacheClient.writeData(packetQueue.remove()); // BlockId
         }
       }
     }
@@ -98,7 +102,7 @@ public class SurfFSOutputStream extends OutputStream {
 
   private class Packet {
     final long offsetInBlock;
-    final byte[]  buf;
+    final byte[] buf;
 
     public Packet(byte[] bytes) {
     }
