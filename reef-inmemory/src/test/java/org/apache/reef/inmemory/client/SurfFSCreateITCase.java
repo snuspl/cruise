@@ -11,7 +11,6 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.Launch;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.net.URI;
 
 import static org.junit.Assert.fail;
 
-@Ignore
 public class SurfFSCreateITCase {
 
   private static SurfFS surfFs;
@@ -40,19 +38,24 @@ public class SurfFSCreateITCase {
    * Don't run destructive tests on the elements created here.
    */
   @BeforeClass
-  public static void setUpClass() throws IOException, InjectionException {
+  public static void setUpClass() throws IOException, InjectionException, InterruptedException {
     final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
 
     com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{});
     com.microsoft.tang.Configuration fileConf = Launch.parseConfigFile();
     reef = Launch.runInMemory(clConf, fileConf);
+    try {
+      Thread.sleep(3000); // Wait for reef setup before continuing
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
     final Configuration conf = new Configuration();
-    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64); // TODO: Test fails when this is set; it succeeds when using default
 
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);
+    System.out.println("SurfFs address resolved to:"+SURF+"://"+SURF_ADDRESS );
   }
 
   @AfterClass
@@ -80,22 +83,15 @@ public class SurfFSCreateITCase {
     // CASE 1: create
     try {
       create(new Path(TESTPATH1));
-      fail("Should return IOException");
+      fail("Should return IOException. Because the file exists");
     } catch (IOException e) {
       // passed
     } catch (Exception e) {
       fail("Should return IOException, instead returned "+e);
     }
 
-    // CASE 2: open
-    try {
-      open(new Path(TESTPATH1));
-      fail("Should return IOException");
-    } catch (IOException e) {
-      // passed
-    } catch (Exception e) {
-      fail("Should return IOException, instead returned "+e);
-    }
+    // CASE 2: open the file. It is possible to access the file as soon as it is created.
+    open(new Path(TESTPATH1));
   }
 
   @Test
@@ -103,17 +99,17 @@ public class SurfFSCreateITCase {
     FSDataOutputStream out1 = create(new Path(TESTPATH2));
     out1.close();
 
-    // CASE 1: create
+    // CASE 1: create a file with the same name
     try {
       create(new Path(TESTPATH2));
-      fail("Should return IOException");
+      fail("Should return IOException. Because the file exists");
     } catch (IOException e) {
       // passed
     } catch (Exception e) {
       fail("Should return IOException, instead returned "+e);
     }
 
-    // CASE 2: open
+    // CASE 2: open the file
     open(new Path(TESTPATH2));
   }
 }
