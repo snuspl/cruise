@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * Output stream implementation. Register metadata when created,
@@ -33,7 +34,7 @@ public class SurfFSOutputStream extends OutputStream {
   private Path path;
   private SurfMetaService.Client metaClient;
   private byte localBuf[];
-  private byte packetBuf[];
+  private Queue<Packet> packetQueue;
 
   /**
    * This constructor is called outside with the information to create a file
@@ -55,24 +56,30 @@ public class SurfFSOutputStream extends OutputStream {
   @Override
   public void write(int b) throws IOException {
     // if localBuf full, flush
+    if (4 < localBuf.length) {
+      flush();
+    }
+
+    // localbuf[i] = b;
  }
 
   @Override
   public void flush() throws IOException {
     // localBuf --> packetBuf
+    packetQueue.add(new Packet(localBuf));
   }
 
   @Override
   public void close() throws IOException {
     // TODO Investigate what a proper action is
-    super.close();
+    flush();
   }
 
-  class DataStreamer implements Runnable {
+  private class DataStreamer implements Runnable {
     @Override
     public void run() {
       while(true) {
-        if (packetBuf.length > 0) {
+        if (packetQueue.size() != 0) {
           final String address = metaClient.allocateBlock(path);
           final HostAndPort taskAddress = HostAndPort.fromString(address);
           final TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
@@ -83,11 +90,17 @@ public class SurfFSOutputStream extends OutputStream {
           }
           final TProtocol protocol = new TCompactProtocol(transport);
           SurfCacheService.Client cacheClient = new SurfCacheService.Client(protocol);
-          cacheClient.writeData(block);
+          cacheClient.writeData(packetQueue.remove());
         }
-
-        this.wait(5);
       }
+    }
+  }
+
+  private class Packet {
+    final long offsetInBlock;
+    final byte[]  buf;
+
+    public Packet(byte[] bytes) {
     }
   }
 }
