@@ -33,17 +33,17 @@ public class SurfFSOutputStream extends OutputStream {
   private Path path;
   private SurfMetaService.Client metaClient;
   private byte localBuf[];
-  private byte packeBuf[];
+  private byte packetBuf[];
 
   /**
    * This constructor is called outside with the information to create a file
    * @throws IOException If the file exists already
    */
   public SurfFSOutputStream(Path path, SurfMetaService.Client metaClient, long blockSize) throws IOException, TException {
-    // Assumption : File is visible right after it is created
     this.path = path;
     this.metaClient = metaClient;
 
+    // move the filemeta logic to the Driver
     FileMeta fileMeta = new FileMeta();
     fileMeta.setFullPath(path.toString());
     fileMeta.setBlockSize(blockSize);
@@ -54,10 +54,12 @@ public class SurfFSOutputStream extends OutputStream {
 
   @Override
   public void write(int b) throws IOException {
+    // if localBuf full, flush
  }
 
   @Override
   public void flush() throws IOException {
+    // localBuf --> packetBuf
   }
 
   @Override
@@ -68,16 +70,21 @@ public class SurfFSOutputStream extends OutputStream {
 
   class DataStreamer implements Runnable {
     @Override
-    public void run() throws TTransportException{
+    public void run() {
       while(true) {
-        final String address = metaClient.allocateBlock(path);
-        final HostAndPort taskAddress = HostAndPort.fromString(address);
-        final TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
-        transport.open();
-        final TProtocol protocol = new TCompactProtocol(transport);
-        SurfCacheService.Client cacheClient = new SurfCacheService.Client(protocol);
+        if (packetBuf.length > 0) {
+          final String address = metaClient.allocateBlock(path);
+          final HostAndPort taskAddress = HostAndPort.fromString(address);
+          final TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
+          try {
+            transport.open();
+          } catch (TTransportException e) {
 
-        cacheClient.writeData(block);
+          }
+          final TProtocol protocol = new TCompactProtocol(transport);
+          SurfCacheService.Client cacheClient = new SurfCacheService.Client(protocol);
+          cacheClient.writeData(block);
+        }
 
         this.wait(5);
       }
