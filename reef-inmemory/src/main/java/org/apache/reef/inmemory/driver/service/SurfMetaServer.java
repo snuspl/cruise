@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.driver.service;
 
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.NetUtils;
-import org.apache.commons.io.FileExistsException;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -86,11 +85,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public boolean exists(String path) throws TException {
-    try {
-      return metaManager.exists(new Path(path), new User());
-    } catch (ExecutionException e) {
-      throw new TException(e);
-    }
+    return metaManager.exists(new Path(path), new User());
   }
 
   @Override
@@ -122,10 +117,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public String allocateBlock(String path) throws TException {
     if (!exists(path)) {
       throw new FileNotFoundException();
+    } else {
+      throw new TException("Not Implemented yet");
     }
-    // TODO Update to reserve the space
-    // TODO Return a proper cache node's address
-    return cacheManager.getCaches().get(0).getAddress();
   }
 
   public StringBuilder appendBasicStatus(final StringBuilder builder,
@@ -253,7 +247,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
       this.server.serve();
     } catch (Exception e) {
-      e.printStackTrace();
+      LOG.log(Level.SEVERE, "Exception occurred while running MetaServer", e);
     } finally {
       if (this.server != null && this.server.isServing())
         this.server.stop();
