@@ -20,6 +20,7 @@ import org.apache.thrift.transport.TTransportException;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -31,11 +32,13 @@ import java.util.Queue;
  * and repeat this step until close is called.
  */
 public class SurfFSOutputStream extends OutputStream {
-  DataStreamer streamer;
+  private DataStreamer streamer;
   private Path path;
   private SurfMetaService.Client metaClient;
+
   private byte localBuf[];
   private int count;
+
   private Queue<Packet> packetQueue;
 
   /**
@@ -48,8 +51,6 @@ public class SurfFSOutputStream extends OutputStream {
     this.localBuf = new byte[packetsize]; // 512B(packet size) X 80(queue size) = 40KB
     this.count = 0;
     this.streamer = new DataStreamer();
-
-    metaClient.registerFileMeta(path.toString(), blockSize);
   }
 
   @Override
@@ -77,27 +78,32 @@ public class SurfFSOutputStream extends OutputStream {
     public void run() {
       while(true) {
         if (packetQueue.size() != 0) {
-          final String address = metaClient.allocateBlock(path);
-          final HostAndPort taskAddress = HostAndPort.fromString(address);
-          final TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
           try {
+            final String address = metaClient.allocateBlock(path.toString());
+            final HostAndPort taskAddress = HostAndPort.fromString(address);
+            final TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
             transport.open();
-          } catch (TTransportException e) {
+            final TProtocol protocol = new TCompactProtocol(transport);
+            SurfCacheService.Client cacheClient = new SurfCacheService.Client(protocol);
 
+            Packet packet = packetQueue.remove();
+            cacheClient.writeData(packet.blockId, packet.offset, ByteBuffer.wrap(packet.buf)); // BlockId
+          } catch (TException e) {
           }
-          final TProtocol protocol = new TCompactProtocol(transport);
-          SurfCacheService.Client cacheClient = new SurfCacheService.Client(protocol);
-          cacheClient.writeData(packetQueue.remove()); // BlockId
         }
       }
     }
   }
 
   private class Packet {
-    final long offsetInBlock;
+    final long blockId;
+    final long offset;
     final byte[] buf;
 
-    public Packet(byte[] bytes) {
+    public Packet(final long blockId, final long offset, final byte[] buf) {
+      this.blockId = blockId;
+      this.offset = offset;
+      this.buf = buf;
     }
   }
 }
