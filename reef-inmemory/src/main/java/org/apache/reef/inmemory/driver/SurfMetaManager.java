@@ -57,9 +57,9 @@ public final class SurfMetaManager {
    * @return {@code true} if file is cached already with the path as a key.
    * @throws ExecutionException
    */
-  public boolean exists(Path path, User creator) throws ExecutionException {
+  public boolean exists(Path path, User creator) {
     final Path absolutePath = getAbsolutePath(path, creator);
-    return metadataIndex.get(absolutePath) != null;
+    return metadataIndex.getIfPresent(absolutePath) != null;
   }
 
   /**

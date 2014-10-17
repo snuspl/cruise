@@ -9,6 +9,7 @@ import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.InMemoryCache;
+import org.apache.thrift.TException;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -129,4 +130,10 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     buf.limit(nWrite).position(0);
     return buf;
   }
+
+  @Override
+  public boolean writeData(long blockId, long offset, ByteBuffer data) throws TException {
+    return false;
+  }
+
 }

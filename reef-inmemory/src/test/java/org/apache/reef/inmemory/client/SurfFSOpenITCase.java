@@ -14,7 +14,6 @@ import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -34,7 +33,6 @@ import static org.junit.Assert.fail;
  * although the test executes fine, it does not cleanup the Processes created.
  * TODO: When REEF issue #868 is available, call close using that method
  */
-@Ignore
 public final class SurfFSOpenITCase {
 
   private static FileSystem baseFs;
@@ -94,7 +92,6 @@ public final class SurfFSOpenITCase {
 
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64); // TODO: Test fails when this is set; it succeeds when using default
 
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);

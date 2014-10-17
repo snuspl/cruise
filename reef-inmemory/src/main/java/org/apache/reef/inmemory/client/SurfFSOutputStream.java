@@ -49,14 +49,7 @@ public class SurfFSOutputStream extends OutputStream {
     this.count = 0;
     this.streamer = new DataStreamer();
 
-
-    // move the filemeta logic to the Driver
-    FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(path.toString());
-    fileMeta.setBlockSize(blockSize);
-    fileMeta.setBlocks(new ArrayList<BlockInfo>());
-    fileMeta.setFileSize(0);
-    metaClient.registerFileMeta(fileMeta);
+    metaClient.registerFileMeta(path.toString(), blockSize);
   }
 
   @Override

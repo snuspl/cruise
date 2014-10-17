@@ -204,7 +204,7 @@ public final class SurfFS extends FileSystem {
       }
       return new FSDataOutputStream(new SurfFSOutputStream(path, metaClient, blockSize), new Statistics("surf"));
     } catch (TException e) {
-      throw new IOException("Failed to create a file in "+path.toString());
+      throw new IOException("Failed to create a file in "+path.toString(), e);
     }
   }
 

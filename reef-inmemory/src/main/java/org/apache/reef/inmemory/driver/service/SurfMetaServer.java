@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.driver.service;
 
 import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.NetUtils;
-import org.apache.commons.io.FileExistsException;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -28,6 +27,7 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -85,18 +85,19 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public boolean exists(String path) throws TException {
-    try {
-      return metaManager.exists(new Path(path), new User());
-    } catch (ExecutionException e) {
-      throw new TException(e);
-    }
+    return metaManager.exists(new Path(path), new User());
   }
 
   @Override
-  public boolean registerFileMeta(FileMeta fileMeta) throws FileAlreadyExistsException, TException {
-    if (exists(fileMeta.getFullPath())) {
+  public boolean registerFileMeta(String path, long blockSize) throws FileAlreadyExistsException, TException {
+    if (exists(path)) {
       throw new FileAlreadyExistsException();
     } else {
+      FileMeta fileMeta = new FileMeta();
+      fileMeta.setFullPath(path);
+      fileMeta.setBlockSize(blockSize);
+      fileMeta.setBlocks(new ArrayList<BlockInfo>());
+      fileMeta.setFileSize(0);
       metaManager.update(fileMeta, new User());
       return true;
     }
@@ -104,7 +105,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public boolean updateFileMeta(FileMeta fileMeta) throws FileNotFoundException, TException {
-    if (exists(fileMeta.getFullPath())) {
+    if (!exists(fileMeta.getFullPath())) {
       throw new FileNotFoundException();
     } else {
       metaManager.update(fileMeta, new User());
@@ -112,15 +113,24 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
+  @Override
+  public String allocateBlock(String path) throws TException {
+    if (!exists(path)) {
+      throw new FileNotFoundException();
+    } else {
+      throw new TException("Not Implemented yet");
+    }
+  }
+
   public StringBuilder appendBasicStatus(final StringBuilder builder,
                                          final CacheNode cache,
                                          final long currentTimestamp) {
     builder.append(cache.getAddress())
-           .append(" : ")
-           .append(cache.getLatestStatistics())
-           .append(" : ")
-           .append(currentTimestamp - cache.getLatestTimestamp())
-           .append(" ms ago");
+      .append(" : ")
+      .append(cache.getLatestStatistics())
+      .append(" : ")
+      .append(currentTimestamp - cache.getLatestTimestamp())
+      .append(" ms ago");
     return builder;
   }
 
@@ -135,7 +145,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       appendBasicStatus(builder, cache, currentTimestamp);
       if (cache.getStopCause() != null) {
         builder.append(" : ")
-               .append(cache.getStopCause());
+          .append(cache.getStopCause());
       }
       builder.append('\n');
     }
@@ -221,23 +231,23 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
       final TMultiplexedProcessor processor = new TMultiplexedProcessor();
       final SurfMetaService.Processor<SurfMetaService.Iface> metaProcessor =
-              new SurfMetaService.Processor<SurfMetaService.Iface>(this);
+        new SurfMetaService.Processor<SurfMetaService.Iface>(this);
       processor.registerProcessor(SurfMetaService.class.getName(), metaProcessor);
       final SurfManagementService.Processor<SurfManagementService.Iface> managementProcessor =
-              new SurfManagementService.Processor<SurfManagementService.Iface>(this);
+        new SurfManagementService.Processor<SurfManagementService.Iface>(this);
       processor.registerProcessor(SurfManagementService.class.getName(), managementProcessor);
 
       this.server = new THsHaServer(
-          new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
-              .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
-              .workerThreads(this.numThreads));
+        new org.apache.thrift.server.THsHaServer.Args(serverTransport).processor(processor)
+          .protocolFactory(new org.apache.thrift.protocol.TCompactProtocol.Factory())
+          .workerThreads(this.numThreads));
 
       // Register just before serving
       serviceRegistry.register(NetUtils.getLocalAddress(), port);
 
       this.server.serve();
     } catch (Exception e) {
-      e.printStackTrace();
+      LOG.log(Level.SEVERE, "Exception occurred while running MetaServer", e);
     } finally {
       if (this.server != null && this.server.isServing())
         this.server.stop();
