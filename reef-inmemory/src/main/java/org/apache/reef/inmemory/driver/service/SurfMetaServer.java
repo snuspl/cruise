@@ -6,6 +6,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
@@ -17,6 +18,7 @@ import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
+import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -29,7 +31,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -50,11 +51,13 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   private final CacheManager cacheManager;
   private final ServiceRegistry serviceRegistry;
   private final ReplicationPolicy replicationPolicy;
+  private final WritingCacheSelectionPolicy writingCacheSelector;
 
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
                         final CacheManager cacheManager,
                         final ServiceRegistry serviceRegistry,
+                        final WritingCacheSelectionPolicy writingCacheSelector,
                         final ReplicationPolicy replicationPolicy,
                         final @Parameter(MetaServerParameters.Port.class) int port,
                         final @Parameter(MetaServerParameters.Timeout.class) int timeout,
@@ -63,6 +66,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     this.cacheManager = cacheManager;
     this.serviceRegistry = serviceRegistry;
     this.replicationPolicy = replicationPolicy;
+    this.writingCacheSelector = writingCacheSelector;
 
     this.port = port;
     this.timeout = timeout;
@@ -114,11 +118,13 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public String allocateBlock(String path) throws TException {
+  public NodeInfo allocateBlock(final String path, final long offset) throws TException {
     if (!exists(path)) {
       throw new FileNotFoundException();
     } else {
-      throw new TException("Not Implemented yet");
+      final List<CacheNode> caches = cacheManager.getCaches();
+      final CacheNode selected = writingCacheSelector.select(caches);
+      return new NodeInfo(selected.getAddress(), selected.getRack());
     }
   }
 

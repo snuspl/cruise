@@ -30,7 +30,7 @@ service SurfMetaService {
   bool updateFileMeta(1:entity.FileMeta fileMeta) throws (1: exceptions.FileNotFoundException fe)
 
   /**
-   * Allocate a new Block and return the address of the node which contains the block
+   * Allocate a new Block and return the NodeInfo(address+rack) of the block to write data.
    **/
-  string allocateBlock(1:string path)
+  entity.NodeInfo allocateBlock(1:string path, 2:i64 offset)
 }
