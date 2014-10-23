@@ -28,14 +28,14 @@ public class SurfFSOutputStream extends OutputStream {
   private final static int PACKET_SIZE = 512;
   private final static int QUEUE_MAX_SIZE = 80;
 
-  private final DataStreamer streamer = new DataStreamer();
+  private final DataStreamer streamer = new DataStreamer(); // change to EStage(?)
 
   private final long blockSize;
   private final SurfMetaService.Client metaClient;
   private final Path path;
 
-  private final byte localBuf[] = new byte[PACKET_SIZE];
   private int totalWriteCount = 0;
+  private final byte localBuf[] = new byte[PACKET_SIZE];
   private final Queue<Packet> packetQueue = new ConcurrentLinkedQueue<>();
 
   /**
@@ -59,8 +59,8 @@ public class SurfFSOutputStream extends OutputStream {
   @Override
   public void flush() throws IOException {
     synchronized (this) {
-      final long blockId = path + offset;
-      final long offset = totalWriteCount % localBuf.length;
+      final long blockId = path + offset; // type is long, not string
+      final long offset = totalWriteCount % localBuf.length; // compute this properly
       final byte[] buf = localBuf.clone();
       packetQueue.add(new Packet(blockId, offset, buf));
     }
@@ -68,13 +68,14 @@ public class SurfFSOutputStream extends OutputStream {
 
   @Override
   public void close() throws IOException {
-    // TODO Investigate what a proper action is
     flush();
   }
 
   private class DataStreamer implements Runnable {
     @Override
     public void run() {
+      // Event Handling via Stage?? Event Handling whenever flush() is called?
+
       while(true) {
         if (packetQueue.size() != 0) {
           try {
