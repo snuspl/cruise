@@ -1,29 +1,21 @@
 package org.apache.reef.inmemory.client;
 
 import com.google.common.net.HostAndPort;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
-import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
-import org.apache.reef.inmemory.task.service.SurfCacheServer;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Output stream implementation. Register metadata when created,
@@ -32,39 +24,46 @@ import java.util.Queue;
  * and repeat this step until close is called.
  */
 public class SurfFSOutputStream extends OutputStream {
-  private DataStreamer streamer;
-  private Path path;
-  private SurfMetaService.Client metaClient;
+  // 512B(packet size) X 80(queue size) = 40KB
+  private final static int PACKET_SIZE = 512;
+  private final static int QUEUE_MAX_SIZE = 80;
 
-  private byte localBuf[];
-  private int count;
+  private final DataStreamer streamer = new DataStreamer();
 
-  private Queue<Packet> packetQueue;
+  private final long blockSize;
+  private final SurfMetaService.Client metaClient;
+  private final Path path;
+
+  private final byte localBuf[] = new byte[PACKET_SIZE];
+  private int totalWriteCount = 0;
+  private final Queue<Packet> packetQueue = new ConcurrentLinkedQueue<>();
 
   /**
    * This constructor is called outside with the information to create a file
    * @throws IOException If the file exists already
    */
   public SurfFSOutputStream(Path path, SurfMetaService.Client metaClient, long blockSize) throws IOException, TException {
-    this.path = path;
+    this.blockSize = blockSize;
     this.metaClient = metaClient;
-    this.localBuf = new byte[packetsize]; // 512B(packet size) X 80(queue size) = 40KB
-    this.count = 0;
-    this.streamer = new DataStreamer();
+    this.path = path;
   }
 
   @Override
   public void write(int b) throws IOException {
-    localBuf[count++] = (byte)b;
-    if (count == localBuf.length) {
+    localBuf[totalWriteCount++] = (byte)b;
+    if (totalWriteCount % localBuf.length == 0) {
       flush();
     }
  }
 
   @Override
   public void flush() throws IOException {
-    packetQueue.add(new Packet(localBuf));
-    count = 0;
+    synchronized (this) {
+      final long blockId = path + offset;
+      final long offset = totalWriteCount % localBuf.length;
+      final byte[] buf = localBuf.clone();
+      packetQueue.add(new Packet(blockId, offset, buf));
+    }
   }
 
   @Override
@@ -87,7 +86,7 @@ public class SurfFSOutputStream extends OutputStream {
             SurfCacheService.Client cacheClient = new SurfCacheService.Client(protocol);
 
             Packet packet = packetQueue.remove();
-            cacheClient.writeData(packet.blockId, packet.offset, ByteBuffer.wrap(packet.buf)); // BlockId
+            cacheClient.writeData(packet.blockId, packet.offset, ByteBuffer.wrap(packet.buf));
           } catch (TException e) {
           }
         }
