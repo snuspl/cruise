@@ -17,5 +17,5 @@ service SurfCacheService {
     /**
      * Transfer block data from Client to Task
      **/
-    bool writeData(1:i64 blockId, 2:i64 offset, 3:binary data)
+    void writeData(1:string path, 2:i64 offset, 3:binary data)
 }

@@ -4,6 +4,7 @@ import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.replication.Action;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -53,4 +54,19 @@ public interface InMemoryCache {
    * @return The latest updates from the cache Task
    */
   public CacheUpdates pullUpdates();
+
+  /**
+   * Write the data
+   * @param blockId Identifier of the block to write data
+   * @param offset Offset of data from the start of the block
+   * @param buf Data buffered as much as buffer size
+   */
+  public void write(BlockId blockId, long offset, byte[] buf) throws IOException;
+
+  /**
+   * Allocate a block before writing the data
+   * @param blockId
+   * @param action
+   */
+  public void allocate(BlockId blockId, Action action) throws IOException;
 }

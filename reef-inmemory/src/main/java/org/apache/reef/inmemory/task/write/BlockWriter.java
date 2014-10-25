@@ -19,6 +19,15 @@ public interface BlockWriter {
   public void writeData(byte[] data, long offset) throws IOException;
 
   /**
+   * TODO Discuss this topic
+   * It is not necessary to address the cache replication factor in the task,
+   * but to achieve better performance, we should replicate the blocks as soon as
+   * written in the cache directly.
+   * @return
+   */
+  public int getCacheReplicationFactor();
+
+  /**
    * @return the number of blocks to be replicated in the baseFS
    */
   public int getBaseReplicationFactor();
