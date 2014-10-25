@@ -10,6 +10,7 @@ import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
+import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.AvroReplicationSerializer;
 import org.apache.reef.inmemory.common.replication.Rules;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
@@ -19,6 +20,8 @@ import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
+import org.apache.reef.inmemory.task.BlockId;
+import org.apache.reef.inmemory.task.hdfs.WritableBlockId;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -122,9 +125,25 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     if (!exists(path)) {
       throw new FileNotFoundException();
     } else {
-      final List<CacheNode> caches = cacheManager.getCaches();
-      final CacheNode selected = writingCacheSelector.select(caches);
-      return new NodeInfo(selected.getAddress(), selected.getRack());
+      try {
+        final FileMeta meta = metaManager.getFile(new Path(path), new User());
+        final Action action = replicationPolicy.getReplicationAction(path, meta);
+
+        final long encodedId = 12356L; // TODO we need encode the block identifier unique value
+        // TODO maybe we don't need WritableBlockIdFactory.
+        final BlockId blockId = new WritableBlockId(path, offset, encodedId, meta.getBlockSize());
+
+        // TODO do not need to get multiple blocks?
+        final List<CacheNode> caches = cacheManager.getCaches();
+        final CacheNode selected = writingCacheSelector.select(caches);
+
+        // Send allocate message and return the selected cache node.
+        metaManager.allocate(selected.getTaskId(), blockId, action);
+        return new NodeInfo(selected.getAddress(), selected.getRack());
+
+      } catch (Throwable throwable) {
+        throw new TException("Fail to resolve replication policy", throwable);
+      }
     }
   }
 

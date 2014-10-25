@@ -3,6 +3,7 @@ package org.apache.reef.inmemory.driver.service;
 import com.google.common.cache.LoadingCache;
 import org.apache.reef.inmemory.driver.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
+import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -30,6 +31,7 @@ public final class SurfMetaServerTest {
     final CacheManager cacheManager = mock(CacheManager.class);
     final ServiceRegistry serviceRegistry = mock(ServiceRegistry.class);
     final ReplicationPolicy replicationPolicy = mock(ReplicationPolicy.class);
+    final WritingCacheSelectionPolicy writingCacheSelectionPolicy = mock(WritingCacheSelectionPolicy.class);
     final CacheLocationRemover cacheLocationRemover = new CacheLocationRemover();
     final CacheUpdater cacheUpdater = mock(CacheUpdater.class);
 
@@ -37,7 +39,7 @@ public final class SurfMetaServerTest {
 
     try {
       final SurfMetaServer metaService = new SurfMetaServer(
-              metaManager, cacheManager, serviceRegistry, replicationPolicy, 18000, 10, 1);
+              metaManager, cacheManager, serviceRegistry, writingCacheSelectionPolicy, replicationPolicy, 18000, 10, 1);
       metaService.load("/nonexistent/path");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof org.apache.reef.inmemory.common.exceptions.FileNotFoundException);

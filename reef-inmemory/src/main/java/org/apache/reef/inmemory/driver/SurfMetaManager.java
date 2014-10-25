@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.User;
+import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
@@ -70,6 +71,8 @@ public final class SurfMetaManager {
   public void update(FileMeta fileMeta, User creator) {
     final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), creator);
     metadataIndex.put(absolutePath, fileMeta);
+    // TODO use updateMeta? Does this method affect the cache?
+//    cacheUpdater.updateMeta(absolutePath, fileMeta);
   }
 
   /**
@@ -81,6 +84,17 @@ public final class SurfMetaManager {
     metadataIndex.invalidateAll(); // TODO: this may not be so accurate
     cacheMessenger.clearAll();
     return numEntries;
+  }
+
+  /**
+   * Request to allocate a block to Cache based on the policy
+   * specified in action.
+   * @param taskId
+   * @param blockId
+   * @param action
+   */
+  public void allocate(String taskId, BlockId blockId, Action action) {
+    cacheMessenger.allocateBlock(taskId, blockId, action);
   }
 
   private Path getAbsolutePath(Path path, User creator) {
