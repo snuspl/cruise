@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.common.hdfs;
 
 import com.microsoft.reef.util.Optional;
 import org.apache.reef.inmemory.common.CacheClearMessage;
+import org.apache.reef.inmemory.common.write.BlockAllocateMessage;
 
 import java.io.Serializable;
 
@@ -13,6 +14,7 @@ public final class HdfsDriverTaskMessage implements Serializable {
 
   private Optional<HdfsBlockMessage> hdfsBlockMessage = Optional.empty();
   private Optional<CacheClearMessage> clearMessage = Optional.empty();
+  private Optional<BlockAllocateMessage> allocateMessage = Optional.empty();
 
   public static HdfsDriverTaskMessage hdfsBlockMessage(HdfsBlockMessage hdfsBlockMessage) {
     HdfsDriverTaskMessage msg = new HdfsDriverTaskMessage();
@@ -26,11 +28,21 @@ public final class HdfsDriverTaskMessage implements Serializable {
     return msg;
   }
 
+  public static HdfsDriverTaskMessage allocateMessage(BlockAllocateMessage allocateMessage) {
+    HdfsDriverTaskMessage msg = new HdfsDriverTaskMessage();
+    msg.allocateMessage = Optional.of(allocateMessage);
+    return msg;
+  }
+
   public Optional<HdfsBlockMessage> getHdfsBlockMessage() {
     return hdfsBlockMessage;
   }
 
   public Optional<CacheClearMessage> getClearMessage() {
     return clearMessage;
+  }
+
+  public Optional<BlockAllocateMessage> getAllocateMessage() {
+    return allocateMessage;
   }
 }
