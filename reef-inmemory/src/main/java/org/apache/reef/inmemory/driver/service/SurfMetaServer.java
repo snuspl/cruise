@@ -137,8 +137,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
         final List<CacheNode> caches = cacheManager.getCaches();
         final CacheNode selected = writingCacheSelector.select(caches);
 
-        // Send allocate message and return the selected cache node.
-        metaManager.allocate(selected.getTaskId(), blockId, action);
+        // TODO Instead send a message including replication policy to the Client
+//        metaManager.allocate(selected.getTaskId(), blockId, action);
         return new NodeInfo(selected.getAddress(), selected.getRack());
 
       } catch (Throwable throwable) {

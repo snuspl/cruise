@@ -86,17 +86,6 @@ public final class SurfMetaManager {
     return numEntries;
   }
 
-  /**
-   * Request to allocate a block to Cache based on the policy
-   * specified in action.
-   * @param taskId
-   * @param blockId
-   * @param action
-   */
-  public void allocate(String taskId, BlockId blockId, Action action) {
-    cacheMessenger.allocateBlock(taskId, blockId, action);
-  }
-
   private Path getAbsolutePath(Path path, User creator) {
     Path newPath = null;
 

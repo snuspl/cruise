@@ -5,7 +5,6 @@ import org.apache.reef.inmemory.common.CacheClearMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
 import org.apache.reef.inmemory.common.replication.Action;
-import org.apache.reef.inmemory.common.write.BlockAllocateMessage;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheMessenger;
 import org.apache.reef.inmemory.driver.CacheNode;
@@ -49,14 +48,6 @@ public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage
     final CacheNode node = cacheManager.getCache(taskId);
     if (node != null) {
       node.send(CODEC.encode(HdfsDriverTaskMessage.hdfsBlockMessage(msg)));
-    }
-  }
-
-  @Override
-  public void allocateBlock(final String taskId, final BlockId blockId, final Action action) {
-    final CacheNode node = cacheManager.getCache(taskId);
-    if (node != null) {
-      node.send(CODEC.encode(HdfsDriverTaskMessage.allocateMessage(new BlockAllocateMessage(blockId, action))));
     }
   }
 }

@@ -23,9 +23,4 @@ public interface CacheMessenger<T> {
    * Send a block load request to the Cache
    */
   public void addBlock(String taskId, T msg);
-
-  /**
-   * Send a block allocate request to the Cache
-   */
-  public void allocateBlock(String taskId, BlockId blockId, Action action);
 }

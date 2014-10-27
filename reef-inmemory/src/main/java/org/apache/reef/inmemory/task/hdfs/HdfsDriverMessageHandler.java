@@ -5,7 +5,6 @@ import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
 import org.apache.reef.inmemory.common.replication.Action;
-import org.apache.reef.inmemory.common.write.BlockAllocateMessage;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.DriverMessageHandler;
 import org.apache.reef.inmemory.task.InMemoryCache;
@@ -49,11 +48,6 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
       } else if (msg.getClearMessage().isPresent()) {
         LOG.log(Level.INFO, "Received cache clear msg");
         cache.clear();
-      } else if (msg.getAllocateMessage().isPresent()) {
-        final BlockAllocateMessage allocateMessage = msg.getAllocateMessage().get();
-        final BlockId blockId = allocateMessage.getBlockId();
-        final Action action = allocateMessage.getAction();
-        cache.allocate(blockId, action);
       }
     }
   }
