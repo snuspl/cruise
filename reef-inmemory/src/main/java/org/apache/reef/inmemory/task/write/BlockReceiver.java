@@ -9,7 +9,7 @@ import java.io.IOException;
  * This contains how many replica to have in the UnderFS
  * and Synchronization method (write-back / write-through)
  */
-public interface BlockWriter {
+public interface BlockReceiver {
 
   /**
    * Add data into block loader.
@@ -17,15 +17,6 @@ public interface BlockWriter {
    * @param offset offset of the data
    */
   public void writeData(byte[] data, long offset) throws IOException;
-
-  /**
-   * TODO Discuss this topic
-   * It is not necessary to address the cache replication factor in the task,
-   * but to achieve better performance, we should replicate the blocks as soon as
-   * written in the cache directly.
-   * @return
-   */
-  public int getCacheReplicationFactor();
 
   /**
    * @return the number of blocks to be replicated in the baseFS
