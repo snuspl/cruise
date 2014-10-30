@@ -50,7 +50,6 @@ public final class LRUEvictionManager {
 
   /**
    * Invoke when a block has been removed from the cache
-   * @param amount Amount removed
    */
   public synchronized void evicted(final BlockId blockId) {
     evictingBytes -= blockId.getBlockSize();

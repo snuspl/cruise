@@ -20,7 +20,7 @@ public final class LRUEvictionManagerTest {
   private final long blockSize = 10;
 
   private BlockId randomBlockId(long length) {
-    return new MockBlockId(random.nextLong(), length, "/path");
+    return new MockBlockId("/path", random.nextLong(), length);
   }
 
   @Before

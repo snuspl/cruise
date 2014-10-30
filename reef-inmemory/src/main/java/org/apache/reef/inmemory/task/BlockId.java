@@ -17,11 +17,6 @@ public interface BlockId {
   public long getOffset();
 
   /**
-   * Return unique ID. The complementing BlockInfo has the same unique ID.
-   */
-  public long getUniqueId();
-
-  /**
    * Return size of the block, in MB
    */
   public long getBlockSize();

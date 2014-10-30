@@ -53,13 +53,12 @@ public final class HdfsBlockId implements BlockId, Serializable {
   }
 
   @Override
-  public long getUniqueId() {
-    return blockId;
-  }
-
-  @Override
   public long getBlockSize() {
     return blockSize;
+  }
+
+  public long getUniqueId() {
+    return blockId;
   }
 
   public long getGenerationTimestamp() {

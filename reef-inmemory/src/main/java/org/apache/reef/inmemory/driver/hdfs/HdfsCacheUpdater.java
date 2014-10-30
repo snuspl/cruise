@@ -202,9 +202,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     final List<BlockInfo> blocksWithRemoves = new ArrayList<>(pendingRemoves.size());
     for (final BlockId blockId : pendingRemoves.keySet()) {
       final long offset = blockId.getOffset();
-      final long uniqueId = blockId.getUniqueId();
       for (final String nodeAddress : pendingRemoves.get(blockId)) {
-        final BlockInfo removed = removeLocation(fileMeta, nodeAddress, offset, uniqueId);
+        final BlockInfo removed = removeLocation(fileMeta, nodeAddress, offset);
         if (removed != null) {
           blocksWithRemoves.add(removed);
         }
@@ -215,8 +214,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
 
   private BlockInfo removeLocation(final FileMeta fileMeta,
                                    final String nodeAddress,
-                                   final long offset,
-                                   final long uniqueId) {
+                                   final long offset) {
     final BlockInfo blockInfo;
     final long blockSize = fileMeta.getBlockSize();
     if (blockSize <= 0) {
@@ -228,8 +226,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       return null;
     }
     blockInfo = fileMeta.getBlocks().get(index);
-    if (blockInfo.getBlockId() != uniqueId) {
-      LOG.log(Level.WARNING, "Block IDs did not match: "+blockInfo.getBlockId()+", "+uniqueId);
+    if (blockInfo.getOffSet() != offset) {
+      LOG.log(Level.WARNING, "The offset did not match: "+blockInfo.getOffSet()+", "+offset);
       return null;
     } else if (blockInfo.getLocations() == null) {
       LOG.log(Level.WARNING, "No locations for block "+blockInfo);
