@@ -4,15 +4,13 @@ import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.NetUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
-import org.apache.reef.inmemory.common.entity.FileMeta;
-import org.apache.reef.inmemory.common.entity.NodeInfo;
-import org.apache.reef.inmemory.common.entity.User;
+import org.apache.reef.inmemory.common.entity.*;
 import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.AvroReplicationSerializer;
 import org.apache.reef.inmemory.common.replication.Rules;
+import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.reef.inmemory.driver.CacheManager;
@@ -20,8 +18,6 @@ import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
-import org.apache.reef.inmemory.task.BlockId;
-import org.apache.reef.inmemory.task.hdfs.WritableBlockId;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -121,7 +117,10 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public NodeInfo allocateBlock(final String path, final long offset) throws TException {
+  public AllocatedBlockInfo allocateBlock(final String path,
+                                          final long offset,
+                                          final long blockSize,
+                                          final String clientAddress) throws TException {
     if (!exists(path)) {
       throw new FileNotFoundException();
     } else {
@@ -129,18 +128,16 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
         final FileMeta meta = metaManager.getFile(new Path(path), new User());
         final Action action = replicationPolicy.getReplicationAction(path, meta);
 
-        final long encodedId = 12356L; // TODO we need encode the block identifier unique value
-        // TODO maybe we don't need WritableBlockIdFactory.
-        final BlockId blockId = new WritableBlockId(path, offset, encodedId, meta.getBlockSize());
+        // TODO Consider the locality with clientAddress
+        final int cacheReplicationFactor = action.getCacheReplicationFactor();
+        final List<NodeInfo> selected = writingCacheSelector.select(cacheManager.getCaches(), cacheReplicationFactor);
 
-        // TODO do not need to get multiple blocks?
-        final List<CacheNode> caches = cacheManager.getCaches();
-        final CacheNode selected = writingCacheSelector.select(caches);
+        final boolean pin = action.getPin();
+        final int baseReplicationFactor = action.getWrite().getBaseReplicationFactor();
+        // TODO Change the type of SyncMethod to boolean
+        final boolean writable = (action.getWrite().getSync() == SyncMethod.WRITE_THROUGH);
 
-        // TODO Instead send a message including replication policy to the Client
-//        metaManager.allocate(selected.getTaskId(), blockId, action);
-        return new NodeInfo(selected.getAddress(), selected.getRack());
-
+        return new AllocatedBlockInfo(selected, pin, baseReplicationFactor, writable);
       } catch (Throwable throwable) {
         throw new TException("Fail to resolve replication policy", throwable);
       }

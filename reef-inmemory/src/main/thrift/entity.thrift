@@ -24,6 +24,17 @@ struct BlockInfo {
 }
 
 /**
+ * Contains block information of newly allocated from the MetaServer
+ * as a response for request of AllocateBlock
+ */
+struct AllocatedBlockInfo {
+  1: list<NodeInfo> locations,      // Cache locations including the nodes to replicate
+  2: bool pin,                      // True if this block is to be pinned
+  3: i32 baseReplicationFactor,     // Replication factor to base File System.
+  4: bool writeThrough              // True if the synchronization method is Write-through
+}
+
+/**
  * TODO: revisit when implementing ls commands at Surf Driver
  */
 struct User {
