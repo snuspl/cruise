@@ -1,7 +1,9 @@
 package org.apache.reef.inmemory.driver.write;
 
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.driver.CacheNode;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -10,8 +12,15 @@ import java.util.List;
  */
 public class WritingRandomCacheSelectionPolicy implements WritingCacheSelectionPolicy {
   @Override
-  public CacheNode select(List<CacheNode> nodes) {
+  public List<NodeInfo> select(List<CacheNode> nodes, int numReplicas) {
     Collections.shuffle(nodes);
-    return nodes.get(0);
+    final List<NodeInfo> chosenNodes = new ArrayList<>(numReplicas);
+    int replicasAdded = 0;
+    for (final CacheNode node : nodes) {
+      if (replicasAdded >= numReplicas) break;
+      chosenNodes.add(new NodeInfo(node.getAddress(), node.getRack()));
+      replicasAdded++;
+    }
+    return chosenNodes;
   }
 }
