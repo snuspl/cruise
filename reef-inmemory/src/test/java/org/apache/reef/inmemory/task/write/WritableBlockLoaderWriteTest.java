@@ -4,7 +4,6 @@ import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
-import org.apache.reef.inmemory.task.hdfs.WritableBlockId;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -24,7 +23,7 @@ public class WritableBlockLoaderWriteTest {
 
   @Before
   public void setup() {
-    id = new WritableBlockId("path", 0, 0, 16);
+    id = new WritableBlockId("path", 0, 16);
     loader = new WritableBlockLoader(id, true, 4, 1, SyncMethod.WRITE_BACK);
   }
 
