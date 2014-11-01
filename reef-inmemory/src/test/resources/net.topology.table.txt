@@ -1,0 +1,11 @@
+host01  /rack0
+host02  /rack0
+host03  /rack0
+host11  /rack1
+host12  /rack1
+host13  /rack1
+host21  /rack2
+host22  /rack2
+host23  /rack2
+host04  /rack0
+host31  /rack3
