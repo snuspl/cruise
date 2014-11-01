@@ -19,7 +19,7 @@ import java.util.logging.Logger;
  * as specified by policy.
  * This class implements BlockLoader and Writable interface
  */
-public class WritableBlockLoader implements BlockLoader, BlockWriter {
+public class WritableBlockLoader implements BlockLoader, BlockReceiver {
   private final static Logger LOG = Logger.getLogger(Writeable.class.getName());
 
   // TODO Constructor
@@ -48,7 +48,7 @@ public class WritableBlockLoader implements BlockLoader, BlockWriter {
 
   @Override
   public void loadBlock() {
-    LOG.log(Level.SEVERE, "This method is not supposed to call");
+    LOG.log(Level.INFO, "Enable Block {0} to write data", this.blockId);
   }
 
   @Override

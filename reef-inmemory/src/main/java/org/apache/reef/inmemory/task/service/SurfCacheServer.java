@@ -2,13 +2,18 @@ package org.apache.reef.inmemory.task.service;
 
 import com.microsoft.tang.annotations.Parameter;
 import org.apache.reef.inmemory.common.BlockIdFactory;
+import org.apache.reef.inmemory.common.entity.AllocatedBlockInfo;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.task.BlockId;
+import org.apache.reef.inmemory.task.BlockLoader;
 import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.InMemoryCache;
+import org.apache.reef.inmemory.task.write.WritableBlockId;
+import org.apache.reef.inmemory.task.write.WritableBlockLoader;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.TServer;
@@ -132,8 +137,22 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   }
 
   @Override
-  public boolean writeData(long blockId, long offset, ByteBuffer data) throws TException {
-    return false;
-  }
+  public void initBlock(String path, long offset, long blockSize, AllocatedBlockInfo info) throws TException {
+    /*
+     * Create a cache entry (BlockLoader) and load it into the cache
+     * so the cache can receive the data and write the data into memory
+     */
+    final BlockId blockId = new WritableBlockId(path, offset, blockSize);
 
+    final boolean pin = info.isPin();
+    final int baseReplicationFactor = info.getBaseReplicationFactor();
+    final SyncMethod syncMethod = info.isWriteThrough() ? SyncMethod.WRITE_THROUGH : SyncMethod.WRITE_BACK;
+
+    final BlockLoader blockLoader = new WritableBlockLoader(blockId, pin, bufferSize, baseReplicationFactor, syncMethod);
+    try {
+      cache.load(blockLoader);
+    } catch (IOException e) {
+      throw new TException("Failed to initiate block "+blockId.toString(), e);
+    }
+  }
 }
