@@ -131,7 +131,7 @@ public final class YarnLocationSorterTest {
   }
 
   /**
-   * Test that the /rack3/192.168.103.1 (no hosts in rack3 are a part of fileMeta) returns:
+   * Test that /rack3/192.168.103.1 (no hosts in rack3 are a part of fileMeta) returns:
    * 9 off-rack locations
    */
   @Test
