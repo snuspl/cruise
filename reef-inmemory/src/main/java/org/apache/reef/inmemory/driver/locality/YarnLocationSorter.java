@@ -11,6 +11,7 @@ import org.apache.reef.inmemory.common.entity.NodeInfo;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -62,9 +63,10 @@ public final class YarnLocationSorter implements LocationSorter {
       }
 
       locations.clear();
-      locations.addAll(nodeLocal);
-      locations.addAll(rackLocal);
-      locations.addAll(offRack);
+      for (final List<NodeInfo> list : new List[]{ nodeLocal, rackLocal, offRack }) {
+        Collections.shuffle(list);
+        locations.addAll(list);
+      }
     }
     return sorted;
   }
