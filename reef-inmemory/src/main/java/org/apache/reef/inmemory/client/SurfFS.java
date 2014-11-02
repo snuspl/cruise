@@ -117,7 +117,7 @@ public final class SurfFS extends FileSystem {
     this.setConf(conf);
 
     this.metaserverAddress = getMetaserverResolver().getAddress();
-    LOG.log(Level.FINE, "SurfFs address resolved to: " + this.metaserverAddress);
+    LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaserverAddress);
     this.cacheClientManager = new CacheClientManager(
             conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
             conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),

@@ -143,7 +143,7 @@ public class Launch
     try {
       final String replicationRulesPath = chooseNamedInstance(ReplicationRulesPath.class, clInjector, fileInjector);
       final String replicationRules = FileUtils.readFileToString(new File(replicationRulesPath));
-      LOG.log(Level.FINER, "Replication Rules: "+replicationRules);
+      LOG.log(Level.FINER, "Replication Rules: {0}", replicationRules);
       return configModule.set(InMemoryDriverConfiguration.REPLICATION_RULES, replicationRules);
     } catch (InjectionException e) {
       LOG.log(Level.FINE, "Replication Rules not set, will use default");
