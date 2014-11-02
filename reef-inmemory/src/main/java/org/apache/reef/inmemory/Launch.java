@@ -19,6 +19,9 @@ import org.apache.commons.io.FileUtils;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.driver.InMemoryDriver;
 import org.apache.reef.inmemory.driver.InMemoryDriverConfiguration;
+import org.apache.reef.inmemory.driver.locality.LocalLocationSorter;
+import org.apache.reef.inmemory.driver.locality.LocationSorter;
+import org.apache.reef.inmemory.driver.locality.YarnLocationSorter;
 import org.apache.reef.inmemory.driver.service.InetServiceRegistry;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 import org.apache.reef.inmemory.driver.service.ServiceRegistry;
@@ -135,11 +138,12 @@ public class Launch
   }
 
   private static ConfigurationModule setReplicationRules(final ConfigurationModule configModule,
-                                                         final Injector injector) {
+                                                         final Injector clInjector,
+                                                         final Injector fileInjector) {
     try {
-      final String replicationRulesPath = injector.getNamedInstance(ReplicationRulesPath.class);
+      final String replicationRulesPath = chooseNamedInstance(ReplicationRulesPath.class, clInjector, fileInjector);
       final String replicationRules = FileUtils.readFileToString(new File(replicationRulesPath));
-      LOG.log(Level.FINER, "Replication Rules: "+replicationRules);
+      LOG.log(Level.FINER, "Replication Rules: {0}", replicationRules);
       return configModule.set(InMemoryDriverConfiguration.REPLICATION_RULES, replicationRules);
     } catch (InjectionException e) {
       LOG.log(Level.FINE, "Replication Rules not set, will use default");
@@ -157,8 +161,7 @@ public class Launch
     final Injector clInjector = Tang.Factory.getTang().newInjector(clConf);
     final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
 
-    final Configuration inMemoryConfig;
-    ConfigurationModule inMemoryConfigModule = InMemoryDriverConfiguration.getConf(clInjector.getNamedInstance(DfsParameters.Type.class))
+    ConfigurationModule inMemoryConfigModule = InMemoryDriverConfiguration.getConf(chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
       .set(InMemoryDriverConfiguration.METASERVER_PORT, chooseNamedInstance(MetaServerParameters.Port.class, clInjector, fileInjector))
       .set(InMemoryDriverConfiguration.INIT_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.InitCacheServers.class, clInjector, fileInjector))
       .set(InMemoryDriverConfiguration.DEFAULT_MEM_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.DefaultMemCacheServers.class, clInjector, fileInjector))
@@ -169,48 +172,62 @@ public class Launch
       .set(InMemoryDriverConfiguration.CACHESERVER_HEAP_SLACK, chooseNamedInstance(CacheParameters.HeapSlack.class, clInjector, fileInjector))
       .set(InMemoryDriverConfiguration.DFS_TYPE, chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
       .set(InMemoryDriverConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
-    inMemoryConfigModule = setReplicationRules(inMemoryConfigModule, clInjector);
-
-    final boolean isLocal = clInjector.getNamedInstance(Local.class);
-    if (isLocal) {
-      final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
-        .bind(ServiceRegistry.class, InetServiceRegistry.class)
-        .build();
-
-      inMemoryConfig = Configurations.merge(inMemoryConfigModule.build(), registryConfig);
-    } else {
-      final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
-        .bind(ServiceRegistry.class, YarnServiceRegistry.class)
-        .build();
-      final Configuration httpConfig = HttpHandlerConfiguration.CONF
-        .set(HttpHandlerConfiguration.HTTP_HANDLERS, YarnServiceRegistry.AddressHttpHandler.class)
-        .build();
-
-      inMemoryConfig = Configurations.merge(inMemoryConfigModule.build(), registryConfig, httpConfig);
-    }
-
-    return inMemoryConfig;
+    inMemoryConfigModule = setReplicationRules(inMemoryConfigModule, clInjector, fileInjector);
+    return inMemoryConfigModule.build();
   }
 
   /**
    * Build Runtime Configuration
    */
-  private static Configuration getRuntimeConfiguration(final Configuration clConfig) throws BindException, InjectionException {
-    final Injector injector = Tang.Factory.getTang().newInjector(clConfig);
-    final boolean isLocal = injector.getNamedInstance(Local.class);
+  private static Configuration getRuntimeConfiguration(final Configuration clConf, final Configuration fileConf)
+    throws BindException, InjectionException {
+    final Injector clInjector = Tang.Factory.getTang().newInjector(clConf);
+    final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
+
+    final boolean isLocal = chooseNamedInstance(Local.class, clInjector, fileInjector);
     final Configuration runtimeConfig;
     if(isLocal) {
-      final int localThreads = injector.getNamedInstance(LocalThreads.class);
+      final int localThreads = chooseNamedInstance(LocalThreads.class, clInjector, fileInjector);
       runtimeConfig = LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, localThreads)
-        .build();
+              .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, localThreads)
+              .build();
     } else {
-      final double jvmHeapSlack = injector.getNamedInstance(ReefJvmHeapSlack.class);
+      final double jvmHeapSlack = chooseNamedInstance(ReefJvmHeapSlack.class, clInjector, fileInjector);
       runtimeConfig = YarnClientConfiguration.CONF
-        .set(YarnClientConfiguration.JVM_HEAP_SLACK, jvmHeapSlack)
-        .build();
+              .set(YarnClientConfiguration.JVM_HEAP_SLACK, jvmHeapSlack)
+              .build();
     }
     return runtimeConfig;
+  }
+
+  /**
+   * Build cluster-specific configuration
+   */
+  private static Configuration getClusterConfiguration(final Configuration clConf, final Configuration fileConf)
+    throws InjectionException, BindException {
+    final Injector clInjector = Tang.Factory.getTang().newInjector(clConf);
+    final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
+
+    final Configuration clusterConfig;
+
+    final boolean isLocal = chooseNamedInstance(Local.class, clInjector, fileInjector);
+    if (isLocal) {
+      final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
+              .bind(ServiceRegistry.class, InetServiceRegistry.class)
+              .bind(LocationSorter.class, LocalLocationSorter.class)
+              .build();
+      clusterConfig = Configurations.merge(registryConfig);
+    } else {
+      final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
+              .bind(ServiceRegistry.class, YarnServiceRegistry.class)
+              .bind(LocationSorter.class, YarnLocationSorter.class)
+              .build();
+      final Configuration httpConfig = HttpHandlerConfiguration.CONF
+              .set(HttpHandlerConfiguration.HTTP_HANDLERS, YarnServiceRegistry.AddressHttpHandler.class)
+              .build();
+      clusterConfig = Configurations.merge(registryConfig, httpConfig);
+    }
+    return clusterConfig;
   }
 
   /**
@@ -219,10 +236,12 @@ public class Launch
   public static REEF runInMemory(final Configuration clConfig, final Configuration fileConfig) throws InjectionException {
     final Configuration driverConfig = getDriverConfiguration();
     final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig, fileConfig);
-    final Configuration runtimeConfig = getRuntimeConfiguration(clConfig);
+    final Configuration clusterConfig = getClusterConfiguration(clConfig, fileConfig);
+
+    final Configuration runtimeConfig = getRuntimeConfiguration(clConfig, fileConfig);
     final Injector injector = Tang.Factory.getTang().newInjector(runtimeConfig);
     final REEF reef = injector.getInstance(REEFImplementation.class);
-    reef.submit(Tang.Factory.getTang().newConfigurationBuilder(driverConfig, inMemoryConfig).build());
+    reef.submit(Tang.Factory.getTang().newConfigurationBuilder(driverConfig, inMemoryConfig, clusterConfig).build());
     return reef;
   }
 

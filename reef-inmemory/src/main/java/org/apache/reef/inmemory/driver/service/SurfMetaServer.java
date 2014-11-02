@@ -4,7 +4,6 @@ import com.microsoft.tang.annotations.Parameter;
 import com.microsoft.wake.remote.NetUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
@@ -67,9 +66,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public FileMeta getFileMeta(final String path) throws FileNotFoundException, TException {
+  public FileMeta getFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
     try {
-      return metaManager.getFile(new Path(path), new User());
+      return metaManager.getFile(new Path(path), new User(), clientHostname); // TODO: need (integrated?) tests for this version
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);
     } catch (IOException e) {
@@ -80,16 +79,23 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
-  public StringBuilder appendBasicStatus(final StringBuilder builder,
-                                         final CacheNode cache,
-                                         final long currentTimestamp) {
+  private void appendBasicStatus(final StringBuilder builder,
+                                          final CacheNode cache,
+                                          final long currentTimestamp) {
     builder.append(cache.getAddress())
            .append(" : ")
            .append(cache.getLatestStatistics())
            .append(" : ")
            .append(currentTimestamp - cache.getLatestTimestamp())
            .append(" ms ago");
-    return builder;
+  }
+
+  private void appendStopCause(final StringBuilder builder,
+                                        final CacheNode cache) {
+    if (cache.getStopCause() != null) {
+      builder.append(" : ")
+              .append(cache.getStopCause());
+    }
   }
 
   @Override
@@ -101,10 +107,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     builder.append("Number of caches: "+caches.size()+"\n");
     for (CacheNode cache : caches) {
       appendBasicStatus(builder, cache, currentTimestamp);
-      if (cache.getStopCause() != null) {
-        builder.append(" : ")
-               .append(cache.getStopCause());
-      }
+      appendStopCause(builder, cache);
       builder.append('\n');
     }
     return builder.toString();

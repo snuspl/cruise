@@ -21,6 +21,7 @@ import org.apache.thrift.transport.TTransportException;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -53,6 +54,9 @@ public final class SurfFS extends FileSystem {
   public static final String CACHECLIENT_BUFFER_SIZE_KEY = "surf.cache.client.buffer.size";
   public static final int CACHECLIENT_BUFFER_SIZE_DEFAULT = 8 * 1024 * 1024;
 
+  public static final String INSTRUMENTATIONCLIENT_LOG_LEVEL_KEY = "surf.instrumentation.client.log.level";
+  public static final String INSTRUMENTATIONCLIENT_LOG_LEVEL_DEFAULT = "INFO";
+
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
   // These cannot be final, because the empty constructor + intialize() are called externally
@@ -60,6 +64,7 @@ public final class SurfFS extends FileSystem {
   private SurfMetaService.Client metaClient;
   private CacheClientManager cacheClientManager;
 
+  private String localAddress;
   private String metaserverAddress;
 
   private URI uri;
@@ -112,11 +117,16 @@ public final class SurfFS extends FileSystem {
     this.setConf(conf);
 
     this.metaserverAddress = getMetaserverResolver().getAddress();
-    LOG.log(Level.FINE, "SurfFs address resolved to: "+this.metaserverAddress);
+    LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaserverAddress);
     this.cacheClientManager = new CacheClientManager(
             conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
             conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
             conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
+
+    // TODO: Works on local and cluster. Will it work across all platforms? (NetUtils gives the wrong address.)
+    this.localAddress = InetAddress.getLocalHost().getHostName();
+    LOG.log(Level.INFO, "localAddress: {0}",
+            localAddress);
   }
 
   /**
@@ -170,11 +180,14 @@ public final class SurfFS extends FileSystem {
    */
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
+    final String pathStr = path.toUri().getPath();
+
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
-            new Object[]{path, path.toUri().getPath()});
+            new Object[]{path, pathStr});
 
     try {
-      FileMeta metadata = getMetaClient().getFileMeta(path.toUri().getPath());
+      FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
+
       return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager, getConf()));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException ", e);
@@ -271,7 +284,7 @@ public final class SurfFS extends FileSystem {
     List<BlockLocation> blockLocations = new LinkedList<>();
 
     try {
-      final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath());
+      final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath(), localAddress);
       long startRemaining = start;
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
@@ -308,5 +321,11 @@ public final class SurfFS extends FileSystem {
       LOG.log(Level.SEVERE, "TException: "+e+" "+e.getCause());
       throw new IOException(e.getMessage());
     }
+  }
+
+  @Override
+  public void close() throws IOException {
+    LOG.log(Level.INFO, "Close called");
+    super.close();
   }
 }

@@ -18,6 +18,7 @@ import java.net.URI;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -62,7 +63,7 @@ public final class SurfFSLocationTest {
     fileMeta.setFileSize(len);
 
     final SurfMetaService.Client metaClient = mock(SurfMetaService.Client.class);
-    when(metaClient.getFileMeta(anyString())).thenReturn(fileMeta);
+    when(metaClient.getFileMeta(anyString(), anyString())).thenReturn(fileMeta);
 
     final Configuration conf = new Configuration();
     surfFs = new SurfFS(mock(FileSystem.class), metaClient);
