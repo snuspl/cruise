@@ -114,7 +114,6 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
     final byte[] chunk = cache.get(blockId, chunkIndex);
 
-    LOG.log(Level.INFO, chunkOffset + ", " + (chunk.length - chunkOffset) + ", " + (length));
     final ByteBuffer buf = ByteBuffer.wrap(chunk, chunkOffset,
             Math.min(chunk.length - chunkOffset, (int) Math.min(Integer.MAX_VALUE, length)));
     return buf;
