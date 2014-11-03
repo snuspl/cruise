@@ -1,7 +1,10 @@
 package org.apache.reef.inmemory.client;
 
+import com.microsoft.reef.client.DriverLauncher;
+import com.microsoft.reef.client.LauncherStatus;
 import com.microsoft.reef.client.REEF;
 import com.microsoft.tang.exceptions.InjectionException;
+import com.microsoft.wake.impl.StageManager;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -14,7 +17,6 @@ import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -22,6 +24,9 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -34,13 +39,12 @@ import static org.junit.Assert.fail;
  * although the test executes fine, it does not cleanup the Processes created.
  * TODO: When REEF issue #868 is available, call close using that method
  */
-@Ignore
 public final class SurfFSOpenITCase {
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;
 
-  private static REEF reef;
+  private static ExecutorService executorService = Executors.newSingleThreadExecutor();
 
   private static final byte[] b = new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5, (byte)6, (byte)7, (byte)8};
 
@@ -54,6 +58,9 @@ public final class SurfFSOpenITCase {
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
+
+  private static final Object lock = new Object();
+  private static final AtomicBoolean jobFinished = new AtomicBoolean(false);
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -70,10 +77,6 @@ public final class SurfFSOpenITCase {
     baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
-    com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
-    com.microsoft.tang.Configuration fileConf = Launch.parseConfigFile();
-    reef = Launch.runInMemory(clConf, fileConf);
-
     final FSDataOutputStream stream1 = baseFs.create(new Path(TESTPATH1));
     for (int i = 0; i < SIZE1; i++) {
       stream1.write(b);
@@ -86,8 +89,28 @@ public final class SurfFSOpenITCase {
     }
     stream2.close();
 
+    executorService.submit(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          final com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
+          final com.microsoft.tang.Configuration fileConf = Launch.parseConfigFile();
+          final com.microsoft.tang.Configuration runtimeConfig = Launch.getRuntimeConfiguration(clConf, fileConf);
+          final com.microsoft.tang.Configuration launchConfig = Launch.getLaunchConfiguration(clConf, fileConf);
+
+          DriverLauncher.getLauncher(runtimeConfig).run(launchConfig, 40 * 1000);
+          jobFinished.set(true);
+          synchronized (lock) {
+            lock.notifyAll();
+          }
+        } catch (Exception e) {
+          throw new RuntimeException("Could not run Surf instance", e);
+        }
+      }
+    });
+
     try {
-      Thread.sleep(10000); // Wait for reef setup before continuing
+      Thread.sleep(20 * 1000); // Wait for Surf setup before continuing
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -105,10 +128,14 @@ public final class SurfFSOpenITCase {
    * Shutdown REEF.
    */
   @AfterClass
-  public static void tearDownClass() throws IOException {
+  public static void tearDownClass() throws Exception {
     baseFs.delete(new Path("/*"), true);
-    System.out.println("Closing REEF...");
-    reef.close(); // TODO: does not kill Launchers -- for now, remember to kill from command line
+    while (!jobFinished.get()) {
+      System.out.println("Waiting for Surf job to complete...");
+      synchronized (lock) {
+        lock.wait(5 * 1000); // Wait for Surf setup to complete
+      }
+    }
   }
 
   private FSDataInputStream open(Path path) throws IOException {
