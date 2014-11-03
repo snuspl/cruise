@@ -117,7 +117,9 @@ public final class SurfFSOpenITCase {
 
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64); // TODO: Test fails when this is set; it succeeds when using default
+    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64);
+    // Increase number of retries, because MiniCluster tests can be slow
+    conf.setInt(SurfFS.CACHECLIENT_RETRIES_KEY, 5);
 
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);
