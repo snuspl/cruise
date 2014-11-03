@@ -1,10 +1,7 @@
 package org.apache.reef.inmemory.client;
 
 import com.microsoft.reef.client.DriverLauncher;
-import com.microsoft.reef.client.LauncherStatus;
-import com.microsoft.reef.client.REEF;
 import com.microsoft.tang.exceptions.InjectionException;
-import com.microsoft.wake.impl.StageManager;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -27,24 +24,48 @@ import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
  * Tests for SurfFS methods that delegate to a Base FS.
- * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
+ * The tests instantiate Surf with a single Driver and Task on a new thread.
+ * The tests connecting to a HDFS minicluster as the Base FS.
  *
- * This end-to-end test is currently set to be ignored. The reason is that,
- * although the test executes fine, it does not cleanup the Processes created.
- * TODO: When REEF issue #868 is available, call close using that method
+ * Because the systems under tests are loosely coupled, the test relies on
+ * timeouts and sleep calls to roughly synchronize startup and shutdown times.
+ * See comments on these times below before changing these test cases.
  */
 public final class SurfFSOpenITCase {
+
+  private static final Logger LOG = Logger.getLogger(SurfFSOpenITCase.class.getName());
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;
 
   private static ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+  /**
+   * The total execution time of Surf. The test must wait for this timeout in order to exit gracefully
+   * (without leaving behind orphan processes). When adding more test cases,
+   * you may need to increase this value.
+   */
+  private static final int SURF_TIMEOUT = 40 * 1000;
+
+  /**
+   * The time to wait for Surf to complete startup. If Surf startup time increases, you may need
+   * to increase this value.
+   */
+  private static final int SURF_STARTUP_SLEEP = 15 * 1000;
+
+  /**
+   * The time to wait for Surf graceful shutdown. If this time expires,
+   * the user will have to hunt down orphan processes.
+   */
+  private static final int SURF_SHUTDOWN_WAIT = 40 * 1000;
 
   private static final byte[] b = new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5, (byte)6, (byte)7, (byte)8};
 
@@ -98,7 +119,7 @@ public final class SurfFSOpenITCase {
           final com.microsoft.tang.Configuration runtimeConfig = Launch.getRuntimeConfiguration(clConf, fileConf);
           final com.microsoft.tang.Configuration launchConfig = Launch.getLaunchConfiguration(clConf, fileConf);
 
-          DriverLauncher.getLauncher(runtimeConfig).run(launchConfig, 40 * 1000);
+          DriverLauncher.getLauncher(runtimeConfig).run(launchConfig, SURF_TIMEOUT);
           jobFinished.set(true);
           synchronized (lock) {
             lock.notifyAll();
@@ -110,7 +131,7 @@ public final class SurfFSOpenITCase {
     });
 
     try {
-      Thread.sleep(20 * 1000); // Wait for Surf setup before continuing
+      Thread.sleep(SURF_STARTUP_SLEEP); // Wait for Surf setup before continuing
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -127,16 +148,20 @@ public final class SurfFSOpenITCase {
 
   /**
    * Remove all directories.
-   * Shutdown REEF.
+   * Wait for Surf to shutdown on timeout.
    */
   @AfterClass
   public static void tearDownClass() throws Exception {
     baseFs.delete(new Path("/*"), true);
-    while (!jobFinished.get()) {
-      System.out.println("Waiting for Surf job to complete...");
+    if (!jobFinished.get()) {
+      LOG.log(Level.INFO, "Waiting for Surf job to complete...");
       synchronized (lock) {
-        lock.wait(5 * 1000); // Wait for Surf setup to complete
+        lock.wait(SURF_SHUTDOWN_WAIT);
       }
+    }
+
+    if (!jobFinished.get()) {
+      LOG.log(Level.SEVERE, "Surf did not exit gracefully. Please check for orphan processes (e.g. using `ps`) and kill them!");
     }
   }
 
