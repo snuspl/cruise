@@ -26,14 +26,14 @@ import static org.junit.Assert.assertNotEquals;
 /**
  * Test YarnLocationSorter, using a static topology table (resources/net.topology.table.txt)
  * The topology consists of:
- *   /rack0: host01, host02, host03, host04
- *   /rack1: host11, host12, host13
- *   /rack2: host21, host22, host23
- *   /rack3: host31
+ *   /rack0: 192.168.100.1, 192.168.100.2, 192.168.100.3, 192.168.100.4
+ *   /rack1: 192.168.101.1, 192.168.101.2, 192.168.101.3
+ *   /rack2: 192.168.102.1, 192.168.102.2, 192.168.102.3
+ *   /rack3: 192.168.103.1
  * The test sorts a fileMeta with a subset of these block locations:
- *   /rack0: host01, host02, host03
- *   /rack1: host11, host12, host13
- *   /rack2: host21, host22, host23
+ *   /rack0: 192.168.100.1, 192.168.100.2, 192.168.100.3
+ *   /rack1: 192.168.101.1, 192.168.101.2, 192.168.101.3
+ *   /rack2: 192.168.102.1, 192.168.102.2, 192.168.102.3
  */
 public final class YarnLocationSorterTest {
 
@@ -107,12 +107,12 @@ public final class YarnLocationSorterTest {
   }
 
   /**
-   * Test that /rack0/host04 (host04 is not a part of fileMeta) returns:
+   * Test that /rack0/192.168.100.4 (192.168.100.4 is not a part of fileMeta) returns:
    * 3 rack local, 6 off-rack locations
    */
   @Test
   public void testSortMetaRackLocal() {
-    final String host = "host04";
+    final String host = "192.168.100.4";
 
     final FileMeta sorted = yarnLocationSorter.sortMeta(fileMeta, host);
     final List<NodeInfo> locations = sorted.getBlocks().get(0).getLocations();
@@ -131,12 +131,12 @@ public final class YarnLocationSorterTest {
   }
 
   /**
-   * Test that the /rack4/host04 (no hosts in rack04 are a part of fileMeta) returns:
+   * Test that /rack3/192.168.103.1 (no hosts in rack3 are a part of fileMeta) returns:
    * 9 off-rack locations
    */
   @Test
   public void testSortMetaOffRack() {
-    final String host = "host31";
+    final String host = "192.168.103.1";
 
     final FileMeta sorted = yarnLocationSorter.sortMeta(fileMeta, host);
     final List<NodeInfo> locations = sorted.getBlocks().get(0).getLocations();
