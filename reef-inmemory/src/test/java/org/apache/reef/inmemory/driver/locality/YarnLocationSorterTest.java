@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test YarnLocationSorter, using a static topology table (resources/net.topology.table.txt)
@@ -146,5 +147,41 @@ public final class YarnLocationSorterTest {
       assertNotEquals(host, locations.get(i).getAddress());
       assertNotEquals(networkMapping.get(host), locations.get(i).getRack());
     }
+  }
+
+  /**
+   * Simple test that sort does not return the exact same output for rack-local and remote nodes, respectively.
+   * (The assumption is that when outputs differ, the Collections.shuffle implementation called is correct.)
+   * The test loops many times; if shuffle is called, with high probability the same output will not be returned.
+   */
+  @Test
+  public void testSortShuffled() {
+    final String host = "192.168.100.1";
+    final List<NodeInfo> locations = yarnLocationSorter.sortMeta(fileMeta, host)
+            .getBlocks().get(0).getLocations();
+
+    // Rack-local
+    boolean rackShuffled = false;
+    for (int i = 0; i < 999; i++) {
+      final List<NodeInfo> shuffled = yarnLocationSorter.sortMeta(fileMeta, host)
+              .getBlocks().get(0).getLocations();
+      if (!locations.subList(1, 3).equals(shuffled.subList(1, 3))) {
+        rackShuffled = true;
+        break;
+      }
+    }
+    assertTrue(rackShuffled);
+
+    // Remote
+    boolean remote = false;
+    for (int i = 0; i < 999; i++) {
+      final List<NodeInfo> shuffled = yarnLocationSorter.sortMeta(fileMeta, host)
+              .getBlocks().get(0).getLocations();
+      if (!locations.subList(3, 9).equals(shuffled.subList(3, 9))) {
+        remote = true;
+        break;
+      }
+    }
+    assertTrue(remote);
   }
 }
