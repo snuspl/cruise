@@ -20,7 +20,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
 
 public class SurfCacheServerTest {
-  Random random;
+  private Random random;
 
   @Before
   public void SetUp() {
@@ -83,8 +83,15 @@ public class SurfCacheServerTest {
     }
 
     final SurfCacheServer cacheServer = new SurfCacheServer(cache, factory, 0, 0, 1, bufferSize);
-    ByteBuffer loadedBuffer = cacheServer.getData(blockInfo, 0, blockSize);
 
-    assertArrayEquals(buffer, loadedBuffer.array());
+    int nRead = 0;
+    byte[] readBuffer = new byte[blockSize];
+    while (nRead < blockSize) {
+      ByteBuffer loadedBuffer = cacheServer.getData(blockInfo, nRead, blockSize-nRead);
+      int nReceived = loadedBuffer.remaining();
+      loadedBuffer.get(readBuffer, nRead, loadedBuffer.remaining());
+      nRead += nReceived;
+    }
+    assertArrayEquals(buffer, readBuffer);
   }
 }

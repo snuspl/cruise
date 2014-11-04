@@ -1,6 +1,8 @@
 package org.apache.reef.inmemory;
 
 import com.microsoft.reef.client.DriverConfiguration;
+import com.microsoft.reef.client.DriverLauncher;
+import com.microsoft.reef.client.LauncherStatus;
 import com.microsoft.reef.client.REEF;
 import com.microsoft.reef.runtime.common.client.REEFImplementation;
 import com.microsoft.reef.runtime.local.client.LocalRuntimeConfiguration;
@@ -178,8 +180,9 @@ public class Launch
 
   /**
    * Build Runtime Configuration
+   * public for integration testing
    */
-  private static Configuration getRuntimeConfiguration(final Configuration clConf, final Configuration fileConf)
+  public static Configuration getRuntimeConfiguration(final Configuration clConf, final Configuration fileConf)
     throws BindException, InjectionException {
     final Injector clInjector = Tang.Factory.getTang().newInjector(clConf);
     final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
@@ -231,18 +234,28 @@ public class Launch
   }
 
   /**
-   * Run InMemory Application
+   * Build launch configuration
+   * public for integration testing
    */
-  public static REEF runInMemory(final Configuration clConfig, final Configuration fileConfig) throws InjectionException {
+  public static Configuration getLaunchConfiguration(final Configuration clConfig, final Configuration fileConfig) throws InjectionException {
     final Configuration driverConfig = getDriverConfiguration();
     final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig, fileConfig);
     final Configuration clusterConfig = getClusterConfiguration(clConfig, fileConfig);
 
+    return Configurations.merge(driverConfig, inMemoryConfig, clusterConfig);
+  }
+
+  /**
+   * Run InMemory Application
+   */
+  public static void runInMemory(final Configuration clConfig, final Configuration fileConfig) throws InjectionException {
+
     final Configuration runtimeConfig = getRuntimeConfiguration(clConfig, fileConfig);
+    final Configuration launchConfig = getLaunchConfiguration(clConfig, fileConfig);
     final Injector injector = Tang.Factory.getTang().newInjector(runtimeConfig);
+
     final REEF reef = injector.getInstance(REEFImplementation.class);
-    reef.submit(Tang.Factory.getTang().newConfigurationBuilder(driverConfig, inMemoryConfig, clusterConfig).build());
-    return reef;
+    reef.submit(Tang.Factory.getTang().newConfigurationBuilder(launchConfig).build());
   }
 
   public static void main(String[] args) throws BindException, InjectionException, IOException {

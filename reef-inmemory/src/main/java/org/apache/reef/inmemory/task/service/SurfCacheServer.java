@@ -109,24 +109,13 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     final BlockId blockId = blockIdFactory.newBlockId(blockInfo);
 
     // The first and last index to load blocks
-    final int indexStart = (int)offset / bufferSize;
+    final int chunkIndex = (int) offset / bufferSize;
+    final int chunkOffset = ((int) offset) % bufferSize;
 
-    int nWrite = 0;
-    ByteBuffer buf = ByteBuffer.allocate((int)length);
-    for(int i = indexStart; i * bufferSize < (int)(offset + length); i++) {
-      byte[] temp = cache.get(blockId, i);
+    final byte[] chunk = cache.get(blockId, chunkIndex);
 
-      int startOffset = (i == indexStart) ? (int)offset % bufferSize : 0;
-      buf.put(temp, startOffset, temp.length);
-      nWrite += temp.length;
-    }
-
-    /*
-     * We need to limit the size of ByteBuffer into the size of actual file.
-     * Otherwise when {@code length} is larger than actual file size, it could cause an Exception
-     * while reading the data using this ByteBuffer.
-     */
-    buf.limit(nWrite).position(0);
+    final ByteBuffer buf = ByteBuffer.wrap(chunk, chunkOffset,
+            Math.min(chunk.length - chunkOffset, (int) Math.min(Integer.MAX_VALUE, length)));
     return buf;
   }
 }

@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.client;
 
-import com.microsoft.reef.client.REEF;
+import com.microsoft.reef.client.DriverLauncher;
 import com.microsoft.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -14,7 +14,6 @@ import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -22,25 +21,51 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
  * Tests for SurfFS methods that delegate to a Base FS.
- * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
+ * The tests instantiate Surf with a single Driver and Task on a new thread.
+ * The tests connecting to a HDFS minicluster as the Base FS.
  *
- * This end-to-end test is currently set to be ignored. The reason is that,
- * although the test executes fine, it does not cleanup the Processes created.
- * TODO: When REEF issue #868 is available, call close using that method
+ * Because the systems under tests are loosely coupled, the test relies on
+ * timeouts and sleep calls to roughly synchronize startup and shutdown times.
+ * See comments on these times below before changing these test cases.
  */
-@Ignore
 public final class SurfFSOpenITCase {
+
+  private static final Logger LOG = Logger.getLogger(SurfFSOpenITCase.class.getName());
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;
 
-  private static REEF reef;
+  private static ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+  /**
+   * The total execution time of Surf. The test must wait for this timeout in order to exit gracefully
+   * (without leaving behind orphan processes). When adding more test cases,
+   * you may need to increase this value.
+   */
+  private static final int SURF_TIMEOUT = 40 * 1000;
+
+  /**
+   * The time to wait for Surf to complete startup. If Surf startup time increases, you may need
+   * to increase this value.
+   */
+  private static final int SURF_STARTUP_SLEEP = 15 * 1000;
+
+  /**
+   * The time to wait for Surf graceful shutdown. If this time expires,
+   * the user will have to hunt down orphan processes.
+   */
+  private static final int SURF_SHUTDOWN_WAIT = 40 * 1000;
 
   private static final byte[] b = new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5, (byte)6, (byte)7, (byte)8};
 
@@ -54,6 +79,9 @@ public final class SurfFSOpenITCase {
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
+
+  private static final Object lock = new Object();
+  private static final AtomicBoolean jobFinished = new AtomicBoolean(false);
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -70,10 +98,6 @@ public final class SurfFSOpenITCase {
     baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
-    com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
-    com.microsoft.tang.Configuration fileConf = Launch.parseConfigFile();
-    reef = Launch.runInMemory(clConf, fileConf);
-
     final FSDataOutputStream stream1 = baseFs.create(new Path(TESTPATH1));
     for (int i = 0; i < SIZE1; i++) {
       stream1.write(b);
@@ -86,15 +110,37 @@ public final class SurfFSOpenITCase {
     }
     stream2.close();
 
+    executorService.submit(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          final com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
+          final com.microsoft.tang.Configuration fileConf = Launch.parseConfigFile();
+          final com.microsoft.tang.Configuration runtimeConfig = Launch.getRuntimeConfiguration(clConf, fileConf);
+          final com.microsoft.tang.Configuration launchConfig = Launch.getLaunchConfiguration(clConf, fileConf);
+
+          DriverLauncher.getLauncher(runtimeConfig).run(launchConfig, SURF_TIMEOUT);
+          jobFinished.set(true);
+          synchronized (lock) {
+            lock.notifyAll();
+          }
+        } catch (Exception e) {
+          throw new RuntimeException("Could not run Surf instance", e);
+        }
+      }
+    });
+
     try {
-      Thread.sleep(10000); // Wait for reef setup before continuing
+      Thread.sleep(SURF_STARTUP_SLEEP); // Wait for Surf setup before continuing
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
 
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64); // TODO: Test fails when this is set; it succeeds when using default
+    conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64);
+    // Increase retries on no progress, because loading from MiniCluster is slower when running as single-machine multi-threaded tests
+    conf.setInt(LoadProgressManagerImpl.LOAD_MAX_NO_PROGRESS_KEY, 10);
 
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);
@@ -102,13 +148,21 @@ public final class SurfFSOpenITCase {
 
   /**
    * Remove all directories.
-   * Shutdown REEF.
+   * Wait for Surf to shutdown on timeout.
    */
   @AfterClass
-  public static void tearDownClass() throws IOException {
+  public static void tearDownClass() throws Exception {
     baseFs.delete(new Path("/*"), true);
-    System.out.println("Closing REEF...");
-    reef.close(); // TODO: does not kill Launchers -- for now, remember to kill from command line
+    if (!jobFinished.get()) {
+      LOG.log(Level.INFO, "Waiting for Surf job to complete...");
+      synchronized (lock) {
+        lock.wait(SURF_SHUTDOWN_WAIT);
+      }
+    }
+
+    if (!jobFinished.get()) {
+      LOG.log(Level.SEVERE, "Surf did not exit gracefully. Please check for orphan processes (e.g. using `ps`) and kill them!");
+    }
   }
 
   private FSDataInputStream open(Path path) throws IOException {
