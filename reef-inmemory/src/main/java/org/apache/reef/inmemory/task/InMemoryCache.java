@@ -4,9 +4,8 @@ import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
-import org.apache.reef.inmemory.common.replication.Action;
+import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 /**
@@ -16,13 +15,24 @@ public interface InMemoryCache {
 
   /**
    * Retrieves the content of a block with given blockId.
-   * @param fileBlock Block identifier to read
+   * @param blockId Block identifier to read
    * @param index Chunk index inside block
    * @return The byte array containing the data of the block
    * @throws BlockLoadingException If the block is loading at the moment of trial
    * @throws BlockNotFoundException If the block does not exist in the cache
    */
-  public byte[] get(BlockId fileBlock, int index) throws BlockLoadingException, BlockNotFoundException;
+  public byte[] get(BlockId blockId, int index) throws BlockLoadingException, BlockNotFoundException;
+
+  /**
+   * Write the data into the block specified by blockId
+   * @param blockId Block identifier to write
+   * @param offset Offset from the start of Block
+   * @param data Data to write
+   * @throws BlockNotFoundException If the block does not exist in the cache for the blockId
+   * @throws BlockNotWritableException If the block is not supposed to write data into
+   * @throws IOException If it fails while writing the data
+   */
+  public void write(BlockId blockId, long offset, byte[] data) throws BlockNotFoundException, BlockNotWritableException, IOException;
 
   /**
    * Load data into the cache using the given block loader.

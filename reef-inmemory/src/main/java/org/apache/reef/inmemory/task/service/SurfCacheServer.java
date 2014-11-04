@@ -149,10 +149,10 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     final SyncMethod syncMethod = info.isWriteThrough() ? SyncMethod.WRITE_THROUGH : SyncMethod.WRITE_BACK;
 
     final BlockLoader blockLoader = new WritableBlockLoader(blockId, pin, bufferSize, baseReplicationFactor, syncMethod);
-    try {
-      cache.load(blockLoader);
-    } catch (IOException e) {
-      throw new TException("Failed to initiate block "+blockId.toString(), e);
-    }
+    // TODO Insert the blockLoader in the cache and reserve the space as amount of blockSize
+  }
+
+  @Override
+  public void writeData(String path, long blockOffset, long blockSize, long innerOffset, ByteBuffer buf) throws TException {
   }
 }

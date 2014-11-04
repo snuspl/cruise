@@ -7,6 +7,7 @@ import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -53,6 +54,11 @@ public final class InMemoryCacheImpl implements InMemoryCache {
       // getData throws BlockLoadingException if load has not completed for the requested chunk
       return loader.getData(index);
     }
+  }
+
+  @Override
+  public void write(BlockId blockId, long offset, byte[] data) throws BlockNotFoundException, BlockNotWritableException, IOException {
+
   }
 
   @Override

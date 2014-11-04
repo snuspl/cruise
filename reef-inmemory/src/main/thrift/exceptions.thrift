@@ -34,3 +34,10 @@ exception BlockLoadingException{
 exception BlockNotFoundException{
     1: string message
 }
+
+/**
+ * The Cache block is not able to write data received from the Client
+ */
+exception BlockNotWritableException{
+    1: string message
+}
