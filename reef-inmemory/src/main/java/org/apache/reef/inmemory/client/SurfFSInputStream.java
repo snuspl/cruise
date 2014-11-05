@@ -1,14 +1,12 @@
 package org.apache.reef.inmemory.client;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.PositionedReadable;
-import org.apache.hadoop.fs.Seekable;
+import org.apache.hadoop.fs.FSInputStream;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +24,7 @@ import java.util.logging.Logger;
  * methods pass in a buffer. Thus, we end up copying the contents of
  * the ByteBuffer into the passed in buffer which is inefficient.
  */
-public final class SurfFSInputStream extends InputStream
-        implements Seekable, PositionedReadable {
+public final class SurfFSInputStream extends FSInputStream {
 
   private static final Logger LOG = Logger.getLogger(SurfFSInputStream.class.getName());
 
@@ -124,22 +121,9 @@ public final class SurfFSInputStream extends InputStream
     }
 
     int copied = read(this.pos, buf, off, len);
-    seek(this.pos + copied); // update this.pos
+    // Update position, without checking validity
+    this.pos += copied;
     return copied;
-  }
-
-  @Override
-  public void readFully(long position, byte[] buffer, int offset, int length) throws IOException {
-    if (length - offset > fileMeta.getFileSize()) {
-      throw new IOException("Length "+length+ " - offset "+offset+" exceeds file size "+fileMeta.getFileSize());
-    }
-
-    read(position, buffer, offset, length);
-  }
-
-  @Override
-  public void readFully(long position, byte[] buffer) throws IOException {
-    readFully(position, buffer, 0, buffer.length);
   }
 
   @Override
@@ -164,7 +148,7 @@ public final class SurfFSInputStream extends InputStream
 
   @Override
   public synchronized void seek(long pos) throws IOException {
-    if (pos > fileMeta.getFileSize()) {
+    if (pos >= fileMeta.getFileSize()) {
       throw new EOFException("Seek position "+pos+" exceeds file size "+fileMeta.getFileSize());
     }
 
