@@ -24,15 +24,15 @@ import java.util.logging.Logger;
 public final class CacheBlockLoader {
   private static final Logger LOG = Logger.getLogger(CacheBlockLoader.class.getName());
 
-  private static final long NO_OFFSET = -1;
+  private static final long NOT_CACHED = -1;
 
   private final BlockInfo block;
 
   private final CacheClientManager cacheManager;
   private final LoadProgressManager progressManager;
 
-  private byte[] data;
-  private long offset = NO_OFFSET;
+  private byte[] cachedChunk;
+  private long cachedChunkPosition = NOT_CACHED;
 
   public CacheBlockLoader(final BlockInfo block,
                           final CacheClientManager cacheManager,
@@ -57,31 +57,47 @@ public final class CacheBlockLoader {
   }
 
   /**
-   * Returns a ByteBuffer containing a chunk of the block, including the offset requested.
+   * Returns a ByteBuffer containing a chunk of the block, including the position requested.
    * The amount of data returned is given with ByteBuffer.remaining() and should be read
    * starting from ByteBuffer.position().
    *
    * Includes retry on BlockLoadingException.
    *
    * In this implementation, retry is also done on BlockNotFoundException,
-   * because driver does not wait until Task confirmation that block loading has been initiated.
-   * This should be fixed on driver-Task communication side, once immediate communication
+   * because Driver does not wait until Task confirmation that block loading has been initiated.
+   * This should be fixed on Driver-Task communication side, once immediate communication
    * from Task to driver is implemented in REEF.
+   *
+   * Sequential reads are cached, while random reads are not
+   *
+   * @param position Get data from this position within the block
+   * @param length Length of data to get. At most length bytes will be returned.
+   * @param sequentialRead Whether this request is part of a sequential read. If so, local caching will be used.
+   * @return A ByteBuffer, to be read from position to limit. The number of bytes will be at most as the length parameter.
+   * @throws IOException
    */
-  public synchronized ByteBuffer getData(long offset) throws IOException {
-    long startOffset = offset - (offset % cacheManager.getBufferSize());
+  public synchronized ByteBuffer getData(final int position, final int length, final boolean sequentialRead) throws IOException {
+    final int chunkPosition = position % cacheManager.getBufferSize();
+    final int chunkStartPosition = position - chunkPosition;
 
-    LOG.log(Level.FINE, "Start get data from block {0}, with offset {1}, startOffset {2}",
-            new String[]{Long.toString(block.getBlockId()), Long.toString(offset), Long.toString(startOffset)});
-    if (this.offset == startOffset && this.data != null) {
-      ByteBuffer dataBuffer = ByteBuffer.wrap(this.data);
-      dataBuffer.position((int) offset - (int) startOffset);
+    if (LOG.isLoggable(Level.FINEST)) {
+      LOG.log(Level.FINEST, "Start get data from block {0}, with position {1}, chunkStartPosition {2}",
+              new String[]{Long.toString(block.getBlockId()), Long.toString(position), Long.toString(chunkStartPosition)});
+    }
+    if (this.cachedChunkPosition == chunkStartPosition && this.cachedChunk != null) {
+      final ByteBuffer dataBuffer = ByteBuffer.wrap(this.cachedChunk);
+      if (chunkPosition + length < dataBuffer.limit()) {
+        dataBuffer.limit(chunkPosition + length);
+      }
+      dataBuffer.position(chunkPosition);
 
-      LOG.log(Level.FINE, "Done get cached data from block {0}, with offset {1}, startOffset {2}",
-              new String[]{Long.toString(block.getBlockId()), Long.toString(offset), Long.toString(startOffset)});
+      if (LOG.isLoggable(Level.FINEST)) {
+        LOG.log(Level.FINEST, "Done get cached data from block {0}, with position {1}, chunkStartPosition {2}",
+                new String[]{Long.toString(block.getBlockId()), Long.toString(position), Long.toString(chunkStartPosition)});
+      }
 
       return dataBuffer;
-    } else if (this.data != null) { // locally cached copy has different offset
+    } else if (sequentialRead && this.cachedChunk != null) { // locally cached copy has different position
       flushLocalCache();
     }
 
@@ -100,16 +116,22 @@ public final class CacheBlockLoader {
       try {
         final SurfCacheService.Client client = getClient(cacheAddress);
         synchronized(client) {
-          LOG.log(Level.INFO, "Start data transfer from block {0}, with startOffset {1}",
-                  new String[]{Long.toString(block.getBlockId()), Long.toString(startOffset)});
+          LOG.log(Level.INFO, "Start data transfer from block {0}, with chunkStartPosition {1}",
+                  new String[]{Long.toString(block.getBlockId()), Long.toString(chunkStartPosition)});
 
-          ByteBuffer dataBuffer = client.getData(block, startOffset, cacheManager.getBufferSize());
-          this.data = dataBuffer.array();
-          this.offset = startOffset;
-          dataBuffer.position((int)offset - (int)startOffset);
+          final ByteBuffer dataBuffer = client.getData(block, chunkStartPosition, cacheManager.getBufferSize());
+          if (chunkPosition + length < dataBuffer.limit()) {
+            dataBuffer.limit(chunkPosition + length);
+            // If there is data left to be read, and this is a sequentialRead, cache it
+            if (sequentialRead) {
+              this.cachedChunk = dataBuffer.array();
+              this.cachedChunkPosition = chunkStartPosition;
+            }
+          }
+          dataBuffer.position(chunkPosition);
 
-          LOG.log(Level.INFO, "Done data transfer from block {0}, with startOffset {1}",
-                  new String[]{Long.toString(block.getBlockId()), Long.toString(startOffset)});
+          LOG.log(Level.INFO, "Done data transfer from block {0}, with chunkStartPosition {1}",
+                  new String[]{Long.toString(block.getBlockId()), Long.toString(chunkStartPosition)});
           return dataBuffer;
         }
       } catch (BlockLoadingException e) {
@@ -135,8 +157,13 @@ public final class CacheBlockLoader {
     }
   }
 
+  /**
+   * Flush the current locally cached chunk.
+   * Should only be called by a sequential read, when the client
+   * is sure that the chunk is no longer needed (e.g. at the end of a block).
+   */
   public synchronized void flushLocalCache() {
-    this.offset = NO_OFFSET;
-    this.data = null;
+    this.cachedChunkPosition = NOT_CACHED;
+    this.cachedChunk = null;
   }
 }

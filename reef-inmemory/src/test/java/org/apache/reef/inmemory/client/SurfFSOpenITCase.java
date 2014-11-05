@@ -21,6 +21,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -67,18 +68,20 @@ public final class SurfFSOpenITCase {
    */
   private static final int SURF_SHUTDOWN_WAIT = 40 * 1000;
 
-  private static final byte[] b = new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5, (byte)6, (byte)7, (byte)8};
+  private static final byte[] CHUNK = new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5, (byte)6, (byte)7, (byte)8};
 
   private static final String TESTDIR = "/user/"+System.getProperty("user.name");
 
-  private static final String TESTPATH1 = TESTDIR+"/"+"COUNT.short";
-  private static final int SIZE1 = 1;
+  private static final String SHORT_FILE_PATH = TESTDIR+"/"+"COUNT.short";
+  private static final int SHORT_FILE_NUM_CHUNKS = 1;
 
-  private static final String TESTPATH2 = TESTDIR+"/"+"COUNT.long";
-  private static final int SIZE2 = 70;
+  private static final String LONG_FILE_PATH = TESTDIR+"/"+"COUNT.long";
+  private static final int LONG_FILE_NUM_CHUNKS = 140;
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
+
+  private static final int DFS_BLOCK_SIZE_VALUE = 512;
 
   private static final Object lock = new Object();
   private static final AtomicBoolean jobFinished = new AtomicBoolean(false);
@@ -93,20 +96,20 @@ public final class SurfFSOpenITCase {
     final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
     // Reduce blocksize to 512 bytes, to test multiple blocks
-    hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 512);
+    hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, DFS_BLOCK_SIZE_VALUE);
 
     baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
-    final FSDataOutputStream stream1 = baseFs.create(new Path(TESTPATH1));
-    for (int i = 0; i < SIZE1; i++) {
-      stream1.write(b);
+    final FSDataOutputStream stream1 = baseFs.create(new Path(SHORT_FILE_PATH));
+    for (int i = 0; i < SHORT_FILE_NUM_CHUNKS; i++) {
+      stream1.write(CHUNK);
     }
     stream1.close();
 
-    final FSDataOutputStream stream2 = baseFs.create(new Path(TESTPATH2));
-    for (int i = 0; i < SIZE2; i++) {
-      stream2.write(b);
+    final FSDataOutputStream stream2 = baseFs.create(new Path(LONG_FILE_PATH));
+    for (int i = 0; i < LONG_FILE_NUM_CHUNKS; i++) {
+      stream2.write(CHUNK);
     }
     stream2.close();
 
@@ -171,63 +174,181 @@ public final class SurfFSOpenITCase {
     return in;
   }
 
-  private void read(String path, int size) throws IOException {
+  private void assertBufEqualsChunk(final byte[] buf, int position, int length) {
+    for (int i = 0; i < length; i++) {
+      assertEquals("At index "+i, CHUNK[(i + position) % CHUNK.length], buf[i]);
+    }
+  }
+
+  private void read(String path, int numChunks) throws IOException {
     FSDataInputStream in = open(new Path(path));
 
-    byte[] readBuf = new byte[size * b.length];
+    byte[] readBuf = new byte[numChunks * CHUNK.length];
 
     int bytesRead = in.read(0, readBuf, 0, readBuf.length);
     assertEquals(bytesRead, readBuf.length);
-    for (int i = 0; i < size * b.length; i++) {
-      assertEquals("At index "+i, b[i % b.length], readBuf[i]);
-    }
+    assertBufEqualsChunk(readBuf, 0, readBuf.length);
   }
 
   private void copyBytes(String path, int size) throws IOException {
     FSDataInputStream in = open(new Path(path));
-    OutputStream out = new ByteArrayOutputStream(size * b.length);
+    OutputStream out = new ByteArrayOutputStream(size * CHUNK.length);
 
-    IOUtils.copyBytes(in, out, size * b.length);
+    IOUtils.copyBytes(in, out, size * CHUNK.length);
   }
 
   @Test
   public void testRead() throws IOException {
-    read(TESTPATH1, SIZE1);
-    read(TESTPATH2, SIZE2);
+    read(SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
+    read(LONG_FILE_PATH, LONG_FILE_NUM_CHUNKS);
     // TODO: Check various boundary conditions
   }
 
   @Test
   public void testCopyBytes() throws IOException {
-    copyBytes(TESTPATH1, SIZE1);
-    copyBytes(TESTPATH2, SIZE2);
+    copyBytes(SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
+    copyBytes(LONG_FILE_PATH, LONG_FILE_NUM_CHUNKS);
     // TODO: Check various boundary conditions
+  }
+
+  private void assertSeekThenReadEqualsChunk(final FSDataInputStream in, final int seekPos) throws IOException {
+    in.seek(seekPos);
+    assertEquals(CHUNK[seekPos % CHUNK.length], in.readByte());
   }
 
   @Test
   public void testSeek() throws IOException {
-    FSDataInputStream in = open(new Path(TESTPATH2));
+    final FSDataInputStream in = open(new Path(LONG_FILE_PATH));
+    assertEquals(CHUNK[0], in.readByte());
 
-    assertEquals((byte) 1, in.readByte());
-    in.seek(1);
-    assertEquals((byte) 2, in.readByte());
-    in.seek(511);
-    assertEquals((byte) 8, in.readByte());
-    in.seek(8);
-    assertEquals((byte) 1, in.readByte());
-    in.seek(512);
-    assertEquals((byte) 1, in.readByte());
+    // Test seek forward
+    assertSeekThenReadEqualsChunk(in, 1);
+    // Test seek forward to last byte in block
+    assertSeekThenReadEqualsChunk(in, DFS_BLOCK_SIZE_VALUE -1);
+    // Test seek backward
+    assertSeekThenReadEqualsChunk(in, 12);
+    // Test seek backward (after a seek backward)
+    assertSeekThenReadEqualsChunk(in, 9);
+    // Test seek forward across block boundaries to first byte in next block
+    assertSeekThenReadEqualsChunk(in, DFS_BLOCK_SIZE_VALUE);
+    // Test seek backward across block boundaries
+    assertSeekThenReadEqualsChunk(in, 12);
+
+    // Test seek to last byte
+    assertSeekThenReadEqualsChunk(in, LONG_FILE_NUM_CHUNKS * CHUNK.length - 1);
+    // Test seek past last byte (EOF)
     try {
-      in.seek(1024);
-      fail("Should return EOF");
+      in.seek(LONG_FILE_NUM_CHUNKS * CHUNK.length);
+      fail("Should throw EOF");
     } catch (EOFException e) {
       // passed
     } catch (Exception e) {
-      fail("Should return EOF, instead returned "+e);
+      fail("Should throw EOF, instead threw "+e);
     }
-    in.seek(518);
-    assertEquals((byte) 7, in.readByte());
-    in.seek(2);
-    assertEquals((byte) 3, in.readByte());
+    try {
+      in.seek(LONG_FILE_NUM_CHUNKS * CHUNK.length + 1000);
+      fail("Should throw EOF");
+    } catch (EOFException e) {
+      // passed
+    } catch (Exception e) {
+      fail("Should throw EOF, instead threw "+e);
+    }
+
+    // Test seek after EOFException
+    assertSeekThenReadEqualsChunk(in, DFS_BLOCK_SIZE_VALUE + 8);
+    // Test seek backward across block boundaries (after EOFException)
+    assertSeekThenReadEqualsChunk(in, 2);
+  }
+
+  /**
+   * The contract for all read(...) methods is that all bytes that can be read, up to length,
+   * will be read. If the read starts at or beyond the end-of-file, then -1 should be returned.
+   * This is a rather confusing contract, so we test out the variations here.
+   */
+  @Test
+  public void testReadEOF() throws IOException {
+    final FSDataInputStream in = open(new Path(LONG_FILE_PATH));
+    final int EOF = -1;
+    final byte bufSize = 16;
+    final byte[] buf = new byte[bufSize];
+
+    /* Test InputStream.read(byte[], offset, length) */
+
+    // Seek to last byte then read it
+    assertSeekThenReadEqualsChunk(in, LONG_FILE_NUM_CHUNKS * CHUNK.length - 1);
+    // Test next read returns -1
+    assertEquals(EOF, in.read());
+    assertEquals(EOF, in.read(buf, 0, buf.length));
+
+    // Seek to last byte
+    in.seek(LONG_FILE_NUM_CHUNKS * CHUNK.length - 1);
+    // Read should read up to the last byte
+    assertEquals(1, in.read(buf, 0, buf.length));
+    // Further read should return -1 because we are starting past EOF
+    assertEquals(EOF, in.read(buf, 0, buf.length));
+    // The position should only get updated up to the EOF point
+    assertEquals(LONG_FILE_NUM_CHUNKS * CHUNK.length, in.getPos());
+    // Read should only read as much as the buffer length
+    in.seek(1);
+    assertEquals(buf.length, in.read(buf, 0, buf.length));
+
+    /* Test PositionedReadable read(position, byte[], offset, length) */
+    in.seek(0);
+    // Read should read up to the last byte
+    assertEquals(1, in.read(LONG_FILE_NUM_CHUNKS * CHUNK.length - 1, buf, 0, buf.length));
+    assertEquals(0, in.getPos());
+    // Read should return -1 because we are starting past EOF
+    assertEquals(EOF, in.read(LONG_FILE_NUM_CHUNKS * CHUNK.length, buf, 0, buf.length));
+    assertEquals(0, in.getPos());
+    // Read should only read as much as the buffer length
+    assertEquals(buf.length, in.read(1, buf, 0, buf.length));
+    assertEquals(0, in.getPos());
+  }
+
+  /**
+   * The contract for readFully(...) methods is different from read(...). It should return IOException
+   * when trying to read across the EOF.
+   * Also, it should never update the position.
+   */
+  @Test
+  public void testReadFullyEOF() throws IOException {
+    final FSDataInputStream in = open(new Path(LONG_FILE_PATH));
+    final int fileSize = LONG_FILE_NUM_CHUNKS * CHUNK.length;
+
+    // readFully from start of file
+    final byte[] bufFromStart = new byte[fileSize];
+    in.readFully(0, bufFromStart);
+    assertBufEqualsChunk(bufFromStart, 0, fileSize);
+    assertEquals(0, in.getPos());
+
+    // readFully from offset at first block
+    final byte[] bufFromFirstBlock = new byte[fileSize-1];
+    in.readFully(1, bufFromFirstBlock);
+    assertBufEqualsChunk(bufFromFirstBlock, 1, fileSize - 1);
+    assertEquals(0, in.getPos());
+
+    // readFully from offset at second block
+    final byte[] bufFromSecondBlock = new byte[fileSize-(DFS_BLOCK_SIZE_VALUE+2)];
+    in.readFully(DFS_BLOCK_SIZE_VALUE+2, bufFromSecondBlock);
+    assertBufEqualsChunk(bufFromSecondBlock, DFS_BLOCK_SIZE_VALUE+2, fileSize - (DFS_BLOCK_SIZE_VALUE+2));
+    assertEquals(0, in.getPos());
+
+    // readFully with length, to end of file
+    Arrays.fill(bufFromFirstBlock, (byte) 0);
+    in.readFully(1, bufFromFirstBlock, 0, fileSize - 1);
+    assertBufEqualsChunk(bufFromFirstBlock, 1, fileSize -1);
+    assertEquals(0, in.getPos());
+
+    // readFully past end of file
+    Arrays.fill(bufFromStart, (byte) 0);
+    try {
+      in.readFully(1, bufFromStart, 0, fileSize);
+      fail("Should throw EOF");
+    } catch (EOFException e) {
+      // passed
+    } catch (Exception e) {
+      fail("Should throw EOF, instead threw " + e);
+    }
+    assertEquals(0, in.getPos());
   }
 }
