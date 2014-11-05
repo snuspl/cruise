@@ -15,9 +15,10 @@ import java.util.logging.Logger;
 
 /**
  * FSInputStream for Surf.
- * Caches intermediate chunks of InputStream and Seekable seek / read because these are likely part of
- *   a succession of sequential reads.
- * Does not cache PositionedReadable read / readFully these are likely random or one-pass reads.
+ * Caches intermediate chunks accessed through InputStream and Seekable seek / read calls
+ *   because these are likely part of a succession of sequential reads.
+ * Does not cache accesses via PositionedReadable read / readFully
+ *   because these are likely random or one-pass reads.
  */
 public final class SurfFSInputStream extends FSInputStream {
 

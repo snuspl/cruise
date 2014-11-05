@@ -72,8 +72,8 @@ public final class CacheBlockLoader {
    *
    * @param position Get data from this position within the block
    * @param length Length of data to get. At most length bytes will be returned.
-   * @param sequentialRead Whether this request part of a sequential read. If so, local caching will be used.
-   * @return
+   * @param sequentialRead Whether this request is part of a sequential read. If so, local caching will be used.
+   * @return A ByteBuffer, to be read from position to limit. The number of bytes will be at most as the length parameter.
    * @throws IOException
    */
   public synchronized ByteBuffer getData(final int position, final int length, final boolean sequentialRead) throws IOException {
@@ -158,8 +158,9 @@ public final class CacheBlockLoader {
   }
 
   /**
-   * Flush the chunk containing the given position from the local cache.
-   * The request will be ignored if the chunk is not cached.
+   * Flush the current locally cached chunk.
+   * Should only be called by a sequential read, when the client
+   * is sure that the chunk is no longer needed (e.g. at the end of a block).
    */
   public synchronized void flushLocalCache() {
     this.cachedChunkPosition = NOT_CACHED;
