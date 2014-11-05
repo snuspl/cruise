@@ -14,15 +14,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Input stream implementation that works with blocks that have
- * already been transfered. Need to move to an on-demand version.
- *
- * However, not sure whether to implement the on-demand version
- * using Thrift's client implementation, or to move to a different
- * method of retrieving blocks.
- * The Thrift client returns a ByteBuffer and the read()
- * methods pass in a buffer. Thus, we end up copying the contents of
- * the ByteBuffer into the passed in buffer which is inefficient.
+ * FSInputStream for Surf.
+ * Caches intermediate chunks of InputStream and Seekable seek / read because these are likely part of
+ *   a succession of sequential reads.
+ * Does not cache PositionedReadable read / readFully these are likely random or one-pass reads.
  */
 public final class SurfFSInputStream extends FSInputStream {
 
@@ -33,9 +28,6 @@ public final class SurfFSInputStream extends FSInputStream {
   private final List<CacheBlockLoader> blocks;
 
   private long pos;
-
-  private int blockIdx;
-  private int blockPos;
 
   public SurfFSInputStream(final FileMeta fileMeta,
                            final CacheClientManager cacheManager,
@@ -49,58 +41,48 @@ public final class SurfFSInputStream extends FSInputStream {
     }
 
     this.pos = 0;
-    this.blockIdx = 0;
-    this.blockPos = 0;
   }
 
-  // TODO: the while loop may not belong here; this should just be a best-effort read? But, if we keep reading 0, things get weird
-  @Override
-  public int read(long position, byte[] buffer, int offset, int length) throws IOException {
+  private int doRead(
+          final long position, final byte[] buffer, final int offset, final int length, final boolean sequentialRead)
+                throws IOException {
     if (position >= fileMeta.getFileSize()) {
-      throw new EOFException("Read position "+position+" exceeds file size "+fileMeta.getFileSize());
+      return -1;
     }
 
     LOG.log(Level.FINE, "Start read at position {0} with length {1}",
             new String[] {Long.toString(position), Integer.toString(length)});
 
-    // seek to position
-    long seekRemaining = position;
-    int blockIndex = 0;
-    int blockPosition = 0;
-    while (seekRemaining > 0) {
-      BlockInfo currBlock = fileMeta.getBlocks().get(blockIndex);
-      assert(blockPosition < currBlock.getLength());
-      assert(blockIndex < fileMeta.getBlocksSize());
-
-      long toSeek = Math.min(seekRemaining, currBlock.getLength() - blockPosition);
-      seekRemaining -= toSeek;
-      blockPosition += toSeek;
-
-      if (blockPosition == currBlock.getLength()) {
-        blockPosition = 0;
-        blockIndex++;
-      }
+    // Compute block-level position
+    final long blockIndexLong = position / fileMeta.getBlockSize();
+    if (blockIndexLong > Integer.MAX_VALUE) {
+      throw new IOException("Cannot read file with more blocks than "+Integer.MAX_VALUE);
     }
+    int blockIndex = (int) blockIndexLong;
+    int blockPosition = (int) (position % fileMeta.getBlockSize());
 
     // copy data
-    int copied = 0;
-    long copyRemaining = length - offset;
-    while (copyRemaining > 0 && position < fileMeta.getFileSize()) {
-      BlockInfo currBlock = fileMeta.getBlocks().get(blockIndex);
+    int numCopied = 0;
+    int bufferRemaining = length - offset;
+    while (bufferRemaining > 0 && position + numCopied < fileMeta.getFileSize()) {
+      final BlockInfo currBlock = fileMeta.getBlocks().get(blockIndex);
       assert(blockPosition < currBlock.getLength());
       assert(blockIndex < fileMeta.getBlocksSize());
 
-      ByteBuffer data = blocks.get(blockIndex).getData(blockPosition);
-      int toCopy = (int)Math.min(copyRemaining, data.remaining());
-      data.get(buffer, offset + copied, toCopy);
+      final ByteBuffer data = blocks.get(blockIndex).getData(blockPosition, bufferRemaining, sequentialRead);
+      final int numBytes = data.remaining();
+      data.get(buffer, offset + numCopied, numBytes);
 
-      copyRemaining -= toCopy;
-      blockPosition += toCopy;
-      position += toCopy;
-      copied += toCopy;
+      bufferRemaining -= numBytes;
+      blockPosition += numBytes;
+      numCopied += numBytes;
 
       if (blockPosition == currBlock.getLength()) {
-        blocks.get(blockIndex).flushLocalCache();
+        // Clear local cache on sequential read when moving to next block
+        if (sequentialRead) {
+          blocks.get(blockIndex).flushLocalCache();
+        }
+
         blockPosition = 0;
         blockIndex++;
       }
@@ -108,7 +90,12 @@ public final class SurfFSInputStream extends FSInputStream {
 
     LOG.log(Level.FINE, "Done read at position {0} with length {1}",
             new String[] {Long.toString(position), Integer.toString(length)});
-    return copied;
+    return numCopied;
+  }
+
+  @Override
+  public int read(long position, byte[] buffer, int offset, int length) throws IOException {
+    return doRead(position, buffer, offset, length, false);
   }
 
   /**
@@ -120,7 +107,7 @@ public final class SurfFSInputStream extends FSInputStream {
       return -1;
     }
 
-    int copied = read(this.pos, buf, off, len);
+    int copied = doRead(this.pos, buf, off, len, true);
     // Update position, without checking validity
     this.pos += copied;
     return copied;
@@ -132,16 +119,19 @@ public final class SurfFSInputStream extends FSInputStream {
       return -1;
     }
 
-    ByteBuffer data = blocks.get(blockIdx).getData(blockPos);
+    // Compute block-level position
+    final long blockIndexLong = pos / fileMeta.getBlockSize();
+    if (blockIndexLong > Integer.MAX_VALUE) {
+      throw new IOException("Cannot read file with more blocks than "+Integer.MAX_VALUE);
+    }
+    int blockIdx = (int) blockIndexLong;
+    int blockPos = (int) (pos % fileMeta.getBlockSize());
+
+    ByteBuffer data = blocks.get(blockIdx).getData(blockPos, 1, true);
     int val = data.get() & 0xff;
 
     // Update position, without checking validity
     this.pos++;
-    this.blockPos++;
-    if (this.blockPos == fileMeta.getBlocks().get(blockIdx).getLength()) {
-      this.blockPos = 0;
-      this.blockIdx++;
-    }
 
     return val;
   }
@@ -151,28 +141,7 @@ public final class SurfFSInputStream extends FSInputStream {
     if (pos >= fileMeta.getFileSize()) {
       throw new EOFException("Seek position "+pos+" exceeds file size "+fileMeta.getFileSize());
     }
-
-    if (pos < this.pos) { // reset position
-      this.pos = 0;
-      blockIdx = 0;
-      blockPos = 0;
-    }
-
-    long remaining = pos - this.pos;
-    while (remaining > 0 && this.pos < fileMeta.getFileSize()) {
-      BlockInfo currBlock = fileMeta.getBlocks().get(blockIdx);
-      assert(blockPos < currBlock.getLength());
-
-      long toSeek = Math.min(remaining, currBlock.getLength() - blockPos);
-      remaining -= toSeek;
-      blockPos += toSeek;
-      this.pos += toSeek;
-
-      if (blockPos == currBlock.getLength()) {
-        blockPos = 0;
-        blockIdx++;
-      }
-    }
+    this.pos = pos;
   }
 
   @Override

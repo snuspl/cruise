@@ -76,7 +76,7 @@ public final class SurfFSOpenITCase {
   private static final int SHORT_FILE_NUM_CHUNKS = 1;
 
   private static final String LONG_FILE_PATH = TESTDIR+"/"+"COUNT.long";
-  private static final int LONG_FILE_NUM_CHUNKS = 70;
+  private static final int LONG_FILE_NUM_CHUNKS = 140;
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
@@ -272,6 +272,8 @@ public final class SurfFSOpenITCase {
     final byte bufSize = 16;
     final byte[] buf = new byte[bufSize];
 
+    /* Test InputStream.read(byte[], offset, length) */
+
     // Seek to last byte then read it
     assertSeekThenReadEqualsChunk(in, LONG_FILE_NUM_CHUNKS * CHUNK.length - 1);
     // Test next read returns -1
@@ -280,12 +282,27 @@ public final class SurfFSOpenITCase {
 
     // Seek to last byte
     in.seek(LONG_FILE_NUM_CHUNKS * CHUNK.length - 1);
-    // Read should read up to EOF (just the last byte)
+    // Read should read up to the last byte
     assertEquals(1, in.read(buf, 0, buf.length));
-    // Further read should return -1 because we are starting past it
+    // Further read should return -1 because we are starting past EOF
     assertEquals(EOF, in.read(buf, 0, buf.length));
     // The position should only get updated up to the EOF point
     assertEquals(LONG_FILE_NUM_CHUNKS * CHUNK.length, in.getPos());
+    // Read should only read as much as the buffer length
+    in.seek(1);
+    assertEquals(buf.length, in.read(buf, 0, buf.length));
+
+    /* Test PositionedReadable read(position, byte[], offset, length) */
+    in.seek(0);
+    // Read should read up to the last byte
+    assertEquals(1, in.read(LONG_FILE_NUM_CHUNKS * CHUNK.length - 1, buf, 0, buf.length));
+    assertEquals(0, in.getPos());
+    // Read should return -1 because we are starting past EOF
+    assertEquals(EOF, in.read(LONG_FILE_NUM_CHUNKS * CHUNK.length, buf, 0, buf.length));
+    assertEquals(0, in.getPos());
+    // Read should only read as much as the buffer length
+    assertEquals(buf.length, in.read(1, buf, 0, buf.length));
+    assertEquals(0, in.getPos());
   }
 
   /**
