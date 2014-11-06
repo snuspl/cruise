@@ -13,19 +13,24 @@ import org.apache.thrift.transport.TTransport;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class SurfFSOutputStream extends OutputStream {
+  private static final Logger LOG = Logger.getLogger(SurfFSOutputStream.class.getName());
   private final static int PACKET_SIZE = 512;
+
   private final Path path;
   private final long blockSize;
+  private final String localAddress;
 
   private final byte localBuf[] = new byte[PACKET_SIZE];
   private int localBufWriteCount = 0;
-
   private AllocatedBlockInfo curAllocatedBlockInfo;
   private long curBlockOffset = 0;
 
@@ -39,6 +44,7 @@ public class SurfFSOutputStream extends OutputStream {
     this.blockSize = blockSize;
     this.metaClient = metaClient;
     this.path = path;
+    this.localAddress = InetAddress.getLocalHost().getHostName();
   }
 
   @Override
@@ -50,7 +56,6 @@ public class SurfFSOutputStream extends OutputStream {
     }
  }
 
-  // blocking???
   @Override
   public void flush() throws IOException {
     flushBuf(localBuf, 0, localBufWriteCount);
@@ -60,7 +65,7 @@ public class SurfFSOutputStream extends OutputStream {
       try {
         wait(1000);
       } catch (InterruptedException e) {
-        // do not thrown an exception; just log.warning
+        LOG.log(Level.WARNING, "flush() sleep interrupted. Sleeping again...");
       }
     }
   }
@@ -69,7 +74,7 @@ public class SurfFSOutputStream extends OutputStream {
   public void close() throws IOException {
     flush();
     this.executor.shutdown();
-    // metaClient.completeFile(String path, offset, blockSize, NodeInfo lastNode);
+    metaClient.completeFile(String path, offset, blockSize, NodeInfo lastNode);
   }
 
   private class PacketStreamer implements Runnable {
@@ -91,18 +96,19 @@ public class SurfFSOutputStream extends OutputStream {
    * @param end exclusive
    */
   private void flushBuf(final byte[] b, final int start, final int end) {
-    // Need to allocate/initialize a new block
+    final int len = end - start;
+
     if (curBlockOffset == 0) {
-      curAllocatedBlockInfo = metaClient.allocateBlock(path.toString(), curBlockOffset, blockSize, myaddress);
+      curAllocatedBlockInfo = metaClient.allocateBlock(path.toString(), curBlockOffset, blockSize, localAddress);
       final SurfCacheService.Client cacheClient = getCacheClient(curAllocatedBlockInfo);
-      // cacheClient.initBlock(path, offset, blockSize, AllocatedBlockInfo)
+      cacheClient.initBlock(path, offset, blockSize, AllocatedBlockInfo)
     }
 
-    if (curBlockOffset + (end - start) <= blockSize)  {
+    if (curBlockOffset + len) <= blockSize)  {
       sendPacket(curAllocatedBlockInfo, curBlockOffset, Arrays.copyOfRange(b, start, end));
       curBlockOffset = (curBlockOffset + (end - start)) % blockSize;
     } else {
-      sendPacket(curAllocatedBlockInfo, curBlockOffset, Arrays.copyOfRange(b, start, end - (blockSize - curBlockOffset)));
+      sendPacket(curAllocatedBlockInfo, curBlockOffset, Arrays.copyOfRange(b, start, start + (blockSize - curBlockOffset)));
       curBlockOffset = (curBlockOffset + (end - start)) % blockSize;
       flushBuf(Arrays.copyOfRange(end - (blockSize - curBlockOffset), end)); // flush the leftovers in b
     }
