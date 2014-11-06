@@ -50,15 +50,13 @@ public class SurfFSOutputStream extends OutputStream {
   public void write(int b) throws IOException {
     localBuf[localBufWriteCount++] = (byte)b;
     if (localBufWriteCount == PACKET_SIZE) {
-      flushBuf(localBuf, 0, localBufWriteCount);
-      localBufWriteCount = 0;
+      flushLocalBuf();
     }
  }
 
   @Override
   public void flush() throws IOException {
-    flushBuf(localBuf, 0, localBufWriteCount);
-    localBufWriteCount = 0;
+    flushLocalBuf();
 
     while (packetQueue.size() > 0) {
       try {
@@ -76,7 +74,16 @@ public class SurfFSOutputStream extends OutputStream {
     metaClient.completeFile(String path, offset, blockSize, NodeInfo lastNode);
   }
 
+  private void flushLocalBuf() {
+    flushBuf(localBuf, 0, localBufWriteCount);
+    localBufWriteCount = 0;
+  }
+
   /**
+   * Flush a buffer to packetQueue.
+   * If block overflow detected, create 2 packets:
+   * one for the current block, one for the next initialized block
+   *
    * @param b the buffer to flush
    * @param start inclusive
    * @param end exclusive
@@ -85,19 +92,25 @@ public class SurfFSOutputStream extends OutputStream {
     final int len = end - start;
 
     if (curBlockOffset == 0) {
-      curAllocatedBlockInfo = metaClient.allocateBlock(path.toString(), curBlockOffset, blockSize, localAddress);
-      final SurfCacheService.Client cacheClient = cacheClientManager.get(curAllocatedBlockInfo);
-      cacheClient.initBlock(path, offset, blockSize, AllocatedBlockInfo)
+      initNewBlock();
     }
 
-    if (curBlockOffset + len) <= blockSize)  {
+    if (curBlockOffset+len <= blockSize)  {
       sendPacket(curAllocatedBlockInfo, curBlockOffset, Arrays.copyOfRange(b, start, end));
-      curBlockOffset = (curBlockOffset + (end - start)) % blockSize;
+      curBlockOffset = curBlockOffset + len;
     } else {
-      sendPacket(curAllocatedBlockInfo, curBlockOffset, Arrays.copyOfRange(b, start, start + (blockSize - curBlockOffset)));
-      curBlockOffset = (curBlockOffset + (end - start)) % blockSize;
-      flushBuf(Arrays.copyOfRange(end - (blockSize - curBlockOffset), end)); // flush the leftovers in b
+      // block overflow
+      final int boundary = start + (blockSize - curBlockOffset);
+      sendPacket(curAllocatedBlockInfo, curBlockOffset, Arrays.copyOfRange(b, start, boundary));
+      curBlockOffset = 0;
+      flushBuf(b, boundary, end); // flush the leftovers in the buffer
     }
+  }
+
+  private void initNewBlock() {
+    curAllocatedBlockInfo = metaClient.allocateBlock(path.toString(), curBlockOffset, blockSize, localAddress);
+    final SurfCacheService.Client cacheClient = cacheClientManager.get(curAllocatedBlockInfo);
+    cacheClient.initBlock(path, offset, blockSize, AllocatedBlockInfo);
   }
 
   private void sendPacket(final AllocatedBlockInfo allocatedBlockInfo, final long offset, final byte[] buf) {
@@ -137,10 +150,6 @@ public class SurfFSOutputStream extends OutputStream {
 
   public long getCurBlockOffset() {
     return curBlockOffset;
-  }
-
-  public AllocatedBlockInfo getCurAllocatedBlockInfo() {
-    return curAllocatedBlockInfo;
   }
 
   public int getPacketSize() {
