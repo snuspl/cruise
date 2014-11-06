@@ -28,16 +28,19 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final int loadingBufferSize;
 
   private final Cache<BlockId, BlockLoader> cache;
+  private final CacheAdmissionController cacheAdmissionController;
 
   @Inject
   public InMemoryCacheImpl(final Cache<BlockId, BlockLoader> cache,
                            final MemoryManager memoryManager,
+                           final CacheAdmissionController cacheAdmissionController,
                            final LRUEvictionManager lru,
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
                            final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize) {
     this.cache = cache;
     this.memoryManager = memoryManager;
+    this.cacheAdmissionController = cacheAdmissionController;
     this.lru = lru;
     this.loadingStage = loadingStage;
     this.loadingBufferSize = loadingBufferSize;
@@ -63,6 +66,27 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   @Override
   public void load(final BlockLoader loader) throws IOException {
+    if (insertEntry(loader)) {
+      LOG.log(Level.INFO, "Add loading block {0}", loader.getBlockId());
+      loadingStage.onNext(loader);
+    }
+  }
+
+  @Override
+  public void prepareToLoad(final BlockLoader loader) throws IOException, BlockNotFoundException {
+    if (insertEntry(loader)) {
+      cacheAdmissionController.reserveSpace(loader.getBlockId(), loader.isPinned());
+    }
+  }
+
+  /**
+   * Insert an entry into the cache. The purpose we insert blockLoader before
+   * the blockLoader has actual data is to prevent loading duplicate blocks.
+   * @param loader BlockLoader assigned to load a block.
+   * @return {@code true} If the entry is inserted successfully.
+   * @throws IOException
+   */
+  private boolean insertEntry(final BlockLoader loader) throws IOException {
     final Callable<BlockLoader> callable = new BlockLoaderCaller(loader, memoryManager);
     final BlockLoader returnedLoader;
     try {
@@ -70,12 +94,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     } catch (ExecutionException e) {
       throw new IOException(e);
     }
-
-    // Only run loadBlock if our loader entered the cache
-    if (loader == returnedLoader) {
-      LOG.log(Level.INFO, "Add loading block {0}", loader.getBlockId());
-      loadingStage.onNext(loader);
-    }
+    return loader == returnedLoader;
   }
 
   @Override

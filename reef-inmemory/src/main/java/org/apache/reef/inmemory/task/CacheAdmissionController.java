@@ -36,7 +36,7 @@ public class CacheAdmissionController {
    * @throws MemoryLimitException If it is not available to reserve even with eviction.
    * @throws BlockNotFoundException If the metadata is not found in the cache.
    */
-  public synchronized void reserveSpace(final BlockId blockId, final boolean pin) throws MemoryLimitException, BlockNotFoundException {
+  public synchronized void reserveSpace(final BlockId blockId, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
     // 1. If the cache is full, an eviction list is returned by loadStart.
     // 2. Each block in the eviction list is invalidated here.
     // 3. loadStart must be called again; the Memory Manager then ensures that
@@ -50,7 +50,7 @@ public class CacheAdmissionController {
       needSpace = (evictionList != null);
       if (needSpace) {
         for (final BlockId toEvict : evictionList) {
-          LOG.log(Level.INFO, toEvict+" eviction request being made");
+          LOG.log(Level.INFO, toEvict + " eviction request being made");
           cache.invalidate(toEvict);
         }
       }

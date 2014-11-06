@@ -42,7 +42,7 @@ public final class InMemoryCacheImplTest {
     internalCache = cacheConstructor.newInstance();
     final CacheAdmissionController cacheAdmissionController = new CacheAdmissionController(memoryManager, internalCache);
     loadingStage = new MockStage(cacheAdmissionController, memoryManager);
-    cache = new InMemoryCacheImpl(internalCache, memoryManager, lruEvictionManager, loadingStage, 3, bufferSize);
+    cache = new InMemoryCacheImpl(internalCache, memoryManager, cacheAdmissionController, lruEvictionManager, loadingStage, 3, bufferSize);
   }
 
   @After
@@ -110,6 +110,24 @@ public final class InMemoryCacheImplTest {
       assertNotNull(cache.get(blockId, i));
       assertEquals(loader.getData(i), cache.get(blockId, i));
     }
+  }
+
+  /**
+   * Ask cache to prepare for a blockLoader, and check correctness of preparation
+   * {@code cache.prepareToLoad} marks the blockLoader as on the loading stage.
+   */
+  @Test
+  public void testPrepare() throws IOException, BlockNotFoundException {
+    final BlockId blockId = randomBlockId(8096);
+    assertBlockNotFound(blockId, 8096);
+
+    final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(8096), false);
+    cache.clear();
+    cache.prepareToLoad(loader);
+    assertEquals(0, statistics.getCacheBytes());
+    assertEquals(8096, statistics.getLoadingBytes());
+    assertEquals(0, statistics.getEvictedBytes());
+    assertEquals(0, statistics.getPinnedBytes());
   }
 
   /**

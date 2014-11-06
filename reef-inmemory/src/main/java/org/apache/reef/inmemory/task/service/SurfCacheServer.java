@@ -140,7 +140,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   public void initBlock(String path, long offset, long blockSize, AllocatedBlockInfo info) throws TException {
     /*
      * Create a cache entry (BlockLoader) and load it into the cache
-     * so the cache can receive the data and write the data into memory
+     * so the cache can receive the data or write the data into memory
      */
     final BlockId blockId = new WritableBlockId(path, offset, blockSize);
 
@@ -149,7 +149,13 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     final SyncMethod syncMethod = info.isWriteThrough() ? SyncMethod.WRITE_THROUGH : SyncMethod.WRITE_BACK;
 
     final BlockLoader blockLoader = new WritableBlockLoader(blockId, pin, bufferSize, baseReplicationFactor, syncMethod);
-    // TODO Insert the blockLoader in the cache and reserve the space as amount of blockSize
+
+    try {
+      cache.prepareToLoad(blockLoader);
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Exception while initializing "+e);
+      throw new TException("Failed to initialize a block", e);
+    }
   }
 
   @Override
