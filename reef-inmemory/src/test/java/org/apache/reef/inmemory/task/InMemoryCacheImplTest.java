@@ -40,7 +40,8 @@ public final class InMemoryCacheImplTest {
     memoryManager = new MemoryManager(lruEvictionManager, statistics, slack);
     final CacheConstructor cacheConstructor = new CacheConstructor(memoryManager, 5);
     internalCache = cacheConstructor.newInstance();
-    loadingStage = new MockStage(internalCache, memoryManager);
+    final CacheAdmissionController cacheAdmissionController = new CacheAdmissionController(memoryManager, internalCache);
+    loadingStage = new MockStage(cacheAdmissionController, memoryManager);
     cache = new InMemoryCacheImpl(internalCache, memoryManager, lruEvictionManager, loadingStage, 3, bufferSize);
   }
 
@@ -583,9 +584,9 @@ public final class InMemoryCacheImplTest {
 
     private final BlockLoaderExecutor blockLoaderExecutor;
 
-    public MockStage(final Cache<BlockId, BlockLoader> internalCache,
+    public MockStage(final CacheAdmissionController cacheAdmissionController,
                      final MemoryManager memoryManager) {
-      this.blockLoaderExecutor = new BlockLoaderExecutor(internalCache, memoryManager);
+      this.blockLoaderExecutor = new BlockLoaderExecutor(cacheAdmissionController, memoryManager);
     }
 
     @Override
