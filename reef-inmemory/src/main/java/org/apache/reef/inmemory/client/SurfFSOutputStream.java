@@ -1,15 +1,8 @@
 package org.apache.reef.inmemory.client;
 
-import com.google.common.net.HostAndPort;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TFramedTransport;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -35,15 +28,21 @@ public class SurfFSOutputStream extends OutputStream {
   private long curBlockOffset = 0;
 
   private final SurfMetaService.Client metaClient;
+  private final CacheClientManager cacheClientManager;
+
   private final Queue<Packet> packetQueue = new ConcurrentLinkedQueue<>();
   private final PacketStreamer streamer = new PacketStreamer();
   private final ExecutorService executor =
       new ThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(80));
 
-  public SurfFSOutputStream(Path path, SurfMetaService.Client metaClient, long blockSize) throws IOException, TException {
-    this.blockSize = blockSize;
-    this.metaClient = metaClient;
+  public SurfFSOutputStream(Path path,
+                            SurfMetaService.Client metaClient,
+                            CacheClientManager cacheClientManager,
+                            long blockSize) {
     this.path = path;
+    this.metaClient = metaClient;
+    this.cacheClientManager = cacheClientManager;
+    this.blockSize = blockSize;
     this.localAddress = InetAddress.getLocalHost().getHostName();
   }
 
@@ -77,19 +76,6 @@ public class SurfFSOutputStream extends OutputStream {
     metaClient.completeFile(String path, offset, blockSize, NodeInfo lastNode);
   }
 
-  private class PacketStreamer implements Runnable {
-    @Override
-    public void run() {
-      try {
-        final Packet packet = packetQueue.remove();
-        final SurfCacheService.Client cacheClient = getCacheClient(packet.address);
-        cacheClient.writeData(path, packet.blockCount, blockSize, packet.offset, ByteBuffer.wrap(packet.buf));
-      } catch (Exception e) {
-        throw new RuntimeException("PacketStreamer exception");
-      }
-    }
-  }
-
   /**
    * @param b the buffer to flush
    * @param start inclusive
@@ -100,7 +86,7 @@ public class SurfFSOutputStream extends OutputStream {
 
     if (curBlockOffset == 0) {
       curAllocatedBlockInfo = metaClient.allocateBlock(path.toString(), curBlockOffset, blockSize, localAddress);
-      final SurfCacheService.Client cacheClient = getCacheClient(curAllocatedBlockInfo);
+      final SurfCacheService.Client cacheClient = cacheClientManager.get(curAllocatedBlockInfo);
       cacheClient.initBlock(path, offset, blockSize, AllocatedBlockInfo)
     }
 
@@ -119,18 +105,6 @@ public class SurfFSOutputStream extends OutputStream {
     this.executor.submit(streamer);
   }
 
-  private SurfCacheService.Client getCacheClient(final String address) {
-    try {
-      final HostAndPort taskAddress = HostAndPort.fromString(address);
-      final TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
-      transport.open();
-      final TProtocol protocol = new TCompactProtocol(transport);
-      return new SurfCacheService.Client(protocol);
-    } catch (Exception e) {
-      throw new RuntimeException("getCacheClient exception");
-    }
-  }
-
   private class Packet {
     final AllocatedBlockInfo allocatedBlockInfo;
     final long blockCount;
@@ -141,6 +115,19 @@ public class SurfFSOutputStream extends OutputStream {
       this.blockCount = blockCount;
       this.offset = offset;
       this.buf = buf;
+    }
+  }
+
+  private class PacketStreamer implements Runnable {
+    @Override
+    public void run() {
+      try {
+        final Packet packet = packetQueue.remove();
+        final SurfCacheService.Client cacheClient = cacheClientManager.get(packet.address);
+        cacheClient.writeData(path, packet.blockCount, blockSize, packet.offset, ByteBuffer.wrap(packet.buf));
+      } catch (Exception e) {
+        throw new RuntimeException("PacketStreamer exception");
+      }
     }
   }
 }
