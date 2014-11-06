@@ -7,12 +7,13 @@ import org.apache.thrift.TException;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class SurfFSOutputStreamTest {
   private static final Path PATH = new Path("testPath");
-  private static final int BLOCKSIZE = 512;
+  private static final int BLOCKSIZE = 800;
   private static String CACHEADDR = "testCacheAddress";
 
   private SurfMetaService.Client metaClient;
@@ -27,42 +28,34 @@ public class SurfFSOutputStreamTest {
     cacheClientManager = mock(CacheClientManager.class);
     cacheClient = mock(SurfCacheService.Client.class);
     when(cacheClientManager.get(CACHEADDR)).thenReturn(cacheClient);
-    when(cacheClient.initBlock()).thenReturn();
-    when(cacheClient.writeData()).thenReturn();
-    when(cacheClient.finalizeBlock()).thenReturn();
-    when(cacheClient.completeFile()).thenReturn();
+    when(cacheClient.initBlock()).thenReturn(null);
+    when(cacheClient.writeData()).thenReturn(null);
+    when(cacheClient.finalizeBlock()).thenReturn(null);
+    when(cacheClient.completeFile()).thenReturn(null);
   }
 
   @Test
-  public void writeSingleByte() {
-    final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
-    surfFSOutputStream.write(0);
+  public void testBasicWrites() {
+    testWrite(1);
+    testWrite(512);
+    testWrite(BLOCKSIZE);
+    testWrite(BLOCKSIZE + 4);
+    testWrite(30 * BLOCKSIZE + 3);
   }
 
-  @Test
-  public void writeSingleExactBlock() {
+  public void testWrite(int dataSize) {
     final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
-    final byte[] data = new byte[BLOCKSIZE];
+    final byte[] data = new byte[dataSize];
+
     surfFSOutputStream.write(data);
+    assertEquals(surfFSOutputStream.getLocalBufWriteCount(), dataSize % surfFSOutputStream.getPacketSize());
+
+    surfFSOutputStream.flush();
+    assertEquals(surfFSOutputStream.getLocalBufWriteCount(), 0);
+    //assertEquals(surfFSOutputStream.getCurAllocatedBlockInfo(), );
+    assertEquals(surfFSOutputStream.getCurBlockOffset(), dataSize % BLOCKSIZE);
+
     surfFSOutputStream.close();
-  }
-
-  @Test
-  public void writeSingleBlockAndOneMore() {
-    final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
-    final byte[] data = new byte[BLOCKSIZE+1];
-    surfFSOutputStream.write(data);
-    surfFSOutputStream.close();
-  }
-
-  @Test
-  public void writeMultipleBlocks() {
-    final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
-  }
-
-  @Test
-  public void flushAndWriteAgain() {
-    final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
   }
 
   public SurfFSOutputStream getSurfFSOutputStream() {

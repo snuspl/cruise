@@ -130,4 +130,20 @@ public class SurfFSOutputStream extends OutputStream {
       }
     }
   }
+
+  public int getLocalBufWriteCount() {
+    return localBufWriteCount;
+  }
+
+  public long getCurBlockOffset() {
+    return curBlockOffset;
+  }
+
+  public AllocatedBlockInfo getCurAllocatedBlockInfo() {
+    return curAllocatedBlockInfo;
+  }
+
+  public int getPacketSize() {
+    return PACKET_SIZE;
+  }
 }
