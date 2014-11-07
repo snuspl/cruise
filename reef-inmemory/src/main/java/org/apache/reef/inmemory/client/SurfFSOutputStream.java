@@ -65,9 +65,12 @@ public class SurfFSOutputStream extends OutputStream {
     }
 
     for (int i = 0 ; i < len ; i++) {
-      final int length = Math.min(len-i, PACKET_SIZE-localBufWriteCount);
+      final int bytesLeftInUserBuf = len-i;
+      final int bytesLeftInLocalBuf = PACKET_SIZE-localBufWriteCount;
+      final int length = Math.min(bytesLeftInUserBuf, bytesLeftInLocalBuf);
 
       System.arraycopy(b, i, localBuf, localBufWriteCount, length);
+
       localBufWriteCount += length;
       i += length;
 

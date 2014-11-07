@@ -36,11 +36,12 @@ public class SurfFSOutputStreamTest {
 
   @Test
   public void testBasicWrites() {
-    testWrite(1);
+    testWrite((byte)1);
+    testWrite(150);
     testWrite(512);
     testWrite(BLOCKSIZE);
-    testWrite(BLOCKSIZE + 4);
-    testWrite(30 * BLOCKSIZE + 3);
+    testWrite(BLOCKSIZE+4);
+    testWrite(30*BLOCKSIZE+3);
   }
 
   public void testWrite(int dataSize) {
@@ -52,7 +53,6 @@ public class SurfFSOutputStreamTest {
 
     surfFSOutputStream.flush();
     assertEquals(surfFSOutputStream.getLocalBufWriteCount(), 0);
-    //assertEquals(surfFSOutputStream.getCurAllocatedBlockInfo(), );
     assertEquals(surfFSOutputStream.getCurBlockOffset(), dataSize % BLOCKSIZE);
 
     surfFSOutputStream.close();
