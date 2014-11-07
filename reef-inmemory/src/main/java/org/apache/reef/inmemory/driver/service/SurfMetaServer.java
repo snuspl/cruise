@@ -144,6 +144,11 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
+  @Override
+  public void completeFile(String path, long offset, long blockSize, NodeInfo lastNode) throws TException {
+    // TODO implement this
+  }
+
   public StringBuilder appendBasicStatus(final StringBuilder builder,
                                          final CacheNode cache,
                                          final long currentTimestamp) {

@@ -33,4 +33,9 @@ service SurfMetaService {
    * Allocate a new Block and return the Info(CacheNode, Replication Policy, etc) of the block to write data.
    **/
   entity.AllocatedBlockInfo allocateBlock(1:string path, 2:i64 offset, 3:i64 blockSize, 4:string clientAddress)
+
+  /**
+   * Announce to the Meta server that the file is complete
+   **/
+  void completeFile(1:string path, 2:i64 offset, 3:i64 blockSize, 4:entity.NodeInfo lastNode)
 }
