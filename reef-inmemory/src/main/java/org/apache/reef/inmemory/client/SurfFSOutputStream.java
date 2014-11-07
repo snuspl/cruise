@@ -32,7 +32,7 @@ public class SurfFSOutputStream extends OutputStream {
   private final Queue<Packet> packetQueue = new ConcurrentLinkedQueue<>();
   private final PacketStreamer streamer = new PacketStreamer();
   private final ExecutorService executor =
-      new ThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(80)); // max 81 packets
+      new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(80)); // max 81 packets
 
   public SurfFSOutputStream(final Path path,
                             final SurfMetaService.Client metaClient,
