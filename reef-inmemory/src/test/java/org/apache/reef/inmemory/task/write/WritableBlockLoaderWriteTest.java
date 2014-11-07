@@ -40,7 +40,7 @@ public class WritableBlockLoaderWriteTest {
 
     try {
       byte[] loaded = loader.getData(0);
-      assertArrayEquals(loaded, expected);
+      assertArrayEquals(expected, loaded);
     } catch (BlockLoadingException e) {
       fail();
     }
@@ -60,7 +60,7 @@ public class WritableBlockLoaderWriteTest {
 
     try {
       byte[] loaded = loader.getData(0);
-      assertArrayEquals(loaded, toWrite);
+      assertArrayEquals(toWrite, loaded);
     } catch (BlockLoadingException e) {
       fail();
     }
@@ -78,7 +78,7 @@ public class WritableBlockLoaderWriteTest {
     loader.writeData(new byte[]{1, 2}, 0);
     loader.writeData(new byte[]{2,1}, 0);
     try {
-      assertEquals(loader.getData(0)[0], 2);
+      assertEquals(2, loader.getData(0)[0]);
     } catch (BlockLoadingException e) {
       fail();
     }

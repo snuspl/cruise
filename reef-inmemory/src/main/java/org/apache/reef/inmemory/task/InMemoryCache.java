@@ -7,6 +7,7 @@ import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * Interface for InMemory Cache.
@@ -32,7 +33,7 @@ public interface InMemoryCache {
    * @throws BlockNotWritableException If the block is not supposed to write data into
    * @throws IOException If it fails while writing the data
    */
-  public void write(BlockId blockId, long offset, byte[] data) throws BlockNotFoundException, BlockNotWritableException, IOException;
+  public void write(BlockId blockId, long offset, ByteBuffer data) throws BlockNotFoundException, BlockNotWritableException, IOException;
 
   /**
    * Load data into the cache using the given block loader.

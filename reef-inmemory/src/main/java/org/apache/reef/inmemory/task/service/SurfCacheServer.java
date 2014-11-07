@@ -160,5 +160,11 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Override
   public void writeData(String path, long blockOffset, long blockSize, long innerOffset, ByteBuffer buf) throws TException {
+    final BlockId blockId = new WritableBlockId(path, blockOffset, blockSize);
+    try {
+      cache.write(blockId, innerOffset, buf);
+    } catch (IOException e) {
+      throw new TException("Failed to write block " + blockId, e);
+    }
   }
 }

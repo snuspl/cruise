@@ -8,9 +8,11 @@ import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
+import org.apache.reef.inmemory.task.write.WritableBlockLoader;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.logging.Level;
@@ -60,8 +62,16 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void write(BlockId blockId, long offset, byte[] data) throws BlockNotFoundException, BlockNotWritableException, IOException {
-
+  public void write(BlockId blockId, long offset, ByteBuffer data) throws BlockNotFoundException, BlockNotWritableException, IOException {
+     final BlockLoader loader = cache.getIfPresent(blockId);
+    if (loader == null) {
+      throw new BlockNotFoundException();
+    } else if (!(loader instanceof WritableBlockLoader)) {
+      // TODO It looks somewhat unsafe
+      throw new BlockNotWritableException();
+    } else {
+      ((WritableBlockLoader) loader).writeData(data.array(), offset);
+    }
   }
 
   @Override
