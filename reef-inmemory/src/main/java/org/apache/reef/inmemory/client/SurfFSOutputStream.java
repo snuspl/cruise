@@ -21,7 +21,7 @@ public class SurfFSOutputStream extends OutputStream {
   private static final Logger LOG = Logger.getLogger(SurfFSOutputStream.class.getName());
   private final static int PACKET_SIZE = 512;
 
-  private final Path path;
+  private final String path;
   private final long blockSize;
   private final String localAddress;
 
@@ -42,7 +42,7 @@ public class SurfFSOutputStream extends OutputStream {
                             final SurfMetaService.Client metaClient,
                             final CacheClientManager cacheClientManager,
                             final long blockSize) throws UnknownHostException {
-    this.path = path;
+    this.path = path.toString();
     this.metaClient = metaClient;
     this.cacheClientManager = cacheClientManager;
     this.blockSize = blockSize;
@@ -114,7 +114,7 @@ public class SurfFSOutputStream extends OutputStream {
     // TODO resolve the lastNode
     NodeInfo lastNode = null;
     try {
-      metaClient.completeFile(path.toString(), curBlockOffset, blockSize, lastNode);
+      metaClient.completeFile(path, curBlockOffset, blockSize, lastNode);
     } catch (TException e) {
       throw new IOException("Failed while closing the file", e);
     }
@@ -157,13 +157,13 @@ public class SurfFSOutputStream extends OutputStream {
 
   private void initNewBlock() throws IOException {
     try {
-      curAllocatedBlockInfo = metaClient.allocateBlock(path.toString(), curBlockOffset, blockSize, localAddress);
+      curAllocatedBlockInfo = metaClient.allocateBlock(path, curBlockOffset, blockSize, localAddress);
       // TODO Make sure it is the right address
       final String address = curAllocatedBlockInfo.getLocations().get(0).getAddress();
       final SurfCacheService.Client cacheClient = cacheClientManager.get(address);
       // TODO resolve the value of offset
       long offset = -1;
-      cacheClient.initBlock(path.toString(), offset, blockSize, curAllocatedBlockInfo);
+      cacheClient.initBlock(path, offset, blockSize, curAllocatedBlockInfo);
     } catch (TException e) {
       throw new IOException("Failed to initialize a block", e);
     }
@@ -202,7 +202,7 @@ public class SurfFSOutputStream extends OutputStream {
         final SurfCacheService.Client cacheClient = cacheClientManager.get(address);
         // TODO Check if it is the last packet
         boolean isLastPacket = false;
-        cacheClient.writeData(path.toString(), packet.blockCount, blockSize, packet.offset, packet.buf, isLastPacket);
+        cacheClient.writeData(path, packet.blockCount, blockSize, packet.offset, packet.buf, isLastPacket);
       } catch (Exception e) {
         throw new RuntimeException("PacketStreamer exception");
       }

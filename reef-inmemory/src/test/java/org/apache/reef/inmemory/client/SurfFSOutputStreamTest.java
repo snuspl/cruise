@@ -22,11 +22,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class SurfFSOutputStreamTest {
-  private static final Path PATH = new Path("testPath");
+  private static final String PATH = "testPath";
   private static final long BLOCK_SIZE = 800;
+
   private static String CACHE_ADDR = "testCacheAddress";
   private static String CACHE_RACK = "testCacheRack";
-
 
   private SurfMetaService.Client metaClient;
   private CacheClientManager cacheClientManager;
@@ -41,7 +41,7 @@ public class SurfFSOutputStreamTest {
     AllocatedBlockInfo allocatedBlock = mock(AllocatedBlockInfo.class);
     when(allocatedBlock.getLocations()).thenReturn(allocatedNodeList);
 
-    when(metaClient.allocateBlock(PATH.toString(), 0, BLOCK_SIZE, "localhost")).thenReturn(allocatedBlock);
+    when(metaClient.allocateBlock(PATH, 0, BLOCK_SIZE, "localhost")).thenReturn(allocatedBlock);
 
     cacheClientManager = mock(CacheClientManager.class);
     cacheClient = mock(SurfCacheService.Client.class);
@@ -75,6 +75,6 @@ public class SurfFSOutputStreamTest {
   }
 
   public SurfFSOutputStream getSurfFSOutputStream() throws UnknownHostException {
-    return new SurfFSOutputStream(PATH, metaClient, cacheClientManager, BLOCK_SIZE);
+    return new SurfFSOutputStream(new Path(PATH), metaClient, cacheClientManager, BLOCK_SIZE);
   }
 }
