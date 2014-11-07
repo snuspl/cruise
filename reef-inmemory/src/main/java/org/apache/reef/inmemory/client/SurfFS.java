@@ -202,7 +202,7 @@ public final class SurfFS extends FileSystem {
           throw new IOException("File " + path + " already exists");
         }
       }
-      return new SurfFSOutputStream(path, metaClient, blockSize);
+      return new FSDataOutputStream(new SurfFSOutputStream(path, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
     } catch (TException e) {
       throw new IOException("Failed to create a file in "+path.toString(), e);
     }
