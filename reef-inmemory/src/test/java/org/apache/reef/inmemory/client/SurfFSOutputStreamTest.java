@@ -1,20 +1,32 @@
 package org.apache.reef.inmemory.client;
 
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.common.entity.AllocatedBlockInfo;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.*;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class SurfFSOutputStreamTest {
   private static final Path PATH = new Path("testPath");
-  private static final int BLOCKSIZE = 800;
-  private static String CACHEADDR = "testCacheAddress";
+  private static final long BLOCK_SIZE = 800;
+  private static String CACHE_ADDR = "testCacheAddress";
+  private static String CACHE_RACK = "testCacheRack";
+
 
   private SurfMetaService.Client metaClient;
   private CacheClientManager cacheClientManager;
@@ -23,42 +35,46 @@ public class SurfFSOutputStreamTest {
   @Before
   public void setUp() throws TException {
     metaClient = mock(SurfMetaService.Client.class);
-    when(metaClient.allocateBlock).thenReturn();
+    List<NodeInfo> allocatedNodeList = new ArrayList<>();
+    allocatedNodeList.add(new NodeInfo(CACHE_ADDR, CACHE_RACK));
+
+    AllocatedBlockInfo allocatedBlock = mock(AllocatedBlockInfo.class);
+    when(allocatedBlock.getLocations()).thenReturn(allocatedNodeList);
+
+    when(metaClient.allocateBlock(PATH.toString(), 0, BLOCK_SIZE, "localhost")).thenReturn(allocatedBlock);
 
     cacheClientManager = mock(CacheClientManager.class);
     cacheClient = mock(SurfCacheService.Client.class);
-    when(cacheClientManager.get(CACHEADDR)).thenReturn(cacheClient);
-    when(cacheClient.initBlock()).thenReturn(null);
-    when(cacheClient.writeData()).thenReturn(null);
-    when(cacheClient.finalizeBlock()).thenReturn(null);
-    when(cacheClient.completeFile()).thenReturn(null);
+    when(cacheClientManager.get(CACHE_ADDR)).thenReturn(cacheClient);
+    doNothing().when(cacheClient).initBlock(anyString(), anyLong(), anyLong(), any(AllocatedBlockInfo.class));
+    doNothing().when(cacheClient).writeData(anyString(), anyLong(), anyLong(), anyLong(), any(ByteBuffer.class), anyBoolean());
   }
 
   @Test
-  public void testBasicWrites() {
-    testWrite((byte)1);
-    testWrite(150);
-    testWrite(512);
-    testWrite(BLOCKSIZE);
-    testWrite(BLOCKSIZE+4);
-    testWrite(30*BLOCKSIZE+3);
+  public void testBasicWrites() throws IOException {
+    testWrite((byte)1); // one byte
+    testWrite(150); // < packetSize
+    testWrite(512); // == packetSize
+    testWrite(BLOCK_SIZE); // one block
+    testWrite(BLOCK_SIZE + 4); // > blockSize (one more block)
+    testWrite(30* BLOCK_SIZE + 3); // > many blocks
   }
 
-  public void testWrite(int dataSize) {
+  public void testWrite(long dataSize) throws IOException {
     final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
-    final byte[] data = new byte[dataSize];
+    final byte[] data = new byte[(int)dataSize]; // TODO Assumption : Length is restricted to use an integer value
 
     surfFSOutputStream.write(data);
-    assertEquals(surfFSOutputStream.getLocalBufWriteCount(), dataSize % surfFSOutputStream.getPacketSize());
+    assertEquals(dataSize % surfFSOutputStream.getPacketSize(), surfFSOutputStream.getLocalBufWriteCount());
 
     surfFSOutputStream.flush();
-    assertEquals(surfFSOutputStream.getLocalBufWriteCount(), 0);
-    assertEquals(surfFSOutputStream.getCurBlockOffset(), dataSize % BLOCKSIZE);
+    assertEquals(0, surfFSOutputStream.getLocalBufWriteCount());
+    assertEquals(dataSize % BLOCK_SIZE, surfFSOutputStream.getCurBlockOffset());
 
     surfFSOutputStream.close();
   }
 
-  public SurfFSOutputStream getSurfFSOutputStream() {
-    return new SurfFSOutputStream(PATH, metaClient, cacheClientManager, BLOCKSIZE);
+  public SurfFSOutputStream getSurfFSOutputStream() throws UnknownHostException {
+    return new SurfFSOutputStream(PATH, metaClient, cacheClientManager, BLOCK_SIZE);
   }
 }
