@@ -23,5 +23,5 @@ service SurfCacheService {
     /**
      * Receive data from the Client and write it into the cache.
      */
-    void writeData(1:string path, 2:i64 blockOffset, 3:i64 blockSize, 4:i64 innerOffset, 5:binary buf)
+    void writeData(1:string path, 2:i64 blockOffset, 3:i64 blockSize, 4:i64 innerOffset, 5:binary buf, 6:bool isLastPacket)
 }
