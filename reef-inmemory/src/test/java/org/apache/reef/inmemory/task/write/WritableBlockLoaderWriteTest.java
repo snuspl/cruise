@@ -5,6 +5,7 @@ import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -17,6 +18,7 @@ import static org.junit.Assert.fail;
  * Test WritableBlockLoader.
  * Initiate the blockLoader with blockSize 16, bufferSize 4
  */
+@Ignore
 public class WritableBlockLoaderWriteTest {
   BlockId id;
   WritableBlockLoader loader;

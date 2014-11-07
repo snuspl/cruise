@@ -12,6 +12,7 @@ import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.task.write.WritableBlockLoader;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -155,6 +156,7 @@ public final class InMemoryCacheImplTest {
    * @throws BlockNotFoundException
    * @throws BlockNotWritableException
    */
+  @Ignore
   @Test
   public void testWriteFullBlock() throws IOException, BlockNotFoundException, BlockNotWritableException, BlockLoadingException {
     final String fileName = "/write";
