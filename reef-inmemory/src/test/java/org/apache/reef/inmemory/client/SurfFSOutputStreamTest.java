@@ -24,30 +24,24 @@ import static org.mockito.Mockito.when;
 public class SurfFSOutputStreamTest {
   private static final String PATH = "testPath";
   private static final long BLOCK_SIZE = 800;
-
   private static String CACHE_ADDR = "testCacheAddress";
-  private static String CACHE_RACK = "testCacheRack";
 
   private SurfMetaService.Client metaClient;
   private CacheClientManager cacheClientManager;
-  private SurfCacheService.Client cacheClient;
 
   @Before
   public void setUp() throws TException {
     metaClient = mock(SurfMetaService.Client.class);
-    List<NodeInfo> allocatedNodeList = new ArrayList<>();
-    allocatedNodeList.add(new NodeInfo(CACHE_ADDR, CACHE_RACK));
+    final AllocatedBlockInfo allocatedBlockInfo = getAllocatedBlockInfo();
+    when(metaClient.allocateBlock(anyString(), anyInt(), anyLong(), anyString())).thenReturn(allocatedBlockInfo);
+    doNothing().when(metaClient).completeFile(anyString(), anyLong(), anyLong(), any(NodeInfo.class));
 
-    AllocatedBlockInfo allocatedBlock = mock(AllocatedBlockInfo.class);
-    when(allocatedBlock.getLocations()).thenReturn(allocatedNodeList);
-
-    when(metaClient.allocateBlock(PATH, 0, BLOCK_SIZE, "localhost")).thenReturn(allocatedBlock);
-
-    cacheClientManager = mock(CacheClientManager.class);
-    cacheClient = mock(SurfCacheService.Client.class);
-    when(cacheClientManager.get(CACHE_ADDR)).thenReturn(cacheClient);
+    final SurfCacheService.Client cacheClient = mock(SurfCacheService.Client.class);
     doNothing().when(cacheClient).initBlock(anyString(), anyLong(), anyLong(), any(AllocatedBlockInfo.class));
     doNothing().when(cacheClient).writeData(anyString(), anyLong(), anyLong(), anyLong(), any(ByteBuffer.class), anyBoolean());
+
+    cacheClientManager = mock(CacheClientManager.class);
+    when(cacheClientManager.get(CACHE_ADDR)).thenReturn(cacheClient);
   }
 
   @Test
@@ -57,7 +51,7 @@ public class SurfFSOutputStreamTest {
     testWrite(512); // == packetSize
     testWrite(BLOCK_SIZE); // one block
     testWrite(BLOCK_SIZE + 4); // > blockSize (one more block)
-    testWrite(30* BLOCK_SIZE + 3); // > many blocks
+    testWrite(30 * BLOCK_SIZE + 3); // > many blocks
   }
 
   public void testWrite(long dataSize) throws IOException {
@@ -76,5 +70,13 @@ public class SurfFSOutputStreamTest {
 
   public SurfFSOutputStream getSurfFSOutputStream() throws UnknownHostException {
     return new SurfFSOutputStream(new Path(PATH), metaClient, cacheClientManager, BLOCK_SIZE);
+  }
+
+  public AllocatedBlockInfo getAllocatedBlockInfo() {
+    List<NodeInfo> allocatedNodeList = new ArrayList<>();
+    allocatedNodeList.add(new NodeInfo(CACHE_ADDR, ""));
+    AllocatedBlockInfo allocatedBlock = mock(AllocatedBlockInfo.class);
+    when(allocatedBlock.getLocations()).thenReturn(allocatedNodeList);
+    return allocatedBlock;
   }
 }
