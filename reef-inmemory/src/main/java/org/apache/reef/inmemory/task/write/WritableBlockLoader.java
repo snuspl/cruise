@@ -22,8 +22,6 @@ import java.util.logging.Logger;
 public class WritableBlockLoader implements BlockLoader, BlockReceiver {
   private final static Logger LOG = Logger.getLogger(Writeable.class.getName());
 
-  // TODO Constructor
-  // TODO Introduce state?
   private final BlockId blockId;
   private final int bufferSize;
   private final boolean pinned;
@@ -64,8 +62,7 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
   @Override
   public byte[] getData(int index) throws BlockLoadingException {
     if (!data.containsKey(index)) {
-      // TODO
-      throw new BlockLoadingException();
+      throw new BlockLoadingException(totalWrite);
     }
     return this.data.get(index);
   }
@@ -84,7 +81,6 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     int innerOffset = (int) (offset % bufferSize);
     int nTotal = 0;
 
-    // TODO Keep track of total amount of data
     while (nTotal < data.length) {
       ByteBuffer buf = getBuffer(index);
       buf.position(innerOffset);
@@ -123,4 +119,7 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     return ByteBuffer.wrap(data.get(index));
   }
 
+  public long getTotal() {
+    return totalWrite;
+  }
 }

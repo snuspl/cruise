@@ -7,12 +7,16 @@ import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.MockBlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
+import org.apache.reef.inmemory.common.replication.SyncMethod;
+import org.apache.reef.inmemory.task.write.WritableBlockLoader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -142,6 +146,48 @@ public final class InMemoryCacheImplTest {
 
     cache.load(loader);
     assertBlockLoaded(loader, blockId);
+  }
+
+  /**
+   * Fill the data as large as the block size.
+   * Block Size : 1024 / Buffer size : 128 / Packet size : 64
+   * @throws IOException
+   * @throws BlockNotFoundException
+   * @throws BlockNotWritableException
+   */
+  @Test
+  public void testWriteFullBlock() throws IOException, BlockNotFoundException, BlockNotWritableException, BlockLoadingException {
+    final String fileName = "/write";
+    final int offset = 0;
+    final int blockSize = 1024;
+
+    final byte[] data = new byte[blockSize];
+    for (int i = 0; i < blockSize; i++) {
+      data[i] = (byte)(i % Byte.SIZE);
+    }
+
+    final BlockId blockId = new MockBlockId(fileName, offset, blockSize);
+    final WritableBlockLoader blockLoader = new WritableBlockLoader(blockId, false, 128, 1, SyncMethod.WRITE_BACK);
+
+    cache.prepareToLoad(blockLoader);
+
+    final int packetSize = 64;
+    for (int i = 0; i < blockSize / packetSize; i++) {
+      ByteBuffer subBuf = ByteBuffer.wrap(data, i * packetSize, packetSize).slice();
+      cache.write(blockId, 0, subBuf);
+      assertEquals(packetSize * (i+1), blockLoader.getTotal());
+    }
+
+    assertEquals(blockSize, statistics.getCacheBytes());
+    assertEquals(0, statistics.getLoadingBytes());
+    assertEquals(0, statistics.getEvictedBytes());
+    assertEquals(0, statistics.getPinnedBytes());
+
+    ByteBuffer loaded = ByteBuffer.allocate(blockSize);
+    for (int i = 0; i < blockSize / packetSize; i++) {
+      loaded.put(cache.get(blockId, i));
+    }
+    assertArrayEquals(data, loaded.array());
   }
 
   /**

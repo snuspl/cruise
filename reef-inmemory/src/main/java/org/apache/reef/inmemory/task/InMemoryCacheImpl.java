@@ -70,7 +70,12 @@ public final class InMemoryCacheImpl implements InMemoryCache {
       // TODO It looks somewhat unsafe
       throw new BlockNotWritableException();
     } else {
-      ((WritableBlockLoader) loader).writeData(data.array(), offset);
+      WritableBlockLoader writableLoader = (WritableBlockLoader) loader;
+      writableLoader.writeData(data.array(), offset);
+      // TODO This will be more sophisticated
+      if (writableLoader.getTotal() == blockId.getBlockSize()) {
+        memoryManager.loadSuccess(blockId, loader.isPinned());
+      }
     }
   }
 

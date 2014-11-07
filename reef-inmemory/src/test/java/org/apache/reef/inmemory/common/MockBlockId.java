@@ -60,8 +60,8 @@ public final class MockBlockId implements BlockId {
   public String toString() {
     return "MockBlockId{" +
             "filePath='" + filePath +
-            ", offset='" + offset +
-            "blockSize=" + blockSize + '\'' +
+            "', offset='" + offset +
+            "', blockSize='" + blockSize + '\'' +
             '}';
   }
 }
