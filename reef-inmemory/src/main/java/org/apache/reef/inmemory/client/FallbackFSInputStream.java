@@ -1,0 +1,216 @@
+package org.apache.reef.inmemory.client;
+
+import org.apache.hadoop.fs.FSInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public final class FallbackFSInputStream extends FSInputStream {
+
+  private static Logger LOG = Logger.getLogger(FallbackFSInputStream.class.getName());
+
+  // The original input stream is always kept, so it can be closed later
+  private final FSInputStream originalIn;
+  private FSInputStream in;
+  private final Path path;
+  private final FileSystem fallbackFS;
+
+  private boolean isFallback;
+  private long pos;
+
+  /**
+   * Wrap an input stream created with a known path, to fallback to another FS.
+   * @param in The input stream. This will be used until an IOException is encountered.
+   * @param path The path used to create the input stream.
+   * @param fallbackFS The fallback FS. A new input stream is created using this FS only if the original
+   *                   input stream encounters an IOException
+   */
+  public FallbackFSInputStream(final FSInputStream in, final Path path, final FileSystem fallbackFS) {
+    this.originalIn = in;
+    this.in = in;
+    this.path = path;
+    this.fallbackFS = fallbackFS;
+    this.isFallback = false;
+  }
+
+  private synchronized void initializeFallback(final Exception exception) throws IOException {
+    LOG.log(Level.WARNING, "Fallback in progress, due to exception", exception);
+
+    if (!this.isFallback) {
+      try {
+        this.in = (FSInputStream) fallbackFS.open(path).getWrappedStream();
+      } catch (final ClassCastException classCastException) {
+        LOG.log(Level.WARNING, "Fallback failed with exception", classCastException);
+      }
+      this.in.seek(pos);
+      this.isFallback = true;
+    }
+  }
+
+  /*** Override abstract methods ***/
+
+  @Override
+  public synchronized void seek(final long pos) throws IOException {
+    try {
+      in.seek(pos);
+      this.pos = pos;
+    } catch (final IOException e) {
+      initializeFallback(e);
+      in.seek(pos);
+    }
+  }
+
+  @Override
+  public long getPos() throws IOException {
+    try {
+      return in.getPos();
+    } catch (final IOException e) {
+      initializeFallback(e);
+      return in.getPos();
+    }
+  }
+
+  @Override
+  public boolean seekToNewSource(final long targetPos) throws IOException {
+    try {
+      return in.seekToNewSource(targetPos);
+    } catch (final IOException e) {
+      initializeFallback(e);
+      return in.seekToNewSource(targetPos);
+    }
+  }
+
+  @Override
+  public synchronized int read() throws IOException {
+    final long previousPos = this.pos;
+    int numRead;
+    try {
+      numRead = in.read();
+    } catch (final IOException e) {
+      initializeFallback(e);
+      numRead = in.read();
+    }
+    this.pos = previousPos + numRead;
+    return numRead;
+  }
+
+  /*** Override methods directly inherited from FSInputStream ***/
+
+  @Override
+  public synchronized int read(long position, byte[] buffer, int offset, int length) throws IOException {
+    final long previousPos = this.pos;
+    int numRead;
+    try {
+      numRead = in.read(position, buffer, offset, length);
+    } catch (final IOException e) {
+      initializeFallback(e);
+      numRead = in.read(position, buffer, offset, length);
+    }
+    this.pos = previousPos + numRead;
+    return numRead;
+  }
+
+  @Override
+  public void readFully(long position, byte[] buffer, int offset, int length) throws IOException {
+    try {
+      in.readFully(position, buffer, offset, length);
+    } catch (final IOException e) {
+      initializeFallback(e);
+      in.readFully(position, buffer, offset, length);
+    }
+  }
+
+  @Override
+  public void readFully(long position, byte[] buffer) throws IOException {
+    try {
+      in.readFully(position, buffer);
+    } catch (final IOException e) {
+      initializeFallback(e);
+      in.readFully(position, buffer);
+    }
+  }
+
+  /*** Override methods inherited from InputStream ***/
+
+  @Override
+  public synchronized int read(byte[] b) throws IOException {
+    final long previousPos = this.pos;
+    int numRead;
+    try {
+      numRead = in.read(b);
+    } catch (final IOException e) {
+      initializeFallback(e);
+      numRead = in.read(b);
+    }
+    this.pos = previousPos + numRead;
+    return numRead;
+  }
+
+  @Override
+  public synchronized int read(byte[] b, int off, int len) throws IOException {
+    final long previousPos = this.pos;
+    int numRead;
+    try {
+      numRead = in.read(b, off, len);
+    } catch (final IOException e) {
+      initializeFallback(e);
+      numRead = in.read(b, off, len);
+    }
+    this.pos = previousPos + numRead;
+    return numRead;
+  }
+
+  @Override
+  public long skip(long n) throws IOException {
+    final long previousPos = this.pos;
+    long numSkipped;
+    try {
+      numSkipped = in.skip(n);
+    } catch (final IOException e) {
+      initializeFallback(e);
+      numSkipped = in.skip(n);
+    }
+    this.pos = previousPos + numSkipped;
+    return numSkipped;
+  }
+
+  @Override
+  public int available() throws IOException {
+    try {
+      return in.available();
+    } catch (final IOException e) {
+      initializeFallback(e);
+      return in.available();
+    }
+  }
+
+  @Override
+  public void close() throws IOException {
+    in.close();
+    if (originalIn != in) {
+      try {
+        originalIn.close();
+      } catch (final IOException e) {
+        LOG.log(Level.WARNING, "Close on the original InputStream failed with exception", e);
+      }
+    }
+  }
+
+  /*** Mark/Reset is not supported by FallbackFSInputStream ***/
+
+  @Override
+  public synchronized void mark(int readlimit) {
+  }
+
+  @Override
+  public synchronized void reset() throws IOException {
+  }
+
+  @Override
+  public boolean markSupported() {
+    return false;
+  }
+}

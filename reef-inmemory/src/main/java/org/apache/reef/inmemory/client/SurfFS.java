@@ -177,6 +177,8 @@ public final class SurfFS extends FileSystem {
 
   /**
    * Note: calling open triggers a load on the file, if it's not yet in Surf
+   * The open call will fallback to the baseFs on an exception,
+   * The returned FSDataInputStream will also fallback to the baseFs in case of an exception.
    */
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
@@ -188,13 +190,15 @@ public final class SurfFS extends FileSystem {
     try {
       FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
 
-      return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager, getConf()));
+      return new FSDataInputStream(new FallbackFSInputStream(
+              new SurfFSInputStream(metadata, cacheClientManager, getConf()),
+              path, baseFs));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      LOG.log(Level.FINE, "FileNotFoundException ", e);
-      throw new FileNotFoundException(e.getMessage());
+      LOG.log(Level.WARNING, "Surf FileNotFoundException ", e);
+      return baseFs.open(path);
     } catch (TException e) {
-      LOG.log(Level.SEVERE, "TException", e);
-      throw new IOException(e);
+      LOG.log(Level.WARNING, "Surf TException", e);
+      return baseFs.open(path);
     }
   }
 
