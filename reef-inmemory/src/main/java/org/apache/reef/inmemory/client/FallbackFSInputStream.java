@@ -19,7 +19,10 @@ public final class FallbackFSInputStream extends FSInputStream {
   private final FileSystem fallbackFS;
 
   private boolean isFallback;
-  private long pos;
+  // The position for the original InputStream is kept in sync locally by updating on methods that change the position.
+  // When initializing the fallback InputStream, it is read once to make a seek call.
+  // After that, originalPos is no longer updated or read.
+  private long originalPos;
 
   /**
    * Wrap an input stream created with a known path, to fallback to another FS.
@@ -36,16 +39,18 @@ public final class FallbackFSInputStream extends FSInputStream {
     this.isFallback = false;
   }
 
-  private synchronized void initializeFallback(final Exception exception) throws IOException {
-    LOG.log(Level.WARNING, "Fallback in progress, due to exception", exception);
+  private synchronized void initializeFallback(final IOException originalException) throws IOException {
+    LOG.log(Level.WARNING, "Fallback in progress, due to exception", originalException);
 
     if (!this.isFallback) {
       try {
         this.in = (FSInputStream) fallbackFS.open(path).getWrappedStream();
-      } catch (final ClassCastException classCastException) {
-        LOG.log(Level.WARNING, "Fallback failed with exception", classCastException);
+      } catch (final Throwable thrown) {
+        LOG.log(Level.WARNING, "Fallback failed with throwable", thrown);
+        // Throw the original exception, as fallback failed
+        throw originalException;
       }
-      this.in.seek(pos);
+      this.in.seek(originalPos);
       this.isFallback = true;
     }
   }
@@ -56,7 +61,7 @@ public final class FallbackFSInputStream extends FSInputStream {
   public synchronized void seek(final long pos) throws IOException {
     try {
       in.seek(pos);
-      this.pos = pos;
+      this.originalPos = pos;
     } catch (final IOException e) {
       initializeFallback(e);
       in.seek(pos);
@@ -85,15 +90,16 @@ public final class FallbackFSInputStream extends FSInputStream {
 
   @Override
   public synchronized int read() throws IOException {
-    final long previousPos = this.pos;
     int numRead;
     try {
       numRead = in.read();
+      if (numRead > 0) {
+        this.originalPos += numRead;
+      }
     } catch (final IOException e) {
       initializeFallback(e);
       numRead = in.read();
     }
-    this.pos = previousPos + numRead;
     return numRead;
   }
 
@@ -101,15 +107,16 @@ public final class FallbackFSInputStream extends FSInputStream {
 
   @Override
   public synchronized int read(long position, byte[] buffer, int offset, int length) throws IOException {
-    final long previousPos = this.pos;
     int numRead;
     try {
       numRead = in.read(position, buffer, offset, length);
+      if (numRead > 0) {
+        this.originalPos += numRead;
+      }
     } catch (final IOException e) {
       initializeFallback(e);
       numRead = in.read(position, buffer, offset, length);
     }
-    this.pos = previousPos + numRead;
     return numRead;
   }
 
@@ -137,43 +144,46 @@ public final class FallbackFSInputStream extends FSInputStream {
 
   @Override
   public synchronized int read(byte[] b) throws IOException {
-    final long previousPos = this.pos;
     int numRead;
     try {
       numRead = in.read(b);
+      if (numRead > 0) {
+        this.originalPos += numRead;
+      }
     } catch (final IOException e) {
       initializeFallback(e);
       numRead = in.read(b);
     }
-    this.pos = previousPos + numRead;
     return numRead;
   }
 
   @Override
   public synchronized int read(byte[] b, int off, int len) throws IOException {
-    final long previousPos = this.pos;
     int numRead;
     try {
       numRead = in.read(b, off, len);
+      if (numRead > 0) {
+        this.originalPos += numRead;
+      }
     } catch (final IOException e) {
       initializeFallback(e);
       numRead = in.read(b, off, len);
     }
-    this.pos = previousPos + numRead;
     return numRead;
   }
 
   @Override
   public long skip(long n) throws IOException {
-    final long previousPos = this.pos;
     long numSkipped;
     try {
       numSkipped = in.skip(n);
+      if (numSkipped > 0) {
+        this.originalPos += numSkipped;
+      }
     } catch (final IOException e) {
       initializeFallback(e);
       numSkipped = in.skip(n);
     }
-    this.pos = previousPos + numSkipped;
     return numSkipped;
   }
 
