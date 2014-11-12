@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Test that the InputStream for FallbackFS is opened and methods are accessed,
- * successfully retrieving the write data from HDFS.
+ * successfully retrieving the data from HDFS.
  */
 public final class FallbackFSInputStreamITCase {
 

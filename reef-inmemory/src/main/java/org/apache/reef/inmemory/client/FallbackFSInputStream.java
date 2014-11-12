@@ -8,6 +8,14 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Wraps an FSInputStream, along with the path used to open the input stream, and
+ * a FileSystem to fallback on.
+ * If the wrapped input stream throws an IOException (e.g. due to connection lost with
+ * a remote host) a new input stream is created with the fallback FileSystem. All calls then
+ * go through the fallback input stream.
+ */
+
 public final class FallbackFSInputStream extends FSInputStream {
 
   private static Logger LOG = Logger.getLogger(FallbackFSInputStream.class.getName());

@@ -16,6 +16,8 @@ import static org.mockito.Mockito.*;
 
 /**
  * Verify that SurfFS calls the fallback FS in case of Exceptions while connecting to Surf Driver
+ * These tests use mocks to verify that the methods are wired as expected. Actual connecting to
+ * a live fallback FS is tested in the SurfFSOpenITCase integration test.
  */
 public final class SurfFSFallbackTest {
   private FileSystem surfFs;

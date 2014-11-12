@@ -15,6 +15,8 @@ import static org.mockito.Mockito.*;
 /**
  * Verify that an InputStream for FallbackFS is opened and accessed as
  * expected on Exception.
+ * These tests use mocks to verify that the methods are wired as expected. Actual connecting to
+ * a live fallback FS is tested in the FallbackFSInputStreamITCase integration test.
  */
 public final class FallbackFSInputStreamTest {
 
