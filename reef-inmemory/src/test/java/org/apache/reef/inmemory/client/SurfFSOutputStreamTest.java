@@ -63,7 +63,7 @@ public class SurfFSOutputStreamTest {
 
     surfFSOutputStream.flush();
     assertEquals(0, surfFSOutputStream.getLocalBufWriteCount());
-    assertEquals(dataSize % BLOCK_SIZE, surfFSOutputStream.getCurBlockOffset());
+    assertEquals(dataSize % BLOCK_SIZE, surfFSOutputStream.getCurBlockInnerOffset());
 
     surfFSOutputStream.close();
   }
