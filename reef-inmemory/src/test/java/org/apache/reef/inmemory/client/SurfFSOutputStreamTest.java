@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 
 public class SurfFSOutputStreamTest {
   private static final String PATH = "testPath";
-  private static final long BLOCK_SIZE = 800;
+  private static final int BLOCK_SIZE = 800;
   private static String CACHE_ADDR = "testCacheAddress";
 
   private SurfMetaService.Client metaClient;
@@ -54,9 +54,9 @@ public class SurfFSOutputStreamTest {
     testWrite(30 * BLOCK_SIZE + 3); // > many blocks
   }
 
-  public void testWrite(long dataSize) throws IOException {
+  public void testWrite(int dataSize) throws IOException {
     final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
-    final byte[] data = new byte[(int)dataSize]; // TODO Assumption : Length is restricted to use an integer value
+    final byte[] data = new byte[dataSize];
 
     surfFSOutputStream.write(data);
     assertEquals(dataSize % surfFSOutputStream.getPacketSize(), surfFSOutputStream.getLocalBufWriteCount());

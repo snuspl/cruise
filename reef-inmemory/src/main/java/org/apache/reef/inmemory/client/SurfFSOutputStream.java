@@ -28,7 +28,7 @@ public class SurfFSOutputStream extends OutputStream {
   private byte localBuf[] = new byte[PACKET_SIZE];
   private int localBufWriteCount = 0;
   private AllocatedBlockInfo curAllocatedBlockInfo;
-  private int curBlockOffset = 0;
+  private long curBlockOffset = 0;
 
   private final SurfMetaService.Client metaClient;
   private final CacheClientManager cacheClientManager;
@@ -144,10 +144,9 @@ public class SurfFSOutputStream extends OutputStream {
     // TODO Make sure we set right offset here
     if (curBlockOffset + len <= blockSize)  {
       sendPacket(curAllocatedBlockInfo, curBlockOffset, ByteBuffer.wrap(b, start, len));
-      curBlockOffset = (curBlockOffset + len) % (int)blockSize;
+      curBlockOffset = (curBlockOffset + len) % blockSize;
     } else {
-      // TODO This is to be integer value.
-      final int possibleLen = (int)blockSize - curBlockOffset;
+      final int possibleLen = (int)(blockSize - curBlockOffset); // this must be int because "possibleLen <= len"
       sendPacket(curAllocatedBlockInfo, curBlockOffset, ByteBuffer.wrap(b, start, possibleLen));
       curBlockOffset = 0;
 
