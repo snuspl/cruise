@@ -21,7 +21,7 @@ public final class FallbackFSInputStream extends FSInputStream {
   private boolean isFallback;
   // The position for the original InputStream is kept in sync locally by updating on methods that change the position.
   // When initializing the fallback InputStream, it is read once to make a seek call.
-  // After that, originalPos is no longer updated or read.
+  // After that, originalPos is updated, but no longer read.
   private long originalPos;
 
   /**
@@ -69,7 +69,7 @@ public final class FallbackFSInputStream extends FSInputStream {
   }
 
   @Override
-  public long getPos() throws IOException {
+  public synchronized long getPos() throws IOException {
     try {
       return in.getPos();
     } catch (final IOException e) {
@@ -93,7 +93,7 @@ public final class FallbackFSInputStream extends FSInputStream {
     int numRead;
     try {
       numRead = in.read();
-      if (numRead > 0) {
+      if (numRead >= 0) {
         this.originalPos += numRead;
       }
     } catch (final IOException e) {
@@ -106,11 +106,11 @@ public final class FallbackFSInputStream extends FSInputStream {
   /*** Override methods directly inherited from FSInputStream ***/
 
   @Override
-  public synchronized int read(long position, byte[] buffer, int offset, int length) throws IOException {
+  public synchronized int read(final long position, final byte[] buffer, final int offset, final int length) throws IOException {
     int numRead;
     try {
       numRead = in.read(position, buffer, offset, length);
-      if (numRead > 0) {
+      if (numRead >= 0) {
         this.originalPos += numRead;
       }
     } catch (final IOException e) {
@@ -121,7 +121,7 @@ public final class FallbackFSInputStream extends FSInputStream {
   }
 
   @Override
-  public void readFully(long position, byte[] buffer, int offset, int length) throws IOException {
+  public void readFully(final long position, final byte[] buffer, final int offset, final int length) throws IOException {
     try {
       in.readFully(position, buffer, offset, length);
     } catch (final IOException e) {
@@ -131,7 +131,7 @@ public final class FallbackFSInputStream extends FSInputStream {
   }
 
   @Override
-  public void readFully(long position, byte[] buffer) throws IOException {
+  public void readFully(final long position, final byte[] buffer) throws IOException {
     try {
       in.readFully(position, buffer);
     } catch (final IOException e) {
@@ -143,11 +143,11 @@ public final class FallbackFSInputStream extends FSInputStream {
   /*** Override methods inherited from InputStream ***/
 
   @Override
-  public synchronized int read(byte[] b) throws IOException {
+  public synchronized int read(final byte[] b) throws IOException {
     int numRead;
     try {
       numRead = in.read(b);
-      if (numRead > 0) {
+      if (numRead >= 0) {
         this.originalPos += numRead;
       }
     } catch (final IOException e) {
@@ -158,11 +158,11 @@ public final class FallbackFSInputStream extends FSInputStream {
   }
 
   @Override
-  public synchronized int read(byte[] b, int off, int len) throws IOException {
+  public synchronized int read(final byte[] b, final int off, final int len) throws IOException {
     int numRead;
     try {
       numRead = in.read(b, off, len);
-      if (numRead > 0) {
+      if (numRead >= 0) {
         this.originalPos += numRead;
       }
     } catch (final IOException e) {
@@ -173,11 +173,11 @@ public final class FallbackFSInputStream extends FSInputStream {
   }
 
   @Override
-  public long skip(long n) throws IOException {
+  public long skip(final long n) throws IOException {
     long numSkipped;
     try {
       numSkipped = in.skip(n);
-      if (numSkipped > 0) {
+      if (numSkipped >= 0) {
         this.originalPos += numSkipped;
       }
     } catch (final IOException e) {
@@ -212,7 +212,7 @@ public final class FallbackFSInputStream extends FSInputStream {
   /*** Mark/Reset is not supported by FallbackFSInputStream ***/
 
   @Override
-  public synchronized void mark(int readlimit) {
+  public synchronized void mark(final int readlimit) {
   }
 
   @Override

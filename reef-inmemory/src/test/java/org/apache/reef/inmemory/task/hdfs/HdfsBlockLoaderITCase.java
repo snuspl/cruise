@@ -25,7 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class HdfsBlockLoaderITCase {
-  private static final String PATH = "/temp/HDFSBlockLoaderTest";
+  private static final String TESTDIR = ITUtils.getTestDir();
+  private static final String PATH = TESTDIR+"/HDFSBlockLoaderTest";
   private static final int NUM_BLOCK = 3;
   private static final int LONG_BYTES = 8;
   private static final int BUFFER_SIZE = 8 * 1024 * 1024;
@@ -62,7 +63,7 @@ public class HdfsBlockLoaderITCase {
    */
   @After
   public void tearDown() throws Exception {
-    fs.delete(new Path("/*"), true);
+    fs.delete(new Path(TESTDIR), true);
   }
 
   /*

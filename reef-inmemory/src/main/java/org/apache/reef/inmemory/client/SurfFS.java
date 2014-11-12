@@ -54,9 +54,6 @@ public final class SurfFS extends FileSystem {
   public static final String CACHECLIENT_BUFFER_SIZE_KEY = "surf.cache.client.buffer.size";
   public static final int CACHECLIENT_BUFFER_SIZE_DEFAULT = 8 * 1024 * 1024;
 
-  public static final String INSTRUMENTATIONCLIENT_LOG_LEVEL_KEY = "surf.instrumentation.client.log.level";
-  public static final String INSTRUMENTATIONCLIENT_LOG_LEVEL_DEFAULT = "INFO";
-
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
   // These cannot be final, because the empty constructor + intialize() are called externally
@@ -83,25 +80,21 @@ public final class SurfFS extends FileSystem {
    * Return current Client, or lazy load if not assigned.
    * Throws runtime exception if Client cannot be found, because we cannot make progress without a Client.
    */
-  private SurfMetaService.Client getMetaClient() {
+  private SurfMetaService.Client getMetaClient() throws TTransportException {
 
     if (this.metaClient != null) {
       return this.metaClient;
     } else {
-      try {
-        LOG.log(Level.INFO, "Connecting to metaserver at {0}", metaserverAddress);
-        HostAndPort metaAddress = HostAndPort.fromString(metaserverAddress);
+      LOG.log(Level.INFO, "Connecting to metaserver at {0}", metaserverAddress);
+      HostAndPort metaAddress = HostAndPort.fromString(metaserverAddress);
 
-        TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
-        transport.open();
-        TProtocol protocol = new TMultiplexedProtocol(
-                new TCompactProtocol(transport),
-                SurfMetaService.class.getName());
-        this.metaClient = new SurfMetaService.Client(protocol);
-        return this.metaClient;
-      } catch (TTransportException e) {
-        throw new RuntimeException(e);
-      }
+      TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
+      transport.open();
+      TProtocol protocol = new TMultiplexedProtocol(
+              new TCompactProtocol(transport),
+              SurfMetaService.class.getName());
+      this.metaClient = new SurfMetaService.Client(protocol);
+      return this.metaClient;
     }
   }
 
@@ -195,10 +188,10 @@ public final class SurfFS extends FileSystem {
               path, baseFs));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       LOG.log(Level.WARNING, "Surf FileNotFoundException ", e);
-      return baseFs.open(path);
+      return baseFs.open(path, bufferSize);
     } catch (TException e) {
       LOG.log(Level.WARNING, "Surf TException", e);
-      return baseFs.open(path);
+      return baseFs.open(path, bufferSize);
     }
   }
 
@@ -319,11 +312,11 @@ public final class SurfFS extends FileSystem {
       return blockLocations.toArray(new BlockLocation[blockLocations.size()]);
 
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
-      throw new FileNotFoundException(e.getMessage());
+      LOG.log(Level.WARNING, "FileNotFoundException: "+e+" "+e.getCause());
+      return baseFs.getFileBlockLocations(file, start, len);
     } catch (TException e) {
-      LOG.log(Level.SEVERE, "TException: "+e+" "+e.getCause());
-      throw new IOException(e.getMessage());
+      LOG.log(Level.WARNING, "TException: "+e+" "+e.getCause());
+      return baseFs.getFileBlockLocations(file, start, len);
     }
   }
 

@@ -12,6 +12,10 @@ import java.io.IOException;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
+/**
+ * Verify that an InputStream for FallbackFS is opened and accessed as
+ * expected on Exception.
+ */
 public final class FallbackFSInputStreamTest {
 
   private Path path;
@@ -33,7 +37,6 @@ public final class FallbackFSInputStreamTest {
 
   /**
    * Verify that FallbackFS open was called exactly once.
-   * @throws IOException
    */
   private void verifyFallbackFsOpen() throws IOException {
     verify(fallbackFs).open(path);
@@ -181,7 +184,11 @@ public final class FallbackFSInputStreamTest {
    * method is run on the Fallback FS.
    ****/
 
-
+  /**
+   * Test that the number of seeks reaching the original InputStream and the fallback InputStream are as expected:
+   * The seek that throws an Exception runs a final seek on the original InputStream and
+   * triggers two seeks on the fallback InputStream: first to initialize, second to run the actual seek.
+   */
   @Test
   public void testSeek() throws IOException {
     final long EXCEPTION_THROWING_SEEK = Integer.MAX_VALUE;
@@ -205,7 +212,7 @@ public final class FallbackFSInputStreamTest {
     verify(originalIn, times(numSeeksBeforeException + 1)).seek(anyInt());
     // The seek that throws an Exception triggers two seeks on the fallback InputStream:
     // first to initialize, second to run the actual seek.
-    // After the Exception, all seeks are run at the Fallback InputStream
+    // After the Exception, all seeks are run at the fallback InputStream
     verify(fallbackWrappedIn, times(numSeeksAfterException + 2)).seek(anyInt());
   }
 }

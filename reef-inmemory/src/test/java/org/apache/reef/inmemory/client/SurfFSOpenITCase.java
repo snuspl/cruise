@@ -30,6 +30,7 @@ import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.spy;
 
 /**
  * Tests for SurfFS methods that delegate to a Base FS.
@@ -70,7 +71,7 @@ public final class SurfFSOpenITCase {
 
   private static final byte[] CHUNK = new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5, (byte)6, (byte)7, (byte)8};
 
-  private static final String TESTDIR = "/user/"+System.getProperty("user.name");
+  private static final String TESTDIR = ITUtils.getTestDir();
 
   private static final String SHORT_FILE_PATH = TESTDIR+"/"+"COUNT.short";
   private static final int SHORT_FILE_NUM_CHUNKS = 1;
@@ -155,7 +156,7 @@ public final class SurfFSOpenITCase {
    */
   @AfterClass
   public static void tearDownClass() throws Exception {
-    baseFs.delete(new Path("/*"), true);
+    baseFs.delete(new Path(TESTDIR), true);
     if (!jobFinished.get()) {
       LOG.log(Level.INFO, "Waiting for Surf job to complete...");
       synchronized (lock) {
@@ -168,20 +169,14 @@ public final class SurfFSOpenITCase {
     }
   }
 
-  private FSDataInputStream open(Path path) throws IOException {
-    FSDataInputStream in = null;
-    in = surfFs.open(path);
-    return in;
-  }
-
   private void assertBufEqualsChunk(final byte[] buf, int position, int length) {
     for (int i = 0; i < length; i++) {
       assertEquals("At index "+i, CHUNK[(i + position) % CHUNK.length], buf[i]);
     }
   }
 
-  private void read(String path, int numChunks) throws IOException {
-    FSDataInputStream in = open(new Path(path));
+  private void read(final FileSystem fs, final String path, final int numChunks) throws IOException {
+    FSDataInputStream in = fs.open(new Path(path));
 
     byte[] readBuf = new byte[numChunks * CHUNK.length];
 
@@ -190,8 +185,8 @@ public final class SurfFSOpenITCase {
     assertBufEqualsChunk(readBuf, 0, readBuf.length);
   }
 
-  private void copyBytes(String path, int size) throws IOException {
-    FSDataInputStream in = open(new Path(path));
+  private void copyBytes(final FileSystem fs, final String path, final int size) throws IOException {
+    FSDataInputStream in = fs.open(new Path(path));
     OutputStream out = new ByteArrayOutputStream(size * CHUNK.length);
 
     IOUtils.copyBytes(in, out, size * CHUNK.length);
@@ -199,15 +194,15 @@ public final class SurfFSOpenITCase {
 
   @Test
   public void testRead() throws IOException {
-    read(SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
-    read(LONG_FILE_PATH, LONG_FILE_NUM_CHUNKS);
+    read(surfFs, SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
+    read(surfFs, LONG_FILE_PATH, LONG_FILE_NUM_CHUNKS);
     // TODO: Check various boundary conditions
   }
 
   @Test
   public void testCopyBytes() throws IOException {
-    copyBytes(SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
-    copyBytes(LONG_FILE_PATH, LONG_FILE_NUM_CHUNKS);
+    copyBytes(surfFs, SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
+    copyBytes(surfFs, LONG_FILE_PATH, LONG_FILE_NUM_CHUNKS);
     // TODO: Check various boundary conditions
   }
 
@@ -218,7 +213,7 @@ public final class SurfFSOpenITCase {
 
   @Test
   public void testSeek() throws IOException {
-    final FSDataInputStream in = open(new Path(LONG_FILE_PATH));
+    final FSDataInputStream in = surfFs.open(new Path(LONG_FILE_PATH));
     assertEquals(CHUNK[0], in.readByte());
 
     // Test seek forward
@@ -239,19 +234,19 @@ public final class SurfFSOpenITCase {
     // Test seek past last byte (EOF)
     try {
       in.seek(LONG_FILE_NUM_CHUNKS * CHUNK.length);
-      fail("Should throw EOF");
-    } catch (EOFException e) {
+      fail("Should throw IOException");
+    } catch (IOException e) {
       // passed
     } catch (Exception e) {
-      fail("Should throw EOF, instead threw "+e);
+      fail("Should throw IOException, instead threw "+e);
     }
     try {
       in.seek(LONG_FILE_NUM_CHUNKS * CHUNK.length + 1000);
-      fail("Should throw EOF");
-    } catch (EOFException e) {
+      fail("Should throw IOException");
+    } catch (IOException e) {
       // passed
     } catch (Exception e) {
-      fail("Should throw EOF, instead threw "+e);
+      fail("Should throw IOException, instead threw "+e);
     }
 
     // Test seek after EOFException
@@ -267,7 +262,7 @@ public final class SurfFSOpenITCase {
    */
   @Test
   public void testReadEOF() throws IOException {
-    final FSDataInputStream in = open(new Path(LONG_FILE_PATH));
+    final FSDataInputStream in = surfFs.open(new Path(LONG_FILE_PATH));
     final int EOF = -1;
     final byte bufSize = 16;
     final byte[] buf = new byte[bufSize];
@@ -312,7 +307,7 @@ public final class SurfFSOpenITCase {
    */
   @Test
   public void testReadFullyEOF() throws IOException {
-    final FSDataInputStream in = open(new Path(LONG_FILE_PATH));
+    final FSDataInputStream in = surfFs.open(new Path(LONG_FILE_PATH));
     final int fileSize = LONG_FILE_NUM_CHUNKS * CHUNK.length;
 
     // readFully from start of file
@@ -350,5 +345,37 @@ public final class SurfFSOpenITCase {
       fail("Should throw EOF, instead threw " + e);
     }
     assertEquals(0, in.getPos());
+  }
+
+  /**
+   * Read from the wrong Surf address. This should still succeed, by falling back to the base FS.
+   */
+  @Test
+  public void testFallbackRead() throws IOException {
+    final String wrongAddress = "localhost:18888";
+
+    final SurfFS surfFsWithWrongAddress = new SurfFS();
+    final Configuration conf = new Configuration();
+    conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
+    surfFsWithWrongAddress.initialize(URI.create(SURF+"://"+wrongAddress), conf);
+
+    read(surfFsWithWrongAddress, SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
+    read(surfFsWithWrongAddress, LONG_FILE_PATH, LONG_FILE_NUM_CHUNKS);
+  }
+
+  /**
+   * Copy with the wrong Surf port. This should still succeed, by falling back to the base FS.
+   */
+  @Test
+  public void testFallbackCopy() throws IOException {
+    final String wrongAddress = "localhost:18888";
+
+    final SurfFS surfFsWithWrongAddress = new SurfFS();
+    final Configuration conf = new Configuration();
+    conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
+    surfFsWithWrongAddress.initialize(URI.create(SURF+"://"+wrongAddress), conf);
+
+    copyBytes(surfFsWithWrongAddress, SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
+    copyBytes(surfFsWithWrongAddress, LONG_FILE_PATH, LONG_FILE_NUM_CHUNKS);
   }
 }

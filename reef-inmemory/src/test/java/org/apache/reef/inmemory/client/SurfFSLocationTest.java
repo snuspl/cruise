@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
  * Tests for SurfFS methods that retrieve block locations from the Driver.
  */
 public final class SurfFSLocationTest {
-  private static FileSystem surfFs;
+  private FileSystem surfFs;
   private static final int port = 5000;
   private static final long blockLength = 512;
   private static final long modTime = 1406189420000L;

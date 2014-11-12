@@ -30,7 +30,8 @@ public final class CLIUtilsITCase {
   private static SurfFS surfFs;
   private static List<String> allPaths;
 
-  private final static String[] dirPaths = new String[] {"/1", "/1/2", "/1/2/3"};
+  private final static String TESTDIR = ITUtils.getTestDir();
+  private final static String[] dirPaths = new String[] {TESTDIR+"/1", TESTDIR+"/1/2", TESTDIR+"/1/2/3"};
   private final static String[] filePaths = new String[] {"A", "B", "C"};
 
   /**
@@ -65,7 +66,9 @@ public final class CLIUtilsITCase {
    */
   @AfterClass
   public static void tearDownClass() throws IOException {
-    baseFs.delete(new Path("/*"), true);
+    for (final String dirPath : dirPaths) {
+      baseFs.delete(new Path(dirPath), true);
+    }
   }
 
   /**
