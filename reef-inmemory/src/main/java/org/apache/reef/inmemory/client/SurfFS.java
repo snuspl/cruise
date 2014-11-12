@@ -54,11 +54,8 @@ public final class SurfFS extends FileSystem {
   public static final String CACHECLIENT_BUFFER_SIZE_KEY = "surf.cache.client.buffer.size";
   public static final int CACHECLIENT_BUFFER_SIZE_DEFAULT = 8 * 1024 * 1024;
 
-  public static final String FALLBACK_METASERVER_KEY = "surf.fallback.metaserver";
-  public static final boolean FALLBACK_METASERVER_DEFAULT = true;
-
-  public static final String FALLBACK_CACHESERVER_KEY = "surf.fallback.cacheserver";
-  public static final boolean FALLBACK_CACHESERVER_DEFAULT = true;
+  public static final String FALLBACK_KEY = "surf.fallback";
+  public static final boolean FALLBACK_DEFAULT = true;
 
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
@@ -73,12 +70,10 @@ public final class SurfFS extends FileSystem {
   private URI uri;
   private URI baseFsUri;
 
-  private boolean isFallbackMetaserver;
-  private boolean isFallbackCacheserver;
+  private boolean isFallback;
 
   public SurfFS() {
-    isFallbackMetaserver = FALLBACK_METASERVER_DEFAULT;
-    isFallbackCacheserver = FALLBACK_CACHESERVER_DEFAULT;
+    isFallback = FALLBACK_DEFAULT;
   }
 
   protected SurfFS(final FileSystem baseFs,
@@ -121,8 +116,7 @@ public final class SurfFS extends FileSystem {
     this.baseFs.initialize(this.baseFsUri, conf);
     this.setConf(conf);
 
-    this.isFallbackMetaserver = conf.getBoolean(FALLBACK_METASERVER_KEY, FALLBACK_METASERVER_DEFAULT);
-    this.isFallbackCacheserver = conf.getBoolean(FALLBACK_CACHESERVER_KEY, FALLBACK_CACHESERVER_DEFAULT);
+    this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
 
     this.metaserverAddress = getMetaserverResolver().getAddress();
     LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaserverAddress);
@@ -199,20 +193,20 @@ public final class SurfFS extends FileSystem {
       FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
 
       final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf());
-      if (isFallbackCacheserver) {
+      if (isFallback) {
         return new FSDataInputStream(new FallbackFSInputStream(surfFSInputStream, path, baseFs));
       } else {
         return new FSDataInputStream(surfFSInputStream);
       }
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      if (isFallbackMetaserver) {
+      if (isFallback) {
         LOG.log(Level.WARNING, "Surf FileNotFoundException ", e);
         return baseFs.open(path, bufferSize);
       } else {
         throw new FileNotFoundException(e.getMessage());
       }
     } catch (TException e) {
-      if (isFallbackMetaserver) {
+      if (isFallback) {
         LOG.log(Level.WARNING, "Surf TException", e);
         return baseFs.open(path, bufferSize);
       } else {
@@ -338,14 +332,14 @@ public final class SurfFS extends FileSystem {
       return blockLocations.toArray(new BlockLocation[blockLocations.size()]);
 
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      if (isFallbackMetaserver) {
+      if (isFallback) {
         LOG.log(Level.WARNING, "FileNotFoundException: ", e);
         return baseFs.getFileBlockLocations(file, start, len);
       } else {
         throw new FileNotFoundException(e.getMessage());
       }
     } catch (TException e) {
-      if (isFallbackMetaserver) {
+      if (isFallback) {
         LOG.log(Level.WARNING, "TException: ", e);
         return baseFs.getFileBlockLocations(file, start, len);
       } else {

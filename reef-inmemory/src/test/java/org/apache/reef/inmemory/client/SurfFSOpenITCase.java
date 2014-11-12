@@ -29,7 +29,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.spy;
 
 /**
  * Tests for SurfFS methods that delegate to a Base FS.
@@ -382,17 +381,17 @@ public final class SurfFSOpenITCase {
    * Operations should fail when fallback is turned off
    */
   @Test
-  public void testNoMetaserverFallback() throws IOException {
+  public void testMetaServerWithoutFallback() throws IOException {
     final String wrongAddress = "localhost:18888";
 
-    final SurfFS surfFsWithWrongAddress = new SurfFS();
+    final SurfFS surfFsWithoutFallback = new SurfFS();
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-    conf.setBoolean(SurfFS.FALLBACK_METASERVER_KEY, false);
-    surfFsWithWrongAddress.initialize(URI.create(SURF+"://"+wrongAddress), conf);
+    conf.setBoolean(SurfFS.FALLBACK_KEY, false);
+    surfFsWithoutFallback.initialize(URI.create(SURF + "://" + wrongAddress), conf);
 
     try {
-      final FSDataInputStream in = surfFsWithWrongAddress.open(new Path(SHORT_FILE_PATH));
+      final FSDataInputStream in = surfFsWithoutFallback.open(new Path(SHORT_FILE_PATH));
       fail("Should throw IOException");
     } catch (final IOException e) {
       // passed
@@ -405,20 +404,20 @@ public final class SurfFSOpenITCase {
    * Test that the wrapped stream is of correct type given configuration
    */
   @Test
-  public void testNoCacheserverFallback() throws IOException {
+  public void testCacheserverWithoutFallback() throws IOException {
     // On default, should recieve an instance of FallbackFSInputStream
     final FSDataInputStream in = surfFs.open(new Path(SHORT_FILE_PATH));
     assertTrue(in.getWrappedStream() instanceof FallbackFSInputStream);
 
     // When FALLBACK_CACHESERVER_KEY is set to false, should not receive an instance of FallbackFSInputStream
-    final SurfFS surfFsWithNoCacheserverFallback = new SurfFS();
+    final SurfFS surfFsWithoutFallback = new SurfFS();
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-    conf.setBoolean(SurfFS.FALLBACK_CACHESERVER_KEY, false);
-    surfFsWithNoCacheserverFallback.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);
+    conf.setBoolean(SurfFS.FALLBACK_KEY, false);
+    surfFsWithoutFallback.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
 
-    final FSDataInputStream inWithNoCacheserverFallback = surfFsWithNoCacheserverFallback.open(new Path(SHORT_FILE_PATH));
-    assertFalse(inWithNoCacheserverFallback.getWrappedStream() instanceof FallbackFSInputStream);
-    assertTrue(inWithNoCacheserverFallback.getWrappedStream() instanceof SurfFSInputStream);
+    final FSDataInputStream inWithNoFallback = surfFsWithoutFallback.open(new Path(SHORT_FILE_PATH));
+    assertFalse(inWithNoFallback.getWrappedStream() instanceof FallbackFSInputStream);
+    assertTrue(inWithNoFallback.getWrappedStream() instanceof SurfFSInputStream);
   }
 }
