@@ -1,8 +1,6 @@
 package org.apache.reef.inmemory;
 
 import org.apache.reef.client.DriverConfiguration;
-import org.apache.reef.client.DriverLauncher;
-import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.client.REEF;
 import org.apache.reef.runtime.common.client.REEFImplementation;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
@@ -128,7 +126,8 @@ public class Launch
    */
   private static Configuration getDriverConfiguration() {
     final Configuration driverConfig;
-    driverConfig = EnvironmentUtils.addClasspath(DriverConfiguration.CONF, DriverConfiguration.GLOBAL_LIBRARIES)
+    driverConfig = DriverConfiguration.CONF
+      .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(InMemoryDriver.class))
       .set(DriverConfiguration.DRIVER_IDENTIFIER, "InMemory")
       .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, InMemoryDriver.EvaluatorAllocatedHandler.class)
       .set(DriverConfiguration.ON_TASK_RUNNING, InMemoryDriver.RunningTaskHandler.class)
