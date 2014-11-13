@@ -75,6 +75,7 @@ public class SurfFSOutputStream extends OutputStream {
       final int bytesLeftInUserBuf = len-startIndex;
       final int bytesLeftInLocalBuf = PACKET_SIZE - localBufWriteCount;
       final int length = Math.min(bytesLeftInUserBuf, bytesLeftInLocalBuf);
+
       System.arraycopy(b, startIndex, localBuf, localBufWriteCount, length);
 
       localBufWriteCount += length;
@@ -158,6 +159,7 @@ public class SurfFSOutputStream extends OutputStream {
   private void initNewBlock() throws IOException {
     try {
       curBlockOffset++;
+
       final AllocatedBlockInfo blockInfo = metaClient.allocateBlock(path, curBlockOffset, blockSize, localAddress);
       curBlockNodeInfo = blockInfo.getLocations().get(0); // TODO retry (a for loop)
 
