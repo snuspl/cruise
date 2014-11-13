@@ -28,7 +28,7 @@ public class SurfFSOutputStream extends OutputStream {
   private byte localBuf[] = new byte[PACKET_SIZE];
   private int localBufWriteCount = 0;
 
-  private AllocatedBlockInfo curAllocatedBlockInfo;
+  private NodeInfo curBlockNodeInfo;
   private long curBlockOffset = -1;
   private long curBlockInnerOffset = 0;
 
@@ -101,10 +101,8 @@ public class SurfFSOutputStream extends OutputStream {
   public void close() throws IOException {
     flush(true);
     this.executor.shutdown();
-    // TODO resolve the lastNode
-    NodeInfo lastNode = null;
     try {
-      metaClient.completeFile(path, curBlockInnerOffset, blockSize, lastNode);
+      metaClient.completeFile(path, curBlockInnerOffset, blockSize, curBlockNodeInfo);
     } catch (TException e) {
       throw new IOException("Failed while closing the file", e);
     }
@@ -128,12 +126,12 @@ public class SurfFSOutputStream extends OutputStream {
 
   private void flushLocalBuf(final boolean isLastPacket) throws IOException {
     flushBuf(localBuf, 0, localBufWriteCount, isLastPacket);
-    localBuf = new byte[PACKET_SIZE]; // create a new localBuf since the localBuf cannot be reused
+    localBuf = new byte[PACKET_SIZE]; // create a new localBuf, since flushBuf does not allow buf reuse
     localBufWriteCount = 0;
   }
 
   /**
-   * To avoid copying, the buffer is wrapped. The caller cannot reuse the buffer.
+   * The caller cannot reuse the buffer. To avoid copying, the buffer is wrapped.
    * If block overflow detected, create 2 packets by recursively calling itself.
    *
    * @param b the buffer to flush
@@ -148,10 +146,11 @@ public class SurfFSOutputStream extends OutputStream {
     }
 
     if (curBlockInnerOffset + len <= blockSize)  {
-      sendPacket(ByteBuffer.wrap(b, start, len), len, isLastPacket);
+      sendPacket(curBlockNodeInfo.getAddress(), ByteBuffer.wrap(b, start, len), len, isLastPacket);
     } else {
       final int possibleLen = (int)(blockSize - curBlockInnerOffset); // this must be int because "possibleLen <= len"
-      sendPacket(ByteBuffer.wrap(b, start, possibleLen), possibleLen, false);
+      sendPacket(curBlockNodeInfo.getAddress(), ByteBuffer.wrap(b, start, possibleLen), possibleLen, false);
+
       flushBuf(b, start+possibleLen, end, isLastPacket); // Create another packet with the leftovers
     }
   }
@@ -159,35 +158,35 @@ public class SurfFSOutputStream extends OutputStream {
   private void initNewBlock() throws IOException {
     try {
       curBlockOffset++;
-      curAllocatedBlockInfo = metaClient.allocateBlock(path, curBlockOffset, blockSize, localAddress);
-      // TODO Make sure it is the right address
-      final String address = curAllocatedBlockInfo.getLocations().get(0).getAddress();
-      final SurfCacheService.Client cacheClient = cacheClientManager.get(address);
-      cacheClient.initBlock(path, curBlockOffset, blockSize, curAllocatedBlockInfo);
+      final AllocatedBlockInfo blockInfo = metaClient.allocateBlock(path, curBlockOffset, blockSize, localAddress);
+      curBlockNodeInfo = blockInfo.getLocations().get(0); // TODO retry (a for loop)
+
+      final SurfCacheService.Client cacheClient = cacheClientManager.get(curBlockNodeInfo.getAddress());
+      cacheClient.initBlock(path, curBlockOffset, blockSize, blockInfo);
     } catch (TException e) {
       throw new IOException("Failed to initialize a block", e);
     }
   }
 
-  private void sendPacket(final ByteBuffer buf, final long len, final boolean isLastPacket) {
-    packetQueue.add(new Packet(curAllocatedBlockInfo, curBlockOffset, curBlockInnerOffset, buf, isLastPacket));
+  private void sendPacket(final String address, final ByteBuffer buf, final int len, final boolean isLastPacket) {
+    packetQueue.add(new Packet(address, curBlockOffset, curBlockInnerOffset, buf, isLastPacket));
     this.executor.submit(streamer);
     curBlockInnerOffset = (curBlockInnerOffset + len) % blockSize;
   }
 
   private class Packet {
-    final AllocatedBlockInfo allocatedBlockInfo;
+    final String cacheAddress;
     final long blockOffset;
     final long blockInnerOffset;
     final ByteBuffer buf;
     final boolean isLastPacket;
 
-    public Packet(final AllocatedBlockInfo allocatedBlockInfo,
+    public Packet(final String cacheAddress,
                   final long blockOffset,
                   final long blockInnerOffset,
                   final ByteBuffer buf,
                   final boolean isLastPacket) {
-      this.allocatedBlockInfo = allocatedBlockInfo;
+      this.cacheAddress = cacheAddress;
       this.blockOffset = blockOffset;
       this.blockInnerOffset = blockInnerOffset;
       this.buf = buf;
@@ -200,8 +199,7 @@ public class SurfFSOutputStream extends OutputStream {
     public void run() {
       try {
         final Packet packet = packetQueue.remove();
-        final String address = packet.allocatedBlockInfo.getLocations().get(0).getAddress();
-        final SurfCacheService.Client cacheClient = cacheClientManager.get(address);
+        final SurfCacheService.Client cacheClient = cacheClientManager.get(packet.cacheAddress);
         cacheClient.writeData(path, packet.blockOffset, blockSize, packet.blockInnerOffset, packet.buf, packet.isLastPacket);
       } catch (Exception e) {
         throw new RuntimeException("PacketStreamer exception");
