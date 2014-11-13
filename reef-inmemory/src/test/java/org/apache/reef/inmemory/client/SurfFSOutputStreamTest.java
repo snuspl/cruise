@@ -46,7 +46,7 @@ public class SurfFSOutputStreamTest {
 
   @Test
   public void testBasicWrites() throws IOException {
-    testWrite((byte)1); // one byte
+    testWrite(1); // one byte
     testWrite(150); // < packetSize
     testWrite(512); // == packetSize
     testWrite(BLOCK_SIZE); // one block
