@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.client;
 
-import com.microsoft.reef.client.DriverLauncher;
-import com.microsoft.tang.exceptions.InjectionException;
+import org.apache.reef.client.DriverLauncher;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -116,10 +116,10 @@ public final class SurfFSOpenITCase {
       @Override
       public void run() {
         try {
-          final com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
-          final com.microsoft.tang.Configuration fileConf = Launch.parseConfigFile();
-          final com.microsoft.tang.Configuration runtimeConfig = Launch.getRuntimeConfiguration(clConf, fileConf);
-          final com.microsoft.tang.Configuration launchConfig = Launch.getLaunchConfiguration(clConf, fileConf);
+          final org.apache.reef.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
+          final org.apache.reef.tang.Configuration fileConf = Launch.parseConfigFile();
+          final org.apache.reef.tang.Configuration runtimeConfig = Launch.getRuntimeConfiguration(clConf, fileConf);
+          final org.apache.reef.tang.Configuration launchConfig = Launch.getLaunchConfiguration(clConf, fileConf);
 
           DriverLauncher.getLauncher(runtimeConfig).run(launchConfig, SURF_TIMEOUT);
           jobFinished.set(true);

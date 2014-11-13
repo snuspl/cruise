@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.driver.service;
 
-import com.microsoft.tang.annotations.Name;
-import com.microsoft.tang.annotations.NamedParameter;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
  * Parameters used by the driver Metadata Server.

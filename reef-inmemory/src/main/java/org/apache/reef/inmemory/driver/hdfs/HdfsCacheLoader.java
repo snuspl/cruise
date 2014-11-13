@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import com.google.common.cache.CacheLoader;
-import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;

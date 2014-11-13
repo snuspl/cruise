@@ -18,7 +18,7 @@
         <tests.reuseForks>true</tests.reuseForks>
         <tests.argLine></tests.argLine>
         <hadoop.version>2.4.0</hadoop.version>
-        <reef.version>0.6</reef.version>
+        <reef.version>0.10-incubating-SNAPSHOT</reef.version>
         <thrift.version>0.9.1</thrift.version>
         <junit.version>4.11</junit.version>
         <avro.version>1.7.6</avro.version>
@@ -80,27 +80,27 @@
         </dependency>
         <!-- REEF -->
         <dependency>
-            <groupId>com.microsoft.reef</groupId>
+            <groupId>org.apache.reef</groupId>
             <artifactId>reef-common</artifactId>
             <version>${reef.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.microsoft.reef</groupId>
+            <groupId>org.apache.reef</groupId>
             <artifactId>reef-io</artifactId>
             <version>${reef.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.microsoft.reef</groupId>
+            <groupId>org.apache.reef</groupId>
             <artifactId>reef-runtime-local</artifactId>
             <version>${reef.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.microsoft.reef</groupId>
+            <groupId>org.apache.reef</groupId>
             <artifactId>reef-runtime-yarn</artifactId>
             <version>${reef.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.microsoft.reef</groupId>
+            <groupId>org.apache.reef</groupId>
             <artifactId>reef-webserver</artifactId>
             <version>${reef.version}</version>
         </dependency>

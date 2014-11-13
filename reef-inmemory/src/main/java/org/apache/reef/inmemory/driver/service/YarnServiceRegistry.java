@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.driver.service;
 
-import com.microsoft.reef.webserver.HttpHandler;
+import org.apache.reef.webserver.HttpHandler;
+import org.apache.reef.webserver.ParsedHttpRequest;
 
 import javax.inject.Inject;
 import javax.servlet.ServletException;
@@ -57,11 +58,11 @@ public final class YarnServiceRegistry implements ServiceRegistry {
     }
 
     @Override
-    public void onHttpRequest(HttpServletRequest request, HttpServletResponse response)
+    public void onHttpRequest(final ParsedHttpRequest parsedHttpRequest, final HttpServletResponse httpServletResponse)
             throws IOException, ServletException {
-      response.setContentType("text/plain");
+      httpServletResponse.setContentType("text/plain");
 
-      final PrintWriter responseWriter = response.getWriter();
+      final PrintWriter responseWriter = httpServletResponse.getWriter();
       responseWriter.printf("%s:%d", host, port);
       responseWriter.flush();
     }
