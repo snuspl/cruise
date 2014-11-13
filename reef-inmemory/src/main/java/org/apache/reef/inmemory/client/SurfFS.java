@@ -54,8 +54,8 @@ public final class SurfFS extends FileSystem {
   public static final String CACHECLIENT_BUFFER_SIZE_KEY = "surf.cache.client.buffer.size";
   public static final int CACHECLIENT_BUFFER_SIZE_DEFAULT = 8 * 1024 * 1024;
 
-  public static final String INSTRUMENTATIONCLIENT_LOG_LEVEL_KEY = "surf.instrumentation.client.log.level";
-  public static final String INSTRUMENTATIONCLIENT_LOG_LEVEL_DEFAULT = "INFO";
+  public static final String FALLBACK_KEY = "surf.fallback";
+  public static final boolean FALLBACK_DEFAULT = true;
 
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
@@ -70,11 +70,15 @@ public final class SurfFS extends FileSystem {
   private URI uri;
   private URI baseFsUri;
 
+  private boolean isFallback;
+
   public SurfFS() {
+    isFallback = FALLBACK_DEFAULT;
   }
 
   protected SurfFS(final FileSystem baseFs,
                    final SurfMetaService.Client metaClient) {
+    this();
     this.baseFs = baseFs;
     this.metaClient = metaClient;
   }
@@ -83,25 +87,21 @@ public final class SurfFS extends FileSystem {
    * Return current Client, or lazy load if not assigned.
    * Throws runtime exception if Client cannot be found, because we cannot make progress without a Client.
    */
-  private SurfMetaService.Client getMetaClient() {
+  private SurfMetaService.Client getMetaClient() throws TTransportException {
 
     if (this.metaClient != null) {
       return this.metaClient;
     } else {
-      try {
-        LOG.log(Level.INFO, "Connecting to metaserver at {0}", metaserverAddress);
-        HostAndPort metaAddress = HostAndPort.fromString(metaserverAddress);
+      LOG.log(Level.INFO, "Connecting to metaserver at {0}", metaserverAddress);
+      HostAndPort metaAddress = HostAndPort.fromString(metaserverAddress);
 
-        TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
-        transport.open();
-        TProtocol protocol = new TMultiplexedProtocol(
-                new TCompactProtocol(transport),
-                SurfMetaService.class.getName());
-        this.metaClient = new SurfMetaService.Client(protocol);
-        return this.metaClient;
-      } catch (TTransportException e) {
-        throw new RuntimeException(e);
-      }
+      TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
+      transport.open();
+      TProtocol protocol = new TMultiplexedProtocol(
+              new TCompactProtocol(transport),
+              SurfMetaService.class.getName());
+      this.metaClient = new SurfMetaService.Client(protocol);
+      return this.metaClient;
     }
   }
 
@@ -115,6 +115,8 @@ public final class SurfFS extends FileSystem {
     this.baseFs = new DistributedFileSystem();
     this.baseFs.initialize(this.baseFsUri, conf);
     this.setConf(conf);
+
+    this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
 
     this.metaserverAddress = getMetaserverResolver().getAddress();
     LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaserverAddress);
@@ -177,6 +179,8 @@ public final class SurfFS extends FileSystem {
 
   /**
    * Note: calling open triggers a load on the file, if it's not yet in Surf
+   * The open call will fallback to the baseFs on an exception,
+   * The returned FSDataInputStream will also fallback to the baseFs in case of an exception.
    */
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
@@ -188,13 +192,26 @@ public final class SurfFS extends FileSystem {
     try {
       FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
 
-      return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager, getConf()));
+      final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf());
+      if (isFallback) {
+        return new FSDataInputStream(new FallbackFSInputStream(surfFSInputStream, path, baseFs));
+      } else {
+        return new FSDataInputStream(surfFSInputStream);
+      }
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      LOG.log(Level.FINE, "FileNotFoundException ", e);
-      throw new FileNotFoundException(e.getMessage());
+      if (isFallback) {
+        LOG.log(Level.WARNING, "Surf FileNotFoundException ", e);
+        return baseFs.open(path, bufferSize);
+      } else {
+        throw new FileNotFoundException(e.getMessage());
+      }
     } catch (TException e) {
-      LOG.log(Level.SEVERE, "TException", e);
-      throw new IOException(e);
+      if (isFallback) {
+        LOG.log(Level.WARNING, "Surf TException", e);
+        return baseFs.open(path, bufferSize);
+      } else {
+        throw new IOException(e);
+      }
     }
   }
 
@@ -315,11 +332,19 @@ public final class SurfFS extends FileSystem {
       return blockLocations.toArray(new BlockLocation[blockLocations.size()]);
 
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
-      throw new FileNotFoundException(e.getMessage());
+      if (isFallback) {
+        LOG.log(Level.WARNING, "FileNotFoundException: ", e);
+        return baseFs.getFileBlockLocations(file, start, len);
+      } else {
+        throw new FileNotFoundException(e.getMessage());
+      }
     } catch (TException e) {
-      LOG.log(Level.SEVERE, "TException: "+e+" "+e.getCause());
-      throw new IOException(e.getMessage());
+      if (isFallback) {
+        LOG.log(Level.WARNING, "TException: ", e);
+        return baseFs.getFileBlockLocations(file, start, len);
+      } else {
+        throw new IOException(e);
+      }
     }
   }
 

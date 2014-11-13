@@ -51,6 +51,7 @@ import static org.mockito.Mockito.*;
 public final class SurfMetaManagerITCase {
 
   private static final int blockSize = 512;
+  private static final String TESTDIR = ITUtils.getTestDir();
 
   private FileSystem fs;
   private CacheManager manager;
@@ -90,7 +91,7 @@ public final class SurfMetaManagerITCase {
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, blockSize);
 
     fs = ITUtils.getHdfs(hdfsConfig);
-    fs.mkdirs(new Path("/existing"));
+    fs.mkdirs(new Path(TESTDIR));
 
     loader = new HdfsCacheLoader(manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString());
     constructor = new LoadingCacheConstructor(loader);
@@ -107,7 +108,7 @@ public final class SurfMetaManagerITCase {
    */
   @After
   public void tearDown() throws IOException {
-    fs.delete(new Path("/*"), true);
+    fs.delete(new Path(TESTDIR), true);
   }
 
   /**
@@ -118,7 +119,7 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentLoad() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = "/existing/largeFile";
+    final String path = TESTDIR+"/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
@@ -181,7 +182,7 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = "/existing/largeFile";
+    final String path = TESTDIR+"/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
@@ -259,7 +260,7 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentRemoveAndUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = "/existing/largeFile";
+    final String path = TESTDIR+"/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
