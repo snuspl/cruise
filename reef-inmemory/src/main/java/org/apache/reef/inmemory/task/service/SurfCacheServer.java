@@ -162,8 +162,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   public void writeData(String path, long blockOffset, long blockSize, long innerOffset, ByteBuffer buf, boolean isLastPacket) throws TException {
     final BlockId blockId = new WritableBlockId(path, blockOffset, blockSize);
     try {
-      cache.write(blockId, innerOffset, buf);
-      // TODO Handle when the received packet is the last one
+      cache.write(blockId, innerOffset, buf, isLastPacket);
     } catch (IOException e) {
       throw new TException("Failed to write block " + blockId, e);
     }

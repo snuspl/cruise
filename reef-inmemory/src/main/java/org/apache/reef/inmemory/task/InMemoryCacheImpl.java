@@ -62,7 +62,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void write(BlockId blockId, long offset, ByteBuffer data) throws BlockNotFoundException, BlockNotWritableException, IOException {
+  public void write(BlockId blockId, long offset, ByteBuffer data, boolean isLastPacket) throws BlockNotFoundException, BlockNotWritableException, IOException {
      final BlockLoader loader = cache.getIfPresent(blockId);
     if (loader == null) {
       throw new BlockNotFoundException();
@@ -72,8 +72,8 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     } else {
       WritableBlockLoader writableLoader = (WritableBlockLoader) loader;
       writableLoader.writeData(data.array(), offset);
-      // TODO This will be more sophisticated
-      if (writableLoader.getTotal() == blockId.getBlockSize()) {
+
+      if (isLastPacket) {
         memoryManager.loadSuccess(blockId, loader.isPinned());
       }
     }

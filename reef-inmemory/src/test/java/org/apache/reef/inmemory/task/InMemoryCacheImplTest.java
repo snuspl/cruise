@@ -176,8 +176,9 @@ public final class InMemoryCacheImplTest {
     final int packetSize = 64;
     for (int i = 0; i < blockSize / packetSize; i++) {
       ByteBuffer subBuf = ByteBuffer.wrap(data, i * packetSize, packetSize).slice();
-      cache.write(blockId, 0, subBuf);
-      assertEquals(packetSize * (i+1), blockLoader.getTotal());
+      boolean isLastPacket = i == (blockSize / packetSize - 1);
+      cache.write(blockId, 0, subBuf, isLastPacket);
+      assertEquals(packetSize * (i + 1), blockLoader.getTotal());
     }
 
     assertEquals(blockSize, statistics.getCacheBytes());
@@ -329,7 +330,7 @@ public final class InMemoryCacheImplTest {
           try {
             cache.load(loader);
           } catch (IOException e1) {
-            fail("IOException "+e1);
+            fail("IOException " + e1);
           }
         }
       });
@@ -416,8 +417,8 @@ public final class InMemoryCacheImplTest {
       final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(blockSize), false);
 
       cache.load(loader);
-      System.out.println("Loaded " + (blockSize / 1024 / 1024 * (i+1)) + "M");
-      System.out.println("Statistics: "+cache.getStatistics());
+      System.out.println("Loaded " + (blockSize / 1024 / 1024 * (i + 1)) + "M");
+      System.out.println("Statistics: " + cache.getStatistics());
       Thread.sleep(10);
     }
 
@@ -460,7 +461,7 @@ public final class InMemoryCacheImplTest {
             throw new RuntimeException(e);
           }
           System.out.println("Loaded " + (blockSize / 1024 / 1024 * (iteration + 1)) + "M");
-          System.out.println("Statistics: "+cache.getStatistics());
+          System.out.println("Statistics: " + cache.getStatistics());
         }
       });
     }
@@ -469,7 +470,7 @@ public final class InMemoryCacheImplTest {
       futures[i].get();
     }
 
-    System.out.println("Statistics: "+cache.getStatistics());
+    System.out.println("Statistics: " + cache.getStatistics());
 
     final long usableCache = (long) (cache.getStatistics().getMaxBytes() * (1.0 - slack));
     final long expectedCached = usableCache - (usableCache % blockSize);
@@ -512,7 +513,7 @@ public final class InMemoryCacheImplTest {
             throw new RuntimeException(e);
           }
           System.out.println("Loaded " + (blockSize / 1024 / 1024 * (iteration + 1)) + "M");
-          System.out.println("Statistics: "+cache.getStatistics());
+          System.out.println("Statistics: " + cache.getStatistics());
         }
       });
     }
@@ -521,14 +522,14 @@ public final class InMemoryCacheImplTest {
       futures[i].get();
     }
 
-    System.out.println("Statistics: "+cache.getStatistics());
+    System.out.println("Statistics: " + cache.getStatistics());
 
     final long usableCache = (long) (cache.getStatistics().getMaxBytes() * (1.0 - slack));
     final long expectedCached = usableCache - (usableCache % blockSize);
     final long maxEvicted = (blockSize * iterations) - expectedCached;
 
     assertEquals(expectedCached, statistics.getCacheBytes());
-    assertTrue(statistics.getEvictedBytes()+" of at most "+maxEvicted+" were evicted",
+    assertTrue(statistics.getEvictedBytes() + " of at most " + maxEvicted + " were evicted",
             maxEvicted >= statistics.getEvictedBytes());
   }
 
@@ -575,12 +576,12 @@ public final class InMemoryCacheImplTest {
               new MockBlockLoader(blockId, new OnesBufferLoader(128 * 1024 * 1024), true);
 
       cache.load(loader);
-      System.out.println("Loaded " + (128 * (i+1)) + "M");
+      System.out.println("Loaded " + (128 * (i + 1)) + "M");
       loader = null;
 
-      System.out.println("Max Memory: "+Runtime.getRuntime().maxMemory());
-      System.out.println("Free Memory: "+Runtime.getRuntime().freeMemory());
-      System.out.println("Total Memory: "+Runtime.getRuntime().totalMemory());
+      System.out.println("Max Memory: " + Runtime.getRuntime().maxMemory());
+      System.out.println("Free Memory: " + Runtime.getRuntime().freeMemory());
+      System.out.println("Total Memory: " + Runtime.getRuntime().totalMemory());
     }
 
     {
@@ -625,7 +626,7 @@ public final class InMemoryCacheImplTest {
             throw new RuntimeException(e);
           }
           System.out.println("Loaded " + (blockSize / 1024 / 1024 * (iteration + 1)) + "M");
-          System.out.println("Statistics: "+cache.getStatistics());
+          System.out.println("Statistics: " + cache.getStatistics());
         }
       });
     }
@@ -634,7 +635,7 @@ public final class InMemoryCacheImplTest {
       futures[i].get();
     }
 
-    System.out.println("Statistics: "+cache.getStatistics());
+    System.out.println("Statistics: " + cache.getStatistics());
     assertEquals(3 * blockSize, statistics.getPinnedBytes());
     assertEquals(1, loadCounts[0].get());
     assertEquals(1, loadCounts[1].get());

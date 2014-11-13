@@ -29,11 +29,12 @@ public interface InMemoryCache {
    * @param blockId Block identifier to write
    * @param offset Offset from the start of Block
    * @param data Data to write
+   * @param isLastPacket The data is the last part of this block
    * @throws BlockNotFoundException If the block does not exist in the cache for the blockId
    * @throws BlockNotWritableException If the block is not supposed to write data into
    * @throws IOException If it fails while writing the data
    */
-  public void write(BlockId blockId, long offset, ByteBuffer data) throws BlockNotFoundException, BlockNotWritableException, IOException;
+  public void write(BlockId blockId, long offset, ByteBuffer data, boolean isLastPacket) throws BlockNotFoundException, BlockNotWritableException, IOException;
 
   /**
    * Load data into the cache using the given block loader.
