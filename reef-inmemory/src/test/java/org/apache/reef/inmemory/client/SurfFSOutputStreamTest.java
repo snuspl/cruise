@@ -55,6 +55,10 @@ public class SurfFSOutputStreamTest {
   }
 
   public void testWrite(int dataSize) throws IOException {
+    if (dataSize <= 0) {
+      throw new IllegalArgumentException("dataSize must be bigger than 0");
+    }
+
     final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
     final byte[] data = new byte[dataSize];
 
@@ -63,6 +67,8 @@ public class SurfFSOutputStreamTest {
 
     surfFSOutputStream.flush();
     assertEquals(0, surfFSOutputStream.getLocalBufWriteCount());
+    final long expectedCurBlockOffset = dataSize % BLOCK_SIZE == 0 ? (dataSize/BLOCK_SIZE)-1 : dataSize/BLOCK_SIZE;
+    assertEquals(expectedCurBlockOffset, surfFSOutputStream.getCurBlockOffset());
     assertEquals(dataSize % BLOCK_SIZE, surfFSOutputStream.getCurBlockInnerOffset());
 
     surfFSOutputStream.close();

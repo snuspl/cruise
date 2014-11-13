@@ -234,4 +234,8 @@ public class SurfFSOutputStream extends OutputStream {
   public int getPacketSize() {
     return PACKET_SIZE;
   }
+
+  public long getCurBlockOffset() {
+    return curBlockOffset;
+  }
 }
