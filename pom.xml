@@ -12,6 +12,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <reef.version>0.10-incubating-SNAPSHOT</reef.version>
+    <shimoga.version>0.1-SNAPSHOT</shimoga.version>
     <hadoop.version>2.4.0</hadoop.version>
   </properties>
 
@@ -50,6 +51,11 @@
       <groupId>org.apache.reef</groupId>
       <artifactId>wake</artifactId>
       <version>${reef.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.reef</groupId>
+      <artifactId>shimoga</artifactId>
+      <version>${shimoga.version}</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
