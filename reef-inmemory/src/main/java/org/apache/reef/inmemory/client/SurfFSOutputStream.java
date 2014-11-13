@@ -158,15 +158,29 @@ public class SurfFSOutputStream extends OutputStream {
 
   private void initNewBlock() throws IOException {
     try {
+
       curBlockOffset++;
 
       final AllocatedBlockInfo blockInfo = metaClient.allocateBlock(path, curBlockOffset, blockSize, localAddress);
-      curBlockNodeInfo = blockInfo.getLocations().get(0); // TODO retry (a for loop)
 
-      final SurfCacheService.Client cacheClient = cacheClientManager.get(curBlockNodeInfo.getAddress());
-      cacheClient.initBlock(path, curBlockOffset, blockSize, blockInfo);
+      boolean success = false;
+      for (final NodeInfo nodeInfo : blockInfo.getLocations()) {
+        final SurfCacheService.Client cacheClient = cacheClientManager.get(nodeInfo.getAddress());
+        try {
+          cacheClient.initBlock(path, curBlockOffset, blockSize, blockInfo);
+          curBlockNodeInfo = nodeInfo;
+          success = true;
+          break;
+        } catch (TException e) {
+          LOG.log(Level.WARNING, "Cache {0} is not responding... trying the next one", nodeInfo);
+        }
+      }
+      if (!success) {
+        throw new IOException("None of the cache nodes is responding");
+      }
+
     } catch (TException e) {
-      throw new IOException("Failed to initialize a block", e);
+      throw new IOException("metaClient.allocateBlock failed", e);
     }
   }
 
