@@ -32,6 +32,7 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
 
   private final SyncMethod syncMethod;
   private final int baseReplicationFactor;
+  private long expectedOffset = 0;
 
   public WritableBlockLoader(BlockId id, boolean pin, int bufferSize, int baseReplicationFactor, SyncMethod syncMethod){
     this.blockId = id;
@@ -74,8 +75,12 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
 
   @Override
   public void writeData(final byte[] data, final long offset) throws IOException {
-    if (offset + data.length > blockSize)
-      throw new IOException("The data exceeds the capacity of block");
+    if (offset + data.length > blockSize) {
+      throw new IOException("The data exceeds the capacity of block. Offset : " + offset
+        + " , Packet length : " + data.length + " Block size : " + blockSize);
+    } else if (!isValidOffset(offset)) {
+      throw new IOException("Received packet with an invalid offset " + offset);
+    }
 
     int index = (int) (offset / bufferSize);
     int innerOffset = (int) (offset % bufferSize);
@@ -93,6 +98,7 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     }
 
     totalWrite += nTotal;
+    updateValidOffset(offset, data.length);
   }
 
   @Override
@@ -119,7 +125,26 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     return ByteBuffer.wrap(data.get(index));
   }
 
-  public long getTotal() {
-    return totalWrite;
+  /**
+   * Update the valid offsets.
+   * @param received The offset of packet received.
+   * @param packetLength The length of packet received.
+   */
+  private void updateValidOffset(final long received, final int packetLength) {
+    /*
+     * TODO If we send/receive packets with multi-thread, the packets could be out of order.
+     * So we should maintain all the possible offset values as a set.
+     */
+    expectedOffset = received + packetLength;
+  }
+
+  /**
+   * Determine offset of the packet is valid. It aims to avoid
+   * packet duplicate or miss.
+   * @param offset The offset of the packet
+   * @return {@code true} if the offset is valid to receive
+   */
+  private boolean isValidOffset(final long offset) {
+    return expectedOffset == offset;
   }
 }

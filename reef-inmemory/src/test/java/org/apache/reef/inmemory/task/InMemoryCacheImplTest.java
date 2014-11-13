@@ -178,7 +178,6 @@ public final class InMemoryCacheImplTest {
       ByteBuffer subBuf = ByteBuffer.wrap(data, i * packetSize, packetSize).slice();
       boolean isLastPacket = i == (blockSize / packetSize - 1);
       cache.write(blockId, 0, subBuf, isLastPacket);
-      assertEquals(packetSize * (i + 1), blockLoader.getTotal());
     }
 
     assertEquals(blockSize, statistics.getCacheBytes());
