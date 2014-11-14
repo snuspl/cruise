@@ -22,6 +22,7 @@
         <thrift.version>0.9.1</thrift.version>
         <junit.version>4.11</junit.version>
         <avro.version>1.7.6</avro.version>
+        <metrics.version>3.1.0</metrics.version>
     </properties>
     <repositories>
         <repository>
@@ -122,6 +123,18 @@
             <version>${avro.version}</version>
         </dependency>
         <!-- End of AVRO -->
+        <!-- Metrics -->
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${metrics.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-ganglia</artifactId>
+            <version>${metrics.version}</version>
+        </dependency>
+        <!-- End of Metrics -->
     </dependencies>
     <build>
         <plugins>
