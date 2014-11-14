@@ -1,8 +1,8 @@
 package org.apache.reef.inmemory.common.instrumentation.ganglia;
 
-import com.microsoft.tang.formats.ConfigurationModule;
-import com.microsoft.tang.formats.ConfigurationModuleBuilder;
-import com.microsoft.tang.formats.RequiredParameter;
+import org.apache.reef.tang.formats.ConfigurationModule;
+import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
+import org.apache.reef.tang.formats.RequiredParameter;
 import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters;
 
 /**

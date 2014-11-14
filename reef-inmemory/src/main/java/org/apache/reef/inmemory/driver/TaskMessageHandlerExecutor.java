@@ -1,8 +1,8 @@
 package org.apache.reef.inmemory.driver;
 
-import com.microsoft.reef.driver.task.TaskMessage;
-import com.microsoft.wake.EventHandler;
-import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.driver.task.TaskMessage;
+import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.driver.service.SurfMetaServer;
 

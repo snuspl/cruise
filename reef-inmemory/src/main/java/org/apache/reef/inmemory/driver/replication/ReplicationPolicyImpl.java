@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.driver.replication;
 
-import com.microsoft.tang.annotations.Parameter;
-import com.microsoft.tang.exceptions.BindException;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.exceptions.BindException;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.replication.*;

@@ -1,15 +1,15 @@
 package org.apache.reef.inmemory.task;
 
-import com.microsoft.reef.task.Task;
-import com.microsoft.reef.task.TaskMessage;
-import com.microsoft.reef.task.TaskMessageSource;
-import com.microsoft.reef.task.events.DriverMessage;
-import com.microsoft.reef.task.events.TaskStart;
-import com.microsoft.reef.util.Optional;
-import com.microsoft.tang.annotations.Unit;
-import com.microsoft.tang.exceptions.InjectionException;
-import com.microsoft.wake.EventHandler;
-import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.task.Task;
+import org.apache.reef.task.TaskMessage;
+import org.apache.reef.task.TaskMessageSource;
+import org.apache.reef.task.events.DriverMessage;
+import org.apache.reef.task.events.TaskStart;
+import org.apache.reef.util.Optional;
+import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.task.service.SurfCacheServer;
 

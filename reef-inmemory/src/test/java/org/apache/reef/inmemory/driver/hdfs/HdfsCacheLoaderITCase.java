@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
-import com.microsoft.reef.driver.task.RunningTask;
+import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.DFSConfigKeys;

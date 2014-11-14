@@ -21,7 +21,7 @@
 # RUNTIME
 SELF_JAR=`echo ${PWD}/target/reef-inmemory-*-shaded.jar`
 
-LOGGING_CONFIG='-Djava.util.logging.config.class=com.microsoft.reef.util.logging.Config'
+LOGGING_CONFIG='-Djava.util.logging.config.class=org.apache.reef.util.logging.Config'
 
 CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:$YARN_HOME/share/hadoop/yarn/*:$YARN_HOME/share/hadoop/hdfs/*:$YARN_HOME/share/hadoop/mapreduce/lib/*:$YARN_HOME/share/hadoop/mapreduce/*
 

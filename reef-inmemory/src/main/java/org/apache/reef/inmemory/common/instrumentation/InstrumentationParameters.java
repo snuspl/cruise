@@ -1,9 +1,9 @@
 package org.apache.reef.inmemory.common.instrumentation;
 
 import com.codahale.metrics.ScheduledReporter;
-import com.microsoft.tang.ExternalConstructor;
-import com.microsoft.tang.annotations.Name;
-import com.microsoft.tang.annotations.NamedParameter;
+import org.apache.reef.tang.ExternalConstructor;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
 import java.util.Set;
 

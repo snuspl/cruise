@@ -1,8 +1,8 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
-import com.microsoft.tang.annotations.Parameter;
-import com.microsoft.wake.EStage;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;

@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.task.service;
 
-import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;

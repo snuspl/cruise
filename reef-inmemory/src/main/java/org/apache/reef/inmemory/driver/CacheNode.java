@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.driver;
 
-import com.microsoft.reef.driver.task.RunningTask;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.inmemory.common.CacheStatistics;
 
 /**
@@ -48,7 +48,7 @@ public class CacheNode {
    * This will return the node's address as defined by Wake, based on its network interfaces,
    * so it can be contacted remotely. This means that you will not see localhost/127.0.0.1
    * as the hostname even on local deployments.
-   * @See com.microsoft.wake.remote.NetUtils.getLocalAddress()
+   * @See org.apache.reef.wake.remote.NetUtils.getLocalAddress()
    */
   private static String getCacheHost(final RunningTask task) {
     return task.getActiveContext().getEvaluatorDescriptor()

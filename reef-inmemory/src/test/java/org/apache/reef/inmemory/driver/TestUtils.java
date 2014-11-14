@@ -1,11 +1,11 @@
 package org.apache.reef.inmemory.driver;
 
-import com.microsoft.reef.driver.catalog.NodeDescriptor;
-import com.microsoft.reef.driver.catalog.RackDescriptor;
-import com.microsoft.reef.driver.context.ActiveContext;
-import com.microsoft.reef.driver.evaluator.EvaluatorDescriptor;
-import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
-import com.microsoft.reef.driver.task.RunningTask;
+import org.apache.reef.driver.catalog.NodeDescriptor;
+import org.apache.reef.driver.catalog.RackDescriptor;
+import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.evaluator.EvaluatorDescriptor;
+import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.CacheUpdates;

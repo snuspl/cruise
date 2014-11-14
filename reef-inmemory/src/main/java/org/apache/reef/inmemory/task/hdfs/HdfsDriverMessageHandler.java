@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.task.hdfs;
 
-import com.microsoft.reef.task.events.DriverMessage;
-import com.microsoft.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.task.events.DriverMessage;
+import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
 import org.apache.reef.inmemory.task.DriverMessageHandler;

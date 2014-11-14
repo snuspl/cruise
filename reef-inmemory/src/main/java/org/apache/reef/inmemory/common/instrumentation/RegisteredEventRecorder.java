@@ -3,7 +3,7 @@ package org.apache.reef.inmemory.common.instrumentation;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Timer;
-import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Set;

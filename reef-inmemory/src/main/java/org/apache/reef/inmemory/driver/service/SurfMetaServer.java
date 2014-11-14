@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.driver.service;
 
-import com.microsoft.tang.annotations.Parameter;
-import com.microsoft.wake.remote.NetUtils;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.remote.NetUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.entity.FileMeta;

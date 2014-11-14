@@ -2,10 +2,10 @@ package org.apache.reef.inmemory.common.instrumentation;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
-import com.microsoft.tang.ExternalConstructor;
-import com.microsoft.tang.formats.ConfigurationModule;
-import com.microsoft.tang.formats.ConfigurationModuleBuilder;
-import com.microsoft.tang.formats.RequiredParameter;
+import org.apache.reef.tang.ExternalConstructor;
+import org.apache.reef.tang.formats.ConfigurationModule;
+import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
+import org.apache.reef.tang.formats.RequiredParameter;
 
 /**
  * A configuration module for setting up instrumentation

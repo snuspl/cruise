@@ -1,16 +1,16 @@
 package org.apache.reef.inmemory.driver;
 
-import com.microsoft.reef.driver.context.ContextConfiguration;
-import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
-import com.microsoft.reef.driver.evaluator.EvaluatorRequest;
-import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
-import com.microsoft.reef.driver.task.RunningTask;
-import com.microsoft.reef.driver.task.TaskConfiguration;
-import com.microsoft.tang.Configuration;
-import com.microsoft.tang.Tang;
-import com.microsoft.tang.annotations.Parameter;
-import com.microsoft.tang.exceptions.BindException;
-import com.microsoft.wake.StageConfiguration;
+import org.apache.reef.driver.context.ContextConfiguration;
+import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.EvaluatorRequest;
+import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.driver.task.RunningTask;
+import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.exceptions.BindException;
+import org.apache.reef.wake.StageConfiguration;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.task.CacheParameters;

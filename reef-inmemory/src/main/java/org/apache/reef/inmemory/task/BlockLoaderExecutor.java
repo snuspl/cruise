@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.task;
 
 
 import com.google.common.cache.Cache;
-import com.microsoft.wake.EventHandler;
+import org.apache.reef.wake.EventHandler;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.exceptions.MemoryLimitException;
