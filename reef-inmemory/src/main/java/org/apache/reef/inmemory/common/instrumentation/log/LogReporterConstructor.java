@@ -3,8 +3,8 @@ package org.apache.reef.inmemory.common.instrumentation.log;
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
-import com.microsoft.tang.ExternalConstructor;
-import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.tang.ExternalConstructor;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters;
 
 import javax.inject.Inject;

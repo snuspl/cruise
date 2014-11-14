@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.common.instrumentation;
 
 import com.codahale.metrics.MetricRegistry;
-import com.microsoft.tang.ExternalConstructor;
+import org.apache.reef.tang.ExternalConstructor;
 
 import javax.inject.Inject;
 

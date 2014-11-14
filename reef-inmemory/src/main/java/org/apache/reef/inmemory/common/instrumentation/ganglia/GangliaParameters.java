@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.common.instrumentation.ganglia;
 
-import com.microsoft.tang.annotations.Name;
-import com.microsoft.tang.annotations.NamedParameter;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
 public final class GangliaParameters {
 

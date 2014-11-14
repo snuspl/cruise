@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.common.instrumentation;
 
-import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.tang.annotations.Parameter;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
