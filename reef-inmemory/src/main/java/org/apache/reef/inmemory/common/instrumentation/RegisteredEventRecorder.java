@@ -45,13 +45,13 @@ public final class RegisteredEventRecorder implements EventRecorder {
   }
 
   @Override
-  public Event event(final String name, final String id) {
-    return new EventImpl(name, id);
+  public Event event(final String group, final String id) {
+    return new EventImpl(group, id);
   }
 
   @Override
   public void record(final Event event) {
-    final Timer timer = registry.timer(event.getName());
+    final Timer timer = registry.timer(event.getGroup());
     timer.update(event.getDuration(), TimeUnit.NANOSECONDS);
 
     LOG.log(logLevel, event.toJsonString());

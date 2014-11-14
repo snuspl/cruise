@@ -2,8 +2,6 @@ package org.apache.reef.inmemory.common.instrumentation;
 
 /**
  * An instrumented event. Use in conjuction with an EventRecorder to log and/or aggregate events.
- * Events have a Name and Id: the Name provides the unit for aggregation, while the Id differentiates
- * events within the same aggregate.
  */
 public interface Event {
   /**
@@ -23,13 +21,13 @@ public interface Event {
   public long getDuration();
 
   /**
-   * The Name, which is the unit for aggregation
-   * @return Name
+   * The Group, which is the unit for aggregation
+   * @return Group
    */
-  public String getName();
+  public String getGroup();
 
   /**
-   * The Id, which differentiates events within the same aggregation Name
+   * The Id, which differentiates events within the same aggregation Group
    * @return Id
    */
   public String getId();

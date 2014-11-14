@@ -12,13 +12,13 @@ import java.util.logging.Logger;
 public final class EventImpl implements Event {
   private static final Logger LOG = Logger.getLogger(EventImpl.class.getName());
 
-  private final String name;
+  private final String group;
   private final String id;
   private long start;
   private long stop;
 
-  EventImpl(final String name, final String id) {
-    this.name = name;
+  EventImpl(final String group, final String id) {
+    this.group = group;
     this.id = id;
   }
 
@@ -35,8 +35,8 @@ public final class EventImpl implements Event {
   }
 
   @Override
-  public String getName() {
-    return name;
+  public String getGroup() {
+    return group;
   }
 
   @Override
@@ -53,13 +53,13 @@ public final class EventImpl implements Event {
   public String toJsonString() {
     final JSONObject json = new JSONObject();
     try {
-      json.put("name", name);
+      json.put("group", group);
       json.put("id", id);
       json.put("duration", getDuration() / 1000);
       return json.toString();
     } catch (JSONException e) {
       LOG.log(Level.WARNING, "Could not parse json for {0}, {1}, {2}",
-              new Object[]{name, id, Long.toString(getDuration() / 1000)});
+              new Object[]{group, id, Long.toString(getDuration() / 1000)});
       LOG.log(Level.WARNING, "Could not parse json with", e);
       return null;
     }

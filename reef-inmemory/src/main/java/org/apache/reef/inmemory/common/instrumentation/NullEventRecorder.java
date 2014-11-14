@@ -5,8 +5,8 @@ package org.apache.reef.inmemory.common.instrumentation;
  */
 public final class NullEventRecorder implements EventRecorder {
   @Override
-  public Event event(final String name, final String id) {
-    return new EventImpl(name, id);
+  public Event event(final String group, final String id) {
+    return new EventImpl(group, id);
   }
 
   @Override
