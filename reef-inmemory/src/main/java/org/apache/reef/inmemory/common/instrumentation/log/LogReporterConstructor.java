@@ -16,6 +16,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Construct a Log reporter. Periodically writes aggregated Event metrics to the Log.
+ */
 public final class LogReporterConstructor implements ExternalConstructor<ScheduledReporter> {
 
   private static final Logger LOG = Logger.getLogger(LogReporterConstructor.class.getName());

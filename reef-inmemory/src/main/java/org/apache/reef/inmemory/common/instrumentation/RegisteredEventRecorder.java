@@ -11,6 +11,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * An Event Recorder that:
+ * 1. Logs events as JSON
+ * 2. Aggregates events to a MetricRegistry
+ * 3. Reports aggregates to all ScheduledReporters
+ */
 public final class RegisteredEventRecorder implements EventRecorder {
 
   private static final Logger LOG = Logger.getLogger(RegisteredEventRecorder.class.getName());
@@ -36,11 +42,6 @@ public final class RegisteredEventRecorder implements EventRecorder {
     for (final ScheduledReporter reporter : reporters) {
       reporter.start(period, TimeUnit.SECONDS);
     }
-  }
-
-  @Override
-  public Event event(String name) {
-    return event(name, "");
   }
 
   @Override

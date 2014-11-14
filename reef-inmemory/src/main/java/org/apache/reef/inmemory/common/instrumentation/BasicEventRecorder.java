@@ -5,6 +5,9 @@ import com.microsoft.tang.annotations.Parameter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Basic event recorder that logs events
+ */
 public final class BasicEventRecorder implements EventRecorder {
   private static final Logger LOG = Logger.getLogger(BasicEventRecorder.class.getName());
   private final Level logLevel;
@@ -18,11 +21,6 @@ public final class BasicEventRecorder implements EventRecorder {
       level = Level.OFF;
     }
     this.logLevel = level;
-  }
-
-  @Override
-  public Event event(final String name) {
-    return event(name, "");
   }
 
   @Override

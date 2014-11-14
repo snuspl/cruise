@@ -13,6 +13,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Construct a Ganglia reporter. Periodically reports aggregated Event metrics to Ganglia.
+ */
 public final class GangliaReporterConstructor implements ExternalConstructor<ScheduledReporter> {
   private static final Logger LOG = Logger.getLogger(GangliaReporterConstructor.class.getName());
 

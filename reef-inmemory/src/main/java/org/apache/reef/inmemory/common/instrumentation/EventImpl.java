@@ -6,6 +6,9 @@ import org.codehaus.jettison.json.JSONObject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Event Implementation
+ */
 public final class EventImpl implements Event {
   private static final Logger LOG = Logger.getLogger(EventImpl.class.getName());
 
@@ -34,6 +37,11 @@ public final class EventImpl implements Event {
   @Override
   public String getName() {
     return name;
+  }
+
+  @Override
+  public String getId() {
+    return id;
   }
 
   @Override
