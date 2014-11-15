@@ -8,6 +8,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
+import org.apache.reef.inmemory.common.instrumentation.BasicEventRecorder;
+import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.junit.Before;
@@ -66,7 +68,7 @@ public final class SurfFSLocationTest {
     when(metaClient.getFileMeta(anyString(), anyString())).thenReturn(fileMeta);
 
     final Configuration conf = new Configuration();
-    surfFs = new SurfFS(mock(FileSystem.class), metaClient);
+    surfFs = new SurfFS(mock(FileSystem.class), metaClient, new NullEventRecorder());
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
   }
 

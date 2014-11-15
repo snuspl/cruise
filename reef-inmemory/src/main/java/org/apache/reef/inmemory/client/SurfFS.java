@@ -9,6 +9,9 @@ import org.apache.hadoop.util.Progressable;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
+import org.apache.reef.inmemory.common.instrumentation.BasicEventRecorder;
+import org.apache.reef.inmemory.common.instrumentation.Event;
+import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -57,9 +60,13 @@ public final class SurfFS extends FileSystem {
   public static final String FALLBACK_KEY = "surf.fallback";
   public static final boolean FALLBACK_DEFAULT = true;
 
+  public static final String INSTRUMENTATION_CLIENT_LOG_LEVEL_KEY = "surf.instrumentation.client.log.level";
+  public static final String INSTRUMENTATION_CLIENT_LOG_LEVEL_DEFAULT = "FINE";
+
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
   // These cannot be final, because the empty constructor + intialize() are called externally
+  private EventRecorder RECORD;
   private FileSystem baseFs;
   private SurfMetaService.Client metaClient;
   private CacheClientManager cacheClientManager;
@@ -76,11 +83,17 @@ public final class SurfFS extends FileSystem {
     isFallback = FALLBACK_DEFAULT;
   }
 
+  /**
+   * Constructor for test cases only. Does not require a Configuration -- do not call initialize().
+   * One or more parameters will usually be mocks.
+   */
   protected SurfFS(final FileSystem baseFs,
-                   final SurfMetaService.Client metaClient) {
+                   final SurfMetaService.Client metaClient,
+                   final EventRecorder recorder) {
     this();
     this.baseFs = baseFs;
     this.metaClient = metaClient;
+    this.RECORD = recorder;
   }
 
   /**
@@ -108,8 +121,12 @@ public final class SurfFS extends FileSystem {
   @Override
   public void initialize(final URI uri,
                          final Configuration conf) throws IOException {
+    RECORD = new BasicEventRecorder(
+            conf.get(INSTRUMENTATION_CLIENT_LOG_LEVEL_KEY, INSTRUMENTATION_CLIENT_LOG_LEVEL_DEFAULT));
+    final Event initializeEvent = RECORD.event("client.initialize", uri.toString()).start();
+
     super.initialize(uri, conf);
-    String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
+    final String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
     this.uri = uri;
     this.baseFsUri = URI.create(baseFsAddress);
     this.baseFs = new DistributedFileSystem();
@@ -118,8 +135,11 @@ public final class SurfFS extends FileSystem {
 
     this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
 
+    final Event resolveAddressEvent = RECORD.event("client.resolve-address", baseFsUri.toString());
     this.metaserverAddress = getMetaserverResolver().getAddress();
     LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaserverAddress);
+    RECORD.record(resolveAddressEvent.stop());
+
     this.cacheClientManager = new CacheClientManager(
             conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
             conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
@@ -127,8 +147,10 @@ public final class SurfFS extends FileSystem {
 
     // TODO: Works on local and cluster. Will it work across all platforms? (NetUtils gives the wrong address.)
     this.localAddress = InetAddress.getLocalHost().getHostName();
+
     LOG.log(Level.INFO, "localAddress: {0}",
             localAddress);
+    RECORD.record(initializeEvent.stop());
   }
 
   /**
@@ -185,6 +207,7 @@ public final class SurfFS extends FileSystem {
   @Override
   public synchronized FSDataInputStream open(Path path, final int bufferSize) throws IOException {
     final String pathStr = path.toUri().getPath();
+    final Event openEvent = RECORD.event("client.open", pathStr).start();
 
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
             new Object[]{path, pathStr});
@@ -192,7 +215,7 @@ public final class SurfFS extends FileSystem {
     try {
       FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
 
-      final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf());
+      final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
       if (isFallback) {
         return new FSDataInputStream(new FallbackFSInputStream(surfFSInputStream, path, baseFs));
       } else {
@@ -212,6 +235,8 @@ public final class SurfFS extends FileSystem {
       } else {
         throw new IOException(e);
       }
+    } finally {
+      RECORD.record(openEvent.stop());
     }
   }
 

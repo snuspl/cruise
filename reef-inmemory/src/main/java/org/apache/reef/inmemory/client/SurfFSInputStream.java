@@ -4,6 +4,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSInputStream;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -32,13 +33,14 @@ public final class SurfFSInputStream extends FSInputStream {
 
   public SurfFSInputStream(final FileMeta fileMeta,
                            final CacheClientManager cacheManager,
-                           final Configuration conf) {
+                           final Configuration conf,
+                           final EventRecorder recorder) {
     this.fileMeta = fileMeta;
     this.cacheManager = cacheManager;
     this.blocks = new ArrayList<>(fileMeta.getBlocksSize());
     for (BlockInfo block : fileMeta.getBlocks()) {
       final LoadProgressManager progressManager = new LoadProgressManagerImpl();
-      blocks.add(new CacheBlockLoader(block, this.cacheManager, progressManager, conf));
+      blocks.add(new CacheBlockLoader(block, this.cacheManager, progressManager, conf, recorder));
     }
 
     this.pos = 0;
