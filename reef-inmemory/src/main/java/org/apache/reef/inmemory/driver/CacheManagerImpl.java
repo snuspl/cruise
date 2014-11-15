@@ -6,6 +6,11 @@ import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.inmemory.common.instrumentation.InstrumentationConfiguration;
+import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters;
+import org.apache.reef.inmemory.common.instrumentation.ganglia.GangliaConfiguration;
+import org.apache.reef.inmemory.common.instrumentation.ganglia.GangliaParameters;
+import org.apache.reef.inmemory.common.instrumentation.log.LogReporterConstructor;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
@@ -40,6 +45,12 @@ public final class CacheManagerImpl implements CacheManager {
   private final int cacheServerThreads;
   private final double cacheHeapSlack;
   private final int cacheLoadingThreads;
+  private final int reporterPeriod;
+  private final String reporterLogLevel;
+  private final boolean ganglia;
+  private final String gangliaHost;
+  private final int gangliaPort;
+  private final String gangliaPrefix;
 
   // Tasks are first added to pendingTasks, then moved to tasks after receiving the server port
   private final Map<String, RunningTask> pendingTasks = new HashMap<>();
@@ -52,7 +63,13 @@ public final class CacheManagerImpl implements CacheManager {
                           final @Parameter(CacheParameters.Memory.class) int cacheMemory,
                           final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
                           final @Parameter(CacheParameters.HeapSlack.class) double cacheHeapSlack,
-                          final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads) {
+                          final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads,
+                          final @Parameter(InstrumentationParameters.InstrumentationReporterPeriod.class) int reporterPeriod,
+                          final @Parameter(InstrumentationParameters.InstrumentationLogLevel.class) String reporterLogLevel,
+                          final @Parameter(GangliaParameters.Ganglia.class) boolean ganglia,
+                          final @Parameter(GangliaParameters.GangliaHost.class) String gangliaHost,
+                          final @Parameter(GangliaParameters.GangliaPort.class) int gangliaPort,
+                          final @Parameter(GangliaParameters.GangliaPrefix.class) String gangliaPrefix) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.dfsType = dfsType;
     this.cachePort = cachePort;
@@ -60,6 +77,12 @@ public final class CacheManagerImpl implements CacheManager {
     this.cacheServerThreads = cacheServerThreads;
     this.cacheHeapSlack = cacheHeapSlack;
     this.cacheLoadingThreads = cacheLoadingThreads;
+    this.reporterPeriod = reporterPeriod;
+    this.reporterLogLevel = reporterLogLevel;
+    this.ganglia = ganglia;
+    this.gangliaHost = gangliaHost;
+    this.gangliaPort = gangliaPort;
+    this.gangliaPrefix = gangliaPrefix;
   }
 
   /**
@@ -102,9 +125,29 @@ public final class CacheManagerImpl implements CacheManager {
               .set(InMemoryTaskConfiguration.CACHESERVER_LOADING_THREADS, cacheLoadingThreads)
               .set(InMemoryTaskConfiguration.CACHESERVER_HEAP_SLACK, cacheHeapSlack)
               .build();
+      final Configuration instrumentationConf = InstrumentationConfiguration.CONF
+              .set(InstrumentationConfiguration.REPORTER_PERIOD, reporterPeriod)
+              .set(InstrumentationConfiguration.LOG_LEVEL, reporterLogLevel)
+              .set(InstrumentationConfiguration.REPORTER_CONSTRUCTORS, LogReporterConstructor.class)
+              .build();
 
-      allocatedEvaluator.submitContextAndTask(contextConf,
-              Tang.Factory.getTang().newConfigurationBuilder(taskConf, taskInMemoryConf).build());
+      final Configuration mergedConf;
+      if (ganglia) {
+        LOG.log(Level.INFO, "Configuring task with Ganglia");
+        final Configuration gangliaConf = GangliaConfiguration.CONF
+                        .set(GangliaConfiguration.GANGLIA, true)
+                        .set(GangliaConfiguration.GANGLIA_HOST, gangliaHost)
+                        .set(GangliaConfiguration.GANGLIA_PORT, gangliaPort)
+                        .set(GangliaConfiguration.GANGLIA_PREFIX, gangliaPrefix)
+                        .build();
+        mergedConf = Tang.Factory.getTang().newConfigurationBuilder(
+                        taskConf, taskInMemoryConf, instrumentationConf, gangliaConf).build();
+      } else {
+        LOG.log(Level.INFO, "Configuring task without Ganglia");
+        mergedConf = Tang.Factory.getTang().newConfigurationBuilder(
+                        taskConf, taskInMemoryConf, instrumentationConf).build();
+      }
+      allocatedEvaluator.submitContextAndTask(contextConf, mergedConf);
     } catch (final BindException ex) {
       LOG.log(Level.SEVERE, "Failed to bind Task.", ex);
     }

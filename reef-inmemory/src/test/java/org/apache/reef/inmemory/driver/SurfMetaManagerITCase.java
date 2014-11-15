@@ -17,6 +17,8 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
+import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
@@ -53,6 +55,7 @@ public final class SurfMetaManagerITCase {
   private static final int blockSize = 512;
   private static final String TESTDIR = ITUtils.getTestDir();
 
+  private EventRecorder RECORD;
   private FileSystem fs;
   private CacheManager manager;
   private HdfsCacheMessenger messenger;
@@ -69,6 +72,7 @@ public final class SurfMetaManagerITCase {
 
   @Before
   public void setUp() throws IOException {
+    RECORD = new NullEventRecorder();
     manager = TestUtils.cacheManager();
     messenger = new HdfsCacheMessenger(manager);
     selector = new HdfsRandomCacheSelectionPolicy();
@@ -93,7 +97,8 @@ public final class SurfMetaManagerITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsCacheLoader(manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString());
+    loader = new HdfsCacheLoader(
+            manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString(), RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 

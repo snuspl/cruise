@@ -4,6 +4,8 @@ import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
+import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.InMemoryCache;
 import org.junit.Before;
@@ -21,10 +23,12 @@ import static org.mockito.Mockito.when;
 
 public class SurfCacheServerTest {
   private Random random;
+  private EventRecorder RECORD;
 
   @Before
   public void SetUp() {
     random = new Random();
+    RECORD = new NullEventRecorder();
   }
 
   /**
@@ -33,12 +37,12 @@ public class SurfCacheServerTest {
   @Test
   public void testFindEphemeralPort() throws IOException {
     final int bufferSize = 8 * 1024 * 1024;
-    final SurfCacheServer cacheServer = new SurfCacheServer(null, null, 0, 0, 1, bufferSize);
+    final SurfCacheServer cacheServer = new SurfCacheServer(null, null, 0, 0, 1, bufferSize, RECORD);
     final int bindPort = cacheServer.initBindPort();
     assertEquals(bindPort, cacheServer.getBindPort());
     assertNotEquals(0, cacheServer.getBindPort());
 
-    final SurfCacheServer secondServer = new SurfCacheServer(null, null, 0, 0, 1, bufferSize);
+    final SurfCacheServer secondServer = new SurfCacheServer(null, null, 0, 0, 1, bufferSize, RECORD);
 
     // Should not immediately give back the same port
     final int secondPort = secondServer.initBindPort();
@@ -82,7 +86,7 @@ public class SurfCacheServerTest {
       when(cache.get(id, i)).thenReturn(Arrays.copyOfRange(buffer, chunkStart, chunkEnd));
     }
 
-    final SurfCacheServer cacheServer = new SurfCacheServer(cache, factory, 0, 0, 1, bufferSize);
+    final SurfCacheServer cacheServer = new SurfCacheServer(cache, factory, 0, 0, 1, bufferSize, RECORD);
 
     int nRead = 0;
     byte[] readBuffer = new byte[blockSize];

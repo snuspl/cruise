@@ -1,5 +1,7 @@
 package org.apache.reef.inmemory.task.service;
 
+import org.apache.reef.inmemory.common.instrumentation.Event;
+import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -27,6 +29,7 @@ import java.util.logging.Logger;
 public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, AutoCloseable {
 
   private static final Logger LOG = Logger.getLogger(SurfCacheServer.class.getName());
+  private final EventRecorder RECORD;
 
   private final InMemoryCache cache;
   private final BlockIdFactory blockIdFactory;
@@ -44,13 +47,15 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
                          final @Parameter(CacheParameters.Port.class) int port,
                          final @Parameter(CacheParameters.Timeout.class) int timeout,
                          final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
-                         final @Parameter(CacheParameters.LoadingBufferSize.class) int bufferSize) {
+                         final @Parameter(CacheParameters.LoadingBufferSize.class) int bufferSize,
+                         final EventRecorder recorder) {
     this.cache = cache;
     this.blockIdFactory = blockIdFactory;
     this.port = port;
     this.timeout = timeout;
     this.numThreads = numThreads;
     this.bufferSize = bufferSize;
+    this.RECORD = recorder;
   }
 
   public int getBindPort() {
@@ -106,6 +111,8 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   @Override
   public ByteBuffer getData(final BlockInfo blockInfo, final long offset, final long length)
     throws BlockLoadingException, BlockNotFoundException {
+    final Event getDataEvent = RECORD.event("task.get-data",
+            Long.toString(blockInfo.getBlockId()) + ":" + Long.toString(offset)).start();
     final BlockId blockId = blockIdFactory.newBlockId(blockInfo);
 
     // The first and last index to load blocks
@@ -116,6 +123,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
     final ByteBuffer buf = ByteBuffer.wrap(chunk, chunkOffset,
             Math.min(chunk.length - chunkOffset, (int) Math.min(Integer.MAX_VALUE, length)));
+    RECORD.record(getDataEvent.stop());
     return buf;
   }
 }

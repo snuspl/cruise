@@ -135,7 +135,7 @@ public final class SurfFS extends FileSystem {
 
     this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
 
-    final Event resolveAddressEvent = RECORD.event("client.resolve-address", baseFsUri.toString());
+    final Event resolveAddressEvent = RECORD.event("client.resolve-address", baseFsUri.toString()).start();
     this.metaserverAddress = getMetaserverResolver().getAddress();
     LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaserverAddress);
     RECORD.record(resolveAddressEvent.stop());

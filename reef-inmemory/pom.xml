@@ -105,6 +105,11 @@
             <artifactId>reef-webserver</artifactId>
             <version>${reef.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>reef-utils</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
         <!-- End of REEF -->
         <dependency>
             <groupId>org.apache.thrift</groupId>

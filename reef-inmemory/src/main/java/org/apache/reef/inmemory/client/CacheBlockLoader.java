@@ -122,7 +122,7 @@ public final class CacheBlockLoader {
         final SurfCacheService.Client client = getClient(cacheAddress);
         synchronized(client) {
           final Event dataTransferEvent = RECORD.event("client.data-transfer",
-                  block.getBlockId() + ":" + chunkStartPosition);
+                  block.getBlockId() + ":" + chunkStartPosition).start();
           LOG.log(Level.INFO, "Start data transfer from block {0}, with chunkStartPosition {1}",
                   new String[]{Long.toString(block.getBlockId()), Integer.toString(chunkStartPosition)});
 

@@ -41,6 +41,6 @@ public class TestUtils {
   }
 
   public static CacheManager cacheManager() {
-    return new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0);
+    return new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0, 60, "FINE", false, "", 0, "");
   }
 }
