@@ -12,7 +12,6 @@ import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.task.write.WritableBlockLoader;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -151,43 +150,45 @@ public final class InMemoryCacheImplTest {
 
   /**
    * Fill the data as large as the block size.
-   * Block Size : 1024 / Buffer size : 128 / Packet size : 64
+   * Block Size : 1024 / Buffer size : 128 / Packet size : 32
    * @throws IOException
    * @throws BlockNotFoundException
    * @throws BlockNotWritableException
    */
-  @Ignore
   @Test
   public void testWriteFullBlock() throws IOException, BlockNotFoundException, BlockNotWritableException, BlockLoadingException {
     final String fileName = "/write";
     final int offset = 0;
     final int blockSize = 1024;
+    final int bufferSize = 128;
+    final int packetSize = 32;
 
     final byte[] data = new byte[blockSize];
-    for (int i = 0; i < blockSize; i++) {
-      data[i] = (byte)(i % Byte.SIZE);
-    }
+    new Random().nextBytes(data);
 
     final BlockId blockId = new MockBlockId(fileName, offset, blockSize);
-    final WritableBlockLoader blockLoader = new WritableBlockLoader(blockId, false, 128, 1, SyncMethod.WRITE_BACK);
+    final WritableBlockLoader blockLoader = new WritableBlockLoader(blockId, false, bufferSize, 1, SyncMethod.WRITE_BACK);
 
     cache.prepareToLoad(blockLoader);
 
-    final int packetSize = 64;
-    for (int i = 0; i < blockSize / packetSize; i++) {
-      ByteBuffer subBuf = ByteBuffer.wrap(data, i * packetSize, packetSize).slice();
-      boolean isLastPacket = i == (blockSize / packetSize - 1);
-      cache.write(blockId, 0, subBuf, isLastPacket);
+    for (int packetIndex = 0; packetIndex < blockSize / packetSize; packetIndex++) {
+      byte[] packet = new byte[packetSize];
+      System.arraycopy(data, packetIndex * packetSize, packet, 0, packetSize);
+      boolean isLastPacket = (packetIndex == blockSize / packetSize - 1);
+      System.out.println("last? "+isLastPacket+" i "+packetIndex);
+      cache.write(blockId, packetIndex * packetSize, ByteBuffer.wrap(packet), isLastPacket);
     }
 
+    // Check the status is updated correctly.
     assertEquals(blockSize, statistics.getCacheBytes());
     assertEquals(0, statistics.getLoadingBytes());
     assertEquals(0, statistics.getEvictedBytes());
     assertEquals(0, statistics.getPinnedBytes());
 
+    // Collect the loaded buffers and compare to the original data.
     ByteBuffer loaded = ByteBuffer.allocate(blockSize);
-    for (int i = 0; i < blockSize / packetSize; i++) {
-      loaded.put(cache.get(blockId, i));
+    for (int bufferIndex = 0; bufferIndex < blockSize / bufferSize; bufferIndex++) {
+      loaded.put(cache.get(blockId, bufferIndex));
     }
     assertArrayEquals(data, loaded.array());
   }

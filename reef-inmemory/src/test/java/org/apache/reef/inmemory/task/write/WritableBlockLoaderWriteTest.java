@@ -5,10 +5,11 @@ import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -16,29 +17,39 @@ import static org.junit.Assert.fail;
 
 /**
  * Test WritableBlockLoader.
- * Initiate the blockLoader with blockSize 16, bufferSize 4
+ * Initiate the blockLoader with blockSize 131072, bufferSize 8192
+ * FYI. Data in a cache block is aligned with size of {bufferSize}
  */
-@Ignore
 public class WritableBlockLoaderWriteTest {
-  BlockId id;
-  WritableBlockLoader loader;
+  private BlockId id;
+  private WritableBlockLoader loader;
+  private static final long BLOCK_SIZE = 131072;
+  private static final int BUFFER_SIZE = 8192;
 
   @Before
   public void setup() {
-    id = new WritableBlockId("path", 0, 16);
-    loader = new WritableBlockLoader(id, true, 4, 1, SyncMethod.WRITE_BACK);
+    id = new WritableBlockId("path", 0, BLOCK_SIZE);
+    loader = new WritableBlockLoader(id, true, BUFFER_SIZE, 1, SyncMethod.WRITE_BACK);
   }
 
   /**
-   * Test whether it is able to write data
-   * and check the data locates at right position
+   * Test with tiny packets which are smaller than
+   * buffer size. Fill out 1 buffer inside a block.
    */
   @Test
-  public void testWriteOneBlockWithOffset() throws IOException {
-    byte[] toWrite = new byte[]{1,2};
-    byte[] expected = new byte[]{0,0,1,2};
+  public void testTinyPacket() throws IOException {
+    final byte[] packet0 = generateData(BUFFER_SIZE / 2);
+    final int offset0 = 0;
 
-    loader.writeData(toWrite, 2);
+    final byte[] packet1 = generateData(BUFFER_SIZE / 2);
+    final int offset1 = packet0.length;
+
+    final byte[] expected = new byte[BUFFER_SIZE];
+    System.arraycopy(packet0, 0, expected, offset0, packet0.length);
+    System.arraycopy(packet1, 0, expected, offset1, packet1.length);
+
+    loader.writeData(packet0, offset0);
+    loader.writeData(packet1, offset1);
 
     try {
       byte[] loaded = loader.getData(0);
@@ -47,22 +58,21 @@ public class WritableBlockLoaderWriteTest {
       fail();
     }
 
-    // Index 1 is out of bounds.
+    // Index 1 is out of bound for this block.
     loadWithFailure(loader, 1);
   }
 
   /**
-   * Test whether it is able to write data
-   * and check the data locates at right position
+   * Test to write a packet of buffer size.
    */
   @Test
-  public void testWriteOneBlock() throws IOException {
-    byte[] toWrite = new byte[]{1,2,3,4};
-    loader.writeData(toWrite, 0);
+  public void testPacketWithBufferSize() throws IOException {
+    final byte[] packet0 = generateData(BUFFER_SIZE);
+    loader.writeData(packet0, 0);
 
     try {
       byte[] loaded = loader.getData(0);
-      assertArrayEquals(toWrite, loaded);
+      assertArrayEquals(packet0, loaded);
     } catch (BlockLoadingException e) {
       fail();
     }
@@ -72,69 +82,127 @@ public class WritableBlockLoaderWriteTest {
   }
 
   /**
-   * TODO should we take care of this case?
-   * |12..| => |21..|
+   * An exception is thrown when client tries to write
+   * data to the offset written already.
    */
-  @Test
+  @Test()
   public void testOverwrite() throws BlockLoadingException, IOException {
-    loader.writeData(new byte[]{1, 2}, 0);
-    loader.writeData(new byte[]{2,1}, 0);
+    final byte[] packet0 = generateData(BUFFER_SIZE);
+    final byte[] packet1 = generateData(BUFFER_SIZE);
+
+    final int offset = 0;
+
+    loader.writeData(packet0, offset);
     try {
-      assertEquals(2, loader.getData(0)[0]);
-    } catch (BlockLoadingException e) {
-      fail();
-    }
-  }
-
-  /**
-   * index 0 |...4|
-   * index 1 |5...|
-   * index 2 null
-   */
-  @Test
-  public void testWriteAcrossBlock() throws IOException {
-    loader.writeData(new byte[]{4,5}, 3);
-
-    loadWithSuccess(loader, 0);
-    loadWithSuccess(loader, 1);
-    loadWithFailure(loader, 2);
-  }
-
-  @Test
-  public void testOverflow() {
-    byte[] toWrite = new byte[]{1,2,3,4};
-    try {
-      loader.writeData(toWrite, 12);
-      loader.writeData(toWrite, 16);
+      loader.writeData(packet1, offset);
       fail();
     } catch (IOException e) {
       // Success
     }
   }
+
   /**
-   * Helper function to make sure loading is done successfully.
-   * @param loader
-   * @param index
+   * Test for the case when the packets are not aligned
+   * to the size of buffer. (e.g, if the packets split
+   * 3 buffers to 4 splits.)
    */
-  public void loadWithSuccess(final BlockLoader loader, final int index) {
+  @Test
+  public void testWriteAcrossBuffer() throws IOException, BlockLoadingException {
+    final int numBuffers = 3;
+    final int numSplits = 4;
+
+    final byte[] data = generateData(numBuffers * BUFFER_SIZE);
+
+    final int packetLength = numBuffers * BUFFER_SIZE / numSplits;
+
+    // Fill out buffers
+    final byte[][] packets = new byte[numSplits][packetLength];
+    for (int packetIndex = 0; packetIndex < packets.length; packetIndex++) {
+      System.arraycopy(data, packetIndex * packetLength, packets[packetIndex], 0, packetLength);
+      loader.writeData(packets[packetIndex], packetIndex * packetLength);
+    }
+
+    // Collect the loaded buffers and compare to the original data.
+    ByteBuffer loaded = ByteBuffer.allocate(data.length);
+    for (int bufferIndex = 0; bufferIndex < numBuffers; bufferIndex++) {
+      loaded.put(loader.getData(bufferIndex));
+    }
+    assertArrayEquals(data, loaded.array());
+
+    // The data should be written as amount of {numBuffers}
+    loadWithFailure(loader, numBuffers);
+  }
+
+  /**
+   * Test to fill one block with packets.
+   * @throws IOException
+   * @throws BlockLoadingException
+   */
+  @Test
+  public void testFillOneBlock() throws IOException, BlockLoadingException {
+    final byte[] data = generateData((int) BLOCK_SIZE);
+
+    // Fill out the block
+    for (int offset = 0; offset < BLOCK_SIZE; offset += BUFFER_SIZE) {
+      byte[] packet = new byte[BUFFER_SIZE];
+
+      System.arraycopy(data, offset, packet, 0, BUFFER_SIZE);
+      loader.writeData(packet, offset);
+    }
+
+    // Collect the loaded buffers and compare to the original data.
+    ByteBuffer loaded = ByteBuffer.allocate(data.length);
+    for (int bufferIndex = 0; bufferIndex < BLOCK_SIZE / BUFFER_SIZE; bufferIndex++) {
+      loaded.put(loader.getData(bufferIndex));
+    }
+    assertArrayEquals(data, loaded.array());
+  }
+
+  /**
+   * Test to insert data over the capacity of a block.
+   */
+  @Test
+  public void testOverflow() throws IOException {
+    final int length0 = new Random().nextInt((int) BLOCK_SIZE);
+    final int length1 = (int)BLOCK_SIZE - length0 + 1;
+
+    // Fill out one block
+    byte[] packet0 = generateData(length0);
+    loader.writeData(packet0, 0);
+
+    // Write another packet
+    byte[] packet1 = generateData(length1);
+
     try {
-      loader.getData(index);
-    } catch (BlockLoadingException e) {
+      loader.writeData(packet1, length0);
       fail();
+    } catch (IOException e) {
+      // Success
     }
   }
 
   /**
-   * Helper function to make sure an exception occurs while loading.
+   * Helper method to make sure an exception occurs while loading.
    * @param loader
    * @param index
    */
-  public void loadWithFailure(final BlockLoader loader, final int index) {
+  private void loadWithFailure(final BlockLoader loader, final int index) {
     try {
       loader.getData(index);
       fail();
     } catch (BlockLoadingException e) {
       // Test success
     }
+  }
+
+  /**
+   * Helper method to generate a random byte array.
+   * @param size
+   * @return
+   */
+  private byte[] generateData(final int size) {
+    final byte[] result = new byte[size];
+    new Random().nextBytes(result);
+    return result;
   }
 }
