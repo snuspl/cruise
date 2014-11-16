@@ -2,11 +2,10 @@ package org.apache.reef.inmemory;
 
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.REEF;
-import org.apache.reef.inmemory.common.instrumentation.InstrumentationConfiguration;
+import org.apache.reef.inmemory.common.Instrumentor;
+import org.apache.reef.inmemory.common.InstrumentorImpl;
 import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters;
-import org.apache.reef.inmemory.common.instrumentation.ganglia.GangliaConfiguration;
 import org.apache.reef.inmemory.common.instrumentation.ganglia.GangliaParameters;
-import org.apache.reef.inmemory.common.instrumentation.log.LogReporterConstructor;
 import org.apache.reef.runtime.common.client.REEFImplementation;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
@@ -212,6 +211,21 @@ public class Launch
     return runtimeConfig;
   }
 
+  private static Configuration getInstrumentationConfiguration(final Configuration clConf, final Configuration fileConf)
+    throws InjectionException {
+    final Injector clInjector = Tang.Factory.getTang().newInjector(clConf);
+    final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
+
+    final Instrumentor instrumentor = new InstrumentorImpl(
+            chooseNamedInstance(InstrumentationParameters.InstrumentationReporterPeriod.class, clInjector, fileInjector),
+            chooseNamedInstance(InstrumentationParameters.InstrumentationLogLevel.class, clInjector, fileInjector),
+            chooseNamedInstance(GangliaParameters.Ganglia.class, clInjector, fileInjector),
+            chooseNamedInstance(GangliaParameters.GangliaHost.class, clInjector, fileInjector),
+            chooseNamedInstance(GangliaParameters.GangliaPort.class, clInjector, fileInjector),
+            chooseNamedInstance(GangliaParameters.GangliaPrefix.class, clInjector, fileInjector));
+    return instrumentor.getConfiguration();
+  }
+
   /**
    * Build cluster-specific configuration
    */
@@ -221,11 +235,6 @@ public class Launch
     final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
 
     final Configuration clusterConfig;
-    final Configuration logInstrumentationConfig = InstrumentationConfiguration.CONF
-            .set(InstrumentationConfiguration.REPORTER_PERIOD, chooseNamedInstance(InstrumentationParameters.InstrumentationReporterPeriod.class, clInjector, fileInjector))
-            .set(InstrumentationConfiguration.LOG_LEVEL, chooseNamedInstance(InstrumentationParameters.InstrumentationLogLevel.class, clInjector, fileInjector))
-            .set(InstrumentationConfiguration.REPORTER_CONSTRUCTORS, LogReporterConstructor.class)
-            .build();
 
     final boolean isLocal = chooseNamedInstance(Local.class, clInjector, fileInjector);
     if (isLocal) {
@@ -233,7 +242,7 @@ public class Launch
               .bind(ServiceRegistry.class, InetServiceRegistry.class)
               .bind(LocationSorter.class, LocalLocationSorter.class)
               .build();
-      clusterConfig = Configurations.merge(registryConfig, logInstrumentationConfig);
+      clusterConfig = Configurations.merge(registryConfig);
     } else {
       final Configuration registryConfig = Tang.Factory.getTang().newConfigurationBuilder()
               .bind(ServiceRegistry.class, YarnServiceRegistry.class)
@@ -242,19 +251,7 @@ public class Launch
       final Configuration httpConfig = HttpHandlerConfiguration.CONF
               .set(HttpHandlerConfiguration.HTTP_HANDLERS, YarnServiceRegistry.AddressHttpHandler.class)
               .build();
-
-      final boolean isGanglia = clInjector.getNamedInstance(GangliaParameters.Ganglia.class);
-      if (isGanglia) {
-        final Configuration gangliaInstrumentationConfig = GangliaConfiguration.CONF
-                .set(GangliaConfiguration.GANGLIA, true)
-                .set(GangliaConfiguration.GANGLIA_HOST, chooseNamedInstance(GangliaParameters.GangliaHost.class, clInjector, fileInjector))
-                .set(GangliaConfiguration.GANGLIA_PORT, chooseNamedInstance(GangliaParameters.GangliaPort.class, clInjector, fileInjector))
-                .set(GangliaConfiguration.GANGLIA_PREFIX, chooseNamedInstance(GangliaParameters.GangliaPrefix.class, clInjector, fileInjector))
-                .build();
-        clusterConfig = Configurations.merge(registryConfig, httpConfig, logInstrumentationConfig, gangliaInstrumentationConfig);
-      } else {
-        clusterConfig = Configurations.merge(registryConfig, httpConfig, logInstrumentationConfig);
-      }
+      clusterConfig = Configurations.merge(registryConfig, httpConfig);
     }
     return clusterConfig;
   }
@@ -267,8 +264,9 @@ public class Launch
     final Configuration driverConfig = getDriverConfiguration();
     final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig, fileConfig);
     final Configuration clusterConfig = getClusterConfiguration(clConfig, fileConfig);
+    final Configuration instrumentationConfig = getInstrumentationConfiguration(clConfig, fileConfig);
 
-    return Configurations.merge(driverConfig, inMemoryConfig, clusterConfig);
+    return Configurations.merge(driverConfig, inMemoryConfig, clusterConfig, instrumentationConfig);
   }
 
   /**
