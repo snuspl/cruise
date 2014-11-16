@@ -84,20 +84,20 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
 
     int index = (int) (offset / bufferSize);
     int innerOffset = (int) (offset % bufferSize);
-    int nTotal = 0;
+    int nWritten = 0;
 
-    while (nTotal < data.length) {
+    while (nWritten < data.length) {
       ByteBuffer buf = getBuffer(index);
       buf.position(innerOffset);
-      int toWrite = Math.min(bufferSize - innerOffset, data.length - nTotal);
-      buf.put(data, nTotal, toWrite);
+      int toWrite = Math.min(bufferSize - innerOffset, data.length - nWritten);
+      buf.put(data, nWritten, toWrite);
 
       index++;
       innerOffset = 0;
-      nTotal += toWrite;
+      nWritten += toWrite;
     }
 
-    totalWrite += nTotal;
+    totalWrite += nWritten;
     updateValidOffset(offset, data.length);
   }
 
