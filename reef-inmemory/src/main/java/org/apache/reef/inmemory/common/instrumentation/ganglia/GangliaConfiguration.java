@@ -11,6 +11,11 @@ import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters
 public final class GangliaConfiguration extends ConfigurationModuleBuilder {
 
   /**
+   * Use Ganglia (set to true)
+   */
+  public static final RequiredParameter<Boolean> GANGLIA = new RequiredParameter<>();
+
+  /**
    * Hostname of Ganglia Meta Daemon
    */
   public static final RequiredParameter<String> GANGLIA_HOST = new RequiredParameter<>();
@@ -27,6 +32,7 @@ public final class GangliaConfiguration extends ConfigurationModuleBuilder {
 
   public static final ConfigurationModule CONF = new GangliaConfiguration()
           .bindSetEntry(InstrumentationParameters.InstrumentationReporters.class, GangliaReporterConstructor.class)
+          .bindNamedParameter(GangliaParameters.Ganglia.class, GANGLIA)
           .bindNamedParameter(GangliaParameters.GangliaHost.class, GANGLIA_HOST)
           .bindNamedParameter(GangliaParameters.GangliaPort.class, GANGLIA_PORT)
           .bindNamedParameter(GangliaParameters.GangliaPrefix.class, GANGLIA_PREFIX)

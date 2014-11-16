@@ -4,6 +4,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.junit.Before;
@@ -35,7 +36,7 @@ public final class SurfFSFallbackTest {
 
     baseFs = mock(FileSystem.class);
 
-    surfFs = new SurfFS(baseFs, metaClient);
+    surfFs = new SurfFS(baseFs, metaClient, new NullEventRecorder());
   }
 
   /**

@@ -17,7 +17,7 @@ public class HdfsCacheManagerTest {
   @Test
   public void testBindPortUpdate() throws IOException {
     final HdfsCacheSelectionPolicy selector = mock(HdfsCacheSelectionPolicy.class);
-    final CacheManager manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0);
+    final CacheManager manager = TestUtils.cacheManager();
 
     final RunningTask task = TestUtils.mockRunningTask("a", "hosta");
 

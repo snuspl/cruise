@@ -14,9 +14,11 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
+import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheManagerImpl;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.TestUtils;
@@ -43,7 +45,7 @@ public final class HdfsCacheLoaderITCase {
   private static final String TESTDIR = ITUtils.getTestDir();
 
   private FileSystem fs;
-  private CacheManagerImpl manager;
+  private CacheManager manager;
   private HdfsCacheMessenger messenger;
   private HdfsCacheLoader loader;
   private HdfsCacheSelectionPolicy selector;
@@ -55,7 +57,7 @@ public final class HdfsCacheLoaderITCase {
    */
   @Before
   public void setUp() throws IOException {
-    manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0);
+    manager = TestUtils.cacheManager();
     messenger = new HdfsCacheMessenger(manager);
     selector = new HdfsRandomCacheSelectionPolicy();
     blockFactory = new HdfsBlockIdFactory();
@@ -78,7 +80,8 @@ public final class HdfsCacheLoaderITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsCacheLoader(manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString());
+    loader = new HdfsCacheLoader(
+            manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString(), new NullEventRecorder());
   }
 
   /**

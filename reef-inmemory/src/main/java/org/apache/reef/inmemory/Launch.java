@@ -2,6 +2,10 @@ package org.apache.reef.inmemory;
 
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.REEF;
+import org.apache.reef.inmemory.common.Instrumentor;
+import org.apache.reef.inmemory.common.InstrumentorImpl;
+import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters;
+import org.apache.reef.inmemory.common.instrumentation.ganglia.GangliaParameters;
 import org.apache.reef.runtime.common.client.REEFImplementation;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
@@ -104,6 +108,11 @@ public class Launch
     cl.registerShortNameOfClass(CacheParameters.HeapSlack.class);
     cl.registerShortNameOfClass(DfsParameters.Type.class);
     cl.registerShortNameOfClass(DfsParameters.Address.class);
+    cl.registerShortNameOfClass(InstrumentationParameters.InstrumentationReporterPeriod.class);
+    cl.registerShortNameOfClass(GangliaParameters.Ganglia.class);
+    cl.registerShortNameOfClass(GangliaParameters.GangliaHost.class);
+    cl.registerShortNameOfClass(GangliaParameters.GangliaPort.class);
+    cl.registerShortNameOfClass(GangliaParameters.GangliaPrefix.class);
     cl.processCommandLine(args);
     return confBuilder.build();
   }
@@ -202,6 +211,21 @@ public class Launch
     return runtimeConfig;
   }
 
+  private static Configuration getInstrumentationConfiguration(final Configuration clConf, final Configuration fileConf)
+    throws InjectionException {
+    final Injector clInjector = Tang.Factory.getTang().newInjector(clConf);
+    final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
+
+    final Instrumentor instrumentor = new InstrumentorImpl(
+            chooseNamedInstance(InstrumentationParameters.InstrumentationReporterPeriod.class, clInjector, fileInjector),
+            chooseNamedInstance(InstrumentationParameters.InstrumentationLogLevel.class, clInjector, fileInjector),
+            chooseNamedInstance(GangliaParameters.Ganglia.class, clInjector, fileInjector),
+            chooseNamedInstance(GangliaParameters.GangliaHost.class, clInjector, fileInjector),
+            chooseNamedInstance(GangliaParameters.GangliaPort.class, clInjector, fileInjector),
+            chooseNamedInstance(GangliaParameters.GangliaPrefix.class, clInjector, fileInjector));
+    return instrumentor.getConfiguration();
+  }
+
   /**
    * Build cluster-specific configuration
    */
@@ -240,8 +264,9 @@ public class Launch
     final Configuration driverConfig = getDriverConfiguration();
     final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig, fileConfig);
     final Configuration clusterConfig = getClusterConfiguration(clConfig, fileConfig);
+    final Configuration instrumentationConfig = getInstrumentationConfiguration(clConfig, fileConfig);
 
-    return Configurations.merge(driverConfig, inMemoryConfig, clusterConfig);
+    return Configurations.merge(driverConfig, inMemoryConfig, clusterConfig, instrumentationConfig);
   }
 
   /**

@@ -9,6 +9,7 @@ import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.CacheUpdates;
+import org.apache.reef.inmemory.common.Instrumentor;
 
 import java.net.InetSocketAddress;
 
@@ -41,6 +42,6 @@ public class TestUtils {
   }
 
   public static CacheManager cacheManager() {
-    return new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0);
+    return new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0, mock(Instrumentor.class));
   }
 }

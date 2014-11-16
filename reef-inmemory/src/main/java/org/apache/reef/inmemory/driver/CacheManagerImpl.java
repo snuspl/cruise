@@ -6,8 +6,9 @@ import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.inmemory.common.Instrumentor;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.BindException;
 import org.apache.reef.wake.StageConfiguration;
@@ -40,6 +41,7 @@ public final class CacheManagerImpl implements CacheManager {
   private final int cacheServerThreads;
   private final double cacheHeapSlack;
   private final int cacheLoadingThreads;
+  private final Instrumentor instrumentor;
 
   // Tasks are first added to pendingTasks, then moved to tasks after receiving the server port
   private final Map<String, RunningTask> pendingTasks = new HashMap<>();
@@ -52,7 +54,8 @@ public final class CacheManagerImpl implements CacheManager {
                           final @Parameter(CacheParameters.Memory.class) int cacheMemory,
                           final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
                           final @Parameter(CacheParameters.HeapSlack.class) double cacheHeapSlack,
-                          final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads) {
+                          final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads,
+                          final Instrumentor instrumentor) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.dfsType = dfsType;
     this.cachePort = cachePort;
@@ -60,6 +63,7 @@ public final class CacheManagerImpl implements CacheManager {
     this.cacheServerThreads = cacheServerThreads;
     this.cacheHeapSlack = cacheHeapSlack;
     this.cacheLoadingThreads = cacheLoadingThreads;
+    this.instrumentor = instrumentor;
   }
 
   /**
@@ -102,9 +106,9 @@ public final class CacheManagerImpl implements CacheManager {
               .set(InMemoryTaskConfiguration.CACHESERVER_LOADING_THREADS, cacheLoadingThreads)
               .set(InMemoryTaskConfiguration.CACHESERVER_HEAP_SLACK, cacheHeapSlack)
               .build();
-
-      allocatedEvaluator.submitContextAndTask(contextConf,
-              Tang.Factory.getTang().newConfigurationBuilder(taskConf, taskInMemoryConf).build());
+      final Configuration instrumentationConf = instrumentor.getConfiguration();
+      final Configuration mergedConf = Configurations.merge(taskConf, taskInMemoryConf, instrumentationConf);
+      allocatedEvaluator.submitContextAndTask(contextConf, mergedConf);
     } catch (final BindException ex) {
       LOG.log(Level.SEVERE, "Failed to bind Task.", ex);
     }
