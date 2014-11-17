@@ -103,7 +103,7 @@ public class SurfFSOutputStream extends OutputStream {
     flush(true);
     this.executor.shutdown();
     try {
-      metaClient.completeFile(path, curBlockInnerOffset, blockSize, curBlockNodeInfo);
+      metaClient.completeFile(path, curBlockOffset, blockSize, curBlockNodeInfo);
     } catch (TException e) {
       throw new IOException("Failed while closing the file", e);
     }

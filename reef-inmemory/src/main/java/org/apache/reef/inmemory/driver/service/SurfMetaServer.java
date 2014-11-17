@@ -152,10 +152,15 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
 
     try {
-      final FileMeta meta = metaManager.getFile(new Path(path), new User());
       final List<NodeInfo> nodeList = new ArrayList<>();
       nodeList.add(lastNode);
-      meta.addToBlocks(new BlockInfo(path, 0, offset, blockSize, nodeList, "", 0, ""));
+      // TODO Maybe we can figure out the exact size rather than using blockSize
+      final BlockInfo newBlock = new BlockInfo(path, -1, offset, blockSize, nodeList, null, -1, null);
+
+      FileMeta meta = metaManager.getFile(new Path(path), new User());
+      meta.addToBlocks(newBlock);
+      meta.setFileSize(meta.getFileSize() + blockSize);
+      metaManager.update(meta, new User());
     } catch (Throwable throwable) {
       throw new TException("Fail to complete file" + path, throwable);
     }
