@@ -3,6 +3,7 @@ package org.apache.reef.inmemory.driver.write;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.driver.CacheNode;
 
+import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,6 +12,10 @@ import java.util.List;
  * Choose just one cache node to write data into.
  */
 public class WritingRandomCacheSelectionPolicy implements WritingCacheSelectionPolicy {
+  @Inject
+  WritingRandomCacheSelectionPolicy() {
+  }
+
   @Override
   public List<NodeInfo> select(List<CacheNode> nodes, int numReplicas) {
     Collections.shuffle(nodes);
