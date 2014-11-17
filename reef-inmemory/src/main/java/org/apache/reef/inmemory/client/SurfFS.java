@@ -195,13 +195,7 @@ public final class SurfFS extends FileSystem {
     // TODO resolve directories
     SurfMetaService.Client metaClient = getMetaClient();
     try {
-      if(metaClient.exists(path.toString())){
-        if(overwrite) {
-          // TODO delete the file if we support overwrite
-        } else {
-          throw new IOException("File " + path + " already exists");
-        }
-      }
+      metaClient.create(path.toString(), blockSize);
       return new FSDataOutputStream(new SurfFSOutputStream(path, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
     } catch (TException e) {
       throw new IOException("Failed to create a file in "+path.toString(), e);

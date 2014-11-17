@@ -92,7 +92,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public boolean registerFileMeta(String path, long blockSize) throws FileAlreadyExistsException, TException {
+  public boolean create(String path, long blockSize) throws FileAlreadyExistsException, TException {
     if (exists(path)) {
       throw new FileAlreadyExistsException();
     } else {
@@ -119,7 +119,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   @Override
   public AllocatedBlockInfo allocateBlock(final String path,
                                           final long offset,
-                                          final long blockSize,
                                           final String clientAddress) throws TException {
     if (!exists(path)) {
       LOG.log(Level.SEVERE, "File {0} is not found", path);

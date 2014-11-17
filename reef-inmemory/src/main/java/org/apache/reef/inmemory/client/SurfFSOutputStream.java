@@ -161,7 +161,7 @@ public class SurfFSOutputStream extends OutputStream {
 
       curBlockOffset++;
 
-      final AllocatedBlockInfo blockInfo = metaClient.allocateBlock(path, curBlockOffset, blockSize, localAddress);
+      final AllocatedBlockInfo blockInfo = metaClient.allocateBlock(path, curBlockOffset, localAddress);
 
       boolean success = false;
       for (final NodeInfo nodeInfo : blockInfo.getLocations()) {

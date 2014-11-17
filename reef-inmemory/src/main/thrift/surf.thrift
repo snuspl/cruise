@@ -20,9 +20,9 @@ service SurfMetaService {
   bool exists(1:string path)
 
   /**
-   * Register FileMeta to enable data access
+   * Register the Filemeta with given path and blockSize
    */
-  bool registerFileMeta(1:string path, 2:i64 blockSize) throws (1: exceptions.FileAlreadyExistsException fae)
+  bool create(1:string path, 2:i64 blockSize) throws (1: exceptions.FileAlreadyExistsException fae)
 
   /**
    * Update metadata with a new FileMeta
@@ -32,7 +32,7 @@ service SurfMetaService {
   /**
    * Allocate a new Block and return the Info(CacheNode, Replication Policy, etc) of the block to write data.
    **/
-  entity.AllocatedBlockInfo allocateBlock(1:string path, 2:i64 offset, 3:i64 blockSize, 4:string clientAddress)
+  entity.AllocatedBlockInfo allocateBlock(1:string path, 2:i64 offset, 3:string clientAddress)
 
   /**
    * Announce to the Meta server that the file is complete
