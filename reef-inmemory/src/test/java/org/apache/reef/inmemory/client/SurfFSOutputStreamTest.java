@@ -22,59 +22,67 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class SurfFSOutputStreamTest {
-  private static final Path PATH = new Path("testPath");
-  private static final long BLOCK_SIZE = 800;
+  private static final String PATH = "testPath";
+  private static final int BLOCK_SIZE = 800;
   private static String CACHE_ADDR = "testCacheAddress";
-  private static String CACHE_RACK = "testCacheRack";
-
 
   private SurfMetaService.Client metaClient;
   private CacheClientManager cacheClientManager;
-  private SurfCacheService.Client cacheClient;
 
   @Before
   public void setUp() throws TException {
     metaClient = mock(SurfMetaService.Client.class);
-    List<NodeInfo> allocatedNodeList = new ArrayList<>();
-    allocatedNodeList.add(new NodeInfo(CACHE_ADDR, CACHE_RACK));
+    final AllocatedBlockInfo allocatedBlockInfo = getAllocatedBlockInfo();
+    when(metaClient.allocateBlock(anyString(), anyInt(), anyLong(), anyString())).thenReturn(allocatedBlockInfo);
+    doNothing().when(metaClient).completeFile(anyString(), anyLong(), anyLong(), any(NodeInfo.class));
 
-    AllocatedBlockInfo allocatedBlock = mock(AllocatedBlockInfo.class);
-    when(allocatedBlock.getLocations()).thenReturn(allocatedNodeList);
-
-    when(metaClient.allocateBlock(PATH.toString(), 0, BLOCK_SIZE, "localhost")).thenReturn(allocatedBlock);
-
-    cacheClientManager = mock(CacheClientManager.class);
-    cacheClient = mock(SurfCacheService.Client.class);
-    when(cacheClientManager.get(CACHE_ADDR)).thenReturn(cacheClient);
+    final SurfCacheService.Client cacheClient = mock(SurfCacheService.Client.class);
     doNothing().when(cacheClient).initBlock(anyString(), anyLong(), anyLong(), any(AllocatedBlockInfo.class));
     doNothing().when(cacheClient).writeData(anyString(), anyLong(), anyLong(), anyLong(), any(ByteBuffer.class), anyBoolean());
+
+    cacheClientManager = mock(CacheClientManager.class);
+    when(cacheClientManager.get(CACHE_ADDR)).thenReturn(cacheClient);
   }
 
   @Test
   public void testBasicWrites() throws IOException {
-    testWrite((byte)1); // one byte
+    testWrite(1); // one byte
     testWrite(150); // < packetSize
     testWrite(512); // == packetSize
     testWrite(BLOCK_SIZE); // one block
     testWrite(BLOCK_SIZE + 4); // > blockSize (one more block)
-    testWrite(30* BLOCK_SIZE + 3); // > many blocks
+    testWrite(30 * BLOCK_SIZE + 3); // > many blocks
   }
 
-  public void testWrite(long dataSize) throws IOException {
+  public void testWrite(int dataSize) throws IOException {
+    if (dataSize <= 0) {
+      throw new IllegalArgumentException("dataSize must be bigger than 0");
+    }
+
     final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
-    final byte[] data = new byte[(int)dataSize]; // TODO Assumption : Length is restricted to use an integer value
+    final byte[] data = new byte[dataSize];
 
     surfFSOutputStream.write(data);
     assertEquals(dataSize % surfFSOutputStream.getPacketSize(), surfFSOutputStream.getLocalBufWriteCount());
 
     surfFSOutputStream.flush();
     assertEquals(0, surfFSOutputStream.getLocalBufWriteCount());
-    assertEquals(dataSize % BLOCK_SIZE, surfFSOutputStream.getCurBlockOffset());
+    final long expectedCurBlockOffset = dataSize % BLOCK_SIZE == 0 ? (dataSize/BLOCK_SIZE)-1 : dataSize/BLOCK_SIZE;
+    assertEquals(expectedCurBlockOffset, surfFSOutputStream.getCurBlockOffset());
+    assertEquals(dataSize % BLOCK_SIZE, surfFSOutputStream.getCurBlockInnerOffset());
 
     surfFSOutputStream.close();
   }
 
   public SurfFSOutputStream getSurfFSOutputStream() throws UnknownHostException {
-    return new SurfFSOutputStream(PATH, metaClient, cacheClientManager, BLOCK_SIZE);
+    return new SurfFSOutputStream(new Path(PATH), metaClient, cacheClientManager, BLOCK_SIZE);
+  }
+
+  public AllocatedBlockInfo getAllocatedBlockInfo() {
+    List<NodeInfo> allocatedNodeList = new ArrayList<>();
+    allocatedNodeList.add(new NodeInfo(CACHE_ADDR, ""));
+    AllocatedBlockInfo allocatedBlock = mock(AllocatedBlockInfo.class);
+    when(allocatedBlock.getLocations()).thenReturn(allocatedNodeList);
+    return allocatedBlock;
   }
 }
