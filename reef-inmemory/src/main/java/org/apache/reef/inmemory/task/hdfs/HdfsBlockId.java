@@ -80,31 +80,24 @@ public final class HdfsBlockId implements BlockId, Serializable {
 
     HdfsBlockId that = (HdfsBlockId) o;
 
-    if (blockId != that.blockId) return false;
+    if (!filePath.equals(that.filePath)) return false;
     if (blockSize != that.blockSize) return false;
-    if (generationTimestamp != that.generationTimestamp) return false;
-    if (encodedToken != null ? !encodedToken.equals(that.encodedToken) : that.encodedToken != null) return false;
-    if (poolId != null ? !poolId.equals(that.poolId) : that.poolId != null) return false;
-
+    if (offset != that.offset) return false;
     return true;
   }
 
   @Override
   public int hashCode() {
-    int result = (int) (blockId ^ (blockId >>> 32));
+    int result = filePath != null ? filePath.hashCode() : 0;
     result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
-    result = 31 * result + (int) (generationTimestamp ^ (generationTimestamp >>> 32));
-    result = 31 * result + (poolId != null ? poolId.hashCode() : 0);
-    result = 31 * result + (encodedToken != null ? encodedToken.hashCode() : 0);
+    result = 31 * result + (int) (offset ^ (offset >>> 32));
     return result;
   }
 
   @Override
   public String toString() {
-    return blockId + ", "
+    return filePath + ", "
             + blockSize + ", "
-            + generationTimestamp + ", "
-            + poolId + ", "
-            + encodedToken;
+            + offset;
   }
 }

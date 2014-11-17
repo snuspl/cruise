@@ -12,7 +12,7 @@ import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.InMemoryCache;
-import org.apache.reef.inmemory.task.write.WritableBlockId;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.task.write.WritableBlockLoader;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.THsHaServer;
@@ -142,7 +142,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
      * Create a cache entry (BlockLoader) and load it into the cache
      * so the cache can receive the data or write the data into memory
      */
-    final BlockId blockId = new WritableBlockId(path, offset, blockSize);
+    final BlockId blockId = new HdfsBlockId(path, offset, -1, blockSize, -1, null, null);
 
     final boolean pin = info.isPin();
     final int baseReplicationFactor = info.getBaseReplicationFactor();
@@ -160,7 +160,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Override
   public void writeData(String path, long blockOffset, long blockSize, long innerOffset, ByteBuffer buf, boolean isLastPacket) throws TException {
-    final BlockId blockId = new WritableBlockId(path, blockOffset, blockSize);
+    final BlockId blockId = new HdfsBlockId(path, blockOffset, -1, blockSize, -1, null, null);
     try {
       cache.write(blockId, innerOffset, buf, isLastPacket);
     } catch (IOException e) {
