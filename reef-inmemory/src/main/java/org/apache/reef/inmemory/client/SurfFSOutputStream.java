@@ -146,13 +146,14 @@ public class SurfFSOutputStream extends OutputStream {
       initNewBlock();
     }
 
-    if (curBlockInnerOffset + len <= blockSize)  {
+    if (curBlockInnerOffset + len < blockSize)  {
       sendPacket(curBlockNodeInfo.getAddress(), ByteBuffer.wrap(b, start, len), len, isLastPacket);
+    } else if (curBlockInnerOffset + len == blockSize) {
+      sendPacket(curBlockNodeInfo.getAddress(), ByteBuffer.wrap(b, start, len), len, true);
     } else {
       final int possibleLen = (int)(blockSize - curBlockInnerOffset); // this must be int because "possibleLen <= len"
-      sendPacket(curBlockNodeInfo.getAddress(), ByteBuffer.wrap(b, start, possibleLen), possibleLen, false);
-
-      flushBuf(b, start+possibleLen, end, isLastPacket); // Create another packet with the leftovers
+      sendPacket(curBlockNodeInfo.getAddress(), ByteBuffer.wrap(b, start, possibleLen), possibleLen, true);
+      flushBuf(b, start + possibleLen, end, isLastPacket); // Create another packet with the leftovers
     }
   }
 
