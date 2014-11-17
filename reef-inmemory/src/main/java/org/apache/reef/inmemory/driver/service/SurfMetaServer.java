@@ -122,6 +122,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
                                           final long blockSize,
                                           final String clientAddress) throws TException {
     if (!exists(path)) {
+      LOG.log(Level.SEVERE, "File {0} is not found", path);
       throw new FileNotFoundException();
     } else {
       try {
@@ -145,8 +146,20 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public void completeFile(String path, long offset, long blockSize, NodeInfo lastNode) throws TException {
-    // TODO implement this
+  public void completeFile(final String path, final long offset, final long blockSize, final NodeInfo lastNode) throws TException {
+    if (!exists(path)) {
+      LOG.log(Level.SEVERE, "File {0} is not found", path);
+      throw new FileNotFoundException();
+    }
+
+    try {
+      final FileMeta meta = metaManager.getFile(new Path(path), new User());
+      final List<NodeInfo> nodeList = new ArrayList<>();
+      nodeList.add(lastNode);
+      meta.addToBlocks(new BlockInfo(path, 0, offset, blockSize, nodeList, "", 0, ""));
+    } catch (Throwable throwable) {
+      throw new TException("Fail to complete file" + path, throwable);
+    }
   }
 
   public StringBuilder appendBasicStatus(final StringBuilder builder,
