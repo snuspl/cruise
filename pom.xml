@@ -8,6 +8,7 @@
   <artifactId>flexion</artifactId>
   <name>Elastic MPI optimizer and runtime</name>
   <version>0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -95,14 +96,6 @@
           <target>1.7</target>
           <showDeprecation>true</showDeprecation>
           <encoding>${project.build.sourceEncoding}</encoding>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>com.mycila.maven-license-plugin</groupId>
-        <artifactId>maven-license-plugin</artifactId>
-        <configuration>
-          <header>LICENSE.txt</header>
-          <strictCheck>true</strictCheck>
         </configuration>
       </plugin>
       <plugin>
