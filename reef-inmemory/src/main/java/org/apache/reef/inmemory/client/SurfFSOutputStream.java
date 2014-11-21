@@ -27,7 +27,7 @@ public class SurfFSOutputStream extends OutputStream {
 
   private byte localBuf[] = new byte[PACKET_SIZE];
   private int localBufWriteCount = 0;
-  private long curBlockOffset = -1;
+  private long curBlockOffset = 0;
   private long curBlockInnerOffset = 0;
 
   private final Queue<Packet> packetQueue = new ConcurrentLinkedQueue<>(); // add by main thread, remove by PacketStreamer
@@ -163,7 +163,6 @@ public class SurfFSOutputStream extends OutputStream {
     AllocatedBlockInfo blockInfo = null;
     if (curBlockInnerOffset == 0) {
       // the first packet of a block
-      curBlockOffset++;
       blockInfo = allocateBlockAtMetaServer(curBlockOffset);
     }
 
@@ -189,7 +188,12 @@ public class SurfFSOutputStream extends OutputStream {
   private void sendPacket(final AllocatedBlockInfo blockInfo, final ByteBuffer buf, final int len, final boolean isLastPacket) {
     packetQueue.add(new Packet(blockInfo, curBlockOffset, curBlockInnerOffset, buf, isLastPacket));
     this.executor.submit(streamer);
-    curBlockInnerOffset = (curBlockInnerOffset + len) % blockSize;
+    updateBlockOffsets(curBlockInnerOffset+len);
+  }
+
+  private void updateBlockOffsets(long totalOffset) {
+    curBlockOffset += totalOffset / blockSize;
+    curBlockInnerOffset = totalOffset % blockSize;
   }
 
   private class Packet {

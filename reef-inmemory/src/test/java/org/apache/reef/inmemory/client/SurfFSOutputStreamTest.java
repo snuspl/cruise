@@ -34,7 +34,7 @@ public class SurfFSOutputStreamTest {
     metaClient = mock(SurfMetaService.Client.class);
     final AllocatedBlockInfo allocatedBlockInfo = getAllocatedBlockInfo();
     when(metaClient.allocateBlock(anyString(), anyInt(), anyString())).thenReturn(allocatedBlockInfo);
-    doNothing().when(metaClient).completeFile(anyString(), anyLong());
+    when(metaClient.completeFile(anyString(), anyLong())).thenReturn(true);
 
     final SurfCacheService.Client cacheClient = mock(SurfCacheService.Client.class);
     doNothing().when(cacheClient).initBlock(anyString(), anyLong(), anyLong(), any(AllocatedBlockInfo.class));
@@ -54,22 +54,22 @@ public class SurfFSOutputStreamTest {
     testWrite(30 * BLOCK_SIZE + 3); // > many blocks
   }
 
-  public void testWrite(int dataSize) throws IOException {
-    if (dataSize <= 0) {
-      throw new IllegalArgumentException("dataSize must be bigger than 0");
+  public void testWrite(int fileSize) throws IOException {
+    if (fileSize <= 0) {
+      throw new IllegalArgumentException("fileSize must be bigger than 0");
     }
 
     final SurfFSOutputStream surfFSOutputStream = getSurfFSOutputStream();
-    final byte[] data = new byte[dataSize];
+    final byte[] data = new byte[fileSize];
 
     surfFSOutputStream.write(data);
-    assertEquals(dataSize % surfFSOutputStream.getPacketSize(), surfFSOutputStream.getLocalBufWriteCount());
+    assertEquals(fileSize % surfFSOutputStream.getPacketSize(), surfFSOutputStream.getLocalBufWriteCount());
 
     surfFSOutputStream.flush();
     assertEquals(0, surfFSOutputStream.getLocalBufWriteCount());
-    final long expectedCurBlockOffset = dataSize % BLOCK_SIZE == 0 ? (dataSize/BLOCK_SIZE)-1 : dataSize/BLOCK_SIZE;
-    assertEquals(expectedCurBlockOffset, surfFSOutputStream.getCurBlockOffset());
-    assertEquals(dataSize % BLOCK_SIZE, surfFSOutputStream.getCurBlockInnerOffset());
+    assertEquals(fileSize / BLOCK_SIZE, surfFSOutputStream.getCurBlockOffset());
+    assertEquals(fileSize % BLOCK_SIZE, surfFSOutputStream.getCurBlockInnerOffset());
+    assertEquals(fileSize, BLOCK_SIZE * surfFSOutputStream.getCurBlockOffset() + surfFSOutputStream.getCurBlockInnerOffset());
 
     surfFSOutputStream.close();
   }
