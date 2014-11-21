@@ -145,22 +145,18 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public void completeFile(final String path, final long offset, final long blockSize, final NodeInfo lastNode) throws TException {
+  public boolean completeFile(final String path, final long fileSize) throws TException {
     if (!exists(path)) {
       LOG.log(Level.SEVERE, "File {0} is not found", path);
       throw new FileNotFoundException();
     }
 
     try {
-      final List<NodeInfo> nodeList = new ArrayList<>();
-      nodeList.add(lastNode);
-      // TODO Maybe we can figure out the exact size rather than using blockSize
-      final BlockInfo newBlock = new BlockInfo(path, -1, offset, blockSize, nodeList, null, -1, null);
-
-      FileMeta meta = metaManager.getFile(new Path(path), new User());
-      meta.addToBlocks(newBlock);
-      meta.setFileSize(meta.getFileSize() + blockSize);
-      metaManager.update(meta, new User());
+      final FileMeta meta = metaManager.getFile(new Path(path), new User());
+      // TODO Either we can set a flag isComplete
+      LOG.log(Level.INFO, "Compare the file size of meta : Expected {0} / Actual {1}",
+        new Object[] {fileSize, meta.getFileSize()});
+      return fileSize == meta.getFileSize();
     } catch (Throwable throwable) {
       throw new TException("Fail to complete file" + path, throwable);
     }

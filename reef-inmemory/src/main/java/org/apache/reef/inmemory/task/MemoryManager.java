@@ -196,6 +196,45 @@ public final class MemoryManager {
     LOG.log(Level.INFO, blockId + " statistics after loadSuccess: " + statistics);
   }
 
+  public synchronized void writeSuccess(final BlockId blockId, final boolean pin) {
+    LOG.log(Level.INFO, blockId+" statistics before loadSuccess: "+statistics);
+    if (statistics.getCacheBytes() < 0) {
+      throw new RuntimeException(blockId+" cached is less than zero");
+    }
+
+    // TODO Make sure this is logically valid
+    final long blockSize = blockId.getBlockSize();
+    final CacheEntryState state = getState(blockId);
+    switch(state) {
+      case LOAD_STARTED:
+        if (pin) {
+          // nothing
+        } else {
+          statistics.subtractLoadingBytes(blockSize);
+          statistics.addCacheBytes(blockSize);
+        }
+        setState(blockId, CacheEntryState.LOAD_SUCCEEDED);
+        updates.addWritten(blockId);
+        notifyAll();
+        break;
+      case REMOVED_DURING_LOAD:
+        if (pin) {
+          statistics.subtractPinnedBytes(blockSize);
+        } else {
+          statistics.subtractLoadingBytes(blockSize);
+        }
+        lru.evicted(blockId);
+        statistics.addEvictedBytes(blockSize);
+        updates.addRemoval(blockId);
+        setState(blockId, CacheEntryState.REMOVED);
+        notifyAll();
+        break;
+      default:
+        throw new RuntimeException(blockId+" unexpected state on loadSuccess "+getState(blockId));
+    }
+
+    LOG.log(Level.INFO, blockId + " statistics after loadSuccess: " + statistics);
+  }
   /**
    * Call on load failure.
    * Notifies threads waiting for memory to free up.

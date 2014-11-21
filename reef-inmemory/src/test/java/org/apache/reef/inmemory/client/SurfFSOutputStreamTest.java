@@ -34,7 +34,7 @@ public class SurfFSOutputStreamTest {
     metaClient = mock(SurfMetaService.Client.class);
     final AllocatedBlockInfo allocatedBlockInfo = getAllocatedBlockInfo();
     when(metaClient.allocateBlock(anyString(), anyInt(), anyString())).thenReturn(allocatedBlockInfo);
-    doNothing().when(metaClient).completeFile(anyString(), anyLong(), anyLong(), any(NodeInfo.class));
+    doNothing().when(metaClient).completeFile(anyString(), anyLong());
 
     final SurfCacheService.Client cacheClient = mock(SurfCacheService.Client.class);
     doNothing().when(cacheClient).initBlock(anyString(), anyLong(), anyLong(), any(AllocatedBlockInfo.class));

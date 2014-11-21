@@ -3,13 +3,16 @@ package org.apache.reef.inmemory.driver;
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheUpdates;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
-import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -71,7 +74,7 @@ public final class SurfMetaManager {
   public void update(FileMeta fileMeta, User creator) {
     final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), creator);
     metadataIndex.put(absolutePath, fileMeta);
-    // TODO use updateMeta? Does this method affect the cache?
+    // TODO revisit when implement replication because it can affect the cache
 //    cacheUpdater.updateMeta(absolutePath, fileMeta);
   }
 
@@ -119,6 +122,23 @@ public final class SurfMetaManager {
         LOG.log(Level.INFO, "Block removed: " + removed);
         cacheLocationRemover.remove(removed.getFilePath(), removed, address);
       }
+      for (final BlockId written : updates.getWritten()) {
+        LOG.log(Level.INFO, "Block written: " + written);
+        addBlockToFileMeta(written, cache);
+      }
     }
+  }
+
+  private void addBlockToFileMeta(final BlockId blockId, final CacheNode cacheNode) {
+    FileMeta meta = metadataIndex.getIfPresent(blockId.getFilePath());
+
+    final List<NodeInfo> nodeList = new ArrayList<>();
+    nodeList.add(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
+    final BlockInfo newBlock = new BlockInfo(blockId.getFilePath(), -1, blockId.getOffset(), blockId.getBlockSize(), nodeList, null, -1, null);
+
+    meta.setFileSize(meta.getFileSize()+blockId.getBlockSize());
+    meta.addToBlocks(newBlock);
+    // TODO is it possible to determine the end of block?
+    update(meta, new User());
   }
 }
