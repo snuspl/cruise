@@ -38,6 +38,7 @@ public class SurfFSOutputStream extends OutputStream {
   private final PacketStreamer streamer = new PacketStreamer();
   private final ExecutorService executor =
     new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(80)); // max 81 packets
+  private String curCacheAddress;
 
   public SurfFSOutputStream(final Path path,
                             final SurfMetaService.Client metaClient,
@@ -103,22 +104,25 @@ public class SurfFSOutputStream extends OutputStream {
       flush(true);
       this.executor.shutdown();
 
-      boolean success = false;
-      try {
-        for (int i = 0; i < 3; i++) {
-          success = metaClient.completeFile(path, blockSize * curBlockOffset + curBlockInnerOffset);
-          if (success) {
-            break;
-          } else {
-            Thread.sleep(5000); // TODO: make it 1 second
+      final long fileSize = blockSize * curBlockOffset + curBlockInnerOffset;
+      if (fileSize > 0) {
+        boolean success = false;
+        try {
+          for (int i = 0; i < 3; i++) {
+            success = metaClient.completeFile(path, fileSize);
+            if (success) {
+              break;
+            } else {
+              Thread.sleep(5000); // TODO: make it 1 second
+            }
           }
+        } catch (TException | InterruptedException e) {
+          throw new IOException("Failed while closing the file", e);
         }
-      } catch (TException | InterruptedException e){
-        throw new IOException("Failed while closing the file", e);
-      }
 
-      if (!success) {
-        throw new IOException("File not closed");
+        if (!success) {
+          throw new IOException("File not closed");
+        }
       }
     }
   }
@@ -209,16 +213,14 @@ public class SurfFSOutputStream extends OutputStream {
   }
 
   private class PacketStreamer implements Runnable {
-    private String curCacheAddress;
-
     @Override
     public void run() {
       try {
         final Packet packet = packetQueue.remove();
         if (packet.blockInfo != null) {
-          this.curCacheAddress = initBlockAtCacheServer(packet.blockInfo, packet.blockOffset); // the first packet of a block
+          curCacheAddress = initBlockAtCacheServer(packet.blockInfo, packet.blockOffset); // the first packet of a block
         }
-        final SurfCacheService.Client cacheClient = cacheClientManager.get(this.curCacheAddress);
+        final SurfCacheService.Client cacheClient = cacheClientManager.get(curCacheAddress);
         cacheClient.writeData(path, packet.blockOffset, blockSize, packet.blockInnerOffset, packet.buf, packet.isLastPacket);
       } catch (Exception e) {
         throw new RuntimeException("PacketStreamer exception");
