@@ -19,6 +19,10 @@ public interface BlockReceiver {
   public void writeData(byte[] data, long offset) throws IOException;
 
   /**
+   * Get the total amount of data written in this BlockReceiver
+   */
+  public long getTotalWritten();
+  /**
    * @return the number of blocks to be replicated in the baseFS
    */
   public int getBaseReplicationFactor();

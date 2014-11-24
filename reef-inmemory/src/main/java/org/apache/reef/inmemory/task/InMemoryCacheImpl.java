@@ -72,9 +72,9 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     } else {
       WritableBlockLoader writableLoader = (WritableBlockLoader) loader;
       writableLoader.writeData(data.array(), offset);
-
+      final long nWritten = writableLoader.getTotalWritten();
       if (isLastPacket) {
-        memoryManager.writeSuccess(blockId, loader.isPinned());
+        memoryManager.writeSuccess(blockId, nWritten, loader.isPinned());
       }
     }
   }

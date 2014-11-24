@@ -2,11 +2,13 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
@@ -27,17 +29,20 @@ public final class SurfMetaManager {
   private final CacheMessenger cacheMessenger;
   private final CacheLocationRemover cacheLocationRemover;
   private final CacheUpdater cacheUpdater;
+  private final BlockIdFactory blockIdFactory;
   public static String USERS_HOME = "/user";
 
   @Inject
   public SurfMetaManager(final LoadingCache metadataIndex,
                          final CacheMessenger cacheMessenger,
                          final CacheLocationRemover cacheLocationRemover,
-                         final CacheUpdater cacheUpdater) {
+                         final CacheUpdater cacheUpdater,
+                         final BlockIdFactory blockIdFactory) {
     this.metadataIndex = metadataIndex;
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
     this.cacheUpdater = cacheUpdater;
+    this.blockIdFactory = blockIdFactory;
   }
 
   /**
@@ -74,8 +79,7 @@ public final class SurfMetaManager {
   public void update(FileMeta fileMeta, User creator) {
     final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), creator);
     metadataIndex.put(absolutePath, fileMeta);
-    // TODO revisit when implement replication because it can affect the cache
-//    cacheUpdater.updateMeta(absolutePath, fileMeta);
+    // TODO revisit when replication & write-back because it can affect the cache
   }
 
   /**
@@ -122,23 +126,23 @@ public final class SurfMetaManager {
         LOG.log(Level.INFO, "Block removed: " + removed);
         cacheLocationRemover.remove(removed.getFilePath(), removed, address);
       }
-      for (final BlockId written : updates.getWritten()) {
-        LOG.log(Level.INFO, "Block written: " + written);
-        addBlockToFileMeta(written, cache);
+      for (final CacheUpdates.Addition addition : updates.getAddition()) {
+        final BlockId blockId = addition.getBlockId();
+        final long nWritten = addition.getAmount();
+        addBlockToFileMeta(blockId, nWritten, cache);
       }
     }
   }
 
-  private void addBlockToFileMeta(final BlockId blockId, final CacheNode cacheNode) {
-    FileMeta meta = metadataIndex.getIfPresent(blockId.getFilePath());
+  private void addBlockToFileMeta(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
+    FileMeta meta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
 
     final List<NodeInfo> nodeList = new ArrayList<>();
     nodeList.add(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
-    final BlockInfo newBlock = new BlockInfo(blockId.getFilePath(), -1, blockId.getOffset(), blockId.getBlockSize(), nodeList, null, -1, null);
+    final BlockInfo newBlock = blockIdFactory.newBlockInfo(blockId, nodeList);
 
-    meta.setFileSize(meta.getFileSize()+blockId.getBlockSize());
+    meta.setFileSize(meta.getFileSize() + nWritten);
     meta.addToBlocks(newBlock);
-    // TODO is it possible to determine the end of block?
     update(meta, new User());
   }
 }

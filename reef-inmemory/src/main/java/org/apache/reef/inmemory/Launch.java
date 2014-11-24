@@ -68,17 +68,12 @@ public class Launch
   }
 
   /**
-   * Parse the configuration file.
-   * @return Configuration described in config file. If it fails to parse,
-   * then a blank configuration is returned.
+   * Parse the configuration file
+   * @return Configuration described in config file
+   * @throws IOException If failed to parse the config file
    */
-  public static Configuration parseConfigFile() {
-    try {
-      return new AvroConfigurationSerializer().fromTextFile(new File(CONFIG_FILE));
-    } catch (IOException e) {
-      LOG.log(Level.WARNING, "Failed to parse config file : {0}", CONFIG_FILE);
-      return Tang.Factory.getTang().newConfigurationBuilder().build();
-    }
+  public static Configuration parseConfigFile() throws IOException {
+    return new AvroConfigurationSerializer().fromTextFile(new File(CONFIG_FILE));
   }
 
   /**

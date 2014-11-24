@@ -11,13 +11,14 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.Launch;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
 
 import static org.junit.Assert.fail;
-
+@Ignore
 public class SurfFSCreateITCase {
 
   private static SurfFS surfFs;

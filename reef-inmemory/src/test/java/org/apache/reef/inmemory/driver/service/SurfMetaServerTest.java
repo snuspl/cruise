@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.driver.service;
 
 import com.google.common.cache.LoadingCache;
+import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.driver.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
@@ -34,8 +35,8 @@ public final class SurfMetaServerTest {
     final WritingCacheSelectionPolicy writingCacheSelectionPolicy = mock(WritingCacheSelectionPolicy.class);
     final CacheLocationRemover cacheLocationRemover = new CacheLocationRemover();
     final CacheUpdater cacheUpdater = mock(CacheUpdater.class);
-
-    final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheMessenger, cacheLocationRemover, cacheUpdater);
+    final BlockIdFactory blockIdFactory = mock(BlockIdFactory.class);
+    final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheMessenger, cacheLocationRemover, cacheUpdater, blockIdFactory);
 
     try {
       final SurfMetaServer metaService = new SurfMetaServer(

@@ -1,6 +1,5 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.AllocatedBlockInfo;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
@@ -16,10 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.*;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.*;
 
 public class SurfFSOutputStreamTest {
   private static final String PATH = "testPath";
@@ -75,7 +76,7 @@ public class SurfFSOutputStreamTest {
   }
 
   public SurfFSOutputStream getSurfFSOutputStream() throws UnknownHostException {
-    return new SurfFSOutputStream(new Path(PATH), metaClient, cacheClientManager, BLOCK_SIZE);
+    return new SurfFSOutputStream(PATH, metaClient, cacheClientManager, BLOCK_SIZE);
   }
 
   public AllocatedBlockInfo getAllocatedBlockInfo() {

@@ -8,6 +8,7 @@ import org.apache.reef.inmemory.task.BlockLoader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -28,7 +29,7 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
   private final long blockSize;
   private long totalWrite = 0;
 
-  private Map<Integer, byte[]> data;
+  private Map<Integer, ByteBuffer> data;
 
   private final SyncMethod syncMethod;
   private final int baseReplicationFactor;
@@ -65,7 +66,8 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     if (!data.containsKey(index)) {
       throw new BlockLoadingException(totalWrite);
     }
-    return this.data.get(index);
+    assert this.data.get(index).hasArray();// TODO delete this;
+    return this.data.get(index).array();
   }
 
   @Override
@@ -88,7 +90,6 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
 
     while (nWritten < data.length) {
       ByteBuffer buf = getBuffer(index);
-      buf.position(innerOffset);
       int toWrite = Math.min(bufferSize - innerOffset, data.length - nWritten);
       buf.put(data, nWritten, toWrite);
 
@@ -119,10 +120,11 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
    */
   private synchronized ByteBuffer getBuffer(final int index) {
     if (!data.containsKey(index)) {
-      final byte[] buffer = new byte[bufferSize];
-      data.put(index, buffer);
+      // If blockSize is smaller than blockSize, then the blockSize will cover the whole data
+      final ByteBuffer buf = ByteBuffer.allocate(Math.min(bufferSize, (int)blockSize));
+      data.put(index, buf);
     }
-    return ByteBuffer.wrap(data.get(index));
+    return data.get(index);
   }
 
   /**
@@ -146,5 +148,10 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
    */
   private boolean isValidOffset(final long offset) {
     return expectedOffset == offset;
+  }
+
+
+  public long getTotalWritten() {
+    return this.totalWrite;
   }
 }

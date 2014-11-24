@@ -72,6 +72,7 @@ public final class SurfMetaManagerITCase {
     blockFactory = new HdfsBlockIdFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
+
     for (int i = 0; i < 3; i++) {
       final RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
 
@@ -95,7 +96,7 @@ public final class SurfMetaManagerITCase {
 
     cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, fs.getUri().toString());
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater);
+    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory);
   }
 
   /**

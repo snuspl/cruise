@@ -196,7 +196,7 @@ public final class MemoryManager {
     LOG.log(Level.INFO, blockId + " statistics after loadSuccess: " + statistics);
   }
 
-  public synchronized void writeSuccess(final BlockId blockId, final boolean pin) {
+  public synchronized void writeSuccess(final BlockId blockId, final long nWritten, final boolean pin) {
     LOG.log(Level.INFO, blockId+" statistics before loadSuccess: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -214,7 +214,7 @@ public final class MemoryManager {
           statistics.addCacheBytes(blockSize);
         }
         setState(blockId, CacheEntryState.LOAD_SUCCEEDED);
-        updates.addWritten(blockId);
+        updates.addAddition(blockId, nWritten);
         notifyAll();
         break;
       case REMOVED_DURING_LOAD:

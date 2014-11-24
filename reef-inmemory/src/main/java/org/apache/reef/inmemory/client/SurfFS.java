@@ -9,6 +9,7 @@ import org.apache.hadoop.util.Progressable;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
+import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -19,7 +20,6 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Iterator;
@@ -178,7 +178,7 @@ public final class SurfFS extends FileSystem {
       return new FSDataInputStream(new SurfFSInputStream(metadata, cacheClientManager, getConf()));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException ", e);
-      throw new FileNotFoundException(e.getMessage());
+      throw new java.io.FileNotFoundException(e.getMessage());
     } catch (TException e) {
       LOG.log(Level.SEVERE, "TException", e);
       throw new IOException(e);
@@ -192,13 +192,13 @@ public final class SurfFS extends FileSystem {
   @Override
   public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
-    // TODO resolve directories
+    final String decodedPath = path.toUri().getPath();
     SurfMetaService.Client metaClient = getMetaClient();
     try {
-      metaClient.create(path.toString(), blockSize);
-      return new FSDataOutputStream(new SurfFSOutputStream(path, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
+      metaClient.create(decodedPath, blockSize);
+      return new FSDataOutputStream(new SurfFSOutputStream(decodedPath, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
     } catch (TException e) {
-      throw new IOException("Failed to create a file in "+path.toString(), e);
+      throw new IOException("Failed to create a file in " + decodedPath, e);
     }
   }
 
@@ -218,7 +218,7 @@ public final class SurfFS extends FileSystem {
   }
 
   @Override
-  public FileStatus[] listStatus(Path path) throws FileNotFoundException, IOException {
+  public FileStatus[] listStatus(Path path) throws IOException {
     FileStatus[] statuses = baseFs.listStatus(pathToBase(path));
     for (FileStatus status : statuses) {
       setStatusToSurf(status);
@@ -243,9 +243,15 @@ public final class SurfFS extends FileSystem {
 
   @Override
   public FileStatus getFileStatus(Path path) throws IOException {
-    FileStatus status = baseFs.getFileStatus(pathToBase(path));
-    setStatusToSurf(status);
-    return status;
+    final Path absolutePath = fixRelativePart(path);
+    try {
+      final FileMeta meta = metaClient.getFileMeta(absolutePath.toUri().getPath());
+      return getFileStatusFromMeta(meta);
+    } catch (FileNotFoundException e) {
+      throw new java.io.FileNotFoundException("File not found in the meta server");
+    } catch (TException e) {
+      throw new IOException ("Failed to get File Status", e);
+    }
   }
 
   private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
@@ -308,9 +314,9 @@ public final class SurfFS extends FileSystem {
 
       return blockLocations.toArray(new BlockLocation[blockLocations.size()]);
 
-    } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
+    } catch (FileNotFoundException e) {
       LOG.log(Level.FINE, "FileNotFoundException: "+e+" "+e.getCause());
-      throw new FileNotFoundException(e.getMessage());
+      throw new java.io.FileNotFoundException(e.getMessage());
     } catch (TException e) {
       LOG.log(Level.SEVERE, "TException: "+e+" "+e.getCause());
       throw new IOException(e.getMessage());
@@ -318,17 +324,21 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * @return {@code true} if the metadata exists for the path
+   * Translate File Meta received from the meta server
+   * to File Status used in FileSystem API.
    */
-  private boolean exists(SurfMetaService.Client metaClient, Path f) {
-    try {
-      // TODO maybe later we can use getFileStatus
-      return metaClient.getFileMeta(f.toString()) != null;
-    } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      return false;
-    } catch (TException e) {
-      LOG.log(Level.SEVERE, "Failed to check existence.");
-      throw new RuntimeException(e);
+  private FileStatus getFileStatusFromMeta(final FileMeta meta) {
+    if (meta == null) {
+      return null;
+    } else {
+      final long length = meta.getFileSize();
+      final boolean isDir = meta.isDirectory();
+      final int replication = -1;
+      final long blockSize = meta.getBlockSize();
+      final long modificationTime = -1;
+      final Path path = new Path(meta.getFullPath());
+      // TODO FsPermission, String owner, String group, Path symlink/
+      return new FileStatus(length, isDir, replication, blockSize, modificationTime, path);
     }
   }
 }

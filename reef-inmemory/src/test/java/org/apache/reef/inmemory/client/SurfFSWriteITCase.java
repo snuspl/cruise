@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.net.URI;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @Ignore
 public class SurfFSWriteITCase {
@@ -110,5 +112,12 @@ public class SurfFSWriteITCase {
   public void testRead() throws IOException {
     read(TESTPATH1, SIZE1);
     read(TESTPATH2, SIZE2);
+  }
+
+  @Test
+  public void testExists() throws IOException {
+    assertTrue(surfFs.exists(new Path(TESTPATH1)));
+    assertTrue(surfFs.exists(new Path(TESTPATH2)));
+    assertFalse(surfFs.exists(new Path("Not_exists")));
   }
 }

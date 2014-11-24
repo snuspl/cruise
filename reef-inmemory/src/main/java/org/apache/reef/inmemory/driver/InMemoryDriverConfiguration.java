@@ -9,7 +9,9 @@ import com.microsoft.tang.formats.RequiredParameter;
 import com.microsoft.wake.EStage;
 import com.microsoft.wake.StageConfiguration;
 import com.microsoft.wake.impl.ThreadPoolStage;
+import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.DfsParameters;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.driver.hdfs.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicyImpl;
@@ -60,6 +62,7 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
     .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
     .bindNamedParameter(StageConfiguration.StageHandler.class, TaskMessageHandlerExecutor.class)
     .bindImplementation(BlockId.class, HdfsBlockId.class)
+    .bindImplementation(BlockIdFactory.class, HdfsBlockIdFactory.class)
     .bindImplementation(CacheLoader.class, HdfsCacheLoader.class)
     .bindImplementation(CacheMessenger.class, HdfsCacheMessenger.class)
     .bindImplementation(CacheUpdater.class, HdfsCacheUpdater.class)

@@ -40,11 +40,11 @@ public class SurfFSOutputStream extends OutputStream {
     new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(80)); // max 81 packets
   private String curCacheAddress;
 
-  public SurfFSOutputStream(final Path path,
+  public SurfFSOutputStream(final String path,
                             final SurfMetaService.Client metaClient,
                             final CacheClientManager cacheClientManager,
                             final long blockSize) throws UnknownHostException {
-    this.path = path.toString();
+    this.path = path;
     this.metaClient = metaClient;
     this.cacheClientManager = cacheClientManager;
     this.blockSize = blockSize;

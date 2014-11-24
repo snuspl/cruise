@@ -57,7 +57,7 @@ public class SurfCacheServerTest {
   @Test
   public void testBufferSize() throws IOException, BlockLoadingException, BlockNotFoundException {
     // Randomly generate buffer with length as blockSize
-    final int blockSize = random.nextInt(1024) + 1;
+    final int blockSize = random.nextInt(1024) + 4;
     byte[] buffer = new byte[blockSize];
     random.nextBytes(buffer);
 
