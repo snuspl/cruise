@@ -12,7 +12,7 @@ public final class FlexionConfiguration extends ConfigurationModuleBuilder {
   public final static RequiredImpl<UserComputeTask> COMPUTE_TASK = new RequiredImpl<>();
   public final static RequiredParameter<Integer> EVALUATOR_NUM = new RequiredParameter<>();
   public final static OptionalParameter<Integer> EVALUATOR_SIZE = new OptionalParameter<>();
-  public final static OptionalParameter<String> INPUT_DIR = new OptionalParameter<>();
+  public final static RequiredParameter<String> INPUT_DIR = new RequiredParameter<>();
   public final static OptionalParameter<Boolean> ON_LOCAL = new OptionalParameter<>();
   public final static OptionalParameter<Integer> TIMEOUT = new OptionalParameter<>();
 
