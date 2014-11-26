@@ -5,15 +5,17 @@ import com.microsoft.reef.io.network.group.operators.Reduce;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class DataReduceFunction implements Reduce.ReduceFunction<List<Integer>> {
+public final class DataReduceFunction implements Reduce.ReduceFunction<Integer> {
 
   @Override
-  public final List<Integer> apply(Iterable<List<Integer>> lists) {
-    List<Integer> retList = new ArrayList<>();
-    for (final List<Integer> list : lists) {
-      retList.addAll(list);
+  public final Integer apply(Iterable<Integer> dataList) {
+    Integer sum = 0;
+    Integer count = 0;
+    for (final Integer data : dataList) {
+      sum += data;
+      count++;
     }
 
-    return retList;
+    return sum / count;
   }
 }

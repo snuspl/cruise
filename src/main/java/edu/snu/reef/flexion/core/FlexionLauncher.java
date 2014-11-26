@@ -72,6 +72,9 @@ public final class FlexionLauncher {
         .setMemory(flexionParameters.getEvalSize())
         .build();
 
+
+    LOG.log(Level.INFO, "INPUT: " + flexionParameters.getInputDir());
+
     final Configuration driverConfWithDataLoad = new DataLoadingRequestBuilder()
         .setMemoryMB(flexionParameters.getEvalSize())
         .setInputFormatClass(TextInputFormat.class)

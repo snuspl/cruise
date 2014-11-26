@@ -83,11 +83,13 @@ public class FlexionDriver {
         if (dataLoadingService.isComputeContext(activeContext)) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
           ctrlTaskContextId = getContextId(groupCommContextConf);
-          finalServiceConf = groupCommServiceConf;
+          finalServiceConf = Configurations.merge(groupCommServiceConf,
+                                                  FlexionService.getServiceConfiguration());
 
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
-          finalServiceConf = groupCommServiceConf;
+          finalServiceConf = Configurations.merge(groupCommServiceConf,
+                                                  FlexionService.getServiceConfiguration());
         }
 
         activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
