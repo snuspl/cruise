@@ -5,10 +5,12 @@ import com.microsoft.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.Launch;
+import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -42,10 +44,16 @@ public class SurfFSCreateITCase {
   public static void setUpClass() throws IOException, InjectionException, InterruptedException {
     final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
+    // Reduce blocksize to 512 bytes, to test multiple blocks
+    hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 512);
 
-    com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{});
+    final FileSystem baseFs = ITUtils.getHdfs(hdfsConfig);
+    baseFs.mkdirs(new Path(TESTDIR));
+
+    com.microsoft.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
     com.microsoft.tang.Configuration fileConf = Launch.parseConfigFile();
     reef = Launch.runInMemory(clConf, fileConf);
+
     try {
       Thread.sleep(3000); // Wait for reef setup before continuing
     } catch (InterruptedException e) {
@@ -53,16 +61,15 @@ public class SurfFSCreateITCase {
     }
 
     final Configuration conf = new Configuration();
-
     surfFs = new SurfFS();
-    surfFs.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);
-    System.out.println("SurfFs address resolved to:"+SURF+"://"+SURF_ADDRESS );
+    surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
+    System.out.println("SurfFs address resolved to:" + SURF + "://" + SURF_ADDRESS);
   }
 
   @AfterClass
   public static void tearDownClass() throws IOException {
     System.out.println("Closing REEF...");
-    reef.close(); // TODO: does not kill Launchers -- for now, remember to kill from command line
+//    reef.close(); // TODO: does not kill Launchers -- for now, remember to kill from command line
   }
 
   public FSDataOutputStream create(Path path) throws IOException {
@@ -81,7 +88,6 @@ public class SurfFSCreateITCase {
   public void testOutputStreamNotClosed() throws IOException {
     create(new Path(TESTPATH1));
 
-    // CASE 1: create
     try {
       create(new Path(TESTPATH1));
       fail("Should return IOException. Because the file exists");
@@ -90,9 +96,6 @@ public class SurfFSCreateITCase {
     } catch (Exception e) {
       fail("Should return IOException, instead returned "+e);
     }
-
-    // CASE 2: open the file. It is possible to access the file as soon as it is created.
-    open(new Path(TESTPATH1));
   }
 
   @Test
@@ -100,7 +103,7 @@ public class SurfFSCreateITCase {
     FSDataOutputStream out1 = create(new Path(TESTPATH2));
     out1.close();
 
-    // CASE 1: create a file with the same name
+    // should fail
     try {
       create(new Path(TESTPATH2));
       fail("Should return IOException. Because the file exists");
@@ -110,7 +113,7 @@ public class SurfFSCreateITCase {
       fail("Should return IOException, instead returned "+e);
     }
 
-    // CASE 2: open the file
+    // should not fail
     open(new Path(TESTPATH2));
   }
 }

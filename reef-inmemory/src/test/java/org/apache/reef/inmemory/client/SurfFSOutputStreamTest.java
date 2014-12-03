@@ -53,6 +53,7 @@ public class SurfFSOutputStreamTest {
     testWrite(BLOCK_SIZE); // one block
     testWrite(BLOCK_SIZE + 4); // > blockSize (one more block)
     testWrite(30 * BLOCK_SIZE + 3); // > many blocks
+    testWrite(1000 * BLOCK_SIZE + 10); // > lots of blocks
   }
 
   public void testWrite(int fileSize) throws IOException {
