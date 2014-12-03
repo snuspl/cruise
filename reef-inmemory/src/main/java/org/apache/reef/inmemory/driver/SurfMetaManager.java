@@ -8,6 +8,7 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
+import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.task.BlockId;
 
@@ -30,6 +31,7 @@ public final class SurfMetaManager {
   private final CacheLocationRemover cacheLocationRemover;
   private final CacheUpdater cacheUpdater;
   private final BlockIdFactory blockIdFactory;
+  private final LocationSorter locationSorter;
   public static String USERS_HOME = "/user";
 
   @Inject
@@ -37,12 +39,24 @@ public final class SurfMetaManager {
                          final CacheMessenger cacheMessenger,
                          final CacheLocationRemover cacheLocationRemover,
                          final CacheUpdater cacheUpdater,
-                         final BlockIdFactory blockIdFactory) {
+                         final BlockIdFactory blockIdFactory,
+                         final LocationSorter locationSorter) {
     this.metadataIndex = metadataIndex;
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
     this.cacheUpdater = cacheUpdater;
     this.blockIdFactory = blockIdFactory;
+    this.locationSorter = locationSorter;
+  }
+
+  public FileMeta getFile(final Path path, final User creator) throws FileNotFoundException, Throwable {
+    try {
+      final Path absolutePath = getAbsolutePath(path, creator);
+      final FileMeta fileMeta = metadataIndex.get(absolutePath);
+      return fileMeta;
+    } catch (ExecutionException e) {
+      throw e.getCause();
+    }
   }
 
   /**
@@ -52,11 +66,14 @@ public final class SurfMetaManager {
    *
    * @return A copy of the returned fileMeta
    */
-  public FileMeta getFile(Path path, User creator) throws FileNotFoundException, Throwable {
+  public FileMeta getFile(final Path path, final User creator, final String clientHostname) throws FileNotFoundException, Throwable {
     try {
       final Path absolutePath = getAbsolutePath(path, creator);
       final FileMeta fileMeta = metadataIndex.get(absolutePath);
-      return cacheUpdater.updateMeta(absolutePath, fileMeta);
+
+      final FileMeta updatedMeta = cacheUpdater.updateMeta(absolutePath, fileMeta);
+      final FileMeta locationSortedMeta = locationSorter.sortMeta(updatedMeta, clientHostname);
+      return locationSortedMeta;
     } catch (ExecutionException e) {
       throw e.getCause();
     }

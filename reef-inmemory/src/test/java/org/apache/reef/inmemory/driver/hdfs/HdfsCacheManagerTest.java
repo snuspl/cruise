@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
-import com.microsoft.reef.driver.task.RunningTask;
+import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheManagerImpl;
 import org.apache.reef.inmemory.driver.TestUtils;
@@ -17,7 +17,7 @@ public class HdfsCacheManagerTest {
   @Test
   public void testBindPortUpdate() throws IOException {
     final HdfsCacheSelectionPolicy selector = mock(HdfsCacheSelectionPolicy.class);
-    final CacheManager manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0);
+    final CacheManager manager = TestUtils.cacheManager();
 
     final RunningTask task = TestUtils.mockRunningTask("a", "hosta");
 

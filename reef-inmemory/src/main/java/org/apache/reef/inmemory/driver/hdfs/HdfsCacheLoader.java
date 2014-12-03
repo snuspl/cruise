@@ -1,7 +1,9 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import com.google.common.cache.CacheLoader;
-import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.inmemory.common.instrumentation.Event;
+import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
@@ -40,6 +42,7 @@ import java.util.logging.Logger;
 public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implements AutoCloseable {
 
   private static final Logger LOG = Logger.getLogger(HdfsCacheLoader.class.getName());
+  private final EventRecorder RECORD;
 
   private final CacheManager cacheManager;
   private final HdfsCacheMessenger cacheMessenger;
@@ -55,7 +58,8 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implement
                          final HdfsCacheSelectionPolicy cacheSelector,
                          final HdfsBlockIdFactory blockFactory,
                          final ReplicationPolicy replicationPolicy,
-                         final @Parameter(DfsParameters.Address.class) String dfsAddress) {
+                         final @Parameter(DfsParameters.Address.class) String dfsAddress,
+                         final EventRecorder recorder) {
     this.cacheManager = cacheManager;
     this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;
@@ -67,31 +71,38 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implement
     } catch (Exception ex) {
       throw new RuntimeException("Unable to connect to DFS Client", ex);
     }
+
+    this.RECORD = recorder;
   }
 
   @Override
-  public FileMeta load(Path path) throws FileNotFoundException, IOException {
-    LOG.log(Level.INFO, "Load in memory: {0}", path);
+  public FileMeta load(final Path path) throws FileNotFoundException, IOException {
+    final String pathStr = path.toString();
+    LOG.log(Level.INFO, "Load in memory: {0}", pathStr);
+
+    final Event getFileInfoEvent = RECORD.event("driver.get-file-info", pathStr).start();
     // getFileInfo returns null if FileNotFound, as stated in its javadoc
-    final HdfsFileStatus hdfsFileStatus = dfsClient.getFileInfo(path.toString());
+    final HdfsFileStatus hdfsFileStatus = dfsClient.getFileInfo(pathStr);
     if (hdfsFileStatus == null) {
-      throw new FileNotFoundException(path.toString());
+      throw new FileNotFoundException(pathStr);
     }
     final long len = hdfsFileStatus.getLen();
-    final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0, len);
+    final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(pathStr, 0, len);
+    RECORD.record(getFileInfoEvent.stop());
 
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFileSize(locatedBlocks.getFileLength());
     fileMeta.setBlockSize(hdfsFileStatus.getBlockSize());
-    fileMeta.setFullPath(path.toString());
+    fileMeta.setFullPath(pathStr);
 
     final List<CacheNode> cacheNodes = cacheManager.getCaches();
     if (cacheNodes.size() == 0) {
       throw new IOException("Surf has zero caches");
     }
 
+    final Event resolveReplicationPolicyEvent = RECORD.event("driver.resolve-replication-policy", pathStr).start();
     // Resolve replication policy
-    final Action action = replicationPolicy.getReplicationAction(path.toString(), fileMeta);
+    final Action action = replicationPolicy.getReplicationAction(pathStr, fileMeta);
     final boolean pin = action.getPin();
     final int numReplicas;
     if (replicationPolicy.isBroadcast(action)) {
@@ -99,7 +110,9 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implement
     } else {
       numReplicas = action.getCacheReplicationFactor();
     }
+    RECORD.record(resolveReplicationPolicyEvent.stop());
 
+    final Event addBlocksToCachesEvent = RECORD.event("driver.add-blocks-to-caches", pathStr).start();
     final List<LocatedBlock> locatedBlockList = locatedBlocks.getLocatedBlocks();
 
     final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(locatedBlockList, cacheNodes, numReplicas);
@@ -110,7 +123,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implement
         throw new IOException("Surf selected zero caches out of "+cacheNodes.size()+" total caches");
       }
 
-      final BlockInfo blockInfo = blockFactory.newBlockInfo(path.toString(), locatedBlock);
+      final BlockInfo blockInfo = blockFactory.newBlockInfo(pathStr, locatedBlock);
       final HdfsBlockId hdfsBlockId = blockFactory.newBlockId(blockInfo);
       final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
               HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
@@ -128,6 +141,7 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implement
       }
       fileMeta.addToBlocks(blockInfo);
     }
+    RECORD.record(addBlocksToCachesEvent.stop());
     return fileMeta;
   }
 

@@ -27,7 +27,7 @@ public final class SurfFSDelegationITCase {
   private static FileSystem baseFs;
   private static SurfFS surfFs;
 
-  private static final String TESTDIR = "/user/"+System.getProperty("user.name");
+  private static final String TESTDIR = ITUtils.getTestDir();
   private static final String TESTFILE = "README.md";
   private static final String ABSPATH = TESTDIR+"/"+TESTFILE;
 
@@ -62,7 +62,7 @@ public final class SurfFSDelegationITCase {
    */
   @AfterClass
   public static void tearDownClass() throws IOException {
-    baseFs.delete(new Path("/*"), true);
+    baseFs.delete(new Path(TESTDIR), true);
   }
 
   /**

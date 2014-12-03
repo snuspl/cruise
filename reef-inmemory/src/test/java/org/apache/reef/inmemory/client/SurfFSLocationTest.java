@@ -8,6 +8,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
+import org.apache.reef.inmemory.common.instrumentation.BasicEventRecorder;
+import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.junit.Before;
@@ -18,6 +20,7 @@ import java.net.URI;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -25,7 +28,7 @@ import static org.mockito.Mockito.when;
  * Tests for SurfFS methods that retrieve block locations from the Driver.
  */
 public final class SurfFSLocationTest {
-  private static FileSystem surfFs;
+  private FileSystem surfFs;
   private static final int port = 5000;
   private static final long blockLength = 512;
   private static final long modTime = 1406189420000L;
@@ -62,12 +65,12 @@ public final class SurfFSLocationTest {
     fileMeta.setFileSize(len);
 
     final SurfMetaService.Client metaClient = mock(SurfMetaService.Client.class);
-    when(metaClient.getFileMeta(anyString())).thenReturn(fileMeta);
+    when(metaClient.getFileMeta(anyString(), anyString())).thenReturn(fileMeta);
     final MetaClientManager metaClientManager = mock(MetaClientManager.class);
     when(metaClientManager.get(anyString())).thenReturn(metaClient);
 
     final Configuration conf = new Configuration();
-    surfFs = new SurfFS(mock(FileSystem.class), metaClientManager);
+    surfFs = new SurfFS(mock(FileSystem.class), metaClientManager, new NullEventRecorder());
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
   }
 

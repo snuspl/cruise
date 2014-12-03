@@ -24,6 +24,16 @@ public final class ITUtils {
     return value;
   }
 
+  /**
+   * Returns the test directory.
+   * Integration tests must cleanup the test directory
+   * and must not write to other parts of HDFS.
+   *
+   */
+  public static String getTestDir() {
+    return "/user/"+System.getProperty("user.name");
+  }
+
   public static FileSystem getHdfs(final Configuration hdfsConfig) throws IOException {
     final FileSystem hdfs = new DistributedFileSystem();
     hdfs.initialize(URI.create("hdfs://localhost:" + NAMENODE_PORT), hdfsConfig);
@@ -34,9 +44,9 @@ public final class ITUtils {
                                 final String path,
                                 final int chunkLength,
                                 final int numChunks) throws IOException {
-    final Path largeFile = new Path(path);
+    final Path file = new Path(path);
 
-    final FSDataOutputStream outputStream = fs.create(largeFile);
+    final FSDataOutputStream outputStream = fs.create(file);
 
     final byte[] writeChunk = new byte[chunkLength];
     for (int i = 0; i < numChunks; i++) {
@@ -44,6 +54,6 @@ public final class ITUtils {
     }
     outputStream.close();
 
-    return largeFile;
+    return file;
   }
 }

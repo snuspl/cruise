@@ -10,9 +10,10 @@ namespace java org.apache.reef.inmemory.common.service
  */
 service SurfMetaService {
 	/**
-	 * Get the list of blocks and locations for the file
+	 * Get the list of blocks and locations for the file.
+	 * The returned list will be sorted by locality w.r.t. clientHostname.
 	 */
-	entity.FileMeta getFileMeta(1:string path) throws (1: exceptions.FileNotFoundException fe)
+  entity.FileMeta getFileMeta(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException fe)
 
   /**
    * Check whether the file exists in the path

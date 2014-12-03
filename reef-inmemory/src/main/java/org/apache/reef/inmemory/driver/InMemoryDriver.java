@@ -1,15 +1,15 @@
 package org.apache.reef.inmemory.driver;
 
-import com.microsoft.reef.driver.evaluator.AllocatedEvaluator;
-import com.microsoft.reef.driver.task.CompletedTask;
-import com.microsoft.reef.driver.task.RunningTask;
-import com.microsoft.reef.driver.task.TaskMessage;
-import com.microsoft.tang.annotations.Parameter;
-import com.microsoft.tang.annotations.Unit;
-import com.microsoft.wake.EStage;
-import com.microsoft.wake.EventHandler;
-import com.microsoft.wake.time.event.StartTime;
-import com.microsoft.wake.time.event.StopTime;
+import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.task.RunningTask;
+import org.apache.reef.driver.task.TaskMessage;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.wake.EStage;
+import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.time.event.StartTime;
+import org.apache.reef.wake.time.event.StopTime;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 import org.apache.reef.inmemory.driver.service.SurfMetaServer;
 

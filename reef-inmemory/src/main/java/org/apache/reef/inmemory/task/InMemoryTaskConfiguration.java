@@ -1,12 +1,12 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
-import com.microsoft.tang.formats.ConfigurationModule;
-import com.microsoft.tang.formats.ConfigurationModuleBuilder;
-import com.microsoft.tang.formats.RequiredParameter;
-import com.microsoft.wake.EStage;
-import com.microsoft.wake.StageConfiguration;
-import com.microsoft.wake.impl.ThreadPoolStage;
+import org.apache.reef.tang.formats.ConfigurationModule;
+import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
+import org.apache.reef.tang.formats.RequiredParameter;
+import org.apache.reef.wake.EStage;
+import org.apache.reef.wake.StageConfiguration;
+import org.apache.reef.wake.impl.ThreadPoolStage;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;

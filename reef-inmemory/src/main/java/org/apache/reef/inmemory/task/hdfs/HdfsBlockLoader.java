@@ -15,6 +15,8 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
+import org.apache.reef.inmemory.common.instrumentation.Event;
+import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 
@@ -32,6 +34,7 @@ import java.util.logging.Logger;
  */
 public class HdfsBlockLoader implements BlockLoader {
   private static final Logger LOG = Logger.getLogger(HdfsBlockLoader.class.getName());
+  private final EventRecorder RECORD;
 
   // Some Fields are left null, because those types are not public.
   private static final int START_OFFSET = 0;
@@ -54,7 +57,8 @@ public class HdfsBlockLoader implements BlockLoader {
   public HdfsBlockLoader(final HdfsBlockId id,
                          final List<HdfsDatanodeInfo> infoList,
                          final boolean pin,
-                         final int bufferSize) {
+                         final int bufferSize,
+                         final EventRecorder recorder) {
     hdfsBlockId = id;
     block = new ExtendedBlock(id.getPoolId(), id.getUniqueId(), id.getBlockSize(), id.getGenerationTimestamp());
     dnInfoList = infoList;
@@ -63,6 +67,7 @@ public class HdfsBlockLoader implements BlockLoader {
     totalRead = 0;
     this.pinned = pin;
     this.bufferSize = bufferSize;
+    this.RECORD = recorder;
   }
 
   /**
@@ -71,6 +76,8 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   @Override
   public void loadBlock() throws IOException {
+    final Event loadBlockEvent = RECORD.event("task.load-block", Long.toString(hdfsBlockId.getUniqueId())).start();
+
     final Configuration conf = new HdfsConfiguration();
 
     // Allocate a Byte array of the Block size.
@@ -130,6 +137,7 @@ public class HdfsBlockLoader implements BlockLoader {
       break;
 
     } while (dnInfoIter.hasNext());
+    RECORD.record(loadBlockEvent.stop());
   }
 
   /**

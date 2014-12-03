@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
-import com.microsoft.reef.driver.task.RunningTask;
+import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -14,9 +14,11 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
+import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheManagerImpl;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.TestUtils;
@@ -40,9 +42,10 @@ import static org.mockito.Mockito.*;
 public final class HdfsCacheLoaderITCase {
 
   private static final int blockSize = 512;
+  private static final String TESTDIR = ITUtils.getTestDir();
 
   private FileSystem fs;
-  private CacheManagerImpl manager;
+  private CacheManager manager;
   private HdfsCacheMessenger messenger;
   private HdfsCacheLoader loader;
   private HdfsCacheSelectionPolicy selector;
@@ -54,7 +57,7 @@ public final class HdfsCacheLoaderITCase {
    */
   @Before
   public void setUp() throws IOException {
-    manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0);
+    manager = TestUtils.cacheManager();
     messenger = new HdfsCacheMessenger(manager);
     selector = new HdfsRandomCacheSelectionPolicy();
     blockFactory = new HdfsBlockIdFactory();
@@ -75,9 +78,10 @@ public final class HdfsCacheLoaderITCase {
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, blockSize);
 
     fs = ITUtils.getHdfs(hdfsConfig);
-    fs.mkdirs(new Path("/existing"));
+    fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsCacheLoader(manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString());
+    loader = new HdfsCacheLoader(
+            manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString(), new NullEventRecorder());
   }
 
   /**
@@ -85,7 +89,7 @@ public final class HdfsCacheLoaderITCase {
    */
   @After
   public void tearDown() throws IOException {
-    fs.delete(new Path("/*"), true);
+    fs.delete(new Path(TESTDIR), true);
   }
 
   /**
@@ -102,7 +106,7 @@ public final class HdfsCacheLoaderITCase {
    */
   @Test(expected = FileNotFoundException.class)
   public void testLoadDirectory() throws IOException {
-    final Path directory = new Path("/existing/directory");
+    final Path directory = new Path(TESTDIR+"/directory");
 
     fs.mkdirs(directory);
     final FileMeta fileMeta = loader.load(directory);
@@ -115,7 +119,7 @@ public final class HdfsCacheLoaderITCase {
    */
   @Test
   public void testLoadSmallFile() throws IOException {
-    final Path smallFile = new Path("/existing/smallFile");
+    final Path smallFile = new Path(TESTDIR+"/smallFile");
 
     final FSDataOutputStream outputStream = fs.create(smallFile);
     outputStream.write(1);
@@ -140,7 +144,7 @@ public final class HdfsCacheLoaderITCase {
   public void testLoadMultiblockFile() throws IOException {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final Path largeFile = ITUtils.writeFile(fs, "/existing/largeFile", chunkLength, numChunks);
+    final Path largeFile = ITUtils.writeFile(fs, TESTDIR+"/largeFile", chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);

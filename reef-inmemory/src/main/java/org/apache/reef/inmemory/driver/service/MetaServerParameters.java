@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.driver.service;
 
-import com.microsoft.tang.annotations.Name;
-import com.microsoft.tang.annotations.NamedParameter;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
  * Parameters used by the driver Metadata Server.
@@ -19,8 +19,7 @@ public final class MetaServerParameters {
   public static final class Threads implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Replication rules", short_name = "replication_rules_json",
-    default_value = "{\"rules\":[],\"default\":{\"cache_replication_factor\":1,\"pin\":false,\"write\":{\"sync\":\"WRITE_BACK\",\"base_replication_factor\":1}}}")
+  @NamedParameter(doc = "Replication rules", short_name = "replication_rules_json", default_value = "{\"rules\":[],\"default\":{\"cache_replication_factor\":1,\"pin\":false, \"write\" : {\"sync\" : \"WRITE_BACK\", \"base_replication_factor\" : 3 }}}")
   public static final class ReplicationRulesJson implements Name<String> {
   }
 

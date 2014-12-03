@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.task;
 
-import com.microsoft.reef.task.events.DriverMessage;
-import com.microsoft.wake.EventHandler;
+import org.apache.reef.task.events.DriverMessage;
+import org.apache.reef.wake.EventHandler;
 
 /**
  * Handles messages from the Driver, related to cache loading and management.

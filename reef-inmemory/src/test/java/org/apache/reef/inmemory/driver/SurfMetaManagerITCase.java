@@ -2,8 +2,7 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.microsoft.reef.driver.evaluator.EvaluatorRequestor;
-import com.microsoft.reef.driver.task.RunningTask;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -11,12 +10,15 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
+import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
@@ -25,6 +27,8 @@ import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheUpdater;
 import org.apache.reef.inmemory.driver.hdfs.HdfsRandomCacheSelectionPolicy;
+import org.apache.reef.inmemory.driver.locality.LocationSorter;
+import org.apache.reef.inmemory.driver.locality.YarnLocationSorter;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.junit.After;
 import org.junit.Before;
@@ -49,7 +53,9 @@ import static org.mockito.Mockito.*;
 public final class SurfMetaManagerITCase {
 
   private static final int blockSize = 512;
+  private static final String TESTDIR = ITUtils.getTestDir();
 
+  private EventRecorder RECORD;
   private FileSystem fs;
   private CacheManager manager;
   private HdfsCacheMessenger messenger;
@@ -57,6 +63,7 @@ public final class SurfMetaManagerITCase {
   private LoadingCacheConstructor constructor;
   private LoadingCache<Path, FileMeta> cache;
   private CacheUpdater cacheUpdater;
+  private LocationSorter locationSorter;
   private HdfsCacheSelectionPolicy selector;
   private CacheLocationRemover cacheLocationRemover;
   private HdfsBlockIdFactory blockFactory;
@@ -65,7 +72,8 @@ public final class SurfMetaManagerITCase {
 
   @Before
   public void setUp() throws IOException {
-    manager = new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0);
+    RECORD = new NullEventRecorder();
+    manager = TestUtils.cacheManager();
     messenger = new HdfsCacheMessenger(manager);
     selector = new HdfsRandomCacheSelectionPolicy();
     cacheLocationRemover = new CacheLocationRemover();
@@ -88,15 +96,17 @@ public final class SurfMetaManagerITCase {
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, blockSize);
 
     fs = ITUtils.getHdfs(hdfsConfig);
-    fs.mkdirs(new Path("/existing"));
+    fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsCacheLoader(manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString());
+    loader = new HdfsCacheLoader(
+            manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString(), RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
     cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, fs.getUri().toString());
+    locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory);
+    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, locationSorter);
   }
 
   /**
@@ -104,7 +114,7 @@ public final class SurfMetaManagerITCase {
    */
   @After
   public void tearDown() throws IOException {
-    fs.delete(new Path("/*"), true);
+    fs.delete(new Path(TESTDIR), true);
   }
 
   /**
@@ -115,7 +125,7 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentLoad() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = "/existing/largeFile";
+    final String path = TESTDIR+"/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
@@ -132,7 +142,7 @@ public final class SurfMetaManagerITCase {
         @Override
         public void run() {
           try {
-            fileMetas[index] = metaManager.getFile(new Path(path), new User());
+            fileMetas[index] = metaManager.getFile(new Path(path), new User(), "host0");
           } catch (final Throwable t) {
             fail(t.toString());
             throw new RuntimeException(t);
@@ -178,13 +188,13 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = "/existing/largeFile";
+    final String path = TESTDIR+"/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
 
-    final FileMeta fileMeta = metaManager.getFile(new Path(path), new User());
+    final FileMeta fileMeta = metaManager.getFile(new Path(path), new User(), "host0");
 
     final List<BlockInfo> blocks = fileMeta.getBlocks();
     // Remove first location from first block
@@ -216,7 +226,7 @@ public final class SurfMetaManagerITCase {
         @Override
         public void run() {
           try {
-            fileMetas[index] = metaManager.getFile(new Path(path), new User());
+            fileMetas[index] = metaManager.getFile(new Path(path), new User(), "host0");
           } catch (final Throwable t) {
             fail(t.toString());
             throw new RuntimeException(t);
@@ -256,13 +266,13 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentRemoveAndUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = "/existing/largeFile";
+    final String path = TESTDIR+"/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
 
-    final FileMeta fileMeta = metaManager.getFile(new Path(path), new User());
+    final FileMeta fileMeta = metaManager.getFile(new Path(path), new User(), "host0");
 
     final int numThreads =  20;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
@@ -277,7 +287,7 @@ public final class SurfMetaManagerITCase {
         public void run() {
           try {
             if (index % 2 == 0) {
-              fileMetas[index] = metaManager.getFile(new Path(path), new User());
+              fileMetas[index] = metaManager.getFile(new Path(path), new User(), "host0");
             } else {
               final BlockInfo block = blocks.get(index);
               final Iterator<NodeInfo> it = block.getLocationsIterator();

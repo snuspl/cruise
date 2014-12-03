@@ -4,8 +4,8 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
-import com.microsoft.tang.ExternalConstructor;
-import com.microsoft.tang.annotations.Parameter;
+import org.apache.reef.tang.ExternalConstructor;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
