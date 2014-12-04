@@ -9,15 +9,15 @@ namespace java org.apache.reef.inmemory.common.service
  * interface.
  */
 service SurfMetaService {
-	/**
-	 * Get the list of blocks and locations for the file.
-	 * The returned list will be sorted by locality w.r.t. clientHostname.
-	 */
+  /**
+   * Get the list of blocks and locations for the file.
+   * The returned list will be sorted by locality w.r.t. clientHostname.
+   */
   entity.FileMeta getFileMeta(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException fe)
 
   /**
    * Check whether the file exists in the path
-   **/
+   */
   bool exists(1:string path)
 
   /**
@@ -27,11 +27,11 @@ service SurfMetaService {
 
   /**
    * Allocate a new Block and return the Info(CacheNode, Replication Policy, etc) of the block to write data.
-   **/
+   */
   entity.AllocatedBlockInfo allocateBlock(1:string path, 2:i64 offset, 3:string clientAddress)
 
   /**
    * Announce to the Meta server that the file is complete
-   **/
+   */
   bool completeFile(1:string path, 2:i64 fileSize)
 }

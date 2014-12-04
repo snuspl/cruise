@@ -8,6 +8,7 @@ import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
 import org.apache.reef.inmemory.task.write.WritableBlockLoader;
+import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;
 import org.junit.After;
 import org.junit.Before;
@@ -21,6 +22,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
 
 /**
  * Tests for InMemoryCacheImpl
@@ -31,6 +33,7 @@ public final class InMemoryCacheImplTest {
   private Cache<BlockId, BlockLoader> internalCache;
   private MemoryManager memoryManager;
   private EStage<BlockLoader> loadingStage;
+  private HeartBeatTriggerManager heartBeatTriggerManager;
   private InMemoryCache cache;
   private static final Random random = new Random();
   private static final double slack = 0.1;
@@ -45,7 +48,8 @@ public final class InMemoryCacheImplTest {
     internalCache = cacheConstructor.newInstance();
     final CacheAdmissionController cacheAdmissionController = new CacheAdmissionController(memoryManager, internalCache);
     loadingStage = new MockStage(cacheAdmissionController, memoryManager);
-    cache = new InMemoryCacheImpl(internalCache, memoryManager, cacheAdmissionController, lruEvictionManager, loadingStage, 3, bufferSize);
+    heartBeatTriggerManager = mock(HeartBeatTriggerManager.class);
+    cache = new InMemoryCacheImpl(internalCache, memoryManager, cacheAdmissionController, lruEvictionManager, loadingStage, 3, bufferSize, heartBeatTriggerManager);
   }
 
   @After
