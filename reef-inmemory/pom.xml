@@ -4,7 +4,7 @@
     <groupId>org.apache.reef.inmemory</groupId>
     <artifactId>reef-inmemory</artifactId>
     <packaging>jar</packaging>
-    <version>0.1</version>
+    <version>0.2-SNAPSHOT</version>
     <name>reef-inmemory</name>
     <url>http://maven.apache.org</url>
     <properties>
