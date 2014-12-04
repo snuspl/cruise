@@ -76,7 +76,6 @@ public final class MemoryManager {
    * Call before starting block loading.
    * Will wait for memory to free up if too much memory is being used for pin + load.
    * Updates statistics.
-   * @param blockSize
    */
   public synchronized List<BlockId> loadStart(final BlockId blockId, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
     LOG.log(Level.INFO, blockId+" statistics before loadStart: "+statistics);
@@ -155,8 +154,6 @@ public final class MemoryManager {
    * Call on load success.
    * Notifies threads waiting for memory to free up.
    * Updates statistics.
-   * @param blockSize
-   * @param pin
    */
   public synchronized void loadSuccess(final BlockId blockId, final boolean pin) {
     LOG.log(Level.INFO, blockId+" statistics before loadSuccess: "+statistics);
@@ -196,13 +193,16 @@ public final class MemoryManager {
     LOG.log(Level.INFO, blockId + " statistics after loadSuccess: " + statistics);
   }
 
+  /**
+   * Call on write success. The logic is almost same with loadSuccess,
+   * but in case of write, blockSize of the last block can differ from others.
+   */
   public synchronized void writeSuccess(final BlockId blockId, final long nWritten, final boolean pin) {
     LOG.log(Level.INFO, blockId+" statistics before loadSuccess: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
     }
 
-    // TODO Make sure this is logically valid
     final long blockSize = blockId.getBlockSize();
     final CacheEntryState state = getState(blockId);
     switch(state) {
@@ -214,7 +214,7 @@ public final class MemoryManager {
           statistics.addCacheBytes(blockSize);
         }
         setState(blockId, CacheEntryState.LOAD_SUCCEEDED);
-        updates.addAddition(blockId, nWritten);
+        updates.addAddition(blockId, nWritten); // The only difference with loadSuccess
         notifyAll();
         break;
       case REMOVED_DURING_LOAD:
@@ -239,7 +239,6 @@ public final class MemoryManager {
    * Call on load failure.
    * Notifies threads waiting for memory to free up.
    * Updates statistics.
-   * @param blockSize
    */
   public synchronized void loadFail(final BlockId blockId, final boolean pinned, final Throwable throwable) {
     LOG.log(Level.INFO, blockId+" statistics before loadFail: "+statistics);

@@ -9,7 +9,6 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
@@ -49,6 +48,11 @@ public final class SurfMetaManager {
     this.locationSorter = locationSorter;
   }
 
+  /**
+   * Retrieve metadata of the file, but with no consideration for locality nor the cache updates
+   * This is used in {@link org.apache.reef.inmemory.driver.service.SurfMetaServer} for allocateBlock(), completeFile(), load()
+   * TODO: Since much of the code overlaps with getFile below, we need to somehow clean them up later(e.g. taking cacheUpdater out of getFile)
+   */
   public FileMeta getFile(final Path path, final User creator) throws FileNotFoundException, Throwable {
     try {
       final Path absolutePath = getAbsolutePath(path, creator);
@@ -60,7 +64,7 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Retreive metadata of the file at the path.
+   * Retrieve metadata of the file at the path.
    * This will load the file if it has not been loaded.
    * Further, it will update the file if caches have removed blocks.
    *
@@ -89,14 +93,13 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Update metadata of the same path. If the path not exist in the cache,
-   * then create an entry with the path.
+   * Update the change of metadata (e.g. Added blocks while writing)
+   * If the path not exist in the cache, then create an entry with the path.
    * @param fileMeta Metadata to update
    */
   public void update(FileMeta fileMeta, User creator) {
     final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), creator);
     metadataIndex.put(absolutePath, fileMeta);
-    // TODO revisit when replication & write-back because it can affect the cache
   }
 
   /**
@@ -145,14 +148,14 @@ public final class SurfMetaManager {
       }
       for (final CacheUpdates.Addition addition : updates.getAddition()) {
         final BlockId blockId = addition.getBlockId();
-        final long nWritten = addition.getAmount();
+        final long nWritten = addition.getLength();
         addBlockToFileMeta(blockId, nWritten, cache);
       }
     }
   }
 
   private void addBlockToFileMeta(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
-    FileMeta meta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
+    final FileMeta meta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
 
     final List<NodeInfo> nodeList = new ArrayList<>();
     nodeList.add(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));

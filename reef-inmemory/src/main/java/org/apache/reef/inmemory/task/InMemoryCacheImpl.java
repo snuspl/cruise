@@ -1,7 +1,9 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
+import org.apache.reef.runtime.common.evaluator.HeartBeatManager;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
@@ -31,6 +33,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   private final Cache<BlockId, BlockLoader> cache;
   private final CacheAdmissionController cacheAdmissionController;
+  private final HeartBeatTriggerManager heartBeatTriggerManager;
 
   @Inject
   public InMemoryCacheImpl(final Cache<BlockId, BlockLoader> cache,
@@ -39,18 +42,20 @@ public final class InMemoryCacheImpl implements InMemoryCache {
                            final LRUEvictionManager lru,
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
-                           final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize) {
+                           final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize,
+                           final HeartBeatTriggerManager heartBeatTriggerManager) {
     this.cache = cache;
     this.memoryManager = memoryManager;
     this.cacheAdmissionController = cacheAdmissionController;
     this.lru = lru;
     this.loadingStage = loadingStage;
     this.loadingBufferSize = loadingBufferSize;
+    this.heartBeatTriggerManager = heartBeatTriggerManager;
   }
 
   @Override
   public byte[] get(final BlockId blockId, int index)
-          throws BlockLoadingException, BlockNotFoundException {
+    throws BlockLoadingException, BlockNotFoundException {
     final BlockLoader loader = cache.getIfPresent(blockId);
     if (loader == null) {
       throw new BlockNotFoundException();
@@ -62,19 +67,23 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void write(BlockId blockId, long offset, ByteBuffer data, boolean isLastPacket) throws BlockNotFoundException, BlockNotWritableException, IOException {
-     final BlockLoader loader = cache.getIfPresent(blockId);
+  public void write(final BlockId blockId,
+                    final long offset,
+                    final ByteBuffer data,
+                    final boolean isLastPacket) throws BlockNotFoundException, BlockNotWritableException, IOException {
+    final BlockLoader loader = cache.getIfPresent(blockId);
     if (loader == null) {
       throw new BlockNotFoundException();
     } else if (!(loader instanceof WritableBlockLoader)) {
-      // TODO It looks somewhat unsafe
+      // TODO Make blockReceiver as a member of blockLoader instead implementing BlockReceiver itself.
       throw new BlockNotWritableException();
     } else {
-      WritableBlockLoader writableLoader = (WritableBlockLoader) loader;
+      final WritableBlockLoader writableLoader = (WritableBlockLoader) loader;
       writableLoader.writeData(data.array(), offset);
       final long nWritten = writableLoader.getTotalWritten();
       if (isLastPacket) {
         memoryManager.writeSuccess(blockId, nWritten, loader.isPinned());
+        heartBeatTriggerManager.triggerHeartBeat();
       }
     }
   }

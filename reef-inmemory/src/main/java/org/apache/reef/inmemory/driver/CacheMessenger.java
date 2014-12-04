@@ -1,8 +1,5 @@
 package org.apache.reef.inmemory.driver;
 
-import org.apache.reef.inmemory.common.replication.Action;
-import org.apache.reef.inmemory.task.BlockId;
-
 /**
  * Interface for sending messages to Cache nodes.
  * A new implementation should be create for each Base FS, because

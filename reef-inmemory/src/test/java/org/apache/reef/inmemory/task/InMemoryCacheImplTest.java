@@ -1,15 +1,14 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
-import org.apache.reef.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.MockBlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
-import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.task.write.WritableBlockLoader;
+import org.apache.reef.wake.EStage;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -167,7 +166,7 @@ public final class InMemoryCacheImplTest {
     new Random().nextBytes(data);
 
     final BlockId blockId = new MockBlockId(fileName, offset, blockSize);
-    final WritableBlockLoader blockLoader = new WritableBlockLoader(blockId, false, bufferSize, 1, SyncMethod.WRITE_BACK);
+    final WritableBlockLoader blockLoader = new WritableBlockLoader(blockId, false, bufferSize);
 
     cache.prepareToLoad(blockLoader);
 

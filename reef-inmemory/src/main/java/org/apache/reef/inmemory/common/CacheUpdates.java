@@ -62,19 +62,19 @@ public final class CacheUpdates implements Serializable {
 
   public final static class Addition implements Serializable {
     private final BlockId blockId;
-    private final long amount; // For the last block, the amount of written data could be smaller than the block size
+    private final long length; // For the last block, the amount of written data could be smaller than the block size
 
-    private Addition(final BlockId blockId, final long amount) {
+    private Addition(final BlockId blockId, final long length) {
       this.blockId = blockId;
-      this.amount = amount;
+      this.length = length;
     }
 
     public BlockId getBlockId() {
       return blockId;
     }
 
-    public long getAmount() {
-      return amount;
+    public long getLength() {
+      return length;
     }
   }
 }

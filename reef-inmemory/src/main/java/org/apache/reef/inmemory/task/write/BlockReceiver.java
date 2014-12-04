@@ -1,7 +1,5 @@
 package org.apache.reef.inmemory.task.write;
 
-import org.apache.reef.inmemory.common.replication.SyncMethod;
-
 import java.io.IOException;
 
 /**
@@ -22,14 +20,4 @@ public interface BlockReceiver {
    * Get the total amount of data written in this BlockReceiver
    */
   public long getTotalWritten();
-  /**
-   * @return the number of blocks to be replicated in the baseFS
-   */
-  public int getBaseReplicationFactor();
-
-  /**
-   * SyncMethod is either write-back or write-through
-   * @return How synchronize the data between the cache and the baseFS
-   */
-  public SyncMethod getSyncMethod();
 }

@@ -1,5 +1,4 @@
 include "exceptions.thrift"
-include "entity.thrift"
 
 namespace java org.apache.reef.inmemory.common.service
 

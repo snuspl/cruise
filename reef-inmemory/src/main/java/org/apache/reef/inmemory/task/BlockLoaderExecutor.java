@@ -46,11 +46,9 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
     final BlockId blockId = loader.getBlockId();
     final boolean pin = loader.isPinned();
 
+    // Reserve enough memory space in the cache for block
     try {
       cacheAdmissionController.reserveSpace(blockId, pin);
-      loader.loadBlock();
-      loader = null;
-      LOG.log(Level.INFO, "Finish loading block {0}", blockId);
     } catch (BlockNotFoundException e) {
       LOG.log(Level.INFO, "Already removed block {0}", blockId);
       return;
@@ -58,6 +56,13 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
       LOG.log(Level.SEVERE, "Memory limit reached", e);
       memoryManager.loadStartFail(blockId, pin, e);
       return;
+    }
+
+    // Load the actual data in the block
+    try {
+      loader.loadBlock();
+      loader = null;
+      LOG.log(Level.INFO, "Finish loading block {0}", blockId);
     } catch (ConnectionFailedException e) {
       loader = null;
       LOG.log(Level.WARNING, "Failed to load block {0} because of connection failure", blockId);

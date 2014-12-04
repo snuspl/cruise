@@ -285,9 +285,8 @@ public final class SurfFS extends FileSystem {
 
   @Override
   public FileStatus getFileStatus(Path path) throws IOException {
-    final Path absolutePath = fixRelativePart(path);
     try {
-      final FileMeta meta = getMetaClient().getFileMeta(absolutePath.toUri().getPath(), localAddress);
+      final FileMeta meta = getMetaClient().getFileMeta(path.toUri().getPath(), localAddress);
       return getFileStatusFromMeta(meta);
     } catch (FileNotFoundException e) {
       throw new java.io.FileNotFoundException("File not found in the meta server");
@@ -383,11 +382,12 @@ public final class SurfFS extends FileSystem {
     } else {
       final long length = meta.getFileSize();
       final boolean isDir = meta.isDirectory();
+      // TODO Revisit this when working on write-policy
       final int replication = -1;
       final long blockSize = meta.getBlockSize();
       final long modificationTime = -1;
       final Path path = new Path(meta.getFullPath());
-      // TODO FsPermission, String owner, String group, Path symlink/
+      // TODO Manage additional fields - FsPermission, String owner, String group, Path symlink, ...
       return new FileStatus(length, isDir, replication, blockSize, modificationTime, path);
     }
   }

@@ -43,18 +43,17 @@ public final class CacheClientManagerImpl implements CacheClientManager {
     return bufferSize;
   }
 
-  private static SurfCacheService.Client create(String address)
-          throws TTransportException {
-    HostAndPort taskAddress = HostAndPort.fromString(address);
+  private static SurfCacheService.Client create(final String address) throws TTransportException {
+    final HostAndPort taskAddress = HostAndPort.fromString(address);
 
-    TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
+    final TTransport transport = new TFramedTransport(new TSocket(taskAddress.getHostText(), taskAddress.getPort()));
     transport.open();
-    TProtocol protocol = new TCompactProtocol(transport);
+    final TProtocol protocol = new TCompactProtocol(transport);
     return new SurfCacheService.Client(protocol);
   }
 
   @Override
-  public synchronized SurfCacheService.Client get(String address) throws TTransportException {
+  public synchronized SurfCacheService.Client get(final String address) throws TTransportException {
     if (!cacheClients.containsKey(address)) {
       cacheClients.put(address, create(address));
     }

@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Choose just one cache node to write data into.
+ * Choose cache nodes to write by random
  */
 public class WritingRandomCacheSelectionPolicy implements WritingCacheSelectionPolicy {
   @Inject
@@ -17,7 +17,7 @@ public class WritingRandomCacheSelectionPolicy implements WritingCacheSelectionP
   }
 
   @Override
-  public List<NodeInfo> select(List<CacheNode> nodes, int numReplicas) {
+  public List<NodeInfo> select(final List<CacheNode> nodes, final int numReplicas) {
     Collections.shuffle(nodes);
     final List<NodeInfo> chosenNodes = new ArrayList<>(numReplicas);
     int replicasAdded = 0;

@@ -90,6 +90,9 @@ public final class HdfsBlockId implements BlockId, Serializable {
   public int hashCode() {
     int result = filePath != null ? filePath.hashCode() : 0;
     result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
+    result = 31 * result + (int) (generationTimestamp ^ (generationTimestamp >>> 32));
+    result = 31 * result + (poolId != null ? poolId.hashCode() : 0);
+    result = 31 * result + (encodedToken != null ? encodedToken.hashCode() : 0);
     result = 31 * result + (int) (offset ^ (offset >>> 32));
     return result;
   }

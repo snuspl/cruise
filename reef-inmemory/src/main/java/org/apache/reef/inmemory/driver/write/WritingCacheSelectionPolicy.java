@@ -6,7 +6,7 @@ import org.apache.reef.inmemory.driver.CacheNode;
 import java.util.List;
 
 /**
- * Choose one of the cache nodes to write a block
+ * Choose cache nodes to write a block as many as the replication factor
  */
 public interface WritingCacheSelectionPolicy {
   public List<NodeInfo> select(final List<CacheNode> nodes, final int numReplicas);

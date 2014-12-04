@@ -2,13 +2,11 @@ package org.apache.reef.inmemory.task.write;
 
 import com.sun.corba.se.spi.ior.Writeable;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -31,19 +29,15 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
 
   private Map<Integer, ByteBuffer> data;
 
-  private final SyncMethod syncMethod;
-  private final int baseReplicationFactor;
   private long expectedOffset = 0;
 
-  public WritableBlockLoader(BlockId id, boolean pin, int bufferSize, int baseReplicationFactor, SyncMethod syncMethod){
+  public WritableBlockLoader(final BlockId id, final boolean pin, final int bufferSize) {
     this.blockId = id;
     this.blockSize = id.getBlockSize();
     this.data = new HashMap<>();
 
     this.pinned = pin;
     this.bufferSize = bufferSize;
-    this.baseReplicationFactor = baseReplicationFactor;
-    this.syncMethod = syncMethod;
   }
 
   @Override
@@ -66,7 +60,6 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     if (!data.containsKey(index)) {
       throw new BlockLoadingException(totalWrite);
     }
-    assert this.data.get(index).hasArray();// TODO delete this;
     return this.data.get(index).array();
   }
 
@@ -103,18 +96,13 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
   }
 
   @Override
-  public int getBaseReplicationFactor() {
-    return this.baseReplicationFactor;
-  }
-
-  @Override
-  public SyncMethod getSyncMethod() {
-    return this.syncMethod;
+  public long getTotalWritten() {
+    return this.totalWrite;
   }
 
   /**
    * Get the buffer to write data into. If the buffer for the range
-   * does not exist, create one and put in the cache
+   * does not exist, create one and put in the cache on demand.
    * @param index The index of buffer stored in the cache
    * @return The byte buffer
    */
@@ -133,10 +121,6 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
    * @param packetLength The length of packet received.
    */
   private void updateValidOffset(final long received, final int packetLength) {
-    /*
-     * TODO If we send/receive packets with multi-thread, the packets could be out of order.
-     * So we should maintain all the possible offset values as a set.
-     */
     expectedOffset = received + packetLength;
   }
 
@@ -148,10 +132,5 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
    */
   private boolean isValidOffset(final long offset) {
     return expectedOffset == offset;
-  }
-
-
-  public long getTotalWritten() {
-    return this.totalWrite;
   }
 }

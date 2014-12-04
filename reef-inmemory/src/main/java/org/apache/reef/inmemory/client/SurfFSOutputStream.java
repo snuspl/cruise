@@ -1,6 +1,5 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.AllocatedBlockInfo;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
@@ -12,13 +11,21 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class SurfFSOutputStream extends OutputStream {
   private static final Logger LOG = Logger.getLogger(SurfFSOutputStream.class.getName());
   private static final int PACKET_SIZE = 512;
+  private static final int MAX_PACKETS = 80;
+
+  private static final int COMPLETE_FILE_RETRY_NUM = 5;
+  private static final int COMPLETE_FILE_RETRY_INTERVAL = 400;
+  private static final int FLUSH_CHECK_INTERVAL = 100;
 
   private final SurfMetaService.Client metaClient;
   private final String path;
@@ -31,7 +38,7 @@ public class SurfFSOutputStream extends OutputStream {
   private long curBlockInnerOffset = 0;
 
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
-  private final BlockingQueue<Packet> packetQueue = new ArrayBlockingQueue<>(80); // shared with PacketStreamer
+  private final BlockingQueue<Packet> packetQueue = new ArrayBlockingQueue<>(MAX_PACKETS); // shared with PacketStreamer
   private volatile boolean isClosed; // shared with PacketStreamer
 
   public SurfFSOutputStream(final String path,
@@ -56,6 +63,7 @@ public class SurfFSOutputStream extends OutputStream {
 
   @Override
   public void write(byte b[], int off, int len) throws IOException {
+    // Check the arguments
     if (b == null) {
       throw new NullPointerException();
     } else if ((off < 0) || (off > b.length) || (len < 0) ||
@@ -65,6 +73,7 @@ public class SurfFSOutputStream extends OutputStream {
       return;
     }
 
+    // Fill out the local buffer until the contents of b is written.
     int startIndex = off;
     while (startIndex < len) {
       final int bytesLeftInUserBuf = len-startIndex;
@@ -96,20 +105,20 @@ public class SurfFSOutputStream extends OutputStream {
   @Override
   public void close() throws IOException {
     synchronized (this) {
-      // confirms that the local queue is emptied
+      // Confirms that the local queue is emptied
       flush(true);
 
-      // confirms that the metaserver received all the block reports
+      // Confirms that the meta server received all the block reports
       final long fileSize = blockSize * curBlockOffset + curBlockInnerOffset;
       if (fileSize > 0) {
         boolean success = false;
         try {
-          for (int i = 0; i < 3; i++) {
+          for (int i = 0; i < COMPLETE_FILE_RETRY_NUM; i++) {
             success = metaClient.completeFile(path, fileSize);
             if (success) {
               break;
             } else {
-              Thread.sleep(5000); // TODO: make it 1 second
+              Thread.sleep(COMPLETE_FILE_RETRY_INTERVAL);
             }
           }
         } catch (TException | InterruptedException e) {
@@ -120,7 +129,7 @@ public class SurfFSOutputStream extends OutputStream {
         }
       }
 
-      // now we are safe to terminate the PacketStreamer thread
+      // Now we are safe to terminate the PacketStreamer thread
       this.isClosed = true;
       this.executor.shutdown();
     }
@@ -134,7 +143,7 @@ public class SurfFSOutputStream extends OutputStream {
     synchronized (this) {
       while (packetQueue.size() > 0) {
         try {
-          wait(1000);
+          wait(FLUSH_CHECK_INTERVAL);
         } catch (InterruptedException e) {
           throw new IOException(e);
         }
@@ -161,7 +170,7 @@ public class SurfFSOutputStream extends OutputStream {
 
     AllocatedBlockInfo blockInfo = null;
     if (curBlockInnerOffset == 0) {
-      // the first packet of a block
+      // Request allocation for the first packet of a block
       blockInfo = allocateBlockAtMetaServer(curBlockOffset);
     }
 
@@ -235,7 +244,8 @@ public class SurfFSOutputStream extends OutputStream {
         try {
           final Packet packet = packetQueue.take();
           if (packet.blockInfo != null) {
-            initBlockAtCacheServer(packet.blockInfo, packet.blockOffset); // the first packet of a block
+            // Initialize block at the cache server for the first packet of a block
+            initBlockAtCacheServer(packet.blockInfo, packet.blockOffset);
           }
           curCacheClient.writeData(path, packet.blockOffset, blockSize, packet.blockInnerOffset, packet.buf, packet.isLastPacket);
         } catch (Exception e) {
@@ -253,7 +263,7 @@ public class SurfFSOutputStream extends OutputStream {
           success = true;
           break;
         } catch (TException e) {
-          LOG.log(Level.WARNING, "Cache Server is not responding... trying the next one(if there is any left)");
+          LOG.log(Level.WARNING, "Cache Server is not responding... trying the next one(if there is any left)", e);
         }
       }
 
@@ -263,19 +273,21 @@ public class SurfFSOutputStream extends OutputStream {
     }
   }
 
-  int getLocalBufWriteCount() {
+  // Methods used for unit tests.
+
+  protected int getLocalBufWriteCount() {
     return localBufWriteCount;
   }
 
-  long getCurBlockInnerOffset() {
+  protected long getCurBlockInnerOffset() {
     return curBlockInnerOffset;
   }
 
-  int getPacketSize() {
+  protected int getPacketSize() {
     return PACKET_SIZE;
   }
 
-  long getCurBlockOffset() {
+  protected long getCurBlockOffset() {
     return curBlockOffset;
   }
 }

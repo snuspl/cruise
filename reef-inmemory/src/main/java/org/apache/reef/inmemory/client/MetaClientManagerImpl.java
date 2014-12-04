@@ -11,13 +11,11 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 public class MetaClientManagerImpl implements MetaClientManager {
-  public SurfMetaService.Client get(String address) throws TTransportException {
+  public SurfMetaService.Client get(final String address) throws TTransportException {
     final HostAndPort metaAddress = HostAndPort.fromString(address);
     final TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
     transport.open();
-    final TProtocol protocol = new TMultiplexedProtocol(
-        new TCompactProtocol(transport),
-        SurfMetaService.class.getName());
+    final TProtocol protocol = new TCompactProtocol(transport);
     return new SurfMetaService.Client(protocol);
   }
 }

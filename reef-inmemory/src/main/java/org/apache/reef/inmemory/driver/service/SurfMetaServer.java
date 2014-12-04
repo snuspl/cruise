@@ -74,6 +74,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public FileMeta getFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
+    // TODO Check existence in the baseFS
     try {
       return metaManager.getFile(new Path(path), new User(), clientHostname); // TODO: need (integrated?) tests for this version
     } catch (java.io.FileNotFoundException e) {
@@ -88,11 +89,13 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public boolean exists(String path) throws TException {
+    // TODO Check existence in the baseFS
     return metaManager.exists(new Path(path), new User());
   }
 
   @Override
-  public boolean create(String path, long blockSize) throws FileAlreadyExistsException, TException {
+  public synchronized boolean create(String path, long blockSize) throws FileAlreadyExistsException, TException {
+    // TODO Check existence and create a metadata in the baseFS
     if (exists(path)) {
       throw new FileAlreadyExistsException();
     } else {
@@ -101,16 +104,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       fileMeta.setBlockSize(blockSize);
       fileMeta.setBlocks(new ArrayList<BlockInfo>());
       fileMeta.setFileSize(0);
-      metaManager.update(fileMeta, new User());
-      return true;
-    }
-  }
-
-  @Override
-  public boolean updateFileMeta(FileMeta fileMeta) throws FileNotFoundException, TException {
-    if (!exists(fileMeta.getFullPath())) {
-      throw new FileNotFoundException();
-    } else {
       metaManager.update(fileMeta, new User());
       return true;
     }
@@ -134,10 +127,10 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
         final boolean pin = action.getPin();
         final int baseReplicationFactor = action.getWrite().getBaseReplicationFactor();
-        // TODO Change the type of SyncMethod to boolean
-        final boolean writable = (action.getWrite().getSync() == SyncMethod.WRITE_THROUGH);
+        // TODO Change the SyncMethod in Avro schema to boolean type
+        final boolean isWriteThrough = (action.getWrite().getSync() == SyncMethod.WRITE_THROUGH);
 
-        return new AllocatedBlockInfo(selected, pin, baseReplicationFactor, writable);
+        return new AllocatedBlockInfo(selected, pin, baseReplicationFactor, isWriteThrough);
       } catch (Throwable throwable) {
         throw new TException("Fail to resolve replication policy", throwable);
       }
@@ -153,7 +146,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
     try {
       final FileMeta meta = metaManager.getFile(new Path(path), new User());
-      // TODO Either we can set a flag isComplete
       LOG.log(Level.INFO, "Compare the file size of meta : Expected {0} / Actual {1}",
         new Object[] {fileSize, meta.getFileSize()});
       return fileSize == meta.getFileSize();

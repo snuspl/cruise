@@ -26,11 +26,6 @@ service SurfMetaService {
   bool create(1:string path, 2:i64 blockSize) throws (1: exceptions.FileAlreadyExistsException fae)
 
   /**
-   * Update metadata with a new FileMeta
-   */
-  bool updateFileMeta(1:entity.FileMeta fileMeta) throws (1: exceptions.FileNotFoundException fe)
-
-  /**
    * Allocate a new Block and return the Info(CacheNode, Replication Policy, etc) of the block to write data.
    **/
   entity.AllocatedBlockInfo allocateBlock(1:string path, 2:i64 offset, 3:string clientAddress)
