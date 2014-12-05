@@ -91,12 +91,8 @@ public final class SurfFS extends FileSystem {
   /**
    * Instantiate and return a new MetaClient for thread-safety
    */
-  public SurfMetaService.Client getMetaClient() throws IOException {
-    try {
-      return this.metaClientManager.get(this.metaserverAddress);
-    } catch (TTransportException e) {
-      throw new IOException(e);
-    }
+  public SurfMetaService.Client getMetaClient() throws TTransportException {
+    return this.metaClientManager.get(this.metaserverAddress);
   }
 
   /**
@@ -234,9 +230,9 @@ public final class SurfFS extends FileSystem {
   public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
     final String decodedPath = path.toUri().getPath();
-    final SurfMetaService.Client metaClient = getMetaClient();
-    final CacheClientManager cacheClientManager = getCacheClientManager();
     try {
+      final SurfMetaService.Client metaClient = getMetaClient();
+      final CacheClientManager cacheClientManager = getCacheClientManager();
       metaClient.create(decodedPath, blockSize);
       return new FSDataOutputStream(new SurfFSOutputStream(decodedPath, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
     } catch (TException e) {
@@ -288,10 +284,20 @@ public final class SurfFS extends FileSystem {
     try {
       final FileMeta meta = getMetaClient().getFileMeta(path.toUri().getPath(), localAddress);
       return getFileStatusFromMeta(meta);
-    } catch (FileNotFoundException e) {
-      throw new java.io.FileNotFoundException("File not found in the meta server");
+    } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
+      if (isFallback) {
+        LOG.log(Level.WARNING, "Surf FileNotFoundException ", e);
+        return baseFs.getFileStatus(pathToBase(path));
+      } else {
+        throw new java.io.FileNotFoundException("File not found in the meta server");
+      }
     } catch (TException e) {
-      throw new IOException ("Failed to get File Status", e);
+      if (isFallback) {
+        LOG.log(Level.WARNING, "Surf TException ", e);
+        return baseFs.getFileStatus(pathToBase(path));
+      } else {
+        throw new IOException ("Failed to get File Status from Surr", e);
+      }
     }
   }
 
