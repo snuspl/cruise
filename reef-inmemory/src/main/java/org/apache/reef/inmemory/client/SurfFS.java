@@ -199,7 +199,7 @@ public final class SurfFS extends FileSystem {
             new Object[]{path, pathStr});
 
     try {
-      FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
+      final FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
       final CacheClientManager cacheClientManager = getCacheClientManager();
       final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
       if (isFallback) {
@@ -234,7 +234,7 @@ public final class SurfFS extends FileSystem {
   public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
     final String decodedPath = path.toUri().getPath();
-    SurfMetaService.Client metaClient = getMetaClient();
+    final SurfMetaService.Client metaClient = getMetaClient();
     final CacheClientManager cacheClientManager = getCacheClientManager();
     try {
       metaClient.create(decodedPath, blockSize);

@@ -15,7 +15,9 @@ public class MetaClientManagerImpl implements MetaClientManager {
     final HostAndPort metaAddress = HostAndPort.fromString(address);
     final TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
     transport.open();
-    final TProtocol protocol = new TCompactProtocol(transport);
+    final TProtocol protocol = new TMultiplexedProtocol(
+        new TCompactProtocol(transport),
+        SurfMetaService.class.getName());
     return new SurfMetaService.Client(protocol);
   }
 }

@@ -1,10 +1,8 @@
 package org.apache.reef.inmemory.client;
 
 import org.apache.reef.client.DriverLauncher;
-import org.apache.reef.client.REEF;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -14,7 +12,6 @@ import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -26,7 +23,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.fail;
-@Ignore
+
 public class SurfFSCreateITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSCreateITCase.class.getName());
 
@@ -52,14 +49,16 @@ public class SurfFSCreateITCase {
    */
   private static final int SURF_SHUTDOWN_WAIT = 40 * 1000;
 
-  private static final String TESTDIR = "/user/"+System.getProperty("user.name");
+  private static final String TESTDIR = ITUtils.getTestDir();
 
-  private static final String TESTPATH1 = TESTDIR+"/"+"CREATE.unclosed";
-  private static final String TESTPATH2 = TESTDIR+"/"+"CREATE.closed";
-
+  private static final String UNCLOSED = TESTDIR+"/"+"CREATE.unclosed";
+  private static final String CLOSED = TESTDIR+"/"+"CREATE.closed";
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
+
+  private static final int DFS_REPLICATION_VALUE = 3;
+  private static final int DFS_BLOCK_SIZE_VALUE = 512;
 
   private static final Object lock = new Object();
   private static final AtomicBoolean jobFinished = new AtomicBoolean(false);
@@ -71,9 +70,9 @@ public class SurfFSCreateITCase {
   @BeforeClass
   public static void setUpClass() throws IOException, InjectionException, InterruptedException {
     final Configuration hdfsConfig = new HdfsConfiguration();
-    hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
+    hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, DFS_REPLICATION_VALUE);
     // Reduce blocksize to 512 bytes, to test multiple blocks
-    hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, 512);
+    hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, DFS_BLOCK_SIZE_VALUE);
 
     final FileSystem baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
@@ -107,7 +106,6 @@ public class SurfFSCreateITCase {
     final Configuration conf = new Configuration();
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
-    System.out.println("SurfFs address resolved to:" + SURF + "://" + SURF_ADDRESS);
   }
 
   @AfterClass
@@ -124,24 +122,12 @@ public class SurfFSCreateITCase {
     }
   }
 
-  public FSDataOutputStream create(Path path) throws IOException {
-    FSDataOutputStream out = null;
-    out = surfFs.create(path);
-    return out;
-  }
-
-  private FSDataInputStream open(Path path) throws IOException {
-    FSDataInputStream in = null;
-    in = surfFs.open(path);
-    return in;
-  }
-
   @Test
   public void testOutputStreamNotClosed() throws IOException {
-    create(new Path(TESTPATH1));
+    surfFs.create(new Path(UNCLOSED));
 
     try {
-      create(new Path(TESTPATH1));
+      surfFs.create(new Path(UNCLOSED));
       fail("Should return IOException. Because the file exists");
     } catch (IOException e) {
       // passed
@@ -152,12 +138,12 @@ public class SurfFSCreateITCase {
 
   @Test
   public void testOutputStreamClosed() throws IOException {
-    FSDataOutputStream out1 = create(new Path(TESTPATH2));
+    final FSDataOutputStream out1 = surfFs.create(new Path(CLOSED));
     out1.close();
 
     // should fail
     try {
-      create(new Path(TESTPATH2));
+      surfFs.create(new Path(CLOSED));
       fail("Should return IOException. Because the file exists");
     } catch (IOException e) {
       // passed
@@ -166,6 +152,6 @@ public class SurfFSCreateITCase {
     }
 
     // should not fail
-    open(new Path(TESTPATH2));
+    surfFs.open(new Path(CLOSED));
   }
 }
