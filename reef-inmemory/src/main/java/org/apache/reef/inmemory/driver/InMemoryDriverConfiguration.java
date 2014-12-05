@@ -23,7 +23,7 @@ import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 
 /**
- * Builder that creates a Configuration Module to be used at the Driver, based on underlying FS type
+ * Builder that creates a Configuration Module to be used at the Driver, according to base FS type
  */
 public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilder {
 

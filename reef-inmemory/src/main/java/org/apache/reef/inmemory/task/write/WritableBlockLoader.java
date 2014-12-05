@@ -1,40 +1,40 @@
 package org.apache.reef.inmemory.task.write;
 
-import com.sun.corba.se.spi.ior.Writeable;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Provides a way to load the content of block. The block is written by Surf
- * rather than loading from Underlying FS. Synchronization occurs with underFS
+ * rather than loading from base FS. Synchronization occurs with base FS
  * as specified by policy.
- * This class implements BlockLoader and Writable interface
+ * This class implements BlockLoader and BlockReceiver interface
  */
 public class WritableBlockLoader implements BlockLoader, BlockReceiver {
-  private final static Logger LOG = Logger.getLogger(Writeable.class.getName());
+  private final static Logger LOG = Logger.getLogger(WritableBlockLoader.class.getName());
 
   private final BlockId blockId;
   private final int bufferSize;
   private final boolean pinned;
   private final long blockSize;
-  private long totalWrite = 0;
+  private long totalWritten = 0;
+  private boolean isComplete = false;
 
-  private Map<Integer, ByteBuffer> data;
+  private List<ByteBuffer> data;
 
   private long expectedOffset = 0;
 
   public WritableBlockLoader(final BlockId id, final boolean pin, final int bufferSize) {
     this.blockId = id;
     this.blockSize = id.getBlockSize();
-    this.data = new HashMap<>();
+    this.data = new ArrayList<>();
 
     this.pinned = pin;
     this.bufferSize = bufferSize;
@@ -42,7 +42,7 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
 
   @Override
   public void loadBlock() {
-    LOG.log(Level.INFO, "Enable Block {0} to write data", this.blockId);
+    LOG.log(Level.SEVERE, "loadBlock() should not be called for WritableBlockLoader. BlockId : {0}", blockId.toString());
   }
 
   @Override
@@ -57,8 +57,9 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
 
   @Override
   public byte[] getData(int index) throws BlockLoadingException {
-    if (!data.containsKey(index)) {
-      throw new BlockLoadingException(totalWrite);
+    // If the date is not completely written for this block, throw BlockLoadingException.
+    if (!isComplete || index >= data.size()) {
+      throw new BlockLoadingException(totalWritten);
     }
     return this.data.get(index).array();
   }
@@ -82,8 +83,8 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     int nWritten = 0;
 
     while (nWritten < data.length) {
-      ByteBuffer buf = getBuffer(index);
-      int toWrite = Math.min(bufferSize - innerOffset, data.length - nWritten);
+      final ByteBuffer buf = getBuffer(index);
+      final int toWrite = Math.min(bufferSize - innerOffset, data.length - nWritten);
       buf.put(data, nWritten, toWrite);
 
       index++;
@@ -91,13 +92,23 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
       nWritten += toWrite;
     }
 
-    totalWrite += nWritten;
+    totalWritten += nWritten;
     updateValidOffset(offset, data.length);
   }
 
-  @Override
+  /**
+   * Called when the last packet of the block arrives.
+   * Before complete, getData() for this block throws BlockLoadingException.
+   */
+  public void completeWrite() {
+    this.isComplete = true;
+  }
+
+  /**
+   * Return the amount of data written.
+   */
   public long getTotalWritten() {
-    return this.totalWrite;
+    return this.totalWritten;
   }
 
   /**
@@ -107,26 +118,26 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
    * @return The byte buffer
    */
   private synchronized ByteBuffer getBuffer(final int index) {
-    if (!data.containsKey(index)) {
+    if (index >= data.size()) {
       // If blockSize is smaller than blockSize, then the blockSize will cover the whole data
       final ByteBuffer buf = ByteBuffer.allocate(Math.min(bufferSize, (int)blockSize));
-      data.put(index, buf);
+      data.add(buf);
     }
     return data.get(index);
   }
 
   /**
    * Update the valid offsets.
-   * @param received The offset of packet received.
+   * @param previousOffset The valid offset for the previous packet.
    * @param packetLength The length of packet received.
    */
-  private void updateValidOffset(final long received, final int packetLength) {
-    expectedOffset = received + packetLength;
+  private void updateValidOffset(final long previousOffset, final int packetLength) {
+    expectedOffset = previousOffset + packetLength;
   }
 
   /**
-   * Determine offset of the packet is valid. It aims to avoid
-   * packet duplicate or miss.
+   * Determine offset of the packet is valid in order to avoid duplicate or miss.
+   * The assumption is the packets always come in-order.
    * @param offset The offset of the packet
    * @return {@code true} if the offset is valid to receive
    */

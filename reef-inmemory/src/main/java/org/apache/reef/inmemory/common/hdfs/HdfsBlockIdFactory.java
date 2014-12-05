@@ -99,7 +99,7 @@ public final class HdfsBlockIdFactory implements BlockIdFactory<LocatedBlock, Hd
     blockInfo.setGenerationStamp(-1);
     blockInfo.setNamespaceId(null);
     blockInfo.setToken(null);
-
+    blockInfo.setLocations(nodes);
     return blockInfo;
   }
 }

@@ -4,7 +4,7 @@ import java.io.IOException;
 
 /**
  * Implementing this interface allows to write data into block.
- * This contains how many replica to have in the UnderFS
+ * This contains how many replica to have in the base FS
  * and Synchronization method (write-back / write-through)
  */
 public interface BlockReceiver {
@@ -15,9 +15,4 @@ public interface BlockReceiver {
    * @param offset offset of the data
    */
   public void writeData(byte[] data, long offset) throws IOException;
-
-  /**
-   * Get the total amount of data written in this BlockReceiver
-   */
-  public long getTotalWritten();
 }

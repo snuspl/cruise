@@ -55,7 +55,7 @@ public final class CLI {
   public static final class Address implements Name<String> {
   }
 
-  @NamedParameter(doc = "Underlying DFS address", short_name = "dfs_address", default_value = "hdfs://localhost:9000")
+  @NamedParameter(doc = "Base DFS address", short_name = "dfs_address", default_value = "hdfs://localhost:9000")
   public static final class DfsAddress implements Name<String> {
   }
 

@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
-import org.apache.reef.runtime.common.evaluator.HeartBeatManager;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;
@@ -80,8 +79,16 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     } else {
       final WritableBlockLoader writableLoader = (WritableBlockLoader) loader;
       writableLoader.writeData(data.array(), offset);
-      final long nWritten = writableLoader.getTotalWritten();
+
+      /*
+       * When the packet is the last one of block
+       * 1) Mark the block is Complete
+       * 2) Notify Memory manager to update memory state
+       * 3) Trigger heartbeat to update the metadata immediately
+       */
       if (isLastPacket) {
+        writableLoader.completeWrite();
+        final long nWritten = writableLoader.getTotalWritten();
         memoryManager.writeSuccess(blockId, nWritten, loader.isPinned());
         heartBeatTriggerManager.triggerHeartBeat();
       }
@@ -97,7 +104,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void prepareToLoad(final BlockLoader loader) throws IOException, BlockNotFoundException {
+  public void prepareToWrite(final BlockLoader loader) throws IOException, BlockNotFoundException {
     if (insertEntry(loader)) {
       cacheAdmissionController.reserveSpace(loader.getBlockId(), loader.isPinned());
     }

@@ -13,7 +13,7 @@ import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.task.hdfs.HdfsDriverMessageHandler;
 
 /**
- * Builder that creates a Configuration Module to be used at each Task, based on underlying FS type
+ * Builder that creates a Configuration Module to be used at each Task, according to base FS type
  */
 public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder {
 

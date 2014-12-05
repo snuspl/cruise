@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.task;
 
 
-import com.google.common.cache.Cache;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
@@ -10,7 +9,6 @@ import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

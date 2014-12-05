@@ -194,8 +194,8 @@ public final class MemoryManager {
   }
 
   /**
-   * Call on write success. The logic is almost same with loadSuccess,
-   * but in case of write, blockSize of the last block can differ from others.
+   * Call on write success. Since Write is another kind of data loading in the cache, the state transition is
+   * almost same with loadSuccess. One difference is size of the last block can be smaller than others.
    */
   public synchronized void writeSuccess(final BlockId blockId, final long nWritten, final boolean pin) {
     LOG.log(Level.INFO, blockId+" statistics before loadSuccess: "+statistics);
@@ -214,7 +214,7 @@ public final class MemoryManager {
           statistics.addCacheBytes(blockSize);
         }
         setState(blockId, CacheEntryState.LOAD_SUCCEEDED);
-        updates.addAddition(blockId, nWritten); // The only difference with loadSuccess
+        updates.addAddition(blockId, nWritten); // Update the actual amount of written data.
         notifyAll();
         break;
       case REMOVED_DURING_LOAD:

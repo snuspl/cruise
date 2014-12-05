@@ -14,7 +14,7 @@ import java.util.logging.Logger;
  * If the memory is not enough to accommodate the block,
  * then secure the space via eviction.
  */
-public class CacheAdmissionController {
+public final class CacheAdmissionController {
   private static final Logger LOG = Logger.getLogger(CacheAdmissionController.class.getName());
 
   private MemoryManager memoryManager;
@@ -29,7 +29,7 @@ public class CacheAdmissionController {
 
   /**
    * Reserve memory space to load the block. In case the capacity is not enough to load,
-   * then it preserve the memory via eviction. If it is done successfully, MemoryManager
+   * then it reserve the memory via eviction. If it is done successfully, MemoryManager
    * is notified that the block is on the loading state.
    * @param blockId Block Id to load
    * @param pin Whether the block is to be pinned

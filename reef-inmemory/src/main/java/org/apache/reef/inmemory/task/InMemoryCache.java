@@ -46,12 +46,13 @@ public interface InMemoryCache {
   public void load(BlockLoader loader) throws IOException;
 
   /**
-   * Insert an entry for a blank block into cache before filling data.
+   * Reserve space for a block and insert it into cache before writing data.
+   * The state of this block is set as LOAD_STARTED.
    */
-  public void prepareToLoad(BlockLoader loader) throws IOException, BlockNotFoundException;
+  public void prepareToWrite(BlockLoader loader) throws IOException, BlockNotFoundException;
 
   /**
-   * @return Length of buffer loading data from Underlying File Systemss
+   * @return Length of buffer loading data from Base File Systems
    */
   public int getLoadingBufferSize();
 

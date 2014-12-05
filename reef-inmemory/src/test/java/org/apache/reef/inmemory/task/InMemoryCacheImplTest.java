@@ -121,7 +121,7 @@ public final class InMemoryCacheImplTest {
 
   /**
    * Ask cache to prepare for a blockLoader, and check correctness of preparation
-   * {@code cache.prepareToLoad} marks the blockLoader as on the loading stage.
+   * {@code cache.prepareToWrite} marks the blockLoader as on the loading stage.
    */
   @Test
   public void testPrepare() throws IOException, BlockNotFoundException {
@@ -130,7 +130,7 @@ public final class InMemoryCacheImplTest {
 
     final BlockLoader loader = new MockBlockLoader(blockId, new OnesBufferLoader(8096), false);
     cache.clear();
-    cache.prepareToLoad(loader);
+    cache.prepareToWrite(loader);
     assertEquals(0, statistics.getCacheBytes());
     assertEquals(8096, statistics.getLoadingBytes());
     assertEquals(0, statistics.getEvictedBytes());
@@ -172,7 +172,7 @@ public final class InMemoryCacheImplTest {
     final BlockId blockId = new MockBlockId(fileName, offset, blockSize);
     final WritableBlockLoader blockLoader = new WritableBlockLoader(blockId, false, bufferSize);
 
-    cache.prepareToLoad(blockLoader);
+    cache.prepareToWrite(blockLoader);
 
     for (int packetIndex = 0; packetIndex < blockSize / packetSize; packetIndex++) {
       byte[] packet = new byte[packetSize];

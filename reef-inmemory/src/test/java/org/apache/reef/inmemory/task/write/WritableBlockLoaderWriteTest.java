@@ -17,17 +17,15 @@ import static org.junit.Assert.fail;
 /**
  * Test WritableBlockLoader.
  * Initiate the blockLoader with blockSize 131072, bufferSize 8192
- * FYI. Data in a cache block is aligned with size of {bufferSize}
  */
 public class WritableBlockLoaderWriteTest {
-  private BlockId id;
   private WritableBlockLoader loader;
   private static final long BLOCK_SIZE = 131072;
   private static final int BUFFER_SIZE = 8192;
 
   @Before
   public void setup() {
-    id = new HdfsBlockId("path", 0, -1, BLOCK_SIZE, 0, null, null);
+    final BlockId id = new HdfsBlockId("path", 0, -1, BLOCK_SIZE, 0, null, null);
     loader = new WritableBlockLoader(id, true, BUFFER_SIZE);
   }
 
@@ -49,16 +47,12 @@ public class WritableBlockLoaderWriteTest {
 
     loader.writeData(packet0, offset0);
     loader.writeData(packet1, offset1);
+    loader.completeWrite();
 
-    try {
-      byte[] loaded = loader.getData(0);
-      assertArrayEquals(expected, loaded);
-    } catch (BlockLoadingException e) {
-      fail();
-    }
+    assertLoadSuccess(expected, loader);
 
     // Index 1 is out of bound for this block.
-    loadWithFailure(loader, 1);
+    assertLoadFailsWithException(loader, 1);
   }
 
   /**
@@ -66,25 +60,21 @@ public class WritableBlockLoaderWriteTest {
    */
   @Test
   public void testPacketWithBufferSize() throws IOException {
-    final byte[] packet0 = generateData(BUFFER_SIZE);
-    loader.writeData(packet0, 0);
+    final byte[] packet = generateData(BUFFER_SIZE);
+    loader.writeData(packet, 0);
+    loader.completeWrite();
 
-    try {
-      byte[] loaded = loader.getData(0);
-      assertArrayEquals(packet0, loaded);
-    } catch (BlockLoadingException e) {
-      fail();
-    }
+    assertLoadSuccess(packet, loader);
 
-    // Index 1 is out of bounds.
-    loadWithFailure(loader, 1);
+    // Index 1 is out of bound.
+    assertLoadFailsWithException(loader, 1);
   }
 
   /**
    * An exception is thrown when client tries to write
    * data to the offset written already.
    */
-  @Test()
+  @Test
   public void testOverwrite() throws BlockLoadingException, IOException {
     final byte[] packet0 = generateData(BUFFER_SIZE);
     final byte[] packet1 = generateData(BUFFER_SIZE);
@@ -92,12 +82,9 @@ public class WritableBlockLoaderWriteTest {
     final int offset = 0;
 
     loader.writeData(packet0, offset);
-    try {
-      loader.writeData(packet1, offset);
-      fail();
-    } catch (IOException e) {
-      // Success
-    }
+
+    // Write fails because it tries to write with the same offset.
+    assertWriteFailsWithException(loader, packet1, offset);
   }
 
   /**
@@ -120,22 +107,21 @@ public class WritableBlockLoaderWriteTest {
       System.arraycopy(data, packetIndex * packetLength, packets[packetIndex], 0, packetLength);
       loader.writeData(packets[packetIndex], packetIndex * packetLength);
     }
+    loader.completeWrite();
 
     // Collect the loaded buffers and compare to the original data.
-    ByteBuffer loaded = ByteBuffer.allocate(data.length);
+    final ByteBuffer loaded = ByteBuffer.allocate(data.length);
     for (int bufferIndex = 0; bufferIndex < numBuffers; bufferIndex++) {
       loaded.put(loader.getData(bufferIndex));
     }
     assertArrayEquals(data, loaded.array());
 
     // The data should be written as amount of {numBuffers}
-    loadWithFailure(loader, numBuffers);
+    assertLoadFailsWithException(loader, numBuffers);
   }
 
   /**
    * Test to fill one block with packets.
-   * @throws IOException
-   * @throws BlockLoadingException
    */
   @Test
   public void testFillOneBlock() throws IOException, BlockLoadingException {
@@ -143,14 +129,15 @@ public class WritableBlockLoaderWriteTest {
 
     // Fill out the block
     for (int offset = 0; offset < BLOCK_SIZE; offset += BUFFER_SIZE) {
-      byte[] packet = new byte[BUFFER_SIZE];
+      final byte[] packet = new byte[BUFFER_SIZE];
 
       System.arraycopy(data, offset, packet, 0, BUFFER_SIZE);
       loader.writeData(packet, offset);
     }
+    loader.completeWrite();
 
     // Collect the loaded buffers and compare to the original data.
-    ByteBuffer loaded = ByteBuffer.allocate(data.length);
+    final ByteBuffer loaded = ByteBuffer.allocate(data.length);
     for (int bufferIndex = 0; bufferIndex < BLOCK_SIZE / BUFFER_SIZE; bufferIndex++) {
       loaded.put(loader.getData(bufferIndex));
     }
@@ -165,27 +152,32 @@ public class WritableBlockLoaderWriteTest {
     final int length0 = new Random().nextInt((int) BLOCK_SIZE);
     final int length1 = (int)BLOCK_SIZE - length0 + 1;
 
-    // Fill out one block
-    byte[] packet0 = generateData(length0);
+    // Write the first packet
+    final byte[] packet0 = generateData(length0);
     loader.writeData(packet0, 0);
+    loader.completeWrite();
 
-    // Write another packet
-    byte[] packet1 = generateData(length1);
+    // Write the other packet, then write fails because the packet exceeds the block size.
+    final byte[] packet1 = generateData(length1);
+    assertWriteFailsWithException(loader, packet1, length0);
+  }
 
+  /**
+   * Helper method to make sure load succeed without exception.
+   */
+  private void assertLoadSuccess(final byte[] expected, final BlockLoader loader) {
     try {
-      loader.writeData(packet1, length0);
+      final byte[] loaded = loader.getData(0);
+      assertArrayEquals(expected, loaded);
+    } catch (BlockLoadingException e) {
       fail();
-    } catch (IOException e) {
-      // Success
     }
   }
 
   /**
    * Helper method to make sure an exception occurs while loading.
-   * @param loader
-   * @param index
    */
-  private void loadWithFailure(final BlockLoader loader, final int index) {
+  private void assertLoadFailsWithException(final BlockLoader loader, final int index) {
     try {
       loader.getData(index);
       fail();
@@ -195,9 +187,19 @@ public class WritableBlockLoaderWriteTest {
   }
 
   /**
+   * Helper method to make sure an exception occurs while writing.
+   */
+  private void assertWriteFailsWithException(final WritableBlockLoader loader, final byte[] packet, final long offset) {
+    try {
+      loader.writeData(packet, offset);
+      fail();
+    } catch (IOException e) {
+      // Test success
+    }
+  }
+
+  /**
    * Helper method to generate a random byte array.
-   * @param size
-   * @return
    */
   private byte[] generateData(final int size) {
     final byte[] result = new byte[size];

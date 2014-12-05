@@ -145,7 +145,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     final BlockLoader blockLoader = new WritableBlockLoader(blockId, pin, bufferSize);
 
     try {
-      cache.prepareToLoad(blockLoader);
+      cache.prepareToWrite(blockLoader);
     } catch (IOException e) {
       LOG.log(Level.SEVERE, "Exception while initializing ", e);
       throw new TException("Failed to initialize a block", e);
