@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.client;
 
 import org.apache.reef.client.DriverLauncher;
-import org.apache.reef.client.REEF;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -14,7 +13,6 @@ import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -29,7 +27,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-@Ignore
 public class SurfFSWriteITCase {
 
   private static final Logger LOG = Logger.getLogger(SurfFSWriteITCase.class.getName());
