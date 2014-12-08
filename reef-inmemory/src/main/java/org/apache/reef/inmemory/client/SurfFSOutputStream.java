@@ -18,7 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class SurfFSOutputStream extends OutputStream {
+public final class SurfFSOutputStream extends OutputStream {
   private static final Logger LOG = Logger.getLogger(SurfFSOutputStream.class.getName());
   private static final int PACKET_SIZE = 512;
   private static final int MAX_PACKETS = 80;
@@ -34,6 +34,7 @@ public class SurfFSOutputStream extends OutputStream {
 
   private byte localBuf[] = new byte[PACKET_SIZE];
   private int localBufWriteCount = 0;
+  private AllocatedBlockInfo curBlockInfo;
   private long curBlockOffset = 0;
   private long curBlockInnerOffset = 0;
 
@@ -54,7 +55,7 @@ public class SurfFSOutputStream extends OutputStream {
   }
 
   @Override
-  public void write(int b) throws IOException {
+  public void write(final int b) throws IOException {
     localBuf[localBufWriteCount++] = (byte)b;
     if (localBufWriteCount == PACKET_SIZE) {
       flushLocalBuf(false);
@@ -62,15 +63,9 @@ public class SurfFSOutputStream extends OutputStream {
   }
 
   @Override
-  public void write(byte b[], int off, int len) throws IOException {
-    // Check the arguments
-    if (b == null) {
-      throw new NullPointerException();
-    } else if ((off < 0) || (off > b.length) || (len < 0) ||
-      ((off + len) > b.length) || ((off + len) < 0)) {
+  public void write(final byte b[], final int off, final int len) throws IOException {
+    if ((off < 0) || (len < 0) || ((off + len) > b.length)) {
       throw new IndexOutOfBoundsException();
-    } else if (len == 0) {
-      return;
     }
 
     // Fill out the local buffer until the contents of b is written.
@@ -104,55 +99,49 @@ public class SurfFSOutputStream extends OutputStream {
    */
   @Override
   public void close() throws IOException {
-    synchronized (this) {
-      // Confirms that the local queue is emptied
-      flush(true);
+    // Confirms that the local queue is emptied
+    flush(true);
 
-      // Confirms that the meta server received all the block reports
-      final long fileSize = blockSize * curBlockOffset + curBlockInnerOffset;
-      if (fileSize > 0) {
-        boolean success = false;
-        try {
-          for (int i = 0; i < COMPLETE_FILE_RETRY_NUM; i++) {
-            success = metaClient.completeFile(path, fileSize);
-            if (success) {
-              break;
-            } else {
-              Thread.sleep(COMPLETE_FILE_RETRY_INTERVAL);
-            }
-          }
-        } catch (TException | InterruptedException e) {
-          throw new IOException("Failed while closing the file", e);
-        }
-        if (!success) {
-          throw new IOException("File not closed");
+    // Confirms that the meta server received all the block reports
+    final long fileSize = blockSize * curBlockOffset + curBlockInnerOffset;
+    boolean success = false;
+    try {
+      for (int i = 0; i < COMPLETE_FILE_RETRY_NUM; i++) {
+        success = metaClient.completeFile(path, fileSize);
+        if (success) {
+          break;
+        } else {
+          Thread.sleep(COMPLETE_FILE_RETRY_INTERVAL);
         }
       }
-
-      // Now we are safe to terminate the PacketStreamer thread
-      this.isClosed = true;
-      this.executor.shutdown();
+    } catch (TException | InterruptedException e) {
+      throw new IOException("Failed while closing the file", e);
     }
+    if (!success) {
+      throw new IOException("File not closed");
+    }
+
+    // Now we are safe to terminate the PacketStreamer thread
+    this.isClosed = true;
+    this.executor.shutdown();
   }
 
-  public void flush(final boolean isLastPacket) throws IOException {
+  private void flush(final boolean close) throws IOException {
     if (localBufWriteCount > 0) {
-      flushLocalBuf(isLastPacket);
+      flushLocalBuf(close);
     }
 
-    synchronized (this) {
-      while (packetQueue.size() > 0) {
-        try {
-          wait(FLUSH_CHECK_INTERVAL);
-        } catch (InterruptedException e) {
-          throw new IOException(e);
-        }
+    while (packetQueue.size() > 0) {
+      try {
+        wait(FLUSH_CHECK_INTERVAL);
+      } catch (InterruptedException e) {
+        throw new IOException(e);
       }
     }
   }
 
-  private void flushLocalBuf(final boolean isLastPacket) throws IOException {
-    flushBuf(localBuf, 0, localBufWriteCount, isLastPacket);
+  private void flushLocalBuf(final boolean close) throws IOException {
+    flushBuf(localBuf, 0, localBufWriteCount, close);
     localBuf = new byte[PACKET_SIZE]; // create a new localBuf, since flushBuf does not allow buf reuse
     localBufWriteCount = 0;
   }
@@ -165,23 +154,21 @@ public class SurfFSOutputStream extends OutputStream {
    * @param start inclusive
    * @param end exclusive
    */
-  private void flushBuf(final byte[] b, final int start, final int end, final boolean isLastPacket) throws IOException {
+  private void flushBuf(final byte[] b, final int start, final int end, final boolean close) throws IOException {
     final int len = end - start;
 
-    AllocatedBlockInfo blockInfo = null;
     if (curBlockInnerOffset == 0) {
-      // Request allocation for the first packet of a block
-      blockInfo = allocateBlockAtMetaServer(curBlockOffset);
+      curBlockInfo = allocateBlockAtMetaServer(curBlockOffset);
     }
 
     if (curBlockInnerOffset + len < blockSize) {
-      sendPacket(blockInfo, ByteBuffer.wrap(b, start, len), len, isLastPacket);
+      sendPacket(ByteBuffer.wrap(b, start, len), len, close);
     } else if (curBlockInnerOffset + len == blockSize) {
-      sendPacket(blockInfo, ByteBuffer.wrap(b, start, len), len, true);
+      sendPacket(ByteBuffer.wrap(b, start, len), len, true);
     } else {
       final int possibleLen = (int) (blockSize - curBlockInnerOffset); // this must be int because "possibleLen <= len"
-      sendPacket(blockInfo, ByteBuffer.wrap(b, start, possibleLen), possibleLen, true);
-      flushBuf(b, start + possibleLen, end, isLastPacket); // Create another packet with the leftovers
+      sendPacket(ByteBuffer.wrap(b, start, possibleLen), possibleLen, true);
+      flushBuf(b, start + possibleLen, end, close); // Create another packet with the leftovers
     }
   }
 
@@ -193,12 +180,11 @@ public class SurfFSOutputStream extends OutputStream {
     }
   }
 
-  private void sendPacket(final AllocatedBlockInfo blockInfo,
-                          final ByteBuffer buf,
+  private void sendPacket(final ByteBuffer buf,
                           final int len,
                           final boolean isLastPacket) throws IOException {
     try {
-      packetQueue.put(new Packet(blockInfo, curBlockOffset, curBlockInnerOffset, buf, isLastPacket));
+      packetQueue.put(new Packet(curBlockInfo, curBlockOffset, curBlockInnerOffset, buf, isLastPacket));
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
@@ -245,7 +231,7 @@ public class SurfFSOutputStream extends OutputStream {
           final Packet packet = packetQueue.take();
           if (packet.blockInfo != null) {
             // Initialize block at the cache server for the first packet of a block
-            initBlockAtCacheServer(packet.blockInfo, packet.blockOffset);
+            initCacheClient(packet.blockInfo, packet.blockOffset);
           }
           curCacheClient.writeData(path, packet.blockOffset, blockSize, packet.blockInnerOffset, packet.buf, packet.isLastPacket);
         } catch (Exception e) {
@@ -254,7 +240,7 @@ public class SurfFSOutputStream extends OutputStream {
       }
     }
 
-    private void initBlockAtCacheServer(final AllocatedBlockInfo blockInfo, final long blockOffset) {
+    private void initCacheClient(final AllocatedBlockInfo blockInfo, final long blockOffset) {
       boolean success = false;
       for (final NodeInfo nodeInfo : blockInfo.getLocations()) {
         try {
