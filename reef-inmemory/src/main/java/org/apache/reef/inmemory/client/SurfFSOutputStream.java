@@ -22,7 +22,6 @@ public final class SurfFSOutputStream extends OutputStream {
   private static final Logger LOG = Logger.getLogger(SurfFSOutputStream.class.getName());
   private static final int PACKET_SIZE = 512;
   private static final int MAX_PACKETS = 80;
-
   private static final int COMPLETE_FILE_RETRY_NUM = 5;
   private static final int COMPLETE_FILE_RETRY_INTERVAL = 400;
   private static final int FLUSH_CHECK_INTERVAL = 100;
@@ -133,7 +132,7 @@ public final class SurfFSOutputStream extends OutputStream {
 
     while (packetQueue.size() > 0) {
       try {
-        wait(FLUSH_CHECK_INTERVAL);
+        Thread.sleep(FLUSH_CHECK_INTERVAL);
       } catch (InterruptedException e) {
         throw new IOException(e);
       }
