@@ -65,7 +65,6 @@ public final class SurfFS extends FileSystem {
   private String localAddress;
   private String metaserverAddress;
 
-  private Configuration conf;
   private URI uri;
   private URI baseFsUri;
 
@@ -91,22 +90,19 @@ public final class SurfFS extends FileSystem {
   /**
    * Instantiate and return a new MetaClient for thread-safety
    */
-  public SurfMetaService.Client getMetaClient() throws IOException {
-    try {
-      return this.metaClientManager.get(this.metaserverAddress);
-    } catch (TTransportException e) {
-      throw new IOException(e);
-    }
+  public SurfMetaService.Client getMetaClient() throws TTransportException {
+    return this.metaClientManager.get(this.metaserverAddress);
   }
 
   /**
    * Instantiate and return a new CacheClientManager for thread-safety
    */
   public CacheClientManager getCacheClientManager() {
+    final Configuration conf = this.getConf();
     return new CacheClientManagerImpl(
-        this.conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
-        this.conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
-        this.conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
+        conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
+        conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
+        conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
   }
 
   @Override
@@ -123,7 +119,6 @@ public final class SurfFS extends FileSystem {
     this.baseFs = new DistributedFileSystem();
     this.baseFs.initialize(this.baseFsUri, conf);
     this.setConf(conf);
-    this.conf = conf;
 
     this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
 
@@ -199,7 +194,7 @@ public final class SurfFS extends FileSystem {
             new Object[]{path, pathStr});
 
     try {
-      FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
+      final FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
       final CacheClientManager cacheClientManager = getCacheClientManager();
       final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
       if (isFallback) {
@@ -234,9 +229,9 @@ public final class SurfFS extends FileSystem {
   public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
     final String decodedPath = path.toUri().getPath();
-    SurfMetaService.Client metaClient = getMetaClient();
-    final CacheClientManager cacheClientManager = getCacheClientManager();
     try {
+      final SurfMetaService.Client metaClient = getMetaClient();
+      final CacheClientManager cacheClientManager = getCacheClientManager();
       metaClient.create(decodedPath, blockSize);
       return new FSDataOutputStream(new SurfFSOutputStream(decodedPath, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
     } catch (TException e) {
@@ -288,10 +283,20 @@ public final class SurfFS extends FileSystem {
     try {
       final FileMeta meta = getMetaClient().getFileMeta(path.toUri().getPath(), localAddress);
       return getFileStatusFromMeta(meta);
-    } catch (FileNotFoundException e) {
-      throw new java.io.FileNotFoundException("File not found in the meta server");
+    } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
+      if (isFallback) {
+        LOG.log(Level.WARNING, "The file is not found in Surf, trying baseFs...");
+        return baseFs.getFileStatus(pathToBase(path));
+      } else {
+        throw new java.io.FileNotFoundException("File not found in the meta server");
+      }
     } catch (TException e) {
-      throw new IOException ("Failed to get File Status", e);
+      if (isFallback) {
+        LOG.log(Level.WARNING, "Surf TException, trying baseFs...");
+        return baseFs.getFileStatus(pathToBase(path));
+      } else {
+        throw new IOException ("Failed to get File Status from Surr", e);
+      }
     }
   }
 
