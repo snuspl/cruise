@@ -37,16 +37,24 @@ public class FlexionDriver {
   private final DataLoadingService dataLoadingService;
   private final CommunicationGroupDriver commGroup;
 
+  private final UserControllerTask userControllerTask;
+  private final UserComputeTask userComputeTask;
+
   private final AtomicInteger cmpTaskId = new AtomicInteger(0);
   private String ctrlTaskContextId;
 
   @Inject
   private FlexionDriver(final EvaluatorRequestor requestor,
                         final GroupCommDriver groupCommDriver,
-                        final DataLoadingService dataLoadingService) {
+                        final DataLoadingService dataLoadingService,
+                        final UserComputeTask userComputeTask,
+                        final UserControllerTask userControllerTask) {
     this.requestor = requestor;
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
+
+    this.userComputeTask = userComputeTask;
+    this.userControllerTask = userControllerTask;
 
     this.commGroup = groupCommDriver
         .newCommunicationGroup(CommunicationGroup.class,
@@ -83,13 +91,11 @@ public class FlexionDriver {
         if (dataLoadingService.isComputeContext(activeContext)) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
           ctrlTaskContextId = getContextId(groupCommContextConf);
-          finalServiceConf = Configurations.merge(groupCommServiceConf,
-                                                  FlexionService.getServiceConfiguration());
+          finalServiceConf = Configurations.merge(groupCommServiceConf);
 
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
-          finalServiceConf = Configurations.merge(groupCommServiceConf,
-                                                  FlexionService.getServiceConfiguration());
+          finalServiceConf = Configurations.merge(groupCommServiceConf);
         }
 
         activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
@@ -106,7 +112,11 @@ public class FlexionDriver {
               TaskConfiguration.CONF
                   .set(TaskConfiguration.IDENTIFIER, ControllerTask.TASK_ID)
                   .set(TaskConfiguration.TASK, ControllerTask.class)
+                  .build(),
+              Tang.Factory.getTang().newConfigurationBuilder()
+                  .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
                   .build());
+
 
           // Case 3: Evaluator configured with a Group Communication context has been given,
           //         representing a Compute Task
@@ -117,6 +127,9 @@ public class FlexionDriver {
               TaskConfiguration.CONF
                   .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + cmpTaskId.getAndIncrement())
                   .set(TaskConfiguration.TASK, ComputeTask.class)
+                  .build(),
+              Tang.Factory.getTang().newConfigurationBuilder()
+                  .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
                   .build());
         }
 

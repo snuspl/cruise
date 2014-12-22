@@ -1,5 +1,9 @@
 package edu.snu.reef.flexion.core;
 
+import com.microsoft.reef.io.network.group.operators.Broadcast;
+import com.microsoft.reef.io.network.group.operators.Reduce;
+import com.microsoft.reef.io.network.nggroup.api.task.CommunicationGroupClient;
+import com.microsoft.reef.io.network.nggroup.api.task.GroupCommClient;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
@@ -14,9 +18,9 @@ public class ControllerTask implements Task {
   private final UserControllerTask userControllerTask;
 
   @Inject
-  public ControllerTask(final FlexionService flexionService,
+  public ControllerTask(final GroupCommClient groupCommClient,
                         final UserControllerTask userControllerTask) {
-    this.flexionService = flexionService;
+    this.flexionService = new FlexionService(groupCommClient);
     this.userControllerTask = userControllerTask;
   }
 

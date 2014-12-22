@@ -15,13 +15,13 @@ public final class FlexionService {
   private final FlexionCommunicator flexionCommunicator;
 
   @Inject
-  private FlexionService(final GroupCommClient groupCommClient) {
+  FlexionService(final GroupCommClient groupCommClient) {
     this.flexionCommunicator = new FlexionServiceCtrl(groupCommClient);
   }
 
   @Inject
-  private FlexionService(final DataSet dataSet,
-                         final GroupCommClient groupCommClient) {
+  FlexionService(final DataSet dataSet,
+                 final GroupCommClient groupCommClient) {
     this.flexionCommunicator = new FlexionServiceCmp(groupCommClient);
   }
 

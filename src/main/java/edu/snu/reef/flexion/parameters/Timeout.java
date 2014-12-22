@@ -5,6 +5,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Time allowed until job ends",
                 short_name = "timeout",
-                default_value = "10000")
+                default_value = "100000")
 public final class Timeout implements Name<Integer> {
 }

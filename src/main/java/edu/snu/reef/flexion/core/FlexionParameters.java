@@ -1,6 +1,8 @@
 package edu.snu.reef.flexion.core;
 
 import edu.snu.reef.flexion.parameters.*;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -42,8 +44,27 @@ public final class FlexionParameters {
     return userControllerTask;
   }
 
+  public final Configuration getUserCtrlTaskConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
+        .build();
+  }
+
   public final UserComputeTask getUserComputeTask() {
     return userComputeTask;
+  }
+
+  public final Configuration getUserCmpTaskConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
+        .build();
+  }
+
+  public final Configuration getUserTaskConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
+        .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
+        .build();
   }
 
   public final int getEvalNum() {

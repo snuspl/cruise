@@ -52,7 +52,7 @@ public final class FlexionLauncher {
 
   private final Configuration getLocalRutimeConfiguration() {
     return LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, flexionParameters.getEvalNum())
+        .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, 1 + flexionParameters.getEvalNum())
         .build();
   }
 
@@ -85,8 +85,8 @@ public final class FlexionLauncher {
         .build();
 
     return Configurations.merge(driverConfWithDataLoad,
-                                GroupCommService.getConfiguration());
-                                // alsParameters.getDriverConfiguration());
+                                GroupCommService.getConfiguration(),
+                                flexionParameters.getUserTaskConf());
   }
 
 }
