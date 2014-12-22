@@ -12,6 +12,7 @@ import edu.snu.reef.flexion.groupcomm.subs.DataReduceFunction;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.driver.task.TaskMessage;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -22,6 +23,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,6 +41,10 @@ public class FlexionDriver {
 
   private final UserControllerTask userControllerTask;
   private final UserComputeTask userComputeTask;
+
+
+  private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
+
 
   private final AtomicInteger cmpTaskId = new AtomicInteger(0);
   private String ctrlTaskContextId;
@@ -127,6 +133,7 @@ public class FlexionDriver {
               TaskConfiguration.CONF
                   .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + cmpTaskId.getAndIncrement())
                   .set(TaskConfiguration.TASK, ComputeTask.class)
+                  .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
                   .build(),
               Tang.Factory.getTang().newConfigurationBuilder()
                   .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
@@ -147,6 +154,17 @@ public class FlexionDriver {
       return injector.getNamedInstance(ContextIdentifier.class);
     } catch (final InjectionException e) {
       throw new RuntimeException("Unable to inject context identifier from context conf", e);
+    }
+  }
+
+  final class TaskMessageHandler implements EventHandler<TaskMessage> {
+    @Override
+    public void onNext(final TaskMessage message) {
+      final long result = codecLong.decode(message.get());
+      final String msg = "Task message " + message.getId() + ": " + result;
+
+      //TODO: use metric to run optimization plan
+      LOG.info(msg);
     }
   }
 }

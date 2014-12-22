@@ -5,6 +5,7 @@ import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.task.HeartBeatTriggerManager;
 
 import javax.inject.Inject;
 import java.util.logging.Logger;
@@ -21,8 +22,9 @@ public final class FlexionService {
 
   @Inject
   FlexionService(final DataSet dataSet,
-                 final GroupCommClient groupCommClient) {
-    this.flexionCommunicator = new FlexionServiceCmp(groupCommClient);
+                 final GroupCommClient groupCommClient,
+                 final HeartBeatTriggerManager heartBeatTriggerManager) {
+    this.flexionCommunicator = new FlexionServiceCmp(groupCommClient, heartBeatTriggerManager);
   }
 
   public final static Configuration getServiceConfiguration() {

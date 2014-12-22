@@ -11,6 +11,10 @@ public final class SimpleCmpTask implements UserComputeTask {
 
   @Override
   public final Integer run(final Integer data) {
-    return data + 1;
+    float increment = 0;
+    for (int i = 0; i < 500000; i++) {
+      increment += Math.random();
+    }
+    return (int) (data + increment);
   }
 }

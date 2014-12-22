@@ -17,6 +17,7 @@ import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.util.EnvironmentUtils;
 
 import javax.inject.Inject;
+import java.sql.Driver;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -65,7 +66,8 @@ public final class FlexionLauncher {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(FlexionDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, flexionParameters.getIdentifier())
-        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, FlexionDriver.ActiveContextHandler.class);
+        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, FlexionDriver.ActiveContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_MESSAGE, FlexionDriver.TaskMessageHandler.class);
 
     final EvaluatorRequest evalRequest = EvaluatorRequest.newBuilder()
         .setNumber(1)
