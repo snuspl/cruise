@@ -17,6 +17,7 @@ import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.util.EnvironmentUtils;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.sql.Driver;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -80,7 +81,7 @@ public final class FlexionLauncher {
     final Configuration driverConfWithDataLoad = new DataLoadingRequestBuilder()
         .setMemoryMB(flexionParameters.getEvalSize())
         .setInputFormatClass(TextInputFormat.class)
-        .setInputPath(flexionParameters.getInputDir())
+        .setInputPath(processInputDir(flexionParameters.getInputDir()))
         .setNumberOfDesiredSplits(flexionParameters.getEvalNum())
         .setComputeRequest(evalRequest)
         .setDriverConfigurationModule(driverConfiguration)
@@ -89,6 +90,18 @@ public final class FlexionLauncher {
     return Configurations.merge(driverConfWithDataLoad,
                                 GroupCommService.getConfiguration(),
                                 flexionParameters.getUserTaskConf());
+  }
+
+  private final String processInputDir(final String inputDir) {
+    if (!flexionParameters.getOnLocal()) {
+      return inputDir;
+    }
+
+    final File inputFile = new File(inputDir);
+
+    final StringBuilder stringBuilder = new StringBuilder("file:///")
+        .append(inputFile.getAbsolutePath());
+    return stringBuilder.toString();
   }
 
 }
