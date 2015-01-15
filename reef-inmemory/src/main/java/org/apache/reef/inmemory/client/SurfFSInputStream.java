@@ -141,7 +141,7 @@ public final class SurfFSInputStream extends FSInputStream {
 
   @Override
   public synchronized void seek(long pos) throws IOException {
-    if (pos >= fileMeta.getFileSize()) {
+    if (pos > fileMeta.getFileSize()) {
       throw new EOFException("Seek position "+pos+" exceeds file size "+fileMeta.getFileSize());
     }
     this.pos = pos;
