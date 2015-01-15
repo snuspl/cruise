@@ -39,6 +39,9 @@ import static org.junit.Assert.*;
  * Because the systems under tests are loosely coupled, the test relies on
  * timeouts and sleep calls to roughly synchronize startup and shutdown times.
  * See comments on these times below before changing these test cases.
+ *
+ * Fallback is turned off, except where explicitly tested. This is to avoid
+ * silently passing tests when Surf failed but Base FS recovered.
  */
 public final class SurfFSOpenITCase {
 
