@@ -13,6 +13,7 @@ import org.apache.hadoop.io.IOUtils;
 import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -38,6 +39,9 @@ import static org.junit.Assert.*;
  * Because the systems under tests are loosely coupled, the test relies on
  * timeouts and sleep calls to roughly synchronize startup and shutdown times.
  * See comments on these times below before changing these test cases.
+ *
+ * Fallback is turned off, except where explicitly tested. This is to avoid
+ * silently passing tests when Surf failed but Base FS recovered.
  */
 public final class SurfFSOpenITCase {
 
@@ -137,12 +141,19 @@ public final class SurfFSOpenITCase {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+  }
 
+  /**
+   * Set up surfFs client; the client connects to REEF that was created in setUpClass
+   */
+  @Before
+  public void setUp() throws IOException {
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
     conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64);
     // Increase retries on no progress, because loading from MiniCluster is slower when running as single-machine multi-threaded tests
     conf.setInt(LoadProgressManagerImpl.LOAD_MAX_NO_PROGRESS_KEY, 10);
+    conf.setBoolean(SurfFS.FALLBACK_KEY, false);
 
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF+"://"+SURF_ADDRESS), conf);
@@ -227,11 +238,14 @@ public final class SurfFSOpenITCase {
     // Test seek backward across block boundaries
     assertSeekThenReadEqualsChunk(in, 12);
 
-    // Test seek to last byte
+    // Test seek to last written byte
     assertSeekThenReadEqualsChunk(in, LONG_FILE_NUM_CHUNKS * CHUNK.length - 1);
+
+    // Test seek (but no read) one past last written byte
+    in.seek(LONG_FILE_NUM_CHUNKS * CHUNK.length);
     // Test seek past last byte (EOF)
     try {
-      in.seek(LONG_FILE_NUM_CHUNKS * CHUNK.length);
+      in.seek(LONG_FILE_NUM_CHUNKS * CHUNK.length + 1);
       fail("Should throw IOException");
     } catch (IOException e) {
       // passed
@@ -355,6 +369,7 @@ public final class SurfFSOpenITCase {
     final SurfFS surfFsWithWrongAddress = new SurfFS();
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
+    conf.setBoolean(SurfFS.FALLBACK_KEY, true);
     surfFsWithWrongAddress.initialize(URI.create(SURF+"://"+wrongAddress), conf);
 
     read(surfFsWithWrongAddress, SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
@@ -371,6 +386,7 @@ public final class SurfFSOpenITCase {
     final SurfFS surfFsWithWrongAddress = new SurfFS();
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
+    conf.setBoolean(SurfFS.FALLBACK_KEY, true);
     surfFsWithWrongAddress.initialize(URI.create(SURF+"://"+wrongAddress), conf);
 
     copyBytes(surfFsWithWrongAddress, SHORT_FILE_PATH, SHORT_FILE_NUM_CHUNKS);
@@ -381,7 +397,7 @@ public final class SurfFSOpenITCase {
    * Operations should fail when fallback is turned off
    */
   @Test
-  public void testMetaServerWithoutFallback() throws IOException {
+  public void testConnectionFailureWithoutFallback() throws IOException {
     final String wrongAddress = "localhost:18888";
 
     final SurfFS surfFsWithoutFallback = new SurfFS();
@@ -404,20 +420,20 @@ public final class SurfFSOpenITCase {
    * Test that the wrapped stream is of correct type given configuration
    */
   @Test
-  public void testCacheserverWithoutFallback() throws IOException {
-    // On default, should recieve an instance of FallbackFSInputStream
-    final FSDataInputStream in = surfFs.open(new Path(SHORT_FILE_PATH));
-    assertTrue(in.getWrappedStream() instanceof FallbackFSInputStream);
-
+  public void testFallbackConfiguration() throws IOException {
     // When FALLBACK_CACHESERVER_KEY is set to false, should not receive an instance of FallbackFSInputStream
-    final SurfFS surfFsWithoutFallback = new SurfFS();
-    final Configuration conf = new Configuration();
-    conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-    conf.setBoolean(SurfFS.FALLBACK_KEY, false);
-    surfFsWithoutFallback.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
-
-    final FSDataInputStream inWithNoFallback = surfFsWithoutFallback.open(new Path(SHORT_FILE_PATH));
+    final FSDataInputStream inWithNoFallback = surfFs.open(new Path(SHORT_FILE_PATH));
     assertFalse(inWithNoFallback.getWrappedStream() instanceof FallbackFSInputStream);
     assertTrue(inWithNoFallback.getWrappedStream() instanceof SurfFSInputStream);
+
+    // When FALLBACK_CACHESERVER_KEY is set to true, should receive an instance of FallbackFSInputStream
+    final SurfFS surfFsWithFallback = new SurfFS();
+    final Configuration conf = new Configuration();
+    conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
+    conf.setBoolean(SurfFS.FALLBACK_KEY, true);
+    surfFsWithFallback.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
+
+    final FSDataInputStream in = surfFsWithFallback.open(new Path(SHORT_FILE_PATH));
+    assertTrue(in.getWrappedStream() instanceof FallbackFSInputStream);
   }
 }
