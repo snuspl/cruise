@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.task;
 
+import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 import org.apache.reef.task.TaskMessage;
 import org.apache.reef.task.TaskMessageSource;
@@ -32,16 +33,19 @@ public class InMemoryTask implements Task, TaskMessageSource {
   private final SurfCacheServer dataServer;
   private final InMemoryCache cache;
   private final DriverMessageHandler driverMessageHandler;
+  private final HeartBeatTriggerManager heartBeatTriggerManager;
 
   private boolean isDone = false;
 
   @Inject
   InMemoryTask(final InMemoryCache cache,
                final SurfCacheServer dataServer,
-               final DriverMessageHandler driverMessageHandler) throws InjectionException {
+               final DriverMessageHandler driverMessageHandler,
+               final HeartBeatTriggerManager heartBeatTriggerManager) throws InjectionException {
     this.cache = cache;
     this.dataServer = dataServer;
     this.driverMessageHandler = driverMessageHandler;
+    this.heartBeatTriggerManager = heartBeatTriggerManager;
   }
 
   /**
@@ -50,6 +54,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
    */
   @Override
   public byte[] call(byte[] arg0) throws Exception {
+    this.heartBeatTriggerManager.triggerHeartBeat();
     final String message = "Done";
     while(true) {
       synchronized (this) {

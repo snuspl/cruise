@@ -143,15 +143,16 @@ public final class CacheManagerImpl implements CacheManager {
   @Override
   public synchronized void handleHeartbeat(final String taskId, final CacheStatusMessage msg) {
     // TODO: eventually, the task manager should remove Caches that have not been heard from for a long time
+    CacheNode cache;
     if (pendingTasks.containsKey(taskId) && msg.getBindPort() != 0) {
       final RunningTask task = pendingTasks.remove(taskId);
-      final CacheNode cache = new CacheNode(task, msg.getBindPort());
-      caches.put(taskId, cache);
+      cache = new CacheNode(task, msg.getBindPort());
       LOG.log(Level.INFO, "Cache "+cache.getAddress()+" added from task "+cache.getTaskId());
-    } else if (caches.containsKey(taskId)) {
-      final CacheNode cache = caches.get(taskId);
-      cache.setLatestStatistics(msg.getStatistics());
-      cache.setLatestTimestamp(System.currentTimeMillis());
+    } else {
+      cache = caches.get(taskId);
     }
+    cache.setLatestStatistics(msg.getStatistics());
+    cache.setLatestTimestamp(System.currentTimeMillis());
+    caches.put(taskId, cache);
   }
 }
