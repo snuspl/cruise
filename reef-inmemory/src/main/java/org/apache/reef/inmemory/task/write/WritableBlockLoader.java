@@ -61,7 +61,16 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     if (!isComplete || index >= data.size()) {
       throw new BlockLoadingException(totalWritten);
     }
-    return this.data.get(index).array();
+
+    final ByteBuffer buf = this.data.get(index);
+    if(buf.position() != bufferSize) {
+      final byte[] bArray = new byte[buf.position()];
+      buf.position(0);
+      buf.get(bArray);
+      return bArray;
+    } else {
+      return buf.array();
+    }
   }
 
   @Override

@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 
 public final class SurfFSOutputStream extends OutputStream {
   private static final Logger LOG = Logger.getLogger(SurfFSOutputStream.class.getName());
-  private static final int PACKET_SIZE = 512;
+  private static final int PACKET_SIZE = 4194304; // 4MB
   private static final int MAX_PACKETS = 80;
   private static final int COMPLETE_FILE_RETRY_NUM = 5;
   private static final int COMPLETE_FILE_RETRY_INTERVAL = 400;
@@ -126,9 +126,7 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   private void flush(final boolean close) throws IOException {
-    if (localBufWriteCount > 0) {
-      flushLocalBuf(close);
-    }
+    flushLocalBuf(close);
 
     while (packetQueue.size() > 0) {
       try {
