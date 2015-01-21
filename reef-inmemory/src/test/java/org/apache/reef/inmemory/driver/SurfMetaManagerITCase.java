@@ -275,9 +275,7 @@ public final class SurfMetaManagerITCase {
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
 
-    final Path p = new Path(path);
-    final User u = new User();
-    final FileMeta fm = metaManager.get(p, u);
+    final FileMeta fm = metaManager.get(new Path(path), new User());
     final FileMeta fileMeta = metaManager.loadData(fm);
 
     final int numThreads =  20;
