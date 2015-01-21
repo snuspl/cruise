@@ -26,7 +26,7 @@ public final class SurfFSFallbackTest {
   private final Path path = new Path("/test/path");
 
   /**
-   * Initialize the metaClient that throws an Exception on getFileMeta
+   * Initialize the metaClient that throws an Exception on get
    */
   @Before
   public void setUp() throws Exception {

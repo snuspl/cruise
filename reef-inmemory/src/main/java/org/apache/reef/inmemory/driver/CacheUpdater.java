@@ -23,5 +23,5 @@ public interface CacheUpdater {
    * @return A copy of the update metadata
    * @throws IOException Indicates an error restoring data from the Base FS
    */
-  FileMeta updateMeta(Path path, FileMeta fileMeta) throws IOException;
+  FileMeta updateMeta(FileMeta fileMeta) throws IOException;
 }
