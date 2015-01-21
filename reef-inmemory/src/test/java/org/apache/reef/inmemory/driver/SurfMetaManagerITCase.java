@@ -142,9 +142,7 @@ public final class SurfMetaManagerITCase {
         @Override
         public void run() {
           try {
-            final Path p = new Path(path);
-            final User u = new User();
-            final FileMeta fileMeta = metaManager.get(p, u);
+            final FileMeta fileMeta = metaManager.get(new Path(path), new User());
             fileMetas[index] = metaManager.loadData(fileMeta);
           } catch (final Throwable t) {
             fail(t.toString());
@@ -197,9 +195,7 @@ public final class SurfMetaManagerITCase {
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
 
-    final Path p = new Path(path);
-    final User u = new User();
-    final FileMeta fm = metaManager.get(p, u);
+    final FileMeta fm = metaManager.get(new Path(path), new User());
     final FileMeta fileMeta = metaManager.loadData(fm);
 
     final List<BlockInfo> blocks = fileMeta.getBlocks();
@@ -232,9 +228,7 @@ public final class SurfMetaManagerITCase {
         @Override
         public void run() {
           try {
-            final Path p = new Path(path);
-            final User u = new User();
-            final FileMeta fileMeta = metaManager.get(p, u);
+            final FileMeta fileMeta = metaManager.get(new Path(path), new User());
             fileMetas[index] = metaManager.loadData(fileMeta);
           } catch (final Throwable t) {
             fail(t.toString());
@@ -299,9 +293,7 @@ public final class SurfMetaManagerITCase {
         public void run() {
           try {
             if (index % 2 == 0) {
-              final Path p = new Path(path);
-              final User u = new User();
-              final FileMeta fileMeta = metaManager.get(p, u);
+              final FileMeta fileMeta = metaManager.get(new Path(path), new User());
               fileMetas[index] = metaManager.loadData(fileMeta);
             } else {
               final BlockInfo block = blocks.get(index);

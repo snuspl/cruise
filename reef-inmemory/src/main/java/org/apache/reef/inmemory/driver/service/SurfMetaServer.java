@@ -185,9 +185,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public boolean load(final String path) throws TException {
     LOG.log(Level.INFO, "CLI load command for path {0}", path);
     try {
-      final Path p = new Path(path);
-      final User u = new User();
-      final FileMeta fileMeta = metaManager.get(p, u);
+      final FileMeta fileMeta = metaManager.get(new Path(path), new User());
       metaManager.loadData(fileMeta);
       LOG.log(Level.INFO, "Load succeeded for "+path);
       return true;
