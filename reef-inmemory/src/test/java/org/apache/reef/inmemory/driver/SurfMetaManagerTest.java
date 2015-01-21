@@ -79,9 +79,9 @@ public final class SurfMetaManagerTest {
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, blockIdFactory, locationSorter);
     when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
-    metaManager.getFile(path, user);
+    metaManager.getFileMeta(path, user);
     verify(cacheLoader, times(1)).load(path);
-    metaManager.getFile(path, user);
+    metaManager.getFileMeta(path, user);
     verify(cacheLoader, times(1)).load(path);
   }
 
@@ -104,7 +104,7 @@ public final class SurfMetaManagerTest {
     when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
     assertEquals(0, metaManager.clear());
-    metaManager.getFile(path, user);
+    metaManager.getFileMeta(path, user);
     assertEquals(1, metaManager.clear());
     assertEquals(0, metaManager.clear());
   }
@@ -158,7 +158,7 @@ public final class SurfMetaManagerTest {
       when(cacheLoader.load(pathA)).thenReturn(fileMeta);
       when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
-      assertEquals(fileMeta, metaManager.getFile(pathA, user));
+      assertEquals(fileMeta, metaManager.getFileMeta(pathA, user));
     }
 
     {
@@ -226,7 +226,7 @@ public final class SurfMetaManagerTest {
       when(cacheLoader.load(pathA)).thenReturn(fileMeta);
       when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
-      assertEquals(fileMeta, metaManager.getFile(pathA, user));
+      assertEquals(fileMeta, metaManager.getFileMeta(pathA, user));
     }
 
     final Path pathB = new Path("/path/fileB");
@@ -238,7 +238,7 @@ public final class SurfMetaManagerTest {
       final FileMeta fileMeta = fileMeta(pathB, offsets, addresses);
       when(cacheLoader.load(pathB)).thenReturn(fileMeta);
       when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
-      assertEquals(fileMeta, metaManager.getFile(pathB, user));
+      assertEquals(fileMeta, metaManager.getFileMeta(pathB, user));
     }
 
     final ExecutorService es = Executors.newFixedThreadPool(numNodes * 2);

@@ -13,7 +13,7 @@ service SurfMetaService {
    * Get the list of blocks and locations for the file.
    * The returned list will be sorted by locality w.r.t. clientHostname.
    */
-  entity.FileMeta getFileMeta(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException fe)
+  entity.FileMeta open(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException fe)
 
   /**
    * Check whether the file exists in the path
@@ -34,4 +34,9 @@ service SurfMetaService {
    * Announce to the Meta server that the file is complete
    */
   bool completeFile(1:string path, 2:i64 fileSize)
+
+  /**
+   * Load path into Surf
+   */
+  entity.FileMeta load(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException ex)
 }

@@ -142,7 +142,10 @@ public final class SurfMetaManagerITCase {
         @Override
         public void run() {
           try {
-            fileMetas[index] = metaManager.getFile(new Path(path), new User(), "host0");
+            final Path p = new Path(path);
+            final User u = new User();
+            final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+            fileMetas[index] = metaManager.loadFileMeta(p, u, fileMeta);
           } catch (final Throwable t) {
             fail(t.toString());
             throw new RuntimeException(t);
@@ -194,7 +197,10 @@ public final class SurfMetaManagerITCase {
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
 
-    final FileMeta fileMeta = metaManager.getFile(new Path(path), new User(), "host0");
+    final Path p = new Path(path);
+    final User u = new User();
+    final FileMeta fm = metaManager.getFileMeta(p, u);
+    final FileMeta fileMeta =  metaManager.loadFileMeta(p, u, fm);
 
     final List<BlockInfo> blocks = fileMeta.getBlocks();
     // Remove first location from first block
@@ -226,7 +232,10 @@ public final class SurfMetaManagerITCase {
         @Override
         public void run() {
           try {
-            fileMetas[index] = metaManager.getFile(new Path(path), new User(), "host0");
+            final Path p = new Path(path);
+            final User u = new User();
+            final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+            fileMetas[index] = metaManager.loadFileMeta(p, u, fileMeta);
           } catch (final Throwable t) {
             fail(t.toString());
             throw new RuntimeException(t);
@@ -272,7 +281,10 @@ public final class SurfMetaManagerITCase {
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
 
-    final FileMeta fileMeta = metaManager.getFile(new Path(path), new User(), "host0");
+    final Path p = new Path(path);
+    final User u = new User();
+    final FileMeta fm = metaManager.getFileMeta(p, u);
+    final FileMeta fileMeta =  metaManager.loadFileMeta(p, u, fm);
 
     final int numThreads =  20;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
@@ -287,7 +299,10 @@ public final class SurfMetaManagerITCase {
         public void run() {
           try {
             if (index % 2 == 0) {
-              fileMetas[index] = metaManager.getFile(new Path(path), new User(), "host0");
+              final Path p = new Path(path);
+              final User u = new User();
+              final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+              fileMetas[index] = metaManager.loadFileMeta(p, u, fileMeta);
             } else {
               final BlockInfo block = blocks.get(index);
               final Iterator<NodeInfo> it = block.getLocationsIterator();

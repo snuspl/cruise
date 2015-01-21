@@ -73,10 +73,15 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public FileMeta getFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
+  public FileMeta open(final String path, final String clientHostname) throws FileNotFoundException, TException {
     // TODO Check existence in the baseFS
+    // TODO: need (integrated?) tests for this version
     try {
-      return metaManager.getFile(new Path(path), new User(), clientHostname); // TODO: need (integrated?) tests for this version
+      final Path p = new Path(path);
+      final User u = new User();
+      final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+      final FileMeta updatedFileMeta = metaManager.loadFileMeta(p, u, fileMeta);
+      return metaManager.sortOnLocation(updatedFileMeta, clientHostname);
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);
     } catch (IOException e) {
@@ -118,7 +123,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       throw new FileNotFoundException();
     } else {
       try {
-        final FileMeta meta = metaManager.getFile(new Path(path), new User());
+        final FileMeta meta = metaManager.getFileMeta(new Path(path), new User());
         final Action action = replicationPolicy.getReplicationAction(path, meta);
 
         // TODO Consider the locality with clientAddress
@@ -145,7 +150,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
 
     try {
-      final FileMeta meta = metaManager.getFile(new Path(path), new User());
+      final FileMeta meta = metaManager.getFileMeta(new Path(path), new User());
       LOG.log(Level.INFO, "Compare the file size of meta : Expected {0} / Actual {1}",
         new Object[] {fileSize, meta.getFileSize()});
       return fileSize == meta.getFileSize();
@@ -154,24 +159,25 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
-  public void appendBasicStatus(final StringBuilder builder,
-                                         final CacheNode cache,
-                                         final long currentTimestamp) {
-    builder.append(cache.getAddress())
-           .append(" : ")
-           .append(cache.getLatestStatistics())
-           .append(" : ")
-           .append(currentTimestamp - cache.getLatestTimestamp())
-           .append(" ms ago");
-  }
-
-  private void appendStopCause(final StringBuilder builder,
-                                        final CacheNode cache) {
-    if (cache.getStopCause() != null) {
-      builder.append(" : ")
-              .append(cache.getStopCause());
+  @Override
+  public FileMeta load(final String path, final String clientHostname) throws TException {
+    try {
+      final Path p = new Path(path);
+      final User u = new User();
+      final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+      final FileMeta updatedFileMeta = metaManager.loadFileMeta(p, u, fileMeta);
+      LOG.log(Level.INFO, "Load succeeded for "+path);
+      return metaManager.sortOnLocation(updatedFileMeta, clientHostname);
+    } catch (java.io.FileNotFoundException e) {
+      throw new FileNotFoundException("File not found at "+path);
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Load failed for "+path, e);
+      throw new TException(e);
     }
   }
+
+  //////////////////////////////////////
+  // Methods from SurfManagementService
 
   @Override
   public String getStatus() throws TException {
@@ -198,7 +204,10 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public boolean load(final String path) throws TException {
     LOG.log(Level.INFO, "CLI load command for path {0}", path);
     try {
-      metaManager.getFile(new Path(path), new User());
+      final Path p = new Path(path);
+      final User u = new User();
+      final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+      metaManager.loadFileMeta(p, u, fileMeta);
       LOG.log(Level.INFO, "Load succeeded for "+path);
       return true;
     } catch (java.io.FileNotFoundException e) {
@@ -294,5 +303,24 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public void close() throws Exception {
     if (this.server != null && this.server.isServing())
       this.server.stop();
+  }
+
+  public void appendBasicStatus(final StringBuilder builder,
+                                final CacheNode cache,
+                                final long currentTimestamp) {
+    builder.append(cache.getAddress())
+        .append(" : ")
+        .append(cache.getLatestStatistics())
+        .append(" : ")
+        .append(currentTimestamp - cache.getLatestTimestamp())
+        .append(" ms ago");
+  }
+
+  private void appendStopCause(final StringBuilder builder,
+                               final CacheNode cache) {
+    if (cache.getStopCause() != null) {
+      builder.append(" : ")
+          .append(cache.getStopCause());
+    }
   }
 }

@@ -65,7 +65,7 @@ public final class SurfFSLocationTest {
     fileMeta.setFileSize(len);
 
     final SurfMetaService.Client metaClient = mock(SurfMetaService.Client.class);
-    when(metaClient.getFileMeta(anyString(), anyString())).thenReturn(fileMeta);
+    when(metaClient.load(anyString(), anyString())).thenReturn(fileMeta);
     final MetaClientManager metaClientManager = mock(MetaClientManager.class);
     when(metaClientManager.get(anyString())).thenReturn(metaClient);
 

@@ -8,6 +8,7 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
+import org.apache.reef.inmemory.common.exceptions.IOException;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.task.BlockId;
 
@@ -49,11 +50,9 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Retrieve metadata of the file, but with no consideration for locality nor the cache updates
-   * This is used in {@link org.apache.reef.inmemory.driver.service.SurfMetaServer} for allocateBlock(), completeFile(), load()
-   * TODO: Since much of the code overlaps with getFile below, we need to somehow clean them up later(e.g. taking cacheUpdater out of getFile)
+   * Retrieve metadata of the file
    */
-  public FileMeta getFile(final Path path, final User creator) throws FileNotFoundException, Throwable {
+  public FileMeta getFileMeta(final Path path, final User creator) throws FileNotFoundException, Throwable {
     try {
       final Path absolutePath = getAbsolutePath(path, creator);
       final FileMeta fileMeta = metadataIndex.get(absolutePath);
@@ -64,23 +63,18 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Retrieve metadata of the file at the path.
-   * This will load the file if it has not been loaded.
+   * Load the file if it has not been loaded.
    * Further, it will update the file if caches have removed blocks.
    *
    * @return A copy of the returned fileMeta
    */
-  public FileMeta getFile(final Path path, final User creator, final String clientHostname) throws FileNotFoundException, Throwable {
-    try {
-      final Path absolutePath = getAbsolutePath(path, creator);
-      final FileMeta fileMeta = metadataIndex.get(absolutePath);
+  public FileMeta loadFileMeta(final Path path, final User creator, final FileMeta fileMeta) throws java.io.IOException {
+    final Path absolutePath = getAbsolutePath(path, creator);
+    return cacheUpdater.updateMeta(absolutePath, fileMeta);
+  }
 
-      final FileMeta updatedMeta = cacheUpdater.updateMeta(absolutePath, fileMeta);
-      final FileMeta locationSortedMeta = locationSorter.sortMeta(updatedMeta, clientHostname);
-      return locationSortedMeta;
-    } catch (ExecutionException e) {
-      throw e.getCause();
-    }
+  public FileMeta sortOnLocation(final FileMeta fileMeta, final String clientHostName) {
+    return locationSorter.sortMeta(fileMeta, clientHostName);
   }
 
   /**
@@ -111,17 +105,6 @@ public final class SurfMetaManager {
     metadataIndex.invalidateAll(); // TODO: this may not be so accurate
     cacheMessenger.clearAll();
     return numEntries;
-  }
-
-  private Path getAbsolutePath(Path path, User creator) {
-    Path newPath = null;
-
-    if (path.isAbsolute())
-      newPath = path;
-    else
-      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getId() + Path.SEPARATOR + path);
-
-    return newPath;
   }
 
   /**
@@ -164,5 +147,16 @@ public final class SurfMetaManager {
     meta.setFileSize(meta.getFileSize() + nWritten);
     meta.addToBlocks(newBlock);
     update(meta, new User());
+  }
+
+  private Path getAbsolutePath(Path path, User creator) {
+    Path newPath = null;
+
+    if (path.isAbsolute())
+      newPath = path;
+    else
+      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getId() + Path.SEPARATOR + path);
+
+    return newPath;
   }
 }
