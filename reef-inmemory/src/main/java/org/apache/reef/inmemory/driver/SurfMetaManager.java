@@ -8,12 +8,10 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
-import org.apache.reef.inmemory.common.exceptions.IOException;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -50,12 +48,13 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Retrieve metadata of the file
+   * Retrieve metadata of the file.
+   * @return {@code null} if the metadata is not found.
    */
-  public FileMeta get(final Path path, final User creator) throws FileNotFoundException, Throwable {
+  public FileMeta get(final Path path, final User creator) throws Throwable {
     try {
       final Path absolutePath = getAbsolutePath(path, creator);
-      return metadataIndex.get(absolutePath); // TODO: refactor HDFSCacheLoader so that it does not load data
+      return metadataIndex.get(absolutePath);
     } catch (ExecutionException e) {
       throw e.getCause();
     }
