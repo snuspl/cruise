@@ -80,7 +80,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       final Path p = new Path(path);
       final User u = new User();
       final FileMeta fileMeta = metaManager.getFileMeta(p, u);
-      final FileMeta updatedFileMeta = metaManager.loadFileMeta(p, u, fileMeta);
+      final FileMeta updatedFileMeta = metaManager.loadData(p, u, fileMeta);
       return metaManager.sortOnLocation(updatedFileMeta, clientHostname);
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);
@@ -165,7 +165,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       final Path p = new Path(path);
       final User u = new User();
       final FileMeta fileMeta = metaManager.getFileMeta(p, u);
-      final FileMeta updatedFileMeta = metaManager.loadFileMeta(p, u, fileMeta);
+      final FileMeta updatedFileMeta = metaManager.loadData(p, u, fileMeta);
       LOG.log(Level.INFO, "Load succeeded for "+path);
       return metaManager.sortOnLocation(updatedFileMeta, clientHostname);
     } catch (java.io.FileNotFoundException e) {
@@ -207,7 +207,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       final Path p = new Path(path);
       final User u = new User();
       final FileMeta fileMeta = metaManager.getFileMeta(p, u);
-      metaManager.loadFileMeta(p, u, fileMeta);
+      metaManager.loadData(p, u, fileMeta);
       LOG.log(Level.INFO, "Load succeeded for "+path);
       return true;
     } catch (java.io.FileNotFoundException e) {

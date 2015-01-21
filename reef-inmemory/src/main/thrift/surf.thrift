@@ -36,7 +36,7 @@ service SurfMetaService {
   bool completeFile(1:string path, 2:i64 fileSize)
 
   /**
-   * Load path into Surf
+   * Load path into Surf, return the updated fileMeta sorted based on locality with regard to clientHostName
    */
   entity.FileMeta load(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException ex)
 }
