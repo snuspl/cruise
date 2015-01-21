@@ -148,12 +148,14 @@ public final class SurfMetaManager {
   }
 
   private Path getAbsolutePath(Path path, User creator) {
-    Path newPath = null;
+    Path newPath;
 
-    if (path.isAbsolute())
+    if (path.isAbsolute()) {
       newPath = path;
-    else
+    }
+    else {
       newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getId() + Path.SEPARATOR + path);
+    }
 
     return newPath;
   }
