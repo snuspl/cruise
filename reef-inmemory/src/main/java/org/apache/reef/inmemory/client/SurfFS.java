@@ -194,7 +194,7 @@ public final class SurfFS extends FileSystem {
             new Object[]{path, pathStr});
 
     try {
-      final FileMeta metadata = getMetaClient().open(pathStr, localAddress);
+      final FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
       final CacheClientManager cacheClientManager = getCacheClientManager();
       final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
       if (isFallback) {
@@ -281,7 +281,7 @@ public final class SurfFS extends FileSystem {
   @Override
   public FileStatus getFileStatus(Path path) throws IOException {
     try {
-      final FileMeta meta = getMetaClient().load(path.toUri().getPath(), localAddress);
+      final FileMeta meta = getMetaClient().getFileMeta(path.toUri().getPath(), localAddress);
       return getFileStatusFromMeta(meta);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       if (isFallback) {
@@ -330,7 +330,7 @@ public final class SurfFS extends FileSystem {
     final List<BlockLocation> blockLocations = new LinkedList<>();
 
     try {
-      final FileMeta metadata = getMetaClient().load(file.getPath().toUri().getPath(), localAddress);
+      final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath(), localAddress);
       long startRemaining = start;
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)

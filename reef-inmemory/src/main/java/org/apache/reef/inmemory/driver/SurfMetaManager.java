@@ -52,11 +52,10 @@ public final class SurfMetaManager {
   /**
    * Retrieve metadata of the file
    */
-  public FileMeta getFileMeta(final Path path, final User creator) throws FileNotFoundException, Throwable {
+  public FileMeta get(final Path path, final User creator) throws FileNotFoundException, Throwable {
     try {
       final Path absolutePath = getAbsolutePath(path, creator);
-      final FileMeta fileMeta = metadataIndex.get(absolutePath);
-      return fileMeta;
+      return metadataIndex.get(absolutePath); // TODO: refactor HDFSCacheLoader so that it does not load data
     } catch (ExecutionException e) {
       throw e.getCause();
     }

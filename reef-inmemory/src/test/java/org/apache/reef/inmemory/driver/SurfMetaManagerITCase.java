@@ -144,7 +144,7 @@ public final class SurfMetaManagerITCase {
           try {
             final Path p = new Path(path);
             final User u = new User();
-            final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+            final FileMeta fileMeta = metaManager.get(p, u);
             fileMetas[index] = metaManager.loadData(fileMeta);
           } catch (final Throwable t) {
             fail(t.toString());
@@ -199,7 +199,7 @@ public final class SurfMetaManagerITCase {
 
     final Path p = new Path(path);
     final User u = new User();
-    final FileMeta fm = metaManager.getFileMeta(p, u);
+    final FileMeta fm = metaManager.get(p, u);
     final FileMeta fileMeta = metaManager.loadData(fm);
 
     final List<BlockInfo> blocks = fileMeta.getBlocks();
@@ -234,7 +234,7 @@ public final class SurfMetaManagerITCase {
           try {
             final Path p = new Path(path);
             final User u = new User();
-            final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+            final FileMeta fileMeta = metaManager.get(p, u);
             fileMetas[index] = metaManager.loadData(fileMeta);
           } catch (final Throwable t) {
             fail(t.toString());
@@ -283,7 +283,7 @@ public final class SurfMetaManagerITCase {
 
     final Path p = new Path(path);
     final User u = new User();
-    final FileMeta fm = metaManager.getFileMeta(p, u);
+    final FileMeta fm = metaManager.get(p, u);
     final FileMeta fileMeta = metaManager.loadData(fm);
 
     final int numThreads =  20;
@@ -301,7 +301,7 @@ public final class SurfMetaManagerITCase {
             if (index % 2 == 0) {
               final Path p = new Path(path);
               final User u = new User();
-              final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+              final FileMeta fileMeta = metaManager.get(p, u);
               fileMetas[index] = metaManager.loadData(fileMeta);
             } else {
               final BlockInfo block = blocks.get(index);
