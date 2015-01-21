@@ -77,9 +77,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     // TODO Check existence in the baseFS
     // TODO: need (integrated?) tests for this version
     try {
-      final Path p = new Path(path);
-      final User u = new User();
-      final FileMeta fileMeta = metaManager.getFileMeta(p, u);
+      final FileMeta fileMeta = metaManager.getFileMeta(new Path(path), new User());
       final FileMeta updatedFileMeta = metaManager.loadData(fileMeta);
       return metaManager.sortOnLocation(updatedFileMeta, clientHostname);
     } catch (java.io.FileNotFoundException e) {
