@@ -145,7 +145,7 @@ public final class SurfMetaManagerITCase {
             final Path p = new Path(path);
             final User u = new User();
             final FileMeta fileMeta = metaManager.getFileMeta(p, u);
-            fileMetas[index] = metaManager.loadData(p, u, fileMeta);
+            fileMetas[index] = metaManager.loadData(fileMeta);
           } catch (final Throwable t) {
             fail(t.toString());
             throw new RuntimeException(t);
@@ -200,7 +200,7 @@ public final class SurfMetaManagerITCase {
     final Path p = new Path(path);
     final User u = new User();
     final FileMeta fm = metaManager.getFileMeta(p, u);
-    final FileMeta fileMeta = metaManager.loadData(p, u, fm);
+    final FileMeta fileMeta = metaManager.loadData(fm);
 
     final List<BlockInfo> blocks = fileMeta.getBlocks();
     // Remove first location from first block
@@ -235,7 +235,7 @@ public final class SurfMetaManagerITCase {
             final Path p = new Path(path);
             final User u = new User();
             final FileMeta fileMeta = metaManager.getFileMeta(p, u);
-            fileMetas[index] = metaManager.loadData(p, u, fileMeta);
+            fileMetas[index] = metaManager.loadData(fileMeta);
           } catch (final Throwable t) {
             fail(t.toString());
             throw new RuntimeException(t);
@@ -284,7 +284,7 @@ public final class SurfMetaManagerITCase {
     final Path p = new Path(path);
     final User u = new User();
     final FileMeta fm = metaManager.getFileMeta(p, u);
-    final FileMeta fileMeta = metaManager.loadData(p, u, fm);
+    final FileMeta fileMeta = metaManager.loadData(fm);
 
     final int numThreads =  20;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
@@ -302,7 +302,7 @@ public final class SurfMetaManagerITCase {
               final Path p = new Path(path);
               final User u = new User();
               final FileMeta fileMeta = metaManager.getFileMeta(p, u);
-              fileMetas[index] = metaManager.loadData(p, u, fileMeta);
+              fileMetas[index] = metaManager.loadData(fileMeta);
             } else {
               final BlockInfo block = blocks.get(index);
               final Iterator<NodeInfo> it = block.getLocationsIterator();
