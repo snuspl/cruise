@@ -69,8 +69,7 @@ public final class SurfMetaManager {
    * @return A copy of the returned fileMeta
    */
   public FileMeta loadData(final Path path, final User creator, final FileMeta fileMeta) throws java.io.IOException {
-    final Path absolutePath = getAbsolutePath(path, creator);
-    return cacheUpdater.updateMeta(absolutePath, fileMeta);
+    return cacheUpdater.updateMeta(fileMeta);
   }
 
   public FileMeta sortOnLocation(final FileMeta fileMeta, final String clientHostName) {

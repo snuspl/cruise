@@ -95,12 +95,13 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
    * @throws Exception
    */
   @Override
-  public FileMeta updateMeta(final Path path, final FileMeta fileMeta) throws IOException {
+  public FileMeta updateMeta(final FileMeta fileMeta) throws IOException {
     synchronized (fileMeta) {
       if (fileMeta.getBlocksSize() == 0) {
         return fileMeta.deepCopy();
       }
 
+      final Path path = new Path(fileMeta.getFullPath());
       // 0. Apply removes
       final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(fileMeta.getFullPath());
       if (pendingRemoves == null) {
