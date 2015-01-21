@@ -160,12 +160,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   @Override
   public FileMeta load(final String path, final String clientHostname) throws TException {
     try {
-      final Path p = new Path(path);
-      final User u = new User();
-      final FileMeta fileMeta = metaManager.getFileMeta(p, u);
-      final FileMeta updatedFileMeta = metaManager.loadData(fileMeta);
-      LOG.log(Level.INFO, "Load succeeded for "+path);
-      return metaManager.sortOnLocation(updatedFileMeta, clientHostname);
+      final FileMeta fileMeta = metaManager.getFileMeta(new Path(path), new User());
+      return metaManager.loadData(fileMeta);
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);
     } catch (Throwable e) {
