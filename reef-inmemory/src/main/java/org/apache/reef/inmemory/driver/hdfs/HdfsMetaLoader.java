@@ -33,15 +33,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Cache Loader implementation for HDFS.
+ * Metadata Loader implementation for HDFS.
  *
- * Tasks load data from HDFS based on the HDFS metadata sent here.
- * The metadata, including Task locations, is then returned
+ * Invoked by {@link org.apache.reef.inmemory.driver.SurfMetaManager#get}, the CacheLoader
+ * gets the file status from HDFS. Metadata is created from the status and then returned
  * to be stored in the LoadingCache.
  */
-public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implements AutoCloseable {
+public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements AutoCloseable {
 
-  private static final Logger LOG = Logger.getLogger(HdfsCacheLoader.class.getName());
+  private static final Logger LOG = Logger.getLogger(HdfsMetaLoader.class.getName());
   private final EventRecorder RECORD;
 
   private final CacheManager cacheManager;
@@ -53,13 +53,13 @@ public final class HdfsCacheLoader extends CacheLoader<Path, FileMeta> implement
   private final DFSClient dfsClient;
 
   @Inject
-  public HdfsCacheLoader(final CacheManager cacheManager,
-                         final HdfsCacheMessenger cacheMessenger,
-                         final HdfsCacheSelectionPolicy cacheSelector,
-                         final HdfsBlockIdFactory blockFactory,
-                         final ReplicationPolicy replicationPolicy,
-                         final @Parameter(DfsParameters.Address.class) String dfsAddress,
-                         final EventRecorder recorder) {
+  public HdfsMetaLoader(final CacheManager cacheManager,
+                        final HdfsCacheMessenger cacheMessenger,
+                        final HdfsCacheSelectionPolicy cacheSelector,
+                        final HdfsBlockIdFactory blockFactory,
+                        final ReplicationPolicy replicationPolicy,
+                        final @Parameter(DfsParameters.Address.class) String dfsAddress,
+                        final EventRecorder recorder) {
     this.cacheManager = cacheManager;
     this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;

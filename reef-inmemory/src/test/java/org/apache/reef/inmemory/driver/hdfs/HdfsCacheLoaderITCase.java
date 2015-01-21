@@ -1,25 +1,21 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
-import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
 import org.apache.reef.inmemory.driver.CacheManager;
-import org.apache.reef.inmemory.driver.CacheManagerImpl;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.TestUtils;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
@@ -29,7 +25,6 @@ import org.junit.Test;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -47,7 +42,7 @@ public final class HdfsCacheLoaderITCase {
   private FileSystem fs;
   private CacheManager manager;
   private HdfsCacheMessenger messenger;
-  private HdfsCacheLoader loader;
+  private HdfsMetaLoader loader;
   private HdfsCacheSelectionPolicy selector;
   private HdfsBlockIdFactory blockFactory;
   private ReplicationPolicy replicationPolicy;
@@ -80,7 +75,7 @@ public final class HdfsCacheLoaderITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsCacheLoader(
+    loader = new HdfsMetaLoader(
             manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString(), new NullEventRecorder());
   }
 
