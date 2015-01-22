@@ -31,10 +31,11 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests for HdfsCacheLoader. All Hdfs operations are performed on a live
+ * Tests for HdfsMetaLoader. All Hdfs operations are performed on a live
  * Hadoop minicluster.
+ * // TODO This class should only test to load metadata (not blocks).
  */
-public final class HdfsCacheLoaderITCase {
+public final class HdfsMetaLoaderITCase {
 
   private static final int blockSize = 512;
   private static final String TESTDIR = ITUtils.getTestDir();
@@ -75,8 +76,7 @@ public final class HdfsCacheLoaderITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsMetaLoader(
-            manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString(), new NullEventRecorder());
+    loader = new HdfsMetaLoader(fs.getUri().toString(), new NullEventRecorder());
   }
 
   /**
