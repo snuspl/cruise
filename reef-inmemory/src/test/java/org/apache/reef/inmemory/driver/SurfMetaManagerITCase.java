@@ -98,7 +98,7 @@ public final class SurfMetaManagerITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsMetaLoader(fs.getUri().toString(), RECORD);
+    loader = new HdfsMetaLoader(fs.getUri().toString(), blockFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 

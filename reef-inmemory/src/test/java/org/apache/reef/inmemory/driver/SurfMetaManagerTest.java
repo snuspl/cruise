@@ -77,7 +77,7 @@ public final class SurfMetaManagerTest {
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, blockIdFactory, locationSorter);
-    when(cacheUpdater.reloadRemovedBlocks(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
+    when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
     metaManager.get(path, user);
     verify(cacheLoader, times(1)).load(path);
@@ -101,7 +101,7 @@ public final class SurfMetaManagerTest {
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, blockIdFactory, locationSorter);
-    when(cacheUpdater.reloadRemovedBlocks(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
+    when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
     assertEquals(0, metaManager.clear());
     metaManager.get(path, user);
@@ -156,7 +156,7 @@ public final class SurfMetaManagerTest {
       final long[] blockIds = new long[]{0, 1, 2, 3};
       final FileMeta fileMeta = fileMeta(pathA, blockIds, addresses);
       when(cacheLoader.load(pathA)).thenReturn(fileMeta);
-      when(cacheUpdater.reloadRemovedBlocks(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
+      when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
       assertEquals(fileMeta, metaManager.get(pathA, user));
     }
@@ -224,7 +224,7 @@ public final class SurfMetaManagerTest {
       }
       final FileMeta fileMeta = fileMeta(pathA, offsets, addresses);
       when(cacheLoader.load(pathA)).thenReturn(fileMeta);
-      when(cacheUpdater.reloadRemovedBlocks(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
+      when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
       assertEquals(fileMeta, metaManager.get(pathA, user));
     }
@@ -237,7 +237,7 @@ public final class SurfMetaManagerTest {
       }
       final FileMeta fileMeta = fileMeta(pathB, offsets, addresses);
       when(cacheLoader.load(pathB)).thenReturn(fileMeta);
-      when(cacheUpdater.reloadRemovedBlocks(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
+      when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
       assertEquals(fileMeta, metaManager.get(pathB, user));
     }
 

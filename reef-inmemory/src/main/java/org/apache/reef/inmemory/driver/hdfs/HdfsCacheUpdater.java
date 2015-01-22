@@ -151,7 +151,6 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
             final NodeInfo location = new NodeInfo(nodeToAdd.getAddress(), nodeToAdd.getRack());
             blockInfo.addToLocations(location);
           }
-          fileMeta.addToBlocks(blockInfo);
         }
       }
 
@@ -170,11 +169,13 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   // TODO: contains() will be inefficient if blockInfo.getLocations is large
   private List<CacheNode> filterCacheNodes(List<CacheNode> cacheNodes, BlockInfo blockInfo) {
     final List<CacheNode> nodesToChooseFrom = new ArrayList<>(cacheNodes);
-    final Iterator<CacheNode> nodeIter = nodesToChooseFrom.iterator();
-    while (nodeIter.hasNext()) {
-      final CacheNode node = nodeIter.next();
-      if (blockInfo.getLocations().contains(new NodeInfo(node.getAddress(), node.getRack()))) {
-        nodeIter.remove();
+    if (blockInfo.getLocationsSize() > 0) {
+      final Iterator<CacheNode> nodeIter = nodesToChooseFrom.iterator();
+      while (nodeIter.hasNext()) {
+        final CacheNode node = nodeIter.next();
+        if (blockInfo.getLocations().contains(new NodeInfo(node.getAddress(), node.getRack()))) {
+          nodeIter.remove();
+        }
       }
     }
     return nodesToChooseFrom;

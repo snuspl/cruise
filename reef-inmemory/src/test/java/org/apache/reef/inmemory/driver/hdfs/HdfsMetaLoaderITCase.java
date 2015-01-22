@@ -33,7 +33,6 @@ import static org.mockito.Mockito.*;
 /**
  * Tests for HdfsMetaLoader. All Hdfs operations are performed on a live
  * Hadoop minicluster.
- * // TODO This class should only test to load metadata (not blocks).
  */
 public final class HdfsMetaLoaderITCase {
 
@@ -42,9 +41,7 @@ public final class HdfsMetaLoaderITCase {
 
   private FileSystem fs;
   private CacheManager manager;
-  private HdfsCacheMessenger messenger;
   private HdfsMetaLoader loader;
-  private HdfsCacheSelectionPolicy selector;
   private HdfsBlockIdFactory blockFactory;
   private ReplicationPolicy replicationPolicy;
 
@@ -54,8 +51,6 @@ public final class HdfsMetaLoaderITCase {
   @Before
   public void setUp() throws IOException {
     manager = TestUtils.cacheManager();
-    messenger = new HdfsCacheMessenger(manager);
-    selector = new HdfsRandomCacheSelectionPolicy();
     blockFactory = new HdfsBlockIdFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
@@ -76,7 +71,7 @@ public final class HdfsMetaLoaderITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsMetaLoader(fs.getUri().toString(), new NullEventRecorder());
+    loader = new HdfsMetaLoader(fs.getUri().toString(), blockFactory, new NullEventRecorder());
   }
 
   /**
@@ -88,23 +83,28 @@ public final class HdfsMetaLoaderITCase {
   }
 
   /**
-   * Test load of a non-existing path correctly throws FileNotFoundException
+   * Test load of a non-existing path returns {@code null}.
    */
   @Test(expected = FileNotFoundException.class)
   public void testLoadNonexistingPath() throws IOException {
-    loader.load(new Path("/nonexistent/path"));
+    assertNull(loader.load(new Path("/nonexistent/path")));
   }
 
   /**
    * Test load of a directory (not a file) correctly throws FileNotFoundException
    * @throws IOException
    */
-  @Test(expected = FileNotFoundException.class)
+  @Test
   public void testLoadDirectory() throws IOException {
     final Path directory = new Path(TESTDIR+"/directory");
 
     fs.mkdirs(directory);
     final FileMeta fileMeta = loader.load(directory);
+    assertNotNull(fileMeta);
+    assertTrue(fileMeta.isDirectory());
+    assertEquals(fileMeta.getBlocksSize(), 0);
+    assertEquals(fileMeta.getFileSize(), 0);
+    assertEquals(directory.toString(), fileMeta.getFullPath());
   }
 
   /**
@@ -122,8 +122,8 @@ public final class HdfsMetaLoaderITCase {
 
     final FileMeta fileMeta = loader.load(smallFile);
     assertNotNull(fileMeta);
-    assertNotNull(fileMeta.getBlocks());
-    assertEquals(3, fileMeta.getBlocksIterator().next().getLocationsSize());
+    assertFalse(fileMeta.isDirectory());
+    assertEquals(0, fileMeta.getBlocksIterator().next().getLocationsSize());
     assertEquals(blockSize, fileMeta.getBlockSize());
     assertEquals(smallFile.toString(), fileMeta.getFullPath());
   }
@@ -146,18 +146,18 @@ public final class HdfsMetaLoaderITCase {
 
     final FileMeta fileMeta = loader.load(largeFile);
     assertNotNull(fileMeta);
-    assertNotNull(fileMeta.getBlocks());
+    assertFalse(fileMeta.isDirectory());
     assertEquals(blockSize, fileMeta.getBlockSize());
     assertEquals(largeFile.toString(), fileMeta.getFullPath());
 
     final List<BlockInfo> blocks = fileMeta.getBlocks();
-    assertEquals(locatedBlocks.getLocatedBlocks().size(), blocks.size());
+    assertEquals(locatedBlocks.getLocatedBlocks().size(), fileMeta.getBlocksSize());
     final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
             ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
     assertEquals(numBlocksComputed, blocks.size());
     for (int i = 0; i < blocks.size(); i++) {
       assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), blocks.get(i).getBlockId());
-      assertEquals(3, blocks.get(i).getLocationsSize());
+      assertEquals(0, blocks.get(i).getLocationsSize()); // The locations will be updated in CacheUpdater#updateMeta
     }
   }
 }
