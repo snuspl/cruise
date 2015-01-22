@@ -1,6 +1,10 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import com.google.common.cache.CacheLoader;
+import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.tang.annotations.Parameter;
@@ -14,6 +18,7 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.net.URI;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,16 +35,18 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
   private final EventRecorder RECORD;
 
   private final DFSClient dfsClient;
+  private final HdfsBlockIdFactory blockFactory;
 
   @Inject
   public HdfsMetaLoader(final @Parameter(DfsParameters.Address.class) String dfsAddress,
+                        final HdfsBlockIdFactory blockFactory,
                         final EventRecorder recorder) {
     try {
       this.dfsClient = new DFSClient(new URI(dfsAddress), new Configuration());
     } catch (Exception ex) {
       throw new RuntimeException("Unable to connect to DFS Client", ex);
     }
-
+    this.blockFactory = blockFactory;
     this.RECORD = recorder;
   }
 
@@ -62,8 +69,24 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     fileMeta.setFileSize(fileStatus.getLen());
     fileMeta.setBlockSize(fileStatus.getBlockSize());
     fileMeta.setDirectory(fileStatus.isDir());
+    addBlockLocations(fileMeta, fileStatus.getLen());
+
     // TODO Additional Fields should be resolved
     return fileMeta;
+  }
+
+  /**
+   * Add block locations to fileMeta
+   * @throws IOException
+   */
+  private void addBlockLocations(final FileMeta fileMeta, final long fileLength) throws IOException {
+    final String pathStr = fileMeta.getFullPath();
+    final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(pathStr, 0, fileLength);
+    final List<LocatedBlock> locatedBlockList = locatedBlocks.getLocatedBlocks();
+    for (final LocatedBlock locatedBlock : locatedBlockList) {
+      final BlockInfo blockInfo = blockFactory.newBlockInfo(pathStr, locatedBlock);
+      fileMeta.addToBlocks(blockInfo);
+    }
   }
 
   @Override
