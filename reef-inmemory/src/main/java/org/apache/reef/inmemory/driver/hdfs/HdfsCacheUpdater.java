@@ -76,38 +76,34 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   }
 
   /**
+   * Apply the changes from cache nodes and load blocks if needed to fulfill
+   * replication factor.
+   *
    * 0. Apply removes
    * 1. Resolve replication policy
    * 2. Get information from HDFS
-   * 3. For each block that needs loading, synchronously add one location
+   * 3. For each block that needs loading, load the block asynchronously
    * 4. Return a copy of the new metadata
-   * TODO: 5. If there are still blocks that need replicas,
-   * TODO:    then asynchronously add those locations.
    *
-   * Steps 1-4 are intentionally synchronous to avoid replying with blocks with zero locations.
    * Other concurrent requests for the same file will block on this update.
-   * TODO: Step 5 is asynchronous, concurrent updates to the same metadata is avoided by using locking.
    *
-   * @param path The file's path
-   * @param fileMeta Updated in place, using a synchronized block. This should be the single point where FileMeta's are updated.
+   * @param fileMeta Updated in place, using a synchronized block.
+   *                 This should be the single point where FileMeta's are updated.
    * TODO: how bad is the deep copy for performance?
    * @return A deep copy of FileMeta, to prevent modifications until FileMeta is passed to the network.
-   * @throws Exception
+   * @throws IOException
    */
   @Override
-  public FileMeta updateMeta(final FileMeta fileMeta) throws IOException {
+  public FileMeta updateMeta(FileMeta fileMeta) throws IOException {
     synchronized (fileMeta) {
-      if (fileMeta.getBlocksSize() == 0) {
-        return fileMeta.deepCopy();
-      }
-
       final Path path = new Path(fileMeta.getFullPath());
+      final long blockSize = fileMeta.getBlockSize();
+
       // 0. Apply removes
       final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(fileMeta.getFullPath());
-      if (pendingRemoves == null) {
-        return fileMeta.deepCopy();
+      if (pendingRemoves != null) {
+        applyRemoves(fileMeta, pendingRemoves);
       }
-      final List<BlockInfo> blocksWithRemoves = applyRemoves(fileMeta, pendingRemoves);
 
       // 1. Resolve replication policy
       final List<CacheNode> cacheNodes = cacheManager.getCaches();
@@ -126,58 +122,65 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       // 2. Get information from HDFS
       final LocatedBlocks locatedBlocks = getLocatedBlocks(path);
 
-      final Map<Integer, List<CacheNode>> indexToSelectedNodes = new HashMap<>(blocksWithRemoves.size());
-      final Map<Integer, HdfsBlockMessage> indexToMsg = new HashMap<>(blocksWithRemoves.size());
-
-      // 3. For each block that needs loading, synchronously add one location
-      final List<BlockInfo> blocksWithNoReplicas = getBlocksWithNoReplicas(blocksWithRemoves);
-      if (blocksWithNoReplicas.size() > 0) {
-        final long blockSize = fileMeta.getBlockSize();
-        for (final BlockInfo blockInfo : blocksWithNoReplicas) {
+      // 3. For each block that needs loading, load blocks asynchronously
+      for (final BlockInfo blockInfo : fileMeta.getBlocks()) {
+        final int numLocations = blockInfo.getLocationsSize();
+        if (numLocations < replicationFactor) {
           final int index = (int) (blockInfo.getOffSet() / blockSize);
           final LocatedBlock locatedBlock = locatedBlocks.get(index);
 
-          // TODO: contains() will be inefficient if blockInfo.getLocations is large
-          final List<CacheNode> nodesToChooseFrom = new ArrayList<>(cacheNodes);
-          final Iterator<CacheNode> nodeIter = nodesToChooseFrom.iterator();
-          while (nodeIter.hasNext()) {
-            final CacheNode node = nodeIter.next();
-            if (blockInfo.getLocations().contains(new NodeInfo(node.getAddress(), node.getRack()))) {
-              nodeIter.remove();
-            }
-          }
+          // Filter the nodes to avoid duplicate
+          final List<CacheNode> nodesToChooseFrom = filterCacheNodes(cacheNodes, blockInfo);
 
           final List<LocatedBlock> locatedBlockList = new ArrayList<>(1);
           locatedBlockList.add(locatedBlock);
           final Map<LocatedBlock, List<CacheNode>> selected = cacheSelector.select(
-                  locatedBlockList, nodesToChooseFrom, replicationFactor - blockInfo.getLocationsSize());
+                  locatedBlockList, nodesToChooseFrom, replicationFactor - numLocations);
 
           final List<CacheNode> selectedNodes = selected.get(locatedBlock);
-          indexToSelectedNodes.put(index, selectedNodes);
-
           if (selectedNodes.size() == 0) {
             throw new IOException("Surf selected zero caches out of " + cacheNodes.size() + " total caches");
           }
 
-          final HdfsBlockId hdfsBlockId = blockFactory.newBlockId(blockInfo);
-          final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
-                  HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
-          final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlockId, hdfsDatanodeInfos, pin);
-          indexToMsg.put(index, msg);
-
-          final CacheNode nodeToAddSync = selectedNodes.remove(0);
-          cacheMessenger.addBlock(nodeToAddSync.getTaskId(), msg);
-
-          final NodeInfo location = new NodeInfo(nodeToAddSync.getAddress(), nodeToAddSync.getRack());
-          blockInfo.addToLocations(location);
+          for (final CacheNode nodeToAdd : selectedNodes) {
+            final HdfsBlockId hdfsBlockId = blockFactory.newBlockId(blockInfo);
+            final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
+                    HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
+            final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlockId, hdfsDatanodeInfos, pin);
+            cacheMessenger.addBlock(nodeToAdd.getTaskId(), msg);
+            final NodeInfo location = new NodeInfo(nodeToAdd.getAddress(), nodeToAdd.getRack());
+            blockInfo.addToLocations(location);
+          }
+          fileMeta.addToBlocks(blockInfo);
         }
       }
+
       // 4. Return a copy of the new metadata
       return fileMeta.deepCopy();
     }
   }
 
-  private LocatedBlocks getLocatedBlocks(Path path) throws IOException {
+  /**
+   * Filter cache nodes to preventing duplicate load by the cache nodes
+   * that have the block already.
+   * @param cacheNodes Whole cache node list.
+   * @param blockInfo The block to load.
+   * @return A list of nodes that do not have the block.
+   */
+  // TODO: contains() will be inefficient if blockInfo.getLocations is large
+  private List<CacheNode> filterCacheNodes(List<CacheNode> cacheNodes, BlockInfo blockInfo) {
+    final List<CacheNode> nodesToChooseFrom = new ArrayList<>(cacheNodes);
+    final Iterator<CacheNode> nodeIter = nodesToChooseFrom.iterator();
+    while (nodeIter.hasNext()) {
+      final CacheNode node = nodeIter.next();
+      if (blockInfo.getLocations().contains(new NodeInfo(node.getAddress(), node.getRack()))) {
+        nodeIter.remove();
+      }
+    }
+    return nodesToChooseFrom;
+  }
+
+  private LocatedBlocks getLocatedBlocks(final Path path) throws IOException {
     synchronized (dfsClient) {
       final HdfsFileStatus hdfsFileStatus = dfsClient.getFileInfo(path.toString());
       if (hdfsFileStatus == null) {
@@ -187,16 +190,6 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0, len);
       return locatedBlocks;
     }
-  }
-
-  private List<BlockInfo> getBlocksWithNoReplicas(final List<BlockInfo> blocks) {
-    final List<BlockInfo> blocksWithNoReplicas = new ArrayList<>(blocks.size());
-    for (final BlockInfo block : blocks) {
-      if (block.getLocationsSize() == 0) {
-        blocksWithNoReplicas.add(block);
-      }
-    }
-    return blocksWithNoReplicas;
   }
 
   private List<BlockInfo> applyRemoves(final FileMeta fileMeta, final Map<BlockId, List<String>> pendingRemoves) {

@@ -64,10 +64,15 @@ public final class SurfMetaManager {
    * Load the file if it has not been loaded.
    * Further, it will update the file if caches have removed blocks.
    *
-   * @return A copy of the returned fileMeta
+   * @return A copy of the returned fileMeta. Return the meta directly
+   * if the file is a directory.
    */
   public FileMeta loadData(final FileMeta fileMeta) throws java.io.IOException {
-    return cacheUpdater.updateMeta(fileMeta);
+    if (fileMeta.isDirectory()) {
+      return fileMeta;
+    } else {
+      return cacheUpdater.updateMeta(fileMeta);
+    }
   }
 
   public FileMeta sortOnLocation(final FileMeta fileMeta, final String clientHostName) {
