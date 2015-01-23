@@ -49,8 +49,10 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     LOG.log(Level.INFO, "Load in memory: {0}", pathStr);
 
     final Event getFileInfoEvent = RECORD.event("driver.get-file-info", pathStr).start();
-    // getFileInfo returns null if FileNotFound, as stated in its javadoc
     final HdfsFileStatus fileStatus = dfsClient.getFileInfo(pathStr);
+    if (fileStatus == null) {
+      throw new java.io.FileNotFoundException();
+    }
     RECORD.record(getFileInfoEvent.stop());
 
     return getFileMeta(pathStr, fileStatus);
@@ -62,9 +64,6 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
    * TODO: use FSPermission properly
    */
   private FileMeta getFileMeta(final String pathStr, final HdfsFileStatus fileStatus) throws IOException {
-    if (fileStatus == null) {
-      return null;
-    }
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFullPath(pathStr);
     fileMeta.setFileSize(fileStatus.getLen());

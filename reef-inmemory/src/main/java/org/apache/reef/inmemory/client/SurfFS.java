@@ -343,22 +343,18 @@ public final class SurfFS extends FileSystem {
    * TODO: use FSPermission properly
    */
   private FileStatus getFileStatus(final FileMeta meta) {
-    if (meta == null) {
-      return null;
-    } else {
-      final Path path = new Path(meta.getFullPath());
-      final long length = meta.getFileSize();
-      final boolean isDir = meta.isDirectory();
-      final int replication = meta.getReplication();
-      final long blockSize = meta.getBlockSize();
-      final long modificationTime = meta.getModificationTime();
-      final long accessTime = meta.getAccessTime();
-      final String owner = meta.getUser().getOwner();
-      final String group = meta.getUser().getGroup();
-      final Path symLink = new Path(meta.getSymLink());
-      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
-          new FsPermission((short)6), owner, group, symLink, path);
-    }
+    final Path path = new Path(meta.getFullPath());
+    final long length = meta.getFileSize();
+    final boolean isDir = meta.isDirectory();
+    final int replication = meta.getReplication();
+    final long blockSize = meta.getBlockSize();
+    final long modificationTime = meta.getModificationTime();
+    final long accessTime = meta.getAccessTime();
+    final String owner = meta.getUser().getOwner();
+    final String group = meta.getUser().getGroup();
+    final Path symLink = new Path(meta.getSymLink());
+    return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
+            new FsPermission((short)6), owner, group, symLink, path);
   }
 
   private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
