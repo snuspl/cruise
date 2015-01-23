@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
@@ -44,6 +45,7 @@ public final class HdfsMetaLoaderITCase {
   private HdfsMetaLoader loader;
   private HdfsBlockIdFactory blockFactory;
   private ReplicationPolicy replicationPolicy;
+  private DFSClient dfsClient;
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -71,7 +73,8 @@ public final class HdfsMetaLoaderITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsMetaLoader(fs.getUri().toString(), blockFactory, new NullEventRecorder());
+    dfsClient = new DFSClient(fs.getUri(), hdfsConfig);
+    loader = new HdfsMetaLoader(dfsClient, blockFactory, new NullEventRecorder());
   }
 
   /**
@@ -80,6 +83,7 @@ public final class HdfsMetaLoaderITCase {
   @After
   public void tearDown() throws IOException {
     fs.delete(new Path(TESTDIR), true);
+    dfsClient.close();
   }
 
   /**

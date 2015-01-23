@@ -1,13 +1,10 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
@@ -26,7 +23,6 @@ import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,7 +37,6 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   private final CacheLocationRemover cacheLocationRemover;
   private final HdfsBlockIdFactory blockFactory;
   private final ReplicationPolicy replicationPolicy;
-  private final String dfsAddress;
   private final DFSClient dfsClient; // Access must be synchronized
 
   /**
@@ -51,7 +46,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
    * @param cacheLocationRemover Provides the log of pending removals
    * @param blockFactory Translates between block representations
    * @param replicationPolicy Provides the replication policy for each file
-   * @param dfsAddress Address of HDFS, for which a DFSClient connection is made.
+   * @param dfsClient DFSClient to access to HDFS
    */
   @Inject
   public HdfsCacheUpdater(final CacheManager cacheManager,
@@ -60,19 +55,14 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
                           final CacheLocationRemover cacheLocationRemover,
                           final HdfsBlockIdFactory blockFactory,
                           final ReplicationPolicy replicationPolicy,
-                          final @Parameter(DfsParameters.Address.class) String dfsAddress) {
+                          final DFSClient dfsClient) {
     this.cacheManager = cacheManager;
     this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;
     this.cacheLocationRemover = cacheLocationRemover;
     this.blockFactory = blockFactory;
     this.replicationPolicy = replicationPolicy;
-    this.dfsAddress = dfsAddress;
-    try {
-      this.dfsClient = new DFSClient(new URI(this.dfsAddress), new Configuration());
-    } catch (Exception ex) {
-      throw new RuntimeException("Unable to connect to DFS Client", ex);
-    }
+    this.dfsClient = dfsClient;
   }
 
   /**

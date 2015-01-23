@@ -7,17 +7,13 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
-import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.net.URI;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,14 +34,10 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
   private final HdfsBlockIdFactory blockFactory;
 
   @Inject
-  public HdfsMetaLoader(final @Parameter(DfsParameters.Address.class) String dfsAddress,
+  public HdfsMetaLoader(final DFSClient dfsClient,
                         final HdfsBlockIdFactory blockFactory,
                         final EventRecorder recorder) {
-    try {
-      this.dfsClient = new DFSClient(new URI(dfsAddress), new Configuration());
-    } catch (Exception ex) {
-      throw new RuntimeException("Unable to connect to DFS Client", ex);
-    }
+    this.dfsClient = dfsClient;
     this.blockFactory = blockFactory;
     this.RECORD = recorder;
   }
