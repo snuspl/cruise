@@ -60,27 +60,36 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     final HdfsFileStatus fileStatus = dfsClient.getFileInfo(pathStr);
     RECORD.record(getFileInfoEvent.stop());
 
+    return convertFileStatusToFileMeta(pathStr, fileStatus);
+  }
+
+  /**
+   * @return FileMeta with the same information of FileStatus retrieved from HDFS
+   * @throws IOException
+   */
+  // TODO A factory might be needed to support multiple Base FSs
+  private FileMeta convertFileStatusToFileMeta(final String pathStr, final HdfsFileStatus fileStatus)
+          throws IOException {
     if (fileStatus == null) {
       return null;
     }
-
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFullPath(pathStr);
     fileMeta.setFileSize(fileStatus.getLen());
     fileMeta.setBlockSize(fileStatus.getBlockSize());
     fileMeta.setDirectory(fileStatus.isDir());
     if (!fileStatus.isDir()) {
-      addBlockLocations(fileMeta, fileStatus.getLen());
+      addBlocks(fileMeta, fileStatus.getLen());
     }
     // TODO Additional Fields should be resolved
     return fileMeta;
   }
 
   /**
-   * Add block locations to fileMeta
+   * Add blocks to fileMeta
    * @throws IOException
    */
-  private void addBlockLocations(final FileMeta fileMeta, final long fileLength) throws IOException {
+  private void addBlocks(final FileMeta fileMeta, final long fileLength) throws IOException {
     final String pathStr = fileMeta.getFullPath();
     final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(pathStr, 0, fileLength);
     final List<LocatedBlock> locatedBlockList = locatedBlocks.getLocatedBlocks();

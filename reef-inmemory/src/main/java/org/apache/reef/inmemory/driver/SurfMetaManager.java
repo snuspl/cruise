@@ -12,6 +12,7 @@ import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -54,7 +55,11 @@ public final class SurfMetaManager {
   public FileMeta get(final Path path, final User creator) throws Throwable {
     try {
       final Path absolutePath = getAbsolutePath(path, creator);
-      return metadataIndex.get(absolutePath);
+      final FileMeta meta = metadataIndex.get(absolutePath);
+      if (meta == null) {
+        throw new FileNotFoundException("The file is not found : " + absolutePath);
+      }
+      return meta;
     } catch (ExecutionException e) {
       throw e.getCause();
     }

@@ -19,10 +19,8 @@ public interface CacheUpdater {
    * The copy is made so it can be safely written on the network.
    * (Without a copy, the metadata could be concurrently updated at any point.)
    * Implementations must synchronize on the FileMeta to avoid concurrent updates.
-   * @param fileMeta Metadata of file to load
-   * @return Updated metadata with the block locations on Surf.
    * @param fileMeta File metadata, which is updated in place
-   * @return A copy of the update metadata
+   * @return Updated metadata with the block locations on Surf.
    * @throws IOException Indicates an error restoring data from the Base FS
    */
   FileMeta updateMeta(FileMeta fileMeta) throws IOException;
