@@ -110,6 +110,7 @@ public final class HdfsMetaLoaderITCase {
   /**
    * Test proper loading of a small file. Checks that metadata is returned,
    * and correct.
+   * The locations will be updated in {@link org.apache.reef.inmemory.driver.CacheUpdater#updateMeta}
    * @throws IOException
    */
   @Test
@@ -132,6 +133,7 @@ public final class HdfsMetaLoaderITCase {
   /**
    * Test proper loading of a large file that spans multiple blocks.
    * Checks that metadata is returned, and correct.
+   * The locations will be updated in {@link org.apache.reef.inmemory.driver.CacheUpdater#updateMeta}
    * In addition to the small file checks, the order of blocks is checked.
    * @throws IOException
    */
@@ -157,7 +159,7 @@ public final class HdfsMetaLoaderITCase {
     assertEquals(numBlocksComputed, blocks.size());
     for (int i = 0; i < blocks.size(); i++) {
       assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), blocks.get(i).getBlockId());
-      assertEquals(0, blocks.get(i).getLocationsSize()); // The locations will be updated in CacheUpdater#updateMeta
+      assertEquals(0, blocks.get(i).getLocationsSize());
     }
   }
 }

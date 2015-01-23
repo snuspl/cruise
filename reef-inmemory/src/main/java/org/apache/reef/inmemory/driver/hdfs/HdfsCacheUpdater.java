@@ -87,8 +87,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
    *
    * Other concurrent requests for the same file will block on this update.
    *
-   * @param fileMeta Updated in place, using a synchronized block.
-   *                 This should be the single point where FileMeta's are updated.
+   * @param fileMeta Updated in place, using a synchronized block. This should be the single point where FileMeta's are updated.
    * TODO: how bad is the deep copy for performance?
    * @return A deep copy of FileMeta, to prevent modifications until FileMeta is passed to the network.
    * @throws IOException
@@ -160,7 +159,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   }
 
   /**
-   * Filter cache nodes to preventing duplicate load by the cache nodes
+   * Filter cache nodes to prevent duplicate load by the cache nodes
    * that have the block already.
    * @param cacheNodes Whole cache node list.
    * @param blockInfo The block to load.
