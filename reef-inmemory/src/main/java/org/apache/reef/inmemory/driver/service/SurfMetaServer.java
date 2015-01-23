@@ -104,13 +104,32 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public synchronized boolean create(String path, long blockSize) throws FileAlreadyExistsException, TException {
-    // TODO create a metadata in the baseFS
+    // TODO Call create in the baseFS
     if (exists(path)) {
       throw new FileAlreadyExistsException();
     } else {
       FileMeta fileMeta = new FileMeta();
       fileMeta.setFullPath(path);
+      fileMeta.setDirectory(false);
       fileMeta.setBlockSize(blockSize);
+      fileMeta.setBlocks(new ArrayList<BlockInfo>());
+      fileMeta.setFileSize(0);
+      metaManager.update(fileMeta, new User());
+      return true;
+    }
+  }
+
+  @Override
+  public boolean mkdirs(String path) throws FileAlreadyExistsException, TException {
+    // TODO Call mkdirs in the baseFS
+    // TODO Add a entry in Surf directory hierarchy
+    if (exists(path)) {
+      throw new FileAlreadyExistsException();
+    } else {
+      FileMeta fileMeta = new FileMeta();
+      fileMeta.setFullPath(path);
+      fileMeta.setDirectory(true);
+      fileMeta.setBlockSize(0);
       fileMeta.setBlocks(new ArrayList<BlockInfo>());
       fileMeta.setFileSize(0);
       metaManager.update(fileMeta, new User());

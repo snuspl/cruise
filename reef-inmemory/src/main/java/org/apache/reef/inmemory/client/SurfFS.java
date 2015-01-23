@@ -225,6 +225,7 @@ public final class SurfFS extends FileSystem {
    * Methods related to write are delegated
    * to the Base FS (They will be implemented later)
    */
+  // TODO Other parameters should be used to synchronize metadata with Base FS.
   @Override
   public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
@@ -273,9 +274,15 @@ public final class SurfFS extends FileSystem {
     return pathToSurf(baseFs.getWorkingDirectory());
   }
 
+  // TODO Other parameters should be used to synchronize metadata with Base FS.
   @Override
   public boolean mkdirs(Path path, FsPermission fsPermission) throws IOException {
-    return baseFs.mkdirs(pathToBase(path), fsPermission);
+    final String decodedPath = path.toUri().getPath();
+    try {
+      return getMetaClient().mkdirs(decodedPath);
+    } catch (TException e) {
+      throw new IOException("Failed to make directory in " + decodedPath, e);
+    }
   }
 
   @Override
