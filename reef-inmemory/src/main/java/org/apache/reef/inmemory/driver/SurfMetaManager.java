@@ -8,7 +8,6 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
-import org.apache.reef.inmemory.common.exceptions.IOException;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.task.BlockId;
 
@@ -50,12 +49,17 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Retrieve metadata of the file
+   * Retrieve metadata of the file.
+   * @return {@code null} if the metadata is not found.
    */
-  public FileMeta get(final Path path, final User creator) throws FileNotFoundException, Throwable {
+  public FileMeta get(final Path path, final User creator) throws Throwable {
     try {
       final Path absolutePath = getAbsolutePath(path, creator);
-      return metadataIndex.get(absolutePath); // TODO: refactor HDFSCacheLoader so that it does not load data
+      final FileMeta meta = metadataIndex.get(absolutePath);
+      if (meta == null) {
+        throw new FileNotFoundException("The file is not found : " + absolutePath);
+      }
+      return meta;
     } catch (ExecutionException e) {
       throw e.getCause();
     }
@@ -65,10 +69,15 @@ public final class SurfMetaManager {
    * Load the file if it has not been loaded.
    * Further, it will update the file if caches have removed blocks.
    *
-   * @return A copy of the returned fileMeta
+   * @return A copy of the returned fileMeta. Return the meta directly
+   * if the file is a directory.
    */
   public FileMeta loadData(final FileMeta fileMeta) throws java.io.IOException {
-    return cacheUpdater.updateMeta(fileMeta);
+    if (fileMeta.isDirectory()) {
+      return fileMeta;
+    } else {
+      return cacheUpdater.updateMeta(fileMeta);
+    }
   }
 
   public FileMeta sortOnLocation(final FileMeta fileMeta, final String clientHostName) {

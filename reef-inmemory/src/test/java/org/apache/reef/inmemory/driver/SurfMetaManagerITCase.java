@@ -22,7 +22,7 @@ import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheLoader;
+import org.apache.reef.inmemory.driver.hdfs.HdfsMetaLoader;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
 import org.apache.reef.inmemory.driver.hdfs.HdfsCacheUpdater;
@@ -98,8 +98,7 @@ public final class SurfMetaManagerITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsCacheLoader(
-            manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString(), RECORD);
+    loader = new HdfsMetaLoader(fs.getUri().toString(), blockFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
