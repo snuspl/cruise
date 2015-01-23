@@ -2,6 +2,8 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -13,6 +15,7 @@ import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -32,6 +35,7 @@ public final class SurfMetaManager {
   private final BlockIdFactory blockIdFactory;
   private final LocationSorter locationSorter;
   public static String USERS_HOME = "/user";
+  private final DFSClient dfsClient;
 
   @Inject
   public SurfMetaManager(final LoadingCache metadataIndex,
@@ -39,13 +43,15 @@ public final class SurfMetaManager {
                          final CacheLocationRemover cacheLocationRemover,
                          final CacheUpdater cacheUpdater,
                          final BlockIdFactory blockIdFactory,
-                         final LocationSorter locationSorter) {
+                         final LocationSorter locationSorter,
+                         final DFSClient dfsClient) {
     this.metadataIndex = metadataIndex;
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
     this.cacheUpdater = cacheUpdater;
     this.blockIdFactory = blockIdFactory;
     this.locationSorter = locationSorter;
+    this.dfsClient = dfsClient;
   }
 
   /**
@@ -103,6 +109,28 @@ public final class SurfMetaManager {
     metadataIndex.invalidateAll(); // TODO: this may not be so accurate
     cacheMessenger.clearAll();
     return numEntries;
+  }
+
+  /**
+   * Register a file or directory to BaseFS. We can make sure files
+   * with same name exist both in Surf and BaseFS.
+   * @return {@code true} if the file is created successfully.
+   * @throws IOException
+   */
+  public boolean registerToBaseFS(final FileMeta fileMeta) throws IOException {
+    // TODO: These fields will be added in the FileMeta
+    final FsPermission permission = null;
+    final short replicationFactor = 0;
+
+    // Create the file or directory to the BaseFS. It throws an IOException if failure occurs.
+    if (fileMeta.isDirectory()) {
+      return dfsClient.mkdirs(fileMeta.getFullPath(), permission, true);
+    } else {
+      final boolean overwrite = false; // Surf does not allow overwrite
+      dfsClient.create(fileMeta.getFullPath(), overwrite, replicationFactor, fileMeta.getBlockSize());
+      // If create() fails, an IOException will be thrown.
+      return true;
+    }
   }
 
   /**
