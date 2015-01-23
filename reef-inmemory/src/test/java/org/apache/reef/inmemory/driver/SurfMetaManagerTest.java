@@ -54,7 +54,7 @@ public final class SurfMetaManagerTest {
 
   private static User defaultUser() {
     final User user = new User();
-    user.setId("surf");
+    user.setOwner("surf");
     user.setGroup("surf");
     return user;
   }

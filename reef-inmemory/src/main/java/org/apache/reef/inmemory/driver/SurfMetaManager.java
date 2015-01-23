@@ -182,7 +182,7 @@ public final class SurfMetaManager {
       newPath = path;
     }
     else {
-      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getId() + Path.SEPARATOR + path);
+      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getOwner() + Path.SEPARATOR + path);
     }
 
     return newPath;

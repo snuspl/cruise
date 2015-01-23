@@ -87,24 +87,6 @@ public final class SurfFS extends FileSystem {
     this.RECORD = recorder;
   }
 
-  /**
-   * Instantiate and return a new MetaClient for thread-safety
-   */
-  public SurfMetaService.Client getMetaClient() throws TTransportException {
-    return this.metaClientManager.get(this.metaserverAddress);
-  }
-
-  /**
-   * Instantiate and return a new CacheClientManager for thread-safety
-   */
-  public CacheClientManager getCacheClientManager() {
-    final Configuration conf = this.getConf();
-    return new CacheClientManagerImpl(
-        conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
-        conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
-        conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
-  }
-
   @Override
   public void initialize(final URI uri,
                          final Configuration conf) throws IOException {
@@ -133,42 +115,6 @@ public final class SurfFS extends FileSystem {
     LOG.log(Level.INFO, "localAddress: {0}",
             localAddress);
     RECORD.record(initializeEvent.stop());
-  }
-
-  /**
-   * Get the MetaserverResolver based on the provided uri
-   */
-  public MetaserverResolver getMetaserverResolver() {
-    final String address = uri.getAuthority();
-
-    if (address.startsWith("yarn.")) {
-      return new YarnMetaserverResolver(address, getConf());
-    } else {
-      return new InetMetaserverResolver(address);
-    }
-  }
-
-  protected Path pathToSurf(final Path baseFsPath) {
-    final URI basePathUri = baseFsPath.toUri();
-    if (basePathUri.isAbsolute()) {
-      return new Path(uri.getScheme(), uri.getAuthority(), basePathUri.getPath());
-    } else {
-      return baseFsPath;
-    }
-  }
-
-  protected Path pathToBase(final Path surfPath) {
-    final URI surfPathUri = surfPath.toUri();
-    if (surfPathUri.isAbsolute()) {
-      return new Path(baseFsUri.getScheme(), baseFsUri.getAuthority(), surfPathUri.getPath());
-    } else {
-      return surfPath;
-    }
-  }
-
-  protected void setStatusToSurf(FileStatus status) {
-    status.setPath(
-      pathToSurf(status.getPath()));
   }
 
   @Override
@@ -289,7 +235,7 @@ public final class SurfFS extends FileSystem {
   public FileStatus getFileStatus(Path path) throws IOException {
     try {
       final FileMeta meta = getMetaClient().getFileMeta(path.toUri().getPath(), localAddress);
-      return getFileStatusFromMeta(meta);
+      return getFileStatus(meta);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       if (isFallback) {
         LOG.log(Level.WARNING, "The file is not found in Surf, trying baseFs...");
@@ -305,23 +251,6 @@ public final class SurfFS extends FileSystem {
         throw new IOException ("Failed to get File Status from Surr", e);
       }
     }
-  }
-
-  private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
-    final String[] addresses = new String[locations.size()];
-    final String[] hosts = new String[locations.size()];
-    final String[] topologyPaths = new String[locations.size()];
-
-    int idx = 0;
-    for (NodeInfo location : locations) {
-      addresses[idx] = location.getAddress();
-      hosts[idx] = HostAndPort.fromString(location.getAddress()).getHostText();
-      topologyPaths[idx] = location.getRack() + "/" + location.getAddress();
-      LOG.log(Level.INFO, "BlockLocation: "+addresses[idx]+", "+hosts[idx]+", "+topologyPaths[idx]);
-      idx++;
-    }
-
-    return new BlockLocation(addresses, hosts, topologyPaths, start, len);
   }
 
   /**
@@ -384,29 +313,104 @@ public final class SurfFS extends FileSystem {
     }
   }
 
-  /**
-   * Translate File Meta received from the meta server
-   * to File Status used in FileSystem API.
-   */
-  private FileStatus getFileStatusFromMeta(final FileMeta meta) {
-    if (meta == null) {
-      return null;
-    } else {
-      final long length = meta.getFileSize();
-      final boolean isDir = meta.isDirectory();
-      // TODO Revisit this when working on write-policy
-      final int replication = -1;
-      final long blockSize = meta.getBlockSize();
-      final long modificationTime = -1;
-      final Path path = new Path(meta.getFullPath());
-      // TODO Manage additional fields - FsPermission, String owner, String group, Path symlink, ...
-      return new FileStatus(length, isDir, replication, blockSize, modificationTime, path);
-    }
-  }
-
   @Override
   public void close() throws IOException {
     LOG.log(Level.INFO, "Close called");
     super.close();
+  }
+
+  /**
+   * Instantiate and return a new MetaClient for thread-safety
+   */
+  public SurfMetaService.Client getMetaClient() throws TTransportException {
+    return this.metaClientManager.get(this.metaserverAddress);
+  }
+
+  /**
+   * Instantiate and return a new CacheClientManager for thread-safety
+   */
+  public CacheClientManager getCacheClientManager() {
+    final Configuration conf = this.getConf();
+    return new CacheClientManagerImpl(
+        conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
+        conf.getInt(CACHECLIENT_RETRIES_INTERVAL_MS_KEY, CACHECLIENT_RETRIES_INTERVAL_MS_DEFAULT),
+        conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
+  }
+
+  /**
+   * Translate File Meta received from the meta server
+   * to File Status used in FileSystem API.
+   * TODO: use FSPermission properly
+   */
+  private FileStatus getFileStatus(final FileMeta meta) {
+    if (meta == null) {
+      return null;
+    } else {
+      final Path path = new Path(meta.getFullPath());
+      final long length = meta.getFileSize();
+      final boolean isDir = meta.isDirectory();
+      final int replication = meta.getReplication();
+      final long blockSize = meta.getBlockSize();
+      final long modificationTime = meta.getModificationTime();
+      final long accessTime = meta.getAccessTime();
+      final String owner = meta.getUser().getOwner();
+      final String group = meta.getUser().getGroup();
+      final Path symLink = new Path(meta.getSymLink());
+      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
+          new FsPermission((short)6), owner, group, symLink, path);
+    }
+  }
+
+  private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
+    final String[] addresses = new String[locations.size()];
+    final String[] hosts = new String[locations.size()];
+    final String[] topologyPaths = new String[locations.size()];
+
+    int idx = 0;
+    for (NodeInfo location : locations) {
+      addresses[idx] = location.getAddress();
+      hosts[idx] = HostAndPort.fromString(location.getAddress()).getHostText();
+      topologyPaths[idx] = location.getRack() + "/" + location.getAddress();
+      LOG.log(Level.INFO, "BlockLocation: "+addresses[idx]+", "+hosts[idx]+", "+topologyPaths[idx]);
+      idx++;
+    }
+
+    return new BlockLocation(addresses, hosts, topologyPaths, start, len);
+  }
+
+  /**
+   * Get the MetaserverResolver based on the provided uri
+   */
+  public MetaserverResolver getMetaserverResolver() {
+    final String address = uri.getAuthority();
+
+    if (address.startsWith("yarn.")) {
+      return new YarnMetaserverResolver(address, getConf());
+    } else {
+      return new InetMetaserverResolver(address);
+    }
+  }
+
+  protected Path pathToSurf(final Path baseFsPath) {
+    final URI basePathUri = baseFsPath.toUri();
+    if (basePathUri.isAbsolute()) {
+      return new Path(uri.getScheme(), uri.getAuthority(), basePathUri.getPath());
+    } else {
+      return baseFsPath;
+    }
+  }
+
+  protected Path pathToBase(final Path surfPath) {
+    final URI surfPathUri = surfPath.toUri();
+    if (surfPathUri.isAbsolute()) {
+      return new Path(baseFsUri.getScheme(), baseFsUri.getAuthority(), surfPathUri.getPath());
+    } else {
+      return surfPath;
+    }
+  }
+
+  protected void setStatusToSurf(FileStatus status) {
+    status.setPath(
+        pathToSurf(status.getPath()));
   }
 }

@@ -4,6 +4,7 @@ import com.google.common.cache.CacheLoader;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
@@ -52,28 +53,31 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     final HdfsFileStatus fileStatus = dfsClient.getFileInfo(pathStr);
     RECORD.record(getFileInfoEvent.stop());
 
-    return convertFileStatusToFileMeta(pathStr, fileStatus);
+    return getFileMeta(pathStr, fileStatus);
   }
 
   /**
    * @return FileMeta with the same information of FileStatus retrieved from HDFS
    * @throws IOException
+   * TODO: use FSPermission properly
    */
-  // TODO A factory might be needed to support multiple Base FSs
-  private FileMeta convertFileStatusToFileMeta(final String pathStr, final HdfsFileStatus fileStatus)
-          throws IOException {
+  private FileMeta getFileMeta(final String pathStr, final HdfsFileStatus fileStatus) throws IOException {
     if (fileStatus == null) {
       return null;
     }
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFullPath(pathStr);
     fileMeta.setFileSize(fileStatus.getLen());
-    fileMeta.setBlockSize(fileStatus.getBlockSize());
     fileMeta.setDirectory(fileStatus.isDir());
+    fileMeta.setReplication(fileStatus.getReplication());
+    fileMeta.setBlockSize(fileStatus.getBlockSize());
+    fileMeta.setModificationTime(fileStatus.getModificationTime());
+    fileMeta.setAccessTime(fileStatus.getAccessTime());
+    fileMeta.setUser(new User(fileStatus.getOwner(), fileStatus.getGroup()));
+    fileMeta.setSymLink(fileStatus.getSymlink());
     if (!fileStatus.isDir()) {
       addBlocks(fileMeta, fileStatus.getLen());
     }
-    // TODO Additional Fields should be resolved
     return fileMeta;
   }
 

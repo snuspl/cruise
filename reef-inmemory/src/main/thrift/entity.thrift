@@ -35,25 +35,22 @@ struct AllocatedBlockInfo {
 }
 
 /**
- * TODO: revisit when implementing ls commands at Surf Driver
+ * TODO: Include Permission information
  */
 struct User {
-	1: string id,             // User id
-	2: string group           // User group
+  1: string owner,          // User
+  2: string group           // User group
 }
 
-/**
- * TODO: revisit when implementing ls commands at Surf Driver
- */
 struct FileMeta{
-	1:i64 fileId,             // File id (unique)
-	2:string fileName,        // File name
-	3:string fullPath,        // File's absolute path
-	4:i64 fileSize,           // Size of the file in bytes
+	1:string fullPath,        // File's absolute path
+	2:i64 fileSize,           // Size of the file in bytes
+	3:bool directory,         // Whether the file is a file or directory.
+	4:i32 replication,        // Replication status of the file.
 	5:i64 blockSize,          // Size of blocks consisting of the file.
-	6:i64 creationTime,       // File creation time
-	7:bool directory,         // Whether the file is a file or directory.
+	6:i64 modificationTime,   // File modification time
+	7:i64 accessTime,         // File access time
 	8:list<BlockInfo> blocks, // Information of blocks consisting of the file.
-	9:bool complete,          // Whether the file is complete or not
-	10:User owner             // Owner information of the file.
+	9:User user,              // Access information of the file.
+	10:string symLink,        // SymLink information of the file.
 }
