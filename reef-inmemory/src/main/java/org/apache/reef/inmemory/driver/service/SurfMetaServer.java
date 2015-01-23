@@ -74,7 +74,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public FileMeta getFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
-    // TODO Check existence in the baseFS
     // TODO: need (integrated?) tests for this version
     try {
       final FileMeta fileMeta = metaManager.get(new Path(path), new User());
@@ -92,13 +91,20 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public boolean exists(String path) throws TException {
-    // TODO Check existence in the baseFS
-    return metaManager.exists(new Path(path), new User());
+    try {
+      metaManager.get(new Path(path), new User());
+      return true;
+    } catch (java.io.FileNotFoundException e) {
+      return false;
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Checking existence failed for "+path, e);
+      throw new TException(e);
+    }
   }
 
   @Override
   public synchronized boolean create(String path, long blockSize) throws FileAlreadyExistsException, TException {
-    // TODO Check existence and create a metadata in the baseFS
+    // TODO create a metadata in the baseFS
     if (exists(path)) {
       throw new FileAlreadyExistsException();
     } else {

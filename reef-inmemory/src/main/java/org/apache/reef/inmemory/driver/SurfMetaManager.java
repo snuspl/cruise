@@ -85,15 +85,6 @@ public final class SurfMetaManager {
   }
 
   /**
-   * @return {@code true} if file is cached already with the path as a key.
-   * @throws ExecutionException
-   */
-  public boolean exists(Path path, User creator) {
-    final Path absolutePath = getAbsolutePath(path, creator);
-    return metadataIndex.getIfPresent(absolutePath) != null;
-  }
-
-  /**
    * Update the change of metadata (e.g. Added blocks while writing)
    * If the path not exist in the cache, then create an entry with the path.
    * @param fileMeta Metadata to update
