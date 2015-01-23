@@ -69,8 +69,9 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     fileMeta.setFileSize(fileStatus.getLen());
     fileMeta.setBlockSize(fileStatus.getBlockSize());
     fileMeta.setDirectory(fileStatus.isDir());
-    addBlockLocations(fileMeta, fileStatus.getLen());
-
+    if (!fileStatus.isDir()) {
+      addBlockLocations(fileMeta, fileStatus.getLen());
+    }
     // TODO Additional Fields should be resolved
     return fileMeta;
   }
