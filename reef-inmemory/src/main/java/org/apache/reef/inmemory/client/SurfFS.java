@@ -179,7 +179,7 @@ public final class SurfFS extends FileSystem {
     try {
       final SurfMetaService.Client metaClient = getMetaClient();
       final CacheClientManager cacheClientManager = getCacheClientManager();
-      metaClient.create(decodedPath, blockSize);
+      metaClient.create(decodedPath, replication, blockSize);
       return new FSDataOutputStream(new SurfFSOutputStream(decodedPath, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
     } catch (TException e) {
       throw new IOException("Failed to create a file in " + decodedPath, e);
@@ -340,7 +340,7 @@ public final class SurfFS extends FileSystem {
   /**
    * Translate File Meta received from the meta server
    * to File Status used in FileSystem API.
-   * TODO: use FSPermission properly
+   * TODO: use FSPermission properly.
    */
   private FileStatus getFileStatus(final FileMeta meta) {
     final Path path = new Path(meta.getFullPath());

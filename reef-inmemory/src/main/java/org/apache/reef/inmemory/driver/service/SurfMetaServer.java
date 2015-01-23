@@ -28,7 +28,6 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -90,7 +89,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public boolean exists(String path) throws TException {
+  public boolean exists(final String path) throws TException {
     try {
       metaManager.get(new Path(path), new User());
       return true;
@@ -103,41 +102,32 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public synchronized boolean create(String path, long blockSize) throws FileAlreadyExistsException, TException {
-    if (exists(path)) {
-      throw new FileAlreadyExistsException();
-    } else {
-      FileMeta fileMeta = new FileMeta();
-      fileMeta.setFullPath(path);
-      fileMeta.setDirectory(false);
-      fileMeta.setBlockSize(blockSize);
-      fileMeta.setBlocks(new ArrayList<BlockInfo>());
-      fileMeta.setFileSize(0);
-      try {
+  public synchronized boolean create(final String path, final int replication, final long blockSize)
+          throws FileAlreadyExistsException, TException {
+    try {
+      if (exists(path)) {
+        throw new FileAlreadyExistsException();
+      } else {
+        final FileMeta fileMeta = createMetaForEmptyFile(path, replication, blockSize);
         return metaManager.registerToBaseFS(fileMeta);
-      } catch (IOException e) {
-        throw new TException(e);
       }
+    } catch (IOException e) {
+      throw new TException(e);
     }
   }
 
   @Override
-  public boolean mkdirs(String path) throws FileAlreadyExistsException, TException {
-    // TODO Add a entry in Surf directory hierarchy
-    if (exists(path)) {
-      throw new FileAlreadyExistsException();
-    } else {
-      FileMeta fileMeta = new FileMeta();
-      fileMeta.setFullPath(path);
-      fileMeta.setDirectory(true);
-      fileMeta.setBlockSize(0);
-      fileMeta.setBlocks(new ArrayList<BlockInfo>());
-      fileMeta.setFileSize(0);
-      try {
+  public synchronized boolean mkdirs(final String path) throws FileAlreadyExistsException, TException {
+    try {
+      // TODO Add a entry in Surf directory hierarchy
+      if (exists(path)) {
+        throw new FileAlreadyExistsException();
+      } else {
+        final FileMeta fileMeta = createMetaForDirectory(path);
         return metaManager.registerToBaseFS(fileMeta);
-      } catch (IOException e) {
-        throw new TException(e);
       }
+    } catch (IOException e) {
+      throw new TException(e);
     }
   }
 
@@ -330,5 +320,27 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       builder.append(" : ")
           .append(cache.getStopCause());
     }
+  }
+
+  private FileMeta createMetaForEmptyFile(final String path, final int replication, final long blockSize) {
+    final FileMeta fileMeta = new FileMeta();
+    fileMeta.setFullPath(path);
+    fileMeta.setFileSize(0);
+    fileMeta.setDirectory(false);
+    fileMeta.setReplication(replication);
+    fileMeta.setBlockSize(blockSize);
+    fileMeta.setUser(new User()); // TODO User in Surf should be defined properly.
+    return fileMeta;
+  }
+
+  private FileMeta createMetaForDirectory(final String path) {
+    final FileMeta fileMeta = new FileMeta();
+    fileMeta.setFullPath(path);
+    fileMeta.setFileSize(0);
+    fileMeta.setDirectory(true);
+    fileMeta.setReplication(0);
+    fileMeta.setBlockSize(0);
+    fileMeta.setUser(new User()); // TODO User in Surf should be defined properly.
+    return fileMeta;
   }
 }
