@@ -171,7 +171,7 @@ public final class SurfFS extends FileSystem {
    * Methods related to write are delegated
    * to the Base FS (They will be implemented later)
    */
-  // TODO Other parameters should be used to synchronize metadata with Base FS.
+  // TODO: use FSPermission properly.
   @Override
   public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
@@ -220,7 +220,7 @@ public final class SurfFS extends FileSystem {
     return pathToSurf(baseFs.getWorkingDirectory());
   }
 
-  // TODO Other parameters should be used to synchronize metadata with Base FS.
+  // TODO: use FSPermission properly.
   @Override
   public boolean mkdirs(Path path, FsPermission fsPermission) throws IOException {
     final String decodedPath = path.toUri().getPath();
@@ -354,7 +354,7 @@ public final class SurfFS extends FileSystem {
     final String group = meta.getUser().getGroup();
     final Path symLink = new Path(meta.getSymLink());
     return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
-            new FsPermission((short)6), owner, group, symLink, path);
+            FsPermission.getFileDefault(), owner, group, symLink, path);
   }
 
   private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {

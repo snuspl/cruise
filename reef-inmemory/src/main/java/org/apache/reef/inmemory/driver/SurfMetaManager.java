@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
+import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSClient;
@@ -17,6 +18,7 @@ import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -117,17 +119,16 @@ public final class SurfMetaManager {
    * @return {@code true} if the file is created successfully.
    * @throws IOException
    */
+  // TODO: Use Permission Properly
   public boolean registerToBaseFS(final FileMeta fileMeta) throws IOException {
-    // TODO: These fields will be added in the FileMeta
-    final FsPermission permission = null;
-
     // Create the file or directory to the BaseFS. It throws an IOException if failure occurs.
     if (fileMeta.isDirectory()) {
-      return dfsClient.mkdirs(fileMeta.getFullPath(), permission, true);
+      return dfsClient.mkdirs(fileMeta.getFullPath(), FsPermission.getDirDefault(), true);
     } else {
-      final boolean overwrite = false; // Surf does not allow overwrite
-      dfsClient.create(fileMeta.getFullPath(), overwrite, fileMeta.getReplication(), fileMeta.getBlockSize());
-      // If create() fails, an IOException will be thrown.
+      // Use default buffer size configured in the server. Progressable and ChecksumOpt are not used.
+      int bufferSize = dfsClient.getServerDefaults().getFileBufferSize();
+      dfsClient.create(fileMeta.getFullPath(), FsPermission.getFileDefault(), EnumSet.of(CreateFlag.CREATE),
+              fileMeta.getReplication(), fileMeta.getBlockSize(), null, bufferSize, null);
       return true;
     }
   }
@@ -171,7 +172,7 @@ public final class SurfMetaManager {
 
     meta.setFileSize(meta.getFileSize() + nWritten);
     meta.addToBlocks(newBlock);
-    update(meta, new User());
+    update(meta, meta.getUser());
   }
 
   private Path getAbsolutePath(Path path, User creator) {
