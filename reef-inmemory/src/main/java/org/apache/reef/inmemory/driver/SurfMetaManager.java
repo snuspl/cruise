@@ -120,14 +120,13 @@ public final class SurfMetaManager {
   public boolean registerToBaseFS(final FileMeta fileMeta) throws IOException {
     // TODO: These fields will be added in the FileMeta
     final FsPermission permission = null;
-    final short replicationFactor = 0;
 
     // Create the file or directory to the BaseFS. It throws an IOException if failure occurs.
     if (fileMeta.isDirectory()) {
       return dfsClient.mkdirs(fileMeta.getFullPath(), permission, true);
     } else {
       final boolean overwrite = false; // Surf does not allow overwrite
-      dfsClient.create(fileMeta.getFullPath(), overwrite, replicationFactor, fileMeta.getBlockSize());
+      dfsClient.create(fileMeta.getFullPath(), overwrite, fileMeta.getReplication(), fileMeta.getBlockSize());
       // If create() fails, an IOException will be thrown.
       return true;
     }

@@ -102,7 +102,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public synchronized boolean create(final String path, final int replication, final long blockSize)
+  public synchronized boolean create(final String path, final short replication, final long blockSize)
           throws FileAlreadyExistsException, TException {
     try {
       if (exists(path)) {
@@ -322,7 +322,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
-  private FileMeta createMetaForEmptyFile(final String path, final int replication, final long blockSize) {
+  private FileMeta createMetaForEmptyFile(final String path, final short replication, final long blockSize) {
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFullPath(path);
     fileMeta.setFileSize(0);
@@ -338,7 +338,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     fileMeta.setFullPath(path);
     fileMeta.setFileSize(0);
     fileMeta.setDirectory(true);
-    fileMeta.setReplication(0);
+    fileMeta.setReplication((short)0);
     fileMeta.setBlockSize(0);
     fileMeta.setUser(new User()); // TODO User in Surf should be defined properly.
     return fileMeta;

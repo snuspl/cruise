@@ -73,7 +73,10 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     fileMeta.setModificationTime(fileStatus.getModificationTime());
     fileMeta.setAccessTime(fileStatus.getAccessTime());
     fileMeta.setUser(new User(fileStatus.getOwner(), fileStatus.getGroup()));
-    fileMeta.setSymLink(fileStatus.getSymlink());
+    // TODO : Do we need to support symlink? Is it used frequently in frameworks?
+    if (fileStatus.isSymlink()) {
+      fileMeta.setSymLink(fileStatus.getSymlink());
+    }
     if (!fileStatus.isDir()) {
       addBlocks(fileMeta, fileStatus.getLen());
     }

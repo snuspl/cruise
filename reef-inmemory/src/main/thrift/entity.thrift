@@ -46,7 +46,7 @@ struct FileMeta{
 	1:string fullPath,        // File's absolute path
 	2:i64 fileSize,           // Size of the file in bytes
 	3:bool directory,         // Whether the file is a file or directory.
-	4:i32 replication,        // Replication status of the file.
+	4:i16 replication,        // Replication status of the file.
 	5:i64 blockSize,          // Size of blocks consisting of the file.
 	6:i64 modificationTime,   // File modification time
 	7:i64 accessTime,         // File access time

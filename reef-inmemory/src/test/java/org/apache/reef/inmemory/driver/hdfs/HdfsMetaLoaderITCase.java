@@ -87,11 +87,16 @@ public final class HdfsMetaLoaderITCase {
   }
 
   /**
-   * Test load of a non-existing path returns {@code null}.
+   * Test load of a non-existing path throws FileNotFoundException
    */
   @Test
   public void testLoadNonexistingPath() throws IOException {
-    assertNull(loader.load(new Path("/nonexistent/path")));
+    try {
+      loader.load(new Path("/nonexistent/path"));
+      fail();
+    } catch(FileNotFoundException e) {
+      // Success
+    }
   }
 
   /**
