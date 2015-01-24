@@ -134,7 +134,7 @@ public final class SurfFS extends FileSystem {
    */
   @Override
   public FSDataInputStream open(Path path, final int bufferSize) throws IOException {
-    final String pathStr = path.toUri().getPath();
+    final String pathStr = getPathStr(path);
     final Event openEvent = RECORD.event("client.open", pathStr).start();
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
             new Object[]{path, pathStr});
@@ -175,14 +175,14 @@ public final class SurfFS extends FileSystem {
   @Override
   public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
-    final String decodedPath = path.toUri().getPath();
+    final String pathStr = getPathStr(path);
     try {
       final SurfMetaService.Client metaClient = getMetaClient();
       final CacheClientManager cacheClientManager = getCacheClientManager();
-      metaClient.create(decodedPath, replication, blockSize);
-      return new FSDataOutputStream(new SurfFSOutputStream(decodedPath, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
+      metaClient.create(pathStr, replication, blockSize);
+      return new FSDataOutputStream(new SurfFSOutputStream(pathStr, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
     } catch (TException e) {
-      throw new IOException("Failed to create a file in " + decodedPath, e);
+      throw new IOException("Failed to create a file in " + pathStr, e);
     }
   }
 
@@ -223,18 +223,18 @@ public final class SurfFS extends FileSystem {
   // TODO: use FSPermission properly.
   @Override
   public boolean mkdirs(Path path, FsPermission fsPermission) throws IOException {
-    final String decodedPath = path.toUri().getPath();
+    final String pathStr = getPathStr(path);
     try {
-      return getMetaClient().mkdirs(decodedPath);
+      return getMetaClient().mkdirs(pathStr);
     } catch (TException e) {
-      throw new IOException("Failed to make directory in " + decodedPath, e);
+      throw new IOException("Failed to make directory in " + pathStr, e);
     }
   }
 
   @Override
   public FileStatus getFileStatus(Path path) throws IOException {
     try {
-      final FileMeta meta = getMetaClient().getFileMeta(path.toUri().getPath(), localAddress);
+      final FileMeta meta = getMetaClient().getFileMeta(getPathStr(path), localAddress);
       return getFileStatus(meta);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       if (isFallback) {
@@ -261,12 +261,12 @@ public final class SurfFS extends FileSystem {
   public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
 
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
-      new Object[]{file.getPath(), file.getPath().toUri().getPath()});
+      new Object[]{file.getPath(), getPathStr(file.getPath())});
 
     final List<BlockLocation> blockLocations = new LinkedList<>();
 
     try {
-      final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath(), localAddress);
+      final FileMeta metadata = getMetaClient().getFileMeta(getPathStr(file.getPath()), localAddress);
       long startRemaining = start;
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
@@ -393,6 +393,10 @@ public final class SurfFS extends FileSystem {
     }
   }
 
+  private String getPathStr(final Path path) {
+    return path.toUri().getPath();
+  }
+
   protected Path pathToSurf(final Path baseFsPath) {
     final URI basePathUri = baseFsPath.toUri();
     if (basePathUri.isAbsolute()) {
@@ -412,7 +416,7 @@ public final class SurfFS extends FileSystem {
   }
 
   protected void setStatusToSurf(FileStatus status) {
-    status.setPath(
-        pathToSurf(status.getPath()));
+    final Path surfPath = pathToSurf(status.getPath());
+    status.setPath(surfPath);
   }
 }
