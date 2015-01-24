@@ -203,11 +203,17 @@ public final class SurfFS extends FileSystem {
 
   @Override
   public FileStatus[] listStatus(Path path) throws IOException {
-    final FileStatus[] statuses = baseFs.listStatus(pathToBase(path));
-    for (final FileStatus status : statuses) {
-      setStatusToSurf(status);
+    final String pathStr = getPathStr(path);
+    try {
+      final List<FileMeta> metas = getMetaClient().listMeta(path.toUri().getPath());
+      final FileStatus[] statuses = new FileStatus[metas.size()];
+      for (int i = 0; i < metas.size(); i++) {
+        statuses[i] = getFileStatus(metas.get(i));
+      }
+      return statuses;
+    } catch (TException e) {
+      throw new IOException("Failed to list file status in " + pathStr, e);
     }
-    return statuses;
   }
 
   @Override

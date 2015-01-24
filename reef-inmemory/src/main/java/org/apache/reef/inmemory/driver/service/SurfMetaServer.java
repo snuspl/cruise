@@ -28,6 +28,7 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -126,6 +127,29 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
         return isSuccess;
       }
     } catch (IOException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public List<FileMeta> listMeta(String path) throws FileNotFoundException, TException {
+    try {
+      final FileMeta fileMeta = metaManager.get(new Path(path), new User());
+      final List<FileMeta> metaList;
+      if (fileMeta.isDirectory()) {
+        return metaManager.getChildren(fileMeta);
+//        return new ArrayList<>(); // TODO Implement the directory case.
+      } else {
+        metaList = new ArrayList<>(1);
+        metaList.add(fileMeta);
+        return metaList;
+      }
+    } catch (java.io.FileNotFoundException e) {
+      throw new FileNotFoundException("File not found at " + path);
+    } catch (IOException e) {
+      throw new FileNotFoundException(e.getMessage());
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "List metadata failed for " + path, e);
       throw new TException(e);
     }
   }

@@ -2,11 +2,13 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.CreateFlag;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
+import org.apache.reef.inmemory.common.FileMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
@@ -35,9 +37,10 @@ public final class SurfMetaManager {
   private final CacheLocationRemover cacheLocationRemover;
   private final CacheUpdater cacheUpdater;
   private final BlockIdFactory blockIdFactory;
+  private final FileMetaFactory metaFactory;
   private final LocationSorter locationSorter;
   public static String USERS_HOME = "/user";
-  private final DFSClient dfsClient;
+  private final DistributedFileSystem dfs;
 
   @Inject
   public SurfMetaManager(final LoadingCache metadataIndex,
@@ -45,15 +48,17 @@ public final class SurfMetaManager {
                          final CacheLocationRemover cacheLocationRemover,
                          final CacheUpdater cacheUpdater,
                          final BlockIdFactory blockIdFactory,
+                         final FileMetaFactory metaFactory,
                          final LocationSorter locationSorter,
-                         final DFSClient dfsClient) {
+                         final DistributedFileSystem dfs) {
     this.metadataIndex = metadataIndex;
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
     this.cacheUpdater = cacheUpdater;
     this.blockIdFactory = blockIdFactory;
+    this.metaFactory = metaFactory;
     this.locationSorter = locationSorter;
-    this.dfsClient = dfsClient;
+    this.dfs = dfs;
   }
 
   /**
@@ -123,12 +128,12 @@ public final class SurfMetaManager {
   public boolean registerToBaseFS(final FileMeta fileMeta) throws IOException {
     // Create the file or directory to the BaseFS. It throws an IOException if failure occurs.
     if (fileMeta.isDirectory()) {
-      return dfsClient.mkdirs(fileMeta.getFullPath(), FsPermission.getDirDefault(), true);
+      return dfs.mkdirs(new Path(fileMeta.getFullPath()), FsPermission.getDirDefault());
     } else {
       // Use default buffer size configured in the server. Progressable and ChecksumOpt are not used.
-      int bufferSize = dfsClient.getServerDefaults().getFileBufferSize();
-      dfsClient.create(fileMeta.getFullPath(), FsPermission.getFileDefault(), EnumSet.of(CreateFlag.CREATE),
-              fileMeta.getReplication(), fileMeta.getBlockSize(), null, bufferSize, null);
+      final int bufferSize = dfs.getServerDefaults().getFileBufferSize();
+      dfs.create(new Path(fileMeta.getFullPath()), FsPermission.getFileDefault(),
+              EnumSet.of(CreateFlag.CREATE), bufferSize, fileMeta.getReplication(), fileMeta.getBlockSize(), null);
       return true;
     }
   }
@@ -144,7 +149,7 @@ public final class SurfMetaManager {
       for (final CacheUpdates.Failure failure : updates.getFailures()) {
         if (failure.getThrowable() instanceof OutOfMemoryError) {
           LOG.log(Level.SEVERE, "Block loading failure: " + failure.getBlockId(), failure.getThrowable());
-          cache.setStopCause(failure.getThrowable().getClass().getName()+" : "+failure.getThrowable().getMessage());
+          cache.setStopCause(failure.getThrowable().getClass().getName() + " : " + failure.getThrowable().getMessage());
         } else {
           LOG.log(Level.WARNING, "Block loading failure: " + failure.getBlockId(), failure.getThrowable());
         }
@@ -175,16 +180,14 @@ public final class SurfMetaManager {
     update(meta);
   }
 
-  private Path getAbsolutePath(Path path, User creator) {
-    Path newPath;
+  private Path getAbsolutePath(final Path path, final User creator) {
+    final Path newPath;
 
     if (path.isAbsolute()) {
       newPath = path;
+    } else {
+      newPath = new Path(USERS_HOME + Path.SEPARATOR + creator.getOwner() + Path.SEPARATOR + path);
     }
-    else {
-      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getOwner() + Path.SEPARATOR + path);
-    }
-
     return newPath;
   }
 
@@ -201,15 +204,7 @@ public final class SurfMetaManager {
    * @throws IOException
    */
   public boolean registerFile(String path, short replication, long blockSize) throws IOException {
-    final FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(path);
-    fileMeta.setFileSize(0);
-    fileMeta.setDirectory(false);
-    fileMeta.setReplication(replication);
-    fileMeta.setBlockSize(blockSize);
-    fileMeta.setBlocks(new ArrayList<BlockInfo>());
-    fileMeta.setUser(new User()); // TODO User in Surf should be specified properly.
-
+    final FileMeta fileMeta = metaFactory.newFileMeta(path, replication, blockSize);
     final boolean isSuccess = registerToBaseFS(fileMeta);
     if (isSuccess) {
       update(fileMeta);
@@ -232,15 +227,7 @@ public final class SurfMetaManager {
    * @throws IOException
    */
   public boolean registerDirectory(final String path) throws IOException {
-    final FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(path);
-    fileMeta.setFileSize(0);
-    fileMeta.setDirectory(true);
-    fileMeta.setReplication((short)0);
-    fileMeta.setBlockSize(0);
-    fileMeta.setBlocks(new ArrayList<BlockInfo>());
-    fileMeta.setUser(new User()); // TODO User in Surf should be specified properly.
-
+    final FileMeta fileMeta = metaFactory.newFileMetaForDir(path);
     final boolean isSuccess = registerToBaseFS(fileMeta);
     if (isSuccess) {
       update(fileMeta);
@@ -248,5 +235,32 @@ public final class SurfMetaManager {
     } else {
       return false;
     }
+  }
+
+  public List<FileMeta> getChildren(final FileMeta fileMeta) throws IOException {
+    final List<FileMeta> childList = new ArrayList<>();
+    final List<String> childPathList = new ArrayList<>();
+
+    if (!fileMeta.isSetChildren()) {
+      for (final FileStatus status : dfs.listStatus(new Path(fileMeta.getFullPath()))) {
+        final FileMeta childMeta = metaFactory.toFileMeta(status);
+        update(childMeta);
+        childList.add(childMeta);
+        childPathList.add(childMeta.getFullPath());
+      }
+      fileMeta.setChildren(childPathList);
+    } else {
+      try {
+        for (final String pathStr : fileMeta.getChildren()) {
+          final FileMeta childMeta = get(new Path(pathStr), new User(fileMeta.getUser()));
+          // TODO User in Surf should be specified properly.
+          childList.add(childMeta);
+        }
+      } catch (Throwable throwable) {
+        // TODO This is somewhat over-catch. Refactor SurfMetaManager#get()
+        LOG.log(Level.SEVERE, "Failed while getting list of files under : " + fileMeta.getFullPath());
+      }
+    }
+    return childList;
   }
 }

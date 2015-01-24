@@ -13,7 +13,7 @@ service SurfMetaService {
    * Get the list of blocks and locations for the file.
    * The returned list will be sorted by locality w.r.t. clientHostname.
    */
-  entity.FileMeta getFileMeta(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException fe)
+  entity.FileMeta getFileMeta(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException fnfe)
 
   /**
    * Check whether the file exists in the path
@@ -29,6 +29,11 @@ service SurfMetaService {
    * Register the FileMeta and insert an entry to directory structure if successful.
    */
   bool mkdirs(1:string path) throws (1: exceptions.FileAlreadyExistsException fae)
+
+  /**
+   * List the statuses of the files/directories
+   **/
+  list<entity.FileMeta> listMeta(1:string path) throws (1: exceptions.FileNotFoundException fnfe)
 
   /**
    * Allocate a new Block and return the Info(CacheNode, Replication Policy, etc) of the block to write data.
