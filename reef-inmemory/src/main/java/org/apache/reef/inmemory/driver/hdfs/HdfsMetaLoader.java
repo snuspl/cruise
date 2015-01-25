@@ -15,6 +15,7 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -70,6 +71,7 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     fileMeta.setDirectory(fileStatus.isDir());
     fileMeta.setReplication(fileStatus.getReplication());
     fileMeta.setBlockSize(fileStatus.getBlockSize());
+    fileMeta.setBlocks(new ArrayList<BlockInfo>());
     fileMeta.setModificationTime(fileStatus.getModificationTime());
     fileMeta.setAccessTime(fileStatus.getAccessTime());
     fileMeta.setUser(new User(fileStatus.getOwner(), fileStatus.getGroup()));

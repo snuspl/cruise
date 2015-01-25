@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.driver.service;
 
+import org.apache.avro.generic.GenericData;
 import org.apache.reef.inmemory.common.entity.*;
 import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.tang.annotations.Parameter;
@@ -28,6 +29,7 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -109,6 +111,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
         throw new FileAlreadyExistsException();
       } else {
         final FileMeta fileMeta = createMetaForEmptyFile(path, replication, blockSize);
+        metaManager.update(fileMeta, new User());
         return metaManager.registerToBaseFS(fileMeta);
       }
     } catch (IOException e) {
@@ -124,6 +127,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
         throw new FileAlreadyExistsException();
       } else {
         final FileMeta fileMeta = createMetaForDirectory(path);
+        metaManager.update(fileMeta, new User());
         return metaManager.registerToBaseFS(fileMeta);
       }
     } catch (IOException e) {
@@ -329,6 +333,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     fileMeta.setDirectory(false);
     fileMeta.setReplication(replication);
     fileMeta.setBlockSize(blockSize);
+    fileMeta.setBlocks(new ArrayList<BlockInfo>());
     fileMeta.setUser(new User()); // TODO User in Surf should be defined properly.
     return fileMeta;
   }
@@ -340,6 +345,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     fileMeta.setDirectory(true);
     fileMeta.setReplication((short)0);
     fileMeta.setBlockSize(0);
+    fileMeta.setBlocks(new ArrayList<BlockInfo>());
     fileMeta.setUser(new User()); // TODO User in Surf should be defined properly.
     return fileMeta;
   }
