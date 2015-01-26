@@ -6,6 +6,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
+import org.apache.reef.inmemory.common.FileMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
@@ -35,6 +36,7 @@ public final class SurfMetaManagerTest {
   private CacheLocationRemover cacheLocationRemover;
   private CacheUpdater cacheUpdater;
   private BlockIdFactory blockIdFactory;
+  private FileMetaFactory metaFactory;
   private LocationSorter locationSorter;
   private DistributedFileSystem dfs;
 
@@ -49,6 +51,7 @@ public final class SurfMetaManagerTest {
     cacheLocationRemover = new CacheLocationRemover();
     cacheUpdater = mock(CacheUpdater.class);
     blockIdFactory = mock(BlockIdFactory.class);
+    metaFactory = mock(FileMetaFactory.class);
     locationSorter = mock(LocationSorter.class);
     dfs = mock(DistributedFileSystem.class);
   }
@@ -80,7 +83,8 @@ public final class SurfMetaManagerTest {
     when(cacheLoader.load(path)).thenReturn(fileMeta);
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
-    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, blockIdFactory, locationSorter, dfs);
+    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
+            blockIdFactory, metaFactory, locationSorter, dfs);
     when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
     metaManager.get(path, user);
@@ -104,7 +108,8 @@ public final class SurfMetaManagerTest {
     when(cacheLoader.load(path)).thenReturn(fileMeta);
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
-    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, blockIdFactory, locationSorter, dfs);
+    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
+            blockIdFactory, metaFactory, locationSorter, dfs);
     when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
     assertEquals(0, metaManager.clear());
@@ -150,7 +155,8 @@ public final class SurfMetaManagerTest {
     final CacheLoader<Path, FileMeta> cacheLoader = mock(CacheLoader.class);
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
-    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, blockIdFactory, locationSorter, dfs);
+    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
+            blockIdFactory, metaFactory, locationSorter, dfs);
 
     final String[] addresses = new String[]{ "localhost:17001", "localhost:17002", "localhost:17003" };
     final User user = defaultUser();
@@ -209,7 +215,8 @@ public final class SurfMetaManagerTest {
     final CacheLoader<Path, FileMeta> cacheLoader = mock(CacheLoader.class);
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
-    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, blockIdFactory, locationSorter, dfs);
+    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
+            blockIdFactory, metaFactory, locationSorter, dfs);
 
     final int numNodes = 10;
     int port = 17000;

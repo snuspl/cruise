@@ -17,6 +17,7 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
@@ -67,6 +68,7 @@ public final class SurfMetaManagerITCase {
   private HdfsCacheSelectionPolicy selector;
   private CacheLocationRemover cacheLocationRemover;
   private HdfsBlockIdFactory blockFactory;
+  private HdfsFileMetaFactory metaFactory;
   private ReplicationPolicy replicationPolicy;
   private SurfMetaManager metaManager;
   private DistributedFileSystem dfs;
@@ -79,6 +81,7 @@ public final class SurfMetaManagerITCase {
     selector = new HdfsRandomCacheSelectionPolicy();
     cacheLocationRemover = new CacheLocationRemover();
     blockFactory = new HdfsBlockIdFactory();
+    metaFactory = new HdfsFileMetaFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
     for (int i = 0; i < 3; i++) {
@@ -99,14 +102,14 @@ public final class SurfMetaManagerITCase {
     fs.mkdirs(new Path(TESTDIR));
 
     dfs = new DfsConstructor(ITUtils.getDfsAddress()).newInstance();
-    loader = new HdfsMetaLoader(dfs, blockFactory, RECORD);
+    loader = new HdfsMetaLoader(dfs, blockFactory, metaFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
     cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, dfs);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, locationSorter, dfs);
+    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, metaFactory, locationSorter, dfs);
   }
 
   /**

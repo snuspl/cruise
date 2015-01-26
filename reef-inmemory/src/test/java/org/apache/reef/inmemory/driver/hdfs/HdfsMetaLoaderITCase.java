@@ -11,6 +11,7 @@ import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
@@ -44,6 +45,7 @@ public final class HdfsMetaLoaderITCase {
   private CacheManager manager;
   private HdfsMetaLoader loader;
   private HdfsBlockIdFactory blockFactory;
+  private HdfsFileMetaFactory metaFactory;
   private ReplicationPolicy replicationPolicy;
   private DistributedFileSystem dfs;
 
@@ -54,13 +56,14 @@ public final class HdfsMetaLoaderITCase {
   public void setUp() throws IOException {
     manager = TestUtils.cacheManager();
     blockFactory = new HdfsBlockIdFactory();
+    metaFactory = new HdfsFileMetaFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
     for (int i = 0; i < 3; i++) {
       RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
 
       manager.addRunningTask(task);
-      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001+i));
+      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001 + i));
     }
     List<CacheNode> selectedNodes = manager.getCaches();
     assertEquals(3, selectedNodes.size());
@@ -74,7 +77,7 @@ public final class HdfsMetaLoaderITCase {
     fs.mkdirs(new Path(TESTDIR));
 
     dfs = new DfsConstructor(ITUtils.getDfsAddress()).newInstance();
-    loader = new HdfsMetaLoader(dfs, blockFactory, new NullEventRecorder());
+    loader = new HdfsMetaLoader(dfs, blockFactory, metaFactory, new NullEventRecorder());
   }
 
   /**
@@ -150,7 +153,7 @@ public final class HdfsMetaLoaderITCase {
   public void testLoadMultiblockFile() throws IOException {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final Path largeFile = ITUtils.writeFile(fs, TESTDIR+"/largeFile", chunkLength, numChunks);
+    final Path largeFile = ITUtils.writeFile(fs, TESTDIR + "/largeFile", chunkLength, numChunks);
 
     final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength * numChunks);

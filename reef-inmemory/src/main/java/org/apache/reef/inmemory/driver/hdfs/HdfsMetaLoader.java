@@ -5,8 +5,8 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.reef.inmemory.common.FileMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
-import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
@@ -15,7 +15,6 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,13 +33,16 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
 
   private final DistributedFileSystem dfs;
   private final HdfsBlockIdFactory blockFactory;
+  private final FileMetaFactory metaFactory;
 
   @Inject
   public HdfsMetaLoader(final DistributedFileSystem dfs,
                         final HdfsBlockIdFactory blockFactory,
+                        final FileMetaFactory metaFactory,
                         final EventRecorder recorder) {
     this.dfs = dfs;
     this.blockFactory = blockFactory;
+    this.metaFactory = metaFactory;
     this.RECORD = recorder;
   }
 
@@ -56,37 +58,15 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     }
     RECORD.record(getFileInfoEvent.stop());
 
-    return getFileMeta(pathStr, fileStatus);
-  }
-
-  /**
-   * @return FileMeta with the same information of FileStatus retrieved from HDFS
-   * @throws IOException
-   * TODO: use FSPermission properly
-   */
-  private FileMeta getFileMeta(final String pathStr, final FileStatus fileStatus) throws IOException {
-    final FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(pathStr);
-    fileMeta.setFileSize(fileStatus.getLen());
-    fileMeta.setDirectory(fileStatus.isDirectory());
-    fileMeta.setReplication(fileStatus.getReplication());
-    fileMeta.setBlockSize(fileStatus.getBlockSize());
-    fileMeta.setBlocks(new ArrayList<BlockInfo>());
-    fileMeta.setModificationTime(fileStatus.getModificationTime());
-    fileMeta.setAccessTime(fileStatus.getAccessTime());
-    fileMeta.setUser(new User(fileStatus.getOwner(), fileStatus.getGroup()));
-    // TODO : Do we need to support symlink? Is it used frequently in frameworks?
-    if (fileStatus.isSymlink()) {
-      fileMeta.setSymLink(fileStatus.getSymlink().toUri().getPath());
-    }
-    if (!fileStatus.isDirectory()) {
+    final FileMeta fileMeta = metaFactory.toFileMeta(fileStatus);
+    if (!fileMeta.isDirectory()) {
       addBlocks(fileMeta, fileStatus.getLen());
     }
     return fileMeta;
   }
 
   /**
-   * Add blocks to fileMeta
+   * Add blocks to fileMeta. Each BlockInfo has information to load the block from DataNode directly.
    * @throws IOException
    */
   private void addBlocks(final FileMeta fileMeta, final long fileLength) throws IOException {

@@ -3,6 +3,7 @@ package org.apache.reef.inmemory.driver.service;
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.reef.inmemory.common.BlockIdFactory;
+import org.apache.reef.inmemory.common.FileMetaFactory;
 import org.apache.reef.inmemory.driver.*;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
@@ -38,10 +39,12 @@ public final class SurfMetaServerTest {
     final CacheLocationRemover cacheLocationRemover = new CacheLocationRemover();
     final CacheUpdater cacheUpdater = mock(CacheUpdater.class);
     final BlockIdFactory blockIdFactory = mock(BlockIdFactory.class);
+    final FileMetaFactory metaFactory = mock(FileMetaFactory.class);
     final LocationSorter locationSorter = mock(LocationSorter.class);
     final DistributedFileSystem dfs = mock(DistributedFileSystem.class);
 
-    final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheMessenger, cacheLocationRemover, cacheUpdater, blockIdFactory, locationSorter, dfs);
+    final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheMessenger, cacheLocationRemover,
+            cacheUpdater, blockIdFactory, metaFactory, locationSorter, dfs);
 
     try {
       final SurfMetaServer metaService = new SurfMetaServer(
