@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.common.ITUtils;
+import org.apache.reef.inmemory.util.SurfLauncher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -20,10 +21,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for SurfFS methods that delegate to a Base FS.
- * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
+ * Tests for SurfFS methods that deal with FileMeta.
  */
-@Ignore
 public final class SurfFSMetadataITCase {
 
   private static FileSystem baseFs;
@@ -35,6 +34,8 @@ public final class SurfFSMetadataITCase {
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:9001";
+
+  private static final SurfLauncher surfLauncher = new SurfLauncher();
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -52,6 +53,8 @@ public final class SurfFSMetadataITCase {
     stream.writeUTF("Hello Readme");
     stream.close();
 
+    surfLauncher.launch(baseFs);
+
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
 
@@ -63,8 +66,9 @@ public final class SurfFSMetadataITCase {
    * Remove all directories.
    */
   @AfterClass
-  public static void tearDownClass() throws IOException {
-    baseFs.delete(new Path(TESTDIR), true);
+  public static void tearDownClass() throws IOException, InterruptedException {
+    // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
+    surfLauncher.close();
   }
 
   /**
