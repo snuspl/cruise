@@ -59,7 +59,7 @@ public class SurfFSCreateITCase {
   }
 
   @AfterClass
-  public static void tearDownClass() throws Exception {
+  public static void tearDownClass() {
     // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
     surfLauncher.close();
   }

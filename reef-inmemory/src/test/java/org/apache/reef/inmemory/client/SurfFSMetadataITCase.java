@@ -66,7 +66,7 @@ public final class SurfFSMetadataITCase {
    * Remove all directories.
    */
   @AfterClass
-  public static void tearDownClass() throws IOException, InterruptedException {
+  public static void tearDownClass() {
     // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
     surfLauncher.close();
   }

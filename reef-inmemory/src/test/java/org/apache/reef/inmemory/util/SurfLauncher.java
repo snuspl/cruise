@@ -77,12 +77,16 @@ public class SurfLauncher {
     }
   }
 
-  public void close() throws InterruptedException {
+  public void close() {
     driverLauncher.close();
     if (!jobFinished.get()) {
       LOG.log(Level.INFO, "Waiting for Surf job to complete...");
       synchronized (lock) {
-        lock.wait(SURF_SHUTDOWN_WAIT);
+        try {
+          lock.wait(SURF_SHUTDOWN_WAIT);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
     }
 
