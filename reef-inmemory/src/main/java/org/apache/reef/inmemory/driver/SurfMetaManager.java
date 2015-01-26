@@ -237,6 +237,16 @@ public final class SurfMetaManager {
     }
   }
 
+  /**
+   * Get metadata of directory's children files. When the children is not set yet,
+   * get the list of file status from BaseFS. Incremental changes of BaseFS directory
+   * could be dropped.
+   *
+   * TODO find a better way to synchronize the metadata with BaseFS.
+   * @param fileMeta {@code FileMeta} of a directory to look up.
+   * @return List of files that exist under the directory.
+   * @throws IOException
+   */
   public List<FileMeta> getChildren(final FileMeta fileMeta) throws IOException {
     final List<FileMeta> childList = new ArrayList<>();
     final List<String> childPathList = new ArrayList<>();

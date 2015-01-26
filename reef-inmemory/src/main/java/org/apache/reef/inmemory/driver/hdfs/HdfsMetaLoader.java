@@ -5,9 +5,9 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.reef.inmemory.common.FileMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.hadoop.fs.Path;
@@ -33,12 +33,12 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
 
   private final DistributedFileSystem dfs;
   private final HdfsBlockIdFactory blockFactory;
-  private final FileMetaFactory metaFactory;
+  private final HdfsFileMetaFactory metaFactory;
 
   @Inject
   public HdfsMetaLoader(final DistributedFileSystem dfs,
                         final HdfsBlockIdFactory blockFactory,
-                        final FileMetaFactory metaFactory,
+                        final HdfsFileMetaFactory metaFactory,
                         final EventRecorder recorder) {
     this.dfs = dfs;
     this.blockFactory = blockFactory;
