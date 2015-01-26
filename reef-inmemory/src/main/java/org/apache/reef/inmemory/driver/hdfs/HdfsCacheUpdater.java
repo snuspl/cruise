@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.driver.hdfs;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
@@ -37,16 +38,16 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   private final CacheLocationRemover cacheLocationRemover;
   private final HdfsBlockIdFactory blockFactory;
   private final ReplicationPolicy replicationPolicy;
-  private final DFSClient dfsClient; // Access must be synchronized
+  private final DistributedFileSystem dfs; // Access must be synchronized
 
   /**
-   * @param cacheManager Provides an updated list of caches
-   * @param cacheMessenger Provides a channel for block replication messages
-   * @param cacheSelector Selects from available caches based on the implemented policy
+   * @param cacheManager         Provides an updated list of caches
+   * @param cacheMessenger       Provides a channel for block replication messages
+   * @param cacheSelector        Selects from available caches based on the implemented policy
    * @param cacheLocationRemover Provides the log of pending removals
-   * @param blockFactory Translates between block representations
-   * @param replicationPolicy Provides the replication policy for each file
-   * @param dfsClient DFSClient to access to HDFS
+   * @param blockFactory         Translates between block representations
+   * @param replicationPolicy    Provides the replication policy for each file
+   * @param dfs                  Client to access to HDFS
    */
   @Inject
   public HdfsCacheUpdater(final CacheManager cacheManager,
@@ -55,26 +56,26 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
                           final CacheLocationRemover cacheLocationRemover,
                           final HdfsBlockIdFactory blockFactory,
                           final ReplicationPolicy replicationPolicy,
-                          final DFSClient dfsClient) {
+                          final DistributedFileSystem dfs) {
     this.cacheManager = cacheManager;
     this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;
     this.cacheLocationRemover = cacheLocationRemover;
     this.blockFactory = blockFactory;
     this.replicationPolicy = replicationPolicy;
-    this.dfsClient = dfsClient;
+    this.dfs = dfs;
   }
 
   /**
    * Apply the changes from cache nodes and load blocks if needed to fulfill
    * replication factor.
-   *
+   * <p/>
    * 0. Apply removes
    * 1. Resolve replication policy
    * 2. Get information from HDFS
    * 3. For each block that needs loading, load the block asynchronously
    * 4. Return a copy of the new metadata
-   *
+   * <p/>
    * Other concurrent requests for the same file will block on this update.
    *
    * @param fileMeta Updated in place, using a synchronized block. This should be the single point where FileMeta's are updated.
@@ -152,7 +153,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
    * Filter cache nodes to prevent duplicate load by the cache nodes
    * that have the block already.
    * @param cacheNodes Whole cache node list.
-   * @param blockInfo The block to load.
+   * @param blockInfo  The block to load.
    * @return A list of nodes that do not have the block.
    */
   // TODO: contains() will be inefficient if blockInfo.getLocations is large
@@ -171,7 +172,9 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   }
 
   private LocatedBlocks getLocatedBlocks(final Path path) throws IOException {
-    synchronized (dfsClient) {
+    synchronized (dfs) {
+      // TODO Do we need synchronization here? Then it is okay to use dfs for a lock?
+      final DFSClient dfsClient = dfs.getClient();
       final HdfsFileStatus hdfsFileStatus = dfsClient.getFileInfo(path.toString());
       if (hdfsFileStatus == null) {
         throw new FileNotFoundException(path.toString());
@@ -240,6 +243,6 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
 
   @Override
   public void close() throws Exception {
-    dfsClient.close();
+    dfs.close();
   }
 }

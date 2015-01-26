@@ -244,17 +244,17 @@ public final class SurfFS extends FileSystem {
       return getFileStatus(meta);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       if (isFallback) {
-        LOG.log(Level.WARNING, "The file is not found in Surf, trying baseFs...");
+        LOG.log(Level.WARNING, "The file is not found in Surf, trying baseFs...", e);
         return baseFs.getFileStatus(pathToBase(path));
       } else {
         throw new java.io.FileNotFoundException("File not found in the meta server");
       }
     } catch (TException e) {
       if (isFallback) {
-        LOG.log(Level.WARNING, "Surf TException, trying baseFs...");
+        LOG.log(Level.WARNING, "Surf TException, trying baseFs...", e);
         return baseFs.getFileStatus(pathToBase(path));
       } else {
-        throw new IOException ("Failed to get File Status from Surr", e);
+        throw new IOException ("Failed to get File Status from Surf", e);
       }
     }
   }
@@ -358,15 +358,9 @@ public final class SurfFS extends FileSystem {
     final long accessTime = meta.getAccessTime();
     final String owner = meta.getUser().getOwner();
     final String group = meta.getUser().getGroup();
-
-    if (meta.isSetSymLink()) {
-      final Path symLink = new Path(meta.getSymLink());
-      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
-              FsPermission.getFileDefault(), owner, group, symLink, path);
-    } else {
-      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
-              FsPermission.getFileDefault(), owner, group, path);
-    }
+    final Path symLink = meta.isSetSymLink() ? new Path(meta.getSymLink()) : null;
+    return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
+            FsPermission.getFileDefault(), owner, group, symLink, path);
   }
 
   private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {

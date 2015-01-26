@@ -1,6 +1,8 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import com.google.common.cache.CacheLoader;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -9,8 +11,6 @@ import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DFSClient;
-import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 
 import javax.inject.Inject;
@@ -32,14 +32,14 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
   private static final Logger LOG = Logger.getLogger(HdfsMetaLoader.class.getName());
   private final EventRecorder RECORD;
 
-  private final DFSClient dfsClient;
+  private final DistributedFileSystem dfs;
   private final HdfsBlockIdFactory blockFactory;
 
   @Inject
-  public HdfsMetaLoader(final DFSClient dfsClient,
+  public HdfsMetaLoader(final DistributedFileSystem dfs,
                         final HdfsBlockIdFactory blockFactory,
                         final EventRecorder recorder) {
-    this.dfsClient = dfsClient;
+    this.dfs = dfs;
     this.blockFactory = blockFactory;
     this.RECORD = recorder;
   }
@@ -50,7 +50,7 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     LOG.log(Level.INFO, "Load in memory: {0}", pathStr);
 
     final Event getFileInfoEvent = RECORD.event("driver.get-file-info", pathStr).start();
-    final HdfsFileStatus fileStatus = dfsClient.getFileInfo(pathStr);
+    final FileStatus fileStatus = dfs.getFileStatus(path);
     if (fileStatus == null) {
       throw new java.io.FileNotFoundException();
     }
@@ -64,11 +64,11 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
    * @throws IOException
    * TODO: use FSPermission properly
    */
-  private FileMeta getFileMeta(final String pathStr, final HdfsFileStatus fileStatus) throws IOException {
+  private FileMeta getFileMeta(final String pathStr, final FileStatus fileStatus) throws IOException {
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFullPath(pathStr);
     fileMeta.setFileSize(fileStatus.getLen());
-    fileMeta.setDirectory(fileStatus.isDir());
+    fileMeta.setDirectory(fileStatus.isDirectory());
     fileMeta.setReplication(fileStatus.getReplication());
     fileMeta.setBlockSize(fileStatus.getBlockSize());
     fileMeta.setBlocks(new ArrayList<BlockInfo>());
@@ -77,9 +77,9 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     fileMeta.setUser(new User(fileStatus.getOwner(), fileStatus.getGroup()));
     // TODO : Do we need to support symlink? Is it used frequently in frameworks?
     if (fileStatus.isSymlink()) {
-      fileMeta.setSymLink(fileStatus.getSymlink());
+      fileMeta.setSymLink(fileStatus.getSymlink().toUri().getPath());
     }
-    if (!fileStatus.isDir()) {
+    if (!fileStatus.isDirectory()) {
       addBlocks(fileMeta, fileStatus.getLen());
     }
     return fileMeta;
@@ -91,7 +91,7 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
    */
   private void addBlocks(final FileMeta fileMeta, final long fileLength) throws IOException {
     final String pathStr = fileMeta.getFullPath();
-    final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(pathStr, 0, fileLength);
+    final LocatedBlocks locatedBlocks = dfs.getClient().getLocatedBlocks(pathStr, 0, fileLength);
     final List<LocatedBlock> locatedBlockList = locatedBlocks.getLocatedBlocks();
     for (final LocatedBlock locatedBlock : locatedBlockList) {
       final BlockInfo blockInfo = blockFactory.newBlockInfo(pathStr, locatedBlock);
@@ -101,6 +101,6 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
 
   @Override
   public void close() throws Exception {
-    dfsClient.close();
+    dfs.close();
   }
 }

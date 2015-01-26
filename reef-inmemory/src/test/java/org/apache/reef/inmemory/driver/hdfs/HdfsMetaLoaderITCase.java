@@ -1,6 +1,5 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
@@ -18,6 +17,7 @@ import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
 import org.apache.reef.inmemory.driver.CacheManager;
 import org.apache.reef.inmemory.driver.CacheNode;
+import org.apache.reef.inmemory.driver.DfsConstructor;
 import org.apache.reef.inmemory.driver.TestUtils;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.junit.After;
@@ -45,7 +45,7 @@ public final class HdfsMetaLoaderITCase {
   private HdfsMetaLoader loader;
   private HdfsBlockIdFactory blockFactory;
   private ReplicationPolicy replicationPolicy;
-  private DFSClient dfsClient;
+  private DistributedFileSystem dfs;
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -73,8 +73,8 @@ public final class HdfsMetaLoaderITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    dfsClient = new DFSClient(fs.getUri(), hdfsConfig);
-    loader = new HdfsMetaLoader(dfsClient, blockFactory, new NullEventRecorder());
+    dfs = new DfsConstructor(ITUtils.getDfsAddress()).newInstance();
+    loader = new HdfsMetaLoader(dfs, blockFactory, new NullEventRecorder());
   }
 
   /**
@@ -83,7 +83,7 @@ public final class HdfsMetaLoaderITCase {
   @After
   public void tearDown() throws IOException {
     fs.delete(new Path(TESTDIR), true);
-    dfsClient.close();
+    dfs.close();
   }
 
   /**
@@ -94,7 +94,7 @@ public final class HdfsMetaLoaderITCase {
     try {
       loader.load(new Path("/nonexistent/path"));
       fail();
-    } catch(FileNotFoundException e) {
+    } catch (FileNotFoundException e) {
       // Success
     }
   }
@@ -105,7 +105,7 @@ public final class HdfsMetaLoaderITCase {
    */
   @Test
   public void testLoadDirectory() throws IOException {
-    final Path directory = new Path(TESTDIR+"/directory");
+    final Path directory = new Path(TESTDIR + "/directory");
 
     fs.mkdirs(directory);
     final FileMeta fileMeta = loader.load(directory);
@@ -124,7 +124,7 @@ public final class HdfsMetaLoaderITCase {
    */
   @Test
   public void testLoadSmallFile() throws IOException {
-    final Path smallFile = new Path(TESTDIR+"/smallFile");
+    final Path smallFile = new Path(TESTDIR + "/smallFile");
 
     final FSDataOutputStream outputStream = fs.create(smallFile);
     outputStream.write(1);
@@ -152,8 +152,8 @@ public final class HdfsMetaLoaderITCase {
     final int numChunks = 20;
     final Path largeFile = ITUtils.writeFile(fs, TESTDIR+"/largeFile", chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
-            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
+            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength * numChunks);
 
     final FileMeta fileMeta = loader.load(largeFile);
     assertNotNull(fileMeta);

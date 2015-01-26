@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -70,7 +69,7 @@ public final class SurfMetaManagerITCase {
   private HdfsBlockIdFactory blockFactory;
   private ReplicationPolicy replicationPolicy;
   private SurfMetaManager metaManager;
-  private DFSClient dfsClient;
+  private DistributedFileSystem dfs;
 
   @Before
   public void setUp() throws IOException {
@@ -86,7 +85,7 @@ public final class SurfMetaManagerITCase {
       final RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
 
       manager.addRunningTask(task);
-      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001+i));
+      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001 + i));
     }
     List<CacheNode> selectedNodes = manager.getCaches();
     assertEquals(3, selectedNodes.size());
@@ -99,16 +98,15 @@ public final class SurfMetaManagerITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    dfsClient = new DFSClient(fs.getUri(), hdfsConfig);
-
-    loader = new HdfsMetaLoader(dfsClient, blockFactory, RECORD);
+    dfs = new DfsConstructor(ITUtils.getDfsAddress()).newInstance();
+    loader = new HdfsMetaLoader(dfs, blockFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, dfsClient);
+    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, dfs);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, locationSorter, dfsClient);
+    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, locationSorter, dfs);
   }
 
   /**
@@ -117,7 +115,7 @@ public final class SurfMetaManagerITCase {
   @After
   public void tearDown() throws IOException {
     fs.delete(new Path(TESTDIR), true);
-    dfsClient.close();
+    dfs.close();
   }
 
   /**
@@ -128,13 +126,13 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentLoad() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = TESTDIR+"/largeFile";
+    final String path = TESTDIR + "/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
 
-    final int numThreads =  10;
+    final int numThreads = 10;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
@@ -161,7 +159,7 @@ public final class SurfMetaManagerITCase {
 
     // They should all return different fileMetas
     for (int i = 0; i < numThreads - 1; i++) {
-      for (int j = i+1; j < numThreads; j++) {
+      for (int j = i + 1; j < numThreads; j++) {
         assertFalse(fileMetas[i] == fileMetas[j]);
       }
     }
@@ -192,11 +190,11 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = TESTDIR+"/largeFile";
+    final String path = TESTDIR + "/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
-            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
+            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength * numChunks);
 
     final FileMeta fm = metaManager.get(new Path(path), new User());
     final FileMeta fileMeta = metaManager.loadData(fm);
@@ -220,7 +218,7 @@ public final class SurfMetaManagerITCase {
     }
     // (Leave rest of the blocks alone)
 
-    final int numThreads =  10;
+    final int numThreads = 10;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
@@ -272,16 +270,16 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentRemoveAndUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = TESTDIR+"/largeFile";
+    final String path = TESTDIR + "/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
-            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
+            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength * numChunks);
 
     final FileMeta fm = metaManager.get(new Path(path), new User());
     final FileMeta fileMeta = metaManager.loadData(fm);
 
-    final int numThreads =  20;
+    final int numThreads = 20;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
