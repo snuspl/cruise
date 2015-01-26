@@ -10,6 +10,7 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import static org.junit.Assert.assertTrue;
  * Tests for SurfFS methods that delegate to a Base FS.
  * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
  */
+@Ignore
 public final class SurfFSDelegationITCase {
 
   private static FileSystem baseFs;

@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.client.DriverLauncher;
+import org.apache.reef.inmemory.util.SurfLauncher;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -10,7 +10,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -22,10 +21,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
@@ -46,27 +41,6 @@ public final class SurfFSOpenITCase {
   private static FileSystem baseFs;
   private static SurfFS surfFs;
 
-  private static ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-  /**
-   * The total execution time of Surf. The test must wait for this timeout in order to exit gracefully
-   * (without leaving behind orphan processes). When adding more test cases,
-   * you may need to increase this value.
-   */
-  private static final int SURF_TIMEOUT = 40 * 1000;
-
-  /**
-   * The time to wait for Surf to complete startup. If Surf startup time increases, you may need
-   * to increase this value.
-   */
-  private static final int SURF_STARTUP_SLEEP = 15 * 1000;
-
-  /**
-   * The time to wait for Surf graceful shutdown. If this time expires,
-   * the user will have to hunt down orphan processes.
-   */
-  private static final int SURF_SHUTDOWN_WAIT = 40 * 1000;
-
   private static final byte[] CHUNK = new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5, (byte)6, (byte)7, (byte)8};
 
   private static final String TESTDIR = ITUtils.getTestDir();
@@ -82,8 +56,7 @@ public final class SurfFSOpenITCase {
 
   private static final int DFS_BLOCK_SIZE_VALUE = 512;
 
-  private static final Object lock = new Object();
-  private static final AtomicBoolean jobFinished = new AtomicBoolean(false);
+  private static final SurfLauncher surfLauncher = new SurfLauncher();
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -112,31 +85,7 @@ public final class SurfFSOpenITCase {
     }
     stream2.close();
 
-    executorService.submit(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          final org.apache.reef.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
-          final org.apache.reef.tang.Configuration fileConf = Launch.parseConfigFile();
-          final org.apache.reef.tang.Configuration runtimeConfig = Launch.getRuntimeConfiguration(clConf, fileConf);
-          final org.apache.reef.tang.Configuration launchConfig = Launch.getLaunchConfiguration(clConf, fileConf);
-
-          DriverLauncher.getLauncher(runtimeConfig).run(launchConfig, SURF_TIMEOUT);
-          jobFinished.set(true);
-          synchronized (lock) {
-            lock.notifyAll();
-          }
-        } catch (Exception e) {
-          throw new RuntimeException("Could not run Surf instance", e);
-        }
-      }
-    });
-
-    try {
-      Thread.sleep(SURF_STARTUP_SLEEP); // Wait for Surf setup before continuing
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    surfLauncher.launch(baseFs);
 
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
@@ -154,17 +103,7 @@ public final class SurfFSOpenITCase {
    */
   @AfterClass
   public static void tearDownClass() throws Exception {
-    baseFs.delete(new Path(TESTDIR), true);
-    if (!jobFinished.get()) {
-      LOG.log(Level.INFO, "Waiting for Surf job to complete...");
-      synchronized (lock) {
-        lock.wait(SURF_SHUTDOWN_WAIT);
-      }
-    }
-
-    if (!jobFinished.get()) {
-      LOG.log(Level.SEVERE, "Surf did not exit gracefully. Please check for orphan processes (e.g. using `ps`) and kill them!");
-    }
+    surfLauncher.close();
   }
 
   private void assertBufEqualsChunk(final byte[] buf, int position, int length) {
