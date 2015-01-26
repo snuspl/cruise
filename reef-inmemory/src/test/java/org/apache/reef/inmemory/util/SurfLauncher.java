@@ -10,6 +10,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Launches and closes Surf via REEF DriverLauncher interface
+ */
 public class SurfLauncher {
   private static final Logger LOG = Logger.getLogger(SurfLauncher.class.getName());
 

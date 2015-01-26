@@ -24,7 +24,7 @@ import static org.junit.Assert.assertTrue;
  * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
  */
 @Ignore
-public final class SurfFSDelegationITCase {
+public final class SurfFSMetadataITCase {
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;

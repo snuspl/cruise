@@ -22,7 +22,6 @@ import java.util.logging.Logger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@Ignore
 public class SurfFSMkdirsITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSMkdirsITCase.class.getName());
 
@@ -66,9 +65,13 @@ public class SurfFSMkdirsITCase {
 
   @AfterClass
   public static void tearDownClass() throws Exception {
+    // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
     surfLauncher.close();
   }
 
+  /**
+   * Write files in a directory and check their FileStatus
+   */
   @Test
   public void testNonemptyDirectory() throws IOException {
     if (!surfFs.mkdirs(new Path(NONEMPTY))) {
@@ -92,6 +95,9 @@ public class SurfFSMkdirsITCase {
     }
   }
 
+  /**
+   * Created nested directories and check their FileStatus
+   */
   @Test
   public void testNestedDirectory() throws IOException {
     if (!surfFs.mkdirs(new Path(LEVEL1))) {

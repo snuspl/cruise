@@ -103,6 +103,7 @@ public final class SurfFSOpenITCase {
    */
   @AfterClass
   public static void tearDownClass() throws Exception {
+    baseFs.delete(new Path(TESTDIR), true);
     surfLauncher.close();
   }
 
