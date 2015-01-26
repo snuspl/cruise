@@ -27,7 +27,10 @@ public class DfsClientConstructor implements ExternalConstructor<DFSClient> {
     try {
       return new DFSClient(new URI(this.dfsAddress), new Configuration());
     } catch (IOException | URISyntaxException e) {
-      throw new RuntimeException("Failed to connect DFS Client in " + this.dfsAddress);
+      final StringBuilder errorMessage = new StringBuilder();
+      errorMessage.append("Failed to connect DFS Client in ")
+              .append(this.dfsAddress).append('\n').append(e);
+      throw new RuntimeException(errorMessage.toString());
     }
   }
 }

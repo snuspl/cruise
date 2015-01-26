@@ -1,6 +1,5 @@
 package org.apache.reef.inmemory.driver.service;
 
-import org.apache.avro.generic.GenericData;
 import org.apache.reef.inmemory.common.entity.*;
 import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.tang.annotations.Parameter;
@@ -29,7 +28,6 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,7 +50,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   private final ServiceRegistry serviceRegistry;
   private final ReplicationPolicy replicationPolicy;
   private final WritingCacheSelectionPolicy writingCacheSelector;
-
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
                         final CacheManager cacheManager,
@@ -110,9 +107,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       if (exists(path)) {
         throw new FileAlreadyExistsException();
       } else {
-        final FileMeta fileMeta = createMetaForEmptyFile(path, replication, blockSize);
-        metaManager.update(fileMeta, new User());
-        return metaManager.registerToBaseFS(fileMeta);
+        final boolean isSuccess = metaManager.registerFile(path, replication, blockSize);
+        return isSuccess;
       }
     } catch (IOException e) {
       throw new TException(e);
@@ -126,9 +122,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       if (exists(path)) {
         throw new FileAlreadyExistsException();
       } else {
-        final FileMeta fileMeta = createMetaForDirectory(path);
-        metaManager.update(fileMeta, new User());
-        return metaManager.registerToBaseFS(fileMeta);
+        final boolean isSuccess = metaManager.registerDirectory(path);
+        return isSuccess;
       }
     } catch (IOException e) {
       throw new TException(e);
@@ -324,29 +319,5 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       builder.append(" : ")
           .append(cache.getStopCause());
     }
-  }
-
-  private FileMeta createMetaForEmptyFile(final String path, final short replication, final long blockSize) {
-    final FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(path);
-    fileMeta.setFileSize(0);
-    fileMeta.setDirectory(false);
-    fileMeta.setReplication(replication);
-    fileMeta.setBlockSize(blockSize);
-    fileMeta.setBlocks(new ArrayList<BlockInfo>());
-    fileMeta.setUser(new User()); // TODO User in Surf should be defined properly.
-    return fileMeta;
-  }
-
-  private FileMeta createMetaForDirectory(final String path) {
-    final FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(path);
-    fileMeta.setFileSize(0);
-    fileMeta.setDirectory(true);
-    fileMeta.setReplication((short)0);
-    fileMeta.setBlockSize(0);
-    fileMeta.setBlocks(new ArrayList<BlockInfo>());
-    fileMeta.setUser(new User()); // TODO User in Surf should be defined properly.
-    return fileMeta;
   }
 }

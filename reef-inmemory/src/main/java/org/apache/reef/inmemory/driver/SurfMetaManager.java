@@ -97,8 +97,8 @@ public final class SurfMetaManager {
    * If the path not exist in the cache, then create an entry with the path.
    * @param fileMeta Metadata to update
    */
-  public void update(FileMeta fileMeta, User creator) {
-    final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), creator);
+  public void update(FileMeta fileMeta) {
+    final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), fileMeta.getUser());
     metadataIndex.put(absolutePath, fileMeta);
   }
 
@@ -172,7 +172,7 @@ public final class SurfMetaManager {
 
     meta.setFileSize(meta.getFileSize() + nWritten);
     meta.addToBlocks(newBlock);
-    update(meta, meta.getUser());
+    update(meta);
   }
 
   private Path getAbsolutePath(Path path, User creator) {
@@ -186,5 +186,67 @@ public final class SurfMetaManager {
     }
 
     return newPath;
+  }
+
+  /**
+   * Create an entry for file, and write the metadata into both BaseFS and Surf.
+   * <p>
+   * First, it tries to create a directory in the BaseFS, and the metadata will be updated
+   * only when successful.
+   * </p>
+   * <p>
+   * If a failure occurs during this step, there will be no update in the metadata;
+   * An exception is thrown or {@code false} is returned.
+   * </p>
+   * @throws IOException
+   */
+  public boolean registerFile(String path, short replication, long blockSize) throws IOException {
+    final FileMeta fileMeta = new FileMeta();
+    fileMeta.setFullPath(path);
+    fileMeta.setFileSize(0);
+    fileMeta.setDirectory(false);
+    fileMeta.setReplication(replication);
+    fileMeta.setBlockSize(blockSize);
+    fileMeta.setBlocks(new ArrayList<BlockInfo>());
+    fileMeta.setUser(new User()); // TODO User in Surf should be specified properly.
+
+    final boolean isSuccess = registerToBaseFS(fileMeta);
+    if (isSuccess) {
+      update(fileMeta);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * Create an entry for directory, and write the metadata into both BaseFS and Surf.
+   * <p>
+   * First, it tries to create a directory in the BaseFS, and the metadata will be updated
+   * only when successful.
+   * </p>
+   * <p>
+   * If a failure occurs during this step, there will be no update in the metadata;
+   * An exception is thrown or {@code false} is returned.
+   * </p>
+   * @throws IOException
+   */
+  public boolean registerDirectory(final String path) throws IOException {
+    final FileMeta fileMeta = new FileMeta();
+    fileMeta.setFullPath(path);
+    fileMeta.setFileSize(0);
+    fileMeta.setDirectory(true);
+    fileMeta.setReplication((short)0);
+    fileMeta.setBlockSize(0);
+    fileMeta.setBlocks(new ArrayList<BlockInfo>());
+    fileMeta.setUser(new User()); // TODO User in Surf should be specified properly.
+
+    final boolean isSuccess = registerToBaseFS(fileMeta);
+    if (isSuccess) {
+      update(fileMeta);
+      return true;
+    } else {
+      return false;
+    }
   }
 }
