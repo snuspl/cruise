@@ -23,7 +23,12 @@ service SurfMetaService {
   /**
    * Register the Filemeta with given path and blockSize
    */
-  bool create(1:string path, 2:i64 blockSize) throws (1: exceptions.FileAlreadyExistsException fae)
+  bool create(1:string path, 2:i16 replication, 3:i64 blockSize) throws (1: exceptions.FileAlreadyExistsException fae)
+
+  /**
+   * Register the FileMeta and insert an entry to directory structure if successful.
+   */
+  bool mkdirs(1:string path) throws (1: exceptions.FileAlreadyExistsException fae)
 
   /**
    * Allocate a new Block and return the Info(CacheNode, Replication Policy, etc) of the block to write data.

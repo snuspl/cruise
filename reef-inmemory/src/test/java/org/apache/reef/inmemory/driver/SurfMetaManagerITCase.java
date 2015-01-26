@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -69,6 +70,7 @@ public final class SurfMetaManagerITCase {
   private HdfsBlockIdFactory blockFactory;
   private ReplicationPolicy replicationPolicy;
   private SurfMetaManager metaManager;
+  private DFSClient dfsClient;
 
   @Before
   public void setUp() throws IOException {
@@ -79,7 +81,6 @@ public final class SurfMetaManagerITCase {
     cacheLocationRemover = new CacheLocationRemover();
     blockFactory = new HdfsBlockIdFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
-
 
     for (int i = 0; i < 3; i++) {
       final RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
@@ -98,14 +99,16 @@ public final class SurfMetaManagerITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsMetaLoader(fs.getUri().toString(), blockFactory, RECORD);
+    dfsClient = new DFSClient(fs.getUri(), hdfsConfig);
+
+    loader = new HdfsMetaLoader(dfsClient, blockFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, fs.getUri().toString());
+    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, dfsClient);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, locationSorter);
+    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, locationSorter, dfsClient);
   }
 
   /**
@@ -114,6 +117,7 @@ public final class SurfMetaManagerITCase {
   @After
   public void tearDown() throws IOException {
     fs.delete(new Path(TESTDIR), true);
+    dfsClient.close();
   }
 
   /**

@@ -28,7 +28,6 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -51,7 +50,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   private final ServiceRegistry serviceRegistry;
   private final ReplicationPolicy replicationPolicy;
   private final WritingCacheSelectionPolicy writingCacheSelector;
-
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
                         final CacheManager cacheManager,
@@ -74,7 +72,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public FileMeta getFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
-    // TODO Check existence in the baseFS
     // TODO: need (integrated?) tests for this version
     try {
       final FileMeta fileMeta = metaManager.get(new Path(path), new User());
@@ -91,24 +88,45 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public boolean exists(String path) throws TException {
-    // TODO Check existence in the baseFS
-    return metaManager.exists(new Path(path), new User());
+  public boolean exists(final String path) throws TException {
+    try {
+      metaManager.get(new Path(path), new User());
+      return true;
+    } catch (java.io.FileNotFoundException e) {
+      return false;
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Checking existence failed for "+path, e);
+      throw new TException(e);
+    }
   }
 
   @Override
-  public synchronized boolean create(String path, long blockSize) throws FileAlreadyExistsException, TException {
-    // TODO Check existence and create a metadata in the baseFS
-    if (exists(path)) {
-      throw new FileAlreadyExistsException();
-    } else {
-      FileMeta fileMeta = new FileMeta();
-      fileMeta.setFullPath(path);
-      fileMeta.setBlockSize(blockSize);
-      fileMeta.setBlocks(new ArrayList<BlockInfo>());
-      fileMeta.setFileSize(0);
-      metaManager.update(fileMeta, new User());
-      return true;
+  public synchronized boolean create(final String path, final short replication, final long blockSize)
+          throws FileAlreadyExistsException, TException {
+    try {
+      if (exists(path)) {
+        throw new FileAlreadyExistsException();
+      } else {
+        final boolean isSuccess = metaManager.registerFile(path, replication, blockSize);
+        return isSuccess;
+      }
+    } catch (IOException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public synchronized boolean mkdirs(final String path) throws FileAlreadyExistsException, TException {
+    try {
+      // TODO Add a entry in Surf directory hierarchy
+      if (exists(path)) {
+        throw new FileAlreadyExistsException();
+      } else {
+        final boolean isSuccess = metaManager.registerDirectory(path);
+        return isSuccess;
+      }
+    } catch (IOException e) {
+      throw new TException(e);
     }
   }
 

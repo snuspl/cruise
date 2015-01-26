@@ -68,7 +68,7 @@ public class SurfFSWriteITCase {
   private static final String SURF_ADDRESS = "localhost:18000";
 
   private static final short REPLICATION = 3;
-  private static final int BLOCK_SIZE = 800;
+  private static final int BLOCK_SIZE = 1024; // Need to be a multiple of 512 (Hadoop Checksum Policy)
   private static final int BUFFER_SIZE = 4096;
 
   private static final Object lock = new Object();

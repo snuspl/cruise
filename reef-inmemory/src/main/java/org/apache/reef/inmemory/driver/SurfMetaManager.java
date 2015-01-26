@@ -1,7 +1,10 @@
 package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
+import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -13,7 +16,9 @@ import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -32,6 +37,7 @@ public final class SurfMetaManager {
   private final BlockIdFactory blockIdFactory;
   private final LocationSorter locationSorter;
   public static String USERS_HOME = "/user";
+  private final DFSClient dfsClient;
 
   @Inject
   public SurfMetaManager(final LoadingCache metadataIndex,
@@ -39,13 +45,15 @@ public final class SurfMetaManager {
                          final CacheLocationRemover cacheLocationRemover,
                          final CacheUpdater cacheUpdater,
                          final BlockIdFactory blockIdFactory,
-                         final LocationSorter locationSorter) {
+                         final LocationSorter locationSorter,
+                         final DFSClient dfsClient) {
     this.metadataIndex = metadataIndex;
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
     this.cacheUpdater = cacheUpdater;
     this.blockIdFactory = blockIdFactory;
     this.locationSorter = locationSorter;
+    this.dfsClient = dfsClient;
   }
 
   /**
@@ -85,21 +93,12 @@ public final class SurfMetaManager {
   }
 
   /**
-   * @return {@code true} if file is cached already with the path as a key.
-   * @throws ExecutionException
-   */
-  public boolean exists(Path path, User creator) {
-    final Path absolutePath = getAbsolutePath(path, creator);
-    return metadataIndex.getIfPresent(absolutePath) != null;
-  }
-
-  /**
    * Update the change of metadata (e.g. Added blocks while writing)
    * If the path not exist in the cache, then create an entry with the path.
    * @param fileMeta Metadata to update
    */
-  public void update(FileMeta fileMeta, User creator) {
-    final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), creator);
+  public void update(FileMeta fileMeta) {
+    final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), fileMeta.getUser());
     metadataIndex.put(absolutePath, fileMeta);
   }
 
@@ -112,6 +111,26 @@ public final class SurfMetaManager {
     metadataIndex.invalidateAll(); // TODO: this may not be so accurate
     cacheMessenger.clearAll();
     return numEntries;
+  }
+
+  /**
+   * Register a file or directory to BaseFS. We can make sure files
+   * with same name exist both in Surf and BaseFS.
+   * @return {@code true} if the file is created successfully.
+   * @throws IOException
+   */
+  // TODO: Use Permission Properly
+  public boolean registerToBaseFS(final FileMeta fileMeta) throws IOException {
+    // Create the file or directory to the BaseFS. It throws an IOException if failure occurs.
+    if (fileMeta.isDirectory()) {
+      return dfsClient.mkdirs(fileMeta.getFullPath(), FsPermission.getDirDefault(), true);
+    } else {
+      // Use default buffer size configured in the server. Progressable and ChecksumOpt are not used.
+      int bufferSize = dfsClient.getServerDefaults().getFileBufferSize();
+      dfsClient.create(fileMeta.getFullPath(), FsPermission.getFileDefault(), EnumSet.of(CreateFlag.CREATE),
+              fileMeta.getReplication(), fileMeta.getBlockSize(), null, bufferSize, null);
+      return true;
+    }
   }
 
   /**
@@ -153,7 +172,7 @@ public final class SurfMetaManager {
 
     meta.setFileSize(meta.getFileSize() + nWritten);
     meta.addToBlocks(newBlock);
-    update(meta, new User());
+    update(meta);
   }
 
   private Path getAbsolutePath(Path path, User creator) {
@@ -163,9 +182,71 @@ public final class SurfMetaManager {
       newPath = path;
     }
     else {
-      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getId() + Path.SEPARATOR + path);
+      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getOwner() + Path.SEPARATOR + path);
     }
 
     return newPath;
+  }
+
+  /**
+   * Create an entry for file, and write the metadata into both BaseFS and Surf.
+   * <p>
+   * First, it tries to create a directory in the BaseFS, and the metadata will be updated
+   * only when successful.
+   * </p>
+   * <p>
+   * If a failure occurs during this step, there will be no update in the metadata;
+   * An exception is thrown or {@code false} is returned.
+   * </p>
+   * @throws IOException
+   */
+  public boolean registerFile(String path, short replication, long blockSize) throws IOException {
+    final FileMeta fileMeta = new FileMeta();
+    fileMeta.setFullPath(path);
+    fileMeta.setFileSize(0);
+    fileMeta.setDirectory(false);
+    fileMeta.setReplication(replication);
+    fileMeta.setBlockSize(blockSize);
+    fileMeta.setBlocks(new ArrayList<BlockInfo>());
+    fileMeta.setUser(new User()); // TODO User in Surf should be specified properly.
+
+    final boolean isSuccess = registerToBaseFS(fileMeta);
+    if (isSuccess) {
+      update(fileMeta);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * Create an entry for directory, and write the metadata into both BaseFS and Surf.
+   * <p>
+   * First, it tries to create a directory in the BaseFS, and the metadata will be updated
+   * only when successful.
+   * </p>
+   * <p>
+   * If a failure occurs during this step, there will be no update in the metadata;
+   * An exception is thrown or {@code false} is returned.
+   * </p>
+   * @throws IOException
+   */
+  public boolean registerDirectory(final String path) throws IOException {
+    final FileMeta fileMeta = new FileMeta();
+    fileMeta.setFullPath(path);
+    fileMeta.setFileSize(0);
+    fileMeta.setDirectory(true);
+    fileMeta.setReplication((short)0);
+    fileMeta.setBlockSize(0);
+    fileMeta.setBlocks(new ArrayList<BlockInfo>());
+    fileMeta.setUser(new User()); // TODO User in Surf should be specified properly.
+
+    final boolean isSuccess = registerToBaseFS(fileMeta);
+    if (isSuccess) {
+      update(fileMeta);
+      return true;
+    } else {
+      return false;
+    }
   }
 }

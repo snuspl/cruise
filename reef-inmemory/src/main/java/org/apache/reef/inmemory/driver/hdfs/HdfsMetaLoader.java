@@ -4,20 +4,18 @@ import com.google.common.cache.CacheLoader;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
-import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,14 +36,10 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
   private final HdfsBlockIdFactory blockFactory;
 
   @Inject
-  public HdfsMetaLoader(final @Parameter(DfsParameters.Address.class) String dfsAddress,
+  public HdfsMetaLoader(final DFSClient dfsClient,
                         final HdfsBlockIdFactory blockFactory,
                         final EventRecorder recorder) {
-    try {
-      this.dfsClient = new DFSClient(new URI(dfsAddress), new Configuration());
-    } catch (Exception ex) {
-      throw new RuntimeException("Unable to connect to DFS Client", ex);
-    }
+    this.dfsClient = dfsClient;
     this.blockFactory = blockFactory;
     this.RECORD = recorder;
   }
@@ -56,32 +50,38 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     LOG.log(Level.INFO, "Load in memory: {0}", pathStr);
 
     final Event getFileInfoEvent = RECORD.event("driver.get-file-info", pathStr).start();
-    // getFileInfo returns null if FileNotFound, as stated in its javadoc
     final HdfsFileStatus fileStatus = dfsClient.getFileInfo(pathStr);
+    if (fileStatus == null) {
+      throw new java.io.FileNotFoundException();
+    }
     RECORD.record(getFileInfoEvent.stop());
 
-    return convertFileStatusToFileMeta(pathStr, fileStatus);
+    return getFileMeta(pathStr, fileStatus);
   }
 
   /**
    * @return FileMeta with the same information of FileStatus retrieved from HDFS
    * @throws IOException
+   * TODO: use FSPermission properly
    */
-  // TODO A factory might be needed to support multiple Base FSs
-  private FileMeta convertFileStatusToFileMeta(final String pathStr, final HdfsFileStatus fileStatus)
-          throws IOException {
-    if (fileStatus == null) {
-      return null;
-    }
+  private FileMeta getFileMeta(final String pathStr, final HdfsFileStatus fileStatus) throws IOException {
     final FileMeta fileMeta = new FileMeta();
     fileMeta.setFullPath(pathStr);
     fileMeta.setFileSize(fileStatus.getLen());
-    fileMeta.setBlockSize(fileStatus.getBlockSize());
     fileMeta.setDirectory(fileStatus.isDir());
+    fileMeta.setReplication(fileStatus.getReplication());
+    fileMeta.setBlockSize(fileStatus.getBlockSize());
+    fileMeta.setBlocks(new ArrayList<BlockInfo>());
+    fileMeta.setModificationTime(fileStatus.getModificationTime());
+    fileMeta.setAccessTime(fileStatus.getAccessTime());
+    fileMeta.setUser(new User(fileStatus.getOwner(), fileStatus.getGroup()));
+    // TODO : Do we need to support symlink? Is it used frequently in frameworks?
+    if (fileStatus.isSymlink()) {
+      fileMeta.setSymLink(fileStatus.getSymlink());
+    }
     if (!fileStatus.isDir()) {
       addBlocks(fileMeta, fileStatus.getLen());
     }
-    // TODO Additional Fields should be resolved
     return fileMeta;
   }
 

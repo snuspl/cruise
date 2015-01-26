@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
@@ -72,5 +73,6 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
     .bindImplementation(ReplicationPolicy.class, ReplicationPolicyImpl.class)
     .bindImplementation(EStage.class, ThreadPoolStage.class)
     .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
+    .bindConstructor(DFSClient.class, DfsClientConstructor.class)
     .build();
 }
