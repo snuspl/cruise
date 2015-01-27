@@ -145,6 +145,7 @@ public class SurfFSDirectoryITCase {
       outputStream.close();
     }
 
+    // rename the directory and the children files
     assertEquals(true, surfFs.rename(new Path(BEFORE), new Path(AFTER)));
     for (int i = 0; i < 5; i ++) {
       assertEquals(true, surfFs.rename(new Path(AFTER, String.valueOf(i)), new Path(AFTER, String.valueOf(i+5))));
@@ -171,9 +172,11 @@ public class SurfFSDirectoryITCase {
       outputStream.close();
     }
 
+    // delete a child file
     assertEquals(true, surfFs.delete(new Path(DELETE, String.valueOf(0)), true));
     assertEquals(false, surfFs.exists(new Path(DELETE, String.valueOf(0))));
 
+    // delete the directory
     assertEquals(true, surfFs.delete(new Path(DELETE), true));
     assertEquals(false, surfFs.exists(new Path(DELETE)));
     for (int i = 0; i < 5; i ++) {
