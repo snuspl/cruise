@@ -19,7 +19,10 @@ import java.util.logging.Logger;
 
 import static org.junit.Assert.fail;
 
-public class SurfFSCreateITCase {
+/**
+ * Test creating files in Surf
+ */
+public final class SurfFSCreateITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSCreateITCase.class.getName());
 
   private static SurfFS surfFs;

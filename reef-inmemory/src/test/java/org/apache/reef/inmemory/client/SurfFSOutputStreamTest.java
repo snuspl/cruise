@@ -22,7 +22,10 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
-public class SurfFSOutputStreamTest {
+/**
+ * Test SurfFSOutputStream's internal states(offsets)
+ */
+public final class SurfFSOutputStreamTest {
   private static final String PATH = "testPath";
   private static final int BLOCK_SIZE = 800;
   private static String CACHE_ADDR = "testCacheAddress";
