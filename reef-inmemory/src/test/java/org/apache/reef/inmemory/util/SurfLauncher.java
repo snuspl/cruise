@@ -73,7 +73,7 @@ public class SurfLauncher {
     try {
       Thread.sleep(SURF_STARTUP_SLEEP); // Wait for Surf setup before continuing
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      throw new RuntimeException("Interrupted during SURF_STARTUP_SLEEP", e);
     }
   }
 
@@ -85,7 +85,7 @@ public class SurfLauncher {
         try {
           lock.wait(SURF_SHUTDOWN_WAIT);
         } catch (InterruptedException e) {
-          e.printStackTrace();
+          throw new RuntimeException("Interrupted during SURF_SHUTDOWN_WAIT", e);
         }
       }
     }
@@ -97,7 +97,7 @@ public class SurfLauncher {
     try {
       Thread.sleep(SURF_CLOSE_SLEEP); // Wait for Surf to close before continuing
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      throw new RuntimeException("Interrupted during SURF_CLOSE_SLEEP", e);
     }
   }
 }
