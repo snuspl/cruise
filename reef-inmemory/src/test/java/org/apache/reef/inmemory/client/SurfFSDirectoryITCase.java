@@ -24,7 +24,7 @@ import static org.junit.Assert.fail;
 /**
  * Test Surf's directory-related operations
  */
-public class SurfFSDirectoryITCase {
+public final class SurfFSDirectoryITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSDirectoryITCase.class.getName());
 
   private static SurfFS surfFs;

@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 /**
  * Test SurfFSOutputStream's internal states(offsets)
  */
-public class SurfFSOutputStreamTest {
+public final class SurfFSOutputStreamTest {
   private static final String PATH = "testPath";
   private static final int BLOCK_SIZE = 800;
   private static String CACHE_ADDR = "testCacheAddress";

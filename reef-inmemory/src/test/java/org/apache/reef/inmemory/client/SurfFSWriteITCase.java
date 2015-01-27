@@ -24,7 +24,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Test writing to Surf
  */
-public class SurfFSWriteITCase {
+public final class SurfFSWriteITCase {
 
   private static final Logger LOG = Logger.getLogger(SurfFSWriteITCase.class.getName());
 

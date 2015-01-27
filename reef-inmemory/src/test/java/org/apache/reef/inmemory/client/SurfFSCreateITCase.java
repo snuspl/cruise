@@ -22,7 +22,7 @@ import static org.junit.Assert.fail;
 /**
  * Test creating files in Surf
  */
-public class SurfFSCreateITCase {
+public final class SurfFSCreateITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSCreateITCase.class.getName());
 
   private static SurfFS surfFs;
