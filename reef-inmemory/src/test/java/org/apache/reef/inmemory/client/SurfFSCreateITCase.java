@@ -19,6 +19,9 @@ import java.util.logging.Logger;
 
 import static org.junit.Assert.fail;
 
+/**
+ * Test creating files in Surf
+ */
 public class SurfFSCreateITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSCreateITCase.class.getName());
 

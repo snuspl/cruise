@@ -26,17 +26,11 @@ import java.util.logging.Logger;
 import static org.junit.Assert.*;
 
 /**
- * Tests for SurfFS methods that delegate to a Base FS.
- * The tests instantiate Surf with a single Driver and Task on a new thread.
- * The tests connecting to a HDFS minicluster as the Base FS.
- *
- * Because the systems under tests are loosely coupled, the test relies on
- * timeouts and sleep calls to roughly synchronize startup and shutdown times.
- * See comments on these times below before changing these test cases.
+ * Test reading HDFS files(initially uncached) via Surf
  */
-public final class SurfFSOpenITCase {
+public final class SurfFSReadITCase {
 
-  private static final Logger LOG = Logger.getLogger(SurfFSOpenITCase.class.getName());
+  private static final Logger LOG = Logger.getLogger(SurfFSReadITCase.class.getName());
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;
