@@ -16,6 +16,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
@@ -28,6 +29,7 @@ import static org.junit.Assert.fail;
 public final class SurfFSDirectoryITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSDirectoryITCase.class.getName());
 
+  private static FileSystem baseFs;
   private static SurfFS surfFs;
 
   private static final String TESTDIR = ITUtils.getTestDir();
@@ -61,7 +63,7 @@ public final class SurfFSDirectoryITCase {
     // Reduce blocksize to 512 bytes, to test multiple blocks
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, DFS_BLOCK_SIZE_VALUE);
 
-    final FileSystem baseFs = ITUtils.getHdfs(hdfsConfig);
+    baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
     surfLauncher.launch(baseFs);
@@ -73,7 +75,12 @@ public final class SurfFSDirectoryITCase {
 
   @AfterClass
   public static void tearDownClass() {
-    // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
+    try {
+      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
+      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
+    }
     surfLauncher.close();
   }
 
@@ -124,8 +131,8 @@ public final class SurfFSDirectoryITCase {
       // TODO: Test other attributes in FileStatus
     }
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL2))) {
-      assertEquals(LEVEL3, fileStatus.getPath().toString());
-      assertTrue("Should be a directory", fileStatus.isDirectory());
+      assertEquals(LEVEL3, fileStatus.getPath().toUri().getPath());
+      assertTrue(fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
     final FileStatus[] fileStatuses = surfFs.listStatus(new Path(LEVEL3));

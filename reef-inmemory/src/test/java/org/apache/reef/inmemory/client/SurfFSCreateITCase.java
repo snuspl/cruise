@@ -15,6 +15,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.fail;
@@ -25,6 +26,7 @@ import static org.junit.Assert.fail;
 public final class SurfFSCreateITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSCreateITCase.class.getName());
 
+  private static FileSystem baseFs;
   private static SurfFS surfFs;
 
   private static final String TESTDIR = ITUtils.getTestDir();
@@ -51,7 +53,7 @@ public final class SurfFSCreateITCase {
     // Reduce blocksize to 512 bytes, to test multiple blocks
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, DFS_BLOCK_SIZE_VALUE);
 
-    final FileSystem baseFs = ITUtils.getHdfs(hdfsConfig);
+    baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
     surfLauncher.launch(baseFs);
@@ -65,7 +67,12 @@ public final class SurfFSCreateITCase {
 
   @AfterClass
   public static void tearDownClass() {
-    // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
+    try {
+      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
+      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
+    }
     surfLauncher.close();
   }
 

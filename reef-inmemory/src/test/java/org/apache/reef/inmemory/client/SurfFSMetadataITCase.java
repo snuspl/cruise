@@ -16,6 +16,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -24,6 +26,7 @@ import static org.junit.Assert.assertTrue;
  * Tests for SurfFS methods that deal with FileMeta.
  */
 public final class SurfFSMetadataITCase {
+  private static final Logger LOG = Logger.getLogger(SurfFSMetadataITCase.class.getName());
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;
@@ -67,7 +70,12 @@ public final class SurfFSMetadataITCase {
    */
   @AfterClass
   public static void tearDownClass() {
-    // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
+    try {
+      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
+      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
+    }
     surfLauncher.close();
   }
 

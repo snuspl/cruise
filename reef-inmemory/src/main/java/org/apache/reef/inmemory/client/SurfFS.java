@@ -86,6 +86,7 @@ public final class SurfFS extends FileSystem {
     this.baseFs = baseFs;
     this.metaClientManager = metaClientManager;
     this.RECORD = recorder;
+    this.uri = URI.create("surf://for_test_only");
   }
 
   @Override
@@ -415,7 +416,6 @@ public final class SurfFS extends FileSystem {
    * @return Absolute path including URI scheme and authority.
    */
   protected Path pathToSurf(final Path path) {
-
     final Path absPath = path.isUriPathAbsolute() ? path : new Path(getWorkingDirectory(), path.toUri().getPath());
     return new Path(uri.getScheme(), uri.getAuthority(), absPath.toUri().getPath());
   }

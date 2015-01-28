@@ -79,7 +79,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       final FileMeta updatedFileMeta = metaManager.loadData(fileMeta);
       return metaManager.sortOnLocation(updatedFileMeta, clientHostname);
     } catch (java.io.FileNotFoundException e) {
-      throw new FileNotFoundException("File not found at "+path);
+      throw new FileNotFoundException("File not found at " + path);
     } catch (IOException e) {
       throw new FileNotFoundException(e.getMessage());
     } catch (Throwable e) {
@@ -108,10 +108,11 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       if (exists(path)) {
         throw new FileAlreadyExistsException();
       } else {
-        final boolean isSuccess = metaManager.registerFile(path, replication, blockSize);
+        final boolean isSuccess = metaManager.createFile(path, replication, blockSize);
         return isSuccess;
       }
-    } catch (IOException e) {
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Create failed for " + path, e);
       throw new TException(e);
     }
   }
@@ -123,11 +124,12 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       if (exists(path)) {
         throw new FileAlreadyExistsException();
       } else {
-        final boolean isSuccess = metaManager.registerDirectory(path);
+        final boolean isSuccess = metaManager.createDirectory(path);
         return isSuccess;
       }
-    } catch (IOException e) {
-      throw new TException(e);
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Mkdirs failed for " + path, e);
+      throw new TException(e.getCause());
     }
   }
 
@@ -138,7 +140,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       final List<FileMeta> metaList;
       if (fileMeta.isDirectory()) {
         return metaManager.getChildren(fileMeta);
-//        return new ArrayList<>(); // TODO Implement the directory case.
       } else {
         metaList = new ArrayList<>(1);
         metaList.add(fileMeta);
@@ -191,8 +192,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
     try {
       final FileMeta meta = metaManager.get(new Path(path), new User());
-      LOG.log(Level.INFO, "Compare the file size of meta : Expected {0} / Actual {1}",
-        new Object[] {fileSize, meta.getFileSize()});
+      LOG.log(Level.INFO, "Compare the file size of {0} : Expected {1} / Actual {2}",
+        new Object[] {path, fileSize, meta.getFileSize()});
       return fileSize == meta.getFileSize();
     } catch (Throwable throwable) {
       throw new TException("Fail to complete file" + path, throwable);
