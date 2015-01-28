@@ -212,7 +212,6 @@ public final class SurfFS extends FileSystem {
       final FileStatus[] statuses = new FileStatus[metas.size()];
       for (int i = 0; i < metas.size(); i++) {
         statuses[i] = toFileStatus(metas.get(i));
-        LOG.log(Level.SEVERE, "Meta : {0} / Status : {1}", new Object[]{metas.get(i), statuses[i]});
       }
       return statuses;
     } catch (TException e) {

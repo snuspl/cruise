@@ -202,7 +202,6 @@ public final class SurfMetaManager {
       parentMeta.addToChildren(fileMeta.getFullPath());
       update(parentMeta);
       update(fileMeta);
-      LOG.log(Level.SEVERE, "File is created for {0}, parent : {1}", new Object[]{path, parentMeta.getFullPath()});
       return true;
     } catch (Throwable e) {
       LOG.log(Level.SEVERE, "Failed to create a file metadata : " + path, e.getCause());
@@ -248,7 +247,6 @@ public final class SurfMetaManager {
         update(fileMeta);
 
         fileMeta = parentMeta;
-        LOG.log(Level.SEVERE, "Directory is created for {0}, parent : {1}", new Object[]{fileMeta, parentMeta});
       }
       return true;
     } catch (Throwable e) {
