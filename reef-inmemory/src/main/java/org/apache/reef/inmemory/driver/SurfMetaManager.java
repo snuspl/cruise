@@ -64,6 +64,7 @@ public final class SurfMetaManager {
   /**
    * Retrieve metadata of the file.
    * @return {@code null} if the metadata is not found.
+   * TODO User should be specified properly
    */
   public FileMeta get(final Path path, final User creator) throws Throwable {
     try {
@@ -116,26 +117,6 @@ public final class SurfMetaManager {
     metadataIndex.invalidateAll(); // TODO: this may not be so accurate
     cacheMessenger.clearAll();
     return numEntries;
-  }
-
-  /**
-   * Register a file or directory to BaseFS. We can make sure files
-   * with same name exist both in Surf and BaseFS.
-   * @return {@code true} if the file is created successfully.
-   * @throws IOException
-   */
-  // TODO: Use Permission Properly
-  public boolean registerToBaseFS(final FileMeta fileMeta) throws IOException {
-    // Create the file or directory to the BaseFS. It throws an IOException if failure occurs.
-    if (fileMeta.isDirectory()) {
-      return dfs.mkdirs(new Path(fileMeta.getFullPath()), FsPermission.getDirDefault());
-    } else {
-      // Use default buffer size configured in the server. Progressable and ChecksumOpt are not used.
-      final int bufferSize = dfs.getServerDefaults().getFileBufferSize();
-      dfs.create(new Path(fileMeta.getFullPath()), FsPermission.getFileDefault(),
-              EnumSet.of(CreateFlag.CREATE), bufferSize, fileMeta.getReplication(), fileMeta.getBlockSize(), null);
-      return true;
-    }
   }
 
   /**
@@ -192,47 +173,102 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Create an entry for file, and write the metadata into both BaseFS and Surf.
+   * Create an entry for file, and write the metadata to BaseFS and Surf.
    * <p>
-   * First, it tries to create a directory in the BaseFS, and the metadata will be updated
-   * only when successful.
+   * First, it tries to create file in BaseFS.
+   * If a failure occurs during this step, there will be no update in the metadata.
    * </p>
    * <p>
-   * If a failure occurs during this step, there will be no update in the metadata;
-   * An exception is thrown or {@code false} is returned.
+   * Second, this file is set as a child of parent directory in Surf.
    * </p>
    * @throws IOException
    */
-  public boolean registerFile(String path, short replication, long blockSize) throws IOException {
+  public boolean createFile(String path, short replication, long blockSize) throws Throwable {
     final FileMeta fileMeta = metaFactory.newFileMeta(path, replication, blockSize);
-    final boolean isSuccess = registerToBaseFS(fileMeta);
-    if (isSuccess) {
+
+    // 1. Try to create file in BaseFS.
+    try {
+      final int bufferSize = dfs.getServerDefaults().getFileBufferSize();
+      dfs.create(new Path(fileMeta.getFullPath()), FsPermission.getFileDefault(), EnumSet.of(CreateFlag.CREATE),
+              bufferSize, fileMeta.getReplication(), fileMeta.getBlockSize(), null, null);
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to create a file to the BaseFS : " + path, e.getCause());
+      throw e.getCause();
+    }
+
+    // 2. Set this file as a child of parent directory.
+    try {
+      final FileMeta parentMeta = getParent(fileMeta);
+      parentMeta.addToChildren(fileMeta.getFullPath());
+      update(parentMeta);
       update(fileMeta);
+      LOG.log(Level.SEVERE, "File is created for {0}, parent : {1}", new Object[]{path, parentMeta.getFullPath()});
       return true;
-    } else {
-      return false;
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Failed to create a file metadata : " + path, e.getCause());
+      if (!deleteFromBaseFS(fileMeta)) {
+        LOG.log(Level.SEVERE, "Failed to delete from BaseFS : {0}", fileMeta.getFullPath());
+      }
+      throw e.getCause();
     }
   }
 
   /**
-   * Create an entry for directory, and write the metadata into both BaseFS and Surf.
+   * Create an entry for directory, and write the metadata to BaseFS and Surf.
    * <p>
-   * First, it tries to create a directory in the BaseFS, and the metadata will be updated
-   * only when successful.
+   * First, it tries to create directory in BaseFS.
+   * If a failure occurs during this step, there will be no update in the metadata.
    * </p>
    * <p>
-   * If a failure occurs during this step, there will be no update in the metadata;
-   * An exception is thrown or {@code false} is returned.
+   * Second, the parent directories are registered recursively.
    * </p>
    * @throws IOException
    */
-  public boolean registerDirectory(final String path) throws IOException {
-    final FileMeta fileMeta = metaFactory.newFileMetaForDir(path);
-    final boolean isSuccess = registerToBaseFS(fileMeta);
-    if (isSuccess) {
-      update(fileMeta);
+  public boolean createDirectory(final String path) throws Throwable {
+    FileMeta fileMeta = metaFactory.newFileMetaForDir(path);
+
+    // 1. Try to create directory in BaseFS.
+    try {
+      // Return {@code false} directly if it fails to create directory in BaseFS.
+      if (!dfs.mkdirs(new Path(fileMeta.getFullPath()), FsPermission.getDirDefault())) {
+        return false;
+      }
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to create a directory to the BaseFS : " + path, e.getCause());
+      throw e.getCause();
+    }
+
+    // 2. Recursively register the parent directories.
+    try {
+      while (!isRoot(fileMeta)) {
+        final FileMeta parentMeta = getParent(fileMeta);
+
+        parentMeta.addToChildren(fileMeta.getFullPath());
+        update(parentMeta);
+        update(fileMeta);
+
+        fileMeta = parentMeta;
+        LOG.log(Level.SEVERE, "Directory is created for {0}, parent : {1}", new Object[]{fileMeta, parentMeta});
+      }
       return true;
-    } else {
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Error occurred while creating a directory. File in BaseFS will be deleted.", e);
+      deleteFromBaseFS(fileMeta);
+      // TODO If an exception is thrown while setting child, then rollback is needed.
+      LOG.log(Level.SEVERE, "Failed to create parent for {0}", fileMeta);
+      throw e.getCause();
+    }
+  }
+
+  /**
+   * Delete the file from BaseFs.
+   * This is used when an Exception occurs while updating parents' metadata.
+   */
+  private boolean deleteFromBaseFS(final FileMeta fileMeta) {
+    try {
+      return dfs.delete(new Path(fileMeta.getFullPath()), true);
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete from BaseFS : {0}", fileMeta.getFullPath());
       return false;
     }
   }
@@ -272,5 +308,21 @@ public final class SurfMetaManager {
       }
     }
     return childList;
+  }
+
+  /**
+   * Return the parent's FileMeta
+   * @throws Throwable
+   */
+  private FileMeta getParent(final FileMeta fileMeta) throws Throwable {
+    final Path path = new Path(fileMeta.getFullPath());
+    return get(path.getParent(), fileMeta.getUser());
+  }
+
+  /**
+   * Returns whether the FileMeta indicates the root directory.
+   */
+  private boolean isRoot(final FileMeta fileMeta) {
+    return getAbsolutePath(new Path(fileMeta.getFullPath()), fileMeta.getUser()).isRoot();
   }
 }
