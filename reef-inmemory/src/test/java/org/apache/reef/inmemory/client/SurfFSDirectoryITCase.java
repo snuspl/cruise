@@ -19,6 +19,7 @@ import java.net.URI;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -96,7 +97,7 @@ public final class SurfFSDirectoryITCase {
     final FileStatus[] fileStatuses = surfFs.listStatus(new Path(NONEMPTY));
     for (int i = 0; i < 5; i++) {
       final FileStatus fileStatus = fileStatuses[i];
-      assertEquals(NONEMPTY + "/" + String.valueOf(i), fileStatus.getPath().toString());
+      assertEquals(NONEMPTY + "/" + String.valueOf(i), fileStatus.getPath().toUri().getPath());
       assertEquals(i, fileStatus.getLen());
       // TODO: Test other attributes in FileStatus
     }
@@ -118,13 +119,13 @@ public final class SurfFSDirectoryITCase {
     }
 
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL1))) {
-      assertEquals(LEVEL2, fileStatus.getPath().toString());
-      assertEquals("Should be a directory", true, fileStatus.isDirectory());
+      assertEquals(LEVEL2, fileStatus.getPath().toUri().getPath());
+      assertTrue(fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL2))) {
       assertEquals(LEVEL3, fileStatus.getPath().toString());
-      assertEquals("Should be a directory", true, fileStatus.isDirectory());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
     final FileStatus[] fileStatuses = surfFs.listStatus(new Path(LEVEL3));
