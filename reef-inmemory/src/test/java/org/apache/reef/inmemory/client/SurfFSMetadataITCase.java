@@ -33,7 +33,7 @@ public final class SurfFSMetadataITCase {
   private static final String ABSPATH = TESTDIR+"/"+TESTFILE;
 
   private static final String SURF = "surf";
-  private static final String SURF_ADDRESS = "localhost:9001";
+  private static final String SURF_ADDRESS = "localhost:18000";
 
   private static final SurfLauncher surfLauncher = new SurfLauncher();
 

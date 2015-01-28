@@ -57,6 +57,8 @@ public final class SurfFSCreateITCase {
     surfLauncher.launch(baseFs);
 
     final Configuration conf = new Configuration();
+    conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
+
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
   }
