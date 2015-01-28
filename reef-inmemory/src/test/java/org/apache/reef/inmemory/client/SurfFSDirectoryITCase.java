@@ -19,9 +19,7 @@ import java.net.URI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * Test Surf's directory-related operations
@@ -127,12 +125,12 @@ public final class SurfFSDirectoryITCase {
 
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL1))) {
       assertEquals(LEVEL2, fileStatus.getPath().toUri().getPath());
-      assertTrue(fileStatus.isDirectory());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL2))) {
       assertEquals(LEVEL3, fileStatus.getPath().toUri().getPath());
-      assertTrue(fileStatus.isDirectory());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
     final FileStatus[] fileStatuses = surfFs.listStatus(new Path(LEVEL3));
@@ -146,7 +144,7 @@ public final class SurfFSDirectoryITCase {
    */
   @Test
   public void testRename() throws IOException  {
-    assertEquals("Mkdirs should succeed", true, surfFs.mkdirs(new Path(BEFORE)));
+    assertTrue("Mkdirs should succeed", surfFs.mkdirs(new Path(BEFORE)));
     for (int i = 0; i < 5; i ++) {
       final FSDataOutputStream outputStream = surfFs.create(new Path(BEFORE, String.valueOf(i)));
       outputStream.write((byte)1);
@@ -154,17 +152,17 @@ public final class SurfFSDirectoryITCase {
     }
 
     // rename the directory and the children files
-    assertEquals("Rename should succeed", true, surfFs.rename(new Path(BEFORE), new Path(AFTER)));
+    assertTrue("Rename should succeed", surfFs.rename(new Path(BEFORE), new Path(AFTER)));
     for (int i = 0; i < 5; i ++) {
-      assertEquals("Rename should succeed", true, surfFs.rename(new Path(AFTER, String.valueOf(i)), new Path(AFTER, String.valueOf(i+5))));
+      assertTrue("Rename should succeed", surfFs.rename(new Path(AFTER, String.valueOf(i)), new Path(AFTER, String.valueOf(i + 5))));
     }
 
-    assertEquals("Should not exist as it is renamed", false, surfFs.exists(new Path(BEFORE)));
-    assertEquals("Should exist", true, surfFs.exists(new Path(AFTER)));
+    assertFalse("Should not exist as it is renamed", surfFs.exists(new Path(BEFORE)));
+    assertTrue("Should exist", surfFs.exists(new Path(AFTER)));
     for (int i = 0; i < 5; i ++) {
-      assertEquals("Should not exist as the parent directory is renamed", false, surfFs.exists(new Path(BEFORE, String.valueOf(i))));
-      assertEquals("Should not exist as the file is renamed", false, surfFs.exists(new Path(AFTER, String.valueOf(i))));
-      assertEquals("Should exist", true, surfFs.exists(new Path(AFTER, String.valueOf(i+5))));
+      assertFalse("Should not exist as the parent directory is renamed", surfFs.exists(new Path(BEFORE, String.valueOf(i))));
+      assertFalse("Should not exist as the file is renamed", surfFs.exists(new Path(AFTER, String.valueOf(i))));
+      assertTrue("Should exist", surfFs.exists(new Path(AFTER, String.valueOf(i + 5))));
     }
   }
 
@@ -173,7 +171,7 @@ public final class SurfFSDirectoryITCase {
    */
   @Test
   public void testDelete() throws IOException {
-    assertEquals("Mkdirs should succeed", true, surfFs.mkdirs(new Path(DELETE)));
+    assertTrue("Mkdirs should succeed", surfFs.mkdirs(new Path(DELETE)));
     for (int i = 0; i < 5; i ++) {
       final FSDataOutputStream outputStream = surfFs.create(new Path(DELETE, String.valueOf(i)));
       outputStream.write((byte)1);
@@ -181,14 +179,14 @@ public final class SurfFSDirectoryITCase {
     }
 
     // delete a child file
-    assertEquals("Delete should succeed", true, surfFs.delete(new Path(DELETE, String.valueOf(0)), true));
-    assertEquals("Should not exist as it is deleted", false, surfFs.exists(new Path(DELETE, String.valueOf(0))));
+    assertTrue("Delete should succeed", surfFs.delete(new Path(DELETE, String.valueOf(0)), true));
+    assertFalse("Should not exist as it is deleted", surfFs.exists(new Path(DELETE, String.valueOf(0))));
 
     // delete the directory
-    assertEquals("Delete should succeed", true, surfFs.delete(new Path(DELETE), true));
-    assertEquals("Should not exist as it is deleted", false, surfFs.exists(new Path(DELETE)));
+    assertTrue("Delete should succeed", surfFs.delete(new Path(DELETE), true));
+    assertFalse("Should not exist as it is deleted", surfFs.exists(new Path(DELETE)));
     for (int i = 0; i < 5; i ++) {
-      assertEquals("Should not exist as its parent directory is deleted", false, surfFs.exists(new Path(DELETE, String.valueOf(i))));
+      assertFalse("Should not exist as its parent directory is deleted", surfFs.exists(new Path(DELETE, String.valueOf(i))));
     }
   }
 }

@@ -353,9 +353,7 @@ public final class SurfFS extends FileSystem {
    * TODO: use FSPermission properly.
    */
   private FileStatus toFileStatus(final FileMeta meta) {
-    // TODO refactor pathToSurf
-    final Path path = new Path(uri.getScheme(), uri.getAuthority(), meta.getFullPath());
-    LOG.log(Level.SEVERE, "meta : {0} / pathToSurf : {1} / toUri : {2}", new Object[]{meta, path, path.toUri()});
+    final Path path = pathToSurf(new Path(meta.getFullPath()));
     final long length = meta.getFileSize();
     final boolean isDir = meta.isDirectory();
     final int replication = meta.getReplication();
