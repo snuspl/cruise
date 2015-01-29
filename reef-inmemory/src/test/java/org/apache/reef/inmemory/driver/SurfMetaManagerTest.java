@@ -179,7 +179,7 @@ public final class SurfMetaManagerTest {
       addRemoval(updates, pathA, 3, blockSize);
       final CacheNode cacheNode = mock(CacheNode.class);
       when(cacheNode.getAddress()).thenReturn(addresses[0]);
-      metaManager.applyUpdates(cacheNode, updates);
+      metaManager.applyCacheNodeUpdates(cacheNode, updates);
 
       final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathA.toString());
       assertEquals(4, pendingRemoves.size());
@@ -196,7 +196,7 @@ public final class SurfMetaManagerTest {
       addRemoval(updates, pathA, 3, blockSize);
       final CacheNode cacheNode = mock(CacheNode.class);
       when(cacheNode.getAddress()).thenReturn(addresses[1]);
-      metaManager.applyUpdates(cacheNode, updates);
+      metaManager.applyCacheNodeUpdates(cacheNode, updates);
 
       final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathA.toString());
       assertEquals(4, pendingRemoves.size());
@@ -264,7 +264,7 @@ public final class SurfMetaManagerTest {
           }
           final CacheNode cacheNode = mock(CacheNode.class);
           when(cacheNode.getAddress()).thenReturn(address);
-          metaManager.applyUpdates(cacheNode, updates);
+          metaManager.applyCacheNodeUpdates(cacheNode, updates);
         }
       });
       es.submit(new Runnable() {
@@ -276,7 +276,7 @@ public final class SurfMetaManagerTest {
           }
           final CacheNode cacheNode = mock(CacheNode.class);
           when(cacheNode.getAddress()).thenReturn(address);
-          metaManager.applyUpdates(cacheNode, updates);
+          metaManager.applyCacheNodeUpdates(cacheNode, updates);
         }
       });
     }

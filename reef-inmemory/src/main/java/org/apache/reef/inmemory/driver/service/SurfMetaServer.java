@@ -287,7 +287,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     cacheManager.handleHeartbeat(taskId, msg);
     final CacheNode cache = cacheManager.getCache(taskId);
     if (cache != null) {
-      metaManager.applyUpdates(cache, msg.getUpdates());
+      metaManager.applyCacheNodeUpdates(cache, msg.getUpdates());
     }
   }
 

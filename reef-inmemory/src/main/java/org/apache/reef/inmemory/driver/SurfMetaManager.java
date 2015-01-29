@@ -31,6 +31,7 @@ import java.util.logging.Logger;
  */
 public final class SurfMetaManager {
   private static final Logger LOG = Logger.getLogger(SurfMetaManager.class.getName());
+  private final static String USERS_HOME = "/user";
 
   private final LoadingCache<Path, FileMeta> metadataIndex;
   private final CacheMessenger cacheMessenger;
@@ -39,7 +40,6 @@ public final class SurfMetaManager {
   private final BlockIdFactory blockIdFactory;
   private final FileMetaFactory metaFactory;
   private final LocationSorter locationSorter;
-  public static String USERS_HOME = "/user";
   private final DistributedFileSystem dfs;
 
   @Inject
@@ -99,16 +99,6 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Update the change of metadata (e.g. Added blocks while writing)
-   * If the path not exist in the cache, then create an entry with the path.
-   * @param fileMeta Metadata to update
-   */
-  public void update(FileMeta fileMeta) {
-    final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), fileMeta.getUser());
-    metadataIndex.put(absolutePath, fileMeta);
-  }
-
-  /**
    * Clear all cached entries
    * @return number of entries cleared
    */
@@ -124,7 +114,7 @@ public final class SurfMetaManager {
    * Synchronized on the cache, so that only a single set of updates
    * can be applied at once for the same cache.
    */
-  public void applyUpdates(final CacheNode cache, final CacheUpdates updates) {
+  public void applyCacheNodeUpdates(final CacheNode cache, final CacheUpdates updates) {
     synchronized (cache) {
       final String address = cache.getAddress();
       for (final CacheUpdates.Failure failure : updates.getFailures()) {
@@ -147,29 +137,6 @@ public final class SurfMetaManager {
         addBlockToFileMeta(blockId, nWritten, cache);
       }
     }
-  }
-
-  private void addBlockToFileMeta(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
-    final FileMeta meta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
-
-    final List<NodeInfo> nodeList = new ArrayList<>();
-    nodeList.add(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
-    final BlockInfo newBlock = blockIdFactory.newBlockInfo(blockId, nodeList);
-
-    meta.setFileSize(meta.getFileSize() + nWritten);
-    meta.addToBlocks(newBlock);
-    update(meta);
-  }
-
-  private Path getAbsolutePath(final Path path, final User creator) {
-    final Path newPath;
-
-    if (path.isAbsolute()) {
-      newPath = path;
-    } else {
-      newPath = new Path(USERS_HOME + Path.SEPARATOR + creator.getOwner() + Path.SEPARATOR + path);
-    }
-    return newPath;
   }
 
   /**
@@ -259,19 +226,6 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Delete the file from BaseFs.
-   * This is used when an Exception occurs while updating parents' metadata.
-   */
-  private boolean deleteFromBaseFS(final FileMeta fileMeta) {
-    try {
-      return dfs.delete(new Path(fileMeta.getFullPath()), true);
-    } catch (IOException e) {
-      LOG.log(Level.SEVERE, "Failed to delete from BaseFS : {0}", fileMeta.getFullPath());
-      return false;
-    }
-  }
-
-  /**
    * Get metadata of directory's children files. When the children is not set yet,
    * get the list of file status from BaseFS. Incremental changes of BaseFS directory
    * could be dropped.
@@ -322,5 +276,51 @@ public final class SurfMetaManager {
    */
   private boolean isRoot(final FileMeta fileMeta) {
     return getAbsolutePath(new Path(fileMeta.getFullPath()), fileMeta.getUser()).isRoot();
+  }
+
+  private void addBlockToFileMeta(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
+    final FileMeta meta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
+
+    final List<NodeInfo> nodeList = new ArrayList<>();
+    nodeList.add(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
+    final BlockInfo newBlock = blockIdFactory.newBlockInfo(blockId, nodeList);
+
+    meta.setFileSize(meta.getFileSize() + nWritten);
+    meta.addToBlocks(newBlock);
+    update(meta);
+  }
+
+  private Path getAbsolutePath(final Path path, final User creator) {
+    final Path newPath;
+
+    if (path.isAbsolute()) {
+      newPath = path;
+    } else {
+      newPath = new Path(USERS_HOME + Path.SEPARATOR + creator.getOwner() + Path.SEPARATOR + path);
+    }
+    return newPath;
+  }
+
+  /**
+   * Update the change of metadata (e.g. Added blocks while writing)
+   * If the path not exist in the cache, then create an entry with the path.
+   * @param fileMeta Metadata to update
+   */
+  private void update(final FileMeta fileMeta) {
+    final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), fileMeta.getUser());
+    metadataIndex.put(absolutePath, fileMeta);
+  }
+
+  /**
+   * Delete the file from BaseFs.
+   * This is used when an Exception occurs while updating parents' metadata.
+   */
+  private boolean deleteFromBaseFS(final FileMeta fileMeta) {
+    try {
+      return dfs.delete(new Path(fileMeta.getFullPath()), true);
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete from BaseFS : {0}", fileMeta.getFullPath());
+      return false;
+    }
   }
 }
