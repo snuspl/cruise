@@ -1,7 +1,7 @@
-package org.apache.reef.inmemory.driver;
+package org.apache.reef.inmemory.driver.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hdfs.server.namenode.NameNode;
 import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.tang.ExternalConstructor;
@@ -12,9 +12,9 @@ import java.io.IOException;
 import java.net.URI;
 
 /**
- * Constructs an instance of the DistributedFileSystem, for use by Tang injector.
+ * Constructs an instance of the {@link org.apache.hadoop.fs.FileSystem}, for use by Tang injector.
  */
-public class DfsConstructor implements ExternalConstructor<DistributedFileSystem> {
+public class DfsConstructor implements ExternalConstructor<FileSystem> {
   private final String dfsAddress;
 
   @Inject
@@ -23,11 +23,10 @@ public class DfsConstructor implements ExternalConstructor<DistributedFileSystem
   }
 
   @Override
-  public DistributedFileSystem newInstance() {
+  public FileSystem newInstance() {
     try {
-      final DistributedFileSystem dfs = new DistributedFileSystem();
       final URI nameNodeUri = NameNode.getUri(NameNode.getAddress(this.dfsAddress));
-      dfs.initialize(nameNodeUri, new Configuration());
+      final FileSystem dfs = FileSystem.get(nameNodeUri, new Configuration());
       return dfs;
     } catch (IOException e) {
       throw new RuntimeException("Failed to connect DFS Client in " + this.dfsAddress);

@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.FileMetaFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
@@ -70,12 +70,13 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
     .bindImplementation(CacheLoader.class, HdfsMetaLoader.class)
     .bindImplementation(CacheMessenger.class, HdfsCacheMessenger.class)
     .bindImplementation(CacheUpdater.class, HdfsCacheUpdater.class)
+    .bindImplementation(BlockLocationGetter.class, HdfsBlockLocationGetter.class)
     .bindImplementation(CacheManager.class, CacheManagerImpl.class)
     .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsRandomCacheSelectionPolicy.class)
     .bindImplementation(WritingCacheSelectionPolicy.class, WritingRandomCacheSelectionPolicy.class)
     .bindImplementation(ReplicationPolicy.class, ReplicationPolicyImpl.class)
     .bindImplementation(EStage.class, ThreadPoolStage.class)
     .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
-    .bindConstructor(DistributedFileSystem.class, DfsConstructor.class)
+    .bindConstructor(FileSystem.class, DfsConstructor.class)
     .build();
 }

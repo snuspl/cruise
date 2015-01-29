@@ -23,11 +23,7 @@ import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
-import org.apache.reef.inmemory.driver.hdfs.HdfsMetaLoader;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheUpdater;
-import org.apache.reef.inmemory.driver.hdfs.HdfsRandomCacheSelectionPolicy;
+import org.apache.reef.inmemory.driver.hdfs.*;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.driver.locality.YarnLocationSorter;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
@@ -69,9 +65,10 @@ public final class SurfMetaManagerITCase {
   private CacheLocationRemover cacheLocationRemover;
   private HdfsBlockIdFactory blockFactory;
   private HdfsFileMetaFactory metaFactory;
+  private HdfsBlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
   private SurfMetaManager metaManager;
-  private DistributedFileSystem dfs;
+  private FileSystem dfs;
 
   @Before
   public void setUp() throws IOException {
@@ -102,11 +99,13 @@ public final class SurfMetaManagerITCase {
     fs.mkdirs(new Path(TESTDIR));
 
     dfs = new DfsConstructor(ITUtils.getDfsAddress()).newInstance();
-    loader = new HdfsMetaLoader(dfs, blockFactory, metaFactory, RECORD);
+    blockLocationGetter = new HdfsBlockLocationGetter(dfs);
+
+    loader = new HdfsMetaLoader(dfs, blockLocationGetter, blockFactory, metaFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, dfs);
+    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, dfs, blockLocationGetter);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
     metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, metaFactory, locationSorter, dfs);

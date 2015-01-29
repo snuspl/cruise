@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.driver.hdfs;
 
 import com.google.common.cache.CacheLoader;
 import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -12,6 +12,7 @@ import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.driver.BlockLocationGetter;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -31,16 +32,19 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
   private static final Logger LOG = Logger.getLogger(HdfsMetaLoader.class.getName());
   private final EventRecorder RECORD;
 
-  private final DistributedFileSystem dfs;
+  private final FileSystem dfs;
+  private final BlockLocationGetter blockLocationGetter;
   private final HdfsBlockIdFactory blockFactory;
   private final HdfsFileMetaFactory metaFactory;
 
   @Inject
-  public HdfsMetaLoader(final DistributedFileSystem dfs,
+  public HdfsMetaLoader(final FileSystem dfs,
+                        final BlockLocationGetter blockLocationGetter,
                         final HdfsBlockIdFactory blockFactory,
                         final HdfsFileMetaFactory metaFactory,
                         final EventRecorder recorder) {
     this.dfs = dfs;
+    this.blockLocationGetter = blockLocationGetter;
     this.blockFactory = blockFactory;
     this.metaFactory = metaFactory;
     this.RECORD = recorder;
@@ -71,7 +75,10 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
    */
   private void addBlocks(final FileMeta fileMeta, final long fileLength) throws IOException {
     final String pathStr = fileMeta.getFullPath();
-    final LocatedBlocks locatedBlocks = dfs.getClient().getLocatedBlocks(pathStr, 0, fileLength);
+
+    assert(blockLocationGetter instanceof HdfsBlockLocationGetter);
+    final LocatedBlocks locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(pathStr));
+
     final List<LocatedBlock> locatedBlockList = locatedBlocks.getLocatedBlocks();
     for (final LocatedBlock locatedBlock : locatedBlockList) {
       final BlockInfo blockInfo = blockFactory.newBlockInfo(pathStr, locatedBlock);

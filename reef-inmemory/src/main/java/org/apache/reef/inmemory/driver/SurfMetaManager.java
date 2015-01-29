@@ -3,9 +3,9 @@ package org.apache.reef.inmemory.driver;
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.FileMetaFactory;
@@ -40,7 +40,7 @@ public final class SurfMetaManager {
   private final BlockIdFactory blockIdFactory;
   private final FileMetaFactory metaFactory;
   private final LocationSorter locationSorter;
-  private final DistributedFileSystem dfs;
+  private final FileSystem dfs;
 
   @Inject
   public SurfMetaManager(final LoadingCache metadataIndex,
@@ -50,7 +50,7 @@ public final class SurfMetaManager {
                          final BlockIdFactory blockIdFactory,
                          final FileMetaFactory metaFactory,
                          final LocationSorter locationSorter,
-                         final DistributedFileSystem dfs) {
+                         final FileSystem dfs) {
     this.metadataIndex = metadataIndex;
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;

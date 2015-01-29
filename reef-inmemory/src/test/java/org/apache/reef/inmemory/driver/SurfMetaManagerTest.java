@@ -2,8 +2,8 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.FileMetaFactory;
@@ -38,7 +38,7 @@ public final class SurfMetaManagerTest {
   private BlockIdFactory blockIdFactory;
   private FileMetaFactory metaFactory;
   private LocationSorter locationSorter;
-  private DistributedFileSystem dfs;
+  private FileSystem dfs;
 
   /**
    * Setup the Meta Manager with a mock CacheLoader that returns
@@ -53,7 +53,7 @@ public final class SurfMetaManagerTest {
     blockIdFactory = mock(BlockIdFactory.class);
     metaFactory = mock(FileMetaFactory.class);
     locationSorter = mock(LocationSorter.class);
-    dfs = mock(DistributedFileSystem.class);
+    dfs = mock(FileSystem.class);
   }
 
   private static User defaultUser() {

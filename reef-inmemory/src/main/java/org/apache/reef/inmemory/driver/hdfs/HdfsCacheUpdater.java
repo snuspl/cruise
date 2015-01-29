@@ -1,9 +1,7 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DFSClient;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
-import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
@@ -12,17 +10,13 @@ import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.replication.Action;
-import org.apache.reef.inmemory.driver.CacheLocationRemover;
-import org.apache.reef.inmemory.driver.CacheManager;
-import org.apache.reef.inmemory.driver.CacheNode;
-import org.apache.reef.inmemory.driver.CacheUpdater;
+import org.apache.reef.inmemory.driver.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 
 import javax.inject.Inject;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
@@ -38,7 +32,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   private final CacheLocationRemover cacheLocationRemover;
   private final HdfsBlockIdFactory blockFactory;
   private final ReplicationPolicy replicationPolicy;
-  private final DistributedFileSystem dfs; // Access must be synchronized
+  private final FileSystem dfs; // Access must be synchronized
+  private final BlockLocationGetter blockLocationGetter;
 
   /**
    * @param cacheManager         Provides an updated list of caches
@@ -56,7 +51,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
                           final CacheLocationRemover cacheLocationRemover,
                           final HdfsBlockIdFactory blockFactory,
                           final ReplicationPolicy replicationPolicy,
-                          final DistributedFileSystem dfs) {
+                          final FileSystem dfs,
+                          final BlockLocationGetter blockLocationGetter) {
     this.cacheManager = cacheManager;
     this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;
@@ -64,6 +60,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     this.blockFactory = blockFactory;
     this.replicationPolicy = replicationPolicy;
     this.dfs = dfs;
+    this.blockLocationGetter = blockLocationGetter;
   }
 
   /**
@@ -110,7 +107,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       }
 
       // 2. Get information from HDFS
-      final LocatedBlocks locatedBlocks = getLocatedBlocks(path);
+      assert(blockLocationGetter instanceof HdfsBlockLocationGetter);
+      final LocatedBlocks locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(path);
 
       // 3. For each block that needs loading, load blocks asynchronously
       for (final BlockInfo blockInfo : fileMeta.getBlocks()) {
@@ -169,20 +167,6 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       }
     }
     return nodesToChooseFrom;
-  }
-
-  private LocatedBlocks getLocatedBlocks(final Path path) throws IOException {
-    synchronized (dfs) {
-      // TODO Do we need synchronization here? Then it is okay to use dfs for a lock?
-      final DFSClient dfsClient = dfs.getClient();
-      final HdfsFileStatus hdfsFileStatus = dfsClient.getFileInfo(path.toString());
-      if (hdfsFileStatus == null) {
-        throw new FileNotFoundException(path.toString());
-      }
-      final long len = hdfsFileStatus.getLen();
-      final LocatedBlocks locatedBlocks = dfsClient.getLocatedBlocks(path.toString(), 0, len);
-      return locatedBlocks;
-    }
   }
 
   private List<BlockInfo> applyRemoves(final FileMeta fileMeta, final Map<BlockId, List<String>> pendingRemoves) {

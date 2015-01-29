@@ -16,10 +16,7 @@ import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
-import org.apache.reef.inmemory.driver.CacheManager;
-import org.apache.reef.inmemory.driver.CacheNode;
-import org.apache.reef.inmemory.driver.DfsConstructor;
-import org.apache.reef.inmemory.driver.TestUtils;
+import org.apache.reef.inmemory.driver.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.junit.After;
 import org.junit.Before;
@@ -46,8 +43,9 @@ public final class HdfsMetaLoaderITCase {
   private HdfsMetaLoader loader;
   private HdfsBlockIdFactory blockFactory;
   private HdfsFileMetaFactory metaFactory;
+  private BlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
-  private DistributedFileSystem dfs;
+  private FileSystem dfs;
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -77,7 +75,8 @@ public final class HdfsMetaLoaderITCase {
     fs.mkdirs(new Path(TESTDIR));
 
     dfs = new DfsConstructor(ITUtils.getDfsAddress()).newInstance();
-    loader = new HdfsMetaLoader(dfs, blockFactory, metaFactory, new NullEventRecorder());
+    blockLocationGetter = new HdfsBlockLocationGetter(dfs);
+    loader = new HdfsMetaLoader(dfs, blockLocationGetter, blockFactory, metaFactory, new NullEventRecorder());
   }
 
   /**
