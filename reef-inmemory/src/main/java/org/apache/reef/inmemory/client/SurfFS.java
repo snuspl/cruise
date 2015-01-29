@@ -86,7 +86,6 @@ public final class SurfFS extends FileSystem {
     this.baseFs = baseFs;
     this.metaClientManager = metaClientManager;
     this.RECORD = recorder;
-    this.uri = URI.create("surf://for_test_only");
   }
 
   @Override
@@ -137,7 +136,7 @@ public final class SurfFS extends FileSystem {
    */
   @Override
   public FSDataInputStream open(Path path, final int bufferSize) throws IOException {
-    final String pathStr = getPathStr(pathToSurf(path));
+    final String pathStr = getAbsolutePathStr(path);
     final Event openEvent = RECORD.event("client.open", pathStr).start();
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
             new Object[]{path, pathStr});
@@ -178,7 +177,7 @@ public final class SurfFS extends FileSystem {
   @Override
   public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
-    final String pathStr = getPathStr(pathToSurf(path));
+    final String pathStr = getAbsolutePathStr(path);
     try {
       final SurfMetaService.Client metaClient = getMetaClient();
       final CacheClientManager cacheClientManager = getCacheClientManager();
@@ -206,7 +205,7 @@ public final class SurfFS extends FileSystem {
 
   @Override
   public FileStatus[] listStatus(Path path) throws IOException {
-    final String pathStr = getPathStr(pathToSurf(path));
+    final String pathStr = getAbsolutePathStr(path);
     try {
       final List<FileMeta> metas = getMetaClient().listMeta(pathStr);
       final FileStatus[] statuses = new FileStatus[metas.size()];
@@ -232,7 +231,7 @@ public final class SurfFS extends FileSystem {
   // TODO: use FSPermission properly.
   @Override
   public boolean mkdirs(Path path, FsPermission fsPermission) throws IOException {
-    final String pathStr = getPathStr(pathToSurf(path));
+    final String pathStr = getAbsolutePathStr(path);
     try {
       return getMetaClient().mkdirs(pathStr);
     } catch (TException e) {
@@ -243,7 +242,7 @@ public final class SurfFS extends FileSystem {
   @Override
   public FileStatus getFileStatus(Path path) throws IOException {
     try {
-      final FileMeta meta = getMetaClient().getFileMeta(getPathStr(pathToSurf(path)), localAddress);
+      final FileMeta meta = getMetaClient().getFileMeta(getAbsolutePathStr(path), localAddress);
       return toFileStatus(meta);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       if (isFallback) {
@@ -270,12 +269,12 @@ public final class SurfFS extends FileSystem {
   public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
 
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
-      new Object[]{file.getPath(), getPathStr(pathToSurf(file.getPath()))});
+      new Object[]{file.getPath(), getAbsolutePathStr(file.getPath())});
 
     final List<BlockLocation> blockLocations = new LinkedList<>();
 
     try {
-      final FileMeta metadata = getMetaClient().getFileMeta(getPathStr(pathToSurf(file.getPath())), localAddress);
+      final FileMeta metadata = getMetaClient().getFileMeta(getAbsolutePathStr(file.getPath()), localAddress);
       long startRemaining = start;
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
@@ -397,24 +396,24 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Get path component string from {@code Path}.
-   * For example, {@code surf://address/dir1/fileA} will return {@code /dir/fileA}
+   * Get string value of absolute path from {@code Path}.
+   * For example, {@code getAbsolutePathStr(dir1/fileA)} will return {@code /WORKING_DIR/dir1/fileA}.
    * @param path Relative/Absolute path of a file.
    * @return Path component of the absolute path; URI scheme and authority are dropped out.
    */
-  private String getPathStr(final Path path) {
-    return path.toUri().getPath();
+  private String getAbsolutePathStr(final Path path) {
+    final Path absPath = path.isUriPathAbsolute() ? path : new Path(getWorkingDirectory(), path.toUri().getPath());
+    return absPath.toUri().getPath();
   }
 
   /**
-   * Resolve relative path, and add URI scheme and authority.
-   * For example, {@code dir1/fileA} will be translated to {@code surf://address/WORKING_DIR/dir1/fileA}
+   * Get full URI of {@code path}.
    * @param path Relative/Absolute path of a file.
    * @return Absolute path including URI scheme and authority.
    */
   protected Path pathToSurf(final Path path) {
-    final Path absPath = path.isUriPathAbsolute() ? path : new Path(getWorkingDirectory(), path.toUri().getPath());
-    return new Path(uri.getScheme(), uri.getAuthority(), absPath.toUri().getPath());
+    final String absPathStr = getAbsolutePathStr(path);
+    return new Path(uri.getScheme(), uri.getAuthority(), absPathStr);
   }
 
   protected Path pathToBase(final Path surfPath) {
