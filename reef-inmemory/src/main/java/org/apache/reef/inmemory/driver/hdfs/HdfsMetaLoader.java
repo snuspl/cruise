@@ -64,7 +64,7 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
 
     final FileMeta fileMeta = metaFactory.toFileMeta(fileStatus);
     if (!fileMeta.isDirectory()) {
-      addBlocks(fileMeta, fileStatus.getLen());
+      addBlocks(fileMeta);
     }
     return fileMeta;
   }
@@ -73,14 +73,13 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
    * Add blocks to fileMeta. Each BlockInfo has information to load the block from DataNode directly.
    * @throws IOException
    */
-  private void addBlocks(final FileMeta fileMeta, final long fileLength) throws IOException {
+  private void addBlocks(final FileMeta fileMeta) throws IOException {
     final String pathStr = fileMeta.getFullPath();
 
     assert(blockLocationGetter instanceof HdfsBlockLocationGetter);
-    final LocatedBlocks locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(pathStr));
+    final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(pathStr));
 
-    final List<LocatedBlock> locatedBlockList = locatedBlocks.getLocatedBlocks();
-    for (final LocatedBlock locatedBlock : locatedBlockList) {
+    for (final LocatedBlock locatedBlock : locatedBlocks) {
       final BlockInfo blockInfo = blockFactory.newBlockInfo(pathStr, locatedBlock);
       fileMeta.addToBlocks(blockInfo);
     }

@@ -4,14 +4,17 @@ import java.io.IOException;
 
 /**
  * Get block locations from BaseFS. Each implementation can specify the representation of block locations
- * and file identifier.
+ * and path.
+ * <p>For example, its implementation for HDFS({@link org.apache.reef.inmemory.driver.hdfs.HdfsBlockLocationGetter})
+ * uses {@link org.apache.hadoop.fs.Path} and list of {@link org.apache.hadoop.hdfs.protocol.LocatedBlock}
+ * respectively.</p>
  */
-public interface BlockLocationGetter<FSFileId, FSBlockLocations> {
+public interface BlockLocationGetter<FsPath, FsBlockLocations> {
   /**
    * Returns the block locations of file.
-   * @param id Identifier to distinguish a unique file.
-   * @return Block locations of the file identified by {@code id}.
+   * @param path Path of the file.
+   * @return Block locations of the file.
    * @throws IOException
    */
-  public FSBlockLocations getBlockLocations(FSFileId id) throws IOException;
+  public FsBlockLocations getBlockLocations(FsPath path) throws IOException;
 }

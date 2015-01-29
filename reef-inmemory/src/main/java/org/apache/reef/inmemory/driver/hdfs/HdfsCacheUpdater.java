@@ -108,7 +108,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
 
       // 2. Get information from HDFS
       assert(blockLocationGetter instanceof HdfsBlockLocationGetter);
-      final LocatedBlocks locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(path);
+      final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(path);
 
       // 3. For each block that needs loading, load blocks asynchronously
       for (final BlockInfo blockInfo : fileMeta.getBlocks()) {

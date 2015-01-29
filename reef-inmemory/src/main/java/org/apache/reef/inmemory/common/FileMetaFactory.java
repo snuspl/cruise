@@ -8,7 +8,7 @@ import java.io.IOException;
  * Factory that creates FileMeta; FileMeta is a Thrift data structure,
  * used to identify a file in SurfFS.
  */
-public interface FileMetaFactory<FileStatus> {
+public interface FileMetaFactory<FsFileStatus> {
   /**
    * Create a new FileMeta for file. Used to register metadata index
    * when a new file is created in Surf.
@@ -34,5 +34,5 @@ public interface FileMetaFactory<FileStatus> {
    * @param status FileStatus returned from BaseFS using getFileStatus() or listStatus() .
    * @return Metadata used in Surf.
    */
-  public FileMeta toFileMeta(FileStatus status) throws IOException;
+  public FileMeta toFileMeta(FsFileStatus status) throws IOException;
 }
