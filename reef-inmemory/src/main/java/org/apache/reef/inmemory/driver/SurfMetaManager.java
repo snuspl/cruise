@@ -1,11 +1,7 @@
 package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.fs.CreateFlag;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.FileMetaFactory;
@@ -20,7 +16,6 @@ import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -40,7 +35,7 @@ public final class SurfMetaManager {
   private final BlockIdFactory blockIdFactory;
   private final FileMetaFactory metaFactory;
   private final LocationSorter locationSorter;
-  private final FileSystem dfs;
+  private final BaseFsClient baseFsClient;
 
   @Inject
   public SurfMetaManager(final LoadingCache metadataIndex,
@@ -50,7 +45,7 @@ public final class SurfMetaManager {
                          final BlockIdFactory blockIdFactory,
                          final FileMetaFactory metaFactory,
                          final LocationSorter locationSorter,
-                         final FileSystem dfs) {
+                         final BaseFsClient baseFsClient) {
     this.metadataIndex = metadataIndex;
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
@@ -58,7 +53,7 @@ public final class SurfMetaManager {
     this.blockIdFactory = blockIdFactory;
     this.metaFactory = metaFactory;
     this.locationSorter = locationSorter;
-    this.dfs = dfs;
+    this.baseFsClient = baseFsClient;
   }
 
   /**
@@ -155,9 +150,7 @@ public final class SurfMetaManager {
 
     // 1. Try to create file in BaseFS.
     try {
-      final int bufferSize = dfs.getServerDefaults().getFileBufferSize();
-      dfs.create(new Path(fileMeta.getFullPath()), FsPermission.getFileDefault(), EnumSet.of(CreateFlag.CREATE),
-              bufferSize, fileMeta.getReplication(), fileMeta.getBlockSize(), null, null);
+      baseFsClient.create(path, replication, blockSize);
     } catch (IOException e) {
       LOG.log(Level.SEVERE, "Failed to create a file to the BaseFS : " + path, e.getCause());
       throw e.getCause();
@@ -196,7 +189,8 @@ public final class SurfMetaManager {
     // 1. Try to create directory in BaseFS.
     try {
       // Return {@code false} directly if it fails to create directory in BaseFS.
-      if (!dfs.mkdirs(new Path(fileMeta.getFullPath()), FsPermission.getDirDefault())) {
+      final boolean createdAtBaseFs = baseFsClient.mkdirs(path);
+      if (!createdAtBaseFs) {
         return false;
       }
     } catch (IOException e) {
@@ -240,8 +234,7 @@ public final class SurfMetaManager {
     final List<String> childPathList = new ArrayList<>();
 
     if (!fileMeta.isSetChildren()) {
-      for (final FileStatus status : dfs.listStatus(new Path(fileMeta.getFullPath()))) {
-        final FileMeta childMeta = metaFactory.toFileMeta(status);
+      for (final FileMeta childMeta : baseFsClient.listStatus(fileMeta.getFullPath())) {
         update(childMeta);
         childList.add(childMeta);
         childPathList.add(childMeta.getFullPath());
@@ -317,7 +310,7 @@ public final class SurfMetaManager {
    */
   private boolean deleteFromBaseFS(final FileMeta fileMeta) {
     try {
-      return dfs.delete(new Path(fileMeta.getFullPath()), true);
+      return baseFsClient.delete(fileMeta.getFullPath());
     } catch (IOException e) {
       LOG.log(Level.SEVERE, "Failed to delete from BaseFS : {0}", fileMeta.getFullPath());
       return false;

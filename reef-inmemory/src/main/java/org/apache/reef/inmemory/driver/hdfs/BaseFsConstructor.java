@@ -14,11 +14,11 @@ import java.net.URI;
 /**
  * Constructs an instance of the {@link org.apache.hadoop.fs.FileSystem}, for use by Tang injector.
  */
-public class DfsConstructor implements ExternalConstructor<FileSystem> {
+public class BaseFsConstructor implements ExternalConstructor<FileSystem> {
   private final String dfsAddress;
 
   @Inject
-  public DfsConstructor(final @Parameter(DfsParameters.Address.class) String dfsAddress) {
+  public BaseFsConstructor(final @Parameter(DfsParameters.Address.class) String dfsAddress) {
     this.dfsAddress = dfsAddress;
   }
 

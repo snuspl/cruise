@@ -68,7 +68,8 @@ public final class SurfMetaManagerITCase {
   private HdfsBlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
   private SurfMetaManager metaManager;
-  private FileSystem dfs;
+  private FileSystem baseFs;
+  private HDFSClient baseFsClient;
 
   @Before
   public void setUp() throws IOException {
@@ -98,17 +99,18 @@ public final class SurfMetaManagerITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    dfs = new DfsConstructor(ITUtils.getDfsAddress()).newInstance();
-    blockLocationGetter = new HdfsBlockLocationGetter(dfs);
+    baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
+    blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
+    baseFsClient = new HDFSClient(baseFs, metaFactory);
 
-    loader = new HdfsMetaLoader(dfs, blockLocationGetter, blockFactory, metaFactory, RECORD);
+    loader = new HdfsMetaLoader(baseFs, blockLocationGetter, blockFactory, metaFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, dfs, blockLocationGetter);
+    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, baseFs, blockLocationGetter);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, metaFactory, locationSorter, dfs);
+    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, metaFactory, locationSorter, baseFsClient);
   }
 
   /**
@@ -117,7 +119,7 @@ public final class SurfMetaManagerITCase {
   @After
   public void tearDown() throws IOException {
     fs.delete(new Path(TESTDIR), true);
-    dfs.close();
+    baseFs.close();
   }
 
   /**

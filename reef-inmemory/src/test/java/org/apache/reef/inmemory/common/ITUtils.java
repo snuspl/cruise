@@ -45,7 +45,7 @@ public final class ITUtils {
   /**
    * Returns the address of HDFS NameNode.
    */
-  public static String getDfsAddress() {
+  public static String getBaseFsAddress() {
     return "hdfs://localhost:" + NAMENODE_PORT;
   }
 

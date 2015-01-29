@@ -45,7 +45,7 @@ public final class HdfsMetaLoaderITCase {
   private HdfsFileMetaFactory metaFactory;
   private BlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
-  private FileSystem dfs;
+  private FileSystem baseFs;
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -74,9 +74,9 @@ public final class HdfsMetaLoaderITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    dfs = new DfsConstructor(ITUtils.getDfsAddress()).newInstance();
-    blockLocationGetter = new HdfsBlockLocationGetter(dfs);
-    loader = new HdfsMetaLoader(dfs, blockLocationGetter, blockFactory, metaFactory, new NullEventRecorder());
+    baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
+    blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
+    loader = new HdfsMetaLoader(baseFs, blockLocationGetter, blockFactory, metaFactory, new NullEventRecorder());
   }
 
   /**
@@ -85,7 +85,7 @@ public final class HdfsMetaLoaderITCase {
   @After
   public void tearDown() throws IOException {
     fs.delete(new Path(TESTDIR), true);
-    dfs.close();
+    baseFs.close();
   }
 
   /**

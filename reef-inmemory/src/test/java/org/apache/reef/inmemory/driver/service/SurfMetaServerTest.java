@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.driver.service;
 
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.FileMetaFactory;
 import org.apache.reef.inmemory.driver.*;
@@ -41,10 +40,10 @@ public final class SurfMetaServerTest {
     final BlockIdFactory blockIdFactory = mock(BlockIdFactory.class);
     final FileMetaFactory metaFactory = mock(FileMetaFactory.class);
     final LocationSorter locationSorter = mock(LocationSorter.class);
-    final FileSystem dfs = mock(FileSystem.class);
+    final BaseFsClient baseFsClient = mock(BaseFsClient.class);
 
     final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheMessenger, cacheLocationRemover,
-            cacheUpdater, blockIdFactory, metaFactory, locationSorter, dfs);
+            cacheUpdater, blockIdFactory, metaFactory, locationSorter, baseFsClient);
 
     try {
       final SurfMetaServer metaService = new SurfMetaServer(
