@@ -19,16 +19,16 @@ import java.util.List;
  * and the block locations is returned as {@link org.apache.hadoop.hdfs.protocol.LocatedBlocks}.
  */
 public final class HdfsBlockLocationGetter implements BlockLocationGetter<Path, List<LocatedBlock>> {
-  private final FileSystem fs;
+  private final FileSystem dfs;
 
   @Inject
-  public HdfsBlockLocationGetter(final FileSystem fs) {
-    this.fs = fs;
+  public HdfsBlockLocationGetter(final FileSystem dfs) {
+    this.dfs = dfs;
   }
 
   @Override
   public List<LocatedBlock> getBlockLocations(final Path path) throws IOException {
-    final DFSClient dfsClient = new DFSClient(fs.getUri(), fs.getConf());
+    final DFSClient dfsClient = new DFSClient(dfs.getUri(), dfs.getConf());
     final String pathStr = path.toUri().getPath();
 
     final HdfsFileStatus hdfsFileStatus = dfsClient.getFileInfo(pathStr);

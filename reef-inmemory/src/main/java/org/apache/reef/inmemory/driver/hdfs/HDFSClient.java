@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 
 /**
+ * Client wrapper to work with HDFS.
  */
 public class HDFSClient implements BaseFsClient<FileStatus> {
 
