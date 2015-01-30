@@ -167,7 +167,7 @@ public final class SurfMetaManagerTest {
     directoryFileMeta.setUser(user);
     when(metaLoader.load(directoryPath)).thenReturn(directoryFileMeta);
 
-    final int numFiles = 2000;
+    final int numFiles = 100;
     final ExecutorService executorService = Executors.newCachedThreadPool();
     final Future<?>[] futures = new Future<?>[numFiles];
 
@@ -286,7 +286,7 @@ public final class SurfMetaManagerTest {
     rootFileMeta.setUser(user);
     when(metaLoader.load(rootPath)).thenReturn(rootFileMeta);
 
-    final int numFiles = 2000;
+    final int numFiles = 100;
     final ExecutorService executorService = Executors.newCachedThreadPool();
     final Future<Boolean>[] futures = new Future[numFiles];
 
