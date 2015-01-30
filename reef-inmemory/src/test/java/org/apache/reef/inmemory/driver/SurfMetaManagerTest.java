@@ -97,7 +97,7 @@ public final class SurfMetaManagerTest {
   }
 
   /**
-   * Verify a newly-created file
+   * Verify that a newly-create file's fileMeta
    * TODO: Test User-related attributes & a file at the root (e.g. surf://hi.txt)
    * @throws Throwable
    */
@@ -129,21 +129,21 @@ public final class SurfMetaManagerTest {
     verify(metaLoader, times(1)).load(path.getParent());
 
     // Should not load meta as the fileMeta is already created(cached)
-    final FileMeta fileMeta = metaManager.get(path, user);
+    final FileMeta result = metaManager.get(path, user);
     verify(metaLoader, times(0)).load(path);
 
     // Check validity of fileMeta
-    assertNotNull(fileMeta);
-    assertFalse("Should not be a directory", fileMeta.isDirectory());
-    assertEquals(path.toUri().toString(), fileMeta.getFullPath());
-    assertEquals(replication, fileMeta.getReplication());
-    assertEquals(blockSize, fileMeta.getBlockSize());
-    assertEquals(parentFileMeta, metaManager.getParent(fileMeta));
+    assertNotNull(result);
+    assertFalse("Should not be a directory", result.isDirectory());
+    assertEquals(path.toUri().toString(), result.getFullPath());
+    assertEquals(replication, result.getReplication());
+    assertEquals(blockSize, result.getBlockSize());
+    assertEquals(parentFileMeta, metaManager.getParent(result));
   }
 
   /**
-   * Verify that only one file gets created under concurrent operations.
-   * */
+   * Verify concurrent creation of files under the same directory
+   */
   @Test
   public void testConcurrentCreateFile() throws Throwable {
     final User user = defaultUser();
@@ -195,33 +195,37 @@ public final class SurfMetaManagerTest {
     }
     assertEquals(numFiles, successCount);
 
-    // Check if the created files exist
     for (int i = 0; i < numFiles; i++) {
       final int index = i;
       final Path filePath = new Path(directoryPath.toUri().toString() + "/" + String.valueOf(index));
 
       // Should not load meta as the fileMeta is already created(cached)
-      final FileMeta fileMeta = metaManager.get(filePath, user);
+      final FileMeta result = metaManager.get(filePath, user);
       verify(metaLoader, times(0)).load(filePath);
 
       // Check validity of fileMeta
-      assertNotNull(fileMeta);
-      assertFalse("Should not be a directory", fileMeta.isDirectory());
-      assertEquals(filePath.toUri().toString(), fileMeta.getFullPath());
-      assertEquals(replication, fileMeta.getReplication());
-      assertEquals(blockSize, fileMeta.getBlockSize());
+      assertNotNull(result);
+      assertFalse("Should not be a directory", result.isDirectory());
+      assertEquals(filePath.toUri().toString(), result.getFullPath());
+      assertEquals(replication, result.getReplication());
+      assertEquals(blockSize, result.getBlockSize());
       // children-to-parent mapping
-      assertEquals(directoryFileMeta, metaManager.getParent(fileMeta));
+      assertEquals(directoryFileMeta, metaManager.getParent(result));
       // parent-to-children mapping
       assertNotNull(metaManager.getChildren(directoryFileMeta));
-      assertTrue("Should be a child of directoryPath, index: " + String.valueOf(index), metaManager.getChildren(directoryFileMeta).contains(fileMeta));
+      assertTrue("Should be a child of directoryPath, index: " + String.valueOf(index),
+              metaManager.getChildren(directoryFileMeta).contains(result));
     }
   }
 
+  /**
+   * Verify a newly-created directory's fileMeta
+   */
   @Test
   public void testCreateDirectory() throws Throwable {
     final User user = defaultUser();
-    final Path path = new Path("surf://user/" + user.getOwner() + "/path");
+    final Path rootPath = new Path("surf://root/");
+    final Path newDirPath = new Path(rootPath.toUri().toString() + "dir");
 
     final CacheLoader<Path, FileMeta> metaLoader = mock(CacheLoader.class);
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(metaLoader);
@@ -235,38 +239,34 @@ public final class SurfMetaManagerTest {
     // Assume that mkdirs from baseFS succeeds
     when(baseFsClient.mkdirs(anyString())).thenReturn(true);
 
-    // Assume that getting parentMeta succeeds
-    final FileMeta parentFileMeta = new FileMeta();
-    parentFileMeta.setFullPath(path.getParent().toUri().toString());
-    parentFileMeta.setUser(user);
-    when(metaLoader.load(path.getParent())).thenReturn(parentFileMeta);
-
-    // Assume that getting grandParentMeta succeeds
-    final FileMeta grandParentFileMeta = new FileMeta();
-    grandParentFileMeta.setFullPath(path.getParent().getParent().toUri().toString());
-    grandParentFileMeta.setUser(user);
-    when(metaLoader.load(path.getParent().getParent())).thenReturn(grandParentFileMeta);
+    // Assume that getting rootFileMeta succeeds
+    final FileMeta rootFileMeta = new FileMeta();
+    rootFileMeta.setFullPath(rootPath.toUri().toString());
+    rootFileMeta.setUser(user);
+    when(metaLoader.load(rootPath)).thenReturn(rootFileMeta);
 
     // Create a directory
-    assertTrue("No error should be invoked", metaManager.createDirectory(path.toUri().toString()));
-    verify(metaLoader, times(1)).load(path.getParent());
-    verify(metaLoader, times(1)).load(path.getParent().getParent());
+    assertTrue("No error should be invoked", metaManager.createDirectory(newDirPath.toUri().toString()));
+    verify(metaLoader, times(1)).load(rootPath);
 
     // Should not load meta as the fileMeta is already created(cached)
-    final FileMeta fileMeta = metaManager.get(path, user);
-    verify(metaLoader, times(0)).load(path);
+    final FileMeta result = metaManager.get(newDirPath, user);
+    verify(metaLoader, times(0)).load(newDirPath);
 
     // Check validity of fileMeta
-    assertNotNull(fileMeta);
-    assertTrue("Should be a directory", fileMeta.isDirectory());
-    assertEquals(path.toUri().toString(), fileMeta.getFullPath());
-    assertEquals(parentFileMeta, metaManager.getParent(fileMeta));
+    assertNotNull(result);
+    assertTrue("Should be a directory", result.isDirectory());
+    assertEquals(newDirPath.toUri().toString(), result.getFullPath());
+    assertEquals(rootFileMeta, metaManager.getParent(result));
   }
 
+  /**
+   * Verify concurrent creation of directories under the same directory
+   */
   @Test
   public void testConcurrentCreateDirectory() throws Throwable{
     final User user = defaultUser();
-    final Path rootPath = new Path("surf://root/"); // TODO: check the case "surf://"
+    final Path rootPath = new Path("surf://root/");
 
     final CacheLoader<Path, FileMeta> metaLoader = mock(CacheLoader.class);
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(metaLoader);
@@ -314,24 +314,24 @@ public final class SurfMetaManagerTest {
     }
     assertEquals(numFiles, successCount);
 
-    // Check if the created files exist
     for (int i = 0; i < numFiles; i++) {
       final int index = i;
       final Path filePath = new Path(rootPath.toUri().toString() + "/" + String.valueOf(index));
 
       // Should not load meta as the fileMeta is already created(cached)
-      final FileMeta fileMeta = metaManager.get(filePath, user);
+      final FileMeta result = metaManager.get(filePath, user);
       verify(metaLoader, times(0)).load(filePath);
 
       // Check validity of fileMeta
-      assertNotNull(fileMeta);
-      assertTrue("Should be a directory", fileMeta.isDirectory());
-      assertEquals(filePath.toUri().toString(), fileMeta.getFullPath());
+      assertNotNull(result);
+      assertTrue("Should be a directory", result.isDirectory());
+      assertEquals(filePath.toUri().toString(), result.getFullPath());
       // children-to-parent mapping
-      assertEquals(rootFileMeta, metaManager.getParent(fileMeta));
+      assertEquals(rootFileMeta, metaManager.getParent(result));
       // parent-to-children mapping
       assertNotNull(metaManager.getChildren(rootFileMeta));
-      assertTrue("Should be a child of rootPath, index: " + String.valueOf(index), metaManager.getChildren(rootFileMeta).contains(fileMeta));
+      assertTrue("Should be a child of rootPath, index: " + String.valueOf(index),
+              metaManager.getChildren(rootFileMeta).contains(result));
     }
   }
 
