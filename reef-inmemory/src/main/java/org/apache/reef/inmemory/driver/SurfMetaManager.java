@@ -259,7 +259,7 @@ public final class SurfMetaManager {
    * Return the parent's FileMeta
    * @throws Throwable
    */
-  private FileMeta getParent(final FileMeta fileMeta) throws Throwable {
+  public FileMeta getParent(final FileMeta fileMeta) throws Throwable {
     final Path path = new Path(fileMeta.getFullPath());
     return get(path.getParent(), fileMeta.getUser());
   }

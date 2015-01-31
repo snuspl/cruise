@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.FileMetaFactory;
@@ -10,6 +10,7 @@ import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
+import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.common.MockBlockId;
@@ -19,18 +20,21 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
  * Test class for SurfMetaManager
  */
 public final class SurfMetaManagerTest {
+  private static final Logger LOG = Logger.getLogger(SurfMetaManagerTest.class.getName());
   private static final long blockSize = 128L * 1024 * 1024;
+  final short replication = (short)1;
   private CacheMessenger cacheMessenger;
   private CacheLocationRemover cacheLocationRemover;
   private CacheUpdater cacheUpdater;
@@ -50,7 +54,7 @@ public final class SurfMetaManagerTest {
     cacheLocationRemover = new CacheLocationRemover();
     cacheUpdater = mock(CacheUpdater.class);
     blockIdFactory = mock(BlockIdFactory.class);
-    metaFactory = mock(FileMetaFactory.class);
+    metaFactory = new HdfsFileMetaFactory();
     locationSorter = mock(LocationSorter.class);
     baseFsClient = mock(BaseFsClient.class);
   }
@@ -69,7 +73,7 @@ public final class SurfMetaManagerTest {
   }
 
   /**
-   * Verify that load is called only when the path given does not exist.
+   * Verify that metaLoader#load is called only when the path given does not exist.
    * @throws Throwable
    */
   @Test
@@ -77,19 +81,258 @@ public final class SurfMetaManagerTest {
     final Path path = new Path("/path");
     final User user = defaultUser();
 
-    final CacheLoader<Path, FileMeta> cacheLoader = mock(CacheLoader.class);
+    final CacheLoader<Path, FileMeta> metaLoader = mock(CacheLoader.class);
     final FileMeta fileMeta = new FileMeta();
-    when(cacheLoader.load(path)).thenReturn(fileMeta);
-    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
+    when(metaLoader.load(path)).thenReturn(fileMeta);
+    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(metaLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
             blockIdFactory, metaFactory, locationSorter, baseFsClient);
     when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
     metaManager.get(path, user);
-    verify(cacheLoader, times(1)).load(path);
+    verify(metaLoader, times(1)).load(path);
     metaManager.get(path, user);
-    verify(cacheLoader, times(1)).load(path);
+    verify(metaLoader, times(1)).load(path);
+  }
+
+  /**
+   * Verify that a newly-create file's fileMeta
+   * TODO: Test User-related attributes & a file at the root (e.g. surf://hi.txt)
+   * @throws Throwable
+   */
+  @Test
+  public void testCreateFile() throws Throwable {
+    final User user = defaultUser();
+    final Path path = new Path("surf://user/" + user.getOwner() + "/path");
+
+    final CacheLoader<Path, FileMeta> metaLoader = mock(CacheLoader.class);
+    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(metaLoader);
+    final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
+
+    final BaseFsClient<FileStatus> baseFsClient = mock(BaseFsClient.class);
+
+    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
+            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+
+    // Assume that create from baseFS succeeds
+    doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
+
+    // Assume that getting parentMeta succeeds
+    final FileMeta parentFileMeta = new FileMeta();
+    parentFileMeta.setFullPath(path.getParent().toUri().toString());
+    parentFileMeta.setUser(user);
+    when(metaLoader.load(path.getParent())).thenReturn(parentFileMeta);
+
+    // Create a file
+    assertTrue("No error should be invoked", metaManager.createFile(path.toUri().toString(), replication, blockSize));
+    verify(metaLoader, times(1)).load(path.getParent());
+
+    // Should not load meta as the fileMeta is already created(cached)
+    final FileMeta result = metaManager.get(path, user);
+    verify(metaLoader, times(0)).load(path);
+
+    // Check validity of fileMeta
+    assertNotNull(result);
+    assertFalse("Should not be a directory", result.isDirectory());
+    assertEquals(path.toUri().toString(), result.getFullPath());
+    assertEquals(replication, result.getReplication());
+    assertEquals(blockSize, result.getBlockSize());
+    assertEquals(parentFileMeta, metaManager.getParent(result));
+  }
+
+  /**
+   * Verify concurrent creation of files under the same directory
+   */
+  @Test
+  public void testConcurrentCreateFile() throws Throwable {
+    final User user = defaultUser();
+    final Path directoryPath = new Path("surf://user/" + user.getOwner() + "/path");
+
+    final CacheLoader<Path, FileMeta> metaLoader = mock(CacheLoader.class);
+    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(metaLoader);
+    final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
+
+    final BaseFsClient<FileStatus> baseFsClient = mock(BaseFsClient.class);
+
+    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
+            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+
+    // Assume that create from baseFS succeeds
+    doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
+
+    // Assume that getting directoryMeta succeeds
+    final FileMeta directoryFileMeta = new FileMeta();
+    directoryFileMeta.setFullPath(directoryPath.toUri().toString());
+    directoryFileMeta.setUser(user);
+    when(metaLoader.load(directoryPath)).thenReturn(directoryFileMeta);
+
+    final int numFiles = 100;
+    final ExecutorService executorService = Executors.newCachedThreadPool();
+    final Future<?>[] futures = new Future<?>[numFiles];
+
+    // Concurrently create files under the same directory
+    for (int i = 0; i < numFiles; i++) {
+      final int index = i;
+      futures[index] = executorService.submit(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            metaManager.createFile(directoryPath.toUri().toString() + "/" + String.valueOf(index), replication, blockSize);
+          } catch (final Throwable t) {
+            throw new RuntimeException(t);
+          }
+        }
+      });
+    }
+    executorService.shutdown();
+
+    // Verify that all operations succeeded
+    int successCount = 0;
+    for (final Future future : futures) {
+      future.get();
+      successCount += future.isCancelled() ? 0 : 1;
+    }
+    assertEquals(numFiles, successCount);
+
+    for (int i = 0; i < numFiles; i++) {
+      final int index = i;
+      final Path filePath = new Path(directoryPath.toUri().toString() + "/" + String.valueOf(index));
+
+      // Should not load meta as the fileMeta is already created(cached)
+      final FileMeta result = metaManager.get(filePath, user);
+      verify(metaLoader, times(0)).load(filePath);
+
+      // Check validity of fileMeta
+      assertNotNull(result);
+      assertFalse("Should not be a directory", result.isDirectory());
+      assertEquals(filePath.toUri().toString(), result.getFullPath());
+      assertEquals(replication, result.getReplication());
+      assertEquals(blockSize, result.getBlockSize());
+      // children-to-parent mapping
+      assertEquals(directoryFileMeta, metaManager.getParent(result));
+      // parent-to-children mapping
+      assertNotNull(metaManager.getChildren(directoryFileMeta));
+      assertTrue("Should be a child of directoryPath, index: " + String.valueOf(index),
+              metaManager.getChildren(directoryFileMeta).contains(result));
+    }
+  }
+
+  /**
+   * Verify a newly-created directory's fileMeta
+   */
+  @Test
+  public void testCreateDirectory() throws Throwable {
+    final User user = defaultUser();
+    final Path rootPath = new Path("surf://root/");
+    final Path newDirPath = new Path(rootPath.toUri().toString() + "dir");
+
+    final CacheLoader<Path, FileMeta> metaLoader = mock(CacheLoader.class);
+    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(metaLoader);
+    final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
+
+    final BaseFsClient<FileStatus> baseFsClient = mock(BaseFsClient.class);
+
+    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
+            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+
+    // Assume that mkdirs from baseFS succeeds
+    when(baseFsClient.mkdirs(anyString())).thenReturn(true);
+
+    // Assume that getting rootFileMeta succeeds
+    final FileMeta rootFileMeta = new FileMeta();
+    rootFileMeta.setFullPath(rootPath.toUri().toString());
+    rootFileMeta.setUser(user);
+    when(metaLoader.load(rootPath)).thenReturn(rootFileMeta);
+
+    // Create a directory
+    assertTrue("No error should be invoked", metaManager.createDirectory(newDirPath.toUri().toString()));
+    verify(metaLoader, times(1)).load(rootPath);
+
+    // Should not load meta as the fileMeta is already created(cached)
+    final FileMeta result = metaManager.get(newDirPath, user);
+    verify(metaLoader, times(0)).load(newDirPath);
+
+    // Check validity of fileMeta
+    assertNotNull(result);
+    assertTrue("Should be a directory", result.isDirectory());
+    assertEquals(newDirPath.toUri().toString(), result.getFullPath());
+    assertEquals(rootFileMeta, metaManager.getParent(result));
+  }
+
+  /**
+   * Verify concurrent creation of directories under the same directory
+   */
+  @Test
+  public void testConcurrentCreateDirectory() throws Throwable{
+    final User user = defaultUser();
+    final Path rootPath = new Path("surf://root/");
+
+    final CacheLoader<Path, FileMeta> metaLoader = mock(CacheLoader.class);
+    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(metaLoader);
+    final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
+
+    final BaseFsClient<FileStatus> baseFsClient = mock(BaseFsClient.class);
+
+    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
+            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+
+    // Assume that mkdirs from baseFS succeeds
+    when(baseFsClient.mkdirs(anyString())).thenReturn(true);
+
+    // Assume that getting directoryMeta succeeds
+    final FileMeta rootFileMeta = new FileMeta();
+    rootFileMeta.setFullPath(rootPath.toUri().toString());
+    rootFileMeta.setUser(user);
+    when(metaLoader.load(rootPath)).thenReturn(rootFileMeta);
+
+    final int numFiles = 100;
+    final ExecutorService executorService = Executors.newCachedThreadPool();
+    final Future<Boolean>[] futures = new Future[numFiles];
+
+    // Concurrently create directories under the root directory
+    for (int i = 0; i < numFiles; i++) {
+      final int index = i;
+      futures[index] = executorService.submit(new Callable<Boolean>() {
+        @Override
+        public Boolean call() {
+          try {
+            return metaManager.createDirectory(rootPath.toUri().toString() + String.valueOf(index));
+          } catch (final Throwable t) {
+            throw new RuntimeException(t);
+          }
+        }
+      });
+    }
+    executorService.shutdown();
+
+    // Verify that all operations succeeded
+    int successCount = 0;
+    for (final Future<Boolean> future : futures) {
+      assertTrue("CreateDirectory should succeed", future.get());
+      successCount += future.isCancelled() ? 0 : 1;
+    }
+    assertEquals(numFiles, successCount);
+
+    for (int i = 0; i < numFiles; i++) {
+      final int index = i;
+      final Path filePath = new Path(rootPath.toUri().toString() + "/" + String.valueOf(index));
+
+      // Should not load meta as the fileMeta is already created(cached)
+      final FileMeta result = metaManager.get(filePath, user);
+      verify(metaLoader, times(0)).load(filePath);
+
+      // Check validity of fileMeta
+      assertNotNull(result);
+      assertTrue("Should be a directory", result.isDirectory());
+      assertEquals(filePath.toUri().toString(), result.getFullPath());
+      // children-to-parent mapping
+      assertEquals(rootFileMeta, metaManager.getParent(result));
+      // parent-to-children mapping
+      assertNotNull(metaManager.getChildren(rootFileMeta));
+      assertTrue("Should be a child of rootPath, index: " + String.valueOf(index),
+              metaManager.getChildren(rootFileMeta).contains(result));
+    }
   }
 
   /**
