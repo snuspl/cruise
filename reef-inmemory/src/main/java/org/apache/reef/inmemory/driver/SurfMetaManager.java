@@ -156,11 +156,13 @@ public final class SurfMetaManager {
       throw e.getCause();
     }
 
-    // 2. Set this file as a child of parent directory.
+    // 2. Set this file as a child of parent directory. If the parent is same, one file waits until the other ends.
     try {
       final FileMeta parentMeta = getParent(fileMeta);
-      parentMeta.addToChildren(fileMeta.getFullPath());
-      update(parentMeta);
+      synchronized (parentMeta) {
+        parentMeta.addToChildren(fileMeta.getFullPath());
+        update(parentMeta);
+      }
       update(fileMeta);
       return true;
     } catch (Throwable e) {
@@ -259,7 +261,7 @@ public final class SurfMetaManager {
    * Return the parent's FileMeta
    * @throws Throwable
    */
-  public FileMeta getParent(final FileMeta fileMeta) throws Throwable {
+  protected FileMeta getParent(final FileMeta fileMeta) throws Throwable {
     final Path path = new Path(fileMeta.getFullPath());
     return get(path.getParent(), fileMeta.getUser());
   }
