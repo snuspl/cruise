@@ -34,26 +34,31 @@ public class HDFSClient implements BaseFsClient<FileStatus> {
   }
 
   @Override
-  public void create(String path, short replication, long blockSize) throws IOException {
+  public void create(final String path, final short replication, final long blockSize) throws IOException {
     dfs.create(new Path(path), FsPermission.getFileDefault(), EnumSet.of(CreateFlag.CREATE),
             bufferSize, replication, blockSize, null, null);
   }
 
   @Override
-  public boolean mkdirs(String path) throws IOException {
+  public boolean mkdirs(final String path) throws IOException {
     // Return {@code false} directly if it fails to create directory in BaseFS.
     return dfs.mkdirs(new Path(path), FsPermission.getDirDefault());
   }
 
   @Override
-  public boolean delete(String path) throws IOException {
+  public boolean delete(final String path) throws IOException {
     final boolean recursive = true;
     return dfs.delete(new Path(path), recursive);
 
   }
 
   @Override
-  public FileMeta[] listStatus(String path) throws IOException {
+  public boolean exists(final String path) throws IOException {
+    return dfs.exists(new Path(path));
+  }
+
+  @Override
+  public FileMeta[] listStatus(final String path) throws IOException {
     final FileStatus[] statuses = dfs.listStatus(new Path(path));
     final FileMeta[] metas = new FileMeta[statuses.length];
     for (int i = 0; i < statuses.length; i++) {
