@@ -3,12 +3,14 @@ package edu.snu.reef.flexion.core;
 import com.microsoft.reef.io.network.nggroup.api.driver.CommunicationGroupDriver;
 import com.microsoft.reef.io.network.nggroup.api.driver.GroupCommDriver;
 import com.microsoft.reef.io.network.nggroup.impl.config.BroadcastOperatorSpec;
+import com.microsoft.reef.io.network.nggroup.impl.config.GatherOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ReduceOperatorSpec;
-import edu.snu.reef.flexion.groupcomm.names.CommunicationGroup;
-import edu.snu.reef.flexion.groupcomm.names.CtrlMsgBroadcast;
-import edu.snu.reef.flexion.groupcomm.names.DataBroadcast;
-import edu.snu.reef.flexion.groupcomm.names.DataReduce;
-import edu.snu.reef.flexion.groupcomm.subs.DataReduceFunction;
+import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterSender;
+import edu.snu.reef.flexion.groupcomm.names.*;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.TaskConfiguration;
@@ -66,24 +68,52 @@ public class FlexionDriver {
         .newCommunicationGroup(CommunicationGroup.class,
             dataLoadingService.getNumberOfPartitions() + 1);
 
+
     this.commGroup
         .addBroadcast(CtrlMsgBroadcast.class,
             BroadcastOperatorSpec.newBuilder()
                 .setSenderId(ControllerTask.TASK_ID)
                 .setDataCodecClass(SerializableCodec.class)
-                .build())
-        .addBroadcast(DataBroadcast.class,
-            BroadcastOperatorSpec.newBuilder()
-                .setSenderId(ControllerTask.TASK_ID)
-                .setDataCodecClass(SerializableCodec.class)
-                .build())
-        .addReduce(DataReduce.class,
-            ReduceOperatorSpec.newBuilder()
-                .setReceiverId(ControllerTask.TASK_ID)
-                .setDataCodecClass(SerializableCodec.class)
-                .setReduceFunctionClass(DataReduceFunction.class)
-                .build())
-        .finalise();
+                .build());
+
+    if(userControllerTask.isBroadcastUsed()){
+        this.commGroup
+            .addBroadcast(DataBroadcast.class,
+                BroadcastOperatorSpec.newBuilder()
+                    .setSenderId(ControllerTask.TASK_ID)
+                    .setDataCodecClass(((IDataBroadcastSender) userControllerTask).getBroadcastCodec())
+                    .build());
+    }
+
+    if(userControllerTask.isScatterUsed()){
+        this.commGroup
+            .addScatter(DataScatter.class,
+                ScatterOperatorSpec.newBuilder()
+                    .setSenderId(ControllerTask.TASK_ID)
+                    .setDataCodecClass(((IDataScatterSender) userControllerTask).getScatterCodec())
+                    .build());
+    }
+
+    if(userComputeTask.isReduceUsed()){
+        this.commGroup
+            .addReduce(DataReduce.class,
+                    ReduceOperatorSpec.newBuilder()
+                            .setReceiverId(ControllerTask.TASK_ID)
+                            .setDataCodecClass(((IDataReduceSender) userComputeTask).getReduceCodec())
+                            .setReduceFunctionClass(((IDataReduceSender) userComputeTask).getReduceFunction())
+                            .build());
+    }
+
+    if(userComputeTask.isGatherUsed()){
+        this.commGroup
+            .addGather(DataGather.class,
+                    GatherOperatorSpec.newBuilder()
+                            .setReceiverId(ControllerTask.TASK_ID)
+                            .setDataCodecClass(((IDataGatherSender) userComputeTask).getGatherCodec())
+                            .build());
+    }
+
+    this.commGroup.finalise();
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {

@@ -1,6 +1,13 @@
 package edu.snu.reef.flexion.core;
 
+import com.microsoft.reef.io.network.group.operators.Broadcast;
+import com.microsoft.reef.io.network.nggroup.api.task.CommunicationGroupClient;
 import com.microsoft.reef.io.network.nggroup.api.task.GroupCommClient;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterReceiver;
+import edu.snu.reef.flexion.groupcomm.names.*;
 import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
@@ -17,8 +24,11 @@ public class ComputeTask implements Task, TaskMessageSource {
   private final static Logger LOG = Logger.getLogger(ComputeTask.class.getName());
   public final static String TASK_ID = "CmpTask";
 
-  private final FlexionService flexionService;
   private final UserComputeTask userComputeTask;
+  private final CommunicationGroupClient commGroup;
+  private final HeartBeatTriggerManager heartBeatTriggerManager;
+
+  private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
 
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
 
@@ -29,23 +39,56 @@ public class ComputeTask implements Task, TaskMessageSource {
                      final DataSet dataSet,
                      final UserComputeTask userComputeTask,
                      final HeartBeatTriggerManager heartBeatTriggerManager) {
-    this.flexionService = new FlexionService(dataSet, groupCommClient, heartBeatTriggerManager);
+
     this.userComputeTask = userComputeTask;
+    this.commGroup = groupCommClient.getCommunicationGroup(CommunicationGroup.class);
+    this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
+    this.heartBeatTriggerManager = heartBeatTriggerManager;
   }
 
   @Override
   public final byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "CmpTask commencing...");
 
-    while (!flexionService.terminate()) {
-      Integer data = flexionService.recieve();
+    while (!isTerminate()) {
+      receiveData();
       final long runStart = System.currentTimeMillis();
-      data = userComputeTask.run(data);
+      userComputeTask.run();
       runTime = System.currentTimeMillis() - runStart;
-      flexionService.send(data);
+      sendData();
     }
 
     return null;
+  }
+
+
+  private void receiveData() throws Exception {
+
+    if(userComputeTask.isBroadcastUsed()) {
+        ((IDataBroadcastReceiver)userComputeTask).receiveBroadcastData(
+                commGroup.getBroadcastReceiver(DataBroadcast.class).receive());
+    }
+
+    if(userComputeTask.isScatterUsed()) {
+        ((IDataScatterReceiver)userComputeTask).receiveScatterData(
+                commGroup.getScatterReceiver(DataScatter.class).receive());
+    }
+
+  };
+
+  private void sendData() throws Exception {
+
+    if(userComputeTask.isGatherUsed()) {
+        commGroup.getGatherSender(DataGather.class).send(((IDataGatherSender)userComputeTask).sendGatherData());
+    }
+
+    if(userComputeTask.isReduceUsed()) {
+        commGroup.getReduceSender(DataReduce.class).send(((IDataReduceSender)userComputeTask).sendReduceData());
+    }
+  }
+
+  private boolean isTerminate() throws Exception{
+    return ctrlMessageBroadcast.receive() == CtrlMessage.TERMINATE;
   }
 
   @Override
