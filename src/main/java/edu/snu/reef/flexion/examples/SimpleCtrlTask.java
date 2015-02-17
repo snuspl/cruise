@@ -24,8 +24,8 @@ public final class SimpleCtrlTask extends UserControllerTask
     }
 
     @Override
-    public boolean isTerminate() {
-        return iteration++ < 10;
+    public boolean isTerminated() {
+        return ++iteration > 10;
     }
 
     @Override

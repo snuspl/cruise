@@ -11,7 +11,7 @@ public abstract class UserControllerTask {
 
     public abstract void run();
 
-    public abstract boolean isTerminate();
+    public abstract boolean isTerminated();
 
     final public boolean isReduceUsed(){
         return (this instanceof IDataReduceReceiver);
@@ -29,10 +29,18 @@ public abstract class UserControllerTask {
         return (this instanceof IDataScatterSender);
     }
 
+    /**
+     * Return the default codec
+     * To use another codec, override this function
+     */
     public Class<? extends Codec> getBroadcastCodec() {
         return SerializableCodec.class;
     }
 
+    /**
+     * Return the default codec
+     * To use another codec, override this function
+     */
     public Class<? extends Codec> getScatterCodec() {
         return SerializableCodec.class;
     }

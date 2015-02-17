@@ -4,6 +4,7 @@ import com.microsoft.reef.io.network.group.operators.Reduce;
 import edu.snu.reef.flexion.core.UserComputeTask;
 import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastReceiver;
 import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceSender;
+import edu.snu.reef.flexion.groupcomm.subs.DataReduceFunction;
 
 import javax.inject.Inject;
 
@@ -39,25 +40,6 @@ public final class SimpleCmpTask extends UserComputeTask
     @Override
     public Class <? extends Reduce.ReduceFunction<Integer>> getReduceFunction() {
         return DataReduceFunction.class;
-    }
-
-    class DataReduceFunction implements Reduce.ReduceFunction<Integer> {
-
-        @Inject
-        public DataReduceFunction() {
-        }
-
-        @Override
-        public final Integer apply(Iterable<Integer> dataList) {
-            Integer sum = 0;
-            Integer count = 0;
-            for (final Integer data : dataList) {
-                sum += data;
-                count++;
-            }
-
-            return sum / count;
-        }
     }
 
 }

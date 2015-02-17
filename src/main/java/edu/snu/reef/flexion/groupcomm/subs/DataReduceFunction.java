@@ -3,8 +3,6 @@ package edu.snu.reef.flexion.groupcomm.subs;
 import com.microsoft.reef.io.network.group.operators.Reduce;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
 
 public final class DataReduceFunction implements Reduce.ReduceFunction<Integer> {
 
@@ -21,6 +19,6 @@ public final class DataReduceFunction implements Reduce.ReduceFunction<Integer> 
       count++;
     }
 
-    return sum / count;
+    return sum/count;
   }
 }

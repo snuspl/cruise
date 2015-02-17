@@ -34,167 +34,167 @@ import java.util.logging.Logger;
 
 @Unit
 public class FlexionDriver {
-  private final static Logger LOG = Logger.getLogger(FlexionDriver.class.getName());
+    private final static Logger LOG = Logger.getLogger(FlexionDriver.class.getName());
 
-  private final EvaluatorRequestor requestor;
-  private final GroupCommDriver groupCommDriver;
-  private final DataLoadingService dataLoadingService;
-  private final CommunicationGroupDriver commGroup;
+    private final EvaluatorRequestor requestor;
+    private final GroupCommDriver groupCommDriver;
+    private final DataLoadingService dataLoadingService;
+    private final CommunicationGroupDriver commGroup;
 
-  private final UserControllerTask userControllerTask;
-  private final UserComputeTask userComputeTask;
-
-
-  private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
+    private final UserControllerTask userControllerTask;
+    private final UserComputeTask userComputeTask;
 
 
-  private final AtomicInteger cmpTaskId = new AtomicInteger(0);
-  private String ctrlTaskContextId;
-
-  @Inject
-  private FlexionDriver(final EvaluatorRequestor requestor,
-                        final GroupCommDriver groupCommDriver,
-                        final DataLoadingService dataLoadingService,
-                        final UserComputeTask userComputeTask,
-                        final UserControllerTask userControllerTask) {
-    this.requestor = requestor;
-    this.groupCommDriver = groupCommDriver;
-    this.dataLoadingService = dataLoadingService;
-
-    this.userComputeTask = userComputeTask;
-    this.userControllerTask = userControllerTask;
-
-    this.commGroup = groupCommDriver
-        .newCommunicationGroup(CommunicationGroup.class,
-            dataLoadingService.getNumberOfPartitions() + 1);
+    private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
 
 
-    this.commGroup
-        .addBroadcast(CtrlMsgBroadcast.class,
-            BroadcastOperatorSpec.newBuilder()
-                .setSenderId(ControllerTask.TASK_ID)
-                .setDataCodecClass(SerializableCodec.class)
-                .build());
+    private final AtomicInteger cmpTaskId = new AtomicInteger(0);
+    private String ctrlTaskContextId;
 
-    if(userControllerTask.isBroadcastUsed()){
+    @Inject
+    private FlexionDriver(final EvaluatorRequestor requestor,
+                          final GroupCommDriver groupCommDriver,
+                          final DataLoadingService dataLoadingService,
+                          final UserComputeTask userComputeTask,
+                          final UserControllerTask userControllerTask) {
+        this.requestor = requestor;
+        this.groupCommDriver = groupCommDriver;
+        this.dataLoadingService = dataLoadingService;
+
+        this.userComputeTask = userComputeTask;
+        this.userControllerTask = userControllerTask;
+
+        this.commGroup = groupCommDriver
+                .newCommunicationGroup(CommunicationGroup.class,
+                        dataLoadingService.getNumberOfPartitions() + 1);
+
+
         this.commGroup
-            .addBroadcast(DataBroadcast.class,
-                BroadcastOperatorSpec.newBuilder()
-                    .setSenderId(ControllerTask.TASK_ID)
-                    .setDataCodecClass(((IDataBroadcastSender) userControllerTask).getBroadcastCodec())
-                    .build());
-    }
+                .addBroadcast(CtrlMsgBroadcast.class,
+                        BroadcastOperatorSpec.newBuilder()
+                                .setSenderId(ControllerTask.TASK_ID)
+                                .setDataCodecClass(SerializableCodec.class)
+                                .build());
 
-    if(userControllerTask.isScatterUsed()){
-        this.commGroup
-            .addScatter(DataScatter.class,
-                ScatterOperatorSpec.newBuilder()
-                    .setSenderId(ControllerTask.TASK_ID)
-                    .setDataCodecClass(((IDataScatterSender) userControllerTask).getScatterCodec())
-                    .build());
-    }
-
-    if(userComputeTask.isReduceUsed()){
-        this.commGroup
-            .addReduce(DataReduce.class,
-                    ReduceOperatorSpec.newBuilder()
-                            .setReceiverId(ControllerTask.TASK_ID)
-                            .setDataCodecClass(((IDataReduceSender) userComputeTask).getReduceCodec())
-                            .setReduceFunctionClass(((IDataReduceSender) userComputeTask).getReduceFunction())
-                            .build());
-    }
-
-    if(userComputeTask.isGatherUsed()){
-        this.commGroup
-            .addGather(DataGather.class,
-                    GatherOperatorSpec.newBuilder()
-                            .setReceiverId(ControllerTask.TASK_ID)
-                            .setDataCodecClass(((IDataGatherSender) userComputeTask).getGatherCodec())
-                            .build());
-    }
-
-    this.commGroup.finalise();
-  }
-
-  final class ActiveContextHandler implements EventHandler<ActiveContext> {
-    @Override
-    public void onNext(final ActiveContext activeContext) {
-      if (!groupCommDriver.isConfigured(activeContext)) {
-        Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
-        Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
-        Configuration finalServiceConf;
-
-        if (dataLoadingService.isComputeContext(activeContext)) {
-          LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
-          ctrlTaskContextId = getContextId(groupCommContextConf);
-          finalServiceConf = Configurations.merge(groupCommServiceConf);
-
-        } else {
-          LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
-          finalServiceConf = Configurations.merge(groupCommServiceConf);
+        if (userControllerTask.isBroadcastUsed()) {
+            this.commGroup
+                    .addBroadcast(DataBroadcast.class,
+                            BroadcastOperatorSpec.newBuilder()
+                                    .setSenderId(ControllerTask.TASK_ID)
+                                    .setDataCodecClass(((IDataBroadcastSender) userControllerTask).getBroadcastCodec())
+                                    .build());
         }
 
-        activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
-
-      } else {
-        final Configuration partialTaskConf;
-
-        // Case 2: Evaluator configured with a Group Communication context has been given,
-        //         representing a Controller Task
-        // We can now place a Controller Task on top of the contexts.
-        if (activeContext.getId().equals(ctrlTaskContextId)) {
-          LOG.log(Level.INFO, "Submit ControllerTask");
-          partialTaskConf = Configurations.merge(
-              TaskConfiguration.CONF
-                  .set(TaskConfiguration.IDENTIFIER, ControllerTask.TASK_ID)
-                  .set(TaskConfiguration.TASK, ControllerTask.class)
-                  .build(),
-              Tang.Factory.getTang().newConfigurationBuilder()
-                  .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
-                  .build());
-
-
-          // Case 3: Evaluator configured with a Group Communication context has been given,
-          //         representing a Compute Task
-          // We can now place a Compute Task on top of the contexts.
-        } else {
-          LOG.log(Level.INFO, "Submit ComputeTask");
-          partialTaskConf = Configurations.merge(
-              TaskConfiguration.CONF
-                  .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + cmpTaskId.getAndIncrement())
-                  .set(TaskConfiguration.TASK, ComputeTask.class)
-                  .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
-                  .build(),
-              Tang.Factory.getTang().newConfigurationBuilder()
-                  .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
-                  .build());
+        if (userControllerTask.isScatterUsed()) {
+            this.commGroup
+                    .addScatter(DataScatter.class,
+                            ScatterOperatorSpec.newBuilder()
+                                    .setSenderId(ControllerTask.TASK_ID)
+                                    .setDataCodecClass(((IDataScatterSender) userControllerTask).getScatterCodec())
+                                    .build());
         }
 
-        // add the Task to our communication group
-        commGroup.addTask(partialTaskConf);
-        final Configuration finalTaskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
-        activeContext.submitTask(finalTaskConf);
-      }
-    }
-  }
+        if (userComputeTask.isReduceUsed()) {
+            this.commGroup
+                    .addReduce(DataReduce.class,
+                            ReduceOperatorSpec.newBuilder()
+                                    .setReceiverId(ControllerTask.TASK_ID)
+                                    .setDataCodecClass(((IDataReduceSender) userComputeTask).getReduceCodec())
+                                    .setReduceFunctionClass(((IDataReduceSender) userComputeTask).getReduceFunction())
+                                    .build());
+        }
 
-  private String getContextId(final Configuration contextConf) {
-    try {
-      final Injector injector = Tang.Factory.getTang().newInjector(contextConf);
-      return injector.getNamedInstance(ContextIdentifier.class);
-    } catch (final InjectionException e) {
-      throw new RuntimeException("Unable to inject context identifier from context conf", e);
-    }
-  }
+        if (userComputeTask.isGatherUsed()) {
+            this.commGroup
+                    .addGather(DataGather.class,
+                            GatherOperatorSpec.newBuilder()
+                                    .setReceiverId(ControllerTask.TASK_ID)
+                                    .setDataCodecClass(((IDataGatherSender) userComputeTask).getGatherCodec())
+                                    .build());
+        }
 
-  final class TaskMessageHandler implements EventHandler<TaskMessage> {
-    @Override
-    public void onNext(final TaskMessage message) {
-      final long result = codecLong.decode(message.get());
-      final String msg = "Task message " + message.getId() + ": " + result;
-
-      //TODO: use metric to run optimization plan
-      LOG.info(msg);
+        this.commGroup.finalise();
     }
-  }
+
+    final class ActiveContextHandler implements EventHandler<ActiveContext> {
+        @Override
+        public void onNext(final ActiveContext activeContext) {
+            if (!groupCommDriver.isConfigured(activeContext)) {
+                Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
+                Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
+                Configuration finalServiceConf;
+
+                if (dataLoadingService.isComputeContext(activeContext)) {
+                    LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
+                    ctrlTaskContextId = getContextId(groupCommContextConf);
+                    finalServiceConf = Configurations.merge(groupCommServiceConf);
+
+                } else {
+                    LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
+                    finalServiceConf = Configurations.merge(groupCommServiceConf);
+                }
+
+                activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
+
+            } else {
+                final Configuration partialTaskConf;
+
+                // Case 2: Evaluator configured with a Group Communication context has been given,
+                //         representing a Controller Task
+                // We can now place a Controller Task on top of the contexts.
+                if (activeContext.getId().equals(ctrlTaskContextId)) {
+                    LOG.log(Level.INFO, "Submit ControllerTask");
+                    partialTaskConf = Configurations.merge(
+                            TaskConfiguration.CONF
+                                    .set(TaskConfiguration.IDENTIFIER, ControllerTask.TASK_ID)
+                                    .set(TaskConfiguration.TASK, ControllerTask.class)
+                                    .build(),
+                            Tang.Factory.getTang().newConfigurationBuilder()
+                                    .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
+                                    .build());
+
+
+                    // Case 3: Evaluator configured with a Group Communication context has been given,
+                    //         representing a Compute Task
+                    // We can now place a Compute Task on top of the contexts.
+                } else {
+                    LOG.log(Level.INFO, "Submit ComputeTask");
+                    partialTaskConf = Configurations.merge(
+                            TaskConfiguration.CONF
+                                    .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + cmpTaskId.getAndIncrement())
+                                    .set(TaskConfiguration.TASK, ComputeTask.class)
+                                    .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
+                                    .build(),
+                            Tang.Factory.getTang().newConfigurationBuilder()
+                                    .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
+                                    .build());
+                }
+
+                // add the Task to our communication group
+                commGroup.addTask(partialTaskConf);
+                final Configuration finalTaskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
+                activeContext.submitTask(finalTaskConf);
+            }
+        }
+    }
+
+    private String getContextId(final Configuration contextConf) {
+        try {
+            final Injector injector = Tang.Factory.getTang().newInjector(contextConf);
+            return injector.getNamedInstance(ContextIdentifier.class);
+        } catch (final InjectionException e) {
+            throw new RuntimeException("Unable to inject context identifier from context conf", e);
+        }
+    }
+
+    final class TaskMessageHandler implements EventHandler<TaskMessage> {
+        @Override
+        public void onNext(final TaskMessage message) {
+            final long result = codecLong.decode(message.get());
+            final String msg = "Task message " + message.getId() + ": " + result;
+
+            //TODO: use metric to run optimization plan
+            LOG.info(msg);
+        }
+    }
 }

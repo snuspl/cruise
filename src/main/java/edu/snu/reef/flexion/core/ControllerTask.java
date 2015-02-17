@@ -15,63 +15,65 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ControllerTask implements Task {
-  private final static Logger LOG = Logger.getLogger(ControllerTask.class.getName());
-  public final static String TASK_ID = "CtrlTask";
+    private final static Logger LOG = Logger.getLogger(ControllerTask.class.getName());
+    public final static String TASK_ID = "CtrlTask";
 
-  private final UserControllerTask userControllerTask;
-  private final CommunicationGroupClient commGroup;
+    private final UserControllerTask userControllerTask;
+    private final CommunicationGroupClient commGroup;
 
-  private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
+    private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
 
-  @Inject
-  public ControllerTask(final GroupCommClient groupCommClient,
-                        final UserControllerTask userControllerTask) {
-    this.commGroup = groupCommClient.getCommunicationGroup(CommunicationGroup.class);
-    this.userControllerTask = userControllerTask;
-    this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
-  }
-
-  @Override
-  public final byte[] call(final byte[] memento) throws Exception {
-    LOG.log(Level.INFO, "CtrlTask commencing...");
-
-    userControllerTask.run();
-    while (!userControllerTask.isTerminate()){
-      ctrlMessageBroadcast.send(CtrlMessage.RUN);
-      sendData();
-      receiveData();
-      userControllerTask.run();
+    @Inject
+    public ControllerTask(final GroupCommClient groupCommClient,
+                          final UserControllerTask userControllerTask) {
+        this.commGroup = groupCommClient.getCommunicationGroup(CommunicationGroup.class);
+        this.userControllerTask = userControllerTask;
+        this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
     }
-    ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
 
-    return null;
-  }
+    @Override
+    public final byte[] call(final byte[] memento) throws Exception {
+        LOG.log(Level.INFO, "CtrlTask commencing...");
 
-  private void sendData() throws Exception {
+        userControllerTask.run();
+        while (!userControllerTask.isTerminated()) {
+            ctrlMessageBroadcast.send(CtrlMessage.RUN);
+            sendData();
+            receiveData();
+            userControllerTask.run();
+        }
+        ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
 
-      if(userControllerTask.isBroadcastUsed()) {
-          commGroup.getBroadcastSender(DataBroadcast.class).send(
-                  ((IDataBroadcastSender) userControllerTask).sendBroadcastData());
-      }
+        return null;
+    }
 
-      if(userControllerTask.isScatterUsed()) {
-          commGroup.getScatterSender(DataScatter.class).send(
-                  ((IDataScatterSender) userControllerTask).sendScatterData());
-      }
-  }
+    private void sendData() throws Exception {
 
-  private void receiveData() throws Exception {
+        if (userControllerTask.isBroadcastUsed()) {
+            commGroup.getBroadcastSender(DataBroadcast.class).send(
+                    ((IDataBroadcastSender) userControllerTask).sendBroadcastData());
+        }
 
-      if(userControllerTask.isGatherUsed()) {
-          ((IDataGatherReceiver)userControllerTask).receiveGatherData(
-                  commGroup.getBroadcastReceiver(DataGather.class).receive());
-      }
+        if (userControllerTask.isScatterUsed()) {
+            commGroup.getScatterSender(DataScatter.class).send(
+                    ((IDataScatterSender) userControllerTask).sendScatterData());
+        }
+    }
 
-      if(userControllerTask.isReduceUsed()) {
-          ((IDataReduceReceiver)userControllerTask).receiveReduceData(
-                  commGroup.getReduceReceiver(DataReduce.class).reduce());
-      }
+    private void receiveData() throws Exception {
 
-  }
+        if (userControllerTask.isGatherUsed()) {
+            ((IDataGatherReceiver)userControllerTask).receiveGatherData(
+                    commGroup.getBroadcastReceiver(DataGather.class).receive());
+        }
+
+        if (userControllerTask.isReduceUsed()) {
+
+            ((IDataReduceReceiver)userControllerTask).receiveReduceData(
+                    commGroup.getReduceReceiver(DataReduce.class).reduce());
+
+        }
+
+    }
 
 }

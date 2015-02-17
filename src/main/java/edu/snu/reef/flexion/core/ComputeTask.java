@@ -21,79 +21,84 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ComputeTask implements Task, TaskMessageSource {
-  private final static Logger LOG = Logger.getLogger(ComputeTask.class.getName());
-  public final static String TASK_ID = "CmpTask";
+    private final static Logger LOG = Logger.getLogger(ComputeTask.class.getName());
+    public final static String TASK_ID = "CmpTask";
 
-  private final UserComputeTask userComputeTask;
-  private final CommunicationGroupClient commGroup;
-  private final HeartBeatTriggerManager heartBeatTriggerManager;
+    private final UserComputeTask userComputeTask;
+    private final CommunicationGroupClient commGroup;
+    private final HeartBeatTriggerManager heartBeatTriggerManager;
 
-  private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
+    private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
 
-  private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
+    private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
 
-  private long runTime = -1;
+    private long runTime = -1;
 
-  @Inject
-  public ComputeTask(final GroupCommClient groupCommClient,
-                     final DataSet dataSet,
-                     final UserComputeTask userComputeTask,
-                     final HeartBeatTriggerManager heartBeatTriggerManager) {
+    @Inject
+    public ComputeTask(final GroupCommClient groupCommClient,
+                       final DataSet dataSet,
+                       final UserComputeTask userComputeTask,
+                       final HeartBeatTriggerManager heartBeatTriggerManager) {
 
-    this.userComputeTask = userComputeTask;
-    this.commGroup = groupCommClient.getCommunicationGroup(CommunicationGroup.class);
-    this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
-    this.heartBeatTriggerManager = heartBeatTriggerManager;
-  }
-
-  @Override
-  public final byte[] call(final byte[] memento) throws Exception {
-    LOG.log(Level.INFO, "CmpTask commencing...");
-
-    while (!isTerminate()) {
-      receiveData();
-      final long runStart = System.currentTimeMillis();
-      userComputeTask.run();
-      runTime = System.currentTimeMillis() - runStart;
-      sendData();
+        this.userComputeTask = userComputeTask;
+        this.commGroup = groupCommClient.getCommunicationGroup(CommunicationGroup.class);
+        this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
+        this.heartBeatTriggerManager = heartBeatTriggerManager;
     }
 
-    return null;
-  }
+    @Override
+    public final byte[] call(final byte[] memento) throws Exception {
+        LOG.log(Level.INFO, "CmpTask commencing...");
 
+        while (!isTerminated()) {
+            receiveData();
+            final long runStart = System.currentTimeMillis();
+            userComputeTask.run();
+            runTime = System.currentTimeMillis() - runStart;
+            sendData();
+            heartBeatTriggerManager.triggerHeartBeat();
+        }
 
-  private void receiveData() throws Exception {
-
-    if(userComputeTask.isBroadcastUsed()) {
-        ((IDataBroadcastReceiver)userComputeTask).receiveBroadcastData(
-                commGroup.getBroadcastReceiver(DataBroadcast.class).receive());
+        return null;
     }
 
-    if(userComputeTask.isScatterUsed()) {
-        ((IDataScatterReceiver)userComputeTask).receiveScatterData(
-                commGroup.getScatterReceiver(DataScatter.class).receive());
+
+    private void receiveData() throws Exception {
+
+        if (userComputeTask.isBroadcastUsed()) {
+            ((IDataBroadcastReceiver)userComputeTask).receiveBroadcastData(
+                    commGroup.getBroadcastReceiver(DataBroadcast.class).receive());
+
+        }
+
+        if (userComputeTask.isScatterUsed()) {
+            ((IDataScatterReceiver)userComputeTask).receiveScatterData(
+                    commGroup.getScatterReceiver(DataScatter.class).receive());
+        }
+
+    };
+
+    private void sendData() throws Exception {
+
+        if (userComputeTask.isGatherUsed()) {
+            commGroup.getGatherSender(DataGather.class).send(
+                    ((IDataGatherSender)userComputeTask).sendGatherData());
+        }
+
+        if (userComputeTask.isReduceUsed()) {
+            commGroup.getReduceSender(DataReduce.class).send(
+                    ((IDataReduceSender)userComputeTask).sendReduceData());
+        }
     }
 
-  };
+    private boolean isTerminated() throws Exception{
 
-  private void sendData() throws Exception {
-
-    if(userComputeTask.isGatherUsed()) {
-        commGroup.getGatherSender(DataGather.class).send(((IDataGatherSender)userComputeTask).sendGatherData());
+        return ctrlMessageBroadcast.receive() == CtrlMessage.TERMINATE;
     }
 
-    if(userComputeTask.isReduceUsed()) {
-        commGroup.getReduceSender(DataReduce.class).send(((IDataReduceSender)userComputeTask).sendReduceData());
+    @Override
+    public synchronized Optional<TaskMessage> getMessage() {
+        return Optional.of(TaskMessage.from(ComputeTask.class.getName(),
+                this.codecLong.encode(this.runTime)));
     }
-  }
-
-  private boolean isTerminate() throws Exception{
-    return ctrlMessageBroadcast.receive() == CtrlMessage.TERMINATE;
-  }
-
-  @Override
-  public synchronized Optional<TaskMessage> getMessage() {
-    return Optional.of(TaskMessage.from(FlexionServiceCmp.class.getName(),
-        this.codecLong.encode(this.runTime)));
-  }
 }

@@ -24,10 +24,18 @@ public abstract class UserComputeTask {
         return (this instanceof IDataScatterReceiver);
     }
 
+    /**
+     * Return the default codec
+     * To use another codec, override this function
+     */
     public Class<? extends Codec> getReduceCodec() {
         return SerializableCodec.class;
     }
 
+    /**
+     * Return the default codec
+     * To use another codec, override this function
+     */
     public Class<? extends Codec> getGatherCodec() {
         return SerializableCodec.class;
     }
