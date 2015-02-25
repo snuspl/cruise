@@ -9,7 +9,6 @@ public final class SimpleREEF {
         .set(FlexionConfiguration.IDENTIFIER, "Simple REEF")
         .set(FlexionConfiguration.CONTROLLER_TASK, SimpleCtrlTask.class)
         .set(FlexionConfiguration.COMPUTE_TASK, SimpleCmpTask.class)
-        .set(FlexionConfiguration.INPUT_DIR, "sample")
         .build());
   }
 }

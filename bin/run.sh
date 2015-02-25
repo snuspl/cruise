@@ -16,7 +16,7 @@
 #
 
 # EXAMPLE USAGE 
-# ./run.sh -convThr 0.01 -maxIter 20 -yarn false -split 40
+# ./run.sh -convThr 0.01 -maxIter 20 -yarn false -split 40 -input sample
 
 # RUNTIME
 SELF_JAR=../target/flexion-0.1-SNAPSHOT-shaded.jar
