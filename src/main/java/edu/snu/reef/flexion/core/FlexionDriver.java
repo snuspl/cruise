@@ -71,7 +71,14 @@ public final class FlexionDriver {
      */
     private final DataLoadingService dataLoadingService;
 
+    /**
+     * Class for the Controller Task
+     */
     private final UserControllerTask userControllerTask;
+
+    /**
+     * Class for the Compute Task
+     */
     private final UserComputeTask userComputeTask;
 
     private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
@@ -175,8 +182,13 @@ public final class FlexionDriver {
 
                 } else {
                     LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
-                    finalServiceConf = Configurations.merge(groupCommServiceConf);
+
+                    // Add a Data Parse service with the Group Communication service
+                    final Configuration dataParseConf = DataParseService.getServiceConfiguration(userComputeTask.getDataParserClass());
+                    finalServiceConf = Configurations.merge(groupCommServiceConf, dataParseConf);
                 }
+
+
 
                 activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
 
@@ -197,9 +209,9 @@ public final class FlexionDriver {
                                     .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
                                     .build());
 
-                    // Case 3: Evaluator configured with a Group Communication context has been given,
-                    //         representing a Compute Task
-                    // We can now place a Compute Task on top of the contexts.
+                // Case 3: Evaluator configured with a Group Communication context has been given,
+                //         representing a Compute Task
+                // We can now place a Compute Task on top of the contexts.
                 } else {
                     LOG.log(Level.INFO, "Submit ComputeTask");
                     partialTaskConf = Configurations.merge(

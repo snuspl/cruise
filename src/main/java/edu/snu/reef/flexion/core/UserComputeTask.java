@@ -1,6 +1,9 @@
 package edu.snu.reef.flexion.core;
 
-import edu.snu.reef.flexion.groupcomm.interfaces.*;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterReceiver;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
@@ -23,6 +26,8 @@ public abstract class UserComputeTask {
     final public boolean isScatterUsed(){
         return (this instanceof IDataScatterReceiver);
     }
+
+    public abstract Class<? extends DataParser> getDataParserClass();
 
     /**
      * Return the default codec
