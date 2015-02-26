@@ -34,6 +34,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -337,6 +338,64 @@ public final class SurfMetaManagerITCase {
         assertTrue(updatedBlocks.get(i).getLocationsSize() > 0);
         assertTrue(3 >= updatedBlocks.get(i).getLocationsSize());
       }
+    }
+  }
+
+  @Test
+  public void testConcurrentCreateDirectory() throws Throwable {
+    final int numFiles = 100;
+    final ExecutorService executorService = Executors.newCachedThreadPool();
+    final Future<Boolean>[] futures = new Future[numFiles];
+    final String rootPath = TESTDIR + "/concurrentDir";
+
+    baseFsClient.mkdirs(rootPath);
+
+    // Concurrently create directories under the root directory
+    for (int i = 0; i < numFiles; i++) {
+      final int index = i;
+      futures[index] = executorService.submit(new Callable<Boolean>() {
+        @Override
+        public Boolean call() {
+          try {
+            final Path dirPath = new Path(rootPath, String.valueOf(index));
+            return metaManager.createDirectory(dirPath.toUri().getPath());
+          } catch (final Throwable t) {
+            throw new RuntimeException(t);
+          }
+        }
+      });
+    }
+    executorService.shutdown();
+
+    // Verify that all operations succeeded
+    int successCount = 0;
+    for (final Future<Boolean> future : futures) {
+      assertTrue("CreateDirectory should succeed", future.get());
+      successCount += future.isCancelled() ? 0 : 1;
+    }
+    assertEquals(numFiles, successCount);
+
+    final FileMeta parentMeta = metaManager.get(new Path(rootPath), new User());
+
+    // Check the parent has all the children directories.
+    final List<FileMeta> children = metaManager.getChildren(metaManager.get(new Path(rootPath), new User()));
+    assertEquals(numFiles, children.size());
+    for (FileMeta childMeta : children) {
+      assertTrue("Should be a directory", childMeta.isDirectory());
+      assertEquals(parentMeta, metaManager.getParent(childMeta));
+    }
+
+    // Check the created directories to have the parent.
+    for (int i = 0; i < numFiles; i++) {
+      final int index = i;
+      final Path filePath = new Path(rootPath, String.valueOf(index));
+
+      final FileMeta childMeta = metaManager.get(filePath, new User());
+      assertEquals(parentMeta, metaManager.getParent(childMeta));
+      assertTrue("Should be a child of rootPath, index: " + String.valueOf(index),
+              children.contains(childMeta));
+      assertTrue("Should be a directory", childMeta.isDirectory());
+      assertEquals(filePath.toUri().getPath(), childMeta.getFullPath());
     }
   }
 }

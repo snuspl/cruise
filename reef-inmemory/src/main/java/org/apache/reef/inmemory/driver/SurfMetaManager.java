@@ -145,7 +145,7 @@ public final class SurfMetaManager {
    * </p>
    * @throws IOException
    */
-  public boolean createFile(String path, short replication, long blockSize) throws Throwable {
+  public boolean createFile(final String path, final short replication, final long blockSize) throws Throwable {
     final FileMeta fileMeta = metaFactory.newFileMeta(path, replication, blockSize);
 
     // 1. Try to create file in BaseFS.
@@ -185,39 +185,58 @@ public final class SurfMetaManager {
    * </p>
    * @throws IOException
    */
-  public boolean createDirectory(final String path) throws Throwable {
-    FileMeta fileMeta = metaFactory.newFileMetaForDir(path);
-
-    // 1. Try to create directory in BaseFS.
+  public boolean createDirectory(final String pathStr) throws Throwable {
     try {
-      // Return {@code false} directly if it fails to create directory in BaseFS.
-      final boolean createdAtBaseFs = baseFsClient.mkdirs(path);
-      if (!createdAtBaseFs) {
-        return false;
+      LOG.log(Level.SEVERE, "pathStr {0}", pathStr);
+      final String lowestAncestorPathStr = getLowestAncestor(pathStr);
+      LOG.log(Level.SEVERE, "lowestAncestorPathStr {0}", lowestAncestorPathStr);
+      final FileMeta lowestAncestorMeta= get(new Path(lowestAncestorPathStr), new User());
+      LOG.log(Level.SEVERE, "lowestMeta {0}", lowestAncestorMeta);
+      final List<FileMeta> createdMetas = new ArrayList<>();
+
+      // Lock the ancestor to prevent from concurrent update.
+      synchronized (lowestAncestorMeta) {
+        // 1. Try to create directory in BaseFS.
+        try {
+          // Return false directly if it fails to create directory in BaseFS.
+          LOG.log(Level.SEVERE, "Write {0} in the base", pathStr);
+          final boolean createdAtBaseFs = baseFsClient.mkdirs(pathStr);
+          if (!createdAtBaseFs) {
+            return false;
+          }
+        } catch (IOException e) {
+          LOG.log(Level.SEVERE, "Failed to create a directory to the BaseFS : " + pathStr, e.getCause());
+          throw e.getCause();
+        }
+
+        try {
+          FileMeta childMeta = get(new Path(pathStr), new User());
+          LOG.log(Level.SEVERE, "child : {0}", childMeta);
+          while (!lowestAncestorPathStr.equals(childMeta.getFullPath())) {
+            LOG.log(Level.SEVERE, "child : {0}", childMeta);
+            FileMeta parentMeta = getParent(childMeta);
+            parentMeta.addToChildren(childMeta.getFullPath());
+
+            createdMetas.add(childMeta); // Remember to rollback.
+            childMeta = parentMeta;
+          }
+        } catch (Throwable e) {
+          baseFsClient.delete(lowestAncestorPathStr);
+          throw e.getCause();
+        }
+
+        for (FileMeta createdMeta : createdMetas) {
+          update(createdMeta);
+          LOG.log(Level.SEVERE, "update : {0}", createdMeta);
+        }
+        // Finally, update the lowestAncestor which is the root of created directories.
+        update(lowestAncestorMeta);
+        LOG.log(Level.SEVERE, "update : {0}", lowestAncestorMeta);
+        return true;
       }
-    } catch (IOException e) {
-      LOG.log(Level.SEVERE, "Failed to create a directory to the BaseFS : " + path, e.getCause());
-      throw e.getCause();
-    }
-
-    // 2. Recursively register the parent directories.
-    try {
-      while (!isRoot(fileMeta)) {
-        final FileMeta parentMeta = getParent(fileMeta);
-
-        parentMeta.addToChildren(fileMeta.getFullPath());
-        update(parentMeta);
-        update(fileMeta);
-
-        fileMeta = parentMeta;
-      }
-      return true;
-    } catch (Throwable e) {
-      LOG.log(Level.SEVERE, "Error occurred while creating a directory. File in BaseFS will be deleted.", e);
-      deleteFromBaseFS(fileMeta);
-      // TODO If an exception is thrown while setting child, then rollback is needed.
-      LOG.log(Level.SEVERE, "Failed to create parent for {0}", fileMeta);
-      throw e.getCause();
+    } catch (Throwable throwable) {
+      LOG.log(Level.SEVERE, "Failed to create", throwable);
+      throw throwable.getCause();
     }
   }
 
@@ -317,5 +336,16 @@ public final class SurfMetaManager {
       LOG.log(Level.SEVERE, "Failed to delete from BaseFS : {0}", fileMeta.getFullPath());
       return false;
     }
+  }
+
+  /**
+   * Get the FileMeta of existing lowest ancestor to create a directory in the path.
+   */
+  protected String getLowestAncestor(final String pathStr) throws IOException {
+    Path path = new Path(pathStr);
+    while (!baseFsClient.exists(path.toUri().getPath())) {
+      path = path.getParent();
+    }
+    return path.toUri().getPath();
   }
 }
