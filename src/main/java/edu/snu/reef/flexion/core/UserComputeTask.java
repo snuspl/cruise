@@ -9,21 +9,21 @@ import org.apache.reef.io.serialization.SerializableCodec;
 
 public abstract class UserComputeTask <T> {
 
-    public abstract void run(T data);
+    public abstract void run(int iteration, T data);
 
-    final public boolean isReduceUsed(){
+    final public boolean isReduceUsed() {
        return (this instanceof IDataReduceSender);
     }
 
-    final public boolean isGatherUsed(){
+    final public boolean isGatherUsed() {
         return (this instanceof IDataGatherSender);
     }
 
-    final public boolean isBroadcastUsed(){
+    final public boolean isBroadcastUsed() {
         return (this instanceof IDataBroadcastReceiver);
     }
 
-    final public boolean isScatterUsed(){
+    final public boolean isScatterUsed() {
         return (this instanceof IDataScatterReceiver);
     }
 

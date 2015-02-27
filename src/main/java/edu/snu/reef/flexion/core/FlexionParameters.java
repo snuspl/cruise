@@ -2,6 +2,7 @@ package edu.snu.reef.flexion.core;
 
 import edu.snu.reef.flexion.parameters.*;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -11,6 +12,7 @@ public final class FlexionParameters {
   private final String identifier;
   private final UserControllerTask userControllerTask;
   private final UserComputeTask userComputeTask;
+  private final UserParameters userParameters;
   private final int evalNum;
   private final int evalSize;
   private final String inputDir;
@@ -21,6 +23,7 @@ public final class FlexionParameters {
   private FlexionParameters(@Parameter(JobIdentifier.class) final String identifier,
                             final UserControllerTask userControllerTask,
                             final UserComputeTask userComputeTask,
+                            final UserParameters userParameters,
                             @Parameter(EvaluatorNum.class) final int evalNum,
                             @Parameter(EvaluatorSize.class) final int evalSize,
                             @Parameter(InputDir.class) final String inputDir,
@@ -29,6 +32,7 @@ public final class FlexionParameters {
     this.identifier = identifier;
     this.userControllerTask = userControllerTask;
     this.userComputeTask = userComputeTask;
+    this.userParameters = userParameters;
     this.evalNum = evalNum;
     this.evalSize = evalSize;
     this.inputDir = inputDir;
@@ -40,31 +44,26 @@ public final class FlexionParameters {
     return identifier;
   }
 
-  public final UserControllerTask getUserControllerTask() {
-    return userControllerTask;
-  }
-
   public final Configuration getUserCtrlTaskConf() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
+    Configuration ctrlTaskConf =  Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
         .build();
-  }
-
-  public final UserComputeTask getUserComputeTask() {
-    return userComputeTask;
+    return Configurations.merge(userParameters.getUserCmpTaskConf(), ctrlTaskConf);
   }
 
   public final Configuration getUserCmpTaskConf() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
+    Configuration cmpTaskConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
         .build();
+    return Configurations.merge(userParameters.getUserCtrlTaskConf(), cmpTaskConf);
   }
 
-  public final Configuration getUserTaskConf() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
+  public final Configuration getDriverConf() {
+    Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
         .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
         .build();
+    return Configurations.merge(userParameters.getDriverConf(), driverConf);
   }
 
   public final int getEvalNum() {

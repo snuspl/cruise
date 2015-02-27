@@ -52,13 +52,16 @@ public class ComputeTask implements Task, TaskMessageSource {
     public final byte[] call(final byte[] memento) throws Exception {
         LOG.log(Level.INFO, "CmpTask commencing...");
 
+        Object dataSet = dataParser.get();
+        int iteration=0;
         while (!isTerminated()) {
             receiveData();
             final long runStart = System.currentTimeMillis();
-            userComputeTask.run(dataParser.get());
+            userComputeTask.run(iteration, dataSet);
             runTime = System.currentTimeMillis() - runStart;
-            sendData();
+            sendData(iteration);
             heartBeatTriggerManager.triggerHeartBeat();
+            iteration++;
         }
 
         return null;
@@ -80,20 +83,20 @@ public class ComputeTask implements Task, TaskMessageSource {
 
     };
 
-    private void sendData() throws Exception {
+    private void sendData(int iteration) throws Exception {
 
         if (userComputeTask.isGatherUsed()) {
             commGroup.getGatherSender(DataGather.class).send(
-                    ((IDataGatherSender)userComputeTask).sendGatherData());
+                    ((IDataGatherSender)userComputeTask).sendGatherData(iteration));
         }
 
         if (userComputeTask.isReduceUsed()) {
             commGroup.getReduceSender(DataReduce.class).send(
-                    ((IDataReduceSender)userComputeTask).sendReduceData());
+                    ((IDataReduceSender)userComputeTask).sendReduceData(iteration));
         }
     }
 
-    private boolean isTerminated() throws Exception{
+    private boolean isTerminated() throws Exception {
 
         return ctrlMessageBroadcast.receive() == CtrlMessage.TERMINATE;
     }

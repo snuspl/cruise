@@ -35,28 +35,45 @@ public class ControllerTask implements Task {
     public final byte[] call(final byte[] memento) throws Exception {
         LOG.log(Level.INFO, "CtrlTask commencing...");
 
-        userControllerTask.run();
-        while (!userControllerTask.isTerminated()) {
+        int iteration = 0;
+        while (!userControllerTask.isTerminated(iteration)) {
+            userControllerTask.run(iteration);
             ctrlMessageBroadcast.send(CtrlMessage.RUN);
-            sendData();
+            sendData(iteration);
             receiveData();
-            userControllerTask.run();
+            topologyChanged();
+            iteration++;
         }
         ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
 
         return null;
     }
 
-    private void sendData() throws Exception {
+    /**
+     * Check if group communication topology has changed, and updates it if it has.
+     * @return true if topology has changed, false if not
+     */
+    private final boolean topologyChanged() {
+        if (commGroup.getTopologyChanges().exist()) {
+            commGroup.updateTopology();
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+
+
+    private void sendData(int iteration) throws Exception {
 
         if (userControllerTask.isBroadcastUsed()) {
             commGroup.getBroadcastSender(DataBroadcast.class).send(
-                    ((IDataBroadcastSender) userControllerTask).sendBroadcastData());
+                    ((IDataBroadcastSender) userControllerTask).sendBroadcastData(iteration));
         }
 
         if (userControllerTask.isScatterUsed()) {
             commGroup.getScatterSender(DataScatter.class).send(
-                    ((IDataScatterSender) userControllerTask).sendScatterData());
+                    ((IDataScatterSender) userControllerTask).sendScatterData(iteration));
         }
     }
 
@@ -64,7 +81,7 @@ public class ControllerTask implements Task {
 
         if (userControllerTask.isGatherUsed()) {
             ((IDataGatherReceiver)userControllerTask).receiveGatherData(
-                    commGroup.getBroadcastReceiver(DataGather.class).receive());
+                    commGroup.getGatherReceiver(DataGather.class).receive());
         }
 
         if (userControllerTask.isReduceUsed()) {

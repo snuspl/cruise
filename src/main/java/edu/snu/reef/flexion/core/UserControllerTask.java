@@ -9,9 +9,9 @@ import org.apache.reef.io.serialization.SerializableCodec;
 
 public abstract class UserControllerTask {
 
-    public abstract void run();
+    public abstract void run(int iteration);
 
-    public abstract boolean isTerminated();
+    public abstract boolean isTerminated(int iteration);
 
     final public boolean isReduceUsed(){
         return (this instanceof IDataReduceReceiver);

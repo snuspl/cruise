@@ -49,7 +49,7 @@ public final class FlexionLauncher {
 
     }
 
-    private final LauncherStatus run() throws InjectionException{
+    private final LauncherStatus run() throws InjectionException {
         return DriverLauncher.getLauncher(getRuntimeConfiguration())
                 .run(getDriverConfWithDataLoad(), flexionParameters.getTimeout());
     }
@@ -94,7 +94,7 @@ public final class FlexionLauncher {
 
         return Configurations.merge(driverConfWithDataLoad,
                 GroupCommService.getConfiguration(),
-                flexionParameters.getUserTaskConf());
+                flexionParameters.getDriverConf());
 
     }
 
