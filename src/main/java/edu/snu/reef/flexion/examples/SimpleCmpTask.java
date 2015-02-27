@@ -16,7 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public final class SimpleCmpTask extends UserComputeTask
+public final class SimpleCmpTask extends UserComputeTask <List<String>>
         implements IDataBroadcastReceiver<Integer>, IDataReduceSender<Integer> {
 
     private Integer receivedData = 0;
@@ -27,7 +27,7 @@ public final class SimpleCmpTask extends UserComputeTask
     }
 
     @Override
-    public void run() {
+    public void run(List<String> data) {
         float increment = 0;
         for (int i = 0; i < 500000; i++) {
             increment += Math.random();
@@ -36,8 +36,8 @@ public final class SimpleCmpTask extends UserComputeTask
     }
 
     @Override
-    public Class<? extends DataParser> getDataParserClass() {
-        return null;
+    public Class<? extends DataParser<List<String>>> getDataParserClass() {
+        return SimpleDataParser.class;
     }
 
     @Override
@@ -51,7 +51,7 @@ public final class SimpleCmpTask extends UserComputeTask
     }
 
     @Override
-    public Class <? extends Reduce.ReduceFunction<Integer>> getReduceFunction() {
+    public Class <? extends Reduce.ReduceFunction<Integer>> getReduceFunctionClass() {
         return DataReduceFunction.class;
     }
 

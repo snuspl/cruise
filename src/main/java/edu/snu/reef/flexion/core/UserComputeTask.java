@@ -7,9 +7,9 @@ import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterReceiver;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 
-public abstract class UserComputeTask {
+public abstract class UserComputeTask <T> {
 
-    public abstract void run();
+    public abstract void run(T data);
 
     final public boolean isReduceUsed(){
        return (this instanceof IDataReduceSender);
@@ -27,13 +27,13 @@ public abstract class UserComputeTask {
         return (this instanceof IDataScatterReceiver);
     }
 
-    public abstract Class<? extends DataParser> getDataParserClass();
+    public abstract Class<? extends DataParser<T>> getDataParserClass();
 
     /**
      * Return the default codec
      * To use another codec, override this function
      */
-    public Class<? extends Codec> getReduceCodec() {
+    public Class<? extends Codec> getReduceCodecClass() {
         return SerializableCodec.class;
     }
 
@@ -41,7 +41,7 @@ public abstract class UserComputeTask {
      * Return the default codec
      * To use another codec, override this function
      */
-    public Class<? extends Codec> getGatherCodec() {
+    public Class<? extends Codec> getGatherCodecClass() {
         return SerializableCodec.class;
     }
 }

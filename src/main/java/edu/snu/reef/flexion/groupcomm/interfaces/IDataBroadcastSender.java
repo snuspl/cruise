@@ -4,7 +4,7 @@ import org.apache.reef.io.serialization.Codec;
 
 public interface IDataBroadcastSender<T> {
 
-    Class<? extends Codec> getBroadcastCodec();
+    Class<? extends Codec> getBroadcastCodecClass();
 
     T sendBroadcastData();
 

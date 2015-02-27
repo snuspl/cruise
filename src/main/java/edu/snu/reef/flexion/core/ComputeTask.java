@@ -8,7 +8,6 @@ import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherSender;
 import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceSender;
 import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterReceiver;
 import edu.snu.reef.flexion.groupcomm.names.*;
-import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 import org.apache.reef.task.TaskMessage;
@@ -32,15 +31,18 @@ public class ComputeTask implements Task, TaskMessageSource {
 
     private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
 
+    private final DataParser dataParser;
+
     private long runTime = -1;
 
     @Inject
     public ComputeTask(final GroupCommClient groupCommClient,
-                       final DataSet dataSet,
+                       final DataParser dataParser,
                        final UserComputeTask userComputeTask,
                        final HeartBeatTriggerManager heartBeatTriggerManager) {
 
         this.userComputeTask = userComputeTask;
+        this.dataParser = dataParser;
         this.commGroup = groupCommClient.getCommunicationGroup(CommunicationGroup.class);
         this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
         this.heartBeatTriggerManager = heartBeatTriggerManager;
@@ -53,7 +55,7 @@ public class ComputeTask implements Task, TaskMessageSource {
         while (!isTerminated()) {
             receiveData();
             final long runStart = System.currentTimeMillis();
-            userComputeTask.run();
+            userComputeTask.run(dataParser.get());
             runTime = System.currentTimeMillis() - runStart;
             sendData();
             heartBeatTriggerManager.triggerHeartBeat();

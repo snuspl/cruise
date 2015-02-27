@@ -33,7 +33,7 @@ public abstract class UserControllerTask {
      * Return the default codec
      * To use another codec, override this function
      */
-    public Class<? extends Codec> getBroadcastCodec() {
+    public Class<? extends Codec> getBroadcastCodecClass() {
         return SerializableCodec.class;
     }
 
@@ -41,7 +41,7 @@ public abstract class UserControllerTask {
      * Return the default codec
      * To use another codec, override this function
      */
-    public Class<? extends Codec> getScatterCodec() {
+    public Class<? extends Codec> getScatterCodecClass() {
         return SerializableCodec.class;
     }
 }

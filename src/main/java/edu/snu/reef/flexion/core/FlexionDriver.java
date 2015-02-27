@@ -123,7 +123,7 @@ public final class FlexionDriver {
                     .addBroadcast(DataBroadcast.class,
                             BroadcastOperatorSpec.newBuilder()
                                     .setSenderId(ControllerTask.TASK_ID)
-                                    .setDataCodecClass(((IDataBroadcastSender) userControllerTask).getBroadcastCodec())
+                                    .setDataCodecClass(((IDataBroadcastSender) userControllerTask).getBroadcastCodecClass())
                                     .build());
         }
 
@@ -132,7 +132,7 @@ public final class FlexionDriver {
                     .addScatter(DataScatter.class,
                             ScatterOperatorSpec.newBuilder()
                                     .setSenderId(ControllerTask.TASK_ID)
-                                    .setDataCodecClass(((IDataScatterSender) userControllerTask).getScatterCodec())
+                                    .setDataCodecClass(((IDataScatterSender) userControllerTask).getScatterCodecClass())
                                     .build());
         }
 
@@ -141,8 +141,8 @@ public final class FlexionDriver {
                     .addReduce(DataReduce.class,
                             ReduceOperatorSpec.newBuilder()
                                     .setReceiverId(ControllerTask.TASK_ID)
-                                    .setDataCodecClass(((IDataReduceSender) userComputeTask).getReduceCodec())
-                                    .setReduceFunctionClass(((IDataReduceSender) userComputeTask).getReduceFunction())
+                                    .setDataCodecClass(((IDataReduceSender) userComputeTask).getReduceCodecClass())
+                                    .setReduceFunctionClass(((IDataReduceSender) userComputeTask).getReduceFunctionClass())
                                     .build());
         }
 
@@ -151,7 +151,7 @@ public final class FlexionDriver {
                     .addGather(DataGather.class,
                             GatherOperatorSpec.newBuilder()
                                     .setReceiverId(ControllerTask.TASK_ID)
-                                    .setDataCodecClass(((IDataGatherSender) userComputeTask).getGatherCodec())
+                                    .setDataCodecClass(((IDataGatherSender) userComputeTask).getGatherCodecClass())
                                     .build());
         }
 

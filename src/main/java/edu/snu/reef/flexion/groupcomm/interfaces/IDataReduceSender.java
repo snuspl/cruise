@@ -5,10 +5,10 @@ import org.apache.reef.io.serialization.Codec;
 
 public interface IDataReduceSender<T> {
 
-    Class<? extends Codec> getReduceCodec();
+    Class<? extends Codec> getReduceCodecClass();
 
     T sendReduceData();
 
-    Class<? extends Reduce.ReduceFunction<T>> getReduceFunction();
+    Class<? extends Reduce.ReduceFunction<T>> getReduceFunctionClass();
 
 }

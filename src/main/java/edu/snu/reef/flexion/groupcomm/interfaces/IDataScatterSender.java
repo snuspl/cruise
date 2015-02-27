@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface IDataScatterSender<T> {
 
-    Class<? extends Codec> getScatterCodec();
+    Class<? extends Codec> getScatterCodecClass();
 
     List<T> sendScatterData();
 
