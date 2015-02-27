@@ -27,7 +27,7 @@ public final class SimpleCmpTask extends UserComputeTask <List<String>>
     }
 
     @Override
-    public void run(List<String> data) {
+    public void run(int iter, List<String> data) {
         float increment = 0;
         for (int i = 0; i < 500000; i++) {
             increment += Math.random();
@@ -46,7 +46,7 @@ public final class SimpleCmpTask extends UserComputeTask <List<String>>
     }
 
     @Override
-    public Integer sendReduceData() {
+    public Integer sendReduceData(int iteration) {
         return dataToSend;
     }
 

@@ -6,9 +6,9 @@ import edu.snu.reef.flexion.core.FlexionLauncher;
 public final class SimpleREEF {
   public final static void main(String[] args) throws Exception {
     FlexionLauncher.run(FlexionConfiguration.CONF(args)
-        .set(FlexionConfiguration.IDENTIFIER, "Simple REEF")
-        .set(FlexionConfiguration.CONTROLLER_TASK, SimpleCtrlTask.class)
-        .set(FlexionConfiguration.COMPUTE_TASK, SimpleCmpTask.class)
-        .build());
+            .set(FlexionConfiguration.IDENTIFIER, "Simple REEF")
+            .set(FlexionConfiguration.CONTROLLER_TASK, SimpleCtrlTask.class)
+            .set(FlexionConfiguration.COMPUTE_TASK, SimpleCmpTask.class)
+            .build());
   }
 }

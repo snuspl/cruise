@@ -9,7 +9,6 @@ import javax.inject.Inject;
 public final class SimpleCtrlTask extends UserControllerTask
         implements IDataReduceReceiver<Integer>, IDataBroadcastSender<Integer> {
 
-    private Integer iteration = 0;
     private Integer receivedData = 0;
     private Integer dataToSend = 0;
 
@@ -19,17 +18,17 @@ public final class SimpleCtrlTask extends UserControllerTask
 
 
     @Override
-    public void run() {
+    public void run(int iteration) {
         dataToSend = receivedData * 2;
     }
 
     @Override
-    public boolean isTerminated() {
-        return ++iteration > 10;
+    public boolean isTerminated(int iteration) {
+        return iteration > 10;
     }
 
     @Override
-    public Integer sendBroadcastData() {
+    public Integer sendBroadcastData(int iteration) {
         return dataToSend;
     }
 
