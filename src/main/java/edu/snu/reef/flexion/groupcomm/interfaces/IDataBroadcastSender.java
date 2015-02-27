@@ -6,6 +6,6 @@ public interface IDataBroadcastSender<T> {
 
     Class<? extends Codec> getBroadcastCodecClass();
 
-    T sendBroadcastData();
+    T sendBroadcastData(int iteration);
 
 }

@@ -6,6 +6,6 @@ public interface IDataGatherSender<T> {
 
     Class<? extends Codec> getGatherCodecClass();
 
-    T sendGatherData();
+    T sendGatherData(int iteration);
 
 }

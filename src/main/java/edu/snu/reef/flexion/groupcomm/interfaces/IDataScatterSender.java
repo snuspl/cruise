@@ -8,6 +8,6 @@ public interface IDataScatterSender<T> {
 
     Class<? extends Codec> getScatterCodecClass();
 
-    List<T> sendScatterData();
+    List<T> sendScatterData(int iteration);
 
 }

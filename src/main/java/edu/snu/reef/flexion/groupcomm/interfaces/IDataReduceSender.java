@@ -7,7 +7,7 @@ public interface IDataReduceSender<T> {
 
     Class<? extends Codec> getReduceCodecClass();
 
-    T sendReduceData();
+    T sendReduceData(int iteration);
 
     Class<? extends Reduce.ReduceFunction<T>> getReduceFunctionClass();
 
