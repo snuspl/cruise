@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
@@ -254,15 +255,13 @@ public final class SurfMetaManagerTest {
     rootFileMeta.setDirectory(true);
     when(metaLoader.load(rootPath)).thenReturn(rootFileMeta);
 
-
-
     // Create a directory
     assertTrue("No error should be invoked", metaManager.createDirectory(getPathStr(newDirPath)));
     verify(metaLoader, times(1)).load(rootPath);
 
-    // Should not load meta as the fileMeta is already created(cached)
+    // Metadata is loaded once while the directory is being created.
     final FileMeta result = metaManager.get(newDirPath, user);
-//    verify(metaLoader, times(0)).load(newDirPath);
+    verify(metaLoader, times(1)).load(newDirPath);
 
     // Check validity of fileMeta
     assertNotNull(result);
@@ -274,7 +273,7 @@ public final class SurfMetaManagerTest {
   /**
    * Verify concurrent creation of directories under the same directory
    */
-//  @Test
+  @Test
   public void testConcurrentCreateDirectory() throws Throwable{
     final User user = defaultUser();
     final Path rootPath = new Path("/root");
@@ -297,10 +296,20 @@ public final class SurfMetaManagerTest {
     final FileMeta rootFileMeta = new FileMeta();
     rootFileMeta.setFullPath(getPathStr(rootPath));
     rootFileMeta.setUser(user);
+    rootFileMeta.setDirectory(true);
     when(metaLoader.load(rootPath)).thenReturn(rootFileMeta);
 
-    // TODO Mock FileMeta systemically.
     final int numFiles = 100;
+    for (int i = 0; i < numFiles; i++) {
+      final int index = i;
+      final Path dirPath = new Path(rootPath, String.valueOf(index));
+      final FileMeta dirFileMeta = new FileMeta();
+      dirFileMeta.setFullPath(getPathStr(dirPath));
+      dirFileMeta.setUser(user);
+      dirFileMeta.setDirectory(true);
+      when(metaLoader.load(dirPath)).thenReturn(dirFileMeta);
+    }
+
     final ExecutorService executorService = Executors.newCachedThreadPool();
     final Future<Boolean>[] futures = new Future[numFiles];
 
@@ -333,9 +342,9 @@ public final class SurfMetaManagerTest {
       final int index = i;
       final Path filePath = new Path(getPathStr(rootPath), String.valueOf(index));
 
-      // Should not load meta as the fileMeta is already created(cached)
+      // Metadata is loaded once while the directory is being created.
       final FileMeta result = metaManager.get(filePath, user);
-      verify(metaLoader, times(0)).load(filePath);
+      verify(metaLoader, times(1)).load(filePath);
 
       // Check validity of fileMeta
       assertNotNull(result);
