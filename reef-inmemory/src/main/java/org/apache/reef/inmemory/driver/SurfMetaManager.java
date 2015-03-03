@@ -187,11 +187,8 @@ public final class SurfMetaManager {
    */
   public boolean createDirectory(final String pathStr) throws Throwable {
     try {
-      LOG.log(Level.SEVERE, "pathStr {0}", pathStr);
       final String lowestAncestorPathStr = getLowestAncestor(pathStr);
-      LOG.log(Level.SEVERE, "lowestAncestorPathStr {0}", lowestAncestorPathStr);
       final FileMeta lowestAncestorMeta= get(new Path(lowestAncestorPathStr), new User());
-      LOG.log(Level.SEVERE, "lowestMeta {0}", lowestAncestorMeta);
       final List<FileMeta> createdMetas = new ArrayList<>();
 
       // Lock the ancestor to prevent from concurrent update.
@@ -211,9 +208,7 @@ public final class SurfMetaManager {
 
         try {
           FileMeta childMeta = get(new Path(pathStr), new User());
-          LOG.log(Level.SEVERE, "child : {0}", childMeta);
           while (!lowestAncestorPathStr.equals(childMeta.getFullPath())) {
-            LOG.log(Level.SEVERE, "child : {0}", childMeta);
             FileMeta parentMeta = getParent(childMeta);
             parentMeta.addToChildren(childMeta.getFullPath());
 
@@ -227,11 +222,9 @@ public final class SurfMetaManager {
 
         for (FileMeta createdMeta : createdMetas) {
           update(createdMeta);
-          LOG.log(Level.SEVERE, "update : {0}", createdMeta);
         }
         // Finally, update the lowestAncestor which is the root of created directories.
         update(lowestAncestorMeta);
-        LOG.log(Level.SEVERE, "update : {0}", lowestAncestorMeta);
         return true;
       }
     } catch (Throwable throwable) {
