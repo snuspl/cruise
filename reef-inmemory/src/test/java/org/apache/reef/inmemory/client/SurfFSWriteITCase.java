@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.inmemory.util.SurfLauncher;
+import org.apache.reef.inmemory.common.SurfLauncher;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -15,6 +15,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
@@ -79,7 +80,12 @@ public final class SurfFSWriteITCase {
 
   @AfterClass
   public static void tearDownClass() {
-    // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
+    try {
+      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
+      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
+    }
     surfLauncher.close();
   }
 

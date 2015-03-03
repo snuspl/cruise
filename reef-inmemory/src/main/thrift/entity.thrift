@@ -53,4 +53,5 @@ struct FileMeta{
 	8:list<BlockInfo> blocks, // Information of blocks consisting of the file.
 	9:User user,              // Access information of the file.
 	10:string symLink,        // SymLink information of the file.
+	11:list<string> children,	// Children paths in case of directory.
 }

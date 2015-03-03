@@ -8,14 +8,15 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.common.ITUtils;
-import org.apache.reef.inmemory.util.SurfLauncher;
+import org.apache.reef.inmemory.common.SurfLauncher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -24,6 +25,7 @@ import static org.junit.Assert.assertTrue;
  * Tests for SurfFS methods that deal with FileMeta.
  */
 public final class SurfFSMetadataITCase {
+  private static final Logger LOG = Logger.getLogger(SurfFSMetadataITCase.class.getName());
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;
@@ -33,7 +35,7 @@ public final class SurfFSMetadataITCase {
   private static final String ABSPATH = TESTDIR+"/"+TESTFILE;
 
   private static final String SURF = "surf";
-  private static final String SURF_ADDRESS = "localhost:9001";
+  private static final String SURF_ADDRESS = "localhost:18000";
 
   private static final SurfLauncher surfLauncher = new SurfLauncher();
 
@@ -67,7 +69,12 @@ public final class SurfFSMetadataITCase {
    */
   @AfterClass
   public static void tearDownClass() {
-    // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
+    try {
+      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
+      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
+    }
     surfLauncher.close();
   }
 

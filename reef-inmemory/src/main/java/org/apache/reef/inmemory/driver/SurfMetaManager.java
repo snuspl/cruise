@@ -1,12 +1,10 @@
 package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
+import org.apache.reef.inmemory.common.FileMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockInfo;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
@@ -18,7 +16,6 @@ import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -29,15 +26,16 @@ import java.util.logging.Logger;
  */
 public final class SurfMetaManager {
   private static final Logger LOG = Logger.getLogger(SurfMetaManager.class.getName());
+  private final static String USERS_HOME = "/user";
 
   private final LoadingCache<Path, FileMeta> metadataIndex;
   private final CacheMessenger cacheMessenger;
   private final CacheLocationRemover cacheLocationRemover;
   private final CacheUpdater cacheUpdater;
   private final BlockIdFactory blockIdFactory;
+  private final FileMetaFactory metaFactory;
   private final LocationSorter locationSorter;
-  public static String USERS_HOME = "/user";
-  private final DFSClient dfsClient;
+  private final BaseFsClient baseFsClient;
 
   @Inject
   public SurfMetaManager(final LoadingCache metadataIndex,
@@ -45,20 +43,23 @@ public final class SurfMetaManager {
                          final CacheLocationRemover cacheLocationRemover,
                          final CacheUpdater cacheUpdater,
                          final BlockIdFactory blockIdFactory,
+                         final FileMetaFactory metaFactory,
                          final LocationSorter locationSorter,
-                         final DFSClient dfsClient) {
+                         final BaseFsClient baseFsClient) {
     this.metadataIndex = metadataIndex;
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
     this.cacheUpdater = cacheUpdater;
     this.blockIdFactory = blockIdFactory;
+    this.metaFactory = metaFactory;
     this.locationSorter = locationSorter;
-    this.dfsClient = dfsClient;
+    this.baseFsClient = baseFsClient;
   }
 
   /**
    * Retrieve metadata of the file.
    * @return {@code null} if the metadata is not found.
+   * TODO User should be specified properly
    */
   public FileMeta get(final Path path, final User creator) throws Throwable {
     try {
@@ -93,16 +94,6 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Update the change of metadata (e.g. Added blocks while writing)
-   * If the path not exist in the cache, then create an entry with the path.
-   * @param fileMeta Metadata to update
-   */
-  public void update(FileMeta fileMeta) {
-    final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), fileMeta.getUser());
-    metadataIndex.put(absolutePath, fileMeta);
-  }
-
-  /**
    * Clear all cached entries
    * @return number of entries cleared
    */
@@ -114,37 +105,17 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Register a file or directory to BaseFS. We can make sure files
-   * with same name exist both in Surf and BaseFS.
-   * @return {@code true} if the file is created successfully.
-   * @throws IOException
-   */
-  // TODO: Use Permission Properly
-  public boolean registerToBaseFS(final FileMeta fileMeta) throws IOException {
-    // Create the file or directory to the BaseFS. It throws an IOException if failure occurs.
-    if (fileMeta.isDirectory()) {
-      return dfsClient.mkdirs(fileMeta.getFullPath(), FsPermission.getDirDefault(), true);
-    } else {
-      // Use default buffer size configured in the server. Progressable and ChecksumOpt are not used.
-      int bufferSize = dfsClient.getServerDefaults().getFileBufferSize();
-      dfsClient.create(fileMeta.getFullPath(), FsPermission.getFileDefault(), EnumSet.of(CreateFlag.CREATE),
-              fileMeta.getReplication(), fileMeta.getBlockSize(), null, bufferSize, null);
-      return true;
-    }
-  }
-
-  /**
    * Apply updates from a cache node.
    * Synchronized on the cache, so that only a single set of updates
    * can be applied at once for the same cache.
    */
-  public void applyUpdates(final CacheNode cache, final CacheUpdates updates) {
+  public void applyCacheNodeUpdates(final CacheNode cache, final CacheUpdates updates) {
     synchronized (cache) {
       final String address = cache.getAddress();
       for (final CacheUpdates.Failure failure : updates.getFailures()) {
         if (failure.getThrowable() instanceof OutOfMemoryError) {
           LOG.log(Level.SEVERE, "Block loading failure: " + failure.getBlockId(), failure.getThrowable());
-          cache.setStopCause(failure.getThrowable().getClass().getName()+" : "+failure.getThrowable().getMessage());
+          cache.setStopCause(failure.getThrowable().getClass().getName() + " : " + failure.getThrowable().getMessage());
         } else {
           LOG.log(Level.WARNING, "Block loading failure: " + failure.getBlockId(), failure.getThrowable());
         }
@@ -163,6 +134,157 @@ public final class SurfMetaManager {
     }
   }
 
+  /**
+   * Create an entry for file, and write the metadata to BaseFS and Surf.
+   * <p>
+   * First, it tries to create file in BaseFS.
+   * If a failure occurs during this step, there will be no update in the metadata.
+   * </p>
+   * <p>
+   * Second, this file is set as a child of parent directory in Surf.
+   * </p>
+   * @throws IOException
+   */
+  public boolean createFile(final String path, final short replication, final long blockSize) throws Throwable {
+    final FileMeta fileMeta = metaFactory.newFileMeta(path, replication, blockSize);
+
+    // 1. Try to create file in BaseFS.
+    try {
+      baseFsClient.create(path, replication, blockSize);
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to create a file to the BaseFS : " + path, e.getCause());
+      throw e.getCause();
+    }
+
+    // 2. Set this file as a child of parent directory. If the parent is same, one file waits until the other ends.
+    try {
+      final FileMeta parentMeta = getParent(fileMeta);
+      synchronized (parentMeta) {
+        parentMeta.addToChildren(fileMeta.getFullPath());
+        update(parentMeta);
+      }
+      update(fileMeta);
+      return true;
+    } catch (Throwable e) {
+      LOG.log(Level.SEVERE, "Failed to create a file metadata : " + path, e.getCause());
+      if (!deleteFromBaseFS(fileMeta)) {
+        LOG.log(Level.SEVERE, "Failed to delete from BaseFS : {0}", fileMeta.getFullPath());
+      }
+      throw e.getCause();
+    }
+  }
+
+  /**
+   * Create an entry for directory, and write the metadata to BaseFS and Surf.
+   * <p>
+   * First, it tries to create directory in BaseFS.
+   * If a failure occurs during this step, there will be no update in the metadata.
+   * </p>
+   * <p>
+   * Second, the parent directories are registered recursively.
+   * </p>
+   * @throws IOException
+   */
+  public boolean createDirectory(final String pathStr) throws Throwable {
+    try {
+      final String lowestAncestorPathStr = getLowestAncestor(pathStr);
+      final FileMeta lowestAncestorMeta= get(new Path(lowestAncestorPathStr), new User());
+      final List<FileMeta> createdMetas = new ArrayList<>();
+
+      // Lock the ancestor to prevent from concurrent update.
+      synchronized (lowestAncestorMeta) {
+        // 1. Try to create directory in BaseFS.
+        try {
+          // Return false directly if it fails to create directory in BaseFS.
+          LOG.log(Level.SEVERE, "Write {0} in the base", pathStr);
+          final boolean createdAtBaseFs = baseFsClient.mkdirs(pathStr);
+          if (!createdAtBaseFs) {
+            return false;
+          }
+        } catch (IOException e) {
+          LOG.log(Level.SEVERE, "Failed to create a directory to the BaseFS : " + pathStr, e.getCause());
+          throw e.getCause();
+        }
+
+        try {
+          FileMeta childMeta = get(new Path(pathStr), new User());
+          while (!lowestAncestorPathStr.equals(childMeta.getFullPath())) {
+            FileMeta parentMeta = getParent(childMeta);
+            parentMeta.addToChildren(childMeta.getFullPath());
+
+            createdMetas.add(childMeta); // Remember to rollback.
+            childMeta = parentMeta;
+          }
+        } catch (Throwable e) {
+          baseFsClient.delete(lowestAncestorPathStr);
+          throw e.getCause();
+        }
+
+        for (FileMeta createdMeta : createdMetas) {
+          update(createdMeta);
+        }
+        // Finally, update the lowestAncestor which is the root of created directories.
+        update(lowestAncestorMeta);
+        return true;
+      }
+    } catch (Throwable throwable) {
+      LOG.log(Level.SEVERE, "Failed to create", throwable);
+      throw throwable.getCause();
+    }
+  }
+
+  /**
+   * Get metadata of directory's children files. When the children is not set yet,
+   * get the list of file status from BaseFS. Incremental changes of BaseFS directory
+   * could be dropped.
+   *
+   * TODO find a better way to synchronize the metadata with BaseFS.
+   * @param fileMeta {@code FileMeta} of a directory to look up.
+   * @return List of files that exist under the directory.
+   * @throws IOException
+   */
+  public List<FileMeta> getChildren(final FileMeta fileMeta) throws IOException {
+    final List<FileMeta> childList = new ArrayList<>();
+    final List<String> childPathList = new ArrayList<>();
+
+    if (!fileMeta.isSetChildren()) {
+      for (final FileMeta childMeta : baseFsClient.listStatus(fileMeta.getFullPath())) {
+        update(childMeta);
+        childList.add(childMeta);
+        childPathList.add(childMeta.getFullPath());
+      }
+      fileMeta.setChildren(childPathList);
+    } else {
+      try {
+        for (final String pathStr : fileMeta.getChildren()) {
+          final FileMeta childMeta = get(new Path(pathStr), new User(fileMeta.getUser()));
+          // TODO User in Surf should be specified properly.
+          childList.add(childMeta);
+        }
+      } catch (Throwable throwable) {
+        // TODO This is somewhat over-catch. Refactor SurfMetaManager#get()
+        LOG.log(Level.SEVERE, "Failed while getting list of files under : " + fileMeta.getFullPath());
+      }
+    }
+    return childList;
+  }
+
+  /**
+   * Return the parent's FileMeta
+   * @throws Throwable
+   */
+  protected FileMeta getParent(final FileMeta fileMeta) throws Throwable {
+    final Path path = new Path(fileMeta.getFullPath());
+    return get(path.getParent(), fileMeta.getUser());
+  }
+
+  /**
+   * Returns whether the FileMeta indicates the root directory.
+   */
+  private boolean isRoot(final FileMeta fileMeta) {
+    return getAbsolutePath(new Path(fileMeta.getFullPath()), fileMeta.getUser()).isRoot();
+  }
+
   private void addBlockToFileMeta(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
     final FileMeta meta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
 
@@ -175,78 +297,48 @@ public final class SurfMetaManager {
     update(meta);
   }
 
-  private Path getAbsolutePath(Path path, User creator) {
-    Path newPath;
+  private Path getAbsolutePath(final Path path, final User creator) {
+    final Path newPath;
 
     if (path.isAbsolute()) {
       newPath = path;
+    } else {
+      newPath = new Path(USERS_HOME + Path.SEPARATOR + creator.getOwner() + Path.SEPARATOR + path);
     }
-    else {
-      newPath = new Path(SurfMetaManager.USERS_HOME + Path.SEPARATOR + creator.getOwner() + Path.SEPARATOR + path);
-    }
-
     return newPath;
   }
 
   /**
-   * Create an entry for file, and write the metadata into both BaseFS and Surf.
-   * <p>
-   * First, it tries to create a directory in the BaseFS, and the metadata will be updated
-   * only when successful.
-   * </p>
-   * <p>
-   * If a failure occurs during this step, there will be no update in the metadata;
-   * An exception is thrown or {@code false} is returned.
-   * </p>
-   * @throws IOException
+   * Update the change of metadata (e.g. Added blocks while writing)
+   * If the path not exist in the cache, then create an entry with the path.
+   * @param fileMeta Metadata to update
    */
-  public boolean registerFile(String path, short replication, long blockSize) throws IOException {
-    final FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(path);
-    fileMeta.setFileSize(0);
-    fileMeta.setDirectory(false);
-    fileMeta.setReplication(replication);
-    fileMeta.setBlockSize(blockSize);
-    fileMeta.setBlocks(new ArrayList<BlockInfo>());
-    fileMeta.setUser(new User()); // TODO User in Surf should be specified properly.
+  private void update(final FileMeta fileMeta) {
+    final Path absolutePath = getAbsolutePath(new Path(fileMeta.getFullPath()), fileMeta.getUser());
+    metadataIndex.put(absolutePath, fileMeta);
+  }
 
-    final boolean isSuccess = registerToBaseFS(fileMeta);
-    if (isSuccess) {
-      update(fileMeta);
-      return true;
-    } else {
+  /**
+   * Delete the file from BaseFs.
+   * This is used when an Exception occurs while updating parents' metadata.
+   */
+  private boolean deleteFromBaseFS(final FileMeta fileMeta) {
+    try {
+      return baseFsClient.delete(fileMeta.getFullPath());
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete from BaseFS : {0}", fileMeta.getFullPath());
       return false;
     }
   }
 
   /**
-   * Create an entry for directory, and write the metadata into both BaseFS and Surf.
-   * <p>
-   * First, it tries to create a directory in the BaseFS, and the metadata will be updated
-   * only when successful.
-   * </p>
-   * <p>
-   * If a failure occurs during this step, there will be no update in the metadata;
-   * An exception is thrown or {@code false} is returned.
-   * </p>
-   * @throws IOException
+   * Get the FileMeta of existing lowest ancestor to create a directory in the path.
    */
-  public boolean registerDirectory(final String path) throws IOException {
-    final FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(path);
-    fileMeta.setFileSize(0);
-    fileMeta.setDirectory(true);
-    fileMeta.setReplication((short)0);
-    fileMeta.setBlockSize(0);
-    fileMeta.setBlocks(new ArrayList<BlockInfo>());
-    fileMeta.setUser(new User()); // TODO User in Surf should be specified properly.
-
-    final boolean isSuccess = registerToBaseFS(fileMeta);
-    if (isSuccess) {
-      update(fileMeta);
-      return true;
-    } else {
-      return false;
+  protected String getLowestAncestor(final String pathStr) throws IOException {
+    Path path = new Path(pathStr);
+    while (!baseFsClient.exists(path.toUri().getPath())) {
+      path = path.getParent();
     }
+    return path.toUri().getPath();
   }
 }

@@ -66,6 +66,7 @@ public final class SurfFS extends FileSystem {
   private String metaserverAddress;
 
   private URI uri;
+  private Path workingDir;
   private URI baseFsUri;
 
   private boolean isFallback = FALLBACK_DEFAULT;
@@ -100,6 +101,7 @@ public final class SurfFS extends FileSystem {
     this.baseFsUri = URI.create(baseFsAddress);
     this.baseFs = new DistributedFileSystem();
     this.baseFs.initialize(this.baseFsUri, conf);
+    this.workingDir = pathToSurf(baseFs.getWorkingDirectory());
     this.setConf(conf);
 
     this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
@@ -134,7 +136,7 @@ public final class SurfFS extends FileSystem {
    */
   @Override
   public FSDataInputStream open(Path path, final int bufferSize) throws IOException {
-    final String pathStr = path.toUri().getPath();
+    final String pathStr = getAbsolutePathStr(path);
     final Event openEvent = RECORD.event("client.open", pathStr).start();
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
             new Object[]{path, pathStr});
@@ -175,80 +177,89 @@ public final class SurfFS extends FileSystem {
   @Override
   public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress) throws IOException {
-    final String decodedPath = path.toUri().getPath();
+    final String pathStr = getAbsolutePathStr(path);
     try {
       final SurfMetaService.Client metaClient = getMetaClient();
       final CacheClientManager cacheClientManager = getCacheClientManager();
-      metaClient.create(decodedPath, replication, blockSize);
-      return new FSDataOutputStream(new SurfFSOutputStream(decodedPath, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
+      metaClient.create(pathStr, replication, blockSize);
+      return new FSDataOutputStream(new SurfFSOutputStream(pathStr, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
     } catch (TException e) {
-      throw new IOException("Failed to create a file in " + decodedPath, e);
+      throw new IOException("Failed to create a file in " + pathStr, e);
     }
   }
 
   @Override
   public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) throws IOException {
-    return baseFs.append(pathToBase(f), bufferSize, progress);
+    // TODO Implement append operation.
+    throw new UnsupportedOperationException("Append is not supported yet.");
   }
 
   @Override
   public boolean rename(Path src, Path dst) throws IOException {
-    return baseFs.rename(pathToBase(src), pathToBase(dst));
+    // TODO Implement rename operation.
+    throw new UnsupportedOperationException("Rename is not supported yet.");
   }
 
   @Override
   public boolean delete(Path f, boolean recursive) throws IOException {
-    return baseFs.delete(pathToBase(f), recursive);
+    // TODO Implement delete operation.
+    throw new UnsupportedOperationException("Delete is not supported yet.");
   }
 
   @Override
   public FileStatus[] listStatus(Path path) throws IOException {
-    final FileStatus[] statuses = baseFs.listStatus(pathToBase(path));
-    for (final FileStatus status : statuses) {
-      setStatusToSurf(status);
+    final String pathStr = getAbsolutePathStr(path);
+    try {
+      final List<FileMeta> metas = getMetaClient().listMeta(pathStr);
+      final FileStatus[] statuses = new FileStatus[metas.size()];
+      for (int i = 0; i < metas.size(); i++) {
+        statuses[i] = toFileStatus(metas.get(i));
+      }
+      return statuses;
+    } catch (TException e) {
+      throw new IOException("Failed to list file status in " + pathStr, e);
     }
-    return statuses;
   }
 
   @Override
   public void setWorkingDirectory(Path path) {
-    baseFs.setWorkingDirectory(pathToBase(path));
+    workingDir = path;
   }
 
   @Override
   public Path getWorkingDirectory() {
-    return pathToSurf(baseFs.getWorkingDirectory());
+    return workingDir;
   }
 
   // TODO: use FSPermission properly.
   @Override
   public boolean mkdirs(Path path, FsPermission fsPermission) throws IOException {
-    final String decodedPath = path.toUri().getPath();
+    final String pathStr = getAbsolutePathStr(path);
     try {
-      return getMetaClient().mkdirs(decodedPath);
+      return getMetaClient().mkdirs(pathStr);
     } catch (TException e) {
-      throw new IOException("Failed to make directory in " + decodedPath, e);
+      throw new IOException("Failed to make directory in " + pathStr, e);
     }
   }
 
   @Override
   public FileStatus getFileStatus(Path path) throws IOException {
     try {
-      final FileMeta meta = getMetaClient().getFileMeta(path.toUri().getPath(), localAddress);
-      return getFileStatus(meta);
+      final FileMeta meta = getMetaClient().getFileMeta(getAbsolutePathStr(path), localAddress);
+      return toFileStatus(meta);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       if (isFallback) {
-        LOG.log(Level.WARNING, "The file is not found in Surf, trying baseFs...");
+        LOG.log(Level.WARNING, "The file is not found in Surf, trying baseFs...", e);
         return baseFs.getFileStatus(pathToBase(path));
       } else {
         throw new java.io.FileNotFoundException("File not found in the meta server");
       }
     } catch (TException e) {
       if (isFallback) {
-        LOG.log(Level.WARNING, "Surf TException, trying baseFs...");
+        LOG.log(Level.WARNING, "Surf TException, trying baseFs...", e);
         return baseFs.getFileStatus(pathToBase(path));
       } else {
-        throw new IOException ("Failed to get File Status from Surr", e);
+        throw new IOException ("Failed to get File Status from Surf", e);
       }
     }
   }
@@ -261,12 +272,12 @@ public final class SurfFS extends FileSystem {
   public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
 
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
-      new Object[]{file.getPath(), file.getPath().toUri().getPath()});
+      new Object[]{file.getPath(), getAbsolutePathStr(file.getPath())});
 
     final List<BlockLocation> blockLocations = new LinkedList<>();
 
     try {
-      final FileMeta metadata = getMetaClient().getFileMeta(file.getPath().toUri().getPath(), localAddress);
+      final FileMeta metadata = getMetaClient().getFileMeta(getAbsolutePathStr(file.getPath()), localAddress);
       long startRemaining = start;
       Iterator<BlockInfo> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
@@ -342,8 +353,8 @@ public final class SurfFS extends FileSystem {
    * to File Status used in FileSystem API.
    * TODO: use FSPermission properly.
    */
-  private FileStatus getFileStatus(final FileMeta meta) {
-    final Path path = new Path(meta.getFullPath());
+  private FileStatus toFileStatus(final FileMeta meta) {
+    final Path path = pathToSurf(new Path(meta.getFullPath()));
     final long length = meta.getFileSize();
     final boolean isDir = meta.isDirectory();
     final int replication = meta.getReplication();
@@ -352,15 +363,9 @@ public final class SurfFS extends FileSystem {
     final long accessTime = meta.getAccessTime();
     final String owner = meta.getUser().getOwner();
     final String group = meta.getUser().getGroup();
-
-    if (meta.isSetSymLink()) {
-      final Path symLink = new Path(meta.getSymLink());
-      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
-              FsPermission.getFileDefault(), owner, group, symLink, path);
-    } else {
-      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
-              FsPermission.getFileDefault(), owner, group, path);
-    }
+    final Path symLink = meta.isSetSymLink() ? new Path(meta.getSymLink()) : null;
+    return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
+            FsPermission.getFileDefault(), owner, group, symLink, path);
   }
 
   private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
@@ -393,13 +398,25 @@ public final class SurfFS extends FileSystem {
     }
   }
 
-  protected Path pathToSurf(final Path baseFsPath) {
-    final URI basePathUri = baseFsPath.toUri();
-    if (basePathUri.isAbsolute()) {
-      return new Path(uri.getScheme(), uri.getAuthority(), basePathUri.getPath());
-    } else {
-      return baseFsPath;
-    }
+  /**
+   * Get string value of absolute path from {@code Path}.
+   * For example, {@code getAbsolutePathStr(dir1/fileA)} will return {@code /WORKING_DIR/dir1/fileA}.
+   * @param path Relative/Absolute path of a file.
+   * @return Path component of the absolute path; URI scheme and authority are dropped out.
+   */
+  private String getAbsolutePathStr(final Path path) {
+    final Path absPath = path.isUriPathAbsolute() ? path : new Path(getWorkingDirectory(), path.toUri().getPath());
+    return absPath.toUri().getPath();
+  }
+
+  /**
+   * Get full URI of {@code path}.
+   * @param path Relative/Absolute path of a file.
+   * @return Absolute path including URI scheme and authority.
+   */
+  protected Path pathToSurf(final Path path) {
+    final String absPathStr = getAbsolutePathStr(path);
+    return new Path(uri.getScheme(), uri.getAuthority(), absPathStr);
   }
 
   protected Path pathToBase(final Path surfPath) {
@@ -409,10 +426,5 @@ public final class SurfFS extends FileSystem {
     } else {
       return surfPath;
     }
-  }
-
-  protected void setStatusToSurf(FileStatus status) {
-    status.setPath(
-        pathToSurf(status.getPath()));
   }
 }

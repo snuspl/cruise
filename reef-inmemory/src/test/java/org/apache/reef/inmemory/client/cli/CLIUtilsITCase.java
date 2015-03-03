@@ -8,7 +8,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.client.SurfFS;
 import org.apache.reef.inmemory.common.ITUtils;
-import org.apache.reef.inmemory.util.SurfLauncher;
+import org.apache.reef.inmemory.common.SurfLauncher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -72,7 +72,8 @@ public final class CLIUtilsITCase {
   @AfterClass
   public static void tearDownClass() throws IOException {
     for (final String dirPath : dirPaths) {
-      surfFs.delete(new Path(dirPath), true);
+      // TODO The directories should be deleted from Surf once delete operation is implemented.
+      baseFs.delete(new Path(dirPath), true);
     }
     surfLauncher.close();
   }

@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.inmemory.util.SurfLauncher;
+import org.apache.reef.inmemory.common.SurfLauncher;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;

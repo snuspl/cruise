@@ -2,8 +2,10 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.reef.inmemory.common.BlockIdFactory;
+import org.apache.reef.inmemory.common.FileMetaFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.OptionalParameter;
@@ -64,15 +66,18 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
     .bindNamedParameter(StageConfiguration.StageHandler.class, TaskMessageHandlerExecutor.class)
     .bindImplementation(BlockId.class, HdfsBlockId.class)
     .bindImplementation(BlockIdFactory.class, HdfsBlockIdFactory.class)
+    .bindImplementation(FileMetaFactory.class, HdfsFileMetaFactory.class)
     .bindImplementation(CacheLoader.class, HdfsMetaLoader.class)
     .bindImplementation(CacheMessenger.class, HdfsCacheMessenger.class)
     .bindImplementation(CacheUpdater.class, HdfsCacheUpdater.class)
+    .bindImplementation(BlockLocationGetter.class, HdfsBlockLocationGetter.class)
+    .bindImplementation(BaseFsClient.class, HDFSClient.class)
     .bindImplementation(CacheManager.class, CacheManagerImpl.class)
     .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsRandomCacheSelectionPolicy.class)
     .bindImplementation(WritingCacheSelectionPolicy.class, WritingRandomCacheSelectionPolicy.class)
     .bindImplementation(ReplicationPolicy.class, ReplicationPolicyImpl.class)
     .bindImplementation(EStage.class, ThreadPoolStage.class)
     .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
-    .bindConstructor(DFSClient.class, DfsClientConstructor.class)
+    .bindConstructor(FileSystem.class, BaseFsConstructor.class)
     .build();
 }

@@ -8,7 +8,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.common.ITUtils;
-import org.apache.reef.inmemory.util.SurfLauncher;
+import org.apache.reef.inmemory.common.SurfLauncher;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -16,10 +16,10 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 /**
  * Test Surf's directory-related operations
@@ -27,6 +27,7 @@ import static org.junit.Assert.fail;
 public final class SurfFSDirectoryITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSDirectoryITCase.class.getName());
 
+  private static FileSystem baseFs;
   private static SurfFS surfFs;
 
   private static final String TESTDIR = ITUtils.getTestDir();
@@ -60,7 +61,7 @@ public final class SurfFSDirectoryITCase {
     // Reduce blocksize to 512 bytes, to test multiple blocks
     hdfsConfig.setInt(DFSConfigKeys.DFS_BLOCK_SIZE_KEY, DFS_BLOCK_SIZE_VALUE);
 
-    final FileSystem baseFs = ITUtils.getHdfs(hdfsConfig);
+    baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
     surfLauncher.launch(baseFs);
@@ -72,7 +73,12 @@ public final class SurfFSDirectoryITCase {
 
   @AfterClass
   public static void tearDownClass() {
-    // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when delete is implemented
+    try {
+      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
+      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
+    }
     surfLauncher.close();
   }
 
@@ -96,7 +102,7 @@ public final class SurfFSDirectoryITCase {
     final FileStatus[] fileStatuses = surfFs.listStatus(new Path(NONEMPTY));
     for (int i = 0; i < 5; i++) {
       final FileStatus fileStatus = fileStatuses[i];
-      assertEquals(NONEMPTY + "/" + String.valueOf(i), fileStatus.getPath().toString());
+      assertEquals(NONEMPTY + "/" + String.valueOf(i), fileStatus.getPath().toUri().getPath());
       assertEquals(i, fileStatus.getLen());
       // TODO: Test other attributes in FileStatus
     }
@@ -118,13 +124,13 @@ public final class SurfFSDirectoryITCase {
     }
 
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL1))) {
-      assertEquals(LEVEL2, fileStatus.getPath().toString());
-      assertEquals("Should be a directory", true, fileStatus.isDirectory());
+      assertEquals(LEVEL2, fileStatus.getPath().toUri().getPath());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL2))) {
-      assertEquals(LEVEL3, fileStatus.getPath().toString());
-      assertEquals("Should be a directory", true, fileStatus.isDirectory());
+      assertEquals(LEVEL3, fileStatus.getPath().toUri().getPath());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
     final FileStatus[] fileStatuses = surfFs.listStatus(new Path(LEVEL3));
@@ -136,9 +142,9 @@ public final class SurfFSDirectoryITCase {
   /**
    * Test file/directory renaming
    */
-  @Test
+  @Test(expected = UnsupportedOperationException.class)
   public void testRename() throws IOException  {
-    assertEquals("Mkdirs should succeed", true, surfFs.mkdirs(new Path(BEFORE)));
+    assertTrue("Mkdirs should succeed", surfFs.mkdirs(new Path(BEFORE)));
     for (int i = 0; i < 5; i ++) {
       final FSDataOutputStream outputStream = surfFs.create(new Path(BEFORE, String.valueOf(i)));
       outputStream.write((byte)1);
@@ -146,26 +152,26 @@ public final class SurfFSDirectoryITCase {
     }
 
     // rename the directory and the children files
-    assertEquals("Rename should succeed", true, surfFs.rename(new Path(BEFORE), new Path(AFTER)));
+    assertTrue("Rename should succeed", surfFs.rename(new Path(BEFORE), new Path(AFTER)));
     for (int i = 0; i < 5; i ++) {
-      assertEquals("Rename should succeed", true, surfFs.rename(new Path(AFTER, String.valueOf(i)), new Path(AFTER, String.valueOf(i+5))));
+      assertTrue("Rename should succeed", surfFs.rename(new Path(AFTER, String.valueOf(i)), new Path(AFTER, String.valueOf(i + 5))));
     }
 
-    assertEquals("Should not exist as it is renamed", false, surfFs.exists(new Path(BEFORE)));
-    assertEquals("Should exist", true, surfFs.exists(new Path(AFTER)));
+    assertFalse("Should not exist as it is renamed", surfFs.exists(new Path(BEFORE)));
+    assertTrue("Should exist", surfFs.exists(new Path(AFTER)));
     for (int i = 0; i < 5; i ++) {
-      assertEquals("Should not exist as the parent directory is renamed", false, surfFs.exists(new Path(BEFORE, String.valueOf(i))));
-      assertEquals("Should not exist as the file is renamed", false, surfFs.exists(new Path(AFTER, String.valueOf(i))));
-      assertEquals("Should exist", true, surfFs.exists(new Path(AFTER, String.valueOf(i+5))));
+      assertFalse("Should not exist as the parent directory is renamed", surfFs.exists(new Path(BEFORE, String.valueOf(i))));
+      assertFalse("Should not exist as the file is renamed", surfFs.exists(new Path(AFTER, String.valueOf(i))));
+      assertTrue("Should exist", surfFs.exists(new Path(AFTER, String.valueOf(i + 5))));
     }
   }
 
   /**
    * Test file/directory deletion
    */
-  @Test
+  @Test(expected = UnsupportedOperationException.class)
   public void testDelete() throws IOException {
-    assertEquals("Mkdirs should succeed", true, surfFs.mkdirs(new Path(DELETE)));
+    assertTrue("Mkdirs should succeed", surfFs.mkdirs(new Path(DELETE)));
     for (int i = 0; i < 5; i ++) {
       final FSDataOutputStream outputStream = surfFs.create(new Path(DELETE, String.valueOf(i)));
       outputStream.write((byte)1);
@@ -173,14 +179,14 @@ public final class SurfFSDirectoryITCase {
     }
 
     // delete a child file
-    assertEquals("Delete should succeed", true, surfFs.delete(new Path(DELETE, String.valueOf(0)), true));
-    assertEquals("Should not exist as it is deleted", false, surfFs.exists(new Path(DELETE, String.valueOf(0))));
+    assertTrue("Delete should succeed", surfFs.delete(new Path(DELETE, String.valueOf(0)), true));
+    assertFalse("Should not exist as it is deleted", surfFs.exists(new Path(DELETE, String.valueOf(0))));
 
     // delete the directory
-    assertEquals("Delete should succeed", true, surfFs.delete(new Path(DELETE), true));
-    assertEquals("Should not exist as it is deleted", false, surfFs.exists(new Path(DELETE)));
+    assertTrue("Delete should succeed", surfFs.delete(new Path(DELETE), true));
+    assertFalse("Should not exist as it is deleted", surfFs.exists(new Path(DELETE)));
     for (int i = 0; i < 5; i ++) {
-      assertEquals("Should not exist as its parent directory is deleted", false, surfFs.exists(new Path(DELETE, String.valueOf(i))));
+      assertFalse("Should not exist as its parent directory is deleted", surfFs.exists(new Path(DELETE, String.valueOf(i))));
     }
   }
 }

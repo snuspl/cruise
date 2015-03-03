@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -18,16 +18,13 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.replication.Write;
-import org.apache.reef.inmemory.driver.hdfs.HdfsMetaLoader;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheUpdater;
-import org.apache.reef.inmemory.driver.hdfs.HdfsRandomCacheSelectionPolicy;
+import org.apache.reef.inmemory.driver.hdfs.*;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.driver.locality.YarnLocationSorter;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
@@ -38,6 +35,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -68,9 +66,12 @@ public final class SurfMetaManagerITCase {
   private HdfsCacheSelectionPolicy selector;
   private CacheLocationRemover cacheLocationRemover;
   private HdfsBlockIdFactory blockFactory;
+  private HdfsFileMetaFactory metaFactory;
+  private HdfsBlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
   private SurfMetaManager metaManager;
-  private DFSClient dfsClient;
+  private FileSystem baseFs;
+  private HDFSClient baseFsClient;
 
   @Before
   public void setUp() throws IOException {
@@ -80,13 +81,14 @@ public final class SurfMetaManagerITCase {
     selector = new HdfsRandomCacheSelectionPolicy();
     cacheLocationRemover = new CacheLocationRemover();
     blockFactory = new HdfsBlockIdFactory();
+    metaFactory = new HdfsFileMetaFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
     for (int i = 0; i < 3; i++) {
       final RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
 
       manager.addRunningTask(task);
-      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001+i));
+      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001 + i));
     }
     List<CacheNode> selectedNodes = manager.getCaches();
     assertEquals(3, selectedNodes.size());
@@ -99,16 +101,18 @@ public final class SurfMetaManagerITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    dfsClient = new DFSClient(fs.getUri(), hdfsConfig);
+    baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
+    blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
+    baseFsClient = new HDFSClient(baseFs, metaFactory);
 
-    loader = new HdfsMetaLoader(dfsClient, blockFactory, RECORD);
+    loader = new HdfsMetaLoader(baseFs, blockLocationGetter, blockFactory, metaFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, dfsClient);
+    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, baseFs, blockLocationGetter);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, locationSorter, dfsClient);
+    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, metaFactory, locationSorter, baseFsClient);
   }
 
   /**
@@ -117,7 +121,7 @@ public final class SurfMetaManagerITCase {
   @After
   public void tearDown() throws IOException {
     fs.delete(new Path(TESTDIR), true);
-    dfsClient.close();
+    baseFs.close();
   }
 
   /**
@@ -128,13 +132,13 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentLoad() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = TESTDIR+"/largeFile";
+    final String path = TESTDIR + "/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
 
-    final int numThreads =  10;
+    final int numThreads = 10;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
@@ -161,7 +165,7 @@ public final class SurfMetaManagerITCase {
 
     // They should all return different fileMetas
     for (int i = 0; i < numThreads - 1; i++) {
-      for (int j = i+1; j < numThreads; j++) {
+      for (int j = i + 1; j < numThreads; j++) {
         assertFalse(fileMetas[i] == fileMetas[j]);
       }
     }
@@ -192,11 +196,11 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = TESTDIR+"/largeFile";
+    final String path = TESTDIR + "/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
-            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
+            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength * numChunks);
 
     final FileMeta fm = metaManager.get(new Path(path), new User());
     final FileMeta fileMeta = metaManager.loadData(fm);
@@ -220,7 +224,7 @@ public final class SurfMetaManagerITCase {
     }
     // (Leave rest of the blocks alone)
 
-    final int numThreads =  10;
+    final int numThreads = 10;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
@@ -272,16 +276,16 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentRemoveAndUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = TESTDIR+"/largeFile";
+    final String path = TESTDIR + "/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
-            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
+            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength * numChunks);
 
     final FileMeta fm = metaManager.get(new Path(path), new User());
     final FileMeta fileMeta = metaManager.loadData(fm);
 
-    final int numThreads =  20;
+    final int numThreads = 20;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
@@ -335,6 +339,124 @@ public final class SurfMetaManagerITCase {
         assertTrue(updatedBlocks.get(i).getLocationsSize() > 0);
         assertTrue(3 >= updatedBlocks.get(i).getLocationsSize());
       }
+    }
+  }
+
+  /**
+   * Verify concurrent creation of files under the same directory
+   */
+  @Test
+  public void testConcurrentCreateFile() throws Throwable {
+    final int numFiles = 100;
+    final short replication = 1;
+    final ExecutorService executorService = Executors.newCachedThreadPool();
+    final Future<?>[] futures = new Future<?>[numFiles];
+    final Path directoryPath = new Path(TESTDIR, "concurrentFile");
+
+    baseFsClient.mkdirs(directoryPath.toUri().getPath());
+
+    // Concurrently create files under the same directory
+    for (int i = 0; i < numFiles; i++) {
+      final int index = i;
+      futures[index] = executorService.submit(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            final Path filePath = new Path(directoryPath, String.valueOf(index));
+            metaManager.createFile(filePath.toUri().getPath(), replication, blockSize);
+          } catch (final Throwable t) {
+            throw new RuntimeException(t);
+          }
+        }
+      });
+    }
+    executorService.shutdown();
+
+    // Verify that all operations succeeded
+    int successCount = 0;
+    for (final Future future : futures) {
+      future.get();
+      successCount += future.isCancelled() ? 0 : 1;
+    }
+    assertEquals(numFiles, successCount);
+
+    final FileMeta parentMeta = metaManager.get(directoryPath, new User());
+
+    for (int index = 0; index < numFiles; index++) {
+      final Path filePath = new Path(directoryPath, String.valueOf(index));
+
+      // Should not load meta as the fileMeta is already created(cached)
+      final FileMeta result = metaManager.get(filePath, new User());
+
+      // Check validity of fileMeta
+      assertNotNull(result);
+      assertFalse("Should not be a directory", result.isDirectory());
+      assertEquals(filePath.toUri().toString(), result.getFullPath());
+      assertEquals(replication, result.getReplication());
+      assertEquals(blockSize, result.getBlockSize());
+      // children-to-parent mapping
+      assertEquals(parentMeta, metaManager.getParent(result));
+      // parent-to-children mapping
+      assertNotNull(metaManager.getChildren(parentMeta));
+      assertTrue("Should be a child of directoryPath, index: " + String.valueOf(index),
+              metaManager.getChildren(parentMeta).contains(result));
+    }
+  }
+
+  @Test
+  public void testConcurrentCreateDirectory() throws Throwable {
+    final int numDirs = 100;
+    final ExecutorService executorService = Executors.newCachedThreadPool();
+    final Future<Boolean>[] futures = new Future[numDirs];
+    final Path rootPath = new Path(TESTDIR, "concurrentDir");
+
+    baseFsClient.mkdirs(rootPath.toUri().getPath());
+
+    // Concurrently create directories under the root directory
+    for (int i = 0; i < numDirs; i++) {
+      final int index = i;
+      futures[index] = executorService.submit(new Callable<Boolean>() {
+        @Override
+        public Boolean call() {
+          try {
+            final Path dirPath = new Path(rootPath, String.valueOf(index));
+            return metaManager.createDirectory(dirPath.toUri().getPath());
+          } catch (final Throwable t) {
+            throw new RuntimeException(t);
+          }
+        }
+      });
+    }
+    executorService.shutdown();
+
+    // Verify that all operations succeeded
+    int successCount = 0;
+    for (final Future<Boolean> future : futures) {
+      assertTrue("CreateDirectory should succeed", future.get());
+      successCount += future.isCancelled() ? 0 : 1;
+    }
+    assertEquals(numDirs, successCount);
+
+    final FileMeta parentMeta = metaManager.get(rootPath, new User());
+
+    // Check the parent has all the children directories.
+    final List<FileMeta> children = metaManager.getChildren(metaManager.get(rootPath, new User()));
+    assertEquals(numDirs, children.size());
+    for (FileMeta childMeta : children) {
+      assertTrue("Should be a directory", childMeta.isDirectory());
+      assertEquals(parentMeta, metaManager.getParent(childMeta));
+    }
+
+    // Check the created directories to have the parent.
+    for (int index = 0; index < numDirs; index++) {
+      final Path filePath = new Path(rootPath, String.valueOf(index));
+
+      final FileMeta childMeta = metaManager.get(filePath, new User());
+      assertEquals(parentMeta, metaManager.getParent(childMeta));
+      assertTrue("Should be a child of rootPath, index: " + String.valueOf(index),
+              children.contains(childMeta));
+      assertTrue("Should be a directory", childMeta.isDirectory());
+      assertEquals(filePath.toUri().getPath(), childMeta.getFullPath());
     }
   }
 }

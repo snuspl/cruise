@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory.util;
+package org.apache.reef.inmemory.common;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.reef.client.DriverLauncher;
