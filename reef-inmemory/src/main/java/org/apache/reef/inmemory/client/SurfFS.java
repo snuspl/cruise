@@ -190,17 +190,20 @@ public final class SurfFS extends FileSystem {
 
   @Override
   public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) throws IOException {
-    return baseFs.append(pathToBase(f), bufferSize, progress);
+    // TODO Implement append operation.
+    throw new UnsupportedOperationException("Append is not supported yet.");
   }
 
   @Override
   public boolean rename(Path src, Path dst) throws IOException {
-    return baseFs.rename(pathToBase(src), pathToBase(dst));
+    // TODO Implement rename operation.
+    throw new UnsupportedOperationException("Rename is not supported yet.");
   }
 
   @Override
   public boolean delete(Path f, boolean recursive) throws IOException {
-    return baseFs.delete(pathToBase(f), recursive);
+    // TODO Implement delete operation.
+    throw new UnsupportedOperationException("Delete is not supported yet.");
   }
 
   @Override

@@ -142,7 +142,7 @@ public final class SurfFSDirectoryITCase {
   /**
    * Test file/directory renaming
    */
-  @Test
+  @Test(expected = UnsupportedOperationException.class)
   public void testRename() throws IOException  {
     assertTrue("Mkdirs should succeed", surfFs.mkdirs(new Path(BEFORE)));
     for (int i = 0; i < 5; i ++) {
@@ -169,7 +169,7 @@ public final class SurfFSDirectoryITCase {
   /**
    * Test file/directory deletion
    */
-  @Test
+  @Test(expected = UnsupportedOperationException.class)
   public void testDelete() throws IOException {
     assertTrue("Mkdirs should succeed", surfFs.mkdirs(new Path(DELETE)));
     for (int i = 0; i < 5; i ++) {

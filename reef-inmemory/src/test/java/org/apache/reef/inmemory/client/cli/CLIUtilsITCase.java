@@ -72,7 +72,8 @@ public final class CLIUtilsITCase {
   @AfterClass
   public static void tearDownClass() throws IOException {
     for (final String dirPath : dirPaths) {
-      surfFs.delete(new Path(dirPath), true);
+      // TODO The directories should be deleted from Surf once delete operation is implemented.
+      baseFs.delete(new Path(dirPath), true);
     }
     surfLauncher.close();
   }
