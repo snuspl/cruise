@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.client;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.instrumentation.Event;
@@ -29,7 +29,7 @@ public final class CacheBlockLoader {
 
   private static final long NOT_CACHED = -1;
 
-  private final BlockInfo block;
+  private final BlockMeta block;
 
   private final CacheClientManager cacheManager;
   private final LoadProgressManager progressManager;
@@ -37,7 +37,7 @@ public final class CacheBlockLoader {
   private byte[] cachedChunk;
   private long cachedChunkPosition = NOT_CACHED;
 
-  public CacheBlockLoader(final BlockInfo block,
+  public CacheBlockLoader(final BlockMeta block,
                           final CacheClientManager cacheManager,
                           final LoadProgressManager progressManager,
                           final Configuration conf,

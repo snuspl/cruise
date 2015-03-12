@@ -6,7 +6,7 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.instrumentation.BasicEventRecorder;
@@ -279,7 +279,7 @@ public final class SurfFS extends FileSystem {
     try {
       final FileMeta metadata = getMetaClient().getFileMeta(getAbsolutePathStr(file.getPath()), localAddress);
       long startRemaining = start;
-      Iterator<BlockInfo> iter = metadata.getBlocksIterator();
+      Iterator<BlockMeta> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
       if (iter == null) {
         return new BlockLocation[0];
@@ -287,7 +287,7 @@ public final class SurfFS extends FileSystem {
 
       // Find the block that contains start and add its locations
       while (iter.hasNext()) {
-        final BlockInfo block = iter.next();
+        final BlockMeta block = iter.next();
         startRemaining -= block.getLength();
         if (startRemaining < 0) {
           blockLocations.add(getBlockLocation(block.getLocations(), block.getOffSet(), block.getLength()));
@@ -298,7 +298,7 @@ public final class SurfFS extends FileSystem {
       // Add locations of blocks after that, up to len
       long lenRemaining = len + startRemaining;
       while (lenRemaining > 0 && iter.hasNext()) {
-        final BlockInfo block = iter.next();
+        final BlockMeta block = iter.next();
         lenRemaining -= block.getLength();
         blockLocations.add(getBlockLocation(block.getLocations(), block.getOffSet(), block.getLength()));
       }

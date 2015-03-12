@@ -10,9 +10,12 @@ struct NodeInfo {
 
 /**
  * Contains relevant block information to be stored as Metadata.
+ * This data structure coincide to FileMeta, which is created/managed in Surf.
  * Currently takes after o.a.h.hdfs.protocol.ExtendedBlock
+ *
+ * TODO remove dependency on Hadoop Metadata.
  */
-struct BlockInfo {
+struct BlockMeta {
 	1: string filePath,              // File's absolute path
 	2: i64 blockId,                  // Block id (unique)
 	3: i64 offSet,                   // Order of the block
@@ -26,8 +29,9 @@ struct BlockInfo {
 /**
  * Contains block information of newly allocated from the MetaServer
  * as a response for request of AllocateBlock
+ * TODO This will be integrated into BlockMeta
  */
-struct AllocatedBlockInfo {
+struct AllocatedBlockMeta {
   1: list<NodeInfo> locations,      // Cache locations including the nodes to replicate
   2: bool pin,                      // True if this block is to be pinned
   3: i32 baseReplicationFactor,     // Replication factor to base File System.
@@ -50,7 +54,7 @@ struct FileMeta{
 	5:i64 blockSize,          // Size of blocks consisting of the file.
 	6:i64 modificationTime,   // File modification time
 	7:i64 accessTime,         // File access time
-	8:list<BlockInfo> blocks, // Information of blocks consisting of the file.
+	8:list<BlockMeta> blocks, // Information of blocks consisting of the file.
 	9:User user,              // Access information of the file.
 	10:string symLink,        // SymLink information of the file.
 	11:list<string> children,	// Children paths in case of directory.

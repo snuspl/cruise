@@ -9,9 +9,9 @@ import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.reef.inmemory.common.HdfsBlockMetaFactory;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.task.BlockLoader;
@@ -19,7 +19,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,7 +33,7 @@ public class HdfsBlockLoaderITCase {
   private static final int BUFFER_SIZE = 8 * 1024 * 1024;
 
   private EventRecorder RECORD;
-  private HdfsBlockIdFactory blockFactory;
+  private HdfsBlockMetaFactory blockFactory;
 
   private FileSystem fs;
   private LocatedBlocks blocks;
@@ -45,7 +44,7 @@ public class HdfsBlockLoaderITCase {
   @Before
   public void setUp() throws Exception {
     RECORD = new NullEventRecorder();
-    blockFactory = new HdfsBlockIdFactory();
+    blockFactory = new HdfsBlockMetaFactory();
 
     final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);

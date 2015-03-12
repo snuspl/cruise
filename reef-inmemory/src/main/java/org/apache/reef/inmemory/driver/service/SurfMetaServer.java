@@ -156,7 +156,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public AllocatedBlockInfo allocateBlock(final String path,
+  public AllocatedBlockMeta allocateBlock(final String path,
                                           final long offset,
                                           final String clientAddress) throws TException {
     if (!exists(path)) {
@@ -176,7 +176,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
         // TODO Change the SyncMethod in Avro schema to boolean type
         final boolean isWriteThrough = (action.getWrite().getSync() == SyncMethod.WRITE_THROUGH);
 
-        return new AllocatedBlockInfo(selected, pin, baseReplicationFactor, isWriteThrough);
+        return new AllocatedBlockMeta(selected, pin, baseReplicationFactor, isWriteThrough);
       } catch (Throwable throwable) {
         throw new TException("Fail to resolve replication policy", throwable);
       }

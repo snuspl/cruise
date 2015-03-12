@@ -30,7 +30,7 @@ public interface FileMetaFactory<FsFileStatus> {
   /**
    * Create a new FileMeta using the FS-specific FileStatus.
    * Since FileStatus does not contain block information (except block size),
-   * additional information(BlockInfo) should be set afterward to access the actual data.
+   * additional information(BlockMeta) should be set afterward to access the actual data.
    * @param status FileStatus returned from BaseFS using getFileStatus() or listStatus() .
    * @return Metadata used in Surf.
    */

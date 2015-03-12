@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -12,8 +11,9 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.reef.inmemory.common.HdfsBlockMetaFactory;
 import org.apache.reef.inmemory.common.ITUtils;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
@@ -66,6 +66,7 @@ public final class SurfMetaManagerITCase {
   private HdfsCacheSelectionPolicy selector;
   private CacheLocationRemover cacheLocationRemover;
   private HdfsBlockIdFactory blockFactory;
+  private HdfsBlockMetaFactory blockMetaFactory;
   private HdfsFileMetaFactory metaFactory;
   private HdfsBlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
@@ -81,6 +82,7 @@ public final class SurfMetaManagerITCase {
     selector = new HdfsRandomCacheSelectionPolicy();
     cacheLocationRemover = new CacheLocationRemover();
     blockFactory = new HdfsBlockIdFactory();
+    blockMetaFactory = new HdfsBlockMetaFactory();
     metaFactory = new HdfsFileMetaFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
@@ -105,11 +107,11 @@ public final class SurfMetaManagerITCase {
     blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
     baseFsClient = new HDFSClient(baseFs, metaFactory);
 
-    loader = new HdfsMetaLoader(baseFs, blockLocationGetter, blockFactory, metaFactory, RECORD);
+    loader = new HdfsMetaLoader(baseFs, blockLocationGetter, blockMetaFactory, metaFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, baseFs, blockLocationGetter);
+    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockMetaFactory, replicationPolicy, baseFs, blockLocationGetter);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
     metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, metaFactory, locationSorter, baseFsClient);
@@ -177,7 +179,7 @@ public final class SurfMetaManagerITCase {
     assertEquals(blockSize, fileMeta.getBlockSize());
     assertEquals(largeFile.toString(), fileMeta.getFullPath());
 
-    final List<BlockInfo> blocks = fileMeta.getBlocks();
+    final List<BlockMeta> blocks = fileMeta.getBlocks();
     assertEquals(locatedBlocks.getLocatedBlocks().size(), blocks.size());
     final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
             ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
@@ -205,17 +207,17 @@ public final class SurfMetaManagerITCase {
     final FileMeta fm = metaManager.get(new Path(path), new User());
     final FileMeta fileMeta = metaManager.loadData(fm);
 
-    final List<BlockInfo> blocks = fileMeta.getBlocks();
+    final List<BlockMeta> blocks = fileMeta.getBlocks();
     // Remove first location from first block
     {
-      final BlockInfo block = blocks.get(0);
+      final BlockMeta block = blocks.get(0);
       final Iterator<NodeInfo> it = block.getLocationsIterator();
       final NodeInfo nodeInfo = it.next();
       cacheLocationRemover.remove(fileMeta.getFullPath(), blockFactory.newBlockId(block), nodeInfo.getAddress());
     }
     // Remove all locations from second block
     {
-      final BlockInfo block = blocks.get(1);
+      final BlockMeta block = blocks.get(1);
       final Iterator<NodeInfo> it = block.getLocationsIterator();
       while (it.hasNext()) {
         final NodeInfo nodeInfo = it.next();
@@ -255,7 +257,7 @@ public final class SurfMetaManagerITCase {
       final FileMeta updatedFileMeta = fileMetas[index];
       assertFalse(updatedFileMeta == fileMeta);
 
-      final List<BlockInfo> updatedBlocks = updatedFileMeta.getBlocks();
+      final List<BlockMeta> updatedBlocks = updatedFileMeta.getBlocks();
       assertEquals(locatedBlocks.getLocatedBlocks().size(), updatedBlocks.size());
       final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
               ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
@@ -290,7 +292,7 @@ public final class SurfMetaManagerITCase {
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
 
-    final List<BlockInfo> blocks = fileMeta.getBlocks();
+    final List<BlockMeta> blocks = fileMeta.getBlocks();
     for (int i = 0; i < numThreads; i++) {
       final int index = i;
       futures[index] = e.submit(new Runnable() {
@@ -301,7 +303,7 @@ public final class SurfMetaManagerITCase {
               final FileMeta fileMeta = metaManager.get(new Path(path), new User());
               fileMetas[index] = metaManager.loadData(fileMeta);
             } else {
-              final BlockInfo block = blocks.get(index);
+              final BlockMeta block = blocks.get(index);
               final Iterator<NodeInfo> it = block.getLocationsIterator();
               while (it.hasNext()) {
                 final NodeInfo nodeInfo = it.next();
@@ -329,7 +331,7 @@ public final class SurfMetaManagerITCase {
       final FileMeta updatedFileMeta = fileMetas[index];
       assertFalse(updatedFileMeta == fileMeta);
 
-      final List<BlockInfo> updatedBlocks = updatedFileMeta.getBlocks();
+      final List<BlockMeta> updatedBlocks = updatedFileMeta.getBlocks();
       assertEquals(locatedBlocks.getLocatedBlocks().size(), updatedBlocks.size());
       final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
               ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder

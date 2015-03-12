@@ -7,10 +7,10 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
+import org.apache.reef.inmemory.common.HdfsBlockMetaFactory;
 import org.apache.reef.inmemory.common.ITUtils;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
@@ -41,7 +41,7 @@ public final class HdfsMetaLoaderITCase {
   private FileSystem fs;
   private CacheManager manager;
   private HdfsMetaLoader loader;
-  private HdfsBlockIdFactory blockFactory;
+  private HdfsBlockMetaFactory blockFactory;
   private HdfsFileMetaFactory metaFactory;
   private BlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
@@ -53,7 +53,7 @@ public final class HdfsMetaLoaderITCase {
   @Before
   public void setUp() throws IOException {
     manager = TestUtils.cacheManager();
-    blockFactory = new HdfsBlockIdFactory();
+    blockFactory = new HdfsBlockMetaFactory();
     metaFactory = new HdfsFileMetaFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
@@ -163,7 +163,7 @@ public final class HdfsMetaLoaderITCase {
     assertEquals(blockSize, fileMeta.getBlockSize());
     assertEquals(largeFile.toString(), fileMeta.getFullPath());
 
-    final List<BlockInfo> blocks = fileMeta.getBlocks();
+    final List<BlockMeta> blocks = fileMeta.getBlocks();
     assertEquals(locatedBlocks.getLocatedBlocks().size(), fileMeta.getBlocksSize());
     final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
             ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder

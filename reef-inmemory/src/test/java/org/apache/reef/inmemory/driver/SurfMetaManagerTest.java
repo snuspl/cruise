@@ -6,7 +6,7 @@ import org.apache.hadoop.fs.*;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.FileMetaFactory;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
@@ -386,15 +386,15 @@ public final class SurfMetaManagerTest {
     fileMeta.setFullPath(path.toString());
     fileMeta.setBlockSize(blockSize);
     for (final long offset : offsets) {
-      final BlockInfo blockInfo = new BlockInfo();
-      fileMeta.addToBlocks(blockInfo);
-      blockInfo.setFilePath(path.toString());
-      blockInfo.setOffSet(offset);
+      final BlockMeta blockMeta = new BlockMeta();
+      fileMeta.addToBlocks(blockMeta);
+      blockMeta.setFilePath(path.toString());
+      blockMeta.setOffSet(offset);
       for (final String location : locations) {
         final NodeInfo nodeInfo = new NodeInfo();
         nodeInfo.setAddress(location);
         nodeInfo.setRack("/default");
-        blockInfo.addToLocations(nodeInfo);
+        blockMeta.addToLocations(nodeInfo);
       }
     }
     return fileMeta;

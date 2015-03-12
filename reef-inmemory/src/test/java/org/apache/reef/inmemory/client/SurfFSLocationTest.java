@@ -5,10 +5,9 @@ import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
-import org.apache.reef.inmemory.common.instrumentation.BasicEventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
@@ -52,14 +51,14 @@ public final class SurfFSLocationTest {
     final FileMeta fileMeta = new FileMeta();
 
     for (int i = 0; i < numBlocks; i++) {
-      final BlockInfo blockInfo = new BlockInfo();
-      blockInfo.setOffSet(blockLength * i);
-      blockInfo.setLength(blockLength);
+      final BlockMeta blockMeta = new BlockMeta();
+      blockMeta.setOffSet(blockLength * i);
+      blockMeta.setLength(blockLength);
       for (int j = 0; j < numLocations; j++) {
         final NodeInfo location = new NodeInfo("location-" + i + "-" + j + ":" + port, rack);
-        blockInfo.addToLocations(location);
+        blockMeta.addToLocations(location);
       }
-      fileMeta.addToBlocks(blockInfo);
+      fileMeta.addToBlocks(blockMeta);
     }
     fileMeta.setFullPath(pathString);
     fileMeta.setFileSize(len);

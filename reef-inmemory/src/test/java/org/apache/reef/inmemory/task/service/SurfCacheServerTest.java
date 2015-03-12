@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.task.service;
 
 import org.apache.reef.inmemory.common.BlockIdFactory;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
@@ -68,9 +68,9 @@ public class SurfCacheServerTest {
     // Mock objects used to create SurfCacheServer
     BlockId id = Mockito.mock(BlockId.class);
     when(id.getBlockSize()).thenReturn((long) blockSize);
-    BlockInfo blockInfo = Mockito.mock(BlockInfo.class);
+    BlockMeta blockMeta = Mockito.mock(BlockMeta.class);
     BlockIdFactory factory = Mockito.mock(BlockIdFactory.class);
-    when(factory.newBlockId(blockInfo)).thenReturn(id);
+    when(factory.newBlockId(blockMeta)).thenReturn(id);
 
     /*
      * Cache is supposed to return the data specified by index.
@@ -91,7 +91,7 @@ public class SurfCacheServerTest {
     int nRead = 0;
     byte[] readBuffer = new byte[blockSize];
     while (nRead < blockSize) {
-      ByteBuffer loadedBuffer = cacheServer.getData(blockInfo, nRead, blockSize-nRead);
+      ByteBuffer loadedBuffer = cacheServer.getData(blockMeta, nRead, blockSize-nRead);
       int nReceived = loadedBuffer.remaining();
       loadedBuffer.get(readBuffer, nRead, loadedBuffer.remaining());
       nRead += nReceived;

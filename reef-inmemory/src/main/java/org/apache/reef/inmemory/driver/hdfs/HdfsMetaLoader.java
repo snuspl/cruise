@@ -4,9 +4,8 @@ import com.google.common.cache.CacheLoader;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.HdfsBlockMetaFactory;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
@@ -34,18 +33,18 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
 
   private final FileSystem dfs;
   private final BlockLocationGetter blockLocationGetter;
-  private final HdfsBlockIdFactory blockFactory;
+  private final HdfsBlockMetaFactory blockInfoFactory;
   private final HdfsFileMetaFactory metaFactory;
 
   @Inject
   public HdfsMetaLoader(final FileSystem dfs,
                         final BlockLocationGetter blockLocationGetter,
-                        final HdfsBlockIdFactory blockFactory,
+                        final HdfsBlockMetaFactory blockMetaFactory,
                         final HdfsFileMetaFactory metaFactory,
                         final EventRecorder recorder) {
     this.dfs = dfs;
     this.blockLocationGetter = blockLocationGetter;
-    this.blockFactory = blockFactory;
+    this.blockInfoFactory = blockMetaFactory;
     this.metaFactory = metaFactory;
     this.RECORD = recorder;
   }
@@ -70,7 +69,7 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
   }
 
   /**
-   * Add blocks to fileMeta. Each BlockInfo has information to load the block from DataNode directly.
+   * Add blocks to fileMeta. Each BlockMeta has information to load the block from DataNode directly.
    * @throws IOException
    */
   private void addBlocks(final FileMeta fileMeta) throws IOException {
@@ -80,8 +79,8 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(pathStr));
 
     for (final LocatedBlock locatedBlock : locatedBlocks) {
-      final BlockInfo blockInfo = blockFactory.newBlockInfo(pathStr, locatedBlock);
-      fileMeta.addToBlocks(blockInfo);
+      final BlockMeta blockMeta = blockInfoFactory.newBlockMeta(pathStr, locatedBlock);
+      fileMeta.addToBlocks(blockMeta);
     }
   }
 

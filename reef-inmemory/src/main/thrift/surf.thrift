@@ -36,9 +36,9 @@ service SurfMetaService {
   list<entity.FileMeta> listMeta(1:string path) throws (1: exceptions.FileNotFoundException fnfe)
 
   /**
-   * Allocate a new Block and return the Info(CacheNode, Replication Policy, etc) of the block to write data.
+   * Allocate a new Block and return the Block's Metadata (CacheNode, Replication Policy, etc) of the block to write data.
    */
-  entity.AllocatedBlockInfo allocateBlock(1:string path, 2:i64 offset, 3:string clientAddress)
+  entity.AllocatedBlockMeta allocateBlock(1:string path, 2:i64 offset, 3:string clientAddress)
 
   /**
    * Announce to the Meta server that the file is complete

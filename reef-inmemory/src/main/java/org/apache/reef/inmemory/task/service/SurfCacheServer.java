@@ -1,8 +1,8 @@
 package org.apache.reef.inmemory.task.service;
 
 import org.apache.reef.inmemory.common.BlockIdFactory;
-import org.apache.reef.inmemory.common.entity.AllocatedBlockInfo;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.AllocatedBlockMeta;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.instrumentation.Event;
@@ -113,11 +113,11 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   }
 
   @Override
-  public ByteBuffer getData(final BlockInfo blockInfo, final long offset, final long length)
+  public ByteBuffer getData(final BlockMeta blockMeta, final long offset, final long length)
     throws BlockLoadingException, BlockNotFoundException {
     final Event getDataEvent = RECORD.event("task.get-data",
-            Long.toString(blockInfo.getBlockId()) + ":" + Long.toString(offset)).start();
-    final BlockId blockId = blockIdFactory.newBlockId(blockInfo);
+            Long.toString(blockMeta.getBlockId()) + ":" + Long.toString(offset)).start();
+    final BlockId blockId = blockIdFactory.newBlockId(blockMeta);
 
     // The first and last index to load blocks
     final int chunkIndex = (int) offset / bufferSize;
@@ -133,7 +133,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Override
   public void initBlock(final String path, final long offset, final long blockSize,
-                        final AllocatedBlockInfo info) throws TException {
+                        final AllocatedBlockMeta info) throws TException {
     /*
      * Create a cache entry (BlockLoader) and load it into the cache
      * so the cache can receive the data or write the data into memory

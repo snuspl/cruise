@@ -5,7 +5,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.FileMetaFactory;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
@@ -290,7 +290,7 @@ public final class SurfMetaManager {
 
     final List<NodeInfo> nodeList = new ArrayList<>();
     nodeList.add(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
-    final BlockInfo newBlock = blockIdFactory.newBlockInfo(blockId, nodeList);
+    final BlockMeta newBlock = blockIdFactory.newBlockMeta(blockId, nodeList);
 
     meta.setFileSize(meta.getFileSize() + nWritten);
     meta.addToBlocks(newBlock);
