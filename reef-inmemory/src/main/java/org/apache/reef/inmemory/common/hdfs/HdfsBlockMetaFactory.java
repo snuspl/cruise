@@ -1,6 +1,7 @@
-package org.apache.reef.inmemory.common;
+package org.apache.reef.inmemory.common.hdfs;
 
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
+import org.apache.reef.inmemory.common.BaseFsBlockMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 

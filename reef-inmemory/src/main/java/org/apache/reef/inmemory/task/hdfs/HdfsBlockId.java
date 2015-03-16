@@ -1,7 +1,5 @@
 package org.apache.reef.inmemory.task.hdfs;
 
-import org.apache.reef.inmemory.task.BlockId;
-
 import java.io.Serializable;
 
 /**
@@ -16,7 +14,7 @@ import java.io.Serializable;
  * - HDFS's LocatedBlock cannot be used, as it does not define an equals()
  *   method.
  */
-public final class HdfsBlockId implements BlockId, Serializable {
+public final class HdfsBlockId implements Serializable {
 
   private final String filePath;
   private final long offset;
@@ -42,17 +40,14 @@ public final class HdfsBlockId implements BlockId, Serializable {
     this.encodedToken = encodedToken;
   }
 
-  @Override
   public String getFilePath() {
     return filePath;
   }
 
-  @Override
   public long getOffset() {
     return offset;
   }
 
-  @Override
   public long getBlockSize() {
     return blockSize;
   }

@@ -12,6 +12,7 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.token.Token;
+import org.apache.reef.inmemory.common.BlockIdImpl;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
@@ -145,7 +146,9 @@ public class HdfsBlockLoader implements BlockLoader {
    * @return The Id of block
    */
   public BlockId getBlockId() {
-    return this.hdfsBlockId;
+    // TODO change to use blockIdFactory
+    final BlockId blockId = new BlockIdImpl(hdfsBlockId.getFilePath(), hdfsBlockId.getOffset(), hdfsBlockId.getBlockSize());
+    return blockId;
   }
 
   /**
