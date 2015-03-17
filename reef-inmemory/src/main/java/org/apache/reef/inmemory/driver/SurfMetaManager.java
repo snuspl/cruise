@@ -3,7 +3,7 @@ package org.apache.reef.inmemory.driver;
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.BlockIdFactory;
+import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.FileMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
@@ -32,7 +32,7 @@ public final class SurfMetaManager {
   private final CacheMessenger cacheMessenger;
   private final CacheLocationRemover cacheLocationRemover;
   private final CacheUpdater cacheUpdater;
-  private final BlockIdFactory blockIdFactory;
+  private final BlockMetaFactory blockMetaFactory;
   private final FileMetaFactory metaFactory;
   private final LocationSorter locationSorter;
   private final BaseFsClient baseFsClient;
@@ -42,7 +42,7 @@ public final class SurfMetaManager {
                          final CacheMessenger cacheMessenger,
                          final CacheLocationRemover cacheLocationRemover,
                          final CacheUpdater cacheUpdater,
-                         final BlockIdFactory blockIdFactory,
+                         final BlockMetaFactory blockMetaFactory,
                          final FileMetaFactory metaFactory,
                          final LocationSorter locationSorter,
                          final BaseFsClient baseFsClient) {
@@ -50,7 +50,7 @@ public final class SurfMetaManager {
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
     this.cacheUpdater = cacheUpdater;
-    this.blockIdFactory = blockIdFactory;
+    this.blockMetaFactory = blockMetaFactory;
     this.metaFactory = metaFactory;
     this.locationSorter = locationSorter;
     this.baseFsClient = baseFsClient;
@@ -290,7 +290,7 @@ public final class SurfMetaManager {
 
     final List<NodeInfo> nodeList = new ArrayList<>();
     nodeList.add(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
-    final BlockMeta newBlock = blockIdFactory.newBlockMeta(blockId, nodeList);
+    final BlockMeta newBlock = blockMetaFactory.newBlockMeta(blockId, nodeList);
 
     meta.setFileSize(meta.getFileSize() + nWritten);
     meta.addToBlocks(newBlock);

@@ -4,7 +4,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockInfoFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
@@ -30,7 +30,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   private final HdfsCacheMessenger cacheMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
   private final CacheLocationRemover cacheLocationRemover;
-  private final HdfsBlockIdFactory blockIdFactory;
+  private final HdfsBlockMetaFactory blockIdFactory;
   private final HdfsBlockInfoFactory blockInfoFactory;
   private final ReplicationPolicy replicationPolicy;
   private final FileSystem dfs; // Access must be synchronized
@@ -49,7 +49,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
                           final HdfsCacheMessenger cacheMessenger,
                           final HdfsCacheSelectionPolicy cacheSelector,
                           final CacheLocationRemover cacheLocationRemover,
-                          final HdfsBlockIdFactory blockIdFactory,
+                          final HdfsBlockMetaFactory blockIdFactory,
                           final HdfsBlockInfoFactory blockInfoFactory,
                           final ReplicationPolicy replicationPolicy,
                           final FileSystem dfs,

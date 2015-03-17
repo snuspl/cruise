@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.task.service;
 
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.BlockIdFactory;
+import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
@@ -66,11 +66,9 @@ public class SurfCacheServerTest {
     random.nextBytes(buffer);
 
     // Mock objects used to create SurfCacheServer
-    BlockId id = Mockito.mock(BlockId.class);
-    when(id.getBlockSize()).thenReturn((long) blockSize);
     BlockMeta blockMeta = Mockito.mock(BlockMeta.class);
-    BlockIdFactory factory = Mockito.mock(BlockIdFactory.class);
-    when(factory.newBlockId(blockMeta)).thenReturn(id);
+    final BlockId id = new BlockId(blockMeta);
+    BlockMetaFactory factory = Mockito.mock(BlockMetaFactory.class);
 
     /*
      * Cache is supposed to return the data specified by index.

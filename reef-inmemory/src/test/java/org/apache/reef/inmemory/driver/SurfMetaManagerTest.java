@@ -34,7 +34,7 @@ public final class SurfMetaManagerTest {
   private CacheMessenger cacheMessenger;
   private CacheLocationRemover cacheLocationRemover;
   private CacheUpdater cacheUpdater;
-  private BlockIdFactory blockIdFactory;
+  private BlockMetaFactory blockMetaFactory;
   private FileMetaFactory metaFactory;
   private LocationSorter locationSorter;
   private BaseFsClient baseFsClient;
@@ -49,7 +49,7 @@ public final class SurfMetaManagerTest {
     cacheMessenger = mockCacheMessenger();
     cacheLocationRemover = new CacheLocationRemover();
     cacheUpdater = mock(CacheUpdater.class);
-    blockIdFactory = mock(BlockIdFactory.class);
+    blockMetaFactory = mock(BlockMetaFactory.class);
     metaFactory = new HdfsFileMetaFactory();
     locationSorter = mock(LocationSorter.class);
     baseFsClient = mock(BaseFsClient.class);
@@ -83,7 +83,7 @@ public final class SurfMetaManagerTest {
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(metaLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
-            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+            blockMetaFactory, metaFactory, locationSorter, baseFsClient);
     when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
     metaManager.get(path, user);
@@ -109,7 +109,7 @@ public final class SurfMetaManagerTest {
     final BaseFsClient<FileStatus> baseFsClient = mock(BaseFsClient.class);
 
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
-            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+            blockMetaFactory, metaFactory, locationSorter, baseFsClient);
 
     // Assume that create from baseFS succeeds
     doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
@@ -152,7 +152,7 @@ public final class SurfMetaManagerTest {
     final BaseFsClient<FileStatus> baseFsClient = mock(BaseFsClient.class);
 
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
-            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+            blockMetaFactory, metaFactory, locationSorter, baseFsClient);
 
     // Assume that create from baseFS succeeds
     doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
@@ -235,7 +235,7 @@ public final class SurfMetaManagerTest {
     final BaseFsClient<FileStatus> baseFsClient = mock(BaseFsClient.class);
 
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
-            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+            blockMetaFactory, metaFactory, locationSorter, baseFsClient);
 
     when(baseFsClient.exists(getPathStr(rootPath))).thenReturn(true);
     when(baseFsClient.exists(getPathStr(newDirPath))).thenReturn(false);
@@ -279,7 +279,7 @@ public final class SurfMetaManagerTest {
     final BaseFsClient<FileStatus> baseFsClient = mock(BaseFsClient.class);
 
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
-            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+            blockMetaFactory, metaFactory, locationSorter, baseFsClient);
 
     // Assume that mkdirs from baseFS succeeds
     when(baseFsClient.mkdirs(anyString())).thenReturn(true);
@@ -368,7 +368,7 @@ public final class SurfMetaManagerTest {
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
-            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+            blockMetaFactory, metaFactory, locationSorter, baseFsClient);
     when(cacheUpdater.updateMeta(eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
     assertEquals(0, metaManager.clear());
@@ -415,7 +415,7 @@ public final class SurfMetaManagerTest {
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
-            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+            blockMetaFactory, metaFactory, locationSorter, baseFsClient);
 
     final String[] addresses = new String[]{ "localhost:17001", "localhost:17002", "localhost:17003" };
     final User user = defaultUser();
@@ -475,7 +475,7 @@ public final class SurfMetaManagerTest {
     final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
     final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
     final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater,
-            blockIdFactory, metaFactory, locationSorter, baseFsClient);
+            blockMetaFactory, metaFactory, locationSorter, baseFsClient);
 
     final int numNodes = 10;
     int port = 17000;

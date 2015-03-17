@@ -11,13 +11,14 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockInfoFactory;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
@@ -65,7 +66,7 @@ public final class SurfMetaManagerITCase {
   private LocationSorter locationSorter;
   private HdfsCacheSelectionPolicy selector;
   private CacheLocationRemover cacheLocationRemover;
-  private HdfsBlockIdFactory blockFactory;
+  private HdfsBlockMetaFactory blockFactory;
   private HdfsBlockInfoFactory blockInfoFactory;
   private HdfsFileMetaFactory metaFactory;
   private HdfsBlockLocationGetter blockLocationGetter;
@@ -81,7 +82,7 @@ public final class SurfMetaManagerITCase {
     messenger = new HdfsCacheMessenger(manager);
     selector = new HdfsRandomCacheSelectionPolicy();
     cacheLocationRemover = new CacheLocationRemover();
-    blockFactory = new HdfsBlockIdFactory();
+    blockFactory = new HdfsBlockMetaFactory();
     blockInfoFactory = new HdfsBlockInfoFactory();
     metaFactory = new HdfsFileMetaFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
@@ -213,7 +214,7 @@ public final class SurfMetaManagerITCase {
       final BlockMeta block = blocks.get(0);
       final Iterator<NodeInfo> it = block.getLocationsIterator();
       final NodeInfo nodeInfo = it.next();
-      cacheLocationRemover.remove(fileMeta.getFullPath(), blockFactory.newBlockId(block), nodeInfo.getAddress());
+      cacheLocationRemover.remove(fileMeta.getFullPath(), new BlockId(block), nodeInfo.getAddress());
     }
     // Remove all locations from second block
     {
@@ -221,7 +222,7 @@ public final class SurfMetaManagerITCase {
       final Iterator<NodeInfo> it = block.getLocationsIterator();
       while (it.hasNext()) {
         final NodeInfo nodeInfo = it.next();
-        cacheLocationRemover.remove(fileMeta.getFullPath(), blockFactory.newBlockId(block), nodeInfo.getAddress());
+        cacheLocationRemover.remove(fileMeta.getFullPath(), new BlockId(block), nodeInfo.getAddress());
       }
     }
     // (Leave rest of the blocks alone)
@@ -307,7 +308,7 @@ public final class SurfMetaManagerITCase {
               final Iterator<NodeInfo> it = block.getLocationsIterator();
               while (it.hasNext()) {
                 final NodeInfo nodeInfo = it.next();
-                cacheLocationRemover.remove(fileMeta.getFullPath(), blockFactory.newBlockId(block), nodeInfo.getAddress());
+                cacheLocationRemover.remove(fileMeta.getFullPath(), new BlockId(block), nodeInfo.getAddress());
               }
             }
           } catch (final Throwable t) {

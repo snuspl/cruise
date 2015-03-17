@@ -13,7 +13,7 @@ import org.apache.reef.tang.formats.RequiredParameter;
 import org.apache.reef.wake.EStage;
 import org.apache.reef.wake.StageConfiguration;
 import org.apache.reef.wake.impl.ThreadPoolStage;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
 import org.apache.reef.inmemory.driver.hdfs.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicyImpl;
@@ -61,7 +61,7 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
     .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)
     .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
     .bindNamedParameter(StageConfiguration.StageHandler.class, TaskMessageHandlerExecutor.class)
-    .bindImplementation(BlockIdFactory.class, HdfsBlockIdFactory.class)
+    .bindImplementation(BlockMetaFactory.class, HdfsBlockMetaFactory.class)
     .bindImplementation(FileMetaFactory.class, HdfsFileMetaFactory.class)
     .bindImplementation(BaseFsBlockInfoFactory.class, HdfsBlockInfoFactory.class)
     .bindImplementation(CacheLoader.class, HdfsMetaLoader.class)

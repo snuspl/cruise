@@ -1,5 +1,7 @@
 package org.apache.reef.inmemory.common;
 
+import org.apache.reef.inmemory.common.entity.BlockMeta;
+
 import java.io.Serializable;
 
 /**
@@ -7,25 +9,52 @@ import java.io.Serializable;
  * Implementing classes will be used as Map keys. Therefore, they must provide
  * well-formed equals() and hashCode() methods.
  */
-public class BlockId implements Serializable {
+public final class BlockId implements Serializable {
   private final String filePath;
   private final long offset;
   private final long blockSize;
 
+  /**
+   * Create a block id with information to identify this block.
+   * @param filePath The file which consists of this block.
+   * @param offset The offset from the start of the file.
+   * @param blockSize The size of block.
+   * TODO will be changed to fileId
+   */
   public BlockId(final String filePath, final long offset, final long blockSize) {
     this.filePath = filePath;
     this.offset = offset;
     this.blockSize = blockSize;
   }
 
+  /**
+   * Create a block id from BlockMeta object.
+   * @param blockMeta Metadata of this block.
+   */
+  public BlockId(final BlockMeta blockMeta) {
+    this.filePath = blockMeta.getFilePath();
+    this.offset = blockMeta.getOffSet();
+    this.blockSize = blockMeta.getLength();
+  }
+
+  /**
+   * Return the path of file.
+   * TODO will be changed to fileId
+   */
   public String getFilePath() {
     return filePath;
   }
 
+  /**
+   * Return the offset of this block from the start of the file.
+   */
   public long getOffset() {
     return offset;
   }
 
+  /**
+   * Return the size of block.
+   */
   public long getBlockSize() {
     return blockSize;
   }
