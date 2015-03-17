@@ -1,9 +1,9 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
-import org.apache.reef.inmemory.common.MockBlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
@@ -64,7 +64,7 @@ public final class InMemoryCacheImplTest {
   }
 
   private BlockId randomBlockId(long length) {
-    return new MockBlockId("/path", random.nextLong(), length);
+    return new BlockId("/path", random.nextLong(), length);
   }
 
   private byte[] ones(int length) {
@@ -169,7 +169,7 @@ public final class InMemoryCacheImplTest {
     final byte[] data = new byte[blockSize];
     new Random().nextBytes(data);
 
-    final BlockId blockId = new MockBlockId(fileName, offset, blockSize);
+    final BlockId blockId = new BlockId(fileName, offset, blockSize);
     final WritableBlockLoader blockLoader = new WritableBlockLoader(blockId, false, bufferSize);
 
     cache.prepareToWrite(blockLoader);

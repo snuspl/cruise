@@ -1,12 +1,12 @@
 package org.apache.reef.inmemory.task.service;
 
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
-import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.InMemoryCache;
 import org.junit.Before;
 import org.junit.Test;

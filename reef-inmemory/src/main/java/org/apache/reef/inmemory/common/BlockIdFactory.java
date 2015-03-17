@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.common;
 
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
-import org.apache.reef.inmemory.task.BlockId;
 
 import java.io.IOException;
 import java.util.List;
@@ -10,7 +9,7 @@ import java.util.List;
 /**
  * Factory that creates Block objects (using information from other Block objects)
  */
-public interface BlockIdFactory<FsBlockId extends BlockId> {
+public interface BlockIdFactory<FsMetadata> {
 
   /**
    * Create a new BlockId using information from BlockMeta.
@@ -18,7 +17,7 @@ public interface BlockIdFactory<FsBlockId extends BlockId> {
    * @param blockMeta Block information stored as a Thrift data structure
    * @return Base-FS specific block ID information
    */
-  public FsBlockId newBlockId(BlockMeta blockMeta);
+  public BlockId newBlockId(BlockMeta blockMeta);
 
   /**
    * Create a new BlockId using (path, offset, blockSize) which is unique per block
@@ -28,7 +27,7 @@ public interface BlockIdFactory<FsBlockId extends BlockId> {
    * @param blockSize Size of the block
    * @return General-purpose block ID information
    */
-  public FsBlockId newBlockId(String filePath, long offset, long blockSize);
+  public BlockId newBlockId(String filePath, long offset, long blockSize);
 
   /**
    * Create a new BlockMeta using BlockId and the block locations
@@ -38,5 +37,15 @@ public interface BlockIdFactory<FsBlockId extends BlockId> {
    * @return Block information stored as a Thrift data structure
    * @throws IOException
    */
-  public BlockMeta newBlockMeta(FsBlockId blockId, List<NodeInfo> nodes);
+  public BlockMeta newBlockMeta(BlockId blockId, List<NodeInfo> nodes);
+
+  /**
+   * Create a new BlockMeta from the FS-specific metadata.
+   * BlockMeta is a Thrift data structure, used in communication with the Client.
+   * @param filePath Path of file, to be added to block info
+   * @param metadata FS-specific block metadata
+   * @return Block information stored as a Thrift data structure
+   * @throws IOException
+   */
+  public BlockMeta newBlockMeta(String filePath, FsMetadata metadata) throws IOException;
 }

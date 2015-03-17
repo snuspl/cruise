@@ -1,5 +1,7 @@
 package org.apache.reef.inmemory.task;
 
+import org.apache.reef.inmemory.common.BlockId;
+
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;

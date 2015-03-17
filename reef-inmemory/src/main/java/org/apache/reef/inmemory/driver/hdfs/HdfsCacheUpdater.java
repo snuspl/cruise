@@ -3,7 +3,9 @@ package org.apache.reef.inmemory.driver.hdfs;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
+import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockInfoFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
@@ -11,8 +13,7 @@ import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.driver.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
-import org.apache.reef.inmemory.task.BlockId;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockInfo;
 import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 
 import javax.inject.Inject;
@@ -29,7 +30,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   private final HdfsCacheMessenger cacheMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
   private final CacheLocationRemover cacheLocationRemover;
-  private final HdfsBlockMetaFactory blockMetaFactory;
+  private final HdfsBlockIdFactory blockIdFactory;
+  private final HdfsBlockInfoFactory blockInfoFactory;
   private final ReplicationPolicy replicationPolicy;
   private final FileSystem dfs; // Access must be synchronized
   private final BlockLocationGetter blockLocationGetter;
@@ -47,7 +49,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
                           final HdfsCacheMessenger cacheMessenger,
                           final HdfsCacheSelectionPolicy cacheSelector,
                           final CacheLocationRemover cacheLocationRemover,
-                          final HdfsBlockMetaFactory blockMetaFactory,
+                          final HdfsBlockIdFactory blockIdFactory,
+                          final HdfsBlockInfoFactory blockInfoFactory,
                           final ReplicationPolicy replicationPolicy,
                           final FileSystem dfs,
                           final BlockLocationGetter blockLocationGetter) {
@@ -55,7 +58,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;
     this.cacheLocationRemover = cacheLocationRemover;
-    this.blockMetaFactory = blockMetaFactory;
+    this.blockIdFactory = blockIdFactory;
+    this.blockInfoFactory = blockInfoFactory;
     this.replicationPolicy = replicationPolicy;
     this.dfs = dfs;
     this.blockLocationGetter = blockLocationGetter;
@@ -81,11 +85,12 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   @Override
   public FileMeta updateMeta(FileMeta fileMeta) throws IOException {
     synchronized (fileMeta) {
-      final Path path = new Path(fileMeta.getFullPath());
+      // TODO Path will not be a part of fileMeta. Need to resolve fid -> path
+      final String pathStr = fileMeta.getFullPath();
       final long blockSize = fileMeta.getBlockSize();
 
       // 0. Apply removes
-      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(fileMeta.getFullPath());
+      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathStr);
       if (pendingRemoves != null) {
         applyRemoves(fileMeta, pendingRemoves);
       }
@@ -95,7 +100,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       if (cacheNodes.size() == 0) {
         throw new IOException("Surf has zero caches");
       }
-      final Action action = replicationPolicy.getReplicationAction(path.toString(), fileMeta);
+      final Action action = replicationPolicy.getReplicationAction(pathStr, fileMeta);
       final boolean pin = action.getPin();
       final int replicationFactor;
       if (replicationPolicy.isBroadcast(action)) {
@@ -106,7 +111,16 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
 
       // 2. Get information from HDFS
       assert(blockLocationGetter instanceof HdfsBlockLocationGetter);
-      final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(path);
+      final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(pathStr));
+
+      // 3. If the blocks are not resolved in the fileMeta, add them.
+      if (fileMeta.getBlocksSize() == 0 && !fileMeta.isDirectory()) {
+        for (final LocatedBlock locatedBlock : locatedBlocks) {
+          final BlockMeta blockMeta = blockIdFactory.newBlockMeta(pathStr, locatedBlock);
+          fileMeta.addToBlocks(blockMeta);
+          LOG.log(Level.SEVERE, "Block {0} is added to file {1}", new Object[] {blockMeta, fileMeta});
+        }
+      }
 
       // 3. For each block that needs loading, load blocks asynchronously
       for (final BlockMeta blockMeta : fileMeta.getBlocks()) {
@@ -129,10 +143,10 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
           }
 
           for (final CacheNode nodeToAdd : selectedNodes) {
-            final HdfsBlockId hdfsBlockId = blockMetaFactory.newBlockId(blockMeta);
+            final HdfsBlockInfo hdfsBlockInfo = blockInfoFactory.newBlockInfo(pathStr, locatedBlock);
             final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
                     HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
-            final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlockId, hdfsDatanodeInfos, pin);
+            final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlockInfo, hdfsDatanodeInfos, pin);
             cacheMessenger.addBlock(nodeToAdd.getTaskId(), msg);
             final NodeInfo location = new NodeInfo(nodeToAdd.getAddress(), nodeToAdd.getRack());
             blockMeta.addToLocations(location);

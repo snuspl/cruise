@@ -4,12 +4,8 @@ import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
 import org.apache.reef.inmemory.common.ITUtils;
-import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
@@ -41,9 +37,7 @@ public final class HdfsMetaLoaderITCase {
   private FileSystem fs;
   private CacheManager manager;
   private HdfsMetaLoader loader;
-  private HdfsBlockMetaFactory blockFactory;
   private HdfsFileMetaFactory metaFactory;
-  private BlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
   private FileSystem baseFs;
 
@@ -53,7 +47,6 @@ public final class HdfsMetaLoaderITCase {
   @Before
   public void setUp() throws IOException {
     manager = TestUtils.cacheManager();
-    blockFactory = new HdfsBlockMetaFactory();
     metaFactory = new HdfsFileMetaFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
@@ -75,8 +68,7 @@ public final class HdfsMetaLoaderITCase {
     fs.mkdirs(new Path(TESTDIR));
 
     baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
-    blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
-    loader = new HdfsMetaLoader(baseFs, blockLocationGetter, blockFactory, metaFactory, new NullEventRecorder());
+    loader = new HdfsMetaLoader(baseFs, metaFactory, new NullEventRecorder());
   }
 
   /**
@@ -135,7 +127,6 @@ public final class HdfsMetaLoaderITCase {
     final FileMeta fileMeta = loader.load(smallFile);
     assertNotNull(fileMeta);
     assertFalse(fileMeta.isDirectory());
-    assertEquals(0, fileMeta.getBlocksIterator().next().getLocationsSize());
     assertEquals(blockSize, fileMeta.getBlockSize());
     assertEquals(smallFile.toString(), fileMeta.getFullPath());
   }
@@ -154,23 +145,10 @@ public final class HdfsMetaLoaderITCase {
     final int numChunks = 20;
     final Path largeFile = ITUtils.writeFile(fs, TESTDIR + "/largeFile", chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
-            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength * numChunks);
-
     final FileMeta fileMeta = loader.load(largeFile);
     assertNotNull(fileMeta);
     assertFalse(fileMeta.isDirectory());
     assertEquals(blockSize, fileMeta.getBlockSize());
     assertEquals(largeFile.toString(), fileMeta.getFullPath());
-
-    final List<BlockMeta> blocks = fileMeta.getBlocks();
-    assertEquals(locatedBlocks.getLocatedBlocks().size(), fileMeta.getBlocksSize());
-    final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
-            ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
-    assertEquals(numBlocksComputed, blocks.size());
-    for (int i = 0; i < blocks.size(); i++) {
-      assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), blocks.get(i).getBlockId());
-      assertEquals(0, blocks.get(i).getLocationsSize());
-    }
   }
 }

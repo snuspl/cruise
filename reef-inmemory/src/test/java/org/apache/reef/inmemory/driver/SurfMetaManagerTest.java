@@ -3,17 +3,13 @@ package org.apache.reef.inmemory.driver;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.*;
-import org.apache.reef.inmemory.common.BlockIdFactory;
-import org.apache.reef.inmemory.common.CacheUpdates;
-import org.apache.reef.inmemory.common.FileMetaFactory;
+import org.apache.reef.inmemory.common.*;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
-import org.apache.reef.inmemory.task.BlockId;
-import org.apache.reef.inmemory.common.MockBlockId;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -401,12 +397,12 @@ public final class SurfMetaManagerTest {
   }
 
   private static void addRemoval(final CacheUpdates updates, final Path path, final long offset, final long blockSize) {
-    final BlockId blockId = new MockBlockId(path.toString(), offset, blockSize);
+    final BlockId blockId = new BlockId(path.toString(), offset, blockSize);
     updates.addRemoval(blockId);
   }
 
   private static void addFailure(final CacheUpdates updates, final Path path, final long offset, final long blockSize) {
-    final BlockId blockId = new MockBlockId(path.toString(), offset, blockSize);
+    final BlockId blockId = new BlockId(path.toString(), offset, blockSize);
     updates.addFailure(blockId, new IOException("Test"));
   }
 

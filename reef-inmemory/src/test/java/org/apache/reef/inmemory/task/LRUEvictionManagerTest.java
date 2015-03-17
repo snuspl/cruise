@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.task;
 
-import org.apache.reef.inmemory.common.MockBlockId;
+import org.apache.reef.inmemory.common.BlockId;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -20,7 +20,7 @@ public final class LRUEvictionManagerTest {
   private final long blockSize = 10;
 
   private BlockId randomBlockId(long length) {
-    return new MockBlockId("/path", random.nextLong(), length);
+    return new BlockId("/path", random.nextLong(), length);
   }
 
   @Before

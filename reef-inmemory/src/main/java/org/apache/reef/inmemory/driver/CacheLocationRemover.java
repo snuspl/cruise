@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.driver;
 
-import org.apache.reef.inmemory.task.BlockId;
+
+import org.apache.reef.inmemory.common.BlockId;
 
 import javax.inject.Inject;
 import java.util.ArrayList;

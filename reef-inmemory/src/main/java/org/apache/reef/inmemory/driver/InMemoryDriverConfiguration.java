@@ -4,7 +4,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.reef.inmemory.common.*;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockInfoFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
@@ -20,7 +20,6 @@ import org.apache.reef.inmemory.driver.replication.ReplicationPolicyImpl;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
 import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
 import org.apache.reef.inmemory.driver.write.WritingRandomCacheSelectionPolicy;
-import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.CacheParameters;
 
 /**
@@ -62,10 +61,9 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
     .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)
     .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
     .bindNamedParameter(StageConfiguration.StageHandler.class, TaskMessageHandlerExecutor.class)
-    .bindImplementation(BlockId.class, BlockIdImpl.class)
     .bindImplementation(BlockIdFactory.class, HdfsBlockIdFactory.class)
     .bindImplementation(FileMetaFactory.class, HdfsFileMetaFactory.class)
-    .bindImplementation(BaseFsBlockMetaFactory.class, HdfsBlockMetaFactory.class)
+    .bindImplementation(BaseFsBlockInfoFactory.class, HdfsBlockInfoFactory.class)
     .bindImplementation(CacheLoader.class, HdfsMetaLoader.class)
     .bindImplementation(CacheMessenger.class, HdfsCacheMessenger.class)
     .bindImplementation(CacheUpdater.class, HdfsCacheUpdater.class)

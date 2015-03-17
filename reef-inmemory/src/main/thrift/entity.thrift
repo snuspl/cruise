@@ -12,8 +12,6 @@ struct NodeInfo {
  * Contains relevant block information to be stored as Metadata.
  * This data structure coincide to FileMeta, which is created/managed in Surf.
  * Currently takes after o.a.h.hdfs.protocol.ExtendedBlock
- *
- * TODO remove dependency on Hadoop Metadata.
  */
 struct BlockMeta {
 	1: string filePath,              // File's absolute path
@@ -21,9 +19,6 @@ struct BlockMeta {
 	3: i64 offSet,                   // Order of the block
 	4: i64 length,                   // Size of the block in bytes
 	5: list<NodeInfo> locations,     // Block locations. Metaserver should return a sorted list according to locality.
-	6: string namespaceId,           // The namespace, e.g. HDFS block pool ID
-	7: i64 generationStamp,          // Version number for append-able FSes, e.g. HDFS (set to 0 when not append-able)
-	8: string token                  // Token
 }
 
 /**

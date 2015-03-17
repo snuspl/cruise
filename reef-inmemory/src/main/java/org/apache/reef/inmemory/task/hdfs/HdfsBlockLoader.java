@@ -12,13 +12,12 @@ import org.apache.hadoop.hdfs.server.common.HdfsServerConstants;
 import org.apache.hadoop.hdfs.server.datanode.CachingStrategy;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.token.Token;
-import org.apache.reef.inmemory.common.BlockIdImpl;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
-import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 
 import java.io.IOException;
@@ -42,7 +41,7 @@ public class HdfsBlockLoader implements BlockLoader {
   private static final String CLIENT_NAME = "BlockLoader";
   private static final boolean VERIFY_CHECKSUM = true;
 
-  private final HdfsBlockId hdfsBlockId;
+  private final HdfsBlockInfo hdfsBlockInfo;
   private final ExtendedBlock block;
   private final List<HdfsDatanodeInfo> dnInfoList;
   private final long blockSize;
@@ -55,12 +54,12 @@ public class HdfsBlockLoader implements BlockLoader {
   /**
    * Constructor of BlockLoader
    */
-  public HdfsBlockLoader(final HdfsBlockId id,
+  public HdfsBlockLoader(final HdfsBlockInfo id,
                          final List<HdfsDatanodeInfo> infoList,
                          final boolean pin,
                          final int bufferSize,
                          final EventRecorder recorder) {
-    hdfsBlockId = id;
+    hdfsBlockInfo = id;
     block = new ExtendedBlock(id.getPoolId(), id.getUniqueId(), id.getBlockSize(), id.getGenerationTimestamp());
     dnInfoList = infoList;
     blockSize = id.getBlockSize();
@@ -77,7 +76,7 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   @Override
   public void loadBlock() throws IOException {
-    final Event loadBlockEvent = RECORD.event("task.load-block", Long.toString(hdfsBlockId.getUniqueId())).start();
+    final Event loadBlockEvent = RECORD.event("task.load-block", Long.toString(hdfsBlockInfo.getUniqueId())).start();
 
     final Configuration conf = new HdfsConfiguration();
 
@@ -95,7 +94,7 @@ public class HdfsBlockLoader implements BlockLoader {
       String fileName = targetAddress.toString() + ":" + block.getBlockId();
 
       LOG.log(Level.INFO, "Start loading block {0} from datanode at {1}",
-        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockInfo.getUniqueId()), datanode.getXferAddr()});
 
       // Declare socket and blockReader object to close them in the future.
       Socket socket = null;
@@ -103,7 +102,7 @@ public class HdfsBlockLoader implements BlockLoader {
 
       try {
         // Connect to Datanode and create a Block reader
-        final Token<BlockTokenIdentifier> blockToken = decodeBlockToken(hdfsBlockId, datanode);
+        final Token<BlockTokenIdentifier> blockToken = decodeBlockToken(hdfsBlockInfo, datanode);
         socket = connectToDatanode(conf, targetAddress, datanode);
         blockReader = getBlockReader(conf, fileName, blockToken, socket, datanode);
 
@@ -130,10 +129,10 @@ public class HdfsBlockLoader implements BlockLoader {
         blockReader.close();
         socket.close();
         LOG.log(Level.INFO, "Done loading block {0} from datanode at {1}",
-          new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
+          new String[]{Long.toString(hdfsBlockInfo.getUniqueId()), datanode.getXferAddr()});
       } catch (IOException e) {
         LOG.log(Level.WARNING, "Closing BlockReader for block {0} from datanode at {1} has failed",
-          new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
+          new String[]{Long.toString(hdfsBlockInfo.getUniqueId()), datanode.getXferAddr()});
       }
       break;
 
@@ -147,7 +146,7 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   public BlockId getBlockId() {
     // TODO change to use blockIdFactory
-    final BlockId blockId = new BlockIdImpl(hdfsBlockId.getFilePath(), hdfsBlockId.getOffset(), hdfsBlockId.getBlockSize());
+    final BlockId blockId = new BlockId(hdfsBlockInfo.getFilePath(), hdfsBlockInfo.getOffset(), hdfsBlockInfo.getBlockSize());
     return blockId;
   }
 
@@ -168,7 +167,7 @@ public class HdfsBlockLoader implements BlockLoader {
       socket.setSoTimeout(HdfsServerConstants.READ_TIMEOUT);
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
-        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockInfo.getUniqueId()), datanode.getXferAddr()});
       throw new ConnectionFailedException(e);
     }
 
@@ -177,20 +176,20 @@ public class HdfsBlockLoader implements BlockLoader {
 
   /**
    * Decode a BlockToken which is necessary to create BlockReader. Because Token itself is not serializable,
-   * the Token is encoded when stored in {@link org.apache.reef.inmemory.task.hdfs.HdfsBlockId}
-   * @param hdfsBlockId BlockId of the block to read
+   * the Token is encoded when stored in {@link HdfsBlockInfo}
+   * @param hdfsBlockInfo BlockId of the block to read
    * @param datanode Datanode to load the data from
    * @return Token Identifier used to load the block
    * @throws TokenDecodeFailedException When failed to decode the token
    */
-  private Token<BlockTokenIdentifier> decodeBlockToken(HdfsBlockId hdfsBlockId, DatanodeID datanode) throws TokenDecodeFailedException {
+  private Token<BlockTokenIdentifier> decodeBlockToken(HdfsBlockInfo hdfsBlockInfo, DatanodeID datanode) throws TokenDecodeFailedException {
     Token<BlockTokenIdentifier> blockToken;
     blockToken = new Token<>();
     try {
-      blockToken.decodeFromUrlString(hdfsBlockId.getEncodedToken());
+      blockToken.decodeFromUrlString(hdfsBlockInfo.getEncodedToken());
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Token decode error while loading block {0} from datanode at {1}. Retry with next datanode",
-        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockInfo.getUniqueId()), datanode.getXferAddr()});
       throw new TokenDecodeFailedException(e);
     }
     return blockToken;
@@ -248,7 +247,7 @@ public class HdfsBlockLoader implements BlockLoader {
         .build();
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Connection error while loading block {0} from datanode at {1}. Retry with next datanode",
-        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockInfo.getUniqueId()), datanode.getXferAddr()});
       throw new ConnectionFailedException(e);
     }
     return blockReader;
@@ -266,7 +265,7 @@ public class HdfsBlockLoader implements BlockLoader {
       return blockReader.readAll(buf, 0, buf.length);
     } catch (IOException e) {
       LOG.log(Level.WARNING, "Data transfer error while loading block {0} from datanode at {1}. Retry with next datanode",
-        new String[]{Long.toString(hdfsBlockId.getUniqueId()), datanode.getXferAddr()});
+        new String[]{Long.toString(hdfsBlockInfo.getUniqueId()), datanode.getXferAddr()});
       throw new TransferFailedException(e);
     }
   }

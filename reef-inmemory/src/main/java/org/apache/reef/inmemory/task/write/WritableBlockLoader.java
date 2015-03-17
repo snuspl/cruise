@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.task.write;
 
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 
 import java.io.IOException;

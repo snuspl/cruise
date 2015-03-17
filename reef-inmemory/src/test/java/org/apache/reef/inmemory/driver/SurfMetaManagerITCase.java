@@ -11,7 +11,7 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockInfoFactory;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
@@ -66,7 +66,7 @@ public final class SurfMetaManagerITCase {
   private HdfsCacheSelectionPolicy selector;
   private CacheLocationRemover cacheLocationRemover;
   private HdfsBlockIdFactory blockFactory;
-  private HdfsBlockMetaFactory blockMetaFactory;
+  private HdfsBlockInfoFactory blockInfoFactory;
   private HdfsFileMetaFactory metaFactory;
   private HdfsBlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
@@ -82,7 +82,7 @@ public final class SurfMetaManagerITCase {
     selector = new HdfsRandomCacheSelectionPolicy();
     cacheLocationRemover = new CacheLocationRemover();
     blockFactory = new HdfsBlockIdFactory();
-    blockMetaFactory = new HdfsBlockMetaFactory();
+    blockInfoFactory = new HdfsBlockInfoFactory();
     metaFactory = new HdfsFileMetaFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
@@ -107,11 +107,11 @@ public final class SurfMetaManagerITCase {
     blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
     baseFsClient = new HDFSClient(baseFs, metaFactory);
 
-    loader = new HdfsMetaLoader(baseFs, blockLocationGetter, blockMetaFactory, metaFactory, RECORD);
+    loader = new HdfsMetaLoader(baseFs, metaFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockMetaFactory, replicationPolicy, baseFs, blockLocationGetter);
+    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, blockInfoFactory, replicationPolicy, baseFs, blockLocationGetter);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
     metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, metaFactory, locationSorter, baseFsClient);

@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.FileMetaFactory;
@@ -10,7 +11,6 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
-import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
 import java.io.FileNotFoundException;

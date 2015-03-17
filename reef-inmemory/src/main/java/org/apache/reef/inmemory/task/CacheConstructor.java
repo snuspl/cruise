@@ -4,6 +4,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.tang.ExternalConstructor;
 import org.apache.reef.tang.annotations.Parameter;
 

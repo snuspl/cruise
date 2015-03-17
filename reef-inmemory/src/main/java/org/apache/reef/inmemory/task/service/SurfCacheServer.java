@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.task.service;
 
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.BlockIdFactory;
 import org.apache.reef.inmemory.common.entity.AllocatedBlockMeta;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
@@ -8,7 +9,6 @@ import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
-import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.InMemoryCache;

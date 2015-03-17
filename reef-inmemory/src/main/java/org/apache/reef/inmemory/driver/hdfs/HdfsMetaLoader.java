@@ -3,19 +3,14 @@ package org.apache.reef.inmemory.driver.hdfs;
 import com.google.common.cache.CacheLoader;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
-import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.hdfs.HdfsFileMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.FileMeta;
-import org.apache.reef.inmemory.driver.BlockLocationGetter;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -32,19 +27,13 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
   private final EventRecorder RECORD;
 
   private final FileSystem dfs;
-  private final BlockLocationGetter blockLocationGetter;
-  private final HdfsBlockMetaFactory blockInfoFactory;
   private final HdfsFileMetaFactory metaFactory;
 
   @Inject
   public HdfsMetaLoader(final FileSystem dfs,
-                        final BlockLocationGetter blockLocationGetter,
-                        final HdfsBlockMetaFactory blockMetaFactory,
                         final HdfsFileMetaFactory metaFactory,
                         final EventRecorder recorder) {
     this.dfs = dfs;
-    this.blockLocationGetter = blockLocationGetter;
-    this.blockInfoFactory = blockMetaFactory;
     this.metaFactory = metaFactory;
     this.RECORD = recorder;
   }
@@ -62,26 +51,7 @@ public final class HdfsMetaLoader extends CacheLoader<Path, FileMeta> implements
     RECORD.record(getFileInfoEvent.stop());
 
     final FileMeta fileMeta = metaFactory.toFileMeta(fileStatus);
-    if (!fileMeta.isDirectory()) {
-      addBlocks(fileMeta);
-    }
     return fileMeta;
-  }
-
-  /**
-   * Add blocks to fileMeta. Each BlockMeta has information to load the block from DataNode directly.
-   * @throws IOException
-   */
-  private void addBlocks(final FileMeta fileMeta) throws IOException {
-    final String pathStr = fileMeta.getFullPath();
-
-    assert(blockLocationGetter instanceof HdfsBlockLocationGetter);
-    final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(pathStr));
-
-    for (final LocatedBlock locatedBlock : locatedBlocks) {
-      final BlockMeta blockMeta = blockInfoFactory.newBlockMeta(pathStr, locatedBlock);
-      fileMeta.addToBlocks(blockMeta);
-    }
   }
 
   @Override

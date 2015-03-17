@@ -9,7 +9,7 @@ import org.apache.hadoop.hdfs.protocol.ClientProtocol;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockInfoFactory;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
@@ -33,7 +33,7 @@ public class HdfsBlockLoaderITCase {
   private static final int BUFFER_SIZE = 8 * 1024 * 1024;
 
   private EventRecorder RECORD;
-  private HdfsBlockMetaFactory blockFactory;
+  private HdfsBlockInfoFactory blockInfoFactory;
 
   private FileSystem fs;
   private LocatedBlocks blocks;
@@ -44,7 +44,7 @@ public class HdfsBlockLoaderITCase {
   @Before
   public void setUp() throws Exception {
     RECORD = new NullEventRecorder();
-    blockFactory = new HdfsBlockMetaFactory();
+    blockInfoFactory = new HdfsBlockInfoFactory();
 
     final Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
@@ -88,7 +88,7 @@ public class HdfsBlockLoaderITCase {
       Assert.assertEquals("Test block size : ", blockSize, block.getBlockSize());
 
       // Retrieve the information for block and datanode
-      HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
+      HdfsBlockInfo blockId = blockInfoFactory.newBlockInfo(PATH, block);
       List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
 
       BlockLoader loader = new HdfsBlockLoader(blockId, datanodeInfo, false, BUFFER_SIZE, RECORD);
@@ -113,8 +113,8 @@ public class HdfsBlockLoaderITCase {
   @Test(expected = UnsupportedOperationException.class)
   public void testInvalidSize() throws IOException {
     LocatedBlock block = blocks.get(0);
-    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
-    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, 0, blockId.getUniqueId(), Integer.MAX_VALUE+(long)1, blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
+    HdfsBlockInfo blockId = blockInfoFactory.newBlockInfo(PATH, block);
+    HdfsBlockInfo dummyBlockId = new HdfsBlockInfo(PATH, 0, blockId.getUniqueId(), Integer.MAX_VALUE+(long)1, blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
 
     BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false, BUFFER_SIZE, RECORD);
@@ -129,7 +129,7 @@ public class HdfsBlockLoaderITCase {
   public void testInvalidAddress() throws IOException{
     LocatedBlock block = blocks.get(0);
 
-    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
+    HdfsBlockInfo blockId = blockInfoFactory.newBlockInfo(PATH, block);
     List<HdfsDatanodeInfo> dummyDatanodeInfo = new ArrayList<HdfsDatanodeInfo>();
     dummyDatanodeInfo.add(new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", 0, 0, 0, 0));
     BlockLoader loader = new HdfsBlockLoader(blockId, dummyDatanodeInfo, false, BUFFER_SIZE, RECORD);
@@ -144,7 +144,7 @@ public class HdfsBlockLoaderITCase {
   public void testRetry() throws IOException {
     LocatedBlock block = blocks.get(0);
 
-    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
+    HdfsBlockInfo blockId = blockInfoFactory.newBlockInfo(PATH, block);
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     datanodeInfo.add(0, new HdfsDatanodeInfo("1.1.1.1", "unreachable", "peer_unreachable", 0, 0, 0, 0));
     BlockLoader loader = new HdfsBlockLoader(blockId, datanodeInfo, false, BUFFER_SIZE, RECORD);
@@ -159,8 +159,8 @@ public class HdfsBlockLoaderITCase {
   public void testInvalidId() throws IOException {
     LocatedBlock block = blocks.get(0);
 
-    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
-    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, 0, (long)-1, blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
+    HdfsBlockInfo blockId = blockInfoFactory.newBlockInfo(PATH, block);
+    HdfsBlockInfo dummyBlockId = new HdfsBlockInfo(PATH, 0, (long)-1, blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), blockId.getEncodedToken());
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false, BUFFER_SIZE, RECORD);
     loader.loadBlock();
@@ -174,8 +174,8 @@ public class HdfsBlockLoaderITCase {
   public void testInvalidToken() throws IOException {
     LocatedBlock block = blocks.get(0);
 
-    HdfsBlockId blockId = blockFactory.newBlockId(PATH, block);
-    HdfsBlockId dummyBlockId = new HdfsBlockId(PATH, 0, blockId.getUniqueId(), blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), "");
+    HdfsBlockInfo blockId = blockInfoFactory.newBlockInfo(PATH, block);
+    HdfsBlockInfo dummyBlockId = new HdfsBlockInfo(PATH, 0, blockId.getUniqueId(), blockId.getBlockSize(), blockId.getGenerationTimestamp(),  blockId.getPoolId(), "");
     List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
     BlockLoader loader = new HdfsBlockLoader(dummyBlockId, datanodeInfo, false, BUFFER_SIZE, RECORD);
     loader.loadBlock();

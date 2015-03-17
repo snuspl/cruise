@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.task;
 
 
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
