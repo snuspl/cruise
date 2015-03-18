@@ -57,7 +57,7 @@ public final class CacheBlockLoader {
   private SurfCacheService.Client getClient(final String cacheAddress) throws IOException, TTransportException {
     final SurfCacheService.Client client = cacheManager.get(cacheAddress);
     LOG.log(Level.INFO, "Connected to client at {0} for data from block {1}",
-            new String[]{cacheAddress, Long.toString(block.getBlockId())});
+            new String[]{cacheAddress, block.toString()});
     return client;
   }
 
@@ -87,7 +87,7 @@ public final class CacheBlockLoader {
 
     if (LOG.isLoggable(Level.FINEST)) {
       LOG.log(Level.FINEST, "Start get data from block {0}, with position {1}, chunkStartPosition {2}",
-              new String[]{Long.toString(block.getBlockId()), Long.toString(position), Long.toString(chunkStartPosition)});
+              new String[]{block.toString(), Long.toString(position), Long.toString(chunkStartPosition)});
     }
     if (this.cachedChunkPosition == chunkStartPosition && this.cachedChunk != null) {
       final ByteBuffer dataBuffer = ByteBuffer.wrap(this.cachedChunk);
@@ -98,7 +98,7 @@ public final class CacheBlockLoader {
 
       if (LOG.isLoggable(Level.FINEST)) {
         LOG.log(Level.FINEST, "Done get cached data from block {0}, with position {1}, chunkStartPosition {2}",
-                new String[]{Long.toString(block.getBlockId()), Long.toString(position), Long.toString(chunkStartPosition)});
+                new String[]{block.toString(), Long.toString(position), Long.toString(chunkStartPosition)});
       }
 
       return dataBuffer;
@@ -122,9 +122,9 @@ public final class CacheBlockLoader {
         final SurfCacheService.Client client = getClient(cacheAddress);
         synchronized(client) {
           final Event dataTransferEvent = RECORD.event("client.data-transfer",
-                  block.getBlockId() + ":" + chunkStartPosition).start();
+                  block.toString() + ":" + chunkStartPosition).start();
           LOG.log(Level.INFO, "Start data transfer from block {0}, with chunkStartPosition {1}",
-                  new String[]{Long.toString(block.getBlockId()), Integer.toString(chunkStartPosition)});
+                  new String[]{block.toString(), Integer.toString(chunkStartPosition)});
 
           final ByteBuffer dataBuffer = client.getData(block, chunkStartPosition, cacheManager.getBufferSize());
           if (chunkPosition + length < dataBuffer.limit()) {
@@ -138,7 +138,7 @@ public final class CacheBlockLoader {
           dataBuffer.position(chunkPosition);
 
           LOG.log(Level.INFO, "Done data transfer from block {0}, with chunkStartPosition {1}",
-                  new String[]{Long.toString(block.getBlockId()), Integer.toString(chunkStartPosition)});
+                  new String[]{block.toString(), Integer.toString(chunkStartPosition)});
           RECORD.record(dataTransferEvent.stop());
           return dataBuffer;
         }

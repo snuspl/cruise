@@ -186,7 +186,8 @@ public final class SurfMetaManagerITCase {
             ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
     assertEquals(numBlocksComputed, blocks.size());
     for (int i = 0; i < blocks.size(); i++) {
-      assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), blocks.get(i).getBlockId());
+      assertEquals(locatedBlocks.get(i).getStartOffset(), blocks.get(i).getOffSet());
+      assertEquals(locatedBlocks.get(i).getBlockSize(), blocks.get(i).getLength());
       assertEquals(3, blocks.get(i).getLocationsSize());
     }
   }
@@ -264,7 +265,8 @@ public final class SurfMetaManagerITCase {
               ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
       assertEquals(numBlocksComputed, updatedBlocks.size());
       for (int i = 0; i < updatedBlocks.size(); i++) {
-        assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), updatedBlocks.get(i).getBlockId());
+        assertEquals(locatedBlocks.get(i).getStartOffset(), updatedBlocks.get(i).getOffSet());
+        assertEquals(locatedBlocks.get(i).getBlockSize(), updatedBlocks.get(i).getLength());
         assertTrue(updatedBlocks.get(i).getLocationsSize() > 0);
         assertTrue(3 >= updatedBlocks.get(i).getLocationsSize());
       }
@@ -338,7 +340,8 @@ public final class SurfMetaManagerITCase {
               ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
       assertEquals(numBlocksComputed, updatedBlocks.size());
       for (int i = 0; i < updatedBlocks.size(); i++) {
-        assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), updatedBlocks.get(i).getBlockId());
+        assertEquals(locatedBlocks.get(i).getStartOffset(), updatedBlocks.get(i).getOffSet());
+        assertEquals(locatedBlocks.get(i).getBlockSize(), updatedBlocks.get(i).getLength());
         assertTrue(updatedBlocks.get(i).getLocationsSize() > 0);
         assertTrue(3 >= updatedBlocks.get(i).getLocationsSize());
       }

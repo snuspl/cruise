@@ -19,10 +19,9 @@ public final class BlockId implements Serializable {
    * @param filePath The file which consists of this block.
    * @param offset The offset from the start of the file.
    * @param blockSize The size of block.
-   * TODO will be changed to fileId
    */
   public BlockId(final String filePath, final long offset, final long blockSize) {
-    this.filePath = filePath;
+    this.filePath = filePath; // TODO Replace filePath with another unique field (e.g. fileId)
     this.offset = offset;
     this.blockSize = blockSize;
   }
@@ -32,14 +31,12 @@ public final class BlockId implements Serializable {
    * @param blockMeta Metadata of this block.
    */
   public BlockId(final BlockMeta blockMeta) {
-    this.filePath = blockMeta.getFilePath();
-    this.offset = blockMeta.getOffSet();
-    this.blockSize = blockMeta.getLength();
+    this(blockMeta.getFilePath(), blockMeta.getOffSet(), blockMeta.getLength());
   }
 
   /**
    * Return the path of file.
-   * TODO will be changed to fileId
+   * TODO Replace filePath with another unique field (e.g. fileId)
    */
   public String getFilePath() {
     return filePath;
@@ -83,7 +80,7 @@ public final class BlockId implements Serializable {
 
   @Override
   public String toString() {
-    return "BlockIdImpl{" +
+    return "BlockId{" +
             "filePath='" + filePath + '\'' +
             ", offset=" + offset +
             ", blockSize=" + blockSize +

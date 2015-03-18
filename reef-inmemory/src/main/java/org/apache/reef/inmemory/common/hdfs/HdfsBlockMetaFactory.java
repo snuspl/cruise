@@ -23,7 +23,7 @@ public final class HdfsBlockMetaFactory implements BlockMetaFactory<LocatedBlock
   @Override
   public BlockMeta newBlockMeta(final BlockId blockId, final List<NodeInfo> nodes) {
     BlockMeta blockMeta = new BlockMeta();
-    blockMeta.setFilePath(blockId.getFilePath());
+    blockMeta.setFilePath(blockId.getFilePath()); // TODO Replace filePath with another unique field (e.g. fileId)
     blockMeta.setOffSet(blockId.getOffset());
     blockMeta.setLength(blockId.getBlockSize());
     blockMeta.setLocations(nodes);
@@ -37,9 +37,8 @@ public final class HdfsBlockMetaFactory implements BlockMetaFactory<LocatedBlock
   @Override
   public BlockMeta newBlockMeta(final String filePath, final LocatedBlock locatedBlock) throws IOException {
     BlockMeta blockMeta = new BlockMeta();
-    blockMeta.setFilePath(filePath);
+    blockMeta.setFilePath(filePath); // TODO Replace filePath with another unique field (e.g. fileId)
     blockMeta.setOffSet(locatedBlock.getStartOffset());
-    blockMeta.setBlockId(locatedBlock.getBlock().getBlockId());
     blockMeta.setLength(locatedBlock.getBlockSize());
     return blockMeta;
   }

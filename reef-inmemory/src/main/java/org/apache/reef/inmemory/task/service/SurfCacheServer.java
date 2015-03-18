@@ -36,7 +36,6 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   private final EventRecorder RECORD;
 
   private final InMemoryCache cache;
-  private final BlockMetaFactory blockMetaFactory;
   private final int port;
   private final int timeout;
   private final int numThreads;
@@ -47,14 +46,12 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Inject
   public SurfCacheServer(final InMemoryCache cache,
-                         final BlockMetaFactory blockMetaFactory,
                          final @Parameter(CacheParameters.Port.class) int port,
                          final @Parameter(CacheParameters.Timeout.class) int timeout,
                          final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
                          final @Parameter(CacheParameters.LoadingBufferSize.class) int bufferSize,
                          final EventRecorder recorder) {
     this.cache = cache;
-    this.blockMetaFactory = blockMetaFactory;
     this.port = port;
     this.timeout = timeout;
     this.numThreads = numThreads;
@@ -116,7 +113,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   public ByteBuffer getData(final BlockMeta blockMeta, final long offset, final long length)
     throws BlockLoadingException, BlockNotFoundException {
     final Event getDataEvent = RECORD.event("task.get-data",
-            Long.toString(blockMeta.getBlockId()) + ":" + Long.toString(offset)).start();
+            blockMeta.toString() + ":" + Long.toString(offset)).start();
     final BlockId blockId = new BlockId(blockMeta);
 
     // The first and last index to load blocks

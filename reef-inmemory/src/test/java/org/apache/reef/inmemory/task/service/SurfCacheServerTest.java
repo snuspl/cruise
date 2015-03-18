@@ -37,12 +37,12 @@ public class SurfCacheServerTest {
   @Test
   public void testFindEphemeralPort() throws IOException {
     final int bufferSize = 8 * 1024 * 1024;
-    final SurfCacheServer cacheServer = new SurfCacheServer(null, null, 0, 0, 1, bufferSize, RECORD);
+    final SurfCacheServer cacheServer = new SurfCacheServer(null, 0, 0, 1, bufferSize, RECORD);
     final int bindPort = cacheServer.initBindPort();
     assertEquals(bindPort, cacheServer.getBindPort());
     assertNotEquals(0, cacheServer.getBindPort());
 
-    final SurfCacheServer secondServer = new SurfCacheServer(null, null, 0, 0, 1, bufferSize, RECORD);
+    final SurfCacheServer secondServer = new SurfCacheServer(null, 0, 0, 1, bufferSize, RECORD);
 
     // Should not immediately give back the same port
     final int secondPort = secondServer.initBindPort();
@@ -68,7 +68,6 @@ public class SurfCacheServerTest {
     // Mock objects used to create SurfCacheServer
     BlockMeta blockMeta = Mockito.mock(BlockMeta.class);
     final BlockId id = new BlockId(blockMeta);
-    BlockMetaFactory factory = Mockito.mock(BlockMetaFactory.class);
 
     /*
      * Cache is supposed to return the data specified by index.
@@ -84,7 +83,7 @@ public class SurfCacheServerTest {
       when(cache.get(id, i)).thenReturn(Arrays.copyOfRange(buffer, chunkStart, chunkEnd));
     }
 
-    final SurfCacheServer cacheServer = new SurfCacheServer(cache, factory, 0, 0, 1, bufferSize, RECORD);
+    final SurfCacheServer cacheServer = new SurfCacheServer(cache, 0, 0, 1, bufferSize, RECORD);
 
     int nRead = 0;
     byte[] readBuffer = new byte[blockSize];

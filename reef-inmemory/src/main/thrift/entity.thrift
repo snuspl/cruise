@@ -14,11 +14,10 @@ struct NodeInfo {
  * Currently takes after o.a.h.hdfs.protocol.ExtendedBlock
  */
 struct BlockMeta {
-	1: string filePath,              // File's absolute path
-	2: i64 blockId,                  // Block id (unique)
-	3: i64 offSet,                   // Order of the block
-	4: i64 length,                   // Size of the block in bytes
-	5: list<NodeInfo> locations,     // Block locations. Metaserver should return a sorted list according to locality.
+	1: string filePath,              // File's absolute path TODO Replace filePath with another unique field (e.g. fileId)
+	2: i64 offSet,                   // Order of the block
+	3: i64 length,                   // Size of the block in bytes
+	4: list<NodeInfo> locations,     // Block locations. Metaserver should return a sorted list according to locality.
 }
 
 /**
@@ -42,7 +41,7 @@ struct User {
 }
 
 struct FileMeta{
-	1:string fullPath,        // File's absolute path
+	1:string fullPath,        // File's absolute path TODO Replace filePath with another unique field (e.g. fileId)
 	2:i64 fileSize,           // Size of the file in bytes
 	3:bool directory,         // Whether the file is a file or directory.
 	4:i16 replication,        // Replication status of the file.
@@ -52,5 +51,5 @@ struct FileMeta{
 	8:list<BlockMeta> blocks, // Information of blocks consisting of the file.
 	9:User user,              // Access information of the file.
 	10:string symLink,        // SymLink information of the file.
-	11:list<string> children,	// Children paths in case of directory.
+	11:list<string> children,	// Children paths in case of directory. TODO Remove when we have a metadata tree
 }

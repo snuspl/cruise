@@ -85,7 +85,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   @Override
   public FileMeta updateMeta(FileMeta fileMeta) throws IOException {
     synchronized (fileMeta) {
-      // TODO Path will not be a part of fileMeta. Need to resolve fid -> path
+      // TODO Replace pathStr with another unique field (e.g. fileId)
       final String pathStr = fileMeta.getFullPath();
       final long blockSize = fileMeta.getBlockSize();
 
@@ -118,7 +118,6 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
         for (final LocatedBlock locatedBlock : locatedBlocks) {
           final BlockMeta blockMeta = blockIdFactory.newBlockMeta(pathStr, locatedBlock);
           fileMeta.addToBlocks(blockMeta);
-          LOG.log(Level.SEVERE, "Block {0} is added to file {1}", new Object[] {blockMeta, fileMeta});
         }
       }
 
@@ -210,7 +209,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     }
     blockMeta = fileMeta.getBlocks().get(index);
     if (blockMeta.getOffSet() != offset) {
-      LOG.log(Level.WARNING, "The offset did not match: "+ blockMeta.getOffSet()+", "+offset);
+      LOG.log(Level.WARNING, "The offset did not match: "+blockMeta.getOffSet()+", "+offset);
       return null;
     } else if (blockMeta.getLocations() == null) {
       LOG.log(Level.WARNING, "No locations for block "+ blockMeta);
@@ -229,7 +228,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     }
 
     if (removed) {
-      LOG.log(Level.INFO, blockMeta.getBlockId()+" removed "+nodeAddress+", "+ blockMeta.getLocationsSize()+" locations remaining.");
+      LOG.log(Level.INFO, blockMeta.toString()+" removed "+nodeAddress+", "+blockMeta.getLocationsSize()+" locations remaining.");
       return blockMeta;
     } else {
       LOG.log(Level.INFO, "Did not remove "+nodeAddress);

@@ -21,7 +21,7 @@ public class HdfsFileMetaFactory implements FileMetaFactory<FileStatus> {
   @Override
   public FileMeta newFileMeta(final String path, final short replication, final long blockSize) {
     final FileMeta meta = new FileMeta();
-    meta.setFullPath(path);
+    meta.setFullPath(path); // TODO Replace filePath with another unique field (e.g. fileId)
     meta.setFileSize(0);
     meta.setDirectory(false);
     meta.setReplication(replication);
@@ -34,7 +34,7 @@ public class HdfsFileMetaFactory implements FileMetaFactory<FileStatus> {
   @Override
   public FileMeta newFileMetaForDir(final String path) {
     final FileMeta meta = new FileMeta();
-    meta.setFullPath(path);
+    meta.setFullPath(path); // TODO Replace filePath with another unique field (e.g. fileId)
     meta.setFileSize(0);
     meta.setDirectory(true);
     meta.setReplication((short) 0);
@@ -48,7 +48,7 @@ public class HdfsFileMetaFactory implements FileMetaFactory<FileStatus> {
   public FileMeta toFileMeta(final FileStatus fileStatus) throws IOException {
     final FileMeta fileMeta = new FileMeta();
     final String pathStr = fileStatus.getPath().toUri().getPath();
-    fileMeta.setFullPath(pathStr);
+    fileMeta.setFullPath(pathStr); // TODO Replace filePath with another unique field (e.g. fileId)
     fileMeta.setFileSize(fileStatus.getLen());
     fileMeta.setDirectory(fileStatus.isDirectory());
     fileMeta.setReplication(fileStatus.getReplication());
