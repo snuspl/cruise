@@ -51,6 +51,11 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
   }
 
   @Override
+  public long getBlockSize() {
+    return blockSize;
+  }
+
+  @Override
   public boolean isPinned() {
     return this.pinned;
   }

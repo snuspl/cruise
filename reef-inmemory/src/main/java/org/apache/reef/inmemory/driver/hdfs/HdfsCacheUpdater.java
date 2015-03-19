@@ -30,7 +30,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   private final HdfsCacheMessenger cacheMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
   private final CacheLocationRemover cacheLocationRemover;
-  private final HdfsBlockMetaFactory blockIdFactory;
+  private final HdfsBlockMetaFactory blockMetaFactory;
   private final HdfsBlockInfoFactory blockInfoFactory;
   private final ReplicationPolicy replicationPolicy;
   private final FileSystem dfs; // Access must be synchronized
@@ -49,7 +49,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
                           final HdfsCacheMessenger cacheMessenger,
                           final HdfsCacheSelectionPolicy cacheSelector,
                           final CacheLocationRemover cacheLocationRemover,
-                          final HdfsBlockMetaFactory blockIdFactory,
+                          final HdfsBlockMetaFactory blockMetaFactory,
                           final HdfsBlockInfoFactory blockInfoFactory,
                           final ReplicationPolicy replicationPolicy,
                           final FileSystem dfs,
@@ -58,7 +58,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;
     this.cacheLocationRemover = cacheLocationRemover;
-    this.blockIdFactory = blockIdFactory;
+    this.blockMetaFactory = blockMetaFactory;
     this.blockInfoFactory = blockInfoFactory;
     this.replicationPolicy = replicationPolicy;
     this.dfs = dfs;
@@ -116,13 +116,14 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       // 3. If the blocks are not resolved in the fileMeta, add them.
       if (fileMeta.getBlocksSize() == 0 && !fileMeta.isDirectory()) {
         for (final LocatedBlock locatedBlock : locatedBlocks) {
-          final BlockMeta blockMeta = blockIdFactory.newBlockMeta(pathStr, locatedBlock);
+          final BlockMeta blockMeta = blockMetaFactory.newBlockMeta(pathStr, locatedBlock);
           fileMeta.addToBlocks(blockMeta);
         }
       }
 
       // 3. For each block that needs loading, load blocks asynchronously
       for (final BlockMeta blockMeta : fileMeta.getBlocks()) {
+        final BlockId blockId = new BlockId(blockMeta);
         final int numLocations = blockMeta.getLocationsSize();
         if (numLocations < replicationFactor) {
           final int index = (int) (blockMeta.getOffSet() / blockSize);
@@ -145,7 +146,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
             final HdfsBlockInfo hdfsBlockInfo = blockInfoFactory.newBlockInfo(pathStr, locatedBlock);
             final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
                     HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
-            final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlockInfo, hdfsDatanodeInfos, pin);
+            final HdfsBlockMessage msg = new HdfsBlockMessage(blockId, hdfsBlockInfo, hdfsDatanodeInfos, pin);
             cacheMessenger.addBlock(nodeToAdd.getTaskId(), msg);
             final NodeInfo location = new NodeInfo(nodeToAdd.getAddress(), nodeToAdd.getRack());
             blockMeta.addToLocations(location);

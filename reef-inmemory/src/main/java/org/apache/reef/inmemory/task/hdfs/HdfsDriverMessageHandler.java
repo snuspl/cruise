@@ -40,8 +40,8 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
       if (msg.getHdfsBlockMessage().isPresent()) {
         LOG.log(Level.INFO, "Received load block msg");
         final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
-        final HdfsBlockLoader loader = new HdfsBlockLoader(
-                blockMsg.getBlockId(), blockMsg.getLocations(), blockMsg.isPin(), cache.getLoadingBufferSize(), RECORD);
+        final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getBlockInfo(),
+                blockMsg.getLocations(), blockMsg.isPin(), cache.getLoadingBufferSize(), RECORD);
 
         try {
           cache.load(loader);

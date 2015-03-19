@@ -66,9 +66,9 @@ public final class SurfMetaManagerITCase {
   private LocationSorter locationSorter;
   private HdfsCacheSelectionPolicy selector;
   private CacheLocationRemover cacheLocationRemover;
-  private HdfsBlockMetaFactory blockFactory;
+  private HdfsBlockMetaFactory blockMetaFactory;
   private HdfsBlockInfoFactory blockInfoFactory;
-  private HdfsFileMetaFactory metaFactory;
+  private HdfsFileMetaFactory fileMetaFactory;
   private HdfsBlockLocationGetter blockLocationGetter;
   private ReplicationPolicy replicationPolicy;
   private SurfMetaManager metaManager;
@@ -82,9 +82,9 @@ public final class SurfMetaManagerITCase {
     messenger = new HdfsCacheMessenger(manager);
     selector = new HdfsRandomCacheSelectionPolicy();
     cacheLocationRemover = new CacheLocationRemover();
-    blockFactory = new HdfsBlockMetaFactory();
+    blockMetaFactory = new HdfsBlockMetaFactory();
     blockInfoFactory = new HdfsBlockInfoFactory();
-    metaFactory = new HdfsFileMetaFactory();
+    fileMetaFactory = new HdfsFileMetaFactory();
     replicationPolicy = mock(ReplicationPolicy.class);
 
     for (int i = 0; i < 3; i++) {
@@ -106,16 +106,16 @@ public final class SurfMetaManagerITCase {
 
     baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
     blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
-    baseFsClient = new HDFSClient(baseFs, metaFactory);
+    baseFsClient = new HDFSClient(baseFs, fileMetaFactory);
 
-    loader = new HdfsMetaLoader(baseFs, metaFactory, RECORD);
+    loader = new HdfsMetaLoader(baseFs, fileMetaFactory, RECORD);
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, blockInfoFactory, replicationPolicy, baseFs, blockLocationGetter);
+    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockMetaFactory, blockInfoFactory, replicationPolicy, baseFs, blockLocationGetter);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockFactory, metaFactory, locationSorter, baseFsClient);
+    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockMetaFactory, fileMetaFactory, locationSorter, baseFsClient);
   }
 
   /**

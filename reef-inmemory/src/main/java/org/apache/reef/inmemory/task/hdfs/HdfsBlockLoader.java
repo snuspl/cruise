@@ -41,6 +41,7 @@ public class HdfsBlockLoader implements BlockLoader {
   private static final String CLIENT_NAME = "BlockLoader";
   private static final boolean VERIFY_CHECKSUM = true;
 
+  private final BlockId blockId;
   private final HdfsBlockInfo hdfsBlockInfo;
   private final ExtendedBlock block;
   private final List<HdfsDatanodeInfo> dnInfoList;
@@ -54,15 +55,17 @@ public class HdfsBlockLoader implements BlockLoader {
   /**
    * Constructor of BlockLoader
    */
-  public HdfsBlockLoader(final HdfsBlockInfo id,
+  public HdfsBlockLoader(final BlockId blockId,
+                         final HdfsBlockInfo blockInfo,
                          final List<HdfsDatanodeInfo> infoList,
                          final boolean pin,
                          final int bufferSize,
                          final EventRecorder recorder) {
-    hdfsBlockInfo = id;
-    block = new ExtendedBlock(id.getPoolId(), id.getUniqueId(), id.getBlockSize(), id.getGenerationTimestamp());
+    this.blockId = blockId;
+    hdfsBlockInfo = blockInfo;
+    block = new ExtendedBlock(blockInfo.getPoolId(), blockInfo.getUniqueId(), blockInfo.getBlockSize(), blockInfo.getGenerationTimestamp());
     dnInfoList = infoList;
-    blockSize = id.getBlockSize();
+    blockSize = blockInfo.getBlockSize();
     data = new ArrayList<>();
     totalRead = 0;
     this.pinned = pin;
@@ -145,8 +148,6 @@ public class HdfsBlockLoader implements BlockLoader {
    * @return The Id of block
    */
   public BlockId getBlockId() {
-    // TODO change to use blockIdFactory
-    final BlockId blockId = new BlockId(hdfsBlockInfo.getFilePath(), hdfsBlockInfo.getOffset(), hdfsBlockInfo.getBlockSize());
     return blockId;
   }
 
@@ -177,7 +178,7 @@ public class HdfsBlockLoader implements BlockLoader {
   /**
    * Decode a BlockToken which is necessary to create BlockReader. Because Token itself is not serializable,
    * the Token is encoded when stored in {@link HdfsBlockInfo}
-   * @param hdfsBlockInfo BlockId of the block to read
+   * @param hdfsBlockInfo BlockInfo of the block to read
    * @param datanode Datanode to load the data from
    * @return Token Identifier used to load the block
    * @throws TokenDecodeFailedException When failed to decode the token

@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.common.hdfs;
 
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockInfo;
 import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 
@@ -12,16 +13,23 @@ import java.util.List;
  */
 public final class HdfsBlockMessage implements Serializable {
 
+  private final BlockId blockId;
   private final HdfsBlockInfo blockInfo;
   private final List<HdfsDatanodeInfo> locations;
   private final boolean pin;
 
-  public HdfsBlockMessage(final HdfsBlockInfo blockInfo,
+  public HdfsBlockMessage(final BlockId blockId,
+                          final HdfsBlockInfo blockInfo,
                           final List<HdfsDatanodeInfo> locations,
                           final boolean pin) {
+    this.blockId = blockId;
     this.blockInfo = blockInfo;
     this.locations = locations;
     this.pin = pin;
+  }
+
+  public BlockId getBlockId() {
+    return blockId;
   }
 
   public HdfsBlockInfo getBlockInfo() {
