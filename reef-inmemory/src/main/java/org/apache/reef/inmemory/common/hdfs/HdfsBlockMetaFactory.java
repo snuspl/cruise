@@ -21,11 +21,11 @@ public final class HdfsBlockMetaFactory implements BlockMetaFactory<LocatedBlock
    * Fields unknown at the creation time are marked as -1 or null.
    */
   @Override
-  public BlockMeta newBlockMeta(final BlockId blockId, final List<NodeInfo> nodes) {
+  public BlockMeta newBlockMeta(final BlockId blockId, final long blockSize, final List<NodeInfo> nodes) {
     BlockMeta blockMeta = new BlockMeta();
     blockMeta.setFilePath(blockId.getFilePath()); // TODO Replace filePath with another unique field (e.g. fileId)
     blockMeta.setOffSet(blockId.getOffset());
-    blockMeta.setLength(blockId.getBlockSize());
+    blockMeta.setLength(blockSize);
     blockMeta.setLocations(nodes);
     return blockMeta;
   }

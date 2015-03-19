@@ -43,8 +43,10 @@ public final class CacheConstructor implements ExternalConstructor<Cache> {
     public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
       LOG.log(Level.INFO, "Removed: "+notification.getKey());
       final BlockId blockId = notification.getKey();
-      final boolean pinned = notification.getValue().isPinned();
-      memoryManager.remove(blockId, pinned);
+      final BlockLoader blockLoader = notification.getValue();
+      final long blockSize = blockLoader.getBlockSize();
+      final boolean pinned = blockLoader.isPinned();
+      memoryManager.remove(blockId, blockSize, pinned);
     }
   };
 

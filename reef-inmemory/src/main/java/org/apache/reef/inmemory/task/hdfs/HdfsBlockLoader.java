@@ -152,6 +152,15 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
+   * Return the size of block that is assigned to this loader
+   * @return Size of the block
+   */
+  @Override
+  public long getBlockSize() {
+    return blockSize;
+  }
+
+  /**
    * Connect to Datanode
    * @param conf Hadoop Configuration
    * @param targetAddress Socket address to connect to Datanode

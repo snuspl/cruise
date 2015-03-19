@@ -7,8 +7,7 @@ import java.io.IOException;
  */
 public interface BaseFsBlockInfoFactory<FsMetadata, FsBlockInfo> {
   /**
-   * Create a new BlockId from the FS-specific metadata.
-   * BlockId implements equals() and hashCode(), which is suitable for use as a key.
+   * Create a new BlockInfo from the FS-specific metadata.
    * @param filePath Path of file, to be added to block ID
    * @param metadata FS-specific block metadata
    * @return Base-FS specific block ID information

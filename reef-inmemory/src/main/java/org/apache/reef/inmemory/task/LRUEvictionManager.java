@@ -32,9 +32,10 @@ public final class LRUEvictionManager {
   /**
    * Invoke when a block has been inserted into the cache
    * @param blockId Inserted block
+   * @param blockSize Size of the block
    */
-  public synchronized void add(final BlockId blockId) {
-    final LRUEntry entry = new LRUEntry(blockId);
+  public synchronized void add(final BlockId blockId, final long blockSize) {
+    final LRUEntry entry = new LRUEntry(blockId, blockSize);
     index.put(blockId, entry);
     entry.enter();
   }
@@ -51,12 +52,17 @@ public final class LRUEvictionManager {
   }
 
   /**
-   * Invoke when a block has been removed from the cache
+   * Invoke when a block has been removed from the cache.
+   * @param spaceEvicted Space cleared by eviction
    */
-  public synchronized void evicted(final BlockId blockId) {
-    evictingBytes -= blockId.getBlockSize();
+  public synchronized void evicted(final long spaceEvicted) {
+    evictingBytes -= spaceEvicted;
   }
 
+  /**
+   * Invoke when a block has been pinned into the cache
+   * @param blockId Pinned block
+   */
   public synchronized void addPinned(final BlockId blockId) {
     pinned.add(blockId);
   }
@@ -77,14 +83,14 @@ public final class LRUEvictionManager {
     LRUEntry entry = head;
     while (entry != null && chosenSize < evictionNeeded) {
       chosen.add(entry.blockId);
-      chosenSize += entry.blockId.getBlockSize();
+      chosenSize += entry.blockSize;
       entry = entry.prev;
     }
     if (chosenSize >= evictionNeeded) {
       for (final BlockId blockToEvict : chosen) {
         final LRUEntry entryToEvict = index.remove(blockToEvict);
+        evictingBytes += entryToEvict.blockSize;
         entryToEvict.exit();
-        evictingBytes += blockToEvict.getBlockSize();
       }
       return chosen;
     } else {
@@ -108,8 +114,8 @@ public final class LRUEvictionManager {
     }
     for (final BlockId blockToEvict : chosen) {
       final LRUEntry entryToEvict = index.remove(blockToEvict);
+      evictingBytes += entryToEvict.blockSize;
       entryToEvict.exit();
-      evictingBytes += blockToEvict.getBlockSize();
     }
 
     if (evictPinned) {
@@ -132,9 +138,11 @@ public final class LRUEvictionManager {
     public LRUEntry prev = null;
     public LRUEntry next = null;
     public final BlockId blockId;
+    public final long blockSize;
 
-    public LRUEntry(final BlockId blockId) {
+    public LRUEntry(final BlockId blockId, final long blockSize) {
       this.blockId = blockId;
+      this.blockSize = blockSize;
     }
 
     private void remove() {

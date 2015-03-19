@@ -397,12 +397,12 @@ public final class SurfMetaManagerTest {
   }
 
   private static void addRemoval(final CacheUpdates updates, final Path path, final long offset, final long blockSize) {
-    final BlockId blockId = new BlockId(path.toString(), offset, blockSize);
+    final BlockId blockId = new BlockId(path.toString(), offset);
     updates.addRemoval(blockId);
   }
 
   private static void addFailure(final CacheUpdates updates, final Path path, final long offset, final long blockSize) {
-    final BlockId blockId = new BlockId(path.toString(), offset, blockSize);
+    final BlockId blockId = new BlockId(path.toString(), offset);
     updates.addFailure(blockId, new IOException("Test"));
   }
 

@@ -286,15 +286,15 @@ public final class SurfMetaManager {
   }
 
   private void addBlockToFileMeta(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
-    final FileMeta meta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
+    final FileMeta fileMeta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
 
     final List<NodeInfo> nodeList = new ArrayList<>();
     nodeList.add(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
-    final BlockMeta newBlock = blockMetaFactory.newBlockMeta(blockId, nodeList);
+    final BlockMeta blockMeta = blockMetaFactory.newBlockMeta(blockId, fileMeta.getBlockSize(), nodeList);
 
-    meta.setFileSize(meta.getFileSize() + nWritten);
-    meta.addToBlocks(newBlock);
-    update(meta);
+    fileMeta.setFileSize(fileMeta.getFileSize() + nWritten);
+    fileMeta.addToBlocks(blockMeta);
+    update(fileMeta);
   }
 
   private Path getAbsolutePath(final Path path, final User creator) {

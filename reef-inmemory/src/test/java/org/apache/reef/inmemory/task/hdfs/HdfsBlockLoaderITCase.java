@@ -86,7 +86,7 @@ public class HdfsBlockLoaderITCase {
      */
     for(int blockIndex = 0; blockIndex < NUM_BLOCK; blockIndex++) {
       final LocatedBlock block = blocks.get(blockIndex);
-      final BlockId blockId = new BlockId(PATH, block.getStartOffset(), block.getBlockSize());
+      final BlockId blockId = new BlockId(PATH, block.getStartOffset());
       Assert.assertEquals("Test block size : ", blockSize, block.getBlockSize());
 
       // Retrieve the information for block and datanode
@@ -116,7 +116,7 @@ public class HdfsBlockLoaderITCase {
   public void testInvalidSize() throws IOException {
     final LocatedBlock block = blocks.get(0);
     final long offset = block.getStartOffset();
-    final BlockId blockId = new BlockId(PATH, offset, block.getBlockSize());
+    final BlockId blockId = new BlockId(PATH, offset);
 
     final HdfsBlockInfo blockInfo = blockInfoFactory.newBlockInfo(PATH, block);
     final HdfsBlockInfo modifiedBlockInfo = new HdfsBlockInfo(PATH, offset, blockInfo.getUniqueId(), Integer.MAX_VALUE+(long)1, blockInfo.getGenerationTimestamp(),  blockInfo.getPoolId(), blockInfo.getEncodedToken());
@@ -134,7 +134,7 @@ public class HdfsBlockLoaderITCase {
   public void testInvalidAddress() throws IOException{
     final LocatedBlock block = blocks.get(0);
     final long offset = block.getStartOffset();
-    final BlockId blockId = new BlockId(PATH, offset, block.getBlockSize());
+    final BlockId blockId = new BlockId(PATH, offset);
 
     final HdfsBlockInfo blockInfo = blockInfoFactory.newBlockInfo(PATH, block);
     final List<HdfsDatanodeInfo> dummyDatanodeInfo = new ArrayList<HdfsDatanodeInfo>();
@@ -152,7 +152,7 @@ public class HdfsBlockLoaderITCase {
   public void testRetry() throws IOException {
     final LocatedBlock block = blocks.get(0);
     final long offset = block.getStartOffset();
-    final BlockId blockId = new BlockId(PATH, offset, block.getBlockSize());
+    final BlockId blockId = new BlockId(PATH, offset);
 
     final HdfsBlockInfo blockInfo = blockInfoFactory.newBlockInfo(PATH, block);
     final List<HdfsDatanodeInfo> datanodeInfo = HdfsDatanodeInfo.copyDatanodeInfos(block.getLocations());
@@ -163,14 +163,14 @@ public class HdfsBlockLoaderITCase {
   }
 
   /*
-   * This case covers when the BlockId is invalid
+   * This case covers when the blockId (of HDFS metadata) is invalid
    * Wrong block id : -1
    */
   @Test(expected = ConnectionFailedException.class)
   public void testInvalidId() throws IOException {
     final LocatedBlock block = blocks.get(0);
     final long offset = block.getStartOffset();
-    final BlockId blockId = new BlockId(PATH, offset, block.getBlockSize());
+    final BlockId blockId = new BlockId(PATH, offset);
 
     final HdfsBlockInfo blockInfo = blockInfoFactory.newBlockInfo(PATH, block);
     final HdfsBlockInfo modifiedBlockInfo = new HdfsBlockInfo(PATH, 0, (long)-1, blockInfo.getBlockSize(), blockInfo.getGenerationTimestamp(),  blockInfo.getPoolId(), blockInfo.getEncodedToken());
@@ -188,7 +188,7 @@ public class HdfsBlockLoaderITCase {
   public void testInvalidToken() throws IOException {
     final LocatedBlock block = blocks.get(0);
     final long offset = block.getStartOffset();
-    final BlockId blockId = new BlockId(PATH, offset, block.getBlockSize());
+    final BlockId blockId = new BlockId(PATH, offset);
 
     final HdfsBlockInfo blockInfo = blockInfoFactory.newBlockInfo(PATH, block);
     final HdfsBlockInfo modifiedBlockInfo = new HdfsBlockInfo(PATH, 0, blockInfo.getUniqueId(), blockInfo.getBlockSize(), blockInfo.getGenerationTimestamp(),  blockInfo.getPoolId(), "");

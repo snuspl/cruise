@@ -135,11 +135,11 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
      * Create a cache entry (BlockLoader) and load it into the cache
      * so the cache can receive the data or write the data into memory
      */
-    final BlockId blockId = new BlockId(path, offset, blockSize);
+    final BlockId blockId = new BlockId(path, offset);
 
     final boolean pin = info.isPin();
     // TODO We can get BaseReplicationFactor and SyncMethod.
-    final BlockLoader blockLoader = new WritableBlockLoader(blockId, pin, bufferSize);
+    final BlockLoader blockLoader = new WritableBlockLoader(blockId, blockSize, pin, bufferSize);
 
     try {
       cache.prepareToWrite(blockLoader);
@@ -152,7 +152,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   @Override
   public void writeData(final String path, final long blockOffset, final long blockSize,
                         final long innerOffset, final ByteBuffer buf, final boolean isLastPacket) throws TException {
-    final BlockId blockId = new BlockId(path, blockOffset, blockSize);
+    final BlockId blockId = new BlockId(path, blockOffset);
     try {
       cache.write(blockId, innerOffset, buf, isLastPacket);
     } catch (IOException e) {

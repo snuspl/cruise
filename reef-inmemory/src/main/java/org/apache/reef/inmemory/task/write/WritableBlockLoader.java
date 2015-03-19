@@ -31,9 +31,9 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
 
   private long expectedOffset = 0;
 
-  public WritableBlockLoader(final BlockId id, final boolean pin, final int bufferSize) {
+  public WritableBlockLoader(final BlockId id, final long blockSize, final boolean pin, final int bufferSize) {
     this.blockId = id;
-    this.blockSize = id.getBlockSize();
+    this.blockSize = blockSize;
     this.data = new ArrayList<>();
 
     this.pinned = pin;

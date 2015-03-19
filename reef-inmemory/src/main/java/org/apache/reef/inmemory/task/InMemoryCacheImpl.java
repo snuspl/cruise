@@ -89,8 +89,9 @@ public final class InMemoryCacheImpl implements InMemoryCache {
        */
       if (isLastPacket) {
         writableLoader.completeWrite();
+        final long blockSize = writableLoader.getBlockSize();
         final long nWritten = writableLoader.getTotalWritten();
-        memoryManager.writeSuccess(blockId, nWritten, loader.isPinned());
+        memoryManager.writeSuccess(blockId, blockSize, nWritten, loader.isPinned());
         heartBeatTriggerManager.triggerHeartBeat();
       }
     }
@@ -107,7 +108,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   @Override
   public void prepareToWrite(final BlockLoader loader) throws IOException, BlockNotFoundException {
     if (insertEntry(loader)) {
-      cacheAdmissionController.reserveSpace(loader.getBlockId(), loader.isPinned());
+      cacheAdmissionController.reserveSpace(loader.getBlockId(), loader.getBlockSize(), loader.isPinned());
     }
   }
 

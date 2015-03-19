@@ -10,18 +10,15 @@ import java.io.Serializable;
 public final class BlockId implements Serializable {
   private final String filePath;
   private final long offset;
-  private final long blockSize;
 
   /**
    * Create a block id with information to identify this block.
    * @param filePath The file which consists of this block.
    * @param offset The offset from the start of the file.
-   * @param blockSize The size of block.
    */
-  public BlockId(final String filePath, final long offset, final long blockSize) {
+  public BlockId(final String filePath, final long offset) {
     this.filePath = filePath; // TODO Replace filePath with another unique field (e.g. fileId)
     this.offset = offset;
-    this.blockSize = blockSize;
   }
 
   /**
@@ -29,7 +26,7 @@ public final class BlockId implements Serializable {
    * @param blockMeta Metadata of this block.
    */
   public BlockId(final BlockMeta blockMeta) {
-    this(blockMeta.getFilePath(), blockMeta.getOffSet(), blockMeta.getLength());
+    this(blockMeta.getFilePath(), blockMeta.getOffSet());
   }
 
   /**
@@ -47,12 +44,6 @@ public final class BlockId implements Serializable {
     return offset;
   }
 
-  /**
-   * Return the size of block.
-   */
-  public long getBlockSize() {
-    return blockSize;
-  }
 
   @Override
   public boolean equals(Object o) {
@@ -61,7 +52,6 @@ public final class BlockId implements Serializable {
 
     BlockId blockId = (BlockId) o;
 
-    if (blockSize != blockId.blockSize) return false;
     if (offset != blockId.offset) return false;
     if (filePath != null ? !filePath.equals(blockId.filePath) : blockId.filePath != null) return false;
 
@@ -72,7 +62,6 @@ public final class BlockId implements Serializable {
   public int hashCode() {
     int result = filePath != null ? filePath.hashCode() : 0;
     result = 31 * result + (int) (offset ^ (offset >>> 32));
-    result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
     return result;
   }
 
@@ -81,7 +70,6 @@ public final class BlockId implements Serializable {
     return "BlockId{" +
             "filePath='" + filePath + '\'' +
             ", offset=" + offset +
-            ", blockSize=" + blockSize +
             '}';
   }
 }

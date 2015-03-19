@@ -24,8 +24,8 @@ public class WritableBlockLoaderWriteTest {
 
   @Before
   public void setup() {
-    final BlockId id = new BlockId("path", 0, BLOCK_SIZE);
-    loader = new WritableBlockLoader(id, true, BUFFER_SIZE);
+    final BlockId id = new BlockId("path", 0);
+    loader = new WritableBlockLoader(id, BLOCK_SIZE, true, BUFFER_SIZE);
   }
 
   /**

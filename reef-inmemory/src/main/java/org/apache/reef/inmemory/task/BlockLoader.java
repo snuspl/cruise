@@ -22,6 +22,11 @@ public interface BlockLoader {
   public BlockId getBlockId();
 
   /**
+   * @return Size of the block
+   */
+  public long getBlockSize();
+
+  /**
    * @return Whether block is configured for pinning
    */
   public boolean isPinned();
