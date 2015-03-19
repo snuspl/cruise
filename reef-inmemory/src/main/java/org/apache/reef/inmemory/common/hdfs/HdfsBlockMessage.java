@@ -12,20 +12,20 @@ import java.util.List;
  */
 public final class HdfsBlockMessage implements Serializable {
 
-  private final HdfsBlockInfo blockId;
+  private final HdfsBlockInfo blockInfo;
   private final List<HdfsDatanodeInfo> locations;
   private final boolean pin;
 
-  public HdfsBlockMessage(final HdfsBlockInfo blockId,
+  public HdfsBlockMessage(final HdfsBlockInfo blockInfo,
                           final List<HdfsDatanodeInfo> locations,
                           final boolean pin) {
-    this.blockId = blockId;
+    this.blockInfo = blockInfo;
     this.locations = locations;
     this.pin = pin;
   }
 
-  public HdfsBlockInfo getBlockId() {
-    return blockId;
+  public HdfsBlockInfo getBlockInfo() {
+    return blockInfo;
   }
 
   public List<HdfsDatanodeInfo> getLocations() {
