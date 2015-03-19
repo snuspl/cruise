@@ -5,9 +5,7 @@ import org.apache.reef.inmemory.common.entity.BlockMeta;
 import java.io.Serializable;
 
 /**
- * Block ID to be used to identify blocks cached at each Task.
- * Implementing classes will be used as Map keys. Therefore, they must provide
- * well-formed equals() and hashCode() methods.
+ * Block ID to identify blocks cached at each Task.
  */
 public final class BlockId implements Serializable {
   private final String filePath;

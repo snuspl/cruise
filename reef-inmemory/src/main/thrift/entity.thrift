@@ -11,7 +11,6 @@ struct NodeInfo {
 /**
  * Contains relevant block information to be stored as Metadata.
  * This data structure coincide to FileMeta, which is created/managed in Surf.
- * Currently takes after o.a.h.hdfs.protocol.ExtendedBlock
  */
 struct BlockMeta {
 	1: string filePath,              // File's absolute path TODO Replace filePath with another unique field (e.g. fileId)
