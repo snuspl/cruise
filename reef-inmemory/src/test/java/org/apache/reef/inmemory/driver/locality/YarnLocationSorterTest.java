@@ -4,7 +4,7 @@ import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.net.DNSToSwitchMapping;
 import org.apache.hadoop.net.TableMapping;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.junit.Before;
@@ -62,21 +62,21 @@ public final class YarnLocationSorterTest {
 
     networkMapping = new HashMap<>();
 
-    final BlockInfo blockInfo = new BlockInfo();
+    final BlockMeta blockMeta = new BlockMeta();
     String line = null;
     int count = 0;
     while ((line = br.readLine()) != null) {
       final String[] parts =line.split("\\s+");
       networkMapping.put(parts[0], parts[1]);
       if (count < 9) { // Only add first 9 entries (3 racks, 3 hosts per rack)
-        blockInfo.addToLocations(new NodeInfo(parts[0], parts[1]));
+        blockMeta.addToLocations(new NodeInfo(parts[0], parts[1]));
       }
       count++;
     }
     br.close();
 
     fileMeta = new FileMeta();
-    fileMeta.setBlocks(Collections.singletonList(blockInfo));
+    fileMeta.setBlocks(Collections.singletonList(blockMeta));
   }
 
   /**

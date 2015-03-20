@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.common.hdfs;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.reef.inmemory.common.FileMetaFactory;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.User;
 
@@ -21,12 +21,12 @@ public class HdfsFileMetaFactory implements FileMetaFactory<FileStatus> {
   @Override
   public FileMeta newFileMeta(final String path, final short replication, final long blockSize) {
     final FileMeta meta = new FileMeta();
-    meta.setFullPath(path);
+    meta.setFullPath(path); // TODO Replace filePath with another unique field (e.g. fileId)
     meta.setFileSize(0);
     meta.setDirectory(false);
     meta.setReplication(replication);
     meta.setBlockSize(blockSize);
-    meta.setBlocks(new ArrayList<BlockInfo>(0));
+    meta.setBlocks(new ArrayList<BlockMeta>(0));
     meta.setUser(new User()); // TODO User in Surf should be specified properly.
     return meta;
   }
@@ -34,12 +34,12 @@ public class HdfsFileMetaFactory implements FileMetaFactory<FileStatus> {
   @Override
   public FileMeta newFileMetaForDir(final String path) {
     final FileMeta meta = new FileMeta();
-    meta.setFullPath(path);
+    meta.setFullPath(path); // TODO Replace filePath with another unique field (e.g. fileId)
     meta.setFileSize(0);
     meta.setDirectory(true);
     meta.setReplication((short) 0);
     meta.setBlockSize(0);
-    meta.setBlocks(new ArrayList<BlockInfo>(0));
+    meta.setBlocks(new ArrayList<BlockMeta>(0));
     meta.setUser(new User()); // TODO User in Surf should be specified properly.
     return meta;
   }
@@ -48,12 +48,12 @@ public class HdfsFileMetaFactory implements FileMetaFactory<FileStatus> {
   public FileMeta toFileMeta(final FileStatus fileStatus) throws IOException {
     final FileMeta fileMeta = new FileMeta();
     final String pathStr = fileStatus.getPath().toUri().getPath();
-    fileMeta.setFullPath(pathStr);
+    fileMeta.setFullPath(pathStr); // TODO Replace filePath with another unique field (e.g. fileId)
     fileMeta.setFileSize(fileStatus.getLen());
     fileMeta.setDirectory(fileStatus.isDirectory());
     fileMeta.setReplication(fileStatus.getReplication());
     fileMeta.setBlockSize(fileStatus.getBlockSize());
-    fileMeta.setBlocks(new ArrayList<BlockInfo>(0));
+    fileMeta.setBlocks(new ArrayList<BlockMeta>(0));
     fileMeta.setModificationTime(fileStatus.getModificationTime());
     fileMeta.setAccessTime(fileStatus.getAccessTime());
     fileMeta.setUser(new User(fileStatus.getOwner(), fileStatus.getGroup()));

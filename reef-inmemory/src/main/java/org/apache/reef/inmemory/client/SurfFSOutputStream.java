@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.inmemory.common.entity.AllocatedBlockInfo;
+import org.apache.reef.inmemory.common.entity.AllocatedBlockMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
@@ -33,7 +33,7 @@ public final class SurfFSOutputStream extends OutputStream {
 
   private byte localBuf[] = new byte[PACKET_SIZE];
   private int localBufWriteCount = 0;
-  private AllocatedBlockInfo curBlockInfo;
+  private AllocatedBlockMeta curBlockMeta;
   private long curBlockOffset = 0;
   private long curBlockInnerOffset = 0;
 
@@ -155,7 +155,7 @@ public final class SurfFSOutputStream extends OutputStream {
     final int len = end - start;
 
     if (curBlockInnerOffset == 0) {
-      curBlockInfo = allocateBlockAtMetaServer(curBlockOffset);
+      curBlockMeta = allocateBlockAtMetaServer(curBlockOffset);
     }
 
     if (curBlockInnerOffset + len < blockSize) {
@@ -169,7 +169,7 @@ public final class SurfFSOutputStream extends OutputStream {
     }
   }
 
-  private AllocatedBlockInfo allocateBlockAtMetaServer(final long blockOffset) throws IOException {
+  private AllocatedBlockMeta allocateBlockAtMetaServer(final long blockOffset) throws IOException {
     try {
       return metaClient.allocateBlock(path, blockOffset, localAddress);
     } catch (TException e) {
@@ -181,7 +181,7 @@ public final class SurfFSOutputStream extends OutputStream {
                           final int len,
                           final boolean isLastPacket) throws IOException {
     try {
-      packetQueue.put(new Packet(curBlockInfo, curBlockOffset, curBlockInnerOffset, buf, isLastPacket));
+      packetQueue.put(new Packet(curBlockMeta, curBlockOffset, curBlockInnerOffset, buf, isLastPacket));
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
@@ -194,18 +194,18 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   private class Packet {
-    final AllocatedBlockInfo blockInfo;
+    final AllocatedBlockMeta blockMeta;
     final long blockOffset;
     final long blockInnerOffset;
     final ByteBuffer buf;
     final boolean isLastPacket;
 
-    public Packet(final AllocatedBlockInfo blockInfo,
+    public Packet(final AllocatedBlockMeta blockMeta,
                   final long blockOffset,
                   final long blockInnerOffset,
                   final ByteBuffer buf,
                   final boolean isLastPacket) {
-      this.blockInfo = blockInfo;
+      this.blockMeta = blockMeta;
       this.blockOffset = blockOffset;
       this.blockInnerOffset = blockInnerOffset;
       this.buf = buf;
@@ -226,9 +226,9 @@ public final class SurfFSOutputStream extends OutputStream {
       while(!isClosed) {
         try {
           final Packet packet = packetQueue.take();
-          if (packet.blockInfo != null) {
+          if (packet.blockMeta != null) {
             // Initialize block at the cache server for the first packet of a block
-            initCacheClient(packet.blockInfo, packet.blockOffset);
+            initCacheClient(packet.blockMeta, packet.blockOffset);
           }
           curCacheClient.writeData(path, packet.blockOffset, blockSize, packet.blockInnerOffset, packet.buf, packet.isLastPacket);
         } catch (Exception e) {
@@ -237,12 +237,12 @@ public final class SurfFSOutputStream extends OutputStream {
       }
     }
 
-    private void initCacheClient(final AllocatedBlockInfo blockInfo, final long blockOffset) {
+    private void initCacheClient(final AllocatedBlockMeta blockMeta, final long blockOffset) {
       boolean success = false;
-      for (final NodeInfo nodeInfo : blockInfo.getLocations()) {
+      for (final NodeInfo nodeInfo : blockMeta.getLocations()) {
         try {
           curCacheClient = cacheClientManager.get(nodeInfo.getAddress());
-          curCacheClient.initBlock(path, blockOffset, blockSize, blockInfo);
+          curCacheClient.initBlock(path, blockOffset, blockSize, blockMeta);
           success = true;
           break;
         } catch (TException e) {

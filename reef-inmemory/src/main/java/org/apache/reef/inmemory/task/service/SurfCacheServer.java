@@ -1,14 +1,14 @@
 package org.apache.reef.inmemory.task.service;
 
-import org.apache.reef.inmemory.common.BlockIdFactory;
-import org.apache.reef.inmemory.common.entity.AllocatedBlockInfo;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.BlockMetaFactory;
+import org.apache.reef.inmemory.common.entity.AllocatedBlockMeta;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
-import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
 import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.InMemoryCache;
@@ -36,7 +36,6 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   private final EventRecorder RECORD;
 
   private final InMemoryCache cache;
-  private final BlockIdFactory blockIdFactory;
   private final int port;
   private final int timeout;
   private final int numThreads;
@@ -47,14 +46,12 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Inject
   public SurfCacheServer(final InMemoryCache cache,
-                         final BlockIdFactory blockIdFactory,
                          final @Parameter(CacheParameters.Port.class) int port,
                          final @Parameter(CacheParameters.Timeout.class) int timeout,
                          final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
                          final @Parameter(CacheParameters.LoadingBufferSize.class) int bufferSize,
                          final EventRecorder recorder) {
     this.cache = cache;
-    this.blockIdFactory = blockIdFactory;
     this.port = port;
     this.timeout = timeout;
     this.numThreads = numThreads;
@@ -113,11 +110,11 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   }
 
   @Override
-  public ByteBuffer getData(final BlockInfo blockInfo, final long offset, final long length)
+  public ByteBuffer getData(final BlockMeta blockMeta, final long offset, final long length)
     throws BlockLoadingException, BlockNotFoundException {
     final Event getDataEvent = RECORD.event("task.get-data",
-            Long.toString(blockInfo.getBlockId()) + ":" + Long.toString(offset)).start();
-    final BlockId blockId = blockIdFactory.newBlockId(blockInfo);
+            blockMeta.toString() + ":" + Long.toString(offset)).start();
+    final BlockId blockId = new BlockId(blockMeta);
 
     // The first and last index to load blocks
     final int chunkIndex = (int) offset / bufferSize;
@@ -133,16 +130,16 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Override
   public void initBlock(final String path, final long offset, final long blockSize,
-                        final AllocatedBlockInfo info) throws TException {
+                        final AllocatedBlockMeta info) throws TException {
     /*
      * Create a cache entry (BlockLoader) and load it into the cache
      * so the cache can receive the data or write the data into memory
      */
-    final BlockId blockId = blockIdFactory.newBlockId(path, offset, blockSize);
+    final BlockId blockId = new BlockId(path, offset);
 
     final boolean pin = info.isPin();
     // TODO We can get BaseReplicationFactor and SyncMethod.
-    final BlockLoader blockLoader = new WritableBlockLoader(blockId, pin, bufferSize);
+    final BlockLoader blockLoader = new WritableBlockLoader(blockId, blockSize, pin, bufferSize);
 
     try {
       cache.prepareToWrite(blockLoader);
@@ -155,7 +152,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   @Override
   public void writeData(final String path, final long blockOffset, final long blockSize,
                         final long innerOffset, final ByteBuffer buf, final boolean isLastPacket) throws TException {
-    final BlockId blockId = blockIdFactory.newBlockId(path, blockOffset, blockSize);
+    final BlockId blockId = new BlockId(path, blockOffset);
     try {
       cache.write(blockId, innerOffset, buf, isLastPacket);
     } catch (IOException e) {

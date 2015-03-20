@@ -1,7 +1,5 @@
 package org.apache.reef.inmemory.common;
 
-import org.apache.reef.inmemory.task.BlockId;
-
 import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;

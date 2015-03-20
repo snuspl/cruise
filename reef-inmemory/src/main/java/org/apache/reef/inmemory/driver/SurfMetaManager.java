@@ -2,15 +2,15 @@ package org.apache.reef.inmemory.driver;
 
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.fs.Path;
-import org.apache.reef.inmemory.common.BlockIdFactory;
+import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.FileMetaFactory;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.User;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
-import org.apache.reef.inmemory.task.BlockId;
 
 import javax.inject.Inject;
 import java.io.FileNotFoundException;
@@ -32,7 +32,7 @@ public final class SurfMetaManager {
   private final CacheMessenger cacheMessenger;
   private final CacheLocationRemover cacheLocationRemover;
   private final CacheUpdater cacheUpdater;
-  private final BlockIdFactory blockIdFactory;
+  private final BlockMetaFactory blockMetaFactory;
   private final FileMetaFactory metaFactory;
   private final LocationSorter locationSorter;
   private final BaseFsClient baseFsClient;
@@ -42,7 +42,7 @@ public final class SurfMetaManager {
                          final CacheMessenger cacheMessenger,
                          final CacheLocationRemover cacheLocationRemover,
                          final CacheUpdater cacheUpdater,
-                         final BlockIdFactory blockIdFactory,
+                         final BlockMetaFactory blockMetaFactory,
                          final FileMetaFactory metaFactory,
                          final LocationSorter locationSorter,
                          final BaseFsClient baseFsClient) {
@@ -50,7 +50,7 @@ public final class SurfMetaManager {
     this.cacheMessenger = cacheMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
     this.cacheUpdater = cacheUpdater;
-    this.blockIdFactory = blockIdFactory;
+    this.blockMetaFactory = blockMetaFactory;
     this.metaFactory = metaFactory;
     this.locationSorter = locationSorter;
     this.baseFsClient = baseFsClient;
@@ -286,15 +286,15 @@ public final class SurfMetaManager {
   }
 
   private void addBlockToFileMeta(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
-    final FileMeta meta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
+    final FileMeta fileMeta = metadataIndex.getIfPresent(new Path(blockId.getFilePath()));
 
     final List<NodeInfo> nodeList = new ArrayList<>();
     nodeList.add(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
-    final BlockInfo newBlock = blockIdFactory.newBlockInfo(blockId, nodeList);
+    final BlockMeta blockMeta = blockMetaFactory.newBlockMeta(blockId, fileMeta.getBlockSize(), nodeList);
 
-    meta.setFileSize(meta.getFileSize() + nWritten);
-    meta.addToBlocks(newBlock);
-    update(meta);
+    fileMeta.setFileSize(fileMeta.getFileSize() + nWritten);
+    fileMeta.addToBlocks(blockMeta);
+    update(fileMeta);
   }
 
   private Path getAbsolutePath(final Path path, final User creator) {

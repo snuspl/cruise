@@ -1,6 +1,6 @@
 package org.apache.reef.inmemory.task;
 
-import org.apache.reef.inmemory.common.MockBlockId;
+import org.apache.reef.inmemory.common.BlockId;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -19,8 +19,8 @@ public final class LRUEvictionManagerTest {
   private final Random random = new Random();
   private final long blockSize = 10;
 
-  private BlockId randomBlockId(long length) {
-    return new MockBlockId("/path", random.nextLong(), length);
+  private BlockId randomBlockId() {
+    return new BlockId("/path", random.nextLong());
   }
 
   @Before
@@ -34,14 +34,14 @@ public final class LRUEvictionManagerTest {
   @Test
   public void testAddOrder() {
     final BlockId[] blockIds = new BlockId[]{
-            randomBlockId(blockSize),
-            randomBlockId(blockSize),
-            randomBlockId(blockSize)
+            randomBlockId(),
+            randomBlockId(),
+            randomBlockId()
     };
 
     for (int i = 0; i < blockIds.length; i++) {
       System.out.println("Add: "+blockIds[i]);
-      lru.add(blockIds[i]);
+      lru.add(blockIds[i], blockSize);
     }
 
     // Eviction should happen in FIFO order, with no use
@@ -60,14 +60,14 @@ public final class LRUEvictionManagerTest {
   @Test
   public void testSingleUseOrder() {
     final BlockId[] blockIds = new BlockId[]{
-            randomBlockId(blockSize),
-            randomBlockId(blockSize),
-            randomBlockId(blockSize)
+            randomBlockId(),
+            randomBlockId(),
+            randomBlockId()
     };
 
     for (int i = 0; i < blockIds.length; i++) {
       System.out.println("Add: "+blockIds[i]);
-      lru.add(blockIds[i]);
+      lru.add(blockIds[i], blockSize);
     }
 
     lru.use(blockIds[1]);
@@ -89,14 +89,14 @@ public final class LRUEvictionManagerTest {
   @Test
   public void testEvictAll() {
     final BlockId[] blockIds = new BlockId[]{
-            randomBlockId(blockSize),
-            randomBlockId(blockSize),
-            randomBlockId(blockSize)
+            randomBlockId(),
+            randomBlockId(),
+            randomBlockId()
     };
 
     for (int i = 0; i < blockIds.length; i++) {
       System.out.println("Add: "+blockIds[i]);
-      lru.add(blockIds[i]);
+      lru.add(blockIds[i], blockSize);
     }
 
     final long spaceNeeded = blockSize * blockIds.length;
@@ -111,14 +111,14 @@ public final class LRUEvictionManagerTest {
   @Test
   public void testEvictNotPossible() {
     final BlockId[] blockIds = new BlockId[]{
-            randomBlockId(blockSize),
-            randomBlockId(blockSize),
-            randomBlockId(blockSize)
+            randomBlockId(),
+            randomBlockId(),
+            randomBlockId()
     };
 
     for (int i = 0; i < blockIds.length; i++) {
       System.out.println("Add: "+blockIds[i]);
-      lru.add(blockIds[i]);
+      lru.add(blockIds[i], blockSize);
     }
 
     try {

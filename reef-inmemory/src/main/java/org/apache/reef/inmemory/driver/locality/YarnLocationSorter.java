@@ -5,7 +5,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.Node;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.util.RackResolver;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 
@@ -46,7 +46,7 @@ public final class YarnLocationSorter implements LocationSorter {
     final Node clientNode = RackResolver.resolve(clientHostname);
     final String clientRack = clientNode.getNetworkLocation();
 
-    for (final BlockInfo block : sorted.getBlocks()) {
+    for (final BlockMeta block : sorted.getBlocks()) {
       final List<NodeInfo> nodeLocal = new ArrayList<>();
       final List<NodeInfo> rackLocal = new ArrayList<>();
       final List<NodeInfo> offRack = new ArrayList<>();

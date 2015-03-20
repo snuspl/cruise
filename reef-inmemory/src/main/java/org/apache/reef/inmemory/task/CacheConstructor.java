@@ -4,6 +4,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.tang.ExternalConstructor;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -42,8 +43,10 @@ public final class CacheConstructor implements ExternalConstructor<Cache> {
     public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
       LOG.log(Level.INFO, "Removed: "+notification.getKey());
       final BlockId blockId = notification.getKey();
-      final boolean pinned = notification.getValue().isPinned();
-      memoryManager.remove(blockId, pinned);
+      final BlockLoader blockLoader = notification.getValue();
+      final long blockSize = blockLoader.getBlockSize();
+      final boolean pinned = blockLoader.isPinned();
+      memoryManager.remove(blockId, blockSize, pinned);
     }
   };
 

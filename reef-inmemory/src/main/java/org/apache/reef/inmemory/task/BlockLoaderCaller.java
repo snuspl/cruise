@@ -1,5 +1,7 @@
 package org.apache.reef.inmemory.task;
 
+import org.apache.reef.inmemory.common.BlockId;
+
 import java.util.concurrent.Callable;
 
 /**
@@ -24,8 +26,9 @@ public final class BlockLoaderCaller implements Callable<BlockLoader> {
   @Override
   public BlockLoader call() throws Exception {
     final BlockId blockId = loader.getBlockId();
+    final long blockSize = loader.getBlockSize();
     final boolean pin = loader.isPinned();
-    memoryManager.cacheInsert(blockId, pin);
+    memoryManager.cacheInsert(blockId, blockSize, pin);
     return loader;
   }
 }

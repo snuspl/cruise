@@ -7,8 +7,8 @@ import org.apache.reef.tang.formats.RequiredParameter;
 import org.apache.reef.wake.EStage;
 import org.apache.reef.wake.StageConfiguration;
 import org.apache.reef.wake.impl.ThreadPoolStage;
-import org.apache.reef.inmemory.common.BlockIdFactory;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.BlockMetaFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
 import org.apache.reef.inmemory.task.hdfs.HdfsDriverMessageHandler;
 
@@ -38,7 +38,7 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
           .bindNamedParameter(StageConfiguration.StageHandler.class, BlockLoaderExecutor.class)
           .bindImplementation(InMemoryCache.class, InMemoryCacheImpl.class)
           .bindImplementation(BlockLoader.class, HdfsBlockLoader.class)
-          .bindImplementation(BlockIdFactory.class, HdfsBlockIdFactory.class)
+          .bindImplementation(BlockMetaFactory.class, HdfsBlockMetaFactory.class)
           .bindImplementation(DriverMessageHandler.class, HdfsDriverMessageHandler.class)
           .bindImplementation(EStage.class, ThreadPoolStage.class)
           .bindConstructor(Cache.class, CacheConstructor.class)

@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.client;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSInputStream;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 
@@ -38,7 +38,7 @@ public final class SurfFSInputStream extends FSInputStream {
     this.fileMeta = fileMeta;
     this.cacheManager = cacheManager;
     this.blocks = new ArrayList<>(fileMeta.getBlocksSize());
-    for (BlockInfo block : fileMeta.getBlocks()) {
+    for (BlockMeta block : fileMeta.getBlocks()) {
       final LoadProgressManager progressManager = new LoadProgressManagerImpl();
       blocks.add(new CacheBlockLoader(block, this.cacheManager, progressManager, conf, recorder));
     }
@@ -68,7 +68,7 @@ public final class SurfFSInputStream extends FSInputStream {
     int numCopied = 0;
     int bufferRemaining = length - offset;
     while (bufferRemaining > 0 && position + numCopied < fileMeta.getFileSize()) {
-      final BlockInfo currBlock = fileMeta.getBlocks().get(blockIndex);
+      final BlockMeta currBlock = fileMeta.getBlocks().get(blockIndex);
       assert(blockPosition < currBlock.getLength());
       assert(blockIndex < fileMeta.getBlocksSize());
 

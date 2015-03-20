@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.MemoryLimitException;
 
@@ -32,11 +33,12 @@ public final class CacheAdmissionController {
    * then it reserve the memory via eviction. If it is done successfully, MemoryManager
    * is notified that the block is on the loading state.
    * @param blockId Block Id to load
+   * @param blockSize Size of the block
    * @param pin Whether the block is to be pinned
    * @throws MemoryLimitException If it is not available to reserve even with eviction.
    * @throws BlockNotFoundException If the metadata is not found in the cache.
    */
-  public void reserveSpace(final BlockId blockId, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
+  public void reserveSpace(final BlockId blockId, final long blockSize, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
     // 1. If the cache is full, an eviction list is returned by loadStart.
     // 2. Each block in the eviction list is invalidated here.
     // 3. loadStart must be called again; the Memory Manager then ensures that
@@ -46,7 +48,7 @@ public final class CacheAdmissionController {
     //    If blocks are continually inserted, this will starve the evicting block.
     boolean needSpace = true;
     while (needSpace) {
-      final List<BlockId> evictionList = memoryManager.loadStart(blockId, pin);
+      final List<BlockId> evictionList = memoryManager.loadStart(blockId, blockSize, pin);
       needSpace = (evictionList != null);
       if (needSpace) {
         for (final BlockId toEvict : evictionList) {

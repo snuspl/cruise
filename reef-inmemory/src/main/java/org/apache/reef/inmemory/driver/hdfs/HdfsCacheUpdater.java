@@ -3,17 +3,17 @@ package org.apache.reef.inmemory.driver.hdfs;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockInfoFactory;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.driver.*;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
-import org.apache.reef.inmemory.task.BlockId;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockInfo;
 import org.apache.reef.inmemory.task.hdfs.HdfsDatanodeInfo;
 
 import javax.inject.Inject;
@@ -30,7 +30,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   private final HdfsCacheMessenger cacheMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
   private final CacheLocationRemover cacheLocationRemover;
-  private final HdfsBlockIdFactory blockFactory;
+  private final HdfsBlockMetaFactory blockMetaFactory;
+  private final HdfsBlockInfoFactory blockInfoFactory;
   private final ReplicationPolicy replicationPolicy;
   private final FileSystem dfs; // Access must be synchronized
   private final BlockLocationGetter blockLocationGetter;
@@ -40,7 +41,6 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
    * @param cacheMessenger       Provides a channel for block replication messages
    * @param cacheSelector        Selects from available caches based on the implemented policy
    * @param cacheLocationRemover Provides the log of pending removals
-   * @param blockFactory         Translates between block representations
    * @param replicationPolicy    Provides the replication policy for each file
    * @param dfs                  Client to access to HDFS
    */
@@ -49,7 +49,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
                           final HdfsCacheMessenger cacheMessenger,
                           final HdfsCacheSelectionPolicy cacheSelector,
                           final CacheLocationRemover cacheLocationRemover,
-                          final HdfsBlockIdFactory blockFactory,
+                          final HdfsBlockMetaFactory blockMetaFactory,
+                          final HdfsBlockInfoFactory blockInfoFactory,
                           final ReplicationPolicy replicationPolicy,
                           final FileSystem dfs,
                           final BlockLocationGetter blockLocationGetter) {
@@ -57,7 +58,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     this.cacheMessenger = cacheMessenger;
     this.cacheSelector = cacheSelector;
     this.cacheLocationRemover = cacheLocationRemover;
-    this.blockFactory = blockFactory;
+    this.blockMetaFactory = blockMetaFactory;
+    this.blockInfoFactory = blockInfoFactory;
     this.replicationPolicy = replicationPolicy;
     this.dfs = dfs;
     this.blockLocationGetter = blockLocationGetter;
@@ -83,11 +85,12 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   @Override
   public FileMeta updateMeta(FileMeta fileMeta) throws IOException {
     synchronized (fileMeta) {
-      final Path path = new Path(fileMeta.getFullPath());
+      // TODO Replace pathStr with another unique field (e.g. fileId)
+      final String pathStr = fileMeta.getFullPath();
       final long blockSize = fileMeta.getBlockSize();
 
       // 0. Apply removes
-      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(fileMeta.getFullPath());
+      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathStr);
       if (pendingRemoves != null) {
         applyRemoves(fileMeta, pendingRemoves);
       }
@@ -97,7 +100,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       if (cacheNodes.size() == 0) {
         throw new IOException("Surf has zero caches");
       }
-      final Action action = replicationPolicy.getReplicationAction(path.toString(), fileMeta);
+      final Action action = replicationPolicy.getReplicationAction(pathStr, fileMeta);
       final boolean pin = action.getPin();
       final int replicationFactor;
       if (replicationPolicy.isBroadcast(action)) {
@@ -108,17 +111,26 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
 
       // 2. Get information from HDFS
       assert(blockLocationGetter instanceof HdfsBlockLocationGetter);
-      final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(path);
+      final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(pathStr));
+
+      // 3. If the blocks are not resolved in the fileMeta, add them.
+      if (fileMeta.getBlocksSize() == 0 && !fileMeta.isDirectory()) {
+        for (final LocatedBlock locatedBlock : locatedBlocks) {
+          final BlockMeta blockMeta = blockMetaFactory.newBlockMeta(pathStr, locatedBlock);
+          fileMeta.addToBlocks(blockMeta);
+        }
+      }
 
       // 3. For each block that needs loading, load blocks asynchronously
-      for (final BlockInfo blockInfo : fileMeta.getBlocks()) {
-        final int numLocations = blockInfo.getLocationsSize();
+      for (final BlockMeta blockMeta : fileMeta.getBlocks()) {
+        final BlockId blockId = new BlockId(blockMeta);
+        final int numLocations = blockMeta.getLocationsSize();
         if (numLocations < replicationFactor) {
-          final int index = (int) (blockInfo.getOffSet() / blockSize);
+          final int index = (int) (blockMeta.getOffSet() / blockSize);
           final LocatedBlock locatedBlock = locatedBlocks.get(index);
 
           // Filter the nodes to avoid duplicate
-          final List<CacheNode> nodesToChooseFrom = filterCacheNodes(cacheNodes, blockInfo);
+          final List<CacheNode> nodesToChooseFrom = filterCacheNodes(cacheNodes, blockMeta);
 
           final List<LocatedBlock> locatedBlockList = new ArrayList<>(1);
           locatedBlockList.add(locatedBlock);
@@ -131,13 +143,13 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
           }
 
           for (final CacheNode nodeToAdd : selectedNodes) {
-            final HdfsBlockId hdfsBlockId = blockFactory.newBlockId(blockInfo);
+            final HdfsBlockInfo hdfsBlockInfo = blockInfoFactory.newBlockInfo(pathStr, locatedBlock);
             final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
                     HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
-            final HdfsBlockMessage msg = new HdfsBlockMessage(hdfsBlockId, hdfsDatanodeInfos, pin);
+            final HdfsBlockMessage msg = new HdfsBlockMessage(blockId, hdfsBlockInfo, hdfsDatanodeInfos, pin);
             cacheMessenger.addBlock(nodeToAdd.getTaskId(), msg);
             final NodeInfo location = new NodeInfo(nodeToAdd.getAddress(), nodeToAdd.getRack());
-            blockInfo.addToLocations(location);
+            blockMeta.addToLocations(location);
           }
         }
       }
@@ -151,17 +163,17 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
    * Filter cache nodes to prevent duplicate load by the cache nodes
    * that have the block already.
    * @param cacheNodes Whole cache node list.
-   * @param blockInfo  The block to load.
+   * @param blockMeta  The block to load.
    * @return A list of nodes that do not have the block.
    */
-  // TODO: contains() will be inefficient if blockInfo.getLocations is large
-  private List<CacheNode> filterCacheNodes(List<CacheNode> cacheNodes, BlockInfo blockInfo) {
+  // TODO: contains() will be inefficient if blockMeta.getLocations is large
+  private List<CacheNode> filterCacheNodes(List<CacheNode> cacheNodes, BlockMeta blockMeta) {
     final List<CacheNode> nodesToChooseFrom = new ArrayList<>(cacheNodes);
-    if (blockInfo.getLocationsSize() > 0) {
+    if (blockMeta.getLocationsSize() > 0) {
       final Iterator<CacheNode> nodeIter = nodesToChooseFrom.iterator();
       while (nodeIter.hasNext()) {
         final CacheNode node = nodeIter.next();
-        if (blockInfo.getLocations().contains(new NodeInfo(node.getAddress(), node.getRack()))) {
+        if (blockMeta.getLocations().contains(new NodeInfo(node.getAddress(), node.getRack()))) {
           nodeIter.remove();
         }
       }
@@ -169,12 +181,12 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     return nodesToChooseFrom;
   }
 
-  private List<BlockInfo> applyRemoves(final FileMeta fileMeta, final Map<BlockId, List<String>> pendingRemoves) {
-    final List<BlockInfo> blocksWithRemoves = new ArrayList<>(pendingRemoves.size());
+  private List<BlockMeta> applyRemoves(final FileMeta fileMeta, final Map<BlockId, List<String>> pendingRemoves) {
+    final List<BlockMeta> blocksWithRemoves = new ArrayList<>(pendingRemoves.size());
     for (final BlockId blockId : pendingRemoves.keySet()) {
       final long offset = blockId.getOffset();
       for (final String nodeAddress : pendingRemoves.get(blockId)) {
-        final BlockInfo removed = removeLocation(fileMeta, nodeAddress, offset);
+        final BlockMeta removed = removeLocation(fileMeta, nodeAddress, offset);
         if (removed != null) {
           blocksWithRemoves.add(removed);
         }
@@ -183,10 +195,10 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     return blocksWithRemoves;
   }
 
-  private BlockInfo removeLocation(final FileMeta fileMeta,
+  private BlockMeta removeLocation(final FileMeta fileMeta,
                                    final String nodeAddress,
                                    final long offset) {
-    final BlockInfo blockInfo;
+    final BlockMeta blockMeta;
     final long blockSize = fileMeta.getBlockSize();
     if (blockSize <= 0) {
       LOG.log(Level.WARNING, "Unexpected block size: "+blockSize);
@@ -196,17 +208,17 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       LOG.log(Level.WARNING, "Block index out of bounds: "+index+", "+blockSize);
       return null;
     }
-    blockInfo = fileMeta.getBlocks().get(index);
-    if (blockInfo.getOffSet() != offset) {
-      LOG.log(Level.WARNING, "The offset did not match: "+blockInfo.getOffSet()+", "+offset);
+    blockMeta = fileMeta.getBlocks().get(index);
+    if (blockMeta.getOffSet() != offset) {
+      LOG.log(Level.WARNING, "The offset did not match: "+blockMeta.getOffSet()+", "+offset);
       return null;
-    } else if (blockInfo.getLocations() == null) {
-      LOG.log(Level.WARNING, "No locations for block "+blockInfo);
+    } else if (blockMeta.getLocations() == null) {
+      LOG.log(Level.WARNING, "No locations for block "+ blockMeta);
       return null;
     }
 
     boolean removed = false;
-    final Iterator<NodeInfo> iterator = blockInfo.getLocationsIterator();
+    final Iterator<NodeInfo> iterator = blockMeta.getLocationsIterator();
     while (iterator.hasNext()) {
       final NodeInfo nodeInfo = iterator.next();
       if (nodeInfo.getAddress().equals(nodeAddress)) {
@@ -217,8 +229,8 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
     }
 
     if (removed) {
-      LOG.log(Level.INFO, blockInfo.getBlockId()+" removed "+nodeAddress+", "+blockInfo.getLocationsSize()+" locations remaining.");
-      return blockInfo;
+      LOG.log(Level.INFO, blockMeta.toString()+" removed "+nodeAddress+", "+blockMeta.getLocationsSize()+" locations remaining.");
+      return blockMeta;
     } else {
       LOG.log(Level.INFO, "Did not remove "+nodeAddress);
       return null;

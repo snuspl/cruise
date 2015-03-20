@@ -1,5 +1,6 @@
 package org.apache.reef.inmemory.task;
 
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 
 import java.io.IOException;
@@ -19,6 +20,11 @@ public interface BlockLoader {
    * @return Block Identifier
    */
   public BlockId getBlockId();
+
+  /**
+   * @return Size of the block
+   */
+  public long getBlockSize();
 
   /**
    * @return Whether block is configured for pinning

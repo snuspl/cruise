@@ -1,7 +1,5 @@
 package org.apache.reef.inmemory.task.hdfs;
 
-import org.apache.reef.inmemory.task.BlockId;
-
 import java.io.Serializable;
 
 /**
@@ -16,7 +14,7 @@ import java.io.Serializable;
  * - HDFS's LocatedBlock cannot be used, as it does not define an equals()
  *   method.
  */
-public final class HdfsBlockId implements BlockId, Serializable {
+public final class HdfsBlockInfo implements Serializable {
 
   private final String filePath;
   private final long offset;
@@ -26,13 +24,13 @@ public final class HdfsBlockId implements BlockId, Serializable {
   private final String poolId;
   private final String encodedToken;
 
-  public HdfsBlockId(final String filePath,
-                     final long offset,
-                     final long blockId,
-                     final long blockSize,
-                     final long generationTimestamp,
-                     final String poolId,
-                     final String encodedToken) {
+  public HdfsBlockInfo(final String filePath,
+                       final long offset,
+                       final long blockId,
+                       final long blockSize,
+                       final long generationTimestamp,
+                       final String poolId,
+                       final String encodedToken) {
     this.filePath = filePath;
     this.offset = offset;
     this.blockId = blockId;
@@ -42,17 +40,14 @@ public final class HdfsBlockId implements BlockId, Serializable {
     this.encodedToken = encodedToken;
   }
 
-  @Override
   public String getFilePath() {
     return filePath;
   }
 
-  @Override
   public long getOffset() {
     return offset;
   }
 
-  @Override
   public long getBlockSize() {
     return blockSize;
   }
@@ -78,7 +73,7 @@ public final class HdfsBlockId implements BlockId, Serializable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
-    HdfsBlockId that = (HdfsBlockId) o;
+    HdfsBlockInfo that = (HdfsBlockInfo) o;
 
     if (!filePath.equals(that.filePath)) return false;
     if (blockSize != that.blockSize) return false;

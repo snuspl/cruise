@@ -1,9 +1,8 @@
 package org.apache.reef.inmemory.task.write;
 
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.BlockLoader;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockId;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -25,8 +24,8 @@ public class WritableBlockLoaderWriteTest {
 
   @Before
   public void setup() {
-    final BlockId id = new HdfsBlockId("path", 0, -1, BLOCK_SIZE, 0, null, null);
-    loader = new WritableBlockLoader(id, true, BUFFER_SIZE);
+    final BlockId id = new BlockId("path", 0);
+    loader = new WritableBlockLoader(id, BLOCK_SIZE, true, BUFFER_SIZE);
   }
 
   /**
