@@ -22,12 +22,12 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
+public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable {
 
-  private static final Logger LOG = Logger.getLogger(HdfsCacheUpdater.class.getName());
+  private static final Logger LOG = Logger.getLogger(HdfsFileMetaUpdater.class.getName());
 
-  private final CacheManager cacheManager;
-  private final HdfsCacheMessenger cacheMessenger;
+  private final CacheNodeManager cacheNodeManager;
+  private final HdfsCacheNodeMessenger cacheNodeMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
   private final CacheLocationRemover cacheLocationRemover;
   private final HdfsBlockMetaFactory blockMetaFactory;
@@ -37,25 +37,25 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
   private final BlockLocationGetter blockLocationGetter;
 
   /**
-   * @param cacheManager         Provides an updated list of caches
-   * @param cacheMessenger       Provides a channel for block replication messages
+   * @param cacheNodeManager         Provides an updated list of caches
+   * @param cacheNodeMessenger       Provides a channel for block replication messages
    * @param cacheSelector        Selects from available caches based on the implemented policy
    * @param cacheLocationRemover Provides the log of pending removals
    * @param replicationPolicy    Provides the replication policy for each file
    * @param dfs                  Client to access to HDFS
    */
   @Inject
-  public HdfsCacheUpdater(final CacheManager cacheManager,
-                          final HdfsCacheMessenger cacheMessenger,
-                          final HdfsCacheSelectionPolicy cacheSelector,
-                          final CacheLocationRemover cacheLocationRemover,
-                          final HdfsBlockMetaFactory blockMetaFactory,
-                          final HdfsBlockInfoFactory blockInfoFactory,
-                          final ReplicationPolicy replicationPolicy,
-                          final FileSystem dfs,
-                          final BlockLocationGetter blockLocationGetter) {
-    this.cacheManager = cacheManager;
-    this.cacheMessenger = cacheMessenger;
+  public HdfsFileMetaUpdater(final CacheNodeManager cacheNodeManager,
+                             final HdfsCacheNodeMessenger cacheNodeMessenger,
+                             final HdfsCacheSelectionPolicy cacheSelector,
+                             final CacheLocationRemover cacheLocationRemover,
+                             final HdfsBlockMetaFactory blockMetaFactory,
+                             final HdfsBlockInfoFactory blockInfoFactory,
+                             final ReplicationPolicy replicationPolicy,
+                             final FileSystem dfs,
+                             final BlockLocationGetter blockLocationGetter) {
+    this.cacheNodeManager = cacheNodeManager;
+    this.cacheNodeMessenger = cacheNodeMessenger;
     this.cacheSelector = cacheSelector;
     this.cacheLocationRemover = cacheLocationRemover;
     this.blockMetaFactory = blockMetaFactory;
@@ -83,7 +83,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
    * @throws IOException
    */
   @Override
-  public FileMeta updateMeta(FileMeta fileMeta) throws IOException {
+  public FileMeta update(FileMeta fileMeta) throws IOException {
     synchronized (fileMeta) {
       // TODO Replace pathStr with another unique field (e.g. fileId)
       final String pathStr = fileMeta.getFullPath();
@@ -96,7 +96,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
       }
 
       // 1. Resolve replication policy
-      final List<CacheNode> cacheNodes = cacheManager.getCaches();
+      final List<CacheNode> cacheNodes = cacheNodeManager.getCaches();
       if (cacheNodes.size() == 0) {
         throw new IOException("Surf has zero caches");
       }
@@ -147,7 +147,7 @@ public final class HdfsCacheUpdater implements CacheUpdater, AutoCloseable {
             final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
                     HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
             final HdfsBlockMessage msg = new HdfsBlockMessage(blockId, hdfsBlockInfo, hdfsDatanodeInfos, pin);
-            cacheMessenger.addBlock(nodeToAdd.getTaskId(), msg);
+            cacheNodeMessenger.addBlock(nodeToAdd.getTaskId(), msg);
             final NodeInfo location = new NodeInfo(nodeToAdd.getAddress(), nodeToAdd.getRack());
             blockMeta.addToLocations(location);
           }

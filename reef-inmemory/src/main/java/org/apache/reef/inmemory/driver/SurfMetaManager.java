@@ -29,9 +29,9 @@ public final class SurfMetaManager {
   private final static String USERS_HOME = "/user";
 
   private final LoadingCache<Path, FileMeta> metadataIndex;
-  private final CacheMessenger cacheMessenger;
+  private final CacheNodeMessenger cacheNodeMessenger;
   private final CacheLocationRemover cacheLocationRemover;
-  private final CacheUpdater cacheUpdater;
+  private final FileMetaUpdater fileMetaUpdater;
   private final BlockMetaFactory blockMetaFactory;
   private final FileMetaFactory metaFactory;
   private final LocationSorter locationSorter;
@@ -39,17 +39,17 @@ public final class SurfMetaManager {
 
   @Inject
   public SurfMetaManager(final LoadingCache metadataIndex,
-                         final CacheMessenger cacheMessenger,
+                         final CacheNodeMessenger cacheNodeMessenger,
                          final CacheLocationRemover cacheLocationRemover,
-                         final CacheUpdater cacheUpdater,
+                         final FileMetaUpdater fileMetaUpdater,
                          final BlockMetaFactory blockMetaFactory,
                          final FileMetaFactory metaFactory,
                          final LocationSorter locationSorter,
                          final BaseFsClient baseFsClient) {
     this.metadataIndex = metadataIndex;
-    this.cacheMessenger = cacheMessenger;
+    this.cacheNodeMessenger = cacheNodeMessenger;
     this.cacheLocationRemover = cacheLocationRemover;
-    this.cacheUpdater = cacheUpdater;
+    this.fileMetaUpdater = fileMetaUpdater;
     this.blockMetaFactory = blockMetaFactory;
     this.metaFactory = metaFactory;
     this.locationSorter = locationSorter;
@@ -85,7 +85,7 @@ public final class SurfMetaManager {
     if (fileMeta.isDirectory()) {
       return fileMeta;
     } else {
-      return cacheUpdater.updateMeta(fileMeta);
+      return fileMetaUpdater.update(fileMeta);
     }
   }
 
@@ -100,7 +100,7 @@ public final class SurfMetaManager {
   public long clear() {
     long numEntries = metadataIndex.size();
     metadataIndex.invalidateAll(); // TODO: this may not be so accurate
-    cacheMessenger.clearAll();
+    cacheNodeMessenger.clearAll();
     return numEntries;
   }
 

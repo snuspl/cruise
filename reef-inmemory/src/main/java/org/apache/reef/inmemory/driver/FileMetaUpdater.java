@@ -12,7 +12,7 @@ import java.io.IOException;
  * that block is then restored, from the Base FS. The blocks which have
  * not been loaded yet are also loaded here.
  */
-public interface CacheUpdater {
+public interface FileMetaUpdater {
 
   /**
    * Update metadata in place, and then return a copy of the metadata.
@@ -23,5 +23,5 @@ public interface CacheUpdater {
    * @return Updated metadata with the block locations on Surf.
    * @throws IOException Indicates an error restoring data from the Base FS
    */
-  FileMeta updateMeta(FileMeta fileMeta) throws IOException;
+  FileMeta update(FileMeta fileMeta) throws IOException;
 }

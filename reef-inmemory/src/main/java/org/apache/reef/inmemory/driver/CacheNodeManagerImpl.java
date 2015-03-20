@@ -30,9 +30,9 @@ import java.util.logging.Logger;
  * Provides an implementation for CacheManager. Messaging is taken care of
  * at CacheMessenger, because it must be implemented per Base FS.
  */
-public final class CacheManagerImpl implements CacheManager {
+public final class CacheNodeManagerImpl implements CacheNodeManager {
 
-  private static final Logger LOG = Logger.getLogger(CacheManagerImpl.class.getName());
+  private static final Logger LOG = Logger.getLogger(CacheNodeManagerImpl.class.getName());
 
   private final EvaluatorRequestor evaluatorRequestor;
   private final String dfsType;
@@ -48,14 +48,14 @@ public final class CacheManagerImpl implements CacheManager {
   private final Map<String, CacheNode> caches = new HashMap<>();
 
   @Inject
-  public CacheManagerImpl(final EvaluatorRequestor evaluatorRequestor,
-                          final @Parameter(DfsParameters.Type.class) String dfsType,
-                          final @Parameter(CacheParameters.Port.class) int cachePort,
-                          final @Parameter(CacheParameters.Memory.class) int cacheMemory,
-                          final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
-                          final @Parameter(CacheParameters.HeapSlack.class) double cacheHeapSlack,
-                          final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads,
-                          final Instrumentor instrumentor) {
+  public CacheNodeManagerImpl(final EvaluatorRequestor evaluatorRequestor,
+                              final @Parameter(DfsParameters.Type.class) String dfsType,
+                              final @Parameter(CacheParameters.Port.class) int cachePort,
+                              final @Parameter(CacheParameters.Memory.class) int cacheMemory,
+                              final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
+                              final @Parameter(CacheParameters.HeapSlack.class) double cacheHeapSlack,
+                              final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads,
+                              final Instrumentor instrumentor) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.dfsType = dfsType;
     this.cachePort = cachePort;

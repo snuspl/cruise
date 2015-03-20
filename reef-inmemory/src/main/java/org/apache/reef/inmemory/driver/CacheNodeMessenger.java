@@ -5,7 +5,7 @@ package org.apache.reef.inmemory.driver;
  * A new implementation should be create for each Base FS, because
  * the block information <T> is FS-dependant.
  */
-public interface CacheMessenger<T> {
+public interface CacheNodeMessenger<T> {
   /**
    * Remove blocks stored at the Cache
    */
