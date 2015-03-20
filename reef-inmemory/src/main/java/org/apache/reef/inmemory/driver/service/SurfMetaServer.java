@@ -13,7 +13,7 @@ import org.apache.reef.inmemory.common.replication.Rules;
 import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
-import org.apache.reef.inmemory.driver.CacheManager;
+import org.apache.reef.inmemory.driver.CacheNodeManager;
 import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
@@ -47,13 +47,13 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   TServer server = null;
 
   private final SurfMetaManager metaManager;
-  private final CacheManager cacheManager;
+  private final CacheNodeManager cacheNodeManager;
   private final ServiceRegistry serviceRegistry;
   private final ReplicationPolicy replicationPolicy;
   private final WritingCacheSelectionPolicy writingCacheSelector;
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
-                        final CacheManager cacheManager,
+                        final CacheNodeManager cacheNodeManager,
                         final ServiceRegistry serviceRegistry,
                         final WritingCacheSelectionPolicy writingCacheSelector,
                         final ReplicationPolicy replicationPolicy,
@@ -61,7 +61,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
                         final @Parameter(MetaServerParameters.Timeout.class) int timeout,
                         final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
     this.metaManager = metaManager;
-    this.cacheManager = cacheManager;
+    this.cacheNodeManager = cacheNodeManager;
     this.serviceRegistry = serviceRegistry;
     this.replicationPolicy = replicationPolicy;
     this.writingCacheSelector = writingCacheSelector;
@@ -169,7 +169,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
         // TODO Consider the locality with clientAddress
         final int cacheReplicationFactor = action.getCacheReplicationFactor();
-        final List<NodeInfo> selected = writingCacheSelector.select(cacheManager.getCaches(), cacheReplicationFactor);
+        final List<NodeInfo> selected = writingCacheSelector.select(cacheNodeManager.getCaches(), cacheReplicationFactor);
 
         final boolean pin = action.getPin();
         final int baseReplicationFactor = action.getWrite().getBaseReplicationFactor();
@@ -208,7 +208,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     LOG.log(Level.INFO, "CLI status command");
     final StringBuilder builder = new StringBuilder();
     final long currentTimestamp = System.currentTimeMillis();
-    final List<CacheNode> caches = cacheManager.getCaches();
+    final List<CacheNode> caches = cacheNodeManager.getCaches();
     builder.append("Number of caches: "+caches.size()+"\n");
     for (CacheNode cache : caches) {
       appendBasicStatus(builder, cache, currentTimestamp);
@@ -244,9 +244,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public String addCacheNode(final int memory) throws TException {
     LOG.log(Level.INFO, "CLI addCacheNode command with memory {0}", memory);
     if (memory == 0) {
-      cacheManager.requestEvaluator(1);
+      cacheNodeManager.requestEvaluator(1);
     } else {
-      cacheManager.requestEvaluator(1, memory);
+      cacheNodeManager.requestEvaluator(1, memory);
     }
     return "Submitted";
   }
@@ -284,8 +284,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
    * the CacheManager and SurfMetaManager.
    */
   public synchronized void handleUpdate(final String taskId, final CacheStatusMessage msg) {
-    cacheManager.handleHeartbeat(taskId, msg);
-    final CacheNode cache = cacheManager.getCache(taskId);
+    cacheNodeManager.handleHeartbeat(taskId, msg);
+    final CacheNode cache = cacheNodeManager.getCache(taskId);
     if (cache != null) {
       metaManager.applyCacheNodeUpdates(cache, msg.getUpdates());
     }

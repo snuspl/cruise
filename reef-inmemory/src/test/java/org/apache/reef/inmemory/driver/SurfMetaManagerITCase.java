@@ -57,12 +57,12 @@ public final class SurfMetaManagerITCase {
 
   private EventRecorder RECORD;
   private FileSystem fs;
-  private CacheManager manager;
-  private HdfsCacheMessenger messenger;
+  private CacheNodeManager manager;
+  private HdfsCacheNodeMessenger messenger;
   private CacheLoader<Path, FileMeta> loader;
   private LoadingCacheConstructor constructor;
   private LoadingCache<Path, FileMeta> cache;
-  private CacheUpdater cacheUpdater;
+  private FileMetaUpdater fileMetaUpdater;
   private LocationSorter locationSorter;
   private HdfsCacheSelectionPolicy selector;
   private CacheLocationRemover cacheLocationRemover;
@@ -79,7 +79,7 @@ public final class SurfMetaManagerITCase {
   public void setUp() throws IOException {
     RECORD = new NullEventRecorder();
     manager = TestUtils.cacheManager();
-    messenger = new HdfsCacheMessenger(manager);
+    messenger = new HdfsCacheNodeMessenger(manager);
     selector = new HdfsRandomCacheSelectionPolicy();
     cacheLocationRemover = new CacheLocationRemover();
     blockMetaFactory = new HdfsBlockMetaFactory();
@@ -112,10 +112,10 @@ public final class SurfMetaManagerITCase {
     constructor = new LoadingCacheConstructor(loader);
     cache = constructor.newInstance();
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockMetaFactory, blockInfoFactory, replicationPolicy, baseFs, blockLocationGetter);
+    fileMetaUpdater = new HdfsFileMetaUpdater(manager, messenger, selector, cacheLocationRemover, blockMetaFactory, blockInfoFactory, replicationPolicy, baseFs, blockLocationGetter);
     locationSorter = new YarnLocationSorter(new YarnConfiguration());
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, blockMetaFactory, fileMetaFactory, locationSorter, baseFsClient);
+    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, fileMetaUpdater, blockMetaFactory, fileMetaFactory, locationSorter, baseFsClient);
   }
 
   /**

@@ -30,24 +30,24 @@ public final class SurfMetaServerTest {
 
     final LoadingCache loadingCache = mock(LoadingCache.class);
     when(loadingCache.get(anyObject())).thenThrow(java.io.FileNotFoundException.class);
-    final CacheMessenger cacheMessenger = mock(CacheMessenger.class);
-    final CacheManager cacheManager = mock(CacheManager.class);
+    final CacheNodeMessenger cacheNodeMessenger = mock(CacheNodeMessenger.class);
+    final CacheNodeManager cacheNodeManager = mock(CacheNodeManager.class);
     final ServiceRegistry serviceRegistry = mock(ServiceRegistry.class);
     final ReplicationPolicy replicationPolicy = mock(ReplicationPolicy.class);
     final WritingCacheSelectionPolicy writingCacheSelectionPolicy = mock(WritingCacheSelectionPolicy.class);
     final CacheLocationRemover cacheLocationRemover = new CacheLocationRemover();
-    final CacheUpdater cacheUpdater = mock(CacheUpdater.class);
+    final FileMetaUpdater fileMetaUpdater = mock(FileMetaUpdater.class);
     final BlockMetaFactory blockMetaFactory = mock(BlockMetaFactory.class);
     final FileMetaFactory metaFactory = mock(FileMetaFactory.class);
     final LocationSorter locationSorter = mock(LocationSorter.class);
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
 
-    final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheMessenger, cacheLocationRemover,
-            cacheUpdater, blockMetaFactory, metaFactory, locationSorter, baseFsClient);
+    final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheNodeMessenger, cacheLocationRemover,
+            fileMetaUpdater, blockMetaFactory, metaFactory, locationSorter, baseFsClient);
 
     try {
       final SurfMetaServer metaService = new SurfMetaServer(
-              metaManager, cacheManager, serviceRegistry, writingCacheSelectionPolicy, replicationPolicy, 18000, 10, 1);
+              metaManager, cacheNodeManager, serviceRegistry, writingCacheSelectionPolicy, replicationPolicy, 18000, 10, 1);
       metaService.load("/nonexistent/path");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof org.apache.reef.inmemory.common.exceptions.FileNotFoundException);

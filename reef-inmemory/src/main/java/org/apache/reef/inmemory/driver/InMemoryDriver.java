@@ -31,7 +31,7 @@ public final class InMemoryDriver {
   private static final Logger LOG = Logger.getLogger(InMemoryDriver.class.getName());
 
   private final SurfMetaServer metaService;
-  private final CacheManager cacheManager;
+  private final CacheNodeManager cacheNodeManager;
   private final EStage<TaskMessage> taskMessageEStage;
   private final int initCacheServers;
 
@@ -42,11 +42,11 @@ public final class InMemoryDriver {
    */
   @Inject
   public InMemoryDriver(final SurfMetaServer metaService,
-                        final CacheManager cacheManager,
+                        final CacheNodeManager cacheNodeManager,
                         final EStage<TaskMessage> taskMessageEStage,
                         final @Parameter(MetaServerParameters.InitCacheServers.class) int initCacheServers) {
     this.metaService = metaService;
-    this.cacheManager = cacheManager;
+    this.cacheNodeManager = cacheNodeManager;
     this.taskMessageEStage = taskMessageEStage;
     this.initCacheServers = initCacheServers;
   }
@@ -59,7 +59,7 @@ public final class InMemoryDriver {
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
 
-      cacheManager.requestEvaluator(initCacheServers);
+      cacheNodeManager.requestEvaluator(initCacheServers);
 
       executor = Executors.newSingleThreadExecutor();
       try {
@@ -79,7 +79,7 @@ public final class InMemoryDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       LOG.log(Level.INFO, "Submitting Task to AllocatedEvaluator: {0}", allocatedEvaluator);
-      cacheManager.submitContextAndTask(allocatedEvaluator);
+      cacheNodeManager.submitContextAndTask(allocatedEvaluator);
     }
   }
 
@@ -90,7 +90,7 @@ public final class InMemoryDriver {
     @Override
     public void onNext(RunningTask task) {
       LOG.log(Level.INFO, "Task {0} Running", task.getId());
-      cacheManager.addRunningTask(task);
+      cacheNodeManager.addRunningTask(task);
     }
   }
 
@@ -101,7 +101,7 @@ public final class InMemoryDriver {
     @Override
     public void onNext(CompletedTask task) {
       LOG.log(Level.INFO, "Task {0} Completed", task.getId());
-      cacheManager.removeRunningTask(task.getId());
+      cacheNodeManager.removeRunningTask(task.getId());
     }
   }
 

@@ -35,7 +35,7 @@ public final class HdfsMetaLoaderITCase {
   private static final String TESTDIR = ITUtils.getTestDir();
 
   private FileSystem fs;
-  private CacheManager manager;
+  private CacheNodeManager manager;
   private HdfsMetaLoader loader;
   private HdfsFileMetaFactory metaFactory;
   private ReplicationPolicy replicationPolicy;
@@ -113,7 +113,7 @@ public final class HdfsMetaLoaderITCase {
   /**
    * Test proper loading of a small file. Checks that metadata is returned,
    * and correct.
-   * The locations will be updated in {@link org.apache.reef.inmemory.driver.CacheUpdater#updateMeta}
+   * The locations will be updated in {@link org.apache.reef.inmemory.driver.FileMetaUpdater#update}
    * @throws IOException
    */
   @Test
@@ -135,7 +135,7 @@ public final class HdfsMetaLoaderITCase {
   /**
    * Test proper loading of a large file that spans multiple blocks.
    * Checks that metadata is returned, and correct.
-   * The locations will be updated in {@link org.apache.reef.inmemory.driver.CacheUpdater#updateMeta}
+   * The locations will be updated in {@link org.apache.reef.inmemory.driver.FileMetaUpdater#update}
    * In addition to the small file checks, the order of blocks is checked.
    * @throws IOException
    */
