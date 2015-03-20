@@ -27,7 +27,7 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
   private static final Logger LOG = Logger.getLogger(HdfsFileMetaUpdater.class.getName());
 
   private final CacheNodeManager cacheNodeManager;
-  private final HdfsCacheNodeMessenger cacheMessenger;
+  private final HdfsCacheNodeMessenger cacheNodeMessenger;
   private final HdfsCacheSelectionPolicy cacheSelector;
   private final CacheLocationRemover cacheLocationRemover;
   private final HdfsBlockMetaFactory blockMetaFactory;
@@ -38,7 +38,7 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
 
   /**
    * @param cacheNodeManager         Provides an updated list of caches
-   * @param cacheMessenger       Provides a channel for block replication messages
+   * @param cacheNodeMessenger       Provides a channel for block replication messages
    * @param cacheSelector        Selects from available caches based on the implemented policy
    * @param cacheLocationRemover Provides the log of pending removals
    * @param replicationPolicy    Provides the replication policy for each file
@@ -46,7 +46,7 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
    */
   @Inject
   public HdfsFileMetaUpdater(final CacheNodeManager cacheNodeManager,
-                             final HdfsCacheNodeMessenger cacheMessenger,
+                             final HdfsCacheNodeMessenger cacheNodeMessenger,
                              final HdfsCacheSelectionPolicy cacheSelector,
                              final CacheLocationRemover cacheLocationRemover,
                              final HdfsBlockMetaFactory blockMetaFactory,
@@ -55,7 +55,7 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
                              final FileSystem dfs,
                              final BlockLocationGetter blockLocationGetter) {
     this.cacheNodeManager = cacheNodeManager;
-    this.cacheMessenger = cacheMessenger;
+    this.cacheNodeMessenger = cacheNodeMessenger;
     this.cacheSelector = cacheSelector;
     this.cacheLocationRemover = cacheLocationRemover;
     this.blockMetaFactory = blockMetaFactory;
@@ -147,7 +147,7 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
             final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
                     HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
             final HdfsBlockMessage msg = new HdfsBlockMessage(blockId, hdfsBlockInfo, hdfsDatanodeInfos, pin);
-            cacheMessenger.addBlock(nodeToAdd.getTaskId(), msg);
+            cacheNodeMessenger.addBlock(nodeToAdd.getTaskId(), msg);
             final NodeInfo location = new NodeInfo(nodeToAdd.getAddress(), nodeToAdd.getRack());
             blockMeta.addToLocations(location);
           }
