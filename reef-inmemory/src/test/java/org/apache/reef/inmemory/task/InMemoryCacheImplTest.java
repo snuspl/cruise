@@ -30,7 +30,7 @@ import static org.mockito.Mockito.mock;
 public final class InMemoryCacheImplTest {
 
   private CacheStatistics statistics;
-  private Cache<BlockId, BlockLoader> internalCache;
+  private Cache<BlockId, CacheEntry> internalCache;
   private MemoryManager memoryManager;
   private EStage<BlockLoader> loadingStage;
   private HeartBeatTriggerManager heartBeatTriggerManager;
@@ -316,7 +316,7 @@ public final class InMemoryCacheImplTest {
     // Try to load same block
     for (int i = 1; i < numThreads/2; i++) {
       // Load called on same blockId
-      final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(1024), false, loadCounts[i], 1024);
+      final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(1024), false, loadCounts[i]);
       loaders[i] = loader;
       futures[i] = e.submit(new Runnable() {
         @Override
@@ -345,7 +345,7 @@ public final class InMemoryCacheImplTest {
     for (int i = numThreads/2; i < numThreads; i++) {
       final BlockId randomId = randomBlockId();
       // Load called on different blockId
-      final BlockLoader loader = new MockBlockLoader(randomId, blockSize, new TwosBufferLoader(1024), false, loadCounts[i], 1024);
+      final BlockLoader loader = new MockBlockLoader(randomId, blockSize, new TwosBufferLoader(1024), false, loadCounts[i]);
       loaders[i] = loader;
       futures[i] = e.submit(new Runnable() {
         @Override
@@ -622,7 +622,7 @@ public final class InMemoryCacheImplTest {
           final boolean pin = (iteration % 20 == 3); // 3, 23, 43
           final AtomicInteger loadCount = new AtomicInteger(0);
           final BlockLoader loader =
-                  new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), pin, loadCount, bufferSize);
+                  new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), pin, loadCount);
           if (pin) {
             loadCounts[iteration/20] = loadCount;
           }
@@ -681,7 +681,6 @@ public final class InMemoryCacheImplTest {
     private final int milliseconds;
     private boolean loadDone;
     private final AtomicInteger loadCount;
-    private final int bufferSize;
 
     public SleepingBlockLoader(final BlockId blockId,
                                final long blockSize,
@@ -696,7 +695,6 @@ public final class InMemoryCacheImplTest {
       this.milliseconds = milliseconds;
       this.loadCount = loadCount;
       this.loadDone = false;
-      this.bufferSize = bufferSize;
 
       // Load data chunks from the byte array
       ArrayList<byte[]> temp = new ArrayList<>();
@@ -802,25 +800,22 @@ public final class InMemoryCacheImplTest {
     private final BufferLoader bufferLoader;
     private final boolean pinned;
     private final AtomicInteger loadCount;
-    private final int bufferSize;
     private List<byte[]> data;
 
     public MockBlockLoader(final BlockId blockId, final long blockSize, final BufferLoader bufferLoader, final boolean pin) {
-      this(blockId, blockSize, bufferLoader, pin, new AtomicInteger(0), 8 * 1024 * 1024);
+      this(blockId, blockSize, bufferLoader, pin, new AtomicInteger(0));
     }
 
     public MockBlockLoader(final BlockId blockId,
                            final long blockSize,
                            final BufferLoader bufferLoader,
                            final boolean pin,
-                           final AtomicInteger loadCount,
-                           final int bufferSize) {
+                           final AtomicInteger loadCount) {
       this.blockId = blockId;
       this.blockSize = blockSize;
       this.bufferLoader = bufferLoader;
       this.pinned = pin;
       this.loadCount = loadCount;
-      this.bufferSize = bufferSize;
     }
 
     @Override

@@ -19,11 +19,11 @@ public final class CacheAdmissionController {
   private static final Logger LOG = Logger.getLogger(CacheAdmissionController.class.getName());
 
   private MemoryManager memoryManager;
-  private Cache<BlockId, BlockLoader> cache;
+  private Cache<BlockId, CacheEntry> cache;
 
   @Inject
   public CacheAdmissionController(final MemoryManager memoryManager,
-                                  final Cache<BlockId, BlockLoader> cache) {
+                                  final Cache<BlockId, CacheEntry> cache) {
     this.cache = cache;
     this.memoryManager = memoryManager;
   }
