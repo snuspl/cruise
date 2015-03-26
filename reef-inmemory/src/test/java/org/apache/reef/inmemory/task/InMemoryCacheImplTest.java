@@ -113,7 +113,7 @@ public final class InMemoryCacheImplTest {
    * Loading provided should be same passed in to cache.
    */
   private void assertBlockLoaded(BlockLoader loader, BlockId blockId) throws BlockLoadingException, BlockNotFoundException {
-    for (int i = 0; i * loader.getBufferSize() < loader.getBlockSize(); i++) {
+    for (int i = 0; i * cache.getLoadingBufferSize() < loader.getBlockSize(); i++) {
       assertNotNull(cache.get(blockId, i));
       assertEquals(loader.getData(i), cache.get(blockId, i));
     }
@@ -746,11 +746,6 @@ public final class InMemoryCacheImplTest {
         throw new BlockLoadingException();
       }
     }
-
-    @Override
-    public int getBufferSize() {
-      return this.bufferSize;
-    }
   }
 
   private interface BufferLoader {
@@ -852,11 +847,6 @@ public final class InMemoryCacheImplTest {
     @Override
     public byte[] getData(int index) throws BlockLoadingException {
       return data.get(index);
-    }
-
-    @Override
-    public int getBufferSize() {
-      return this.bufferSize;
     }
   }
 

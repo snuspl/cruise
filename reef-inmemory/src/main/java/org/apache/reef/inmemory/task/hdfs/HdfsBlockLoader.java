@@ -303,14 +303,6 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * @return Size of buffer used in block loading
-   */
-  @Override
-  public int getBufferSize() {
-    return bufferSize;
-  }
-
-  /**
    * Get data split from cache with an offset of {@code index * bufferSize}
    * @param index Index of the chunk to load
    * @return Cached byte array

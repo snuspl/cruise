@@ -37,9 +37,4 @@ public interface BlockLoader {
    * @throws BlockLoadingException If the chunk of index has not been loaded yet
    */
   public byte[] getData(int index) throws BlockLoadingException;
-
-  /**
-   * @return Size of buffer used in block loading
-   */
-  public int getBufferSize();
 }

@@ -79,11 +79,6 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
   }
 
   @Override
-  public int getBufferSize() {
-    return this.bufferSize;
-  }
-
-  @Override
   public void writeData(final byte[] data, final long offset) throws IOException {
     if (offset + data.length > blockSize) {
       throw new IOException("The data exceeds the capacity of block. Offset : " + offset
