@@ -5,7 +5,6 @@ import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.data.VectorDistanceMeasure;
 import edu.snu.reef.flexion.examples.ml.data.VectorSum;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastReceiver;
-import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherSender;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceSender;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.io.network.util.Pair;
@@ -16,18 +15,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class KMeansCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
-        implements DataBroadcastReceiver<List<Centroid>>, DataReduceSender<Map<Integer, VectorSum>>, DataGatherSender<List<Vector>> {
+public class KMeansMainCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
+        implements DataBroadcastReceiver<List<Centroid>>, DataReduceSender<Map<Integer, VectorSum>> {
 
     /**
      * Points read from input data to work on
      */
     private List<Vector> points = null;
-
-    /**
-     * Initial centroids read from input data to pass to Controller Task
-     */
-    private List<Vector> initialCentroids = null;
 
     /**
      * Centroids of clusters
@@ -51,7 +45,7 @@ public class KMeansCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vecto
      * @param distanceMeasure distance measure to use to compute distances between points
      */
     @Inject
-    public KMeansCmpTask(final VectorDistanceMeasure distanceMeasure) {
+    public KMeansMainCmpTask(final VectorDistanceMeasure distanceMeasure) {
         this.distanceMeasure = distanceMeasure;
     }
 
@@ -60,36 +54,31 @@ public class KMeansCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vecto
 
         points = data.second;
 
-        // First iteration
-        if(iteration==0) {
-            initialCentroids = data.first;
-        }
-        else {
-            // Compute the nearest cluster centroid for each point
-            pointSum = new HashMap<Integer, VectorSum>();
+        // Compute the nearest cluster centroid for each point
+        pointSum = new HashMap<Integer, VectorSum>();
 
-            for (final Vector vector : points) {
-                double nearestClusterDist = Double.MAX_VALUE;
-                int nearestClusterId = -1;
+        for (final Vector vector : points) {
+            double nearestClusterDist = Double.MAX_VALUE;
+            int nearestClusterId = -1;
 
-                int clusterId = 0;
-                for (Centroid centroid : centroids) {
-                    final double distance = distanceMeasure.distance(centroid.vector, vector);
-                    if (nearestClusterDist > distance) {
-                        nearestClusterDist = distance;
-                        nearestClusterId = clusterId;
-                    }
-                    clusterId++;
+            int clusterId = 0;
+            for (Centroid centroid : centroids) {
+                final double distance = distanceMeasure.distance(centroid.vector, vector);
+                if (nearestClusterDist > distance) {
+                    nearestClusterDist = distance;
+                    nearestClusterId = clusterId;
                 }
+                clusterId++;
+            }
 
-                // Compute vector sums for each cluster centroid
-                if (pointSum.containsKey(nearestClusterId) == false) {
-                    pointSum.put(nearestClusterId, new VectorSum(vector, 1, true));
-                } else {
-                    pointSum.get(nearestClusterId).add(vector);
-                }
+            // Compute vector sums for each cluster centroid
+            if (pointSum.containsKey(nearestClusterId) == false) {
+                pointSum.put(nearestClusterId, new VectorSum(vector, 1, true));
+            } else {
+                pointSum.get(nearestClusterId).add(vector);
             }
         }
+
 
     }
 
@@ -101,15 +90,5 @@ public class KMeansCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vecto
     @Override
     public Map<Integer, VectorSum> sendReduceData(int iteration) {
         return pointSum;
-    }
-
-    @Override
-    public List<Vector> sendGatherData(int iteration) {
-        if (iteration==0) {
-            return initialCentroids;
-        }
-        else {
-            return new ArrayList<Vector>();
-        }
     }
 }

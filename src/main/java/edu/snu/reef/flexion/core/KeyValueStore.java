@@ -8,19 +8,19 @@ import java.util.HashMap;
 
 public final class KeyValueStore {
 
-    private final HashMap<Name, Object> hashMap;
+    private final HashMap<Class<? extends Name>, Object> hashMap;
 
     @Inject
     public KeyValueStore(){
         hashMap = new HashMap<>();
     }
 
-    public <T> void put(Name<T> name, T value) {
+    public <T> void put(Class<? extends Name<T>> name, T value) {
         hashMap.put(name, value);
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T get(Name<T> name) {
+    public <T> T get(Class<? extends Name<T>> name) {
         return (T) hashMap.get(name);
     }
 }

@@ -1,7 +1,9 @@
 package edu.snu.reef.flexion.examples.ml.algorithms.kmeans;
 
 
-import edu.snu.reef.flexion.core.*;
+import edu.snu.reef.flexion.core.DataParser;
+import edu.snu.reef.flexion.core.UserJobInfo;
+import edu.snu.reef.flexion.core.UserTaskInfo;
 import edu.snu.reef.flexion.examples.ml.sub.CentroidListCodec;
 import edu.snu.reef.flexion.examples.ml.sub.MapOfIntVSumCodec;
 import edu.snu.reef.flexion.examples.ml.sub.MapOfIntVSumReduceFunction;
@@ -21,10 +23,14 @@ public class KMeansJobInfo implements UserJobInfo {
     public List<UserTaskInfo> getTaskInfoList() {
 
         List<UserTaskInfo> taskInfoList = new LinkedList<>();
-        taskInfoList.add(new UserTaskInfo(KMeansCmpTask.class, KMeansCtrlTask.class, KMeansCommGroup.class)
+
+        taskInfoList.add(new UserTaskInfo(KMeansPreCmpTask.class, KMeansPreCtrlTask.class, KMeansPreCommGroup.class)
+                .setGather(VectorListCodec.class));
+
+        taskInfoList.add(new UserTaskInfo(KMeansMainCmpTask.class, KMeansMainCtrlTask.class, KMeansMainCommGroup.class)
                 .setBroadcast(CentroidListCodec.class)
-                .setGather(VectorListCodec.class)
                 .setReduce(MapOfIntVSumCodec.class, MapOfIntVSumReduceFunction.class));
+
         return taskInfoList;
     }
 
