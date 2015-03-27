@@ -8,6 +8,8 @@ import com.microsoft.reef.io.network.nggroup.impl.config.ReduceOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
 import edu.snu.reef.flexion.groupcomm.names.*;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.driver.task.TaskMessage;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
@@ -101,6 +103,8 @@ public final class FlexionDriver {
 
     private void initializeCommDriver(){
 
+        int sequence = 0;
+
         for(UserTaskInfo userTaskInfo : userTaskInfoList) {
 
             CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
@@ -109,14 +113,14 @@ public final class FlexionDriver {
 
             commGroup.addBroadcast(CtrlMsgBroadcast.class,
                     BroadcastOperatorSpec.newBuilder()
-                            .setSenderId(ControllerTask.TASK_ID)
+                            .setSenderId(ControllerTask.TASK_ID+"-"+sequence)
                             .setDataCodecClass(SerializableCodec.class)
                             .build());
 
             if (userTaskInfo.isBroadcastUsed()) {
                 commGroup.addBroadcast(DataBroadcast.class,
                         BroadcastOperatorSpec.newBuilder()
-                                .setSenderId(ControllerTask.TASK_ID)
+                                .setSenderId(ControllerTask.TASK_ID+"-"+sequence)
                                 .setDataCodecClass(userTaskInfo.getBroadcastCodecClass())
                                 .build());
             }
@@ -124,7 +128,7 @@ public final class FlexionDriver {
             if (userTaskInfo.isScatterUsed()) {
                 commGroup.addScatter(DataScatter.class,
                         ScatterOperatorSpec.newBuilder()
-                                .setSenderId(ControllerTask.TASK_ID)
+                                .setSenderId(ControllerTask.TASK_ID+"-"+sequence)
                                 .setDataCodecClass(userTaskInfo.getScatterCodecClass())
                                 .build());
             }
@@ -132,7 +136,7 @@ public final class FlexionDriver {
             if (userTaskInfo.isReduceUsed()) {
                 commGroup.addReduce(DataReduce.class,
                         ReduceOperatorSpec.newBuilder()
-                                .setReceiverId(ControllerTask.TASK_ID)
+                                .setReceiverId(ControllerTask.TASK_ID+"-"+sequence)
                                 .setDataCodecClass(userTaskInfo.getReduceCodecClass())
                                 .setReduceFunctionClass(userTaskInfo.getReduceFunctionClass())
                                 .build());
@@ -141,7 +145,7 @@ public final class FlexionDriver {
             if (userTaskInfo.isGatherUsed()) {
                 commGroup.addGather(DataGather.class,
                         GatherOperatorSpec.newBuilder()
-                                .setReceiverId(ControllerTask.TASK_ID)
+                                .setReceiverId(ControllerTask.TASK_ID+"-"+sequence)
                                 .setDataCodecClass(userTaskInfo.getGatherCodecClass())
                                 .build());
             }
@@ -149,6 +153,8 @@ public final class FlexionDriver {
             commGroupDriverList.add(commGroup);
 
             commGroup.finalise();
+
+            sequence++;
         }
 
     }
@@ -202,7 +208,7 @@ public final class FlexionDriver {
                     LOG.log(Level.INFO, "Submit ControllerTask");
                     partialTaskConf = Configurations.merge(
                             TaskConfiguration.CONF
-                                    .set(TaskConfiguration.IDENTIFIER, ControllerTask.TASK_ID)
+                                    .set(TaskConfiguration.IDENTIFIER, ControllerTask.TASK_ID+"-"+sequence)
                                     .set(TaskConfiguration.TASK, ControllerTask.class)
                                     .build(),
                             Tang.Factory.getTang().newConfigurationBuilder()
@@ -258,40 +264,95 @@ public final class FlexionDriver {
         }
     }
 
-//    /**
-//     * When a certain Compute Task fails, we add the Task back and let it participate in
-//     * Group Communication again. However if the failed Task is the Controller Task,
-//     * we just shut down the whole job because it's hard to recover the cluster centroid info.
-//     */
-//    final class FailedTaskHandler implements EventHandler<FailedTask> {
-//        @Override
-//        public void onNext(FailedTask failedTask) {
-//            LOG.info(failedTask.getId() + " has failed.");
-//
-//            // Stop the whole job if the failed Task is the Compute Task
-//            if (failedTask.getActiveContext().get().getId().equals(ctrlTaskContextId)) {
-//                throw new RuntimeException("Controller Task failed; aborting job");
-//            }
-//
-//            final Configuration partialTaskConf = Configurations.merge(
-//                    TaskConfiguration.CONF
-//                            .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + taskId.getAndIncrement())
-//                            .set(TaskConfiguration.TASK, ComputeTask.class)
-//                            .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
-//                            .build(),
-//                    Tang.Factory.getTang().newConfigurationBuilder()
-//                            .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
-//                            .build());
-//
-//            // Re-add the failed Compute Task
-//            commGroup.addTask(partialTaskConf);
-//
-//            final Configuration taskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
-//
-//            failedTask.getActiveContext().get().submitTask(taskConf);
-//
-//        }
-//    }
+    final class TaskCompletedHandler implements EventHandler<CompletedTask> {
+
+        @Override
+        public void onNext(CompletedTask completedTask) {
+            LOG.info(completedTask.getId() + " has completed.");
+
+            String contextId = completedTask.getActiveContext().getId();
+            int nextSequence = contextToSequence.get(contextId)+1;
+            if (nextSequence >= userTaskInfoList.size()) {
+                completedTask.getActiveContext().close();
+                return;
+            }
+
+            contextToSequence.put(contextId, nextSequence);
+            UserTaskInfo taskInfo = userTaskInfoList.get(nextSequence);
+            CommunicationGroupDriver commGroup = commGroupDriverList.get(nextSequence);
+            final Configuration partialTaskConf;
+
+            if (contextId.equals(ctrlTaskContextId)) {
+                LOG.log(Level.INFO, "Submit ControllerTask");
+                partialTaskConf = Configurations.merge(
+                        TaskConfiguration.CONF
+                                .set(TaskConfiguration.IDENTIFIER, ControllerTask.TASK_ID+"-"+nextSequence)
+                                .set(TaskConfiguration.TASK, ControllerTask.class)
+                                .build(),
+                        Tang.Factory.getTang().newConfigurationBuilder()
+                                .bindImplementation(UserControllerTask.class, taskInfo.getUserCtrlTaskClass())
+                                .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
+                                .build());
+            } else {
+                LOG.log(Level.INFO, "Submit ComputeTask");
+                partialTaskConf = Configurations.merge(
+                        TaskConfiguration.CONF
+                                .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + taskId.getAndIncrement())
+                                .set(TaskConfiguration.TASK, ComputeTask.class)
+                                .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
+                                .build(),
+                        Tang.Factory.getTang().newConfigurationBuilder()
+                                .bindImplementation(UserComputeTask.class, taskInfo.getUserCmpTaskClass())
+                                .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
+                                .build());
+            }
+            commGroup.addTask(partialTaskConf);
+            final Configuration finalTaskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
+            completedTask.getActiveContext().submitTask(finalTaskConf);
+
+        }
+    }
+
+    /**
+     * When a certain Compute Task fails, we add the Task back and let it participate in
+     * Group Communication again. However if the failed Task is the Controller Task,
+     * we just shut down the whole job because it's hard to recover the cluster centroid info.
+     */
+    final class FailedTaskHandler implements EventHandler<FailedTask> {
+        @Override
+        public void onNext(FailedTask failedTask) {
+            LOG.info(failedTask.getId() + " has failed.");
+
+            // Stop the whole job if the failed Task is the Compute Task
+            if (failedTask.getActiveContext().get().getId().equals(ctrlTaskContextId)) {
+                throw new RuntimeException("Controller Task failed; aborting job");
+            }
+
+            String contextId = failedTask.getActiveContext().get().getId();
+            int sequence = contextToSequence.get(contextId);
+            UserTaskInfo taskInfo = userTaskInfoList.get(sequence);
+            CommunicationGroupDriver commGroup = commGroupDriverList.get(sequence);
+
+            final Configuration partialTaskConf = Configurations.merge(
+                    TaskConfiguration.CONF
+                            .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + taskId.getAndIncrement())
+                            .set(TaskConfiguration.TASK, ComputeTask.class)
+                            .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
+                            .build(),
+                    Tang.Factory.getTang().newConfigurationBuilder()
+                            .bindImplementation(UserComputeTask.class, taskInfo.getUserCmpTaskClass())
+                            .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
+                            .build());
+
+            // Re-add the failed Compute Task
+            commGroup.addTask(partialTaskConf);
+
+            final Configuration taskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
+
+            failedTask.getActiveContext().get().submitTask(taskConf);
+
+        }
+    }
 
 
 

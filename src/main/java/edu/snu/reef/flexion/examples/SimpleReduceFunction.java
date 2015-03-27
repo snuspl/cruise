@@ -3,7 +3,7 @@ package edu.snu.reef.flexion.examples;
 import com.microsoft.reef.io.network.group.operators.Reduce;
 import javax.inject.Inject;
 
-class SimpleReduceFunction implements Reduce.ReduceFunction<Integer> {
+public class SimpleReduceFunction implements Reduce.ReduceFunction<Integer> {
 
     @Inject
     public SimpleReduceFunction() {
