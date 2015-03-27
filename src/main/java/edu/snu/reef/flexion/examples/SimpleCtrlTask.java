@@ -1,13 +1,13 @@
 package edu.snu.reef.flexion.examples;
 
 import edu.snu.reef.flexion.core.UserControllerTask;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
 
 import javax.inject.Inject;
 
 public final class SimpleCtrlTask extends UserControllerTask
-        implements IDataReduceReceiver<Integer>, IDataBroadcastSender<Integer> {
+        implements DataReduceReceiver<Integer>, DataBroadcastSender<Integer> {
 
     private Integer receivedData = 0;
     private Integer dataToSend = 0;

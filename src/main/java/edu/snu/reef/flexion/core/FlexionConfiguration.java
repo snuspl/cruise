@@ -11,8 +11,7 @@ import java.io.IOException;
 
 public final class FlexionConfiguration extends ConfigurationModuleBuilder {
     public final static RequiredParameter<String> IDENTIFIER = new RequiredParameter<>();
-    public final static RequiredImpl<UserControllerTask> CONTROLLER_TASK = new RequiredImpl<>();
-    public final static RequiredImpl<UserComputeTask> COMPUTE_TASK = new RequiredImpl<>();
+    public final static RequiredImpl<UserJobInfo> JOB_INFO = new RequiredImpl<>();
     public final static OptionalImpl<UserParameters> PARAMETERS = new OptionalImpl<>();
     public final static RequiredParameter<Integer> EVALUATOR_NUM = new RequiredParameter<>();
     public final static OptionalParameter<Integer> EVALUATOR_SIZE = new OptionalParameter<>();
@@ -22,8 +21,7 @@ public final class FlexionConfiguration extends ConfigurationModuleBuilder {
 
     public final static ConfigurationModule CONF = new FlexionConfiguration()
             .bindNamedParameter(JobIdentifier.class, IDENTIFIER)
-            .bindImplementation(UserControllerTask.class, CONTROLLER_TASK)
-            .bindImplementation(UserComputeTask.class, COMPUTE_TASK)
+            .bindImplementation(UserJobInfo.class, JOB_INFO)
             .bindImplementation(UserParameters.class, PARAMETERS)
             .bindNamedParameter(EvaluatorNum.class, EVALUATOR_NUM)
             .bindNamedParameter(EvaluatorSize.class, EVALUATOR_SIZE)

@@ -3,11 +3,13 @@ package edu.snu.reef.flexion.core;
 import com.microsoft.reef.io.network.group.operators.Broadcast;
 import com.microsoft.reef.io.network.nggroup.api.task.CommunicationGroupClient;
 import com.microsoft.reef.io.network.nggroup.api.task.GroupCommClient;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastReceiver;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataScatterReceiver;
 import edu.snu.reef.flexion.groupcomm.names.*;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 import org.apache.reef.task.TaskMessage;
@@ -25,6 +27,7 @@ public class ComputeTask implements Task, TaskMessageSource {
 
     private final UserComputeTask userComputeTask;
     private final CommunicationGroupClient commGroup;
+    private final KeyValueStore keyValueStore;
     private final HeartBeatTriggerManager heartBeatTriggerManager;
 
     private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
@@ -38,12 +41,15 @@ public class ComputeTask implements Task, TaskMessageSource {
     @Inject
     public ComputeTask(final GroupCommClient groupCommClient,
                        final DataParser dataParser,
+                       final KeyValueStore keyValueStore,
                        final UserComputeTask userComputeTask,
-                       final HeartBeatTriggerManager heartBeatTriggerManager) {
+                       @Parameter(CommunicationGroup.class) final String commGroupName,
+                       final HeartBeatTriggerManager heartBeatTriggerManager) throws ClassNotFoundException {
 
         this.userComputeTask = userComputeTask;
         this.dataParser = dataParser;
-        this.commGroup = groupCommClient.getCommunicationGroup(CommunicationGroup.class);
+        this.keyValueStore = keyValueStore;
+        this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
         this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
         this.heartBeatTriggerManager = heartBeatTriggerManager;
     }
@@ -53,6 +59,7 @@ public class ComputeTask implements Task, TaskMessageSource {
         LOG.log(Level.INFO, "CmpTask commencing...");
 
         Object dataSet = dataParser.get();
+        userComputeTask.initialize(keyValueStore);
         int iteration=0;
         while (!isTerminated()) {
             receiveData();
@@ -63,6 +70,7 @@ public class ComputeTask implements Task, TaskMessageSource {
             heartBeatTriggerManager.triggerHeartBeat();
             iteration++;
         }
+        userComputeTask.cleanup(keyValueStore);
 
         return null;
     }
@@ -71,13 +79,13 @@ public class ComputeTask implements Task, TaskMessageSource {
     private void receiveData() throws Exception {
 
         if (userComputeTask.isBroadcastUsed()) {
-            ((IDataBroadcastReceiver)userComputeTask).receiveBroadcastData(
+            ((DataBroadcastReceiver)userComputeTask).receiveBroadcastData(
                     commGroup.getBroadcastReceiver(DataBroadcast.class).receive());
 
         }
 
         if (userComputeTask.isScatterUsed()) {
-            ((IDataScatterReceiver)userComputeTask).receiveScatterData(
+            ((DataScatterReceiver)userComputeTask).receiveScatterData(
                     commGroup.getScatterReceiver(DataScatter.class).receive());
         }
 
@@ -87,12 +95,12 @@ public class ComputeTask implements Task, TaskMessageSource {
 
         if (userComputeTask.isGatherUsed()) {
             commGroup.getGatherSender(DataGather.class).send(
-                    ((IDataGatherSender)userComputeTask).sendGatherData(iteration));
+                    ((DataGatherSender)userComputeTask).sendGatherData(iteration));
         }
 
         if (userComputeTask.isReduceUsed()) {
             commGroup.getReduceSender(DataReduce.class).send(
-                    ((IDataReduceSender)userComputeTask).sendReduceData(iteration));
+                    ((DataReduceSender)userComputeTask).sendReduceData(iteration));
         }
     }
 

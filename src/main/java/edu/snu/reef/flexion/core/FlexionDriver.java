@@ -6,13 +6,8 @@ import com.microsoft.reef.io.network.nggroup.impl.config.BroadcastOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.GatherOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ReduceOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterSender;
 import edu.snu.reef.flexion.groupcomm.names.*;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.driver.task.TaskMessage;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
@@ -28,6 +23,11 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
+import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -61,25 +61,16 @@ public final class FlexionDriver {
     private final GroupCommDriver groupCommDriver;
 
     /**
-     *  Communication Group to work on
-     */
-    private final CommunicationGroupDriver commGroup;
-
-    /**
      * Accessor for data loading service
      * Can check whether a evaluator is configured with the service or not.
      */
     private final DataLoadingService dataLoadingService;
 
-    /**
-     * Class for the Controller Task
-     */
-    private final UserControllerTask userControllerTask;
+    private final UserJobInfo userJobInfo;
 
-    /**
-     * Class for the Compute Task
-     */
-    private final UserComputeTask userComputeTask;
+    private final List<UserTaskInfo> userTaskInfoList;
+    private final List<CommunicationGroupDriver> commGroupDriverList;
+    private final Map<String, Integer> contextToSequence;
 
     private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
 
@@ -93,70 +84,72 @@ public final class FlexionDriver {
      *
      * @param groupCommDriver manager for Group Communication configurations
      * @param dataLoadingService manager for Data Loading configurations
-     * @param userComputeTask class for the Compute Task
-     * @param userControllerTask class for the Controller Task
      */
     @Inject
     private FlexionDriver(final GroupCommDriver groupCommDriver,
                           final DataLoadingService dataLoadingService,
-                          final UserComputeTask userComputeTask,
-                          final UserControllerTask userControllerTask) {
+                          final UserJobInfo userJobInfo) throws IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
         this.groupCommDriver = groupCommDriver;
         this.dataLoadingService = dataLoadingService;
+        this.userJobInfo = userJobInfo;
+        this.userTaskInfoList = userJobInfo.getTaskInfoList();
+        this.commGroupDriverList = new LinkedList<>();
+        this.contextToSequence = new HashMap<>();
+        initializeCommDriver();
 
-        this.userComputeTask = userComputeTask;
-        this.userControllerTask = userControllerTask;
+    }
 
-        this.commGroup = groupCommDriver.newCommunicationGroup(
-                CommunicationGroup.class,
-                dataLoadingService.getNumberOfPartitions() + 1);
+    private void initializeCommDriver(){
 
-        this.commGroup
-                .addBroadcast(CtrlMsgBroadcast.class,
+        for(UserTaskInfo userTaskInfo : userTaskInfoList) {
+
+            CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
+                    userTaskInfo.getCommGroupName(),
+                    dataLoadingService.getNumberOfPartitions() + 1);
+
+            commGroup.addBroadcast(CtrlMsgBroadcast.class,
+                    BroadcastOperatorSpec.newBuilder()
+                            .setSenderId(ControllerTask.TASK_ID)
+                            .setDataCodecClass(SerializableCodec.class)
+                            .build());
+
+            if (userTaskInfo.isBroadcastUsed()) {
+                commGroup.addBroadcast(DataBroadcast.class,
                         BroadcastOperatorSpec.newBuilder()
                                 .setSenderId(ControllerTask.TASK_ID)
-                                .setDataCodecClass(SerializableCodec.class)
+                                .setDataCodecClass(userTaskInfo.getBroadcastCodecClass())
                                 .build());
+            }
 
-        if (userControllerTask.isBroadcastUsed()) {
-            this.commGroup
-                    .addBroadcast(DataBroadcast.class,
-                            BroadcastOperatorSpec.newBuilder()
-                                    .setSenderId(ControllerTask.TASK_ID)
-                                    .setDataCodecClass(((IDataBroadcastSender) userControllerTask).getBroadcastCodecClass())
-                                    .build());
+            if (userTaskInfo.isScatterUsed()) {
+                commGroup.addScatter(DataScatter.class,
+                        ScatterOperatorSpec.newBuilder()
+                                .setSenderId(ControllerTask.TASK_ID)
+                                .setDataCodecClass(userTaskInfo.getScatterCodecClass())
+                                .build());
+            }
+
+            if (userTaskInfo.isReduceUsed()) {
+                commGroup.addReduce(DataReduce.class,
+                        ReduceOperatorSpec.newBuilder()
+                                .setReceiverId(ControllerTask.TASK_ID)
+                                .setDataCodecClass(userTaskInfo.getReduceCodecClass())
+                                .setReduceFunctionClass(userTaskInfo.getReduceFunctionClass())
+                                .build());
+            }
+
+            if (userTaskInfo.isGatherUsed()) {
+                commGroup.addGather(DataGather.class,
+                        GatherOperatorSpec.newBuilder()
+                                .setReceiverId(ControllerTask.TASK_ID)
+                                .setDataCodecClass(userTaskInfo.getGatherCodecClass())
+                                .build());
+            }
+
+            commGroupDriverList.add(commGroup);
+
+            commGroup.finalise();
         }
-
-        if (userControllerTask.isScatterUsed()) {
-            this.commGroup
-                    .addScatter(DataScatter.class,
-                            ScatterOperatorSpec.newBuilder()
-                                    .setSenderId(ControllerTask.TASK_ID)
-                                    .setDataCodecClass(((IDataScatterSender) userControllerTask).getScatterCodecClass())
-                                    .build());
-        }
-
-        if (userComputeTask.isReduceUsed()) {
-            this.commGroup
-                    .addReduce(DataReduce.class,
-                            ReduceOperatorSpec.newBuilder()
-                                    .setReceiverId(ControllerTask.TASK_ID)
-                                    .setDataCodecClass(((IDataReduceSender) userComputeTask).getReduceCodecClass())
-                                    .setReduceFunctionClass(((IDataReduceSender) userComputeTask).getReduceFunctionClass())
-                                    .build());
-        }
-
-        if (userComputeTask.isGatherUsed()) {
-            this.commGroup
-                    .addGather(DataGather.class,
-                            GatherOperatorSpec.newBuilder()
-                                    .setReceiverId(ControllerTask.TASK_ID)
-                                    .setDataCodecClass(((IDataGatherSender) userComputeTask).getGatherCodecClass())
-                                    .build());
-        }
-
-
-        this.commGroup.finalise();
 
     }
 
@@ -178,22 +171,29 @@ public final class FlexionDriver {
                 if (dataLoadingService.isComputeContext(activeContext)) {
                     LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
                     ctrlTaskContextId = getContextId(groupCommContextConf);
-                    finalServiceConf = Configurations.merge(groupCommServiceConf);
+
+                    // Add a Key-Value Store service with the Group Communication service
+                    final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
+                    finalServiceConf = Configurations.merge(groupCommServiceConf, keyValueStoreConf);
 
                 } else {
                     LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
-                    // Add a Data Parse service with the Group Communication service
-                    final Configuration dataParseConf = DataParseService.getServiceConfiguration(userComputeTask.getDataParserClass());
-                    finalServiceConf = Configurations.merge(groupCommServiceConf, dataParseConf);
+                    // Add a Data Parse service and a Key-Value Store service with the Group Communication service
+                    final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
+                    final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
+                    finalServiceConf = Configurations.merge(groupCommServiceConf, dataParseConf, keyValueStoreConf);
                 }
-
-
 
                 activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
 
             } else {
                 final Configuration partialTaskConf;
+
+                int sequence = 0;
+                contextToSequence.put(activeContext.getId(), sequence);
+                UserTaskInfo taskInfo = userTaskInfoList.get(sequence);
+                CommunicationGroupDriver commGroup = commGroupDriverList.get(sequence);
 
                 // Case 2: Evaluator configured with a Group Communication context has been given,
                 //         representing a Controller Task
@@ -206,7 +206,8 @@ public final class FlexionDriver {
                                     .set(TaskConfiguration.TASK, ControllerTask.class)
                                     .build(),
                             Tang.Factory.getTang().newConfigurationBuilder()
-                                    .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
+                                    .bindImplementation(UserControllerTask.class, taskInfo.getUserCtrlTaskClass())
+                                    .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
                                     .build());
 
                 // Case 3: Evaluator configured with a Group Communication context has been given,
@@ -221,7 +222,8 @@ public final class FlexionDriver {
                                     .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
                                     .build(),
                             Tang.Factory.getTang().newConfigurationBuilder()
-                                    .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
+                                    .bindImplementation(UserComputeTask.class, taskInfo.getUserCmpTaskClass())
+                                    .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
                                     .build());
                 }
 
@@ -256,40 +258,40 @@ public final class FlexionDriver {
         }
     }
 
-    /**
-     * When a certain Compute Task fails, we add the Task back and let it participate in
-     * Group Communication again. However if the failed Task is the Controller Task,
-     * we just shut down the whole job because it's hard to recover the cluster centroid info.
-     */
-    final class FailedTaskHandler implements EventHandler<FailedTask> {
-        @Override
-        public void onNext(FailedTask failedTask) {
-            LOG.info(failedTask.getId() + " has failed.");
-
-            // Stop the whole job if the failed Task is the Compute Task
-            if (failedTask.getActiveContext().get().getId().equals(ctrlTaskContextId)) {
-                throw new RuntimeException("Controller Task failed; aborting job");
-            }
-
-            final Configuration partialTaskConf = Configurations.merge(
-                    TaskConfiguration.CONF
-                            .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + taskId.getAndIncrement())
-                            .set(TaskConfiguration.TASK, ComputeTask.class)
-                            .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
-                            .build(),
-                    Tang.Factory.getTang().newConfigurationBuilder()
-                            .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
-                            .build());
-
-            // Re-add the failed Compute Task
-            commGroup.addTask(partialTaskConf);
-
-            final Configuration taskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
-
-            failedTask.getActiveContext().get().submitTask(taskConf);
-
-        }
-    }
+//    /**
+//     * When a certain Compute Task fails, we add the Task back and let it participate in
+//     * Group Communication again. However if the failed Task is the Controller Task,
+//     * we just shut down the whole job because it's hard to recover the cluster centroid info.
+//     */
+//    final class FailedTaskHandler implements EventHandler<FailedTask> {
+//        @Override
+//        public void onNext(FailedTask failedTask) {
+//            LOG.info(failedTask.getId() + " has failed.");
+//
+//            // Stop the whole job if the failed Task is the Compute Task
+//            if (failedTask.getActiveContext().get().getId().equals(ctrlTaskContextId)) {
+//                throw new RuntimeException("Controller Task failed; aborting job");
+//            }
+//
+//            final Configuration partialTaskConf = Configurations.merge(
+//                    TaskConfiguration.CONF
+//                            .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + taskId.getAndIncrement())
+//                            .set(TaskConfiguration.TASK, ComputeTask.class)
+//                            .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
+//                            .build(),
+//                    Tang.Factory.getTang().newConfigurationBuilder()
+//                            .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
+//                            .build());
+//
+//            // Re-add the failed Compute Task
+//            commGroup.addTask(partialTaskConf);
+//
+//            final Configuration taskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
+//
+//            failedTask.getActiveContext().get().submitTask(taskConf);
+//
+//        }
+//    }
 
 
 

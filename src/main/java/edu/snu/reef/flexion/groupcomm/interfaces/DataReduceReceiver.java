@@ -1,6 +1,6 @@
 package edu.snu.reef.flexion.groupcomm.interfaces;
 
-public interface IDataReduceReceiver<T> {
+public interface DataReduceReceiver<T> {
 
     void receiveReduceData(T data);
 

@@ -10,8 +10,7 @@ import javax.inject.Inject;
 
 public final class FlexionParameters {
   private final String identifier;
-  private final UserControllerTask userControllerTask;
-  private final UserComputeTask userComputeTask;
+  private final UserJobInfo userJobInfo;
   private final UserParameters userParameters;
   private final int evalNum;
   private final int evalSize;
@@ -21,8 +20,7 @@ public final class FlexionParameters {
 
   @Inject
   private FlexionParameters(@Parameter(JobIdentifier.class) final String identifier,
-                            final UserControllerTask userControllerTask,
-                            final UserComputeTask userComputeTask,
+                            final UserJobInfo userJobInfo,
                             final UserParameters userParameters,
                             @Parameter(EvaluatorNum.class) final int evalNum,
                             @Parameter(EvaluatorSize.class) final int evalSize,
@@ -30,8 +28,7 @@ public final class FlexionParameters {
                             @Parameter(OnLocal.class) final boolean onLocal,
                             @Parameter(Timeout.class) final int timeout) {
     this.identifier = identifier;
-    this.userControllerTask = userControllerTask;
-    this.userComputeTask = userComputeTask;
+    this.userJobInfo = userJobInfo;
     this.userParameters = userParameters;
     this.evalNum = evalNum;
     this.evalSize = evalSize;
@@ -44,24 +41,9 @@ public final class FlexionParameters {
     return identifier;
   }
 
-  public final Configuration getUserCtrlTaskConf() {
-    Configuration ctrlTaskConf =  Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
-        .build();
-    return Configurations.merge(userParameters.getUserCmpTaskConf(), ctrlTaskConf);
-  }
-
-  public final Configuration getUserCmpTaskConf() {
-    Configuration cmpTaskConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
-        .build();
-    return Configurations.merge(userParameters.getUserCtrlTaskConf(), cmpTaskConf);
-  }
-
   public final Configuration getDriverConf() {
     Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(UserControllerTask.class, userControllerTask.getClass())
-        .bindImplementation(UserComputeTask.class, userComputeTask.getClass())
+        .bindImplementation(UserJobInfo.class, userJobInfo.getClass())
         .build();
     return Configurations.merge(userParameters.getDriverConf(), driverConf);
   }

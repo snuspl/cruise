@@ -4,9 +4,7 @@ import org.apache.reef.io.serialization.Codec;
 
 import java.util.List;
 
-public interface IDataScatterSender<T> {
-
-    Class<? extends Codec> getScatterCodecClass();
+public interface DataScatterSender<T> {
 
     List<T> sendScatterData(int iteration);
 

@@ -1,8 +1,8 @@
-package edu.snu.reef.flexion.groupcomm.names;
+package edu.snu.reef.flexion.core;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Name of the single communication group used for k-means job")
+@NamedParameter(doc = "Name of the single communication group")
 public final class CommunicationGroup implements Name<String> {
 }

@@ -1,47 +1,37 @@
 package edu.snu.reef.flexion.core;
 
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherReceiver;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceReceiver;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterSender;
-import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.io.serialization.SerializableCodec;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataScatterSender;
 
 public abstract class UserControllerTask {
 
     public abstract void run(int iteration);
 
+    public void initialize(KeyValueStore keyValueStore) {
+
+    }
+
+    public void cleanup(KeyValueStore keyValueStore) {
+
+    }
+
     public abstract boolean isTerminated(int iteration);
 
     final public boolean isReduceUsed(){
-        return (this instanceof IDataReduceReceiver);
+        return (this instanceof DataReduceReceiver);
     }
 
     final public boolean isGatherUsed(){
-        return (this instanceof IDataGatherReceiver);
+        return (this instanceof DataGatherReceiver);
     }
 
     final public boolean isBroadcastUsed(){
-        return (this instanceof IDataBroadcastSender);
+        return (this instanceof DataBroadcastSender);
     }
 
     final public boolean isScatterUsed(){
-        return (this instanceof IDataScatterSender);
-    }
-
-    /**
-     * Return the default codec
-     * To use another codec, override this function
-     */
-    public Class<? extends Codec> getBroadcastCodecClass() {
-        return SerializableCodec.class;
-    }
-
-    /**
-     * Return the default codec
-     * To use another codec, override this function
-     */
-    public Class<? extends Codec> getScatterCodecClass() {
-        return SerializableCodec.class;
+        return (this instanceof DataScatterSender);
     }
 }

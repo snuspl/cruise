@@ -5,12 +5,10 @@ import edu.snu.reef.flexion.examples.ml.converge.ConvergenceCondition;
 import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.data.VectorSum;
 import edu.snu.reef.flexion.examples.ml.parameters.MaxIterations;
-import edu.snu.reef.flexion.examples.ml.sub.CentroidListCodec;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherReceiver;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
 import org.apache.mahout.math.Vector;
-import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -19,7 +17,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class KMeansCtrlTask extends UserControllerTask
-        implements IDataReduceReceiver<Map<Integer, VectorSum>>, IDataBroadcastSender<List<Centroid>>, IDataGatherReceiver<List<Vector>> {
+        implements DataReduceReceiver<Map<Integer, VectorSum>>, DataBroadcastSender<List<Centroid>>, DataGatherReceiver<List<Vector>> {
 
     private static final Logger LOG = Logger.getLogger(KMeansCtrlTask.class.getName());
 
@@ -128,11 +126,6 @@ public class KMeansCtrlTask extends UserControllerTask
                 }
             }
         }
-    }
-
-    @Override
-    public Class<? extends Codec> getBroadcastCodecClass() {
-        return CentroidListCodec.class;
     }
 
 }

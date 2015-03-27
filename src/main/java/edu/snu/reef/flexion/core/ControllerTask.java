@@ -3,11 +3,13 @@ package edu.snu.reef.flexion.core;
 import com.microsoft.reef.io.network.group.operators.Broadcast;
 import com.microsoft.reef.io.network.nggroup.api.task.CommunicationGroupClient;
 import com.microsoft.reef.io.network.nggroup.api.task.GroupCommClient;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherReceiver;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceReceiver;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataScatterSender;
 import edu.snu.reef.flexion.groupcomm.names.*;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
@@ -20,13 +22,18 @@ public class ControllerTask implements Task {
 
     private final UserControllerTask userControllerTask;
     private final CommunicationGroupClient commGroup;
+    private final KeyValueStore keyValueStore;
 
     private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
 
     @Inject
     public ControllerTask(final GroupCommClient groupCommClient,
-                          final UserControllerTask userControllerTask) {
-        this.commGroup = groupCommClient.getCommunicationGroup(CommunicationGroup.class);
+                          final KeyValueStore keyValueStore,
+                          final UserControllerTask userControllerTask,
+                          @Parameter(CommunicationGroup.class) final String commGroupName) throws ClassNotFoundException {
+
+        this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
+        this.keyValueStore = keyValueStore;
         this.userControllerTask = userControllerTask;
         this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
     }
@@ -36,14 +43,15 @@ public class ControllerTask implements Task {
         LOG.log(Level.INFO, "CtrlTask commencing...");
 
         int iteration = 0;
-        while (!userControllerTask.isTerminated(iteration)) {
+        userControllerTask.initialize(keyValueStore);
+        do {
             userControllerTask.run(iteration);
             ctrlMessageBroadcast.send(CtrlMessage.RUN);
             sendData(iteration);
             receiveData();
             topologyChanged();
-            iteration++;
-        }
+        } while(!userControllerTask.isTerminated(iteration++));
+        userControllerTask.cleanup(keyValueStore);
         ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
 
         return null;
@@ -68,25 +76,25 @@ public class ControllerTask implements Task {
 
         if (userControllerTask.isBroadcastUsed()) {
             commGroup.getBroadcastSender(DataBroadcast.class).send(
-                    ((IDataBroadcastSender) userControllerTask).sendBroadcastData(iteration));
+                    ((DataBroadcastSender) userControllerTask).sendBroadcastData(iteration));
         }
 
         if (userControllerTask.isScatterUsed()) {
             commGroup.getScatterSender(DataScatter.class).send(
-                    ((IDataScatterSender) userControllerTask).sendScatterData(iteration));
+                    ((DataScatterSender) userControllerTask).sendScatterData(iteration));
         }
     }
 
     private void receiveData() throws Exception {
 
         if (userControllerTask.isGatherUsed()) {
-            ((IDataGatherReceiver)userControllerTask).receiveGatherData(
+            ((DataGatherReceiver)userControllerTask).receiveGatherData(
                     commGroup.getGatherReceiver(DataGather.class).receive());
         }
 
         if (userControllerTask.isReduceUsed()) {
 
-            ((IDataReduceReceiver)userControllerTask).receiveReduceData(
+            ((DataReduceReceiver)userControllerTask).receiveReduceData(
                     commGroup.getReduceReceiver(DataReduce.class).reduce());
 
         }

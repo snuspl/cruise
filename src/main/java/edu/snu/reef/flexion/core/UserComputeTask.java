@@ -1,47 +1,35 @@
 package edu.snu.reef.flexion.core;
 
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataBroadcastReceiver;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataGatherSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataReduceSender;
-import edu.snu.reef.flexion.groupcomm.interfaces.IDataScatterReceiver;
-import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.io.serialization.SerializableCodec;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastReceiver;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceSender;
+import edu.snu.reef.flexion.groupcomm.interfaces.DataScatterReceiver;
 
 public abstract class UserComputeTask <T> {
 
     public abstract void run(int iteration, T data);
 
+    public void initialize(KeyValueStore keyValueStore){
+
+    }
+
+    public void cleanup(KeyValueStore keyValueStore) {
+
+    }
+
     final public boolean isReduceUsed() {
-       return (this instanceof IDataReduceSender);
+       return (this instanceof DataReduceSender);
     }
 
     final public boolean isGatherUsed() {
-        return (this instanceof IDataGatherSender);
+        return (this instanceof DataGatherSender);
     }
 
     final public boolean isBroadcastUsed() {
-        return (this instanceof IDataBroadcastReceiver);
+        return (this instanceof DataBroadcastReceiver);
     }
 
     final public boolean isScatterUsed() {
-        return (this instanceof IDataScatterReceiver);
-    }
-
-    public abstract Class<? extends DataParser<T>> getDataParserClass();
-
-    /**
-     * Return the default codec
-     * To use another codec, override this function
-     */
-    public Class<? extends Codec> getReduceCodecClass() {
-        return SerializableCodec.class;
-    }
-
-    /**
-     * Return the default codec
-     * To use another codec, override this function
-     */
-    public Class<? extends Codec> getGatherCodecClass() {
-        return SerializableCodec.class;
+        return (this instanceof DataScatterReceiver);
     }
 }
