@@ -29,6 +29,13 @@ exception BlockLoadingException{
 }
 
 /**
+* The Cache block could not be retrieved, because it is being written
+**/
+exception BlockWritingException{
+    1: i64 bytesWritten,
+}
+
+/**
  * The Cache block could not be retrieved, because it was not found
  */
 exception BlockNotFoundException{

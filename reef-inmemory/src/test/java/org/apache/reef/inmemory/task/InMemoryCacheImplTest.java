@@ -7,6 +7,7 @@ import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.apache.reef.inmemory.task.write.BlockReceiver;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;
@@ -35,6 +36,7 @@ public final class InMemoryCacheImplTest {
   private MemoryManager memoryManager;
   private EStage<BlockLoader> loadingStage;
   private HeartBeatTriggerManager heartBeatTriggerManager;
+  private CacheEntryFactory cacheEntryFactory;
   private InMemoryCache cache;
   private static final Random random = new Random();
   private static final double slack = 0.1;
@@ -50,7 +52,9 @@ public final class InMemoryCacheImplTest {
     final CacheAdmissionController cacheAdmissionController = new CacheAdmissionController(memoryManager, internalCache);
     loadingStage = new MockStage(cacheAdmissionController, memoryManager);
     heartBeatTriggerManager = mock(HeartBeatTriggerManager.class);
-    cache = new InMemoryCacheImpl(internalCache, memoryManager, cacheAdmissionController, lruEvictionManager, loadingStage, 3, bufferSize, heartBeatTriggerManager);
+    cacheEntryFactory = new CacheEntryFactory();
+    cache = new InMemoryCacheImpl(internalCache, memoryManager, cacheAdmissionController, lruEvictionManager,
+            loadingStage, 3, bufferSize, heartBeatTriggerManager, cacheEntryFactory);
   }
 
   @After
@@ -100,7 +104,8 @@ public final class InMemoryCacheImplTest {
   /**
    * Assert that Block is loaded successfully. Test with all the chunks in the block.
    */
-  private void assertBlockLoaded(byte[] buffer, BlockId blockId) throws BlockLoadingException, BlockNotFoundException {
+  private void assertBlockLoaded(byte[] buffer, BlockId blockId)
+          throws BlockLoadingException, BlockNotFoundException, BlockWritingException {
     int bufferSize = cache.getLoadingBufferSize();
     for(int i = 0; i * bufferSize < buffer.length; i++) {
       int startChunk = i * bufferSize;
@@ -113,7 +118,8 @@ public final class InMemoryCacheImplTest {
    * Assert that Block is loaded successfully. Test with all the chunks in the block.
    * Loading provided should be same passed in to cache.
    */
-  private void assertBlockLoaded(BlockLoader loader, BlockId blockId) throws BlockLoadingException, BlockNotFoundException {
+  private void assertBlockLoaded(BlockLoader loader, BlockId blockId)
+          throws BlockLoadingException, BlockNotFoundException, BlockWritingException {
     for (int i = 0; i * cache.getLoadingBufferSize() < loader.getBlockSize(); i++) {
       assertNotNull(cache.get(blockId, i));
       assertEquals(loader.getData(i), cache.get(blockId, i));
@@ -147,7 +153,7 @@ public final class InMemoryCacheImplTest {
    * Put a small buffer in the task, and check correctness of get after load
    */
   @Test
-  public void testPutAndGet() throws BlockLoadingException, BlockNotFoundException, IOException {
+  public void testPutAndGet() throws BlockLoadingException, BlockNotFoundException, IOException, BlockWritingException {
     final BlockId blockId = randomBlockId();
     final int blockSize = 8096;
 
@@ -167,7 +173,7 @@ public final class InMemoryCacheImplTest {
    * @throws BlockNotWritableException
    */
   @Test
-  public void testWriteFullBlock() throws IOException, BlockNotFoundException, BlockNotWritableException, BlockLoadingException {
+  public void testWriteFullBlock() throws IOException, BlockNotFoundException, BlockNotWritableException, BlockLoadingException, BlockWritingException {
     final String fileName = "/write";
     final int offset = 0;
     final int blockSize = 1024;
@@ -208,7 +214,7 @@ public final class InMemoryCacheImplTest {
    * Put a small buffer in the task, and check correctness of clear
    */
   @Test
-  public void testClear() throws BlockLoadingException, BlockNotFoundException, IOException {
+  public void testClear() throws BlockLoadingException, BlockNotFoundException, IOException, BlockWritingException {
     final BlockId blockId = randomBlockId();
     final int blockSize = 8096;
 
@@ -339,6 +345,8 @@ public final class InMemoryCacheImplTest {
             // Expected
           } catch (BlockNotFoundException e1) {
             fail("Expected BlockLoadingException but received BlockNotFoundException");
+          } catch (BlockWritingException e1) {
+            fail("Expected BlockLoadingException but received BlockWritingException");
           }
 
           // Then call load
@@ -368,13 +376,15 @@ public final class InMemoryCacheImplTest {
             fail("Expected BlockNotFoundException but received BlockLoadingException");
           } catch (BlockNotFoundException e1) {
             // Expected
+          } catch (BlockWritingException e1) {
+            fail("Expected BlockNotFoundException but received BlockWritingException");
           }
 
           // Then call load
           try {
             cache.load(loader);
             assertBlockLoaded(loader, randomId);
-          } catch (final IOException | BlockLoadingException | BlockNotFoundException e1) {
+          } catch (final IOException | BlockLoadingException | BlockNotFoundException | BlockWritingException e1) {
             fail("Exception " + e1);
           }
         }
@@ -414,6 +424,8 @@ public final class InMemoryCacheImplTest {
         assertTrue("BlockNotFoundException, as expected", true);
       } catch (BlockLoadingException e) {
         assertTrue("BlockNotFoundException was expected, but BlockLoadingException was raised", false);
+      } catch (BlockWritingException e) {
+        assertTrue("BlockNotFoundException was expected, but BlockWritingException was raised", false);
       }
     }
   }
@@ -553,7 +565,7 @@ public final class InMemoryCacheImplTest {
    */
   @Test
   @Category(org.apache.reef.inmemory.common.IntensiveTests.class)
-  public void testPinned() throws IOException, BlockLoadingException, BlockNotFoundException {
+  public void testPinned() throws IOException, BlockLoadingException, BlockNotFoundException, BlockWritingException {
     final int blockSize = 128 * 1024 * 1024;
     // Different from other buffers, to tell them apart
     final BlockId pinnedId = randomBlockId();
@@ -894,10 +906,10 @@ public final class InMemoryCacheImplTest {
     }
 
     @Override
-    public byte[] getData(int index) throws BlockLoadingException {
+    public byte[] getData(int index) throws BlockWritingException {
       // If the date is not completely written for this block, throw BlockLoadingException.
       if (!isComplete || index >= data.size()) {
-        throw new BlockLoadingException(totalWritten);
+        throw new BlockWritingException(totalWritten);
       }
 
       final ByteBuffer buf = this.data.get(index);

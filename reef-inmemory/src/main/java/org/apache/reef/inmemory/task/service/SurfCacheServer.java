@@ -5,6 +5,7 @@ import org.apache.reef.inmemory.common.entity.AllocatedBlockMeta;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
@@ -110,7 +111,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Override
   public ByteBuffer getData(final BlockMeta blockMeta, final long offset, final long length)
-    throws BlockLoadingException, BlockNotFoundException {
+          throws BlockLoadingException, BlockNotFoundException, BlockWritingException {
     final Event getDataEvent = RECORD.event("task.get-data",
             blockMeta.toString() + ":" + Long.toString(offset)).start();
     final BlockId blockId = new BlockId(blockMeta);

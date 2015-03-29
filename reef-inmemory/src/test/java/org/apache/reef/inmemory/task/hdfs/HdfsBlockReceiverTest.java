@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.task.hdfs;
 
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.apache.reef.inmemory.task.write.BlockReceiver;
 import org.junit.Before;
 import org.junit.Test;
@@ -92,7 +93,7 @@ public class HdfsBlockReceiverTest {
    * 3 buffers to 4 splits.)
    */
   @Test
-  public void testWriteAcrossBuffer() throws IOException, BlockLoadingException {
+  public void testWriteAcrossBuffer() throws IOException, BlockWritingException {
     final int numBuffers = 3;
     final int numSplits = 4;
 
@@ -123,7 +124,7 @@ public class HdfsBlockReceiverTest {
    * Test to fill one block with packets.
    */
   @Test
-  public void testFillOneBlock() throws IOException, BlockLoadingException {
+  public void testFillOneBlock() throws IOException, BlockWritingException {
     final byte[] data = generateData((int) BLOCK_SIZE);
 
     // Fill out the block
@@ -169,7 +170,7 @@ public class HdfsBlockReceiverTest {
     try {
       final byte[] loaded = receiver.getData(0);
       assertArrayEquals(expected, loaded);
-    } catch (BlockLoadingException e) {
+    } catch (BlockWritingException e) {
       fail();
     }
   }
@@ -182,7 +183,7 @@ public class HdfsBlockReceiverTest {
     try {
       receiver.getData(index);
       fail();
-    } catch (BlockLoadingException e) {
+    } catch (BlockWritingException e) {
       // Test success
     }
   }

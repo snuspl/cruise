@@ -5,6 +5,7 @@ import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.task.InMemoryCache;
@@ -59,7 +60,7 @@ public class SurfCacheServerTest {
    * Test that loading data from cache server works well with different block size and buffer size.
    */
   @Test
-  public void testBufferSize() throws IOException, BlockLoadingException, BlockNotFoundException {
+  public void testBufferSize() throws IOException, BlockLoadingException, BlockNotFoundException, BlockWritingException {
     // Randomly generate buffer with length as blockSize
     final int blockSize = random.nextInt(1024) + 4;
     byte[] buffer = new byte[blockSize];

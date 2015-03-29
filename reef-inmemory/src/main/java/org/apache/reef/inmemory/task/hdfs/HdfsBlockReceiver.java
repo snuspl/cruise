@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.task.hdfs;
 
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.apache.reef.inmemory.task.write.BlockReceiver;
 
 import java.io.IOException;
@@ -19,11 +19,10 @@ public class HdfsBlockReceiver implements BlockReceiver {
   private final boolean pinned;
   private final long blockSize;
   private long totalWritten = 0;
+  private long expectedOffset = 0;
   private boolean isComplete = false;
 
   private List<ByteBuffer> data;
-
-  private long expectedOffset = 0;
 
   public HdfsBlockReceiver(final BlockId id, final long blockSize, final boolean pin, final int bufferSize) {
     this.blockId = id;
@@ -50,10 +49,10 @@ public class HdfsBlockReceiver implements BlockReceiver {
   }
 
   @Override
-  public byte[] getData(int index) throws BlockLoadingException {
+  public byte[] getData(int index) throws BlockWritingException {
     // If the date is not completely written for this block, throw BlockLoadingException.
     if (!isComplete || index >= data.size()) {
-      throw new BlockLoadingException(totalWritten);
+      throw new BlockWritingException(totalWritten);
     }
 
     final ByteBuffer buf = this.data.get(index);

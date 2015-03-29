@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
 import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.apache.reef.inmemory.task.write.BlockReceiver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
@@ -34,6 +35,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final Cache<BlockId, CacheEntry> cache;
   private final CacheAdmissionController cacheAdmissionController;
   private final HeartBeatTriggerManager heartBeatTriggerManager;
+  private final CacheEntryFactory cacheEntryFactory;
 
   @Inject
   public InMemoryCacheImpl(final Cache<BlockId, CacheEntry> cache,
@@ -43,7 +45,8 @@ public final class InMemoryCacheImpl implements InMemoryCache {
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
                            final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize,
-                           final HeartBeatTriggerManager heartBeatTriggerManager) {
+                           final HeartBeatTriggerManager heartBeatTriggerManager,
+                           final CacheEntryFactory cacheEntryFactory) {
     this.cache = cache;
     this.memoryManager = memoryManager;
     this.cacheAdmissionController = cacheAdmissionController;
@@ -51,11 +54,12 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     this.loadingStage = loadingStage;
     this.loadingBufferSize = loadingBufferSize;
     this.heartBeatTriggerManager = heartBeatTriggerManager;
+    this.cacheEntryFactory = cacheEntryFactory;
   }
 
   @Override
   public byte[] get(final BlockId blockId, int index)
-    throws BlockLoadingException, BlockNotFoundException {
+          throws BlockLoadingException, BlockNotFoundException, BlockWritingException {
     final CacheEntry entry = cache.getIfPresent(blockId);
     if (entry == null) {
       throw new BlockNotFoundException();
@@ -74,32 +78,20 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     final CacheEntry entry = cache.getIfPresent(blockId);
     if (entry == null) {
       throw new BlockNotFoundException();
-      // TODO Simplify more
-    } else if (entry.getBlockReceiver() == null) {
-      throw new BlockNotWritableException();
     } else {
-      final BlockReceiver blockReceiver = entry.getBlockReceiver();
-      blockReceiver.writeData(data.array(), offset);
+      final long nWritten = entry.writeData(data.array(), offset, isLastPacket);
 
-      /*
-       * When the packet is the last one of block
-       * 1) Mark the block is Complete
-       * 2) Notify Memory manager to update memory state
-       * 3) Trigger heartbeat to update the metadata immediately
-       */
       if (isLastPacket) {
-        blockReceiver.completeWrite();
-        final long blockSize = blockReceiver.getBlockSize();
-        final long nWritten = blockReceiver.getTotalWritten();
-        memoryManager.writeSuccess(blockId, blockSize, nWritten, entry.isPinned());
-        heartBeatTriggerManager.triggerHeartBeat();
+        // TODO writeSuccess(cacheEntry)
+        memoryManager.writeSuccess(blockId, entry.getBlockSize(), nWritten, entry.isPinned());
+        heartBeatTriggerManager.triggerHeartBeat(); // To update the file's metadata immediately
       }
     }
   }
 
   @Override
   public void load(final BlockLoader loader) throws IOException {
-    final CacheEntry entry = new CacheEntry(loader);
+    final CacheEntry entry = cacheEntryFactory.createEntry(loader);
     if (insertEntry(entry)) {
       LOG.log(Level.INFO, "Add loading block {0}", loader.getBlockId());
       loadingStage.onNext(loader);
@@ -108,7 +100,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
 
   @Override
   public void prepareToWrite(final BlockReceiver receiver) throws IOException, BlockNotFoundException {
-    final CacheEntry entry = new CacheEntry(receiver);
+    final CacheEntry entry = cacheEntryFactory.createEntry(receiver);
     if (insertEntry(entry)) {
       cacheAdmissionController.reserveSpace(receiver.getBlockId(), receiver.getBlockSize(), receiver.isPinned());
     }

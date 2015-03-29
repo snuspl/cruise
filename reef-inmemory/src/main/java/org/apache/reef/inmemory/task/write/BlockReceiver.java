@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.task.write;
 
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 
 import java.io.IOException;
 
@@ -29,7 +30,7 @@ public interface BlockReceiver {
 
   // TODO Delete this method, and move it to the CacheEntry.
   // TODO A similar method could be used to test.
-  public byte[] getData(int index) throws BlockLoadingException;
+  public byte[] getData(int index) throws BlockWritingException;
 
   /**
    * Add data into block loader.
