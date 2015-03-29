@@ -7,7 +7,6 @@ import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
 import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
-import org.apache.reef.inmemory.task.write.BlockReceiver;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

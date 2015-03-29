@@ -3,7 +3,6 @@ package org.apache.reef.inmemory.task;
 import com.google.common.cache.Cache;
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
-import org.apache.reef.inmemory.task.write.BlockReceiver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;

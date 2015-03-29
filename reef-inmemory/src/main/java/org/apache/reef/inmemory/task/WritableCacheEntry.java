@@ -3,7 +3,6 @@ package org.apache.reef.inmemory.task;
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
 import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
-import org.apache.reef.inmemory.task.write.BlockReceiver;
 
 import java.io.IOException;
 

@@ -1,7 +1,5 @@
 package org.apache.reef.inmemory.task;
 
-import org.apache.reef.inmemory.task.write.BlockReceiver;
-
 import javax.inject.Inject;
 
 /**

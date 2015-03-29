@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.task.hdfs;
 
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
-import org.apache.reef.inmemory.task.write.BlockReceiver;
+import org.apache.reef.inmemory.task.BlockReceiver;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

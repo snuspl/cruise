@@ -12,7 +12,7 @@ import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.InMemoryCache;
 import org.apache.reef.inmemory.task.hdfs.HdfsBlockReceiver;
-import org.apache.reef.inmemory.task.write.BlockReceiver;
+import org.apache.reef.inmemory.task.BlockReceiver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.THsHaServer;
