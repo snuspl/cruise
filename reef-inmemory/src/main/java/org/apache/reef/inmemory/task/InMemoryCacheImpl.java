@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
 import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.task.write.BlockReceiver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;
@@ -10,7 +11,6 @@ import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
-import org.apache.reef.inmemory.task.write.WritableBlockLoader;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -74,12 +74,12 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     final CacheEntry entry = cache.getIfPresent(blockId);
     if (entry == null) {
       throw new BlockNotFoundException();
-      // TODO Simplify this test.
-    } else if (!(entry.getBlockLoader() instanceof WritableBlockLoader)) {
+      // TODO Simplify more
+    } else if (entry.getBlockReceiver() == null) {
       throw new BlockNotWritableException();
     } else {
-      final WritableBlockLoader writableLoader = (WritableBlockLoader) entry.getBlockLoader();
-      writableLoader.writeData(data.array(), offset);
+      final BlockReceiver blockReceiver = entry.getBlockReceiver();
+      blockReceiver.writeData(data.array(), offset);
 
       /*
        * When the packet is the last one of block
@@ -88,9 +88,9 @@ public final class InMemoryCacheImpl implements InMemoryCache {
        * 3) Trigger heartbeat to update the metadata immediately
        */
       if (isLastPacket) {
-        writableLoader.completeWrite();
-        final long blockSize = writableLoader.getBlockSize();
-        final long nWritten = writableLoader.getTotalWritten();
+        blockReceiver.completeWrite();
+        final long blockSize = blockReceiver.getBlockSize();
+        final long nWritten = blockReceiver.getTotalWritten();
         memoryManager.writeSuccess(blockId, blockSize, nWritten, entry.isPinned());
         heartBeatTriggerManager.triggerHeartBeat();
       }
@@ -107,17 +107,15 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void prepareToWrite(final BlockLoader loader) throws IOException, BlockNotFoundException {
-    // TODO Change the parameter to get BlockReceiver
-    final CacheEntry entry = new CacheEntry(loader);
+  public void prepareToWrite(final BlockReceiver receiver) throws IOException, BlockNotFoundException {
+    final CacheEntry entry = new CacheEntry(receiver);
     if (insertEntry(entry)) {
-      cacheAdmissionController.reserveSpace(loader.getBlockId(), loader.getBlockSize(), loader.isPinned());
+      cacheAdmissionController.reserveSpace(receiver.getBlockId(), receiver.getBlockSize(), receiver.isPinned());
     }
   }
 
   /**
    * Insert an entry into the cache.
-   * TODO fix the comment
    * The purpose we insert blockLoader before
    * the blockLoader has actual data is to prevent loading duplicate blocks.
    * @param entry an entry to be inserted.

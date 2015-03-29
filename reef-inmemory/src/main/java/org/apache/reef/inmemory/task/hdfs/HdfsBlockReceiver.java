@@ -1,24 +1,18 @@
-package org.apache.reef.inmemory.task.write;
+package org.apache.reef.inmemory.task.hdfs;
 
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.task.BlockLoader;
+import org.apache.reef.inmemory.task.write.BlockReceiver;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
- * Provides a way to load the content of block. The block is written by Surf
- * rather than loading from base FS. Synchronization occurs with base FS
- * as specified by policy.
- * This class implements BlockLoader and BlockReceiver interface
+ * BlockReceiver implementation for HDFS.
  */
-public class WritableBlockLoader implements BlockLoader, BlockReceiver {
-  private final static Logger LOG = Logger.getLogger(WritableBlockLoader.class.getName());
+public class HdfsBlockReceiver implements BlockReceiver {
 
   private final BlockId blockId;
   private final int bufferSize;
@@ -31,7 +25,7 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
 
   private long expectedOffset = 0;
 
-  public WritableBlockLoader(final BlockId id, final long blockSize, final boolean pin, final int bufferSize) {
+  public HdfsBlockReceiver(final BlockId id, final long blockSize, final boolean pin, final int bufferSize) {
     this.blockId = id;
     this.blockSize = blockSize;
     this.data = new ArrayList<>();
@@ -41,23 +35,18 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
   }
 
   @Override
-  public void loadBlock() {
-    LOG.log(Level.SEVERE, "loadBlock() should not be called for WritableBlockLoader. BlockId : {0}", blockId.toString());
-  }
-
-  @Override
   public BlockId getBlockId() {
     return this.blockId;
   }
 
   @Override
   public long getBlockSize() {
-    return blockSize;
+    return this.blockSize;
   }
 
   @Override
   public boolean isPinned() {
-    return this.pinned;
+    return pinned;
   }
 
   @Override
@@ -79,10 +68,10 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
   }
 
   @Override
-  public void writeData(final byte[] data, final long offset) throws IOException {
+  public void writeData(byte[] data, long offset) throws IOException {
     if (offset + data.length > blockSize) {
       throw new IOException("The data exceeds the capacity of block. Offset : " + offset
-        + " , Packet length : " + data.length + " Block size : " + blockSize);
+              + " , Packet length : " + data.length + " Block size : " + blockSize);
     } else if (!isValidOffset(offset)) {
       throw new IOException("Received packet with an invalid offset " + offset);
     }
@@ -105,19 +94,14 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     updateValidOffset(offset, data.length);
   }
 
-  /**
-   * Called when the last packet of the block arrives.
-   * Before complete, getData() for this block throws BlockLoadingException.
-   */
+  @Override
   public void completeWrite() {
     this.isComplete = true;
   }
 
-  /**
-   * Return the amount of data written.
-   */
+  @Override
   public long getTotalWritten() {
-    return this.totalWritten;
+    return totalWritten;
   }
 
   /**

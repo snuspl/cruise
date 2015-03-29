@@ -6,6 +6,7 @@ import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
+import org.apache.reef.inmemory.task.write.BlockReceiver;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -49,8 +50,9 @@ public interface InMemoryCache {
   /**
    * Reserve space for a block and insert it into cache before writing data.
    * The state of this block is set as LOAD_STARTED.
+   * TODO The state is supposed to be WRITE_STARTED
    */
-  public void prepareToWrite(BlockLoader loader) throws IOException, BlockNotFoundException;
+  public void prepareToWrite(BlockReceiver blockReceiver) throws IOException, BlockNotFoundException;
 
   /**
    * @return Length of buffer loading data from Base File Systems
