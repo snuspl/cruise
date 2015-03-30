@@ -11,7 +11,6 @@ import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.InMemoryCache;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockReceiver;
 import org.apache.reef.inmemory.task.BlockReceiver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.thrift.TException;
@@ -139,8 +138,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
     final boolean pin = info.isPin();
     // TODO We can get BaseReplicationFactor and SyncMethod.
-    // TODO Create BlockReceiver with factory method to support the other possible BaseFS.
-    final BlockReceiver blockReceiver = new HdfsBlockReceiver(blockId, blockSize, pin, bufferSize);
+    final BlockReceiver blockReceiver = new BlockReceiver(blockId, blockSize, pin, bufferSize);
 
     try {
       cache.prepareToWrite(blockReceiver);

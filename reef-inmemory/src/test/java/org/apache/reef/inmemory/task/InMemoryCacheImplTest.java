@@ -183,7 +183,7 @@ public final class InMemoryCacheImplTest {
     new Random().nextBytes(data);
 
     final BlockId blockId = new BlockId(fileName, offset);
-    final BlockReceiver blockReceiver = new MockBlockReceiver(blockId, blockSize, bufferSize, false);
+    final BlockReceiver blockReceiver = new BlockReceiver(blockId, blockSize, false, bufferSize);
 
     cache.prepareToWrite(blockReceiver);
 
@@ -863,135 +863,6 @@ public final class InMemoryCacheImplTest {
     @Override
     public byte[] getData(int index) throws BlockLoadingException {
       return data.get(index);
-    }
-  }
-
-  // TODO This class is copied from HdfsBlockReceiver implementation. Make it simple for the test.
-  private static class MockBlockReceiver implements BlockReceiver {
-    private BlockId blockId;
-    private long blockSize;
-    private boolean pin;
-    private int bufferSize;
-    private boolean isComplete = false;
-    private long totalWritten = 0;
-    private long expectedOffset = 0;
-    private final List<ByteBuffer> data;
-
-    public MockBlockReceiver(final BlockId blockId,
-                             final long blockSize,
-                             final int bufferSize,
-                             final boolean pin) {
-      this.blockId = blockId;
-      this.blockSize = blockSize;
-      this.bufferSize = bufferSize;
-      this.pin = pin;
-
-      this.data = new ArrayList<>();
-    }
-
-    @Override
-    public BlockId getBlockId() {
-      return blockId;
-    }
-
-    @Override
-    public long getBlockSize() {
-      return blockSize;
-    }
-
-    @Override
-    public boolean isPinned() {
-      return pin;
-    }
-
-    @Override
-    public byte[] getData(int index) throws BlockWritingException {
-      // If the date is not completely written for this block, throw BlockLoadingException.
-      if (!isComplete || index >= data.size()) {
-        throw new BlockWritingException(totalWritten);
-      }
-
-      final ByteBuffer buf = this.data.get(index);
-      if(buf.position() != bufferSize) {
-        final byte[] bArray = new byte[buf.position()];
-        buf.position(0);
-        buf.get(bArray);
-        return bArray;
-      } else {
-        return buf.array();
-      }
-    }
-
-    @Override
-    public void writeData(byte[] data, long offset) throws IOException {
-      if (offset + data.length > blockSize) {
-        throw new IOException("The data exceeds the capacity of block. Offset : " + offset
-                + " , Packet length : " + data.length + " Block size : " + blockSize);
-      } else if (!isValidOffset(offset)) {
-        throw new IOException("Received packet with an invalid offset " + offset);
-      }
-
-      int index = (int) (offset / bufferSize);
-      int innerOffset = (int) (offset % bufferSize);
-      int nWritten = 0;
-
-      while (nWritten < data.length) {
-        final ByteBuffer buf = getBuffer(index);
-        final int toWrite = Math.min(bufferSize - innerOffset, data.length - nWritten);
-        buf.put(data, nWritten, toWrite);
-
-        index++;
-        innerOffset = 0;
-        nWritten += toWrite;
-      }
-
-      totalWritten += nWritten;
-      updateValidOffset(offset, data.length);
-
-    }
-
-    @Override
-    public void completeWrite() {
-      isComplete = true;
-    }
-
-    @Override
-    public long getTotalWritten() {
-      return totalWritten;
-    }
-
-    /**
-     * Get the buffer to write data into. If the buffer for the range
-     * does not exist, create one and put in the cache on demand.
-     * @param index The index of buffer stored in the cache
-     * @return The byte buffer
-     */
-    private synchronized ByteBuffer getBuffer(final int index) {
-      if (index >= data.size()) {
-        // If blockSize is smaller than blockSize, then the blockSize will cover the whole data
-        final ByteBuffer buf = ByteBuffer.allocate(Math.min(bufferSize, (int)blockSize));
-        data.add(buf);
-      }
-      return data.get(index);
-    }
-
-    /**
-     * Update the valid offsets.
-     * @param previousOffset The valid offset for the previous packet.
-     * @param packetLength The length of packet received.
-     */
-    private void updateValidOffset(final long previousOffset, final int packetLength) {
-      expectedOffset = previousOffset + packetLength;
-    }
-
-    /**
-     * Determine offset of the packet is valid in order to avoid duplicate or miss.
-     * The assumption is the packets always come in-order.
-     * @param offset The offset of the packet
-     * @return {@code true} if the offset is valid to receive
-     */
-    private boolean isValidOffset(final long offset) {
-      return expectedOffset == offset;
     }
   }
 }

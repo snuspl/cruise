@@ -32,7 +32,7 @@ public interface BlockLoader {
   public boolean isPinned();
 
   /**
-   * @param index Index of the chunk to load
+   * @param index Index of the chunk to get
    * @return Part of the data loaded by BlockLoader
    * @throws BlockLoadingException If the chunk of index has not been loaded yet
    */

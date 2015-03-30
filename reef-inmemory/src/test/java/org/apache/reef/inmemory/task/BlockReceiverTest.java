@@ -1,9 +1,8 @@
-package org.apache.reef.inmemory.task.hdfs;
+package org.apache.reef.inmemory.task;
 
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
-import org.apache.reef.inmemory.task.BlockReceiver;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -15,10 +14,10 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
 /**
- * Test HdfsBlockReceiver.
+ * Test BlockReceiver works correctly.
  * Initiate the blockLoader with blockSize 131072, bufferSize 8192
  */
-public class HdfsBlockReceiverTest {
+public class BlockReceiverTest {
   private BlockReceiver receiver;
   private static final long BLOCK_SIZE = 131072;
   private static final int BUFFER_SIZE = 8192;
@@ -26,7 +25,7 @@ public class HdfsBlockReceiverTest {
   @Before
   public void setup() {
     final BlockId id = new BlockId("path", 0);
-    receiver = new HdfsBlockReceiver(id, BLOCK_SIZE, false, BUFFER_SIZE);
+    receiver = new BlockReceiver(id, BLOCK_SIZE, false, BUFFER_SIZE);
   }
 
   /**
@@ -49,10 +48,10 @@ public class HdfsBlockReceiverTest {
     receiver.writeData(packet1, offset1);
     receiver.completeWrite();
 
-    assertLoadSuccess(expected, receiver);
+    assertWriteSuccess(expected, receiver);
 
     // Index 1 is out of bound for this block.
-    assertLoadFailsWithException(receiver, 1);
+    assertLoadFailsOnWriting(receiver, 1);
   }
 
   /**
@@ -64,10 +63,10 @@ public class HdfsBlockReceiverTest {
     receiver.writeData(packet, 0);
     receiver.completeWrite();
 
-    assertLoadSuccess(packet, receiver);
+    assertWriteSuccess(packet, receiver);
 
     // Index 1 is out of bound.
-    assertLoadFailsWithException(receiver, 1);
+    assertLoadFailsOnWriting(receiver, 1);
   }
 
   /**
@@ -117,7 +116,7 @@ public class HdfsBlockReceiverTest {
     assertArrayEquals(data, loaded.array());
 
     // The data should be written as amount of {numBuffers}
-    assertLoadFailsWithException(receiver, numBuffers);
+    assertLoadFailsOnWriting(receiver, numBuffers);
   }
 
   /**
@@ -163,23 +162,21 @@ public class HdfsBlockReceiverTest {
   }
 
   /**
-   * TODO Change LoadSuccess -> WriteSuccess
-   * Helper method to make sure load succeed without exception.
+   * Helper method to make sure write succeed without exception.
    */
-  private void assertLoadSuccess(final byte[] expected, final BlockReceiver receiver) {
+  private void assertWriteSuccess(final byte[] expected, final BlockReceiver receiver) {
     try {
-      final byte[] loaded = receiver.getData(0);
-      assertArrayEquals(expected, loaded);
+      final byte[] written = receiver.getData(0);
+      assertArrayEquals(expected, written);
     } catch (BlockWritingException e) {
       fail();
     }
   }
 
   /**
-   * TODO fix the comment
-   * Helper method to make sure an exception occurs while loading.
+   * Helper method to make sure BlockWritingException is thrown if one requests to load a block while writing.
    */
-  private void assertLoadFailsWithException(final BlockReceiver receiver, final int index) {
+  private void assertLoadFailsOnWriting(final BlockReceiver receiver, final int index) {
     try {
       receiver.getData(index);
       fail();
@@ -189,7 +186,6 @@ public class HdfsBlockReceiverTest {
   }
 
   /**
-   * TODO Improve exception handling
    * Helper method to make sure an exception occurs while writing.
    */
   private void assertWriteFailsWithException(final BlockReceiver receiver, final byte[] packet, final long offset) {
