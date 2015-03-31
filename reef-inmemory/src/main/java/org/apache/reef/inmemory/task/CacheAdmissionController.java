@@ -39,16 +39,16 @@ public final class CacheAdmissionController {
    * @throws BlockNotFoundException If the metadata is not found in the cache.
    */
   public void reserveSpace(final BlockId blockId, final long blockSize, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
-    // 1. If the cache is full, an eviction list is returned by loadStart.
+    // 1. If the cache is full, an eviction list is returned by copyStart.
     // 2. Each block in the eviction list is invalidated here.
-    // 3. loadStart must be called again; the Memory Manager then ensures that
+    // 3. copyStart must be called again; the Memory Manager then ensures that
     //    eviction has successfully taken place and been booked, and returns null if true.
     // TODO: there's a possibility of starvation here:
     //    Between 2 and 3, a new block can be inserted and obtain memory that has just been evicted.
     //    If blocks are continually inserted, this will starve the evicting block.
     boolean needSpace = true;
     while (needSpace) {
-      final List<BlockId> evictionList = memoryManager.loadStart(blockId, blockSize, pin);
+      final List<BlockId> evictionList = memoryManager.copyStart(blockId, blockSize, pin);
       needSpace = (evictionList != null);
       if (needSpace) {
         for (final BlockId toEvict : evictionList) {

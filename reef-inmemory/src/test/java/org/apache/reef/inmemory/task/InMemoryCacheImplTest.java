@@ -143,7 +143,7 @@ public final class InMemoryCacheImplTest {
     cache.prepareToWrite(receiver);
 
     assertEquals(0, statistics.getCacheBytes());
-    assertEquals(blockSize, statistics.getLoadingBytes());
+    assertEquals(blockSize, statistics.getCopyingBytes());
     assertEquals(0, statistics.getEvictedBytes());
     assertEquals(0, statistics.getPinnedBytes());
   }
@@ -197,7 +197,7 @@ public final class InMemoryCacheImplTest {
 
     // Check the status is updated correctly.
     assertEquals(blockSize, statistics.getCacheBytes());
-    assertEquals(0, statistics.getLoadingBytes());
+    assertEquals(0, statistics.getCopyingBytes());
     assertEquals(0, statistics.getEvictedBytes());
     assertEquals(0, statistics.getPinnedBytes());
 
@@ -241,11 +241,11 @@ public final class InMemoryCacheImplTest {
 
     cache.load(loader);
     assertEquals(blockSize, cache.getStatistics().getCacheBytes());
-    assertEquals(0, cache.getStatistics().getLoadingBytes());
+    assertEquals(0, cache.getStatistics().getCopyingBytes());
 
     cache.clear();
     assertEquals(0, cache.getStatistics().getCacheBytes());
-    assertEquals(0, cache.getStatistics().getLoadingBytes());
+    assertEquals(0, cache.getStatistics().getCopyingBytes());
   }
 
   /**
@@ -279,7 +279,7 @@ public final class InMemoryCacheImplTest {
 
     Thread.sleep(500); // Allow first block load to start
 
-    assertEquals(1024, cache.getStatistics().getLoadingBytes());
+    assertEquals(1024, cache.getStatistics().getCopyingBytes());
     assertEquals(0, cache.getStatistics().getCacheBytes());
     assertEquals(0, cache.getStatistics().getPinnedBytes());
     assertEquals(0, cache.getStatistics().getEvictedBytes());
