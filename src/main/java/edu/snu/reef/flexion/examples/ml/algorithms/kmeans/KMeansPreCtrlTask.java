@@ -4,7 +4,7 @@ import edu.snu.reef.flexion.core.KeyValueStore;
 import edu.snu.reef.flexion.core.UserControllerTask;
 import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.data.VectorSum;
-import edu.snu.reef.flexion.examples.ml.parameters.Centroids;
+import edu.snu.reef.flexion.examples.ml.key.Centroids;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherReceiver;
 import org.apache.mahout.math.Vector;
 
@@ -12,7 +12,7 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Logger;
 
-public class KMeansPreCtrlTask extends UserControllerTask
+public final class KMeansPreCtrlTask extends UserControllerTask
         implements DataGatherReceiver<List<Vector>> {
 
     private static final Logger LOG = Logger.getLogger(KMeansPreCtrlTask.class.getName());
@@ -49,13 +49,14 @@ public class KMeansPreCtrlTask extends UserControllerTask
     }
 
     @Override
-    public void cleanup(KeyValueStore keyValueStore){
+    public void cleanup(KeyValueStore keyValueStore) {
 
         int clusterID = 0;
         for (final Vector vector : initialCentroids) {
             centroids.add(new Centroid(clusterID++, vector));
         }
 
+        // pass initial centroids to the main process
         keyValueStore.put(Centroids.class, centroids);
     }
 

@@ -16,7 +16,7 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ControllerTask implements Task {
+public final class ControllerTask implements Task {
     private final static Logger LOG = Logger.getLogger(ControllerTask.class.getName());
     public final static String TASK_ID = "CtrlTask";
 
@@ -51,8 +51,8 @@ public class ControllerTask implements Task {
             receiveData();
             topologyChanged();
         } while(!userControllerTask.isTerminated(iteration++));
-        userControllerTask.cleanup(keyValueStore);
         ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
+        userControllerTask.cleanup(keyValueStore);
 
         return null;
     }

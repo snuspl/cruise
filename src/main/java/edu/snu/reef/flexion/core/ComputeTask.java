@@ -21,7 +21,7 @@ import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ComputeTask implements Task, TaskMessageSource {
+public final class ComputeTask implements Task, TaskMessageSource {
     private final static Logger LOG = Logger.getLogger(ComputeTask.class.getName());
     public final static String TASK_ID = "CmpTask";
 

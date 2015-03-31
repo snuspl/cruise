@@ -10,7 +10,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class KMeansPreCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
+public final class KMeansPreCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
         implements DataGatherSender<List<Vector>> {
 
     /**

@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class KMeansMainCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
+public final class KMeansMainCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
         implements DataBroadcastReceiver<List<Centroid>>, DataReduceSender<Map<Integer, VectorSum>> {
 
     /**

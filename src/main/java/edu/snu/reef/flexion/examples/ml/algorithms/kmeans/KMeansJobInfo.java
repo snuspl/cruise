@@ -13,7 +13,7 @@ import javax.inject.Inject;
 import java.util.LinkedList;
 import java.util.List;
 
-public class KMeansJobInfo implements UserJobInfo {
+public final class KMeansJobInfo implements UserJobInfo {
 
     @Inject
     public KMeansJobInfo(){
@@ -24,9 +24,11 @@ public class KMeansJobInfo implements UserJobInfo {
 
         List<UserTaskInfo> taskInfoList = new LinkedList<>();
 
+        // preprocess: initialize the centroids of clusters
         taskInfoList.add(new UserTaskInfo(KMeansPreCmpTask.class, KMeansPreCtrlTask.class, KMeansPreCommGroup.class)
                 .setGather(VectorListCodec.class));
 
+        // main process: adjust the centroids of clusters
         taskInfoList.add(new UserTaskInfo(KMeansMainCmpTask.class, KMeansMainCtrlTask.class, KMeansMainCommGroup.class)
                 .setBroadcast(CentroidListCodec.class)
                 .setReduce(MapOfIntVSumCodec.class, MapOfIntVSumReduceFunction.class));

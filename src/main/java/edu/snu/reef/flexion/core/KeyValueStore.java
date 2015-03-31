@@ -1,26 +1,27 @@
 package edu.snu.reef.flexion.core;
 
 
-import org.apache.reef.tang.annotations.Name;
-
 import javax.inject.Inject;
 import java.util.HashMap;
 
+/**
+ * Simple Key-value store used by key-value store service
+ */
 public final class KeyValueStore {
 
-    private final HashMap<Class<? extends Name>, Object> hashMap;
+    private final HashMap<Class<? extends Key>, Object> hashMap;
 
     @Inject
-    public KeyValueStore(){
+    public KeyValueStore() {
         hashMap = new HashMap<>();
     }
 
-    public <T> void put(Class<? extends Name<T>> name, T value) {
-        hashMap.put(name, value);
+    public <T> void put(Class<? extends Key<T>> key, T value) {
+        hashMap.put(key, value);
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T get(Class<? extends Name<T>> name) {
-        return (T) hashMap.get(name);
+    public <T> T get(Class<? extends Key<T>> key) {
+        return (T) hashMap.get(key);
     }
 }

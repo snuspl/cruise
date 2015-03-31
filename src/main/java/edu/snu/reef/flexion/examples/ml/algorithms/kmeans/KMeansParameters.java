@@ -11,7 +11,7 @@ import org.apache.reef.tang.formats.CommandLine;
 
 import javax.inject.Inject;
 
-public class KMeansParameters implements UserParameters {
+public final class KMeansParameters implements UserParameters {
 
     private final double convThreshold;
     private final int maxIterations;

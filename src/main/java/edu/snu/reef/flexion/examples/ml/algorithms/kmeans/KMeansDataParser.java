@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class KMeansDataParser implements DataParser<Pair<List<Vector>, List<Vector>>> {
+public final class KMeansDataParser implements DataParser<Pair<List<Vector>, List<Vector>>> {
     private final static Logger LOG = Logger.getLogger(KMeansDataParser.class.getName());
 
     private final DataSet<LongWritable, Text> dataSet;

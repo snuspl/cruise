@@ -25,7 +25,7 @@ import java.util.Locale;
 /**
  * This class represents a set of vectors by their sum and count.
  */
-public class VectorSum implements Serializable {
+public final class VectorSum implements Serializable {
 
   public Vector sum;
   public int count;

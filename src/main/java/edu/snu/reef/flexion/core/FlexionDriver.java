@@ -68,11 +68,26 @@ public final class FlexionDriver {
      */
     private final DataLoadingService dataLoadingService;
 
+    /**
+     * Job to execute
+     */
     private final UserJobInfo userJobInfo;
 
+    /**
+     * List of tasks composing the job to execute
+     */
     private final List<UserTaskInfo> userTaskInfoList;
+
+    /**
+     * List of communication group drivers.
+     * Each group driver is matched to the corresponding task.
+     */
     private final List<CommunicationGroupDriver> commGroupDriverList;
-    private final Map<String, Integer> contextToSequence;
+
+    /**
+     * Map to record which task is being executed by each evaluator which is identified by context id
+     */
+    private final Map<String, Integer> contextToTaskSequence;
 
     private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
 
@@ -90,17 +105,22 @@ public final class FlexionDriver {
     @Inject
     private FlexionDriver(final GroupCommDriver groupCommDriver,
                           final DataLoadingService dataLoadingService,
-                          final UserJobInfo userJobInfo) throws IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
+                          final UserJobInfo userJobInfo)
+            throws IllegalAccessException, InstantiationException,
+            NoSuchMethodException, InvocationTargetException {
         this.groupCommDriver = groupCommDriver;
         this.dataLoadingService = dataLoadingService;
         this.userJobInfo = userJobInfo;
         this.userTaskInfoList = userJobInfo.getTaskInfoList();
         this.commGroupDriverList = new LinkedList<>();
-        this.contextToSequence = new HashMap<>();
+        this.contextToTaskSequence = new HashMap<>();
         initializeCommDriver();
 
     }
 
+    /**
+     * Initialize the group communication driver
+     */
     private void initializeCommDriver(){
 
         int sequence = 0;
@@ -113,14 +133,14 @@ public final class FlexionDriver {
 
             commGroup.addBroadcast(CtrlMsgBroadcast.class,
                     BroadcastOperatorSpec.newBuilder()
-                            .setSenderId(ControllerTask.TASK_ID+"-"+sequence)
+                            .setSenderId(getCtrlTaskId(sequence))
                             .setDataCodecClass(SerializableCodec.class)
                             .build());
 
             if (userTaskInfo.isBroadcastUsed()) {
                 commGroup.addBroadcast(DataBroadcast.class,
                         BroadcastOperatorSpec.newBuilder()
-                                .setSenderId(ControllerTask.TASK_ID+"-"+sequence)
+                                .setSenderId(getCtrlTaskId(sequence))
                                 .setDataCodecClass(userTaskInfo.getBroadcastCodecClass())
                                 .build());
             }
@@ -128,7 +148,7 @@ public final class FlexionDriver {
             if (userTaskInfo.isScatterUsed()) {
                 commGroup.addScatter(DataScatter.class,
                         ScatterOperatorSpec.newBuilder()
-                                .setSenderId(ControllerTask.TASK_ID+"-"+sequence)
+                                .setSenderId(getCtrlTaskId(sequence))
                                 .setDataCodecClass(userTaskInfo.getScatterCodecClass())
                                 .build());
             }
@@ -136,7 +156,7 @@ public final class FlexionDriver {
             if (userTaskInfo.isReduceUsed()) {
                 commGroup.addReduce(DataReduce.class,
                         ReduceOperatorSpec.newBuilder()
-                                .setReceiverId(ControllerTask.TASK_ID+"-"+sequence)
+                                .setReceiverId(getCtrlTaskId(sequence))
                                 .setDataCodecClass(userTaskInfo.getReduceCodecClass())
                                 .setReduceFunctionClass(userTaskInfo.getReduceFunctionClass())
                                 .build());
@@ -145,15 +165,13 @@ public final class FlexionDriver {
             if (userTaskInfo.isGatherUsed()) {
                 commGroup.addGather(DataGather.class,
                         GatherOperatorSpec.newBuilder()
-                                .setReceiverId(ControllerTask.TASK_ID+"-"+sequence)
+                                .setReceiverId(getCtrlTaskId(sequence))
                                 .setDataCodecClass(userTaskInfo.getGatherCodecClass())
                                 .build());
             }
 
             commGroupDriverList.add(commGroup);
-
             commGroup.finalise();
-
             sequence++;
         }
 
@@ -163,7 +181,7 @@ public final class FlexionDriver {
         @Override
         public void onNext(final ActiveContext activeContext) {
 
-            // Case 1: Evaluator configured with a Data Loading context has been given
+            // Evaluator configured with a Data Loading context has been given
             // We need to add a Group Communication context above this context.
             //
             // It would be better if the two services could go into the same context, but
@@ -194,49 +212,7 @@ public final class FlexionDriver {
                 activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
 
             } else {
-                final Configuration partialTaskConf;
-
-                int sequence = 0;
-                contextToSequence.put(activeContext.getId(), sequence);
-                UserTaskInfo taskInfo = userTaskInfoList.get(sequence);
-                CommunicationGroupDriver commGroup = commGroupDriverList.get(sequence);
-
-                // Case 2: Evaluator configured with a Group Communication context has been given,
-                //         representing a Controller Task
-                // We can now place a Controller Task on top of the contexts.
-                if (activeContext.getId().equals(ctrlTaskContextId)) {
-                    LOG.log(Level.INFO, "Submit ControllerTask");
-                    partialTaskConf = Configurations.merge(
-                            TaskConfiguration.CONF
-                                    .set(TaskConfiguration.IDENTIFIER, ControllerTask.TASK_ID+"-"+sequence)
-                                    .set(TaskConfiguration.TASK, ControllerTask.class)
-                                    .build(),
-                            Tang.Factory.getTang().newConfigurationBuilder()
-                                    .bindImplementation(UserControllerTask.class, taskInfo.getUserCtrlTaskClass())
-                                    .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
-                                    .build());
-
-                // Case 3: Evaluator configured with a Group Communication context has been given,
-                //         representing a Compute Task
-                // We can now place a Compute Task on top of the contexts.
-                } else {
-                    LOG.log(Level.INFO, "Submit ComputeTask");
-                    partialTaskConf = Configurations.merge(
-                            TaskConfiguration.CONF
-                                    .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + taskId.getAndIncrement())
-                                    .set(TaskConfiguration.TASK, ComputeTask.class)
-                                    .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
-                                    .build(),
-                            Tang.Factory.getTang().newConfigurationBuilder()
-                                    .bindImplementation(UserComputeTask.class, taskInfo.getUserCmpTaskClass())
-                                    .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
-                                    .build());
-                }
-
-                // add the Task to our communication group
-                commGroup.addTask(partialTaskConf);
-                final Configuration finalTaskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
-                activeContext.submitTask(finalTaskConf);
+                submitTask(activeContext, 0);
             }
         }
     }
@@ -253,6 +229,9 @@ public final class FlexionDriver {
         }
     }
 
+    /**
+     * Receives metrics from compute tasks
+     */
     final class TaskMessageHandler implements EventHandler<TaskMessage> {
         @Override
         public void onNext(final TaskMessage message) {
@@ -264,51 +243,24 @@ public final class FlexionDriver {
         }
     }
 
+    /**
+     * When a certain task completes, the following task is submitted
+     */
     final class TaskCompletedHandler implements EventHandler<CompletedTask> {
 
         @Override
         public void onNext(CompletedTask completedTask) {
             LOG.info(completedTask.getId() + " has completed.");
 
-            String contextId = completedTask.getActiveContext().getId();
-            int nextSequence = contextToSequence.get(contextId)+1;
+            ActiveContext activeContext = completedTask.getActiveContext();
+            String contextId = activeContext.getId();
+            int nextSequence = contextToTaskSequence.get(contextId)+1;
             if (nextSequence >= userTaskInfoList.size()) {
                 completedTask.getActiveContext().close();
                 return;
-            }
-
-            contextToSequence.put(contextId, nextSequence);
-            UserTaskInfo taskInfo = userTaskInfoList.get(nextSequence);
-            CommunicationGroupDriver commGroup = commGroupDriverList.get(nextSequence);
-            final Configuration partialTaskConf;
-
-            if (contextId.equals(ctrlTaskContextId)) {
-                LOG.log(Level.INFO, "Submit ControllerTask");
-                partialTaskConf = Configurations.merge(
-                        TaskConfiguration.CONF
-                                .set(TaskConfiguration.IDENTIFIER, ControllerTask.TASK_ID+"-"+nextSequence)
-                                .set(TaskConfiguration.TASK, ControllerTask.class)
-                                .build(),
-                        Tang.Factory.getTang().newConfigurationBuilder()
-                                .bindImplementation(UserControllerTask.class, taskInfo.getUserCtrlTaskClass())
-                                .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
-                                .build());
             } else {
-                LOG.log(Level.INFO, "Submit ComputeTask");
-                partialTaskConf = Configurations.merge(
-                        TaskConfiguration.CONF
-                                .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + taskId.getAndIncrement())
-                                .set(TaskConfiguration.TASK, ComputeTask.class)
-                                .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
-                                .build(),
-                        Tang.Factory.getTang().newConfigurationBuilder()
-                                .bindImplementation(UserComputeTask.class, taskInfo.getUserCmpTaskClass())
-                                .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
-                                .build());
+                submitTask(activeContext, nextSequence);
             }
-            commGroup.addTask(partialTaskConf);
-            final Configuration finalTaskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
-            completedTask.getActiveContext().submitTask(finalTaskConf);
 
         }
     }
@@ -323,19 +275,56 @@ public final class FlexionDriver {
         public void onNext(FailedTask failedTask) {
             LOG.info(failedTask.getId() + " has failed.");
 
-            // Stop the whole job if the failed Task is the Compute Task
-            if (failedTask.getActiveContext().get().getId().equals(ctrlTaskContextId)) {
+            // Stop the whole job if the failed Task is the Controller Task
+            if (isCtrlTaskId(failedTask.getActiveContext().get().getId())) {
                 throw new RuntimeException("Controller Task failed; aborting job");
+            } else {
+
+                ActiveContext activeContext = failedTask.getActiveContext().get();
+                String contextId = activeContext.getId();
+                int currentSequence = contextToTaskSequence.get(contextId);
+                submitTask(activeContext, currentSequence);
             }
 
-            String contextId = failedTask.getActiveContext().get().getId();
-            int sequence = contextToSequence.get(contextId);
-            UserTaskInfo taskInfo = userTaskInfoList.get(sequence);
-            CommunicationGroupDriver commGroup = commGroupDriverList.get(sequence);
+        }
+    }
 
-            final Configuration partialTaskConf = Configurations.merge(
+
+    /**
+     * Execute the task corresponding to the given sequence
+     * @param activeContext
+     * @param taskSequence
+     */
+    final private void submitTask(ActiveContext activeContext, int taskSequence) {
+
+        contextToTaskSequence.put(activeContext.getId(), taskSequence);
+        UserTaskInfo taskInfo = userTaskInfoList.get(taskSequence);
+        CommunicationGroupDriver commGroup = commGroupDriverList.get(taskSequence);
+        final Configuration partialTaskConf;
+
+        // Case 1: Evaluator configured with a Group Communication context has been given,
+        //         representing a Controller Task
+        // We can now place a Controller Task on top of the contexts.
+        if (isCtrlTaskId(activeContext.getId())) {
+            LOG.log(Level.INFO, "Submit ControllerTask");
+            partialTaskConf = Configurations.merge(
                     TaskConfiguration.CONF
-                            .set(TaskConfiguration.IDENTIFIER, ComputeTask.TASK_ID + "-" + taskId.getAndIncrement())
+                            .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(taskSequence))
+                            .set(TaskConfiguration.TASK, ControllerTask.class)
+                            .build(),
+                    Tang.Factory.getTang().newConfigurationBuilder()
+                            .bindImplementation(UserControllerTask.class, taskInfo.getUserCtrlTaskClass())
+                            .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
+                            .build());
+
+        // Case 2: Evaluator configured with a Group Communication context has been given,
+        //         representing a Compute Task
+        // We can now place a Compute Task on top of the contexts.
+        } else {
+            LOG.log(Level.INFO, "Submit ComputeTask");
+            partialTaskConf = Configurations.merge(
+                    TaskConfiguration.CONF
+                            .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId.getAndIncrement()))
                             .set(TaskConfiguration.TASK, ComputeTask.class)
                             .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
                             .build(),
@@ -343,15 +332,24 @@ public final class FlexionDriver {
                             .bindImplementation(UserComputeTask.class, taskInfo.getUserCmpTaskClass())
                             .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
                             .build());
-
-            // Re-add the failed Compute Task
-            commGroup.addTask(partialTaskConf);
-
-            final Configuration taskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
-
-            failedTask.getActiveContext().get().submitTask(taskConf);
-
         }
+
+        // add the Task to our communication group
+        commGroup.addTask(partialTaskConf);
+        final Configuration finalTaskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
+        activeContext.submitTask(finalTaskConf);
+    }
+
+    final private boolean isCtrlTaskId(String id){
+        return ctrlTaskContextId.equals(id);
+    }
+
+    final private String getCtrlTaskId(int sequence) {
+        return ControllerTask.TASK_ID + "-" + sequence;
+    }
+
+    final private String getCmpTaskId(int sequence) {
+        return ComputeTask.TASK_ID + "-" + sequence;
     }
 
 

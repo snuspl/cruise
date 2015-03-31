@@ -7,6 +7,10 @@ import org.apache.reef.tang.Tang;
 
 import java.util.logging.Logger;
 
+/**
+ * Key-value store service used to pass the current task's result to the next task
+ * Should be inserted alongside a context.
+ */
 public class KeyValueStoreService {
 
     private static Logger LOG = Logger.getLogger(KeyValueStoreService.class.getName());

@@ -17,7 +17,6 @@ public class SimpleDataParser implements DataParser<List<String>> {
 
     private final DataSet<LongWritable, Text> dataSet;
     private List<String> result;
-    private ParseException parseException;
 
     @Inject
     public SimpleDataParser(final DataSet<LongWritable, Text> dataSet) {
@@ -28,10 +27,6 @@ public class SimpleDataParser implements DataParser<List<String>> {
     public final List<String> get() throws ParseException {
         if (result == null) {
             parse();
-        }
-
-        if (parseException != null) {
-            throw parseException;
         }
 
         return result;

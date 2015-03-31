@@ -5,6 +5,10 @@ import com.microsoft.reef.io.network.group.operators.Reduce;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Name;
 
+/**
+ * Information of a task, which corresponds to a BSP algorithm
+ * One or more tasks compose a job, a unit of work in Flexion
+ */
 public final class UserTaskInfo {
 
     private Class<? extends UserComputeTask> userComputeTaskClass;
@@ -24,6 +28,12 @@ public final class UserTaskInfo {
     private Class<? extends Codec>  reduceCodecClass = null;
     private Class<? extends Reduce.ReduceFunction> reduceFunctionClass = null;
 
+    /**
+     * Define a new task
+     * @param userComputeTaskClass  user-defined compute task
+     * @param userControllerTaskClass   user-defined controller task
+     * @param communicationGroup    name of the communication group used by this task
+     */
     public UserTaskInfo(Class<? extends UserComputeTask> userComputeTaskClass,
                         Class<? extends UserControllerTask> userControllerTaskClass,
                         Class<? extends Name<String>> communicationGroup) {

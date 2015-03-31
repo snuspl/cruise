@@ -5,7 +5,7 @@ import edu.snu.reef.flexion.core.UserControllerTask;
 import edu.snu.reef.flexion.examples.ml.converge.ConvergenceCondition;
 import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.data.VectorSum;
-import edu.snu.reef.flexion.examples.ml.parameters.Centroids;
+import edu.snu.reef.flexion.examples.ml.key.Centroids;
 import edu.snu.reef.flexion.examples.ml.parameters.MaxIterations;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class KMeansMainCtrlTask extends UserControllerTask
+public final class KMeansMainCtrlTask extends UserControllerTask
         implements DataReduceReceiver<Map<Integer, VectorSum>>, DataBroadcastSender<List<Centroid>> {
 
     private static final Logger LOG = Logger.getLogger(KMeansMainCtrlTask.class.getName());
@@ -63,8 +63,11 @@ public class KMeansMainCtrlTask extends UserControllerTask
         this.maxIterations = maxIterations;
     }
 
-
-    public void initialize(KeyValueStore keyValueStore){
+    /**
+     * Receive initial centroids from the preprocess task
+     * @param keyValueStore
+     */
+    public void initialize(KeyValueStore keyValueStore) {
         centroids = keyValueStore.get(Centroids.class);
     }
 
