@@ -152,52 +152,26 @@ public final class MemoryManager {
   }
 
   /**
-   * Call on copy success.
-   * Notifies threads waiting for memory to free up.
-   * Updates statistics.
+   * Call on load success. Notifies threads waiting for memory to free up and updates statistics.
    */
-  public synchronized void copySuccess(final BlockId blockId, final long blockSize, final boolean pin) {
-    LOG.log(Level.INFO, blockId+" statistics before copySuccess: "+statistics);
-    if (statistics.getCacheBytes() < 0) {
-      throw new RuntimeException(blockId+" cached is less than zero");
-    }
-
-    final CacheEntryState state = getState(blockId);
-    switch(state) {
-      case COPY_STARTED:
-        if (pin) {
-          // nothing
-        } else {
-          statistics.subtractCopyingBytes(blockSize);
-          statistics.addCacheBytes(blockSize);
-        }
-        setState(blockId, CacheEntryState.COPY_SUCCEEDED);
-        notifyAll();
-        break;
-      case REMOVED_DURING_COPY:
-        if (pin) {
-          statistics.subtractPinnedBytes(blockSize);
-        } else {
-          statistics.subtractCopyingBytes(blockSize);
-        }
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
-        updates.addRemoval(blockId);
-        setState(blockId, CacheEntryState.REMOVED);
-        notifyAll();
-        break;
-      default:
-        throw new RuntimeException(blockId+" unexpected state on copySuccess "+getState(blockId));
-    }
-
-    LOG.log(Level.INFO, blockId + " statistics after copySuccess: " + statistics);
+  public void loadSuccess(final BlockId id, final long blockSize, final boolean pin) {
+    copySuccess(id, blockSize, pin, false, blockSize);
   }
 
   /**
-   * Call on write success. Since Write is another kind of data copying in the cache, the state transition is
-   * almost same with copySuccess. One difference is size of the last block can be smaller than others.
+   * Call on write success. This method is same with loadSuccess,
+   * except the amount of written data can be different from blockSize if the block is the last one.
    */
-  public synchronized void writeSuccess(final BlockId blockId, final long blockSize, final long nWritten, final boolean pin) {
+  public void writeSuccess(final BlockId id, final long blockSize, final boolean pin, final long nWritten) {
+    copySuccess(id, blockSize, pin, true, nWritten);
+  }
+
+  /**
+   * Call on success of either load or write. On write, send the number of written bytes to update block's metadata.
+   * This is why copySuccess is separated into two methods: loadSuccess and writeSuccess.
+   */
+  private synchronized void copySuccess(final BlockId blockId, final long blockSize, final boolean pin,
+                                       final boolean write, final long nWritten) {
     LOG.log(Level.INFO, blockId+" statistics before copySuccess: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -212,8 +186,13 @@ public final class MemoryManager {
           statistics.subtractCopyingBytes(blockSize);
           statistics.addCacheBytes(blockSize);
         }
+
+        if (write) {
+          // Report the update that write is complete, including the amount data written in this block.
+          updates.addAddition(blockId, nWritten);
+        }
         setState(blockId, CacheEntryState.COPY_SUCCEEDED);
-        updates.addAddition(blockId, nWritten); // Update the actual amount of written data.
+
         notifyAll();
         break;
       case REMOVED_DURING_COPY:

@@ -85,6 +85,6 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
       return;
     }
 
-    memoryManager.copySuccess(blockId, blockSize, pin);
+    memoryManager.loadSuccess(blockId, blockSize, pin);
   }
 }

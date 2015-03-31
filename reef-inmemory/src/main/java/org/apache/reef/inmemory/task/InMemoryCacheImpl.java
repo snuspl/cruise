@@ -81,8 +81,7 @@ public final class InMemoryCacheImpl implements InMemoryCache {
       final long nWritten = entry.writeData(data.array(), offset, isLastPacket);
 
       if (isLastPacket) {
-        // TODO writeSuccess(cacheEntry)
-        memoryManager.writeSuccess(blockId, entry.getBlockSize(), nWritten, entry.isPinned());
+        memoryManager.writeSuccess(blockId, entry.getBlockSize(), entry.isPinned(), nWritten);
         heartBeatTriggerManager.triggerHeartBeat(); // To update the file's metadata immediately
       }
     }

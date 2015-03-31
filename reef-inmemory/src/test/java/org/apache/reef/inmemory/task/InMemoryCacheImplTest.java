@@ -136,9 +136,7 @@ public final class InMemoryCacheImplTest {
 
     assertBlockNotFound(blockId, blockSize);
 
-    final BlockReceiver receiver = mock(BlockReceiver.class);
-    when(receiver.getBlockId()).thenReturn(blockId);
-    when(receiver.getBlockSize()).thenReturn((long) blockSize);
+    final BlockReceiver receiver = new BlockReceiver(blockId, blockSize, false, bufferSize);
     cache.clear();
     cache.prepareToWrite(receiver);
 
