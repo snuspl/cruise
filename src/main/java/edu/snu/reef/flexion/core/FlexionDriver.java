@@ -74,20 +74,20 @@ public final class FlexionDriver {
     private final UserJobInfo userJobInfo;
 
     /**
-     * List of tasks composing the job to execute
+     * List of stages composing the job to execute
      */
-    private final List<UserTaskInfo> userTaskInfoList;
+    private final List<StageInfo> stageInfoList;
 
     /**
      * List of communication group drivers.
-     * Each group driver is matched to the corresponding task.
+     * Each group driver is matched to the corresponding stage.
      */
     private final List<CommunicationGroupDriver> commGroupDriverList;
 
     /**
-     * Map to record which task is being executed by each evaluator which is identified by context id
+     * Map to record which stage is being executed by each evaluator which is identified by context id
      */
-    private final Map<String, Integer> contextToTaskSequence;
+    private final Map<String, Integer> contextToStageSequence;
 
     private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
 
@@ -111,9 +111,9 @@ public final class FlexionDriver {
         this.groupCommDriver = groupCommDriver;
         this.dataLoadingService = dataLoadingService;
         this.userJobInfo = userJobInfo;
-        this.userTaskInfoList = userJobInfo.getTaskInfoList();
+        this.stageInfoList = userJobInfo.getStageInfoList();
         this.commGroupDriverList = new LinkedList<>();
-        this.contextToTaskSequence = new HashMap<>();
+        this.contextToStageSequence = new HashMap<>();
         initializeCommDriver();
 
     }
@@ -125,10 +125,10 @@ public final class FlexionDriver {
 
         int sequence = 0;
 
-        for(UserTaskInfo userTaskInfo : userTaskInfoList) {
+        for(StageInfo stageInfo : stageInfoList) {
 
             CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
-                    userTaskInfo.getCommGroupName(),
+                    stageInfo.getCommGroupName(),
                     dataLoadingService.getNumberOfPartitions() + 1);
 
             commGroup.addBroadcast(CtrlMsgBroadcast.class,
@@ -137,36 +137,36 @@ public final class FlexionDriver {
                             .setDataCodecClass(SerializableCodec.class)
                             .build());
 
-            if (userTaskInfo.isBroadcastUsed()) {
+            if (stageInfo.isBroadcastUsed()) {
                 commGroup.addBroadcast(DataBroadcast.class,
                         BroadcastOperatorSpec.newBuilder()
                                 .setSenderId(getCtrlTaskId(sequence))
-                                .setDataCodecClass(userTaskInfo.getBroadcastCodecClass())
+                                .setDataCodecClass(stageInfo.getBroadcastCodecClass())
                                 .build());
             }
 
-            if (userTaskInfo.isScatterUsed()) {
+            if (stageInfo.isScatterUsed()) {
                 commGroup.addScatter(DataScatter.class,
                         ScatterOperatorSpec.newBuilder()
                                 .setSenderId(getCtrlTaskId(sequence))
-                                .setDataCodecClass(userTaskInfo.getScatterCodecClass())
+                                .setDataCodecClass(stageInfo.getScatterCodecClass())
                                 .build());
             }
 
-            if (userTaskInfo.isReduceUsed()) {
+            if (stageInfo.isReduceUsed()) {
                 commGroup.addReduce(DataReduce.class,
                         ReduceOperatorSpec.newBuilder()
                                 .setReceiverId(getCtrlTaskId(sequence))
-                                .setDataCodecClass(userTaskInfo.getReduceCodecClass())
-                                .setReduceFunctionClass(userTaskInfo.getReduceFunctionClass())
+                                .setDataCodecClass(stageInfo.getReduceCodecClass())
+                                .setReduceFunctionClass(stageInfo.getReduceFunctionClass())
                                 .build());
             }
 
-            if (userTaskInfo.isGatherUsed()) {
+            if (stageInfo.isGatherUsed()) {
                 commGroup.addGather(DataGather.class,
                         GatherOperatorSpec.newBuilder()
                                 .setReceiverId(getCtrlTaskId(sequence))
-                                .setDataCodecClass(userTaskInfo.getGatherCodecClass())
+                                .setDataCodecClass(stageInfo.getGatherCodecClass())
                                 .build());
             }
 
@@ -254,8 +254,8 @@ public final class FlexionDriver {
 
             ActiveContext activeContext = completedTask.getActiveContext();
             String contextId = activeContext.getId();
-            int nextSequence = contextToTaskSequence.get(contextId)+1;
-            if (nextSequence >= userTaskInfoList.size()) {
+            int nextSequence = contextToStageSequence.get(contextId)+1;
+            if (nextSequence >= stageInfoList.size()) {
                 completedTask.getActiveContext().close();
                 return;
             } else {
@@ -282,7 +282,7 @@ public final class FlexionDriver {
 
                 ActiveContext activeContext = failedTask.getActiveContext().get();
                 String contextId = activeContext.getId();
-                int currentSequence = contextToTaskSequence.get(contextId);
+                int currentSequence = contextToStageSequence.get(contextId);
                 submitTask(activeContext, currentSequence);
             }
 
@@ -291,15 +291,15 @@ public final class FlexionDriver {
 
 
     /**
-     * Execute the task corresponding to the given sequence
+     * Execute the task of the given stage
      * @param activeContext
-     * @param taskSequence
+     * @param stageSequence
      */
-    final private void submitTask(ActiveContext activeContext, int taskSequence) {
+    final private void submitTask(ActiveContext activeContext, int stageSequence) {
 
-        contextToTaskSequence.put(activeContext.getId(), taskSequence);
-        UserTaskInfo taskInfo = userTaskInfoList.get(taskSequence);
-        CommunicationGroupDriver commGroup = commGroupDriverList.get(taskSequence);
+        contextToStageSequence.put(activeContext.getId(), stageSequence);
+        StageInfo taskInfo = stageInfoList.get(stageSequence);
+        CommunicationGroupDriver commGroup = commGroupDriverList.get(stageSequence);
         final Configuration partialTaskConf;
 
         // Case 1: Evaluator configured with a Group Communication context has been given,
@@ -309,7 +309,7 @@ public final class FlexionDriver {
             LOG.log(Level.INFO, "Submit ControllerTask");
             partialTaskConf = Configurations.merge(
                     TaskConfiguration.CONF
-                            .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(taskSequence))
+                            .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(stageSequence))
                             .set(TaskConfiguration.TASK, ControllerTask.class)
                             .build(),
                     Tang.Factory.getTang().newConfigurationBuilder()

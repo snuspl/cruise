@@ -6,10 +6,10 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Name;
 
 /**
- * Information of a task, which corresponds to a BSP algorithm
- * One or more tasks compose a job, a unit of work in Flexion
+ * Information of a stage, which corresponds to a BSP algorithm
+ * One or more stages compose a job, a unit of work in Flexion
  */
-public final class UserTaskInfo {
+public final class StageInfo {
 
     private Class<? extends UserComputeTask> userComputeTaskClass;
     private Class<? extends UserControllerTask> userControllerTaskClass;
@@ -29,38 +29,38 @@ public final class UserTaskInfo {
     private Class<? extends Reduce.ReduceFunction> reduceFunctionClass = null;
 
     /**
-     * Define a new task
+     * Define a new stage
      * @param userComputeTaskClass  user-defined compute task
      * @param userControllerTaskClass   user-defined controller task
-     * @param communicationGroup    name of the communication group used by this task
+     * @param communicationGroup    name of the communication group used by this stage
      */
-    public UserTaskInfo(Class<? extends UserComputeTask> userComputeTaskClass,
-                        Class<? extends UserControllerTask> userControllerTaskClass,
-                        Class<? extends Name<String>> communicationGroup) {
+    public StageInfo(Class<? extends UserComputeTask> userComputeTaskClass,
+                     Class<? extends UserControllerTask> userControllerTaskClass,
+                     Class<? extends Name<String>> communicationGroup) {
         this.userComputeTaskClass = userComputeTaskClass;
         this.userControllerTaskClass = userControllerTaskClass;
         this.commGroupName = communicationGroup;
     }
 
-    public UserTaskInfo setBroadcast(final Class<? extends Codec> codecClass) {
+    public StageInfo setBroadcast(final Class<? extends Codec> codecClass) {
         this.isBroadcastUsed = true;
         this.broadcastCodecClass = codecClass;
         return this;
     }
 
-    public UserTaskInfo setScatter(final Class<? extends Codec> codecClass) {
+    public StageInfo setScatter(final Class<? extends Codec> codecClass) {
         this.isScatterUsed = true;
         this.scatterCodecClass = codecClass;
         return this;
     }
 
-    public UserTaskInfo setGather(final Class<? extends Codec> codecClass) {
+    public StageInfo setGather(final Class<? extends Codec> codecClass) {
         this.isGatherUsed = true;
         this.gatherCodecClass = codecClass;
         return this;
     }
 
-    public UserTaskInfo setReduce(final Class<? extends Codec> codecClass,
+    public StageInfo setReduce(final Class<? extends Codec> codecClass,
                               final Class<? extends Reduce.ReduceFunction> reduceFunctionClass) {
         this.isReduceUsed = true;
         this.reduceCodecClass = codecClass;

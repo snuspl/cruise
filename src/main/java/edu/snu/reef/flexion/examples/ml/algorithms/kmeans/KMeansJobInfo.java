@@ -3,7 +3,7 @@ package edu.snu.reef.flexion.examples.ml.algorithms.kmeans;
 
 import edu.snu.reef.flexion.core.DataParser;
 import edu.snu.reef.flexion.core.UserJobInfo;
-import edu.snu.reef.flexion.core.UserTaskInfo;
+import edu.snu.reef.flexion.core.StageInfo;
 import edu.snu.reef.flexion.examples.ml.sub.CentroidListCodec;
 import edu.snu.reef.flexion.examples.ml.sub.MapOfIntVSumCodec;
 import edu.snu.reef.flexion.examples.ml.sub.MapOfIntVSumReduceFunction;
@@ -20,20 +20,20 @@ public final class KMeansJobInfo implements UserJobInfo {
     }
 
     @Override
-    public List<UserTaskInfo> getTaskInfoList() {
+    public List<StageInfo> getStageInfoList() {
 
-        List<UserTaskInfo> taskInfoList = new LinkedList<>();
+        List<StageInfo> stageInfoList = new LinkedList<>();
 
         // preprocess: initialize the centroids of clusters
-        taskInfoList.add(new UserTaskInfo(KMeansPreCmpTask.class, KMeansPreCtrlTask.class, KMeansPreCommGroup.class)
+        stageInfoList.add(new StageInfo(KMeansPreCmpTask.class, KMeansPreCtrlTask.class, KMeansPreCommGroup.class)
                 .setGather(VectorListCodec.class));
 
         // main process: adjust the centroids of clusters
-        taskInfoList.add(new UserTaskInfo(KMeansMainCmpTask.class, KMeansMainCtrlTask.class, KMeansMainCommGroup.class)
+        stageInfoList.add(new StageInfo(KMeansMainCmpTask.class, KMeansMainCtrlTask.class, KMeansMainCommGroup.class)
                 .setBroadcast(CentroidListCodec.class)
                 .setReduce(MapOfIntVSumCodec.class, MapOfIntVSumReduceFunction.class));
 
-        return taskInfoList;
+        return stageInfoList;
     }
 
     @Override
