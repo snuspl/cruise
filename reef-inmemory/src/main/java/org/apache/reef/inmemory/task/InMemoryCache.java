@@ -55,7 +55,7 @@ public interface InMemoryCache {
    * The state of this block is set as LOAD_STARTED.
    * TODO The state is supposed to be WRITE_STARTED
    */
-  public void prepareToWrite(BlockReceiver blockReceiver) throws IOException, BlockNotFoundException;
+  public void prepareToWrite(BlockWriter blockWriter) throws IOException, BlockNotFoundException;
 
   /**
    * @return Length of buffer loading data from Base File Systems

@@ -14,18 +14,18 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
 /**
- * Test BlockReceiver works correctly.
+ * Test BlockWriter works correctly.
  * Initiate the blockLoader with blockSize 131072, bufferSize 8192
  */
-public class BlockReceiverTest {
-  private BlockReceiver receiver;
+public class BlockWriterTest {
+  private BlockWriter blockWriter;
   private static final long BLOCK_SIZE = 131072;
   private static final int BUFFER_SIZE = 8192;
 
   @Before
   public void setup() {
     final BlockId id = new BlockId("path", 0);
-    receiver = new BlockReceiver(id, BLOCK_SIZE, false, BUFFER_SIZE);
+    blockWriter = new BlockWriter(id, BLOCK_SIZE, false, BUFFER_SIZE);
   }
 
   /**
@@ -44,14 +44,14 @@ public class BlockReceiverTest {
     System.arraycopy(packet0, 0, expected, offset0, packet0.length);
     System.arraycopy(packet1, 0, expected, offset1, packet1.length);
 
-    receiver.writeData(packet0, offset0);
-    receiver.writeData(packet1, offset1);
-    receiver.completeWrite();
+    blockWriter.writeData(packet0, offset0);
+    blockWriter.writeData(packet1, offset1);
+    blockWriter.completeWrite();
 
-    assertWriteSuccess(expected, receiver);
+    assertWriteSuccess(expected, blockWriter);
 
     // Index 1 is out of bound for this block.
-    assertLoadFailsOnWriting(receiver, 1);
+    assertLoadFailsOnWriting(blockWriter, 1);
   }
 
   /**
@@ -60,13 +60,13 @@ public class BlockReceiverTest {
   @Test
   public void testPacketWithBufferSize() throws IOException {
     final byte[] packet = generateData(BUFFER_SIZE);
-    receiver.writeData(packet, 0);
-    receiver.completeWrite();
+    blockWriter.writeData(packet, 0);
+    blockWriter.completeWrite();
 
-    assertWriteSuccess(packet, receiver);
+    assertWriteSuccess(packet, blockWriter);
 
     // Index 1 is out of bound.
-    assertLoadFailsOnWriting(receiver, 1);
+    assertLoadFailsOnWriting(blockWriter, 1);
   }
 
   /**
@@ -80,10 +80,10 @@ public class BlockReceiverTest {
 
     final int offset = 0;
 
-    receiver.writeData(packet0, offset);
+    blockWriter.writeData(packet0, offset);
 
     // Write fails because it tries to write with the same offset.
-    assertWriteFailsWithException(receiver, packet1, offset);
+    assertWriteFailsWithException(blockWriter, packet1, offset);
   }
 
   /**
@@ -104,19 +104,19 @@ public class BlockReceiverTest {
     final byte[][] packets = new byte[numSplits][packetLength];
     for (int packetIndex = 0; packetIndex < packets.length; packetIndex++) {
       System.arraycopy(data, packetIndex * packetLength, packets[packetIndex], 0, packetLength);
-      receiver.writeData(packets[packetIndex], packetIndex * packetLength);
+      blockWriter.writeData(packets[packetIndex], packetIndex * packetLength);
     }
-    receiver.completeWrite();
+    blockWriter.completeWrite();
 
     // Collect the loaded buffers and compare to the original data.
     final ByteBuffer loaded = ByteBuffer.allocate(data.length);
     for (int bufferIndex = 0; bufferIndex < numBuffers; bufferIndex++) {
-      loaded.put(receiver.getData(bufferIndex));
+      loaded.put(blockWriter.getData(bufferIndex));
     }
     assertArrayEquals(data, loaded.array());
 
     // The data should be written as amount of {numBuffers}
-    assertLoadFailsOnWriting(receiver, numBuffers);
+    assertLoadFailsOnWriting(blockWriter, numBuffers);
   }
 
   /**
@@ -131,14 +131,14 @@ public class BlockReceiverTest {
       final byte[] packet = new byte[BUFFER_SIZE];
 
       System.arraycopy(data, offset, packet, 0, BUFFER_SIZE);
-      receiver.writeData(packet, offset);
+      blockWriter.writeData(packet, offset);
     }
-    receiver.completeWrite();
+    blockWriter.completeWrite();
 
     // Collect the loaded buffers and compare to the original data.
     final ByteBuffer loaded = ByteBuffer.allocate(data.length);
     for (int bufferIndex = 0; bufferIndex < BLOCK_SIZE / BUFFER_SIZE; bufferIndex++) {
-      loaded.put(receiver.getData(bufferIndex));
+      loaded.put(blockWriter.getData(bufferIndex));
     }
     assertArrayEquals(data, loaded.array());
   }
@@ -153,20 +153,20 @@ public class BlockReceiverTest {
 
     // Write the first packet
     final byte[] packet0 = generateData(length0);
-    receiver.writeData(packet0, 0);
-    receiver.completeWrite();
+    blockWriter.writeData(packet0, 0);
+    blockWriter.completeWrite();
 
     // Write the other packet, then write fails because the packet exceeds the block size.
     final byte[] packet1 = generateData(length1);
-    assertWriteFailsWithException(receiver, packet1, length0);
+    assertWriteFailsWithException(blockWriter, packet1, length0);
   }
 
   /**
    * Helper method to make sure write succeed without exception.
    */
-  private void assertWriteSuccess(final byte[] expected, final BlockReceiver receiver) {
+  private void assertWriteSuccess(final byte[] expected, final BlockWriter blockWriter) {
     try {
-      final byte[] written = receiver.getData(0);
+      final byte[] written = blockWriter.getData(0);
       assertArrayEquals(expected, written);
     } catch (BlockWritingException e) {
       fail();
@@ -176,9 +176,9 @@ public class BlockReceiverTest {
   /**
    * Helper method to make sure BlockWritingException is thrown if one requests to load a block while writing.
    */
-  private void assertLoadFailsOnWriting(final BlockReceiver receiver, final int index) {
+  private void assertLoadFailsOnWriting(final BlockWriter blockWriter, final int index) {
     try {
-      receiver.getData(index);
+      blockWriter.getData(index);
       fail();
     } catch (BlockWritingException e) {
       // Test success
@@ -188,9 +188,9 @@ public class BlockReceiverTest {
   /**
    * Helper method to make sure an exception occurs while writing.
    */
-  private void assertWriteFailsWithException(final BlockReceiver receiver, final byte[] packet, final long offset) {
+  private void assertWriteFailsWithException(final BlockWriter blockWriter, final byte[] packet, final long offset) {
     try {
-      receiver.writeData(packet, offset);
+      blockWriter.writeData(packet, offset);
       fail();
     } catch (IOException e) {
       // Test success

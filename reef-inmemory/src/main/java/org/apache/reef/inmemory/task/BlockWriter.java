@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * Receive the data and write into cache block.
  */
-public final class BlockReceiver {
+public final class BlockWriter {
 
   private final BlockId blockId;
   private final long blockSize;
@@ -22,7 +22,7 @@ public final class BlockReceiver {
   private boolean isComplete = false;
   private List<ByteBuffer> data;
 
-  public BlockReceiver(final BlockId id, final long blockSize, final boolean pin, final int bufferSize) {
+  public BlockWriter(final BlockId id, final long blockSize, final boolean pin, final int bufferSize) {
     this.blockId = id;
     this.blockSize = blockSize;
     this.pinned = pin;
@@ -52,7 +52,7 @@ public final class BlockReceiver {
   }
 
   /**
-   * Get the data that this BlockReceiver holds.
+   * Get the data that this BlockWriter holds.
    * @param index Index of the chunk to get
    * @return Part of the data loaded by BlockLoader
    * @throws BlockWritingException If the chunk of index has not been written yet

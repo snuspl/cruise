@@ -9,9 +9,9 @@ import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
+import org.apache.reef.inmemory.task.BlockWriter;
 import org.apache.reef.inmemory.task.CacheParameters;
 import org.apache.reef.inmemory.task.InMemoryCache;
-import org.apache.reef.inmemory.task.BlockReceiver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.THsHaServer;
@@ -138,10 +138,10 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
     final boolean pin = info.isPin();
     // TODO We can get BaseReplicationFactor and SyncMethod.
-    final BlockReceiver blockReceiver = new BlockReceiver(blockId, blockSize, pin, bufferSize);
+    final BlockWriter blockWriter = new BlockWriter(blockId, blockSize, pin, bufferSize);
 
     try {
-      cache.prepareToWrite(blockReceiver);
+      cache.prepareToWrite(blockWriter);
     } catch (IOException e) {
       LOG.log(Level.SEVERE, "Exception while initializing ", e);
       throw new TException("Failed to initialize a block", e);

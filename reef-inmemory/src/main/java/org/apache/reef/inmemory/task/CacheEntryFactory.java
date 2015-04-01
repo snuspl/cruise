@@ -21,7 +21,7 @@ public class CacheEntryFactory {
   /**
    * Create a cache entry that writes data from Client.
    */
-  public static CacheEntry createEntry(BlockReceiver blockReceiver) {
-    return new WritableCacheEntry(blockReceiver);
+  public static CacheEntry createEntry(BlockWriter blockWriter) {
+    return new WritableCacheEntry(blockWriter);
   }
 }

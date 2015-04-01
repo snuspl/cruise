@@ -94,12 +94,12 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void prepareToWrite(final BlockReceiver receiver) throws IOException {
-    final BlockId blockId = receiver.getBlockId();
-    final long blockSize = receiver.getBlockSize();
-    final boolean pin = receiver.isPinned();
+  public void prepareToWrite(final BlockWriter blockWriter) throws IOException {
+    final BlockId blockId = blockWriter.getBlockId();
+    final long blockSize = blockWriter.getBlockSize();
+    final boolean pin = blockWriter.isPinned();
 
-    final CacheEntry entry = cacheEntryFactory.createEntry(receiver);
+    final CacheEntry entry = cacheEntryFactory.createEntry(blockWriter);
 
     // Reserve enough memory space in the cache for block
     if (insertEntry(entry)) {

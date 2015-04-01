@@ -10,38 +10,38 @@ import java.io.IOException;
  * Cache entry that writes data from clients.
  */
 public class WritableCacheEntry implements CacheEntry {
-  private final BlockReceiver blockReceiver;
+  private final BlockWriter blockWriter;
 
-  WritableCacheEntry(final BlockReceiver blockReceiver) {
-    this.blockReceiver = blockReceiver;
+  WritableCacheEntry(final BlockWriter blockWriter) {
+    this.blockWriter = blockWriter;
   }
 
   @Override
   public byte[] getData(final int index) throws BlockWritingException {
-    return this.blockReceiver.getData(index);
+    return this.blockWriter.getData(index);
   }
 
   @Override
   public long writeData(byte[] data, long offset, boolean isLastPacket) throws BlockNotWritableException, IOException {
-    blockReceiver.writeData(data, offset);
+    blockWriter.writeData(data, offset);
     if (isLastPacket) {
-      blockReceiver.completeWrite();
+      blockWriter.completeWrite();
     }
-    return blockReceiver.getTotalWritten();
+    return blockWriter.getTotalWritten();
   }
 
   @Override
   public BlockId getBlockId() {
-    return blockReceiver.getBlockId();
+    return blockWriter.getBlockId();
   }
 
   @Override
   public boolean isPinned() {
-    return blockReceiver.isPinned();
+    return blockWriter.isPinned();
   }
 
   @Override
   public long getBlockSize() {
-    return blockReceiver.getBlockSize();
+    return blockWriter.getBlockSize();
   }
 }

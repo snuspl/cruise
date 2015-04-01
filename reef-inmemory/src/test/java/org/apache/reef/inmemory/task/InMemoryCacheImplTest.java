@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests for InMemoryCacheImpl
@@ -136,9 +135,9 @@ public final class InMemoryCacheImplTest {
 
     assertBlockNotFound(blockId, blockSize);
 
-    final BlockReceiver receiver = new BlockReceiver(blockId, blockSize, false, bufferSize);
+    final BlockWriter blockWriter = new BlockWriter(blockId, blockSize, false, bufferSize);
     cache.clear();
-    cache.prepareToWrite(receiver);
+    cache.prepareToWrite(blockWriter);
 
     assertEquals(0, statistics.getCacheBytes());
     assertEquals(blockSize, statistics.getCopyingBytes());
@@ -181,9 +180,9 @@ public final class InMemoryCacheImplTest {
     new Random().nextBytes(data);
 
     final BlockId blockId = new BlockId(fileName, offset);
-    final BlockReceiver blockReceiver = new BlockReceiver(blockId, blockSize, false, bufferSize);
+    final BlockWriter blockWriter = new BlockWriter(blockId, blockSize, false, bufferSize);
 
-    cache.prepareToWrite(blockReceiver);
+    cache.prepareToWrite(blockWriter);
 
     for (int packetIndex = 0; packetIndex < blockSize / packetSize; packetIndex++) {
       byte[] packet = new byte[packetSize];
