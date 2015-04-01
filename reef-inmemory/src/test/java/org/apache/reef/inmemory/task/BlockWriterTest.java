@@ -24,7 +24,7 @@ public class BlockWriterTest {
 
   @Before
   public void setup() {
-    final BlockId id = new BlockId("path", 0);
+    final BlockId id = new BlockId(0L, 0);
     blockWriter = new BlockWriter(id, BLOCK_SIZE, false, BUFFER_SIZE);
   }
 

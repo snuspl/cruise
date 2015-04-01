@@ -1,8 +1,8 @@
 package org.apache.reef.inmemory.task.service;
 
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.entity.AllocatedBlockMeta;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
+import org.apache.reef.inmemory.common.entity.WriteableBlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
@@ -127,17 +127,17 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     return buf;
   }
 
+
+  // TODO: is initBlock necessary? (do it for the first packet of the block in writeData)
   @Override
-  public void initBlock(final String path, final long offset, final long blockSize,
-                        final AllocatedBlockMeta info) throws TException {
+  public void initBlock(final long blockSize, final WriteableBlockMeta writableBlockMeta) throws TException {
     /*
      * Create a cache entry (BlockLoader) and load it into the cache
      * so the cache can receive the data or write the data into memory
      */
-    final BlockId blockId = new BlockId(path, offset);
-
-    final boolean pin = info.isPin();
-    // TODO We can get BaseReplicationFactor and SyncMethod.
+    final BlockMeta blockMeta = writableBlockMeta.getBlockMeta();
+    final BlockId blockId = new BlockId(blockMeta);
+    final boolean pin = writableBlockMeta.isPin();
     final BlockWriter blockWriter = new BlockWriter(blockId, blockSize, pin, bufferSize);
 
     try {
@@ -148,10 +148,10 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     }
   }
 
+  // TODO: is Thrift RPC round-trip even for void-return methods? (i.e. does client have to wait till ack from task for each writeData)
   @Override
-  public void writeData(final String path, final long blockOffset, final long blockSize,
-                        final long innerOffset, final ByteBuffer buf, final boolean isLastPacket) throws TException {
-    final BlockId blockId = new BlockId(path, blockOffset);
+  public void writeData(final long fileId, final long blockOffset, final long innerOffset, final ByteBuffer buf, final boolean isLastPacket) throws TException {
+    final BlockId blockId = new BlockId(fileId, blockOffset);
     try {
       cache.write(blockId, innerOffset, buf, isLastPacket);
     } catch (IOException e) {

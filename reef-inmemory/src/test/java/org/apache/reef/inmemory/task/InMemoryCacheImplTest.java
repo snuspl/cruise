@@ -67,7 +67,7 @@ public final class InMemoryCacheImplTest {
   }
 
   private BlockId randomBlockId() {
-    return new BlockId("/path", random.nextLong());
+    return new BlockId(random.nextLong(), random.nextLong());
   }
 
   private byte[] ones(int length) {
@@ -170,7 +170,7 @@ public final class InMemoryCacheImplTest {
    */
   @Test
   public void testWriteFullBlock() throws IOException, BlockNotFoundException, BlockNotWritableException, BlockLoadingException, BlockWritingException {
-    final String fileName = "/write";
+    final long fileId = 1L;
     final int offset = 0;
     final int blockSize = 1024;
     final int bufferSize = 128;
@@ -179,7 +179,7 @@ public final class InMemoryCacheImplTest {
     final byte[] data = new byte[blockSize];
     new Random().nextBytes(data);
 
-    final BlockId blockId = new BlockId(fileName, offset);
+    final BlockId blockId = new BlockId(fileId, offset);
     final BlockWriter blockWriter = new BlockWriter(blockId, blockSize, false, bufferSize);
 
     cache.prepareToWrite(blockWriter);

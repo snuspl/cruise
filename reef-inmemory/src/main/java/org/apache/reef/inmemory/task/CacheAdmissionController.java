@@ -29,6 +29,7 @@ public final class CacheAdmissionController {
   }
 
   /**
+   * TODO: not only load.. also used for write
    * Reserve memory space to load the block. In case the capacity is not enough to load,
    * then it reserve the memory via eviction. If it is done successfully, MemoryManager
    * is notified that the block is on the loading state.

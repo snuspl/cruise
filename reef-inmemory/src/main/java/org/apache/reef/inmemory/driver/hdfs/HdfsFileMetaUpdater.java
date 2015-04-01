@@ -83,14 +83,12 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
    * @throws IOException
    */
   @Override
-  public FileMeta update(FileMeta fileMeta) throws IOException {
+  public FileMeta update(final String path, final FileMeta fileMeta) throws IOException {
     synchronized (fileMeta) {
-      // TODO Replace pathStr with another unique field (e.g. fileId)
-      final String pathStr = fileMeta.getFullPath();
       final long blockSize = fileMeta.getBlockSize();
 
       // 0. Apply removes
-      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathStr);
+      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(fileMeta.getFileId());
       if (pendingRemoves != null) {
         applyRemoves(fileMeta, pendingRemoves);
       }
@@ -100,23 +98,23 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
       if (cacheNodes.size() == 0) {
         throw new IOException("Surf has zero caches");
       }
-      final Action action = replicationPolicy.getReplicationAction(pathStr, fileMeta);
+      final Action action = replicationPolicy.getReplicationAction(path, fileMeta);
       final boolean pin = action.getPin();
       final int replicationFactor;
       if (replicationPolicy.isBroadcast(action)) {
         replicationFactor = cacheNodes.size();
       } else {
-        replicationFactor = action.getCacheReplicationFactor();
+        replicationFactor = action.getReplication();
       }
 
       // 2. Get information from HDFS
       assert(blockLocationGetter instanceof HdfsBlockLocationGetter);
-      final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(pathStr));
+      final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(path));
 
       // 3. If the blocks are not resolved in the fileMeta, add them.
-      if (fileMeta.getBlocksSize() == 0 && !fileMeta.isDirectory()) {
+      if (fileMeta.getBlocksSize() == 0) {
         for (final LocatedBlock locatedBlock : locatedBlocks) {
-          final BlockMeta blockMeta = blockMetaFactory.newBlockMeta(pathStr, locatedBlock);
+          final BlockMeta blockMeta = blockMetaFactory.newBlockMeta(fileMeta.getFileId(), locatedBlock);
           fileMeta.addToBlocks(blockMeta);
         }
       }
@@ -143,7 +141,7 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
           }
 
           for (final CacheNode nodeToAdd : selectedNodes) {
-            final HdfsBlockInfo hdfsBlockInfo = blockInfoFactory.newBlockInfo(pathStr, locatedBlock);
+            final HdfsBlockInfo hdfsBlockInfo = blockInfoFactory.newBlockInfo(path, locatedBlock);
             final List<HdfsDatanodeInfo> hdfsDatanodeInfos =
                     HdfsDatanodeInfo.copyDatanodeInfos(locatedBlock.getLocations());
             final HdfsBlockMessage msg = new HdfsBlockMessage(blockId, hdfsBlockInfo, hdfsDatanodeInfos, pin);

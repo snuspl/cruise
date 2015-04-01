@@ -8,6 +8,7 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.FileMetaStatus;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.instrumentation.BasicEventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.Event;
@@ -20,9 +21,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,9 +32,6 @@ import java.util.logging.Logger;
  *   fs.defaultFS: the driver's address (e.g., surf://localhost:18000, surf://yarn.reef-job-InMemory)
  *   fs.surf.impl: this class (org.apache.reef.inmemory.client.SurfFS)
  *   surf.basefs: base FS address (e.g., hdfs://localhost:9000)
- *
- * Surf supports create, append, rename, delete, mkdirs
- * delegating them to the base FS
  */
 public final class SurfFS extends FileSystem {
 
@@ -101,7 +97,7 @@ public final class SurfFS extends FileSystem {
     this.baseFsUri = URI.create(baseFsAddress);
     this.baseFs = new DistributedFileSystem();
     this.baseFs.initialize(this.baseFsUri, conf);
-    this.workingDir = pathToSurf(baseFs.getWorkingDirectory());
+    this.workingDir = toAbsoluteSurfPath(baseFs.getWorkingDirectory());
     this.setConf(conf);
 
     this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
@@ -119,6 +115,15 @@ public final class SurfFS extends FileSystem {
     RECORD.record(initializeEvent.stop());
   }
 
+  /**
+   * TODO: notify metaserver
+   */
+  @Override
+  public void close() throws IOException {
+    LOG.log(Level.INFO, "Close called");
+    super.close();
+  }
+
   @Override
   public String getScheme() {
     return uri.getScheme();
@@ -129,20 +134,35 @@ public final class SurfFS extends FileSystem {
     return uri;
   }
 
+  @Override
+  public void setWorkingDirectory(final Path path) {
+    workingDir = path;
+  }
+
+  @Override
+  public Path getWorkingDirectory() {
+    return workingDir;
+  }
+
   /**
-   * Note: calling open triggers a load on the file, if it's not yet in Surf
-   * The open call will fallback to the baseFs on an exception,
-   * The returned FSDataInputStream will also fallback to the baseFs in case of an exception.
+   * Loads data into Surf from HDFS: Yes
+   * Consistency guarantee: Only for the first load (not responsible for changes in HDFS after)
+   * Fallback: Yes (The returned FSDataInputStream also supports fallback)
+   *
+   * @param path to the file
+   * @param bufferSize (TODO: make use of this argument)
+   * @return {@code FSDataInputStream} which makes use of the FileMeta of the file loaded in Surf
+   * @throws IOException
    */
   @Override
-  public FSDataInputStream open(Path path, final int bufferSize) throws IOException {
-    final String pathStr = getAbsolutePathStr(path);
+  public FSDataInputStream open(final Path path, final int bufferSize) throws IOException {
+    final String pathStr = toAbsolutePathInString(path);
     final Event openEvent = RECORD.event("client.open", pathStr).start();
     LOG.log(Level.INFO, "Open called on {0}, using {1}",
             new Object[]{path, pathStr});
 
     try {
-      final FileMeta metadata = getMetaClient().getFileMeta(pathStr, localAddress);
+      final FileMeta metadata = getMetaClient().load(pathStr, localAddress);
       final CacheClientManager cacheClientManager = getCacheClientManager();
       final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
       if (isFallback) {
@@ -169,95 +189,32 @@ public final class SurfFS extends FileSystem {
     }
   }
 
-  /*
-   * Methods related to write are delegated
-   * to the Base FS (They will be implemented later)
+  /**
+   * Loads data into Surf from HDFS: Yes
+   * Consistency guarantee: Only for the first load (not responsible for changes in HDFS after)
+   * Fallback: Yes
+   *
+   * @param path to the file in question (TODO: support directory)
+   * @return {@code FileStatus} of the file loaded in Surf
+   * @throws IOException
    */
-  // TODO: use FSPermission properly.
   @Override
-  public FSDataOutputStream create(Path path, FsPermission permission, boolean overwrite, int bufferSize,
-                                   short replication, long blockSize, Progressable progress) throws IOException {
-    final String pathStr = getAbsolutePathStr(path);
+  public FileStatus getFileStatus(final Path path) throws IOException {
     try {
-      final SurfMetaService.Client metaClient = getMetaClient();
-      final CacheClientManager cacheClientManager = getCacheClientManager();
-      metaClient.create(pathStr, replication, blockSize);
-      return new FSDataOutputStream(new SurfFSOutputStream(pathStr, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
-    } catch (TException e) {
-      throw new IOException("Failed to create a file in " + pathStr, e);
-    }
-  }
-
-  @Override
-  public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) throws IOException {
-    // TODO Implement append operation.
-    throw new UnsupportedOperationException("Append is not supported yet.");
-  }
-
-  @Override
-  public boolean rename(Path src, Path dst) throws IOException {
-    // TODO Implement rename operation.
-    throw new UnsupportedOperationException("Rename is not supported yet.");
-  }
-
-  @Override
-  public boolean delete(Path f, boolean recursive) throws IOException {
-    // TODO Implement delete operation.
-    throw new UnsupportedOperationException("Delete is not supported yet.");
-  }
-
-  @Override
-  public FileStatus[] listStatus(Path path) throws IOException {
-    final String pathStr = getAbsolutePathStr(path);
-    try {
-      final List<FileMeta> metas = getMetaClient().listMeta(pathStr);
-      final FileStatus[] statuses = new FileStatus[metas.size()];
-      for (int i = 0; i < metas.size(); i++) {
-        statuses[i] = toFileStatus(metas.get(i));
-      }
-      return statuses;
-    } catch (TException e) {
-      throw new IOException("Failed to list file status in " + pathStr, e);
-    }
-  }
-
-  @Override
-  public void setWorkingDirectory(Path path) {
-    workingDir = path;
-  }
-
-  @Override
-  public Path getWorkingDirectory() {
-    return workingDir;
-  }
-
-  // TODO: use FSPermission properly.
-  @Override
-  public boolean mkdirs(Path path, FsPermission fsPermission) throws IOException {
-    final String pathStr = getAbsolutePathStr(path);
-    try {
-      return getMetaClient().mkdirs(pathStr);
-    } catch (TException e) {
-      throw new IOException("Failed to make directory in " + pathStr, e);
-    }
-  }
-
-  @Override
-  public FileStatus getFileStatus(Path path) throws IOException {
-    try {
-      final FileMeta meta = getMetaClient().getFileMeta(getAbsolutePathStr(path), localAddress);
-      return toFileStatus(meta);
+      final String pathStr = toAbsolutePathInString(path);
+      final FileMeta meta = getMetaClient().load(pathStr, localAddress);
+      return toFileStatus(new FileMetaStatus(pathStr, meta));
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       if (isFallback) {
         LOG.log(Level.WARNING, "The file is not found in Surf, trying baseFs...", e);
-        return baseFs.getFileStatus(pathToBase(path));
+        return baseFs.getFileStatus(toAbsoluteBasePath(path));
       } else {
         throw new java.io.FileNotFoundException("File not found in the meta server");
       }
     } catch (TException e) {
       if (isFallback) {
         LOG.log(Level.WARNING, "Surf TException, trying baseFs...", e);
-        return baseFs.getFileStatus(pathToBase(path));
+        return baseFs.getFileStatus(toAbsoluteBasePath(path));
       } else {
         throw new IOException ("Failed to get File Status from Surf", e);
       }
@@ -265,19 +222,26 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Note: calling getFileBlockLocations triggers a pre-load on the file, if it's not yet in Surf
+   * Loads data into Surf from HDFS: Yes
+   * Consistency guarantee: Only for the first load (not responsible for changes in HDFS after)
+   * Fallback: Yes
+   *
+   * @param file of the blocks
+   * @param start offset of the block
+   * @param len from the start offset
    * @return The {@code BlockLocation}s of blocks containing file. It returns an empty array if the file size is 0.
+   * @throws IOException
    */
   @Override
-  public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
+  public BlockLocation[] getFileBlockLocations(final FileStatus file, final long start, final long len) throws IOException {
 
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
-      new Object[]{file.getPath(), getAbsolutePathStr(file.getPath())});
+      new Object[]{file.getPath(), toAbsolutePathInString(file.getPath())});
 
     final List<BlockLocation> blockLocations = new LinkedList<>();
 
     try {
-      final FileMeta metadata = getMetaClient().getFileMeta(getAbsolutePathStr(file.getPath()), localAddress);
+      final FileMeta metadata = getMetaClient().load(toAbsolutePathInString(file.getPath()), localAddress);
       long startRemaining = start;
       Iterator<BlockMeta> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
@@ -324,23 +288,123 @@ public final class SurfFS extends FileSystem {
     }
   }
 
+  /**
+   * Loads data into Surf from HDFS: No
+   * Consistency guarantee: If same metadata exists in both Surf and HDFS, Surf's overwrites HDFS's
+   * Fallback: No (TODO)
+   *
+   * Path cases
+   * 1. Emtpy directory: returns the filestatus of the directory
+   * 2. Non-empty directory: returns the filestatuses of the directory's children
+   * 3. File: returns the filestatus of the file
+   *
+   * @param path to a file or directory
+   * @return {@code FileStatus[]} in Surf and HDFS
+   * @throws IOException
+   */
   @Override
-  public void close() throws IOException {
-    LOG.log(Level.INFO, "Close called");
-    super.close();
+  public FileStatus[] listStatus(final Path path) throws IOException {
+    final String pathStr = toAbsolutePathInString(path);
+    try {
+      final List<FileMetaStatus> fileMetaStatusList = getMetaClient().listFileMetaStatus(pathStr);
+      final List<FileStatus> baseFileStatuses = new ArrayList<>(Arrays.asList(baseFs.listStatus(new Path(pathStr))));
+      final List<FileStatus> result = new ArrayList<>();
+
+      if (fileMetaStatusList.size() == 1) {
+        final FileMetaStatus fileMetaStatus = fileMetaStatusList.get(0);
+        if (fileMetaStatus.isSetFileMeta() && fileMetaStatus.getPath().equals(pathStr)) {
+          // if the path is a file in Surf, nothing else matters
+          return new FileStatus[]{toFileStatus(fileMetaStatusList.get(0))};
+        }
+      }
+
+      for (final FileMetaStatus fileMetaStatus : fileMetaStatusList) {
+        final FileStatus surfFileStatus = toFileStatus(fileMetaStatus);
+        result.add(surfFileStatus);
+
+        for (final FileStatus baseFileStatus : baseFileStatuses) {
+          if (Path.getPathWithoutSchemeAndAuthority(baseFileStatus.getPath())
+                  .equals(Path.getPathWithoutSchemeAndAuthority(surfFileStatus.getPath()))) {
+
+            baseFileStatuses.remove(baseFileStatus);
+            break;
+          }
+        }
+      }
+
+      result.addAll(baseFileStatuses);
+
+      LOG.log(Level.INFO, "result {0}", result);
+      System.out.println(result.toString());
+
+      return result.toArray(new FileStatus[result.size()]);
+    } catch (TException e) {
+      throw new IOException("Failed to list file status in " + pathStr, e);
+    }
+  }
+
+  @Override
+  public FSDataOutputStream create(final Path path, final FsPermission permission, final boolean overwrite, final int bufferSize,
+                                   final short baseFsReplication, final long blockSize, final Progressable progress) throws IOException {
+    // TODO: handle permission, overwrite, bufferSize, progress
+    final String pathStr = toAbsolutePathInString(path);
+    try {
+      final SurfMetaService.Client metaClient = getMetaClient();
+      final CacheClientManager cacheClientManager = getCacheClientManager();
+      metaClient.create(pathStr, blockSize, baseFsReplication);
+      return new FSDataOutputStream(new SurfFSOutputStream(pathStr, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
+    } catch (TException e) {
+      throw new IOException("Failed to create a file in " + pathStr, e);
+    }
+  }
+
+  @Override
+  public FSDataOutputStream append(final Path f, final int bufferSize, final Progressable progress) throws IOException {
+    throw new UnsupportedOperationException("Append is not supported yet.");
+  }
+
+  @Override
+  public boolean mkdirs(final Path path, final FsPermission fsPermission) throws IOException {
+    final String pathStr = toAbsolutePathInString(path);
+    try {
+      return getMetaClient().mkdirs(pathStr);
+    } catch (TException e) {
+      throw new IOException("Failed to make directory in " + pathStr, e);
+    }
+  }
+
+  @Override
+  public boolean rename(final Path src, final Path dst) throws IOException {
+    final String srcPathStr = toAbsolutePathInString(src);
+    final String dstPathStr = toAbsolutePathInString(dst);
+    try {
+      return getMetaClient().rename(srcPathStr, dstPathStr);
+    } catch (TException e) {
+      throw new IOException("Failed to rename " + src + " to " + dst);
+    }
+  }
+
+  @Override
+  public boolean delete(final Path path, final boolean recursive) throws IOException {
+    final String pathStr = toAbsolutePathInString(path);
+    try {
+      return getMetaClient().remove(pathStr, recursive);
+    } catch (TException e) {
+      throw new IOException("Failed to delete " + path);
+    }
   }
 
   /**
    * Instantiate and return a new MetaClient for thread-safety
    */
-  public SurfMetaService.Client getMetaClient() throws TTransportException {
+  private SurfMetaService.Client getMetaClient() throws TTransportException {
     return this.metaClientManager.get(this.metaserverAddress);
   }
 
   /**
    * Instantiate and return a new CacheClientManager for thread-safety
    */
-  public CacheClientManager getCacheClientManager() {
+  private CacheClientManager getCacheClientManager() {
     final Configuration conf = this.getConf();
     return new CacheClientManagerImpl(
         conf.getInt(CACHECLIENT_RETRIES_KEY, CACHECLIENT_RETRIES_DEFAULT),
@@ -349,23 +413,38 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Translate File Meta received from the meta server
-   * to File Status used in FileSystem API.
-   * TODO: use FSPermission properly.
+   * TODO: use factory
    */
-  private FileStatus toFileStatus(final FileMeta meta) {
-    final Path path = pathToSurf(new Path(meta.getFullPath()));
-    final long length = meta.getFileSize();
-    final boolean isDir = meta.isDirectory();
-    final int replication = meta.getReplication();
-    final long blockSize = meta.getBlockSize();
-    final long modificationTime = meta.getModificationTime();
-    final long accessTime = meta.getAccessTime();
-    final String owner = meta.getUser().getOwner();
-    final String group = meta.getUser().getGroup();
-    final Path symLink = meta.isSetSymLink() ? new Path(meta.getSymLink()) : null;
-    return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
-            FsPermission.getFileDefault(), owner, group, symLink, path);
+  private FileStatus toFileStatus(final FileMetaStatus fileMetaStatus) {
+    final Path path = toAbsoluteSurfPath((new Path(fileMetaStatus.getPath()))); // TODO: Refactor
+    final FileMeta meta = fileMetaStatus.getFileMeta();
+
+    if (meta != null) {
+      final long length = meta.getFileSize();
+      final boolean isDir = false;
+      final int replication = 1; // TODO
+      final long blockSize = meta.getBlockSize();
+      final long modificationTime = -1; // TODO
+      final long accessTime = -1; // TODO
+      final String owner = null; // TODO
+      final String group = null; // TODO
+      final Path symLink = null; // TODO: may not have to support
+      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
+              FsPermission.getFileDefault(), owner, group, symLink, path);
+    } else {
+      // TODO
+      final long length = -1;
+      final boolean isDir = true;
+      final int replication = -1;
+      final long blockSize = -1;
+      final long modificationTime = -1;
+      final long accessTime = -1;
+      final String owner = null;
+      final String group = null;
+      final Path symLink = null;
+      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
+              FsPermission.getFileDefault(), owner, group, symLink, path);
+    }
   }
 
   private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
@@ -386,25 +465,12 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Get the MetaserverResolver based on the provided uri
-   */
-  public MetaserverResolver getMetaserverResolver() {
-    final String address = uri.getAuthority();
-
-    if (address.startsWith("yarn.")) {
-      return new YarnMetaserverResolver(address, getConf());
-    } else {
-      return new InetMetaserverResolver(address);
-    }
-  }
-
-  /**
    * Get string value of absolute path from {@code Path}.
-   * For example, {@code getAbsolutePathStr(dir1/fileA)} will return {@code /WORKING_DIR/dir1/fileA}.
+   * For example, {@code toAbsolutePathInString(dir1/fileA)} will return {@code /WORKING_DIR/dir1/fileA}.
    * @param path Relative/Absolute path of a file.
    * @return Path component of the absolute path; URI scheme and authority are dropped out.
    */
-  private String getAbsolutePathStr(final Path path) {
+  private String toAbsolutePathInString(final Path path) {
     final Path absPath = path.isUriPathAbsolute() ? path : new Path(getWorkingDirectory(), path.toUri().getPath());
     return absPath.toUri().getPath();
   }
@@ -414,17 +480,30 @@ public final class SurfFS extends FileSystem {
    * @param path Relative/Absolute path of a file.
    * @return Absolute path including URI scheme and authority.
    */
-  protected Path pathToSurf(final Path path) {
-    final String absPathStr = getAbsolutePathStr(path);
+  public Path toAbsoluteSurfPath(final Path path) {
+    final String absPathStr = toAbsolutePathInString(path);
     return new Path(uri.getScheme(), uri.getAuthority(), absPathStr);
   }
 
-  protected Path pathToBase(final Path surfPath) {
+  public Path toAbsoluteBasePath(final Path surfPath) {
     final URI surfPathUri = surfPath.toUri();
     if (surfPathUri.isAbsolute()) {
       return new Path(baseFsUri.getScheme(), baseFsUri.getAuthority(), surfPathUri.getPath());
     } else {
       return surfPath;
+    }
+  }
+
+  /**
+   * Get the MetaserverResolver based on the provided uri
+   */
+  public MetaserverResolver getMetaserverResolver() {
+    final String address = uri.getAuthority();
+
+    if (address.startsWith("yarn.")) {
+      return new YarnMetaserverResolver(address, getConf());
+    } else {
+      return new InetMetaserverResolver(address);
     }
   }
 }

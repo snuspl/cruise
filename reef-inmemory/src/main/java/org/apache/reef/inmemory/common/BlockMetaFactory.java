@@ -24,10 +24,10 @@ public interface BlockMetaFactory<FsMetadata> {
   /**
    * Create a new BlockMeta from the FS-specific metadata.
    * BlockMeta is a Thrift data structure, used in communication with the Client.
-   * @param filePath Path of file, to be added to block info
+   * @param fileId id of file, to be added to block info
    * @param metadata FS-specific block metadata
    * @return Block information stored as a Thrift data structure
    * @throws IOException
    */
-  public BlockMeta newBlockMeta(String filePath, FsMetadata metadata) throws IOException;
+  public BlockMeta newBlockMeta(long fileId, FsMetadata metadata) throws IOException;
 }

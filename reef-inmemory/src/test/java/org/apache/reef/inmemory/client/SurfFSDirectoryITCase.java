@@ -67,6 +67,8 @@ public final class SurfFSDirectoryITCase {
     surfLauncher.launch(baseFs);
 
     final Configuration conf = new Configuration();
+    conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
+
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
   }
@@ -74,8 +76,7 @@ public final class SurfFSDirectoryITCase {
   @AfterClass
   public static void tearDownClass() {
     try {
-      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
-      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+      surfFs.delete(new Path(TESTDIR), true);
     } catch (IOException e) {
       LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
     }
@@ -102,6 +103,9 @@ public final class SurfFSDirectoryITCase {
     final FileStatus[] fileStatuses = surfFs.listStatus(new Path(NONEMPTY));
     for (int i = 0; i < 5; i++) {
       final FileStatus fileStatus = fileStatuses[i];
+      LOG.log(Level.INFO, "filestatus " + fileStatus.getPath().toString());
+      System.out.println(fileStatus.getPath().toString() + "@@@@@@@");
+
       assertEquals(NONEMPTY + "/" + String.valueOf(i), fileStatus.getPath().toUri().getPath());
       assertEquals(i, fileStatus.getLen());
       // TODO: Test other attributes in FileStatus
@@ -133,16 +137,17 @@ public final class SurfFSDirectoryITCase {
       assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
-    final FileStatus[] fileStatuses = surfFs.listStatus(new Path(LEVEL3));
-    if (fileStatuses.length != 0) {
-      fail("There should be nothing in the directory");
+    for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL3))) {
+      assertEquals(LEVEL3, fileStatus.getPath().toUri().getPath());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
+      // TODO: Test other attributes in FileStatus
     }
   }
 
   /**
    * Test file/directory renaming
    */
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testRename() throws IOException  {
     assertTrue("Mkdirs should succeed", surfFs.mkdirs(new Path(BEFORE)));
     for (int i = 0; i < 5; i ++) {
@@ -169,7 +174,7 @@ public final class SurfFSDirectoryITCase {
   /**
    * Test file/directory deletion
    */
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testDelete() throws IOException {
     assertTrue("Mkdirs should succeed", surfFs.mkdirs(new Path(DELETE)));
     for (int i = 0; i < 5; i ++) {

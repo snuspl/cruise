@@ -49,13 +49,13 @@ public final class AvroReplicationSerializerTest {
     conditionListB.add(conditionB1);
     conditionListB.add(conditionB2);
 
-    final Action actionA = new Action(5, true, new Write(SyncMethod.WRITE_BACK, 1));
-    final Action actionB = new Action(-1, false, new Write(SyncMethod.WRITE_THROUGH, 2));
+    final Action actionA = new Action(5, true);
+    final Action actionB = new Action(-1, false);
 
     final Rule ruleA = new Rule("conditionA", conditionListA, actionA);
     final Rule ruleB = new Rule("conditionB", conditionListB, actionB);
 
-    final Action defaultAction = new Action(2, false, new Write(SyncMethod.WRITE_THROUGH, 3));
+    final Action defaultAction = new Action(2, false);
 
     final List<Rule> ruleList = new LinkedList<>();
     ruleList.add(ruleA);
@@ -74,19 +74,10 @@ public final class AvroReplicationSerializerTest {
    */
   @Test
   public void testBlankRules() throws IOException {
-    final String blankRules = "{\"rules\":[],\"default\":{\"cache_replication_factor\":1,\"pin\":false,\"write\":{\"sync\":\"WRITE_BACK\",\"base_replication_factor\":3}}}";
+    final String blankRules = "{\"rules\":[],\"default\":{\"replication\":1,\"pin\":false}}";
     final Rules rules = AvroReplicationSerializer.fromString(blankRules);
   }
 
-  /**
-   * Check that an action without write object raises an exception
-   * TODO it is desirable to make write object optional
-   */
-  @Test(expected = AvroTypeException.class)
-  public void testBlankWrite() throws IOException {
-    final String blankWrite = "{\"rules\":[],\"default\":{\"cache_replication_factor\":1,\"pin\":false}}";
-    final Rules rules = AvroReplicationSerializer.fromString(blankWrite);
-  }
   /**
    * Check that a rule without a default raises an exception
    */

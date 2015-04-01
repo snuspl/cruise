@@ -55,7 +55,7 @@ public final class ReplicationPolicyImpl implements ReplicationPolicy {
 
   @Override
   public boolean isBroadcast(Action action) {
-    return action.getCacheReplicationFactor() < 0;
+    return action.getReplication() < 0;
   }
 
   private boolean matches(Rule rule, String path, FileMeta metadata) {

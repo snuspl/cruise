@@ -17,7 +17,7 @@ public final class ReplicationPolicyImplTest {
 
   @Before
   public void setUp() {
-    defaultAction = new Action(1, false, new Write(SyncMethod.WRITE_BACK, 3));
+    defaultAction = new Action(1, false);
   }
 
   /**
@@ -27,7 +27,7 @@ public final class ReplicationPolicyImplTest {
   public void testExactPath() {
     final String path = "/exact/matching/path";
     final Condition condition = new Condition("path", "exact", path);
-    final Action action = new Action(10, false, new Write(SyncMethod.WRITE_THROUGH, 2));
+    final Action action = new Action(10, false);
 
     final Rule rule = new Rule("exact-test", Lists.newArrayList(condition), action);
     final Rules rules = new Rules(Lists.newArrayList(rule), defaultAction);
@@ -50,7 +50,7 @@ public final class ReplicationPolicyImplTest {
   public void testRecursivePath() {
     final String path = "/recursive/dir";
     final Condition condition = new Condition("path", "recursive", path);
-    final Action action = new Action(10, false, new Write(SyncMethod.WRITE_THROUGH, 2));
+    final Action action = new Action(10, false);
 
     final Rule rule = new Rule("recursive-test", Lists.newArrayList(condition), action);
     final Rules rules = new Rules(Lists.newArrayList(rule), defaultAction);
@@ -78,7 +78,7 @@ public final class ReplicationPolicyImplTest {
     final String path = "/recursive/dir";
     final Condition condition1 = new Condition("path", "recursive", path);
     final Condition condition2 = new Condition("size", "lt", "128M");
-    final Action action = new Action(10, true, new Write(SyncMethod.WRITE_THROUGH, 2));
+    final Action action = new Action(10, true);
 
     final Rule rule = new Rule("recursive-dir", Lists.newArrayList(condition1, condition2), action);
     final Rules rules = new Rules(Lists.newArrayList(rule), defaultAction);
@@ -96,7 +96,7 @@ public final class ReplicationPolicyImplTest {
     final String path = "/recursive/dir";
     final Condition condition1 = new Condition("path", "recursive", path);
     final Condition condition2 = new Condition("size", "lt", Integer.toString(128 * 1024 * 1024));
-    final Action action = new Action(10, true, new Write(SyncMethod.WRITE_THROUGH, 2));
+    final Action action = new Action(10, true);
 
     final Rule rule = new Rule("recursive-dir", Lists.newArrayList(condition1, condition2), action);
     final Rules rules = new Rules(Lists.newArrayList(rule), defaultAction);
@@ -114,7 +114,7 @@ public final class ReplicationPolicyImplTest {
     final String path = "/recursive/dir";
     final Condition condition1 = new Condition("path", "recursive", path);
     final Condition condition2 = new Condition("size", "lt", "badsize");
-    final Action action = new Action(10, true, new Write(SyncMethod.WRITE_THROUGH, 2));
+    final Action action = new Action(10, true);
 
     final Rule rule = new Rule("recursive-dir", Lists.newArrayList(condition1, condition2), action);
     final Rules rules = new Rules(Lists.newArrayList(rule), defaultAction);

@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for SurfFS methods that deal with FileMeta.
+ * TODO: add a test case for exists()
  */
 public final class SurfFSMetadataITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSMetadataITCase.class.getName());
@@ -158,7 +159,7 @@ public final class SurfFSMetadataITCase {
   public void testHdfsPathToSurf() {
     Path path = new Path(baseFs.getUri().toString(), ABSPATH);
     assertTrue(path.isAbsolute());
-    Path surfPath = surfFs.pathToSurf(path);
+    Path surfPath = surfFs.toAbsoluteSurfPath(path);
     assertTrue(surfPath.isAbsolute());
 
     URI surfUri = surfPath.toUri();
@@ -174,7 +175,7 @@ public final class SurfFSMetadataITCase {
   public void testSurfPathToHdfs() {
     Path path = new Path(surfFs.getUri().toString(), ABSPATH);
     assertTrue(path.isAbsolute());
-    Path hdfsPath = surfFs.pathToBase(path);
+    Path hdfsPath = surfFs.toAbsoluteBasePath(path);
     assertTrue(hdfsPath.isAbsolute());
 
     URI hdfsUri = hdfsPath.toUri();

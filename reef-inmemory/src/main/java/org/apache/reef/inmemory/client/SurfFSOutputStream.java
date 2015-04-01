@@ -1,7 +1,8 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.inmemory.common.entity.AllocatedBlockMeta;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
+import org.apache.reef.inmemory.common.entity.WriteableBlockMeta;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
@@ -33,7 +34,7 @@ public final class SurfFSOutputStream extends OutputStream {
 
   private byte localBuf[] = new byte[PACKET_SIZE];
   private int localBufWriteCount = 0;
-  private AllocatedBlockMeta curBlockMeta;
+  private WriteableBlockMeta curWritableBlockMeta;
   private long curBlockOffset = 0;
   private long curBlockInnerOffset = 0;
 
@@ -153,23 +154,26 @@ public final class SurfFSOutputStream extends OutputStream {
    */
   private void flushBuf(final byte[] b, final int start, final int end, final boolean close) throws IOException {
     final int len = end - start;
+    final boolean somethingToWrite = len > 0;
 
-    if (curBlockInnerOffset == 0) {
-      curBlockMeta = allocateBlockAtMetaServer(curBlockOffset);
-    }
+    if (somethingToWrite) {
+      if (curBlockInnerOffset == 0) {
+        curWritableBlockMeta = allocateBlockAtMetaServer(curBlockOffset);
+      }
 
-    if (curBlockInnerOffset + len < blockSize) {
-      sendPacket(ByteBuffer.wrap(b, start, len), len, close);
-    } else if (curBlockInnerOffset + len == blockSize) {
-      sendPacket(ByteBuffer.wrap(b, start, len), len, true);
-    } else {
-      final int possibleLen = (int) (blockSize - curBlockInnerOffset); // this must be int because "possibleLen <= len"
-      sendPacket(ByteBuffer.wrap(b, start, possibleLen), possibleLen, true);
-      flushBuf(b, start + possibleLen, end, close); // Create another packet with the leftovers
+      if (curBlockInnerOffset + len < blockSize) {
+        sendPacket(ByteBuffer.wrap(b, start, len), len, close);
+      } else if (curBlockInnerOffset + len == blockSize) {
+        sendPacket(ByteBuffer.wrap(b, start, len), len, true);
+      } else {
+        final int possibleLen = (int) (blockSize - curBlockInnerOffset); // this must be int because "possibleLen <= len"
+        sendPacket(ByteBuffer.wrap(b, start, possibleLen), possibleLen, true);
+        flushBuf(b, start + possibleLen, end, close); // Create another packet with the leftovers
+      }
     }
   }
 
-  private AllocatedBlockMeta allocateBlockAtMetaServer(final long blockOffset) throws IOException {
+  private WriteableBlockMeta allocateBlockAtMetaServer(final long blockOffset) throws IOException {
     try {
       return metaClient.allocateBlock(path, blockOffset, localAddress);
     } catch (TException e) {
@@ -181,7 +185,7 @@ public final class SurfFSOutputStream extends OutputStream {
                           final int len,
                           final boolean isLastPacket) throws IOException {
     try {
-      packetQueue.put(new Packet(curBlockMeta, curBlockOffset, curBlockInnerOffset, buf, isLastPacket));
+      packetQueue.put(new Packet(curWritableBlockMeta, curBlockInnerOffset, buf, isLastPacket));
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
@@ -194,19 +198,16 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   private class Packet {
-    final AllocatedBlockMeta blockMeta;
-    final long blockOffset;
+    final WriteableBlockMeta writeableBlockMeta;
     final long blockInnerOffset;
     final ByteBuffer buf;
     final boolean isLastPacket;
 
-    public Packet(final AllocatedBlockMeta blockMeta,
-                  final long blockOffset,
+    public Packet(final WriteableBlockMeta writeableBlockMeta,
                   final long blockInnerOffset,
                   final ByteBuffer buf,
                   final boolean isLastPacket) {
-      this.blockMeta = blockMeta;
-      this.blockOffset = blockOffset;
+      this.writeableBlockMeta = writeableBlockMeta;
       this.blockInnerOffset = blockInnerOffset;
       this.buf = buf;
       this.isLastPacket = isLastPacket;
@@ -226,23 +227,25 @@ public final class SurfFSOutputStream extends OutputStream {
       while(!isClosed) {
         try {
           final Packet packet = packetQueue.take();
-          if (packet.blockMeta != null) {
+          if (packet.blockInnerOffset == 0) {
             // Initialize block at the cache server for the first packet of a block
-            initCacheClient(packet.blockMeta, packet.blockOffset);
+            initCacheClient(packet.writeableBlockMeta);
           }
-          curCacheClient.writeData(path, packet.blockOffset, blockSize, packet.blockInnerOffset, packet.buf, packet.isLastPacket);
+
+          final BlockMeta blockMeta = packet.writeableBlockMeta.getBlockMeta();
+          curCacheClient.writeData(blockMeta.getFileId(), blockMeta.getOffSet(), packet.blockInnerOffset, packet.buf, packet.isLastPacket);
         } catch (Exception e) {
           throw new RuntimeException(e);
         }
       }
     }
 
-    private void initCacheClient(final AllocatedBlockMeta blockMeta, final long blockOffset) {
+    private void initCacheClient(final WriteableBlockMeta writableBlockMeta) {
       boolean success = false;
-      for (final NodeInfo nodeInfo : blockMeta.getLocations()) {
+      for (final NodeInfo nodeInfo : writableBlockMeta.getBlockMeta().getLocations()) {
         try {
           curCacheClient = cacheClientManager.get(nodeInfo.getAddress());
-          curCacheClient.initBlock(path, blockOffset, blockSize, blockMeta);
+          curCacheClient.initBlock(blockSize, writableBlockMeta);
           success = true;
           break;
         } catch (TException e) {
