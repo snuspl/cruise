@@ -1,4 +1,4 @@
-package edu.snu.reef.flexion.examples.ml.algorithms.kmeans;
+package edu.snu.reef.flexion.examples.ml.algorithms;
 
 import edu.snu.reef.flexion.core.KeyValueStore;
 import edu.snu.reef.flexion.core.UserControllerTask;
@@ -12,10 +12,10 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Logger;
 
-public final class KMeansPreCtrlTask extends UserControllerTask
+public final class ClusteringPreCtrlTask extends UserControllerTask
         implements DataGatherReceiver<List<Vector>> {
 
-    private static final Logger LOG = Logger.getLogger(KMeansPreCtrlTask.class.getName());
+    private static final Logger LOG = Logger.getLogger(ClusteringPreCtrlTask.class.getName());
 
     /**
      * Vector sum of the points assigned to each cluster
@@ -39,7 +39,7 @@ public final class KMeansPreCtrlTask extends UserControllerTask
      * Constructs the Controller Task for k-means
      */
     @Inject
-    public KMeansPreCtrlTask() {
+    public ClusteringPreCtrlTask() {
 
     }
 

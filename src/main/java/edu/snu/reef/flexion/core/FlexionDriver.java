@@ -341,7 +341,11 @@ public final class FlexionDriver {
     }
 
     final private boolean isCtrlTaskId(String id){
-        return ctrlTaskContextId.equals(id);
+        if(ctrlTaskContextId==null) {
+            return false;
+        } else {
+            return ctrlTaskContextId.equals(id);
+        }
     }
 
     final private String getCtrlTaskId(int sequence) {

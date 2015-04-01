@@ -1,4 +1,4 @@
-package edu.snu.reef.flexion.examples.ml.algorithms.kmeans;
+package edu.snu.reef.flexion.examples.ml.algorithms;
 
 import edu.snu.reef.flexion.core.UserComputeTask;
 import edu.snu.reef.flexion.examples.ml.data.Centroid;
@@ -10,7 +10,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class KMeansPreCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
+public final class ClusteringPreCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
         implements DataGatherSender<List<Vector>> {
 
     /**
@@ -33,7 +33,7 @@ public final class KMeansPreCmpTask extends UserComputeTask<Pair<List<Vector>, L
      * Constructs a single Compute Task for k-means
      */
     @Inject
-    public KMeansPreCmpTask() {
+    public ClusteringPreCmpTask() {
 
     }
 

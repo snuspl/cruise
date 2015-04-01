@@ -28,7 +28,7 @@ import java.util.Locale;
 public final class Centroid implements Serializable {
 
   private final int clusterId;
-  public Vector vector;
+  public final Vector vector;
 
   /**
    * This constructor does not create a deep copy of @param vector.
@@ -53,9 +53,15 @@ public final class Centroid implements Serializable {
     this.vector = vector;
   }
 
+  public final int dimension(){
+      return vector.size();
+  }
+
   public final int getClusterId() {
     return clusterId;
   }
+
+  public final Vector getVector() { return vector; }
 
   @SuppressWarnings("boxing")
   @Override

@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Codec for encoding and decoding a KMeansCentroid List
+ * Codec for encoding and decoding a Centroid List
  */
 public final class CentroidListCodec implements Codec<List<Centroid>> {
 

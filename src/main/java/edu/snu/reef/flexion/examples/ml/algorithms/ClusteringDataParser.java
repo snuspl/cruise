@@ -1,4 +1,4 @@
-package edu.snu.reef.flexion.examples.ml.algorithms.kmeans;
+package edu.snu.reef.flexion.examples.ml.algorithms;
 
 import edu.snu.reef.flexion.core.DataParser;
 import edu.snu.reef.flexion.core.ParseException;
@@ -14,15 +14,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public final class KMeansDataParser implements DataParser<Pair<List<Vector>, List<Vector>>> {
-    private final static Logger LOG = Logger.getLogger(KMeansDataParser.class.getName());
+public final class ClusteringDataParser implements DataParser<Pair<List<Vector>, List<Vector>>> {
+    private final static Logger LOG = Logger.getLogger(ClusteringDataParser.class.getName());
 
     private final DataSet<LongWritable, Text> dataSet;
     private Pair<List<Vector>, List<Vector>> result;
     private ParseException parseException;
 
     @Inject
-    public KMeansDataParser(final DataSet<LongWritable, Text> dataSet) {
+    public ClusteringDataParser(final DataSet<LongWritable, Text> dataSet) {
         this.dataSet = dataSet;
     }
 

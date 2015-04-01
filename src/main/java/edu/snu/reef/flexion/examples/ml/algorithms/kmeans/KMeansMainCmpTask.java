@@ -26,12 +26,12 @@ public final class KMeansMainCmpTask extends UserComputeTask<Pair<List<Vector>, 
     /**
      * Centroids of clusters
      */
-    private List<Centroid> centroids = new ArrayList<Centroid>();
+    private List<Centroid> centroids = new ArrayList<>();
 
     /**
      * Vector sum of the points assigned to each cluster
      */
-    private Map<Integer, VectorSum> pointSum = new HashMap<Integer, VectorSum>();
+    private Map<Integer, VectorSum> pointSum = new HashMap<>();
 
     /**
      * Definition of 'distance between points' for this job
@@ -55,7 +55,7 @@ public final class KMeansMainCmpTask extends UserComputeTask<Pair<List<Vector>, 
         points = data.second;
 
         // Compute the nearest cluster centroid for each point
-        pointSum = new HashMap<Integer, VectorSum>();
+        pointSum = new HashMap<>();
 
         for (final Vector vector : points) {
             double nearestClusterDist = Double.MAX_VALUE;
