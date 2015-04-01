@@ -1,8 +1,8 @@
-package org.apache.reef.inmemory.task.write;
+package org.apache.reef.inmemory.task;
 
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.task.BlockLoader;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -14,18 +14,18 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
 /**
- * Test WritableBlockLoader.
+ * Test BlockWriter works correctly.
  * Initiate the blockLoader with blockSize 131072, bufferSize 8192
  */
-public class WritableBlockLoaderWriteTest {
-  private WritableBlockLoader loader;
+public class BlockWriterTest {
+  private BlockWriter blockWriter;
   private static final long BLOCK_SIZE = 131072;
   private static final int BUFFER_SIZE = 8192;
 
   @Before
   public void setup() {
     final BlockId id = new BlockId("path", 0);
-    loader = new WritableBlockLoader(id, BLOCK_SIZE, true, BUFFER_SIZE);
+    blockWriter = new BlockWriter(id, BLOCK_SIZE, false, BUFFER_SIZE);
   }
 
   /**
@@ -44,14 +44,14 @@ public class WritableBlockLoaderWriteTest {
     System.arraycopy(packet0, 0, expected, offset0, packet0.length);
     System.arraycopy(packet1, 0, expected, offset1, packet1.length);
 
-    loader.writeData(packet0, offset0);
-    loader.writeData(packet1, offset1);
-    loader.completeWrite();
+    blockWriter.writeData(packet0, offset0);
+    blockWriter.writeData(packet1, offset1);
+    blockWriter.completeWrite();
 
-    assertLoadSuccess(expected, loader);
+    assertWriteSuccess(expected, blockWriter);
 
     // Index 1 is out of bound for this block.
-    assertLoadFailsWithException(loader, 1);
+    assertLoadFailsOnWriting(blockWriter, 1);
   }
 
   /**
@@ -60,13 +60,13 @@ public class WritableBlockLoaderWriteTest {
   @Test
   public void testPacketWithBufferSize() throws IOException {
     final byte[] packet = generateData(BUFFER_SIZE);
-    loader.writeData(packet, 0);
-    loader.completeWrite();
+    blockWriter.writeData(packet, 0);
+    blockWriter.completeWrite();
 
-    assertLoadSuccess(packet, loader);
+    assertWriteSuccess(packet, blockWriter);
 
     // Index 1 is out of bound.
-    assertLoadFailsWithException(loader, 1);
+    assertLoadFailsOnWriting(blockWriter, 1);
   }
 
   /**
@@ -80,10 +80,10 @@ public class WritableBlockLoaderWriteTest {
 
     final int offset = 0;
 
-    loader.writeData(packet0, offset);
+    blockWriter.writeData(packet0, offset);
 
     // Write fails because it tries to write with the same offset.
-    assertWriteFailsWithException(loader, packet1, offset);
+    assertWriteFailsWithException(blockWriter, packet1, offset);
   }
 
   /**
@@ -92,7 +92,7 @@ public class WritableBlockLoaderWriteTest {
    * 3 buffers to 4 splits.)
    */
   @Test
-  public void testWriteAcrossBuffer() throws IOException, BlockLoadingException {
+  public void testWriteAcrossBuffer() throws IOException, BlockWritingException {
     final int numBuffers = 3;
     final int numSplits = 4;
 
@@ -104,26 +104,26 @@ public class WritableBlockLoaderWriteTest {
     final byte[][] packets = new byte[numSplits][packetLength];
     for (int packetIndex = 0; packetIndex < packets.length; packetIndex++) {
       System.arraycopy(data, packetIndex * packetLength, packets[packetIndex], 0, packetLength);
-      loader.writeData(packets[packetIndex], packetIndex * packetLength);
+      blockWriter.writeData(packets[packetIndex], packetIndex * packetLength);
     }
-    loader.completeWrite();
+    blockWriter.completeWrite();
 
     // Collect the loaded buffers and compare to the original data.
     final ByteBuffer loaded = ByteBuffer.allocate(data.length);
     for (int bufferIndex = 0; bufferIndex < numBuffers; bufferIndex++) {
-      loaded.put(loader.getData(bufferIndex));
+      loaded.put(blockWriter.getData(bufferIndex));
     }
     assertArrayEquals(data, loaded.array());
 
     // The data should be written as amount of {numBuffers}
-    assertLoadFailsWithException(loader, numBuffers);
+    assertLoadFailsOnWriting(blockWriter, numBuffers);
   }
 
   /**
    * Test to fill one block with packets.
    */
   @Test
-  public void testFillOneBlock() throws IOException, BlockLoadingException {
+  public void testFillOneBlock() throws IOException, BlockWritingException {
     final byte[] data = generateData((int) BLOCK_SIZE);
 
     // Fill out the block
@@ -131,14 +131,14 @@ public class WritableBlockLoaderWriteTest {
       final byte[] packet = new byte[BUFFER_SIZE];
 
       System.arraycopy(data, offset, packet, 0, BUFFER_SIZE);
-      loader.writeData(packet, offset);
+      blockWriter.writeData(packet, offset);
     }
-    loader.completeWrite();
+    blockWriter.completeWrite();
 
     // Collect the loaded buffers and compare to the original data.
     final ByteBuffer loaded = ByteBuffer.allocate(data.length);
     for (int bufferIndex = 0; bufferIndex < BLOCK_SIZE / BUFFER_SIZE; bufferIndex++) {
-      loaded.put(loader.getData(bufferIndex));
+      loaded.put(blockWriter.getData(bufferIndex));
     }
     assertArrayEquals(data, loaded.array());
   }
@@ -153,34 +153,34 @@ public class WritableBlockLoaderWriteTest {
 
     // Write the first packet
     final byte[] packet0 = generateData(length0);
-    loader.writeData(packet0, 0);
-    loader.completeWrite();
+    blockWriter.writeData(packet0, 0);
+    blockWriter.completeWrite();
 
     // Write the other packet, then write fails because the packet exceeds the block size.
     final byte[] packet1 = generateData(length1);
-    assertWriteFailsWithException(loader, packet1, length0);
+    assertWriteFailsWithException(blockWriter, packet1, length0);
   }
 
   /**
-   * Helper method to make sure load succeed without exception.
+   * Helper method to make sure write succeed without exception.
    */
-  private void assertLoadSuccess(final byte[] expected, final BlockLoader loader) {
+  private void assertWriteSuccess(final byte[] expected, final BlockWriter blockWriter) {
     try {
-      final byte[] loaded = loader.getData(0);
-      assertArrayEquals(expected, loaded);
-    } catch (BlockLoadingException e) {
+      final byte[] written = blockWriter.getData(0);
+      assertArrayEquals(expected, written);
+    } catch (BlockWritingException e) {
       fail();
     }
   }
 
   /**
-   * Helper method to make sure an exception occurs while loading.
+   * Helper method to make sure BlockWritingException is thrown if one requests to load a block while writing.
    */
-  private void assertLoadFailsWithException(final BlockLoader loader, final int index) {
+  private void assertLoadFailsOnWriting(final BlockWriter blockWriter, final int index) {
     try {
-      loader.getData(index);
+      blockWriter.getData(index);
       fail();
-    } catch (BlockLoadingException e) {
+    } catch (BlockWritingException e) {
       // Test success
     }
   }
@@ -188,9 +188,9 @@ public class WritableBlockLoaderWriteTest {
   /**
    * Helper method to make sure an exception occurs while writing.
    */
-  private void assertWriteFailsWithException(final WritableBlockLoader loader, final byte[] packet, final long offset) {
+  private void assertWriteFailsWithException(final BlockWriter blockWriter, final byte[] packet, final long offset) {
     try {
-      loader.writeData(packet, offset);
+      blockWriter.writeData(packet, offset);
       fail();
     } catch (IOException e) {
       // Test success

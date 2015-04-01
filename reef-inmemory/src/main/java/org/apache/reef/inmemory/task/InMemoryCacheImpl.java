@@ -2,15 +2,12 @@ package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
 import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.exceptions.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
-import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
-import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
-import org.apache.reef.inmemory.task.write.WritableBlockLoader;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -31,19 +28,21 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   private final EStage<BlockLoader> loadingStage;
   private final int loadingBufferSize;
 
-  private final Cache<BlockId, BlockLoader> cache;
+  private final Cache<BlockId, CacheEntry> cache;
   private final CacheAdmissionController cacheAdmissionController;
   private final HeartBeatTriggerManager heartBeatTriggerManager;
+  private final CacheEntryFactory cacheEntryFactory;
 
   @Inject
-  public InMemoryCacheImpl(final Cache<BlockId, BlockLoader> cache,
+  public InMemoryCacheImpl(final Cache<BlockId, CacheEntry> cache,
                            final MemoryManager memoryManager,
                            final CacheAdmissionController cacheAdmissionController,
                            final LRUEvictionManager lru,
                            final EStage<BlockLoader> loadingStage,
                            final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
                            final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize,
-                           final HeartBeatTriggerManager heartBeatTriggerManager) {
+                           final HeartBeatTriggerManager heartBeatTriggerManager,
+                           final CacheEntryFactory cacheEntryFactory) {
     this.cache = cache;
     this.memoryManager = memoryManager;
     this.cacheAdmissionController = cacheAdmissionController;
@@ -51,18 +50,19 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     this.loadingStage = loadingStage;
     this.loadingBufferSize = loadingBufferSize;
     this.heartBeatTriggerManager = heartBeatTriggerManager;
+    this.cacheEntryFactory = cacheEntryFactory;
   }
 
   @Override
   public byte[] get(final BlockId blockId, int index)
-    throws BlockLoadingException, BlockNotFoundException {
-    final BlockLoader loader = cache.getIfPresent(blockId);
-    if (loader == null) {
+          throws BlockLoadingException, BlockNotFoundException, BlockWritingException {
+    final CacheEntry entry = cache.getIfPresent(blockId);
+    if (entry == null) {
       throw new BlockNotFoundException();
     } else {
       lru.use(blockId);
       // getData throws BlockLoadingException if load has not completed for the requested chunk
-      return loader.getData(index);
+      return entry.getData(index);
     }
   }
 
@@ -71,64 +71,70 @@ public final class InMemoryCacheImpl implements InMemoryCache {
                     final long offset,
                     final ByteBuffer data,
                     final boolean isLastPacket) throws BlockNotFoundException, BlockNotWritableException, IOException {
-    final BlockLoader loader = cache.getIfPresent(blockId);
-    if (loader == null) {
+    final CacheEntry entry = cache.getIfPresent(blockId);
+    if (entry == null) {
       throw new BlockNotFoundException();
-    } else if (!(loader instanceof WritableBlockLoader)) {
-      // TODO Make blockReceiver as a member of blockLoader instead implementing BlockReceiver itself.
-      throw new BlockNotWritableException();
     } else {
-      final WritableBlockLoader writableLoader = (WritableBlockLoader) loader;
-      writableLoader.writeData(data.array(), offset);
+      final long nWritten = entry.writeData(data.array(), offset, isLastPacket);
 
-      /*
-       * When the packet is the last one of block
-       * 1) Mark the block is Complete
-       * 2) Notify Memory manager to update memory state
-       * 3) Trigger heartbeat to update the metadata immediately
-       */
       if (isLastPacket) {
-        writableLoader.completeWrite();
-        final long blockSize = writableLoader.getBlockSize();
-        final long nWritten = writableLoader.getTotalWritten();
-        memoryManager.writeSuccess(blockId, blockSize, nWritten, loader.isPinned());
-        heartBeatTriggerManager.triggerHeartBeat();
+        memoryManager.writeSuccess(blockId, entry.getBlockSize(), entry.isPinned(), nWritten);
+        heartBeatTriggerManager.triggerHeartBeat(); // To update the file's metadata immediately
       }
     }
   }
 
   @Override
   public void load(final BlockLoader loader) throws IOException {
-    if (insertEntry(loader)) {
+    final CacheEntry entry = cacheEntryFactory.createEntry(loader);
+    if (insertEntry(entry)) {
       LOG.log(Level.INFO, "Add loading block {0}", loader.getBlockId());
       loadingStage.onNext(loader);
     }
   }
 
   @Override
-  public void prepareToWrite(final BlockLoader loader) throws IOException, BlockNotFoundException {
-    if (insertEntry(loader)) {
-      cacheAdmissionController.reserveSpace(loader.getBlockId(), loader.getBlockSize(), loader.isPinned());
+  public void prepareToWrite(final BlockWriter blockWriter) throws IOException {
+    final BlockId blockId = blockWriter.getBlockId();
+    final long blockSize = blockWriter.getBlockSize();
+    final boolean pin = blockWriter.isPinned();
+
+    final CacheEntry entry = cacheEntryFactory.createEntry(blockWriter);
+
+    // Reserve enough memory space in the cache for block
+    if (insertEntry(entry)) {
+      try {
+        cacheAdmissionController.reserveSpace(blockId, blockSize, pin);
+      } catch (BlockNotFoundException e) {
+        LOG.log(Level.INFO, "Already removed block {0}", blockId);
+        throw new IOException(e);
+      } catch (MemoryLimitException e) {
+        LOG.log(Level.SEVERE, "Memory limit reached", e);
+        memoryManager.copyStartFail(blockId, blockSize, pin, e);
+        throw new IOException(e);
+      }
     }
   }
 
   /**
-   * Insert an entry into the cache. The purpose we insert blockLoader before
+   * Insert an entry into the cache.
+   * The purpose we insert blockLoader before
    * the blockLoader has actual data is to prevent loading duplicate blocks.
-   * @param loader BlockLoader assigned to load a block.
+   * @param entry an entry to be inserted.
    * @return {@code true} If the entry is inserted successfully.
    * @throws IOException
    */
-  private boolean insertEntry(final BlockLoader loader) throws IOException {
-    final Callable<BlockLoader> callable = new BlockLoaderCaller(loader, memoryManager);
-    final BlockLoader returnedLoader;
+  private boolean insertEntry(final CacheEntry entry) throws IOException {
+    final Callable<CacheEntry> callable = new CacheEntryCaller(entry, memoryManager);
+    final CacheEntry returnedEntry;
     try {
-      returnedLoader = cache.get(loader.getBlockId(), callable);
+      returnedEntry = cache.get(entry.getBlockId(), callable);
     } catch (ExecutionException e) {
       throw new IOException(e);
     }
-    return loader == returnedLoader;
+    return entry == returnedEntry;
   }
+
 
   @Override
   public int getLoadingBufferSize() {

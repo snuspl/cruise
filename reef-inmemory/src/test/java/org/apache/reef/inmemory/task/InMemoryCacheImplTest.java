@@ -7,7 +7,7 @@ import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
-import org.apache.reef.inmemory.task.write.WritableBlockLoader;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;
 import org.junit.After;
@@ -30,10 +30,11 @@ import static org.mockito.Mockito.mock;
 public final class InMemoryCacheImplTest {
 
   private CacheStatistics statistics;
-  private Cache<BlockId, BlockLoader> internalCache;
+  private Cache<BlockId, CacheEntry> internalCache;
   private MemoryManager memoryManager;
   private EStage<BlockLoader> loadingStage;
   private HeartBeatTriggerManager heartBeatTriggerManager;
+  private CacheEntryFactory cacheEntryFactory;
   private InMemoryCache cache;
   private static final Random random = new Random();
   private static final double slack = 0.1;
@@ -49,7 +50,9 @@ public final class InMemoryCacheImplTest {
     final CacheAdmissionController cacheAdmissionController = new CacheAdmissionController(memoryManager, internalCache);
     loadingStage = new MockStage(cacheAdmissionController, memoryManager);
     heartBeatTriggerManager = mock(HeartBeatTriggerManager.class);
-    cache = new InMemoryCacheImpl(internalCache, memoryManager, cacheAdmissionController, lruEvictionManager, loadingStage, 3, bufferSize, heartBeatTriggerManager);
+    cacheEntryFactory = new CacheEntryFactory();
+    cache = new InMemoryCacheImpl(internalCache, memoryManager, cacheAdmissionController, lruEvictionManager,
+            loadingStage, 3, bufferSize, heartBeatTriggerManager, cacheEntryFactory);
   }
 
   @After
@@ -99,7 +102,8 @@ public final class InMemoryCacheImplTest {
   /**
    * Assert that Block is loaded successfully. Test with all the chunks in the block.
    */
-  private void assertBlockLoaded(byte[] buffer, BlockId blockId) throws BlockLoadingException, BlockNotFoundException {
+  private void assertBlockLoaded(byte[] buffer, BlockId blockId)
+          throws BlockLoadingException, BlockNotFoundException, BlockWritingException {
     int bufferSize = cache.getLoadingBufferSize();
     for(int i = 0; i * bufferSize < buffer.length; i++) {
       int startChunk = i * bufferSize;
@@ -112,8 +116,9 @@ public final class InMemoryCacheImplTest {
    * Assert that Block is loaded successfully. Test with all the chunks in the block.
    * Loading provided should be same passed in to cache.
    */
-  private void assertBlockLoaded(BlockLoader loader, BlockId blockId) throws BlockLoadingException, BlockNotFoundException {
-    for (int i = 0; i * loader.getBufferSize() < loader.getBlockSize(); i++) {
+  private void assertBlockLoaded(BlockLoader loader, BlockId blockId)
+          throws BlockLoadingException, BlockNotFoundException, BlockWritingException {
+    for (int i = 0; i * cache.getLoadingBufferSize() < loader.getBlockSize(); i++) {
       assertNotNull(cache.get(blockId, i));
       assertEquals(loader.getData(i), cache.get(blockId, i));
     }
@@ -126,13 +131,16 @@ public final class InMemoryCacheImplTest {
   @Test
   public void testPrepare() throws IOException, BlockNotFoundException {
     final BlockId blockId = randomBlockId();
-    assertBlockNotFound(blockId, 8096);
+    final int blockSize = 8096;
 
-    final BlockLoader loader = new MockBlockLoader(blockId, 8096, new OnesBufferLoader(8096), false);
+    assertBlockNotFound(blockId, blockSize);
+
+    final BlockWriter blockWriter = new BlockWriter(blockId, blockSize, false, bufferSize);
     cache.clear();
-    cache.prepareToWrite(loader);
+    cache.prepareToWrite(blockWriter);
+
     assertEquals(0, statistics.getCacheBytes());
-    assertEquals(8096, statistics.getLoadingBytes());
+    assertEquals(blockSize, statistics.getCopyingBytes());
     assertEquals(0, statistics.getEvictedBytes());
     assertEquals(0, statistics.getPinnedBytes());
   }
@@ -141,11 +149,13 @@ public final class InMemoryCacheImplTest {
    * Put a small buffer in the task, and check correctness of get after load
    */
   @Test
-  public void testPutAndGet() throws BlockLoadingException, BlockNotFoundException, IOException {
+  public void testPutAndGet() throws BlockLoadingException, BlockNotFoundException, IOException, BlockWritingException {
     final BlockId blockId = randomBlockId();
-    assertBlockNotFound(blockId, 8096);
+    final int blockSize = 8096;
 
-    final BlockLoader loader = new MockBlockLoader(blockId, 8096, new OnesBufferLoader(8096), false);
+    assertBlockNotFound(blockId, blockSize);
+
+    final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), false);
 
     cache.load(loader);
     assertBlockLoaded(loader, blockId);
@@ -159,7 +169,7 @@ public final class InMemoryCacheImplTest {
    * @throws BlockNotWritableException
    */
   @Test
-  public void testWriteFullBlock() throws IOException, BlockNotFoundException, BlockNotWritableException, BlockLoadingException {
+  public void testWriteFullBlock() throws IOException, BlockNotFoundException, BlockNotWritableException, BlockLoadingException, BlockWritingException {
     final String fileName = "/write";
     final int offset = 0;
     final int blockSize = 1024;
@@ -170,9 +180,9 @@ public final class InMemoryCacheImplTest {
     new Random().nextBytes(data);
 
     final BlockId blockId = new BlockId(fileName, offset);
-    final WritableBlockLoader blockLoader = new WritableBlockLoader(blockId, blockSize, false, bufferSize);
+    final BlockWriter blockWriter = new BlockWriter(blockId, blockSize, false, bufferSize);
 
-    cache.prepareToWrite(blockLoader);
+    cache.prepareToWrite(blockWriter);
 
     for (int packetIndex = 0; packetIndex < blockSize / packetSize; packetIndex++) {
       byte[] packet = new byte[packetSize];
@@ -184,7 +194,7 @@ public final class InMemoryCacheImplTest {
 
     // Check the status is updated correctly.
     assertEquals(blockSize, statistics.getCacheBytes());
-    assertEquals(0, statistics.getLoadingBytes());
+    assertEquals(0, statistics.getCopyingBytes());
     assertEquals(0, statistics.getEvictedBytes());
     assertEquals(0, statistics.getPinnedBytes());
 
@@ -200,15 +210,16 @@ public final class InMemoryCacheImplTest {
    * Put a small buffer in the task, and check correctness of clear
    */
   @Test
-  public void testClear() throws BlockLoadingException, BlockNotFoundException, IOException {
+  public void testClear() throws BlockLoadingException, BlockNotFoundException, IOException, BlockWritingException {
     final BlockId blockId = randomBlockId();
+    final int blockSize = 8096;
 
-    final BlockLoader loader = new MockBlockLoader(blockId, 1024, new OnesBufferLoader(8096), false);
+    final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), false);
 
     cache.load(loader);
     assertBlockLoaded(loader, blockId);
     cache.clear();
-    assertBlockNotFound(blockId, 1024);
+    assertBlockNotFound(blockId, blockSize);
 
     assertEquals(0, statistics.getCacheBytes());
     assertEquals(0, statistics.getPinnedBytes());
@@ -221,16 +232,17 @@ public final class InMemoryCacheImplTest {
   @Test
   public void testStatistics() throws Exception {
     final BlockId blockId = randomBlockId();
+    final int blockSize = 8096;
 
-    final BlockLoader loader = new MockBlockLoader(blockId, 8096, new OnesBufferLoader(8096), false);
+    final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), false);
 
     cache.load(loader);
-    assertEquals(8096, cache.getStatistics().getCacheBytes());
-    assertEquals(0, cache.getStatistics().getLoadingBytes());
+    assertEquals(blockSize, cache.getStatistics().getCacheBytes());
+    assertEquals(0, cache.getStatistics().getCopyingBytes());
 
     cache.clear();
     assertEquals(0, cache.getStatistics().getCacheBytes());
-    assertEquals(0, cache.getStatistics().getLoadingBytes());
+    assertEquals(0, cache.getStatistics().getCopyingBytes());
   }
 
   /**
@@ -264,7 +276,7 @@ public final class InMemoryCacheImplTest {
 
     Thread.sleep(500); // Allow first block load to start
 
-    assertEquals(1024, cache.getStatistics().getLoadingBytes());
+    assertEquals(1024, cache.getStatistics().getCopyingBytes());
     assertEquals(0, cache.getStatistics().getCacheBytes());
     assertEquals(0, cache.getStatistics().getPinnedBytes());
     assertEquals(0, cache.getStatistics().getEvictedBytes());
@@ -316,7 +328,7 @@ public final class InMemoryCacheImplTest {
     // Try to load same block
     for (int i = 1; i < numThreads/2; i++) {
       // Load called on same blockId
-      final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(1024), false, loadCounts[i], 1024);
+      final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(1024), false, loadCounts[i]);
       loaders[i] = loader;
       futures[i] = e.submit(new Runnable() {
         @Override
@@ -329,6 +341,8 @@ public final class InMemoryCacheImplTest {
             // Expected
           } catch (BlockNotFoundException e1) {
             fail("Expected BlockLoadingException but received BlockNotFoundException");
+          } catch (BlockWritingException e1) {
+            fail("Expected BlockLoadingException but received BlockWritingException");
           }
 
           // Then call load
@@ -345,7 +359,7 @@ public final class InMemoryCacheImplTest {
     for (int i = numThreads/2; i < numThreads; i++) {
       final BlockId randomId = randomBlockId();
       // Load called on different blockId
-      final BlockLoader loader = new MockBlockLoader(randomId, blockSize, new TwosBufferLoader(1024), false, loadCounts[i], 1024);
+      final BlockLoader loader = new MockBlockLoader(randomId, blockSize, new TwosBufferLoader(1024), false, loadCounts[i]);
       loaders[i] = loader;
       futures[i] = e.submit(new Runnable() {
         @Override
@@ -358,13 +372,15 @@ public final class InMemoryCacheImplTest {
             fail("Expected BlockNotFoundException but received BlockLoadingException");
           } catch (BlockNotFoundException e1) {
             // Expected
+          } catch (BlockWritingException e1) {
+            fail("Expected BlockNotFoundException but received BlockWritingException");
           }
 
           // Then call load
           try {
             cache.load(loader);
             assertBlockLoaded(loader, randomId);
-          } catch (final IOException | BlockLoadingException | BlockNotFoundException e1) {
+          } catch (final IOException | BlockLoadingException | BlockNotFoundException | BlockWritingException e1) {
             fail("Exception " + e1);
           }
         }
@@ -404,6 +420,8 @@ public final class InMemoryCacheImplTest {
         assertTrue("BlockNotFoundException, as expected", true);
       } catch (BlockLoadingException e) {
         assertTrue("BlockNotFoundException was expected, but BlockLoadingException was raised", false);
+      } catch (BlockWritingException e) {
+        assertTrue("BlockNotFoundException was expected, but BlockWritingException was raised", false);
       }
     }
   }
@@ -543,7 +561,7 @@ public final class InMemoryCacheImplTest {
    */
   @Test
   @Category(org.apache.reef.inmemory.common.IntensiveTests.class)
-  public void testPinned() throws IOException, BlockLoadingException, BlockNotFoundException {
+  public void testPinned() throws IOException, BlockLoadingException, BlockNotFoundException, BlockWritingException {
     final int blockSize = 128 * 1024 * 1024;
     // Different from other buffers, to tell them apart
     final BlockId pinnedId = randomBlockId();
@@ -622,7 +640,7 @@ public final class InMemoryCacheImplTest {
           final boolean pin = (iteration % 20 == 3); // 3, 23, 43
           final AtomicInteger loadCount = new AtomicInteger(0);
           final BlockLoader loader =
-                  new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), pin, loadCount, bufferSize);
+                  new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), pin, loadCount);
           if (pin) {
             loadCounts[iteration/20] = loadCount;
           }
@@ -681,7 +699,6 @@ public final class InMemoryCacheImplTest {
     private final int milliseconds;
     private boolean loadDone;
     private final AtomicInteger loadCount;
-    private final int bufferSize;
 
     public SleepingBlockLoader(final BlockId blockId,
                                final long blockSize,
@@ -696,7 +713,6 @@ public final class InMemoryCacheImplTest {
       this.milliseconds = milliseconds;
       this.loadCount = loadCount;
       this.loadDone = false;
-      this.bufferSize = bufferSize;
 
       // Load data chunks from the byte array
       ArrayList<byte[]> temp = new ArrayList<>();
@@ -745,11 +761,6 @@ public final class InMemoryCacheImplTest {
       } else {
         throw new BlockLoadingException();
       }
-    }
-
-    @Override
-    public int getBufferSize() {
-      return this.bufferSize;
     }
   }
 
@@ -807,25 +818,22 @@ public final class InMemoryCacheImplTest {
     private final BufferLoader bufferLoader;
     private final boolean pinned;
     private final AtomicInteger loadCount;
-    private final int bufferSize;
     private List<byte[]> data;
 
     public MockBlockLoader(final BlockId blockId, final long blockSize, final BufferLoader bufferLoader, final boolean pin) {
-      this(blockId, blockSize, bufferLoader, pin, new AtomicInteger(0), 8 * 1024 * 1024);
+      this(blockId, blockSize, bufferLoader, pin, new AtomicInteger(0));
     }
 
     public MockBlockLoader(final BlockId blockId,
                            final long blockSize,
                            final BufferLoader bufferLoader,
                            final boolean pin,
-                           final AtomicInteger loadCount,
-                           final int bufferSize) {
+                           final AtomicInteger loadCount) {
       this.blockId = blockId;
       this.blockSize = blockSize;
       this.bufferLoader = bufferLoader;
       this.pinned = pin;
       this.loadCount = loadCount;
-      this.bufferSize = bufferSize;
     }
 
     @Override
@@ -853,11 +861,5 @@ public final class InMemoryCacheImplTest {
     public byte[] getData(int index) throws BlockLoadingException {
       return data.get(index);
     }
-
-    @Override
-    public int getBufferSize() {
-      return this.bufferSize;
-    }
   }
-
 }

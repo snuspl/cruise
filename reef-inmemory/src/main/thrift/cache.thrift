@@ -12,7 +12,8 @@ service SurfCacheService {
      * Transfer block data from Task to Client
      */
     binary getData(1:entity.BlockMeta block, 2:i64 offset, 3:i64 length)
-        throws (1: exceptions.BlockNotFoundException nfe, 2:exceptions.BlockLoadingException le)
+        throws (1: exceptions.BlockNotFoundException nfe, 2:exceptions.BlockLoadingException le,
+        3:exceptions.BlockWritingException we)
 
     /**
      * Initialize a block in the cache to write data. Client should call this

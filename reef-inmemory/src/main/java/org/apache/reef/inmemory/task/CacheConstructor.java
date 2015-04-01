@@ -38,14 +38,14 @@ public final class CacheConstructor implements ExternalConstructor<Cache> {
   /**
    * Update statistics on cache removal
    */
-  private final RemovalListener<BlockId, BlockLoader> removalListener = new RemovalListener<BlockId, BlockLoader>() {
+  private final RemovalListener<BlockId, CacheEntry> removalListener = new RemovalListener<BlockId, CacheEntry>() {
     @Override
-    public void onRemoval(RemovalNotification<BlockId, BlockLoader> notification) {
+    public void onRemoval(RemovalNotification<BlockId, CacheEntry> notification) {
       LOG.log(Level.INFO, "Removed: "+notification.getKey());
       final BlockId blockId = notification.getKey();
-      final BlockLoader blockLoader = notification.getValue();
-      final long blockSize = blockLoader.getBlockSize();
-      final boolean pinned = blockLoader.isPinned();
+      final CacheEntry entry  = notification.getValue();
+      final long blockSize = entry.getBlockSize();
+      final boolean pinned = entry.isPinned();
       memoryManager.remove(blockId, blockSize, pinned);
     }
   };

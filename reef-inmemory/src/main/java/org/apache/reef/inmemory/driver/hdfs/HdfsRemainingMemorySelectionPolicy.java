@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.driver.CacheNode;
 
@@ -74,7 +73,7 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
       this.node = node;
       final CacheStatistics statistics = node.getLatestStatistics();
       this.max = statistics.getMaxBytes();
-      this.used = statistics.getCacheBytes() + statistics.getLoadingBytes();
+      this.used = statistics.getCacheBytes() + statistics.getCopyingBytes();
     }
 
     public CacheNode getNode() {

@@ -1,70 +1,66 @@
-package org.apache.reef.inmemory.task.write;
+package org.apache.reef.inmemory.task;
 
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.task.BlockLoader;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
- * Provides a way to load the content of block. The block is written by Surf
- * rather than loading from base FS. Synchronization occurs with base FS
- * as specified by policy.
- * This class implements BlockLoader and BlockReceiver interface
+ * Receive the data and write into cache block.
  */
-public class WritableBlockLoader implements BlockLoader, BlockReceiver {
-  private final static Logger LOG = Logger.getLogger(WritableBlockLoader.class.getName());
+public final class BlockWriter {
 
   private final BlockId blockId;
-  private final int bufferSize;
-  private final boolean pinned;
   private final long blockSize;
+  private final boolean pinned;
+  private final int bufferSize;
   private long totalWritten = 0;
+  private long expectedOffset = 0;
   private boolean isComplete = false;
-
   private List<ByteBuffer> data;
 
-  private long expectedOffset = 0;
-
-  public WritableBlockLoader(final BlockId id, final long blockSize, final boolean pin, final int bufferSize) {
+  public BlockWriter(final BlockId id, final long blockSize, final boolean pin, final int bufferSize) {
     this.blockId = id;
     this.blockSize = blockSize;
-    this.data = new ArrayList<>();
-
     this.pinned = pin;
     this.bufferSize = bufferSize;
+    this.data = new ArrayList<>();
   }
 
-  @Override
-  public void loadBlock() {
-    LOG.log(Level.SEVERE, "loadBlock() should not be called for WritableBlockLoader. BlockId : {0}", blockId.toString());
-  }
-
-  @Override
+  /**
+   * @return Block Identifier
+   */
   public BlockId getBlockId() {
     return this.blockId;
   }
 
-  @Override
+  /**
+   * @return Size of the block
+   */
   public long getBlockSize() {
-    return blockSize;
+    return this.blockSize;
   }
 
-  @Override
+  /**
+   * @return Whether block is configured for pinning
+   */
   public boolean isPinned() {
-    return this.pinned;
+    return pinned;
   }
 
-  @Override
-  public byte[] getData(int index) throws BlockLoadingException {
+  /**
+   * Get the data that this BlockWriter holds.
+   * @param index Index of the chunk to get
+   * @return Part of the data loaded by BlockLoader
+   * @throws BlockWritingException If the chunk of index has not been written yet
+   */
+  public byte[] getData(int index) throws BlockWritingException {
     // If the date is not completely written for this block, throw BlockLoadingException.
     if (!isComplete || index >= data.size()) {
-      throw new BlockLoadingException(totalWritten);
+      throw new BlockWritingException(totalWritten);
     }
 
     final ByteBuffer buf = this.data.get(index);
@@ -78,16 +74,15 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
     }
   }
 
-  @Override
-  public int getBufferSize() {
-    return this.bufferSize;
-  }
-
-  @Override
-  public void writeData(final byte[] data, final long offset) throws IOException {
+  /**
+   * Add data into block loader.
+   * @param data data to add
+   * @param offset offset of the data
+   */
+  public void writeData(byte[] data, long offset) throws IOException {
     if (offset + data.length > blockSize) {
       throw new IOException("The data exceeds the capacity of block. Offset : " + offset
-        + " , Packet length : " + data.length + " Block size : " + blockSize);
+              + " , Packet length : " + data.length + " Block size : " + blockSize);
     } else if (!isValidOffset(offset)) {
       throw new IOException("Received packet with an invalid offset " + offset);
     }
@@ -122,7 +117,7 @@ public class WritableBlockLoader implements BlockLoader, BlockReceiver {
    * Return the amount of data written.
    */
   public long getTotalWritten() {
-    return this.totalWritten;
+    return totalWritten;
   }
 
   /**
