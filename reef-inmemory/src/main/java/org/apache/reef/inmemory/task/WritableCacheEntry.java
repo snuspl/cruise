@@ -18,7 +18,7 @@ public class WritableCacheEntry implements CacheEntry {
 
   @Override
   public byte[] getData(final int index) throws BlockWritingException {
-    return this.blockWriter.getData(index);
+    return blockWriter.getData(index);
   }
 
   @Override

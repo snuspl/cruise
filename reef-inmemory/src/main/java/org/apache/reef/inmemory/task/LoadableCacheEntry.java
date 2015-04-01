@@ -16,7 +16,7 @@ public class LoadableCacheEntry implements CacheEntry {
 
   @Override
   public byte[] getData(final int index) throws BlockLoadingException {
-    return this.blockLoader.getData(index);
+    return blockLoader.getData(index);
   }
 
   @Override

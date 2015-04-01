@@ -52,8 +52,7 @@ public interface InMemoryCache {
 
   /**
    * Reserve space for a block and insert it into cache before writing data.
-   * The state of this block is set as LOAD_STARTED.
-   * TODO The state is supposed to be WRITE_STARTED
+   * The state of this block is set as COPY_STARTED.
    */
   public void prepareToWrite(BlockWriter blockWriter) throws IOException, BlockNotFoundException;
 

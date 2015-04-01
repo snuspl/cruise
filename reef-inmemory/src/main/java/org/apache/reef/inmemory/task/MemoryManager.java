@@ -128,7 +128,7 @@ public final class MemoryManager {
       statistics.addCopyingBytes(blockSize);
     }
     setState(blockId, CacheEntryState.COPY_STARTED);
-    LOG.log(Level.INFO, blockId+" statistics after copyStart: "+statistics);
+    LOG.log(Level.INFO, blockId + " statistics after copyStart: " + statistics);
     return null; // No need to evict, can start copying
   }
 
@@ -155,30 +155,33 @@ public final class MemoryManager {
    * Call on load success. Notifies threads waiting for memory to free up and updates statistics.
    */
   public void loadSuccess(final BlockId id, final long blockSize, final boolean pin) {
-    copySuccess(id, blockSize, pin, false, blockSize);
+    copySuccess(id, blockSize, pin);
   }
 
   /**
-   * Call on write success. This method is same with loadSuccess,
-   * except the amount of written data can be different from blockSize if the block is the last one.
+   * Call on write success. Notifies threads waiting for memory to free up, updates statistics,
+   * and report the amount of written data.
    */
   public void writeSuccess(final BlockId id, final long blockSize, final boolean pin, final long nWritten) {
-    copySuccess(id, blockSize, pin, true, nWritten);
+    final CacheEntryState state = copySuccess(id, blockSize, pin);
+    if (state == CacheEntryState.COPY_SUCCEEDED) {
+      updates.addAddition(id, nWritten);
+    }
   }
 
   /**
-   * Call on success of either load or write. On write, send the number of written bytes to update block's metadata.
-   * This is why copySuccess is separated into two methods: loadSuccess and writeSuccess.
+   * Call on success of the copy.
+   * @return The state of entry.
    */
-  private synchronized void copySuccess(final BlockId blockId, final long blockSize, final boolean pin,
-                                       final boolean write, final long nWritten) {
+  private synchronized CacheEntryState copySuccess(final BlockId blockId, final long blockSize, final boolean pin) {
     LOG.log(Level.INFO, blockId+" statistics before copySuccess: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
     }
 
-    final CacheEntryState state = getState(blockId);
-    switch(state) {
+    final CacheEntryState originState = getState(blockId);
+    final CacheEntryState targetState;
+    switch(originState) {
       case COPY_STARTED:
         if (pin) {
           // nothing
@@ -186,13 +189,8 @@ public final class MemoryManager {
           statistics.subtractCopyingBytes(blockSize);
           statistics.addCacheBytes(blockSize);
         }
-
-        if (write) {
-          // Report the update that write is complete, including the amount data written in this block.
-          updates.addAddition(blockId, nWritten);
-        }
-        setState(blockId, CacheEntryState.COPY_SUCCEEDED);
-
+        targetState = CacheEntryState.COPY_SUCCEEDED;
+        setState(blockId, targetState);
         notifyAll();
         break;
       case REMOVED_DURING_COPY:
@@ -204,7 +202,8 @@ public final class MemoryManager {
         lru.evicted(blockSize);
         statistics.addEvictedBytes(blockSize);
         updates.addRemoval(blockId);
-        setState(blockId, CacheEntryState.REMOVED);
+        targetState = CacheEntryState.REMOVED;
+        setState(blockId, targetState);
         notifyAll();
         break;
       default:
@@ -212,6 +211,7 @@ public final class MemoryManager {
     }
 
     LOG.log(Level.INFO, blockId + " statistics after copySuccess: " + statistics);
+    return targetState;
   }
   /**
    * Call on copy failure.

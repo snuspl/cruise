@@ -107,11 +107,11 @@ public final class InMemoryCacheImpl implements InMemoryCache {
         cacheAdmissionController.reserveSpace(blockId, blockSize, pin);
       } catch (BlockNotFoundException e) {
         LOG.log(Level.INFO, "Already removed block {0}", blockId);
-        return;
+        throw new IOException(e);
       } catch (MemoryLimitException e) {
         LOG.log(Level.SEVERE, "Memory limit reached", e);
         memoryManager.copyStartFail(blockId, blockSize, pin, e);
-        return;
+        throw new IOException(e);
       }
     }
   }
