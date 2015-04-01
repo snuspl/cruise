@@ -2,15 +2,12 @@ package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
+import org.apache.reef.inmemory.common.exceptions.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
-import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
-import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
-import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -97,10 +94,25 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   }
 
   @Override
-  public void prepareToWrite(final BlockReceiver receiver) throws IOException, BlockNotFoundException {
+  public void prepareToWrite(final BlockReceiver receiver) throws IOException {
+    final BlockId blockId = receiver.getBlockId();
+    final long blockSize = receiver.getBlockSize();
+    final boolean pin = receiver.isPinned();
+
     final CacheEntry entry = cacheEntryFactory.createEntry(receiver);
+
+    // Reserve enough memory space in the cache for block
     if (insertEntry(entry)) {
-      cacheAdmissionController.reserveSpace(receiver.getBlockId(), receiver.getBlockSize(), receiver.isPinned());
+      try {
+        cacheAdmissionController.reserveSpace(blockId, blockSize, pin);
+      } catch (BlockNotFoundException e) {
+        LOG.log(Level.INFO, "Already removed block {0}", blockId);
+        return;
+      } catch (MemoryLimitException e) {
+        LOG.log(Level.SEVERE, "Memory limit reached", e);
+        memoryManager.copyStartFail(blockId, blockSize, pin, e);
+        return;
+      }
     }
   }
 
