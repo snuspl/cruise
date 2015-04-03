@@ -60,7 +60,6 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
     .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
     .bindNamedParameter(StageConfiguration.StageHandler.class, TaskMessageHandlerExecutor.class)
     .bindImplementation(BlockMetaFactory.class, HdfsBlockMetaFactory.class)
-//    .bindImplementation(FileMetaFactory.class, HdfsFileMetaFactory.class)
     .bindImplementation(BaseFsBlockInfoFactory.class, HdfsBlockInfoFactory.class)
     .bindImplementation(CacheNodeMessenger.class, HdfsCacheNodeMessenger.class)
     .bindImplementation(FileMetaUpdater.class, HdfsFileMetaUpdater.class)

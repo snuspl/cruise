@@ -73,16 +73,12 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     this.numThreads = numThreads;
   }
 
-  /**
-   * Guarantee: Once meta is loaded, the changes in HDFS won't get updated
-   * TODO: CacheUpdater is trickier than I thought...
-   */
   @Override
   public FileMeta load(final String path, final String clientHostname) throws FileNotFoundException, TException {
     try {
       final FileMeta fileMeta = metaManager.load(path);
       return locationSorter.sortMeta(fileMeta, clientHostname);
-    } catch (IOException e) { // TODO: finer-grained exception handling
+    } catch (IOException e) {
       throw new FileNotFoundException(e.getMessage());
     }
   }
@@ -92,11 +88,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     return metaManager.exists(path);
   }
 
-  /**
-   * @param path to a file or a directory
-   * @return null if no such FileMeta(s) exists
-   * @throws TException
-   */
   @Override
   public List<FileMetaStatus> listFileMetaStatus(String path) throws TException {
     return metaManager.listFileMetaStatus(path);
@@ -210,12 +201,12 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public boolean load(final String path) throws TException {
     LOG.log(Level.INFO, "CLI load command for path {0}", path);
     try {
-      metaManager.load(path); // TODO: Finer-grained exception handling (return null instead of exception?)
+      metaManager.load(path);
       LOG.log(Level.INFO, "Load succeeded for "+path);
       return true;
     } catch (java.io.FileNotFoundException e) {
       throw new FileNotFoundException("File not found at "+path);
-    } catch (Throwable e) {
+    } catch (IOException e) {
       LOG.log(Level.SEVERE, "Load failed for "+path, e);
       throw new TException(e);
     }

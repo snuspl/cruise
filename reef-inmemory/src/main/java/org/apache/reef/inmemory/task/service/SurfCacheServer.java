@@ -128,7 +128,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   }
 
 
-  // TODO: is initBlock necessary? (do it for the first packet of the block in writeData)
+  // TODO: initBlock may not be necessary (simply use the code for the first packet of the block in writeData)
   @Override
   public void initBlock(final long blockSize, final WriteableBlockMeta writableBlockMeta) throws TException {
     /*
@@ -148,7 +148,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     }
   }
 
-  // TODO: is Thrift RPC round-trip even for void-return methods? (i.e. does client have to wait till ack from task for each writeData)
+  // TODO: find out whether Thrift RPC does a round-trip for void-return methods (i.e. does client have to wait till ack from task for each writeData)
   @Override
   public void writeData(final long fileId, final long blockOffset, final long innerOffset, final ByteBuffer buf, final boolean isLastPacket) throws TException {
     final BlockId blockId = new BlockId(fileId, blockOffset);

@@ -134,7 +134,7 @@ public class MetaTree {
 
     final FileMeta fileMeta = baseFsClient.getFileStatus(path); // throws FileNotFoundException/IOException, sets blockSize & fileSize
     final long fileId = atomicFileId.incrementAndGet();
-    fileMeta.setFileId(fileId); // TODO: put it in FileMetaFactory(?)
+    fileMeta.setFileId(fileId);
 
     LOCK.writeLock().lock();
     try {
@@ -157,7 +157,7 @@ public class MetaTree {
 
     final FileMeta fileMeta = new FileMeta();
     final long fileId = atomicFileId.incrementAndGet();
-    fileMeta.setFileId(fileId); // TODO: put it in FileMetaFactory(?)
+    fileMeta.setFileId(fileId);
     fileMeta.setFileSize(0);
     fileMeta.setBlockSize(blockSize);
     fileMeta.setBlocks(new ArrayList<BlockMeta>());
@@ -180,7 +180,7 @@ public class MetaTree {
       final FileMeta fileMeta = fileIdToFileMeta.get(blockId.getFileId());
       if (fileMeta != null) {
         final List<NodeInfo> nodeList = Arrays.asList(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
-        final BlockMeta blockMeta = new BlockMeta(blockId.getFileId(), blockId.getOffset(), fileMeta.getBlockSize(), nodeList); // TODO: check replication
+        final BlockMeta blockMeta = new BlockMeta(blockId.getFileId(), blockId.getOffset(), fileMeta.getBlockSize(), nodeList); // TODO: check replication when we implement replicated write
         fileMeta.setFileSize(fileMeta.getFileSize() + nWritten);
         fileMeta.addToBlocks(blockMeta);
       } else {
@@ -259,7 +259,7 @@ public class MetaTree {
    * Second, delete in the tree
    */
   public boolean remove(final String path, final boolean recursive) throws IOException {
-    // TODO: use recursive
+    // TODO: make use of recursive
     LOCK.writeLock().lock();
     try {
       final boolean baseFsSuccess = baseFsClient.delete(path);
@@ -302,7 +302,7 @@ public class MetaTree {
     // 1. Search for the parent directory
     final String[] entryNames = StringUtils.split(path, '/');
     DirectoryEntry curDirectory = ROOT;
-    for (int i = 0; i < entryNames.length-1; i++) { // TODO: Cornercase length==0?
+    for (int i = 0; i < entryNames.length-1; i++) { // TODO: Handle cornercase when length==0
       final String entryName = entryNames[i];
       boolean childDirectoryFound = false;
       for (final Entry child : curDirectory.getChildren()){

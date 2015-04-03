@@ -23,7 +23,6 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for SurfFS methods that deal with FileMeta.
- * TODO: add a test case for exists()
  */
 public final class SurfFSMetadataITCase {
   private static final Logger LOG = Logger.getLogger(SurfFSMetadataITCase.class.getName());

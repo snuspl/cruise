@@ -32,7 +32,7 @@ struct FileMeta{
 
 /**
  * Client gets this from Driver to write to CacheNode
- * TODO: baseREplicationFactor, writeThrough info will be needed in the future
+ * TODO: info such as baseReplicationFactor, writeThrough will also be needed in the future
  */
 struct WriteableBlockMeta {
   1: BlockMeta blockMeta,           // Meta of the block to write
