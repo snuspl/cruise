@@ -39,13 +39,13 @@ public final class KMeansMainCtrlTask extends UserControllerTask
     /**
      * Vector sum of the points assigned to each cluster
      */
-    private Map<Integer, VectorSum> pointSum = new HashMap<Integer, VectorSum>();
+    private Map<Integer, VectorSum> pointSum = new HashMap<>();
 
     /**
      * List of cluster centroids to distribute to Compute Tasks
      * Will be updated for each iteration
      */
-    private List<Centroid> centroids = new ArrayList<Centroid>();
+    private List<Centroid> centroids = new ArrayList<>();
 
     /**
      * This class is instantiated by TANG

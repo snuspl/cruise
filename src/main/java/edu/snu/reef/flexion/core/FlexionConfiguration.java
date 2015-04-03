@@ -1,60 +1,32 @@
 package edu.snu.reef.flexion.core;
 
 import edu.snu.reef.flexion.parameters.*;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.ConfigurationBuilder;
-import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.tang.formats.*;
+import org.apache.reef.tang.formats.CommandLine;
+import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 
 import java.io.IOException;
 
 public final class FlexionConfiguration extends ConfigurationModuleBuilder {
-    public final static RequiredParameter<String> IDENTIFIER = new RequiredParameter<>();
-    public final static RequiredImpl<UserJobInfo> JOB_INFO = new RequiredImpl<>();
-    public final static OptionalImpl<UserParameters> PARAMETERS = new OptionalImpl<>();
-    public final static RequiredParameter<Integer> EVALUATOR_NUM = new RequiredParameter<>();
-    public final static OptionalParameter<Integer> EVALUATOR_SIZE = new OptionalParameter<>();
-    public final static RequiredParameter<String> INPUT_DIR = new RequiredParameter<>();
-    public final static OptionalParameter<Boolean> ON_LOCAL = new OptionalParameter<>();
-    public final static OptionalParameter<Integer> TIMEOUT = new OptionalParameter<>();
 
-    public final static ConfigurationModule CONF = new FlexionConfiguration()
-            .bindNamedParameter(JobIdentifier.class, IDENTIFIER)
-            .bindImplementation(UserJobInfo.class, JOB_INFO)
-            .bindImplementation(UserParameters.class, PARAMETERS)
-            .bindNamedParameter(EvaluatorNum.class, EVALUATOR_NUM)
-            .bindNamedParameter(EvaluatorSize.class, EVALUATOR_SIZE)
-            .bindNamedParameter(InputDir.class, INPUT_DIR)
-            .bindNamedParameter(OnLocal.class, ON_LOCAL)
-            .bindNamedParameter(Timeout.class, TIMEOUT)
-            .build();
 
-    public final static ConfigurationModule CONF(final String args[]) throws IOException, InjectionException {
-
-        final ConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
-        final CommandLine cl = new CommandLine(cb);
-        return CONF(args, cl);
+    public final static Configuration CONF(String[] args) throws IOException {
+        return CONF(args, new CommandLine());
     }
 
-    public final static ConfigurationModule CONF(final String args[], CommandLine cl) throws IOException, InjectionException {
+    public final static Configuration CONF(String[] args, CommandLine cl) throws IOException {
 
-        final ConfigurationBuilder cb = cl.getBuilder();
         cl.registerShortNameOfClass(EvaluatorSize.class);
         cl.registerShortNameOfClass(OnLocal.class);
         cl.registerShortNameOfClass(EvaluatorNum.class);
         cl.registerShortNameOfClass(Timeout.class);
         cl.registerShortNameOfClass(InputDir.class);
+        final ConfigurationBuilder cb = cl.getBuilder();
         cl.processCommandLine(args);
 
-        final Injector injector = Tang.Factory.getTang().newInjector(cb.build());
+        return cb.build();
 
-        return CONF
-                .set(EVALUATOR_SIZE, injector.getNamedInstance(EvaluatorSize.class))
-                .set(ON_LOCAL, injector.getNamedInstance(OnLocal.class))
-                .set(EVALUATOR_NUM, injector.getNamedInstance(EvaluatorNum.class))
-                .set(TIMEOUT, injector.getNamedInstance(Timeout.class))
-                .set(INPUT_DIR, injector.getNamedInstance(InputDir.class));
     }
 
 }

@@ -44,6 +44,7 @@ public final class FlexionParameters {
   public final Configuration getDriverConf() {
     Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(UserJobInfo.class, userJobInfo.getClass())
+        .bindImplementation(UserParameters.class, userParameters.getClass())
         .build();
     return Configurations.merge(userParameters.getDriverConf(), driverConf);
   }

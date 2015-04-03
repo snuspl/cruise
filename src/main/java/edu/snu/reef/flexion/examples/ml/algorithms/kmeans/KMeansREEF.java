@@ -2,16 +2,25 @@ package edu.snu.reef.flexion.examples.ml.algorithms.kmeans;
 
 import edu.snu.reef.flexion.core.FlexionConfiguration;
 import edu.snu.reef.flexion.core.FlexionLauncher;
+import edu.snu.reef.flexion.core.UserJobInfo;
+import edu.snu.reef.flexion.core.UserParameters;
+import edu.snu.reef.flexion.parameters.JobIdentifier;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
 
 public class KMeansREEF {
 
     public final static void main(String[] args) throws Exception {
 
-        FlexionLauncher.run(FlexionConfiguration.CONF(args, KMeansParameters.getCommandLine())
-                .set(FlexionConfiguration.IDENTIFIER, "K-means Clustering")
-                .set(FlexionConfiguration.JOB_INFO, KMeansJobInfo.class)
-                .set(FlexionConfiguration.PARAMETERS, KMeansParameters.class)
-                .build());
+        FlexionLauncher.run(
+                Configurations.merge(
+                        FlexionConfiguration.CONF(args, KMeansParameters.getCommandLine()),
+                        Tang.Factory.getTang().newConfigurationBuilder()
+                                .bindNamedParameter(JobIdentifier.class, "K-means Clustering")
+                                .bindImplementation(UserJobInfo.class, KMeansJobInfo.class)
+                                .bindImplementation(UserParameters.class, KMeansParameters.class)
+                                .build()
+                        ));
     }
 
 

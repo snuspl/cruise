@@ -9,7 +9,6 @@ import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
 import edu.snu.reef.flexion.groupcomm.names.*;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.task.CompletedTask;
-import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.driver.task.TaskMessage;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
@@ -91,6 +90,7 @@ public final class FlexionDriver {
 
     private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
 
+    private final UserParameters userParameters;
 
     /**
      * This class is instantiated by TANG
@@ -105,7 +105,8 @@ public final class FlexionDriver {
     @Inject
     private FlexionDriver(final GroupCommDriver groupCommDriver,
                           final DataLoadingService dataLoadingService,
-                          final UserJobInfo userJobInfo)
+                          final UserJobInfo userJobInfo,
+                          final UserParameters userParameters)
             throws IllegalAccessException, InstantiationException,
             NoSuchMethodException, InvocationTargetException {
         this.groupCommDriver = groupCommDriver;
@@ -114,7 +115,9 @@ public final class FlexionDriver {
         this.stageInfoList = userJobInfo.getStageInfoList();
         this.commGroupDriverList = new LinkedList<>();
         this.contextToStageSequence = new HashMap<>();
+        this.userParameters = userParameters;
         initializeCommDriver();
+
 
     }
 
@@ -270,7 +273,7 @@ public final class FlexionDriver {
      * Group Communication again. However if the failed Task is the Controller Task,
      * we just shut down the whole job because it's hard to recover the cluster centroid info.
      */
-    final class FailedTaskHandler implements EventHandler<FailedTask> {
+    /*final class FailedTaskHandler implements EventHandler<FailedTask> {
         @Override
         public void onNext(FailedTask failedTask) {
             LOG.info(failedTask.getId() + " has failed.");
@@ -287,7 +290,7 @@ public final class FlexionDriver {
             }
 
         }
-    }
+    }*/
 
 
     /**
@@ -315,7 +318,8 @@ public final class FlexionDriver {
                     Tang.Factory.getTang().newConfigurationBuilder()
                             .bindImplementation(UserControllerTask.class, taskInfo.getUserCtrlTaskClass())
                             .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
-                            .build());
+                            .build(),
+                    userParameters.getUserCtrlTaskConf());
 
         // Case 2: Evaluator configured with a Group Communication context has been given,
         //         representing a Compute Task
@@ -331,7 +335,8 @@ public final class FlexionDriver {
                     Tang.Factory.getTang().newConfigurationBuilder()
                             .bindImplementation(UserComputeTask.class, taskInfo.getUserCmpTaskClass())
                             .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
-                            .build());
+                            .build(),
+                    userParameters.getUserCmpTaskConf());
         }
 
         // add the Task to our communication group

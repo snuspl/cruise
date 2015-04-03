@@ -14,11 +14,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public final class ClusteringDataParser implements DataParser<Pair<List<Vector>, List<Vector>>> {
+public final class ClusteringDataParser implements DataParser<List<Vector>> {
     private final static Logger LOG = Logger.getLogger(ClusteringDataParser.class.getName());
 
     private final DataSet<LongWritable, Text> dataSet;
-    private Pair<List<Vector>, List<Vector>> result;
+    private List<Vector> result;
     private ParseException parseException;
 
     @Inject
@@ -27,7 +27,7 @@ public final class ClusteringDataParser implements DataParser<Pair<List<Vector>,
     }
 
     @Override
-    public final Pair<List<Vector>, List<Vector>> get() throws ParseException {
+    public final List<Vector> get() throws ParseException {
         if (result == null) {
             parse();
         }
@@ -41,43 +41,30 @@ public final class ClusteringDataParser implements DataParser<Pair<List<Vector>,
 
     @Override
     public final void parse() {
-        List<Vector> centroids = new ArrayList<>();
+
         List<Vector> points = new ArrayList<>();
 
         for (final Pair<LongWritable, Text> keyValue : dataSet) {
             String[] split = keyValue.second.toString().trim().split("\\s+");
+
             if (split.length == 0) {
                 continue;
             }
 
-            if (split[0].equals("*")) {
-                final Vector centroid = new DenseVector(split.length - 1);
-                try {
-                    for (int i = 1; i < split.length; i++) {
-                        centroid.set(i - 1, Double.valueOf(split[i]));
-                    }
-                    centroids.add(centroid);
-
-                } catch (final NumberFormatException e) {
-                    parseException = new ParseException("Parse failed: numbers should be DOUBLE");
-                    return;
+            final Vector point = new DenseVector(split.length);
+            try {
+                for (int i = 0; i < split.length; i++) {
+                    point.set(i, Double.valueOf(split[i]));
                 }
+                points.add(point);
 
-            } else {
-                final Vector data = new DenseVector(split.length);
-                try {
-                    for (int i = 0; i < split.length; i++) {
-                        data.set(i, Double.valueOf(split[i]));
-                    }
-                    points.add(data);
-
-                } catch (final NumberFormatException e) {
-                    parseException = new ParseException("Parse failed: numbers should be DOUBLE");
-                    return;
-                }
+            } catch (final NumberFormatException e) {
+                parseException = new ParseException("Parse failed: each field should be a number");
+                return;
             }
-
-            result = new Pair<>(centroids, points);
         }
+
+        result = points;
+
     }
 }

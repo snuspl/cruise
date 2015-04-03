@@ -3,13 +3,16 @@ package edu.snu.reef.flexion.examples.ml.algorithms;
 import edu.snu.reef.flexion.core.KeyValueStore;
 import edu.snu.reef.flexion.core.UserControllerTask;
 import edu.snu.reef.flexion.examples.ml.data.Centroid;
-import edu.snu.reef.flexion.examples.ml.data.VectorSum;
 import edu.snu.reef.flexion.examples.ml.key.Centroids;
+import edu.snu.reef.flexion.examples.ml.parameters.NumberOfClusters;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherReceiver;
 import org.apache.mahout.math.Vector;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Logger;
 
 public final class ClusteringPreCtrlTask extends UserControllerTask
@@ -18,9 +21,9 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
     private static final Logger LOG = Logger.getLogger(ClusteringPreCtrlTask.class.getName());
 
     /**
-     * Vector sum of the points assigned to each cluster
+     * Number of clusters
      */
-    private Map<Integer, VectorSum> pointSum = new HashMap<Integer, VectorSum>();
+    private final int numberOfClusters;
 
     /**
      * List of cluster centroids to distribute to Compute Tasks
@@ -39,8 +42,8 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
      * Constructs the Controller Task for k-means
      */
     @Inject
-    public ClusteringPreCtrlTask() {
-
+    public ClusteringPreCtrlTask(@Parameter(NumberOfClusters.class) final int numberOfClusters) {
+        this.numberOfClusters = numberOfClusters;
     }
 
     @Override
@@ -68,13 +71,19 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
 
     @Override
     public void receiveGatherData(List<List<Vector>> initialCentroids) {
-        this.initialCentroids = new LinkedList<Vector>();
+
+        List<Vector> points = new LinkedList<>();
+
         // Flatten the given list of lists
         for(List<Vector> list : initialCentroids) {
             for(Vector vector: list){
-                this.initialCentroids.add(vector);
+                points.add(vector);
             }
         }
+
+        //sample initial centroids
+        this.initialCentroids = ClusteringPreCmpTask.sample(points, numberOfClusters);
+
     }
 
 }

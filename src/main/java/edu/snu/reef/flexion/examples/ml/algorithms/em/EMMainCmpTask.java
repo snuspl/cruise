@@ -1,20 +1,19 @@
 package edu.snu.reef.flexion.examples.ml.algorithms.em;
 
 import edu.snu.reef.flexion.core.UserComputeTask;
-import edu.snu.reef.flexion.examples.ml.data.*;
+import edu.snu.reef.flexion.examples.ml.data.ClusterStats;
 import edu.snu.reef.flexion.examples.ml.data.ClusterSummary;
 import edu.snu.reef.flexion.examples.ml.parameters.IsCovarianceShared;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceSender;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.Vector;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
 
-public final class EMMainCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
+public final class EMMainCmpTask extends UserComputeTask<List<Vector>>
         implements DataBroadcastReceiver<List<ClusterSummary>>, DataReduceSender<Map<Integer, ClusterStats>> {
 
     /**
@@ -48,9 +47,9 @@ public final class EMMainCmpTask extends UserComputeTask<Pair<List<Vector>, List
     }
 
     @Override
-    public void run(int iteration, Pair<List<Vector>, List<Vector>> data) {
+    public void run(int iteration, List<Vector> data) {
 
-        points = data.second;
+        points = data;
 
         clusterToStats = new HashMap<>();
         int numClusters = clusterSummaries.size();

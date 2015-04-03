@@ -75,8 +75,8 @@ public final class FlexionLauncher {
                 .set(DriverConfiguration.DRIVER_IDENTIFIER, flexionParameters.getIdentifier())
                 .set(DriverConfiguration.ON_CONTEXT_ACTIVE, FlexionDriver.ActiveContextHandler.class)
                 .set(DriverConfiguration.ON_TASK_MESSAGE, FlexionDriver.TaskMessageHandler.class)
-                .set(DriverConfiguration.ON_TASK_COMPLETED, FlexionDriver.TaskCompletedHandler.class)
-                .set(DriverConfiguration.ON_TASK_FAILED, FlexionDriver.FailedTaskHandler.class);
+                .set(DriverConfiguration.ON_TASK_COMPLETED, FlexionDriver.TaskCompletedHandler.class);
+                //.set(DriverConfiguration.ON_TASK_FAILED, FlexionDriver.FailedTaskHandler.class);
 
 
         final EvaluatorRequest evalRequest = EvaluatorRequest.newBuilder()

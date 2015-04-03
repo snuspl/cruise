@@ -7,7 +7,6 @@ import edu.snu.reef.flexion.examples.ml.data.VectorSum;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceSender;
 import org.apache.mahout.math.Vector;
-import org.apache.reef.io.network.util.Pair;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -15,7 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class KMeansMainCmpTask extends UserComputeTask<Pair<List<Vector>, List<Vector>>>
+public final class KMeansMainCmpTask extends UserComputeTask<List<Vector>>
         implements DataBroadcastReceiver<List<Centroid>>, DataReduceSender<Map<Integer, VectorSum>> {
 
     /**
@@ -46,16 +45,19 @@ public final class KMeansMainCmpTask extends UserComputeTask<Pair<List<Vector>, 
      */
     @Inject
     public KMeansMainCmpTask(final VectorDistanceMeasure distanceMeasure) {
+
         this.distanceMeasure = distanceMeasure;
     }
 
     @Override
-    public void run(int iteration, Pair<List<Vector>, List<Vector>> data) {
+    public void run(int iteration, List<Vector> points) {
 
-        points = data.second;
+        this.points = points;
 
         // Compute the nearest cluster centroid for each point
         pointSum = new HashMap<>();
+
+        System.out.println(points.size());
 
         for (final Vector vector : points) {
             double nearestClusterDist = Double.MAX_VALUE;
