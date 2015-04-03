@@ -333,10 +333,6 @@ public final class SurfFS extends FileSystem {
       }
 
       result.addAll(baseFileStatuses);
-
-      LOG.log(Level.INFO, "result {0}", result);
-      System.out.println(result.toString());
-
       return result.toArray(new FileStatus[result.size()]);
     } catch (TException e) {
       throw new IOException("Failed to list file status in " + pathStr, e);
@@ -413,28 +409,31 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * TODO: use factory
+   * TODO: handle attributes currently set to -1/null when we implement FileStatus-forwarding logic in Driver
    */
   private FileStatus toFileStatus(final FileMetaStatus fileMetaStatus) {
-    final Path path = toAbsoluteSurfPath((new Path(fileMetaStatus.getPath()))); // TODO: Refactor
+    final Path path = toAbsoluteSurfPath((new Path(fileMetaStatus.getPath())));
     final FileMeta meta = fileMetaStatus.getFileMeta();
 
     if (meta != null) {
       final long length = meta.getFileSize();
-      final boolean isDir = false;
-      final int replication = 1; // TODO
       final long blockSize = meta.getBlockSize();
-      final long modificationTime = -1; // TODO
-      final long accessTime = -1; // TODO
-      final String owner = null; // TODO
-      final String group = null; // TODO
-      final Path symLink = null; // TODO: may not have to support
+      final boolean isDir = false;
+
+      // TODO
+      final int replication = 1;
+      final long modificationTime = -1;
+      final long accessTime = -1;
+      final String owner = null;
+      final String group = null;
+      final Path symLink = null;
       return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
               FsPermission.getFileDefault(), owner, group, symLink, path);
     } else {
+      final boolean isDir = true;
+
       // TODO
       final long length = -1;
-      final boolean isDir = true;
       final int replication = -1;
       final long blockSize = -1;
       final long modificationTime = -1;

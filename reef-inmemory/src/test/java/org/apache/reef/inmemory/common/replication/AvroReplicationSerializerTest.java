@@ -65,8 +65,6 @@ public final class AvroReplicationSerializerTest {
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     AvroReplicationSerializer.toStream(rules, out);
-
-    System.out.println(out.toString());
   }
 
   /**

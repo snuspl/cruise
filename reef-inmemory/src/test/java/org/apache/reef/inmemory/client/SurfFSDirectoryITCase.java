@@ -104,8 +104,6 @@ public final class SurfFSDirectoryITCase {
     for (int i = 0; i < 5; i++) {
       final FileStatus fileStatus = fileStatuses[i];
       LOG.log(Level.INFO, "filestatus " + fileStatus.getPath().toString());
-      System.out.println(fileStatus.getPath().toString() + "@@@@@@@");
-
       assertEquals(NONEMPTY + "/" + String.valueOf(i), fileStatus.getPath().toUri().getPath());
       assertEquals(i, fileStatus.getLen());
       // TODO: Test other attributes in FileStatus
