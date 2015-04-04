@@ -179,19 +179,16 @@ public class MetaTree {
    * Add newly written blocks reported by CacheNodes
    */
   public void addNewWrittenBlockToFileMetaInTree(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
-    LOCK.writeLock().lock();
-    try {
-      final FileMeta fileMeta = fileIdToFileMeta.get(blockId.getFileId());
-      if (fileMeta != null) {
+    final FileMeta fileMeta = fileIdToFileMeta.get(blockId.getFileId());
+    if (fileMeta != null) {
         final List<NodeInfo> nodeList = Arrays.asList(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
         final BlockMeta blockMeta = new BlockMeta(blockId.getFileId(), blockId.getOffset(), fileMeta.getBlockSize(), nodeList); // TODO: check replication when we implement replicated write
+      synchronized (fileMeta) {
         fileMeta.setFileSize(fileMeta.getFileSize() + nWritten);
         fileMeta.addToBlocks(blockMeta);
-      } else {
-        // TODO: we may want to return boolean here for upstream handling
       }
-    } finally {
-      LOCK.writeLock().unlock();
+    } else {
+      // TODO: we may want to return boolean here for upstream handling
     }
   }
 
@@ -263,18 +260,27 @@ public class MetaTree {
    * Second, delete in the tree
    */
   public boolean remove(final String path, final boolean recursive) throws IOException {
-    // TODO: make use of recursive
+    final boolean baseFsSuccess = baseFsClient.delete(path);
     LOCK.writeLock().lock();
     try {
-      final boolean baseFsSuccess = baseFsClient.delete(path);
       if (baseFsSuccess) {
         final Entry entry = getEntryInTree(path);
         if (entry != null) {
-          entry.getParent().removeChild(entry);
+          if (entry.isDirectory()) {
+            if (recursive) {
+              entry.getParent().removeChild(entry);
+              return true;
+            } else {
+              throw new IOException("Recursive not set to true while the path is to a directory");
+            }
+          } else {
+            entry.getParent().removeChild(entry);
+            return true;
+          }
         } else {
           LOG.log(Level.INFO, "Attempted to delete FileEntry that does not exist in the tree", path);
+          return true;
         }
-        return true;
       } else {
         return false;
       }
