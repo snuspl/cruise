@@ -306,6 +306,8 @@ public class MetaTree {
   //////// Helper Methods
 
   /**
+   * The caller of this method must hold LOCK.
+   *
    * @param path to the entry
    * @return null if no entry is found
    */
