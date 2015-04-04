@@ -39,7 +39,7 @@ public final class SurfMetaManager {
 
   public FileMeta getOrLoadFileMeta(final String path) throws IOException {
     final FileMeta fileMeta = this.metaTree.getOrLoadFileMeta(path);
-    return this.fileMetaUpdater.update(path, fileMeta); // TODO: modifying fileMeta without lock might cause problems
+    return this.fileMetaUpdater.update(path, fileMeta);
   }
 
   public boolean exists(final String path) {
@@ -55,7 +55,7 @@ public final class SurfMetaManager {
   }
 
   public void create(final String path, final long blockSize, final short baseFsReplication) throws IOException {
-    this.metaTree.createFileInBaseAndTree(path, blockSize, baseFsReplication);
+    this.metaTree.createFile(path, blockSize, baseFsReplication);
   }
 
   public boolean mkdirs(final String path) throws IOException {

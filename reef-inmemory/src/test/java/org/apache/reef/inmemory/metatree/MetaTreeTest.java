@@ -50,14 +50,14 @@ public class MetaTreeTest {
    * Test a newly-create file's fileMeta
    */
   @Test
-  public void testCreateFileInBaseAndTree() throws Exception {
+  public void testCreateFile() throws Exception {
     final String path = "/this/file";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
     final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
 
     // Create a file
-    metaTree.createFileInBaseAndTree(path, blockSize, baseReplication);
+    metaTree.createFile(path, blockSize, baseReplication);
     verify(baseFsClient, times(1)).create(anyString(), anyShort(), anyLong());
 
     // Should not load meta as the fileMeta is already created(cached)
@@ -77,7 +77,7 @@ public class MetaTreeTest {
    * Test concurrent creation of files under the same directory
    */
   @Test
-  public void testConcurrentCreateFileInBaseAndTree() throws Throwable {
+  public void testConcurrentCreateFile() throws Throwable {
     final String directoryPath = "/this/dir";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
@@ -93,7 +93,7 @@ public class MetaTreeTest {
         public void run() {
           try {
             final String filePath = directoryPath + "/" + String.valueOf(index);
-            metaTree.createFileInBaseAndTree(filePath, blockSize, baseReplication);
+            metaTree.createFile(filePath, blockSize, baseReplication);
           } catch (final IOException e) {
             throw new RuntimeException(e);
           }

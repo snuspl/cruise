@@ -154,7 +154,11 @@ public class MetaTree {
     }
   }
 
-  public void createFileInBaseAndTree(final String path, final long blockSize, final short baseFsReplication) throws IOException {
+  /**
+   * First, create a file in HDFS
+   * Second, create a file in the tree
+   */
+  public void createFile(final String path, final long blockSize, final short baseFsReplication) throws IOException {
     // Exploit the lease in HDFS to prevent concurrent create(and thus write) of a file
     baseFsClient.create(path, baseFsReplication, blockSize); // TODO: hold onto the outputstream (close later)
 
@@ -171,23 +175,6 @@ public class MetaTree {
       fileIdToFileMeta.put(fileId, fileMeta);
     } finally {
       LOCK.writeLock().unlock();
-    }
-  }
-
-  /**
-   * Add newly written blocks reported by CacheNodes
-   */
-  public void addNewWrittenBlockToFileMetaInTree(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
-    final FileMeta fileMeta = fileIdToFileMeta.get(blockId.getFileId());
-    if (fileMeta != null) {
-        final List<NodeInfo> nodeList = Arrays.asList(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
-        final BlockMeta blockMeta = new BlockMeta(blockId.getFileId(), blockId.getOffset(), fileMeta.getBlockSize(), nodeList); // TODO: check replication when we implement replicated write
-      synchronized (fileMeta) {
-        fileMeta.setFileSize(fileMeta.getFileSize() + nWritten);
-        fileMeta.addToBlocks(blockMeta);
-      }
-    } else {
-      // TODO: we may want to return boolean here for upstream handling
     }
   }
 
@@ -301,6 +288,22 @@ public class MetaTree {
     }
   }
 
+  /**
+   * Add newly written blocks reported by CacheNodes
+   */
+  public void addNewWrittenBlockToFileMetaInTree(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
+    final FileMeta fileMeta = fileIdToFileMeta.get(blockId.getFileId());
+    if (fileMeta != null) {
+      final List<NodeInfo> nodeList = Arrays.asList(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
+      final BlockMeta blockMeta = new BlockMeta(blockId.getFileId(), blockId.getOffset(), fileMeta.getBlockSize(), nodeList); // TODO: check replication when we implement replicated write
+      synchronized (fileMeta) {
+        fileMeta.setFileSize(fileMeta.getFileSize() + nWritten);
+        fileMeta.addToBlocks(blockMeta);
+      }
+    } else {
+      // TODO: we may want to return boolean here for upstream handling
+    }
+  }
 
   //////// Helper Methods
 
@@ -313,8 +316,11 @@ public class MetaTree {
   private Entry getEntryInTree(final String path) {
     // 1. Search for the parent directory
     final String[] entryNames = StringUtils.split(path, '/');
+    if (entryNames.length == 0) {
+      return ROOT;
+    }
     DirectoryEntry curDirectory = ROOT;
-    for (int i = 0; i < entryNames.length-1; i++) { // TODO: Handle cornercase when length==0
+    for (int i = 0; i < entryNames.length-1; i++) {
       final String entryName = entryNames[i];
       boolean childDirectoryFound = false;
       for (final Entry child : curDirectory.getChildren()){
