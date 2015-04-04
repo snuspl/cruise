@@ -74,7 +74,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public FileMeta load(final String path, final String clientHostname) throws FileNotFoundException, TException {
+  public FileMeta getFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
     try {
       final FileMeta fileMeta = metaManager.load(path);
       return locationSorter.sortMeta(fileMeta, clientHostname);
