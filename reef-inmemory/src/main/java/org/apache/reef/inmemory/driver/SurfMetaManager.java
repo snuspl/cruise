@@ -56,7 +56,7 @@ public final class SurfMetaManager {
     return this.metaTree.getFileMeta(path);
   }
 
-  public void create(final String path, final long blockSize, final short baseFsReplication) throws FileAlreadyExistsException {
+  public void create(final String path, final long blockSize, final short baseFsReplication) throws IOException {
     this.metaTree.createFileInBaseAndTree(path, blockSize, baseFsReplication);
   }
 

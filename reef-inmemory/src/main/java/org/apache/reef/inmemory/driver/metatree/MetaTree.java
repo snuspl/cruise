@@ -155,14 +155,9 @@ public class MetaTree {
     }
   }
 
-  public void createFileInBaseAndTree(final String path, final long blockSize, final short baseFsReplication) throws FileAlreadyExistsException { // TODO: finer-grained throw?
+  public void createFileInBaseAndTree(final String path, final long blockSize, final short baseFsReplication) throws IOException {
     // Exploit the lease in HDFS to prevent concurrent create(and thus write) of a file
-    try {
-      baseFsClient.create(path, baseFsReplication, blockSize); // TODO: hold onto the outputstream (close later)
-    } catch (IOException e) {
-      LOG.log(Level.SEVERE, "Failed to create a file to the BaseFS : " + path, e.getCause()); // TODO: FileAlreadyExists
-      throw new FileAlreadyExistsException(e.getMessage());
-    }
+    baseFsClient.create(path, baseFsReplication, blockSize); // TODO: hold onto the outputstream (close later)
 
     final FileMeta fileMeta = new FileMeta();
     final long fileId = atomicFileId.incrementAndGet();
