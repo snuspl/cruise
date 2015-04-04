@@ -9,6 +9,9 @@ namespace java org.apache.reef.inmemory.common.service
  * interface.
  */
 service SurfMetaService {
+
+  //////////////////// Called by SurfFS
+
   /**
    * Get the list of blocks and locations for the file.
    * The returned list will be sorted by locality w.r.t. clientHostname.
@@ -25,6 +28,9 @@ service SurfMetaService {
    */
   void create(1:string path, 2:i64 blockSize, 3:i16 baseFsReplication)
 
+  /**
+   * Rename a directory or a file
+   */
   bool rename(1:string src, 2:string dst)
 
   /**
@@ -38,6 +44,14 @@ service SurfMetaService {
   bool mkdirs(1:string path)
 
   /**
+   * List the MetaTreeEntries of the files/directories at the path
+   **/
+  list<entity.FileMetaStatus> listFileMetaStatus(1:string path)
+
+
+  //////////////////// Called by SurfFSOutputStream
+
+  /**
    * Allocate a new Block and return the Block's Metadata (CacheNode, Replication Policy, etc) of the block to write data.
    */
   entity.WriteableBlockMeta allocateBlock(1:string path, 2:i64 offset, 3:string clientAddress)
@@ -46,9 +60,4 @@ service SurfMetaService {
    * Announce to the Meta server that the file is complete
    */
   bool completeFile(1:string path, 2:i64 fileSize)
-
-  /**
-   * List the MetaTreeEntries of the files/directories at the path
-   **/
-  list<entity.FileMetaStatus> listFileMetaStatus(1:string path)
 }
