@@ -6,6 +6,7 @@ import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
 import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
+import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.driver.metatree.MetaTree;
 import org.apache.thrift.TException;
 
@@ -56,7 +57,7 @@ public final class SurfMetaManager {
    * @return {@code null} if the metadata is not found.
    * TODO User should be specified properly
    */
-  public FileMeta getFileMeta(final String path) {
+  public FileMeta getFileMeta(final String path) throws FileNotFoundException {
     return this.metaTree.getFileMeta(path);
   }
 

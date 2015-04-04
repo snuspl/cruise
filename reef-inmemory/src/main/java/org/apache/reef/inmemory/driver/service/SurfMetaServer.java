@@ -73,6 +73,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     this.numThreads = numThreads;
   }
 
+  /**
+   * Return the fileMeta from MetaTree, loading it from HDFS if not exists
+   */
   @Override
   public FileMeta getFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
     try {
@@ -137,39 +140,28 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public WriteableBlockMeta allocateBlock(final String path,
                                           final long offset,
                                           final String clientAddress) throws TException {
-    if (!exists(path)) {
-      LOG.log(Level.SEVERE, "File {0} is not found", path);
-      throw new FileNotFoundException();
-    } else {
-      try {
-        final FileMeta meta = metaManager.getFileMeta(path);
-        final Action action = replicationPolicy.getReplicationAction(path, meta);
-        final int replication = action.getReplication(); // TODO: might be better to be of type 'short' in avro
-        final List<NodeInfo> selected = writingCacheSelector.select(cacheNodeManager.getCaches(), replication);
-        final boolean pin = action.getPin();
-        final BlockMeta blockMeta = new BlockMeta(meta.getFileId(), offset, meta.getBlockSize(), selected);
-
-        return new WriteableBlockMeta(blockMeta, pin, (short)replication);
-      } catch (Throwable throwable) {
-        throw new TException("Fail to resolve replication policy", throwable);
-      }
+    try {
+      final FileMeta meta = metaManager.getFileMeta(path);
+      final Action action = replicationPolicy.getReplicationAction(path, meta);
+      final int replication = action.getReplication(); // TODO: might be better to be of type 'short' in avro
+      final List<NodeInfo> selected = writingCacheSelector.select(cacheNodeManager.getCaches(), replication);
+      final boolean pin = action.getPin();
+      final BlockMeta blockMeta = new BlockMeta(meta.getFileId(), offset, meta.getBlockSize(), selected);
+      return new WriteableBlockMeta(blockMeta, pin, (short) replication);
+    } catch (FileNotFoundException e) {
+      throw new FileNotFoundException(e);
     }
   }
 
   @Override
   public boolean completeFile(final String path, final long fileSize) throws TException {
-    if (!exists(path)) {
-      LOG.log(Level.SEVERE, "File {0} is not found", path);
-      throw new FileNotFoundException();
-    }
-
     try {
       final FileMeta meta = metaManager.getFileMeta(path);
       LOG.log(Level.INFO, "Compare the file size of {0} : Expected {1} / Actual {2}",
         new Object[] {path, fileSize, meta.getFileSize()});
       return fileSize == meta.getFileSize();
-    } catch (Throwable throwable) {
-      throw new TException("Fail to complete file" + path, throwable);
+    } catch (FileNotFoundException e) {
+      throw new FileNotFoundException(e);
     }
   }
 

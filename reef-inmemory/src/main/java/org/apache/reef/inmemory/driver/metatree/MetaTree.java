@@ -7,6 +7,7 @@ import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
+import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.driver.BaseFsClient;
 import org.apache.reef.inmemory.driver.CacheNode;
@@ -53,14 +54,14 @@ public class MetaTree {
    * @param path to the FileMetas
    * @return null if no filmeta for the exact path exists
    */
-  public FileMeta getFileMeta(final String path) {
+  public FileMeta getFileMeta(final String path) throws FileNotFoundException {
     LOCK.readLock().lock();
     try {
       final Entry entry = getEntryInTree(path);
       if (entry != null && !entry.isDirectory()) {
         return ((FileEntry) entry).getFileMeta();
       } else {
-        return null;
+        throw new FileNotFoundException("FileMeta does not exist in Surf MetaTree");
       }
     } finally {
       LOCK.readLock().unlock();
@@ -118,10 +119,7 @@ public class MetaTree {
 
   //////// Write-Lock Methods: Operations that update the tree
 
-  /**
-   * Synchronized to avoid creating duplicate files
-   */
-  public synchronized FileMeta getOrLoadFileMeta(final String path) throws IOException {
+  public FileMeta getOrLoadFileMeta(final String path) throws IOException {
     LOCK.readLock().lock();
     try {
       final Entry entry = getEntryInTree(path);
@@ -138,6 +136,11 @@ public class MetaTree {
 
     LOCK.writeLock().lock();
     try {
+      final Entry entry = getEntryInTree(path);
+      if (entry != null && !entry.isDirectory()) {
+        return ((FileEntry) entry).getFileMeta();
+      }
+
       addFileMetaToTree(path, fileMeta);
       fileIdToFileMeta.put(fileId, fileMeta);
       return fileMeta;
