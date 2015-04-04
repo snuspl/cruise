@@ -51,8 +51,9 @@ public class MetaTree {
   /**
    * Get the filemeta for the exact path (no directory allowed)
    *
-   * @param path to the FileMetas
-   * @return null if no filmeta for the exact path exists
+   * @param path to the file
+   * @return the FileMeta of the path in tree
+   * @throws FileNotFoundException if no FileMeta for the exact path exists in tree
    */
   public FileMeta getFileMeta(final String path) throws FileNotFoundException {
     LOCK.readLock().lock();
@@ -69,12 +70,13 @@ public class MetaTree {
   }
 
   /**
-   * List entries at a path
+   * List entries at path
    *
    * @param path to a directory or a file
-   * @return null if no such path exists
+   * @return a list of FileMetaStatus
+   * @throws FileNotFoundException if no such directory or file exists for the path
    */
-  public List<FileMetaStatus> listFileMetaStatus(final String path) {
+  public List<FileMetaStatus> listFileMetaStatus(final String path) throws FileNotFoundException {
     LOCK.readLock().lock();
     try {
       final Entry entry = getEntryInTree(path);
@@ -101,7 +103,7 @@ public class MetaTree {
           return Arrays.asList(new FileMetaStatus(path, fileMeta));
         }
       } else {
-        return null;
+        throw new FileNotFoundException("No directory or file found for the path " + path);
       }
     } finally {
       LOCK.readLock().unlock();
@@ -119,6 +121,9 @@ public class MetaTree {
 
   //////// Write-Lock Methods: Operations that update the tree
 
+  /**
+   * Get FileMeta from the tree or load it from Base if not exists
+   */
   public FileMeta getOrLoadFileMeta(final String path) throws IOException {
     LOCK.readLock().lock();
     try {
@@ -136,6 +141,7 @@ public class MetaTree {
 
     LOCK.writeLock().lock();
     try {
+      // Check the tree again as multiple threads could have executed baseFsClient.getFileStatus(path) for the same path
       final Entry entry = getEntryInTree(path);
       if (entry != null && !entry.isDirectory()) {
         return ((FileEntry) entry).getFileMeta();

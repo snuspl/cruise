@@ -77,9 +77,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
    * Return the fileMeta from MetaTree, loading it from HDFS if not exists
    */
   @Override
-  public FileMeta getFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
+  public FileMeta getOrLoadFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
     try {
-      final FileMeta fileMeta = metaManager.load(path);
+      final FileMeta fileMeta = metaManager.getOrLoadFileMeta(path);
       return locationSorter.sortMeta(fileMeta, clientHostname);
     } catch (IOException e) {
       throw new FileNotFoundException(e.getMessage());
@@ -92,7 +92,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public List<FileMetaStatus> listFileMetaStatus(String path) throws TException {
+  public List<FileMetaStatus> listFileMetaStatus(String path) throws FileNotFoundException, TException {
     return metaManager.listFileMetaStatus(path);
   }
 

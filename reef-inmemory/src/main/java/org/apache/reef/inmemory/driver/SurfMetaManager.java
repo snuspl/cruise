@@ -39,7 +39,7 @@ public final class SurfMetaManager {
     this.metaTree = metaTree;
   }
 
-  public FileMeta load(final String path) throws IOException {
+  public FileMeta getOrLoadFileMeta(final String path) throws IOException {
     final FileMeta fileMeta = this.metaTree.getOrLoadFileMeta(path);
     return this.fileMetaUpdater.update(path, fileMeta); // TODO: modifying fileMeta without lock might cause problems
   }
@@ -48,15 +48,10 @@ public final class SurfMetaManager {
     return this.metaTree.exists(path);
   }
 
-  public List<FileMetaStatus> listFileMetaStatus(final String path) throws TException {
+  public List<FileMetaStatus> listFileMetaStatus(final String path) throws FileNotFoundException {
     return this.metaTree.listFileMetaStatus(path);
   }
 
-  /**
-   * Retrieve metadata of the file.
-   * @return {@code null} if the metadata is not found.
-   * TODO User should be specified properly
-   */
   public FileMeta getFileMeta(final String path) throws FileNotFoundException {
     return this.metaTree.getFileMeta(path);
   }
