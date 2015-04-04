@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.driver;
 
 import org.apache.reef.inmemory.common.entity.FileMeta;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 /**

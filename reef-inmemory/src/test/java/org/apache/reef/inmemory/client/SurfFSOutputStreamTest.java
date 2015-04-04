@@ -1,8 +1,8 @@
 package org.apache.reef.inmemory.client;
 
 import org.apache.reef.inmemory.common.entity.BlockMeta;
-import org.apache.reef.inmemory.common.entity.WriteableBlockMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
+import org.apache.reef.inmemory.common.entity.WriteableBlockMeta;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;

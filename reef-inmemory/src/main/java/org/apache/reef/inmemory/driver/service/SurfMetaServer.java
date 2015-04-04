@@ -1,22 +1,22 @@
 package org.apache.reef.inmemory.driver.service;
 
+import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.entity.*;
 import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
-import org.apache.reef.inmemory.driver.locality.LocationSorter;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.remote.NetUtils;
-import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.AvroReplicationSerializer;
 import org.apache.reef.inmemory.common.replication.Rules;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
-import org.apache.reef.inmemory.driver.CacheNodeManager;
 import org.apache.reef.inmemory.driver.CacheNode;
+import org.apache.reef.inmemory.driver.CacheNodeManager;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
+import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.remote.NetUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;

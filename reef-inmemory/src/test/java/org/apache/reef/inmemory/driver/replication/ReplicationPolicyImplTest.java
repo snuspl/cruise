@@ -2,7 +2,10 @@ package org.apache.reef.inmemory.driver.replication;
 
 import com.google.common.collect.Lists;
 import org.apache.reef.inmemory.common.entity.FileMeta;
-import org.apache.reef.inmemory.common.replication.*;
+import org.apache.reef.inmemory.common.replication.Action;
+import org.apache.reef.inmemory.common.replication.Condition;
+import org.apache.reef.inmemory.common.replication.Rule;
+import org.apache.reef.inmemory.common.replication.Rules;
 import org.junit.Before;
 import org.junit.Test;
 

@@ -2,11 +2,11 @@ package org.apache.reef.inmemory.task;
 
 
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.wake.EventHandler;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.exceptions.MemoryLimitException;
 import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.io.IOException;

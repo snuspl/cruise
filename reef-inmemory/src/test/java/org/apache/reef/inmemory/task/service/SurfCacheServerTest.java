@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.task.service;
 
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;

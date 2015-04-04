@@ -1,11 +1,11 @@
 package org.apache.reef.inmemory.driver.replication;
 
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.exceptions.BindException;
 import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.replication.*;
 import org.apache.reef.inmemory.driver.service.MetaServerParameters;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.exceptions.BindException;
 
 import javax.inject.Inject;
 import java.io.IOException;

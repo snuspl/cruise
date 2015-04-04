@@ -2,18 +2,19 @@ package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
 import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.CacheStatistics;
+import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.wake.EStage;
-import org.apache.reef.inmemory.common.CacheStatistics;
-import org.apache.reef.inmemory.common.CacheUpdates;
 
 import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

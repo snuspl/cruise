@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.inmemory.driver.CacheNode;
 
 import javax.inject.Inject;

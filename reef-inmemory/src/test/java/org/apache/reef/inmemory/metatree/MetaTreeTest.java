@@ -3,21 +3,21 @@ package org.apache.reef.inmemory.metatree;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
-import org.apache.reef.inmemory.driver.*;
+import org.apache.reef.inmemory.driver.BaseFsClient;
 import org.apache.reef.inmemory.driver.metatree.MetaTree;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.*;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyShort;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.times;
 
 /**
  * TODO: Tests for many other methods are missing & Fix corner cases such as file right under ROOT(e.g. "/hi.txt")

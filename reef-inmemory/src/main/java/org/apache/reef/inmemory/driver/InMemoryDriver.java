@@ -4,14 +4,14 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskMessage;
+import org.apache.reef.inmemory.driver.service.MetaServerParameters;
+import org.apache.reef.inmemory.driver.service.SurfMetaServer;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EStage;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 import org.apache.reef.wake.time.event.StopTime;
-import org.apache.reef.inmemory.driver.service.MetaServerParameters;
-import org.apache.reef.inmemory.driver.service.SurfMetaServer;
 
 import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;
