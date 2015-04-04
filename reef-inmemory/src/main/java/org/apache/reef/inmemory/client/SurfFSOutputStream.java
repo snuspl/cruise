@@ -166,7 +166,7 @@ public final class SurfFSOutputStream extends OutputStream {
       } else if (curBlockInnerOffset + len == blockSize) {
         sendPacket(ByteBuffer.wrap(b, start, len), len, true);
       } else {
-        final int possibleLen = (int) (blockSize - curBlockInnerOffset); // this must be int because "possibleLen <= len"
+        final int possibleLen = (int) (blockSize - curBlockInnerOffset); // this must be int because "possibleLen < len"
         sendPacket(ByteBuffer.wrap(b, start, possibleLen), possibleLen, true);
         flushBuf(b, start + possibleLen, end, close); // Create another packet with the leftovers
       }
