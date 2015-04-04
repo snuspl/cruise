@@ -372,10 +372,14 @@ public class MetaTree {
       for (indexForExisting = 0; indexForExisting < entryNames.length; indexForExisting++) {
         boolean childDirectoryFound = false;
         for (final Entry child : curDirectory.getChildren()) {
-          if (child.isDirectory() && child.getName().equals(entryNames[indexForExisting])) {
-            curDirectory = (DirectoryEntry) child; // we assume that such directory exists in baseFS
-            childDirectoryFound = true;
-            break;
+          if (child.getName().equals(entryNames[indexForExisting])) {
+            if (child.isDirectory()) {
+              curDirectory = (DirectoryEntry) child; // we assume that such directory exists in baseFS (only first-time consistency guarantee)
+              childDirectoryFound = true;
+              break;
+            } else {
+              throw new IOException("There is a file with the same name as a subdirectory of the path"); // TODO: replace this with a Surf-specific Thrift exception
+            }
           }
         }
 
