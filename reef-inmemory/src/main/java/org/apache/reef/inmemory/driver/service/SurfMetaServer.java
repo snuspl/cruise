@@ -97,12 +97,11 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public void create(final String path, final long blockSize, final short baseFsReplication) throws FileAlreadyExistsException, TException {
+  public void create(final String path, final long blockSize, final short baseFsReplication) throws TException {
     try {
       metaManager.create(path, blockSize, baseFsReplication);
-    } catch (FileAlreadyExistsException e) {
-      LOG.log(Level.SEVERE, "Create failed for " + path, e);
-      throw new FileAlreadyExistsException(e);
+    } catch (IOException e) {
+      throw new TException(e);
     }
   }
 

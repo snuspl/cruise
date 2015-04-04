@@ -275,7 +275,7 @@ public class MetaTree {
             }
           } else {
             entry.getParent().removeChild(entry);
-            fileIdToFileMeta.remove(((FileEntry)entry).getFileMeta().getFileId());
+            fileIdToFileMeta.remove(((FileEntry) entry).getFileMeta().getFileId());
             return true;
           }
         } else {

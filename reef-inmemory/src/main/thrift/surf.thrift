@@ -23,7 +23,7 @@ service SurfMetaService {
   /**
    * Register the Filemeta with given path and blockSize
    */
-  void create(1:string path, 2:i64 blockSize, 3:i16 baseFsReplication) throws (1: exceptions.FileAlreadyExistsException fae)
+  void create(1:string path, 2:i64 blockSize, 3:i16 baseFsReplication)
 
   bool rename(1:string src, 2:string dst)
 
