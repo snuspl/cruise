@@ -148,7 +148,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     }
   }
 
-  // TODO: find out whether Thrift RPC does a round-trip for void-return methods (i.e. does client have to wait till ack from task for each writeData)
+  // TODO: replace this synchronous call with an asynchronous protocol for better performance
   @Override
   public void writeData(final long fileId, final long blockOffset, final long innerOffset, final ByteBuffer buf, final boolean isLastPacket) throws TException {
     final BlockId blockId = new BlockId(fileId, blockOffset);

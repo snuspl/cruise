@@ -110,7 +110,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       return metaManager.mkdirs(path);
     } catch (IOException e) {
       LOG.log(Level.SEVERE, "mkdirs failed at baseFS for " + path, e);
-      throw new TException(e.getCause());
+      throw new TException(e);
     }
   }
 
@@ -120,7 +120,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       return metaManager.rename(src, dst);
     } catch (IOException e) {
       LOG.log(Level.SEVERE, "rename failed at baseFS for " + src + " to " + dst, e);
-      throw new TException(e.getCause());
+      throw new TException(e);
     }
   }
 
@@ -130,7 +130,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       return metaManager.remove(path, recursive);
     } catch (IOException e) {
       LOG.log(Level.SEVERE, "remove failed at baseFS for " + path, e);
-      throw new TException(e.getCause());
+      throw new TException(e);
     }
   }
 
