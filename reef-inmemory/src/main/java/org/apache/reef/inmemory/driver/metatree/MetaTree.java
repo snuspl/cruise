@@ -6,7 +6,6 @@ import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
-import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.driver.BaseFsClient;

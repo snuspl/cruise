@@ -2,7 +2,6 @@ package org.apache.reef.inmemory.driver.service;
 
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.common.entity.*;
-import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.AvroReplicationSerializer;

@@ -5,10 +5,8 @@ import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
-import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.driver.metatree.MetaTree;
-import org.apache.thrift.TException;
 
 import javax.inject.Inject;
 import java.io.IOException;
