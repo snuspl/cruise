@@ -351,6 +351,11 @@ public final class SurfFS extends FileSystem {
     }
   }
 
+  /**
+   * This operation is not yet supported by Surf
+   * Also, no fallback procedure is provided
+   * @throws UnsupportedOperationException
+   */
   @Override
   public FSDataOutputStream append(final Path f, final int bufferSize, final Progressable progress) throws IOException {
     throw new UnsupportedOperationException("Append is not supported yet.");
