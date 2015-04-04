@@ -217,7 +217,7 @@ public class MetaTree {
             if (srcEntry.isDirectory() == dstEntry.isDirectory()) {
               final DirectoryEntry dstParent = dstEntry.getParent();
               dstParent.removeChild(dstEntry);
-              srcEntry.rename(dstEntry);
+              srcEntry.rename(dstEntry.getName(), dstEntry.getParent());
               return true;
             } else {
               return false; // src and dst should be either both file or directory

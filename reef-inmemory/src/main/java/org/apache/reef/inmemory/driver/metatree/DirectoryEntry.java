@@ -31,14 +31,6 @@ public class DirectoryEntry implements Entry {
   }
 
   @Override
-  public void rename(final Entry dstEntry) {
-    this.parent.removeChild(this);
-    this.name = dstEntry.getName();
-    this.parent = dstEntry.getParent();
-    this.parent.addChild(this);
-  }
-
-  @Override
   public void rename(final String dstFileName, final DirectoryEntry dstParent) {
     this.parent.removeChild(this);
     this.name = dstFileName;

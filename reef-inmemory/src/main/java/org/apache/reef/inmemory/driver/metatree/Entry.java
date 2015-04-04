@@ -5,8 +5,6 @@ public interface Entry {
 
   public DirectoryEntry getParent();
 
-  public void rename(final Entry dstEntry);
-
   public void rename(final String dstFileName, final DirectoryEntry dstParent);
 
   public boolean isDirectory();
