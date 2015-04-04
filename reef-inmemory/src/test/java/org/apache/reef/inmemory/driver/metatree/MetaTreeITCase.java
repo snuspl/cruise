@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory.metatree;
+package org.apache.reef.inmemory.driver.metatree;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -16,7 +16,6 @@ import org.apache.reef.inmemory.driver.CacheNodeManager;
 import org.apache.reef.inmemory.driver.TestUtils;
 import org.apache.reef.inmemory.driver.hdfs.BaseFsConstructor;
 import org.apache.reef.inmemory.driver.hdfs.HDFSClient;
-import org.apache.reef.inmemory.driver.metatree.MetaTree;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.junit.After;
 import org.junit.Before;
@@ -36,6 +35,8 @@ import static org.mockito.Mockito.when;
 public class MetaTreeITCase {
   private static final int blockSize = 512;
   private static final String TESTDIR = ITUtils.getTestDir();
+  private static final String EXISTING_DIR = TESTDIR + "/existing.dir";
+  private static final String EXISTING_FILE = TESTDIR + "/existing.file";
 
   private FileSystem hdfsClient;
   private MetaTree metaTree;
@@ -63,6 +64,8 @@ public class MetaTreeITCase {
 
     hdfsClient = ITUtils.getHdfs(hdfsConfig);
     hdfsClient.mkdirs(new Path(TESTDIR));
+    hdfsClient.mkdirs(new Path(EXISTING_DIR));
+    hdfsClient.create(new Path(EXISTING_FILE)).close();
 
     final FileSystem baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
     metaTree = new MetaTree(new HDFSClient(baseFs), new NullEventRecorder());
@@ -134,5 +137,15 @@ public class MetaTreeITCase {
     assertNotNull(fileMeta);
     assertEquals(blockSize, fileMeta.getBlockSize());
     assertEquals(chunkLength * numChunks, fileMeta.getFileSize());
+  }
+
+  @Test
+  public void testMkdirsForExistingDirectoryInBase() throws IOException {
+    metaTree.mkdirs(EXISTING_DIR); // should not fail
+  }
+
+  @Test(expected = IOException.class)
+  public void testMkdirsForExistingFileInBase() throws IOException {
+    metaTree.mkdirs(EXISTING_FILE); // should fail
   }
 }

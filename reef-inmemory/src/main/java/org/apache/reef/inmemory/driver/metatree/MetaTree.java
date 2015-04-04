@@ -146,8 +146,7 @@ public class MetaTree {
         return ((FileEntry) entry).getFileMeta();
       }
 
-      addFileMetaToTree(path, fileMeta);
-      fileIdToFileMeta.put(fileId, fileMeta);
+      registerNewFileMeta(path, fileMeta);
       return fileMeta;
     } finally {
       LOCK.writeLock().unlock();
@@ -171,8 +170,7 @@ public class MetaTree {
 
     LOCK.writeLock().lock();
     try {
-      addFileMetaToTree(path, fileMeta);
-      fileIdToFileMeta.put(fileId, fileMeta);
+      registerNewFileMeta(path, fileMeta);
     } finally {
       LOCK.writeLock().unlock();
     }
@@ -185,13 +183,8 @@ public class MetaTree {
   public boolean mkdirs(final String path) throws IOException {
     LOCK.writeLock().lock();
     try {
-      final boolean baseSuccess = baseFsClient.mkdirs(path);
-      if (baseSuccess) {
-        getOrCreateDirectoryRecursively(path);
-        return true;
-      } else {
-        return false;
-      }
+      createDirectoryRecursively(path);
+      return true;
     } finally {
       LOCK.writeLock().unlock();
     }
@@ -345,36 +338,71 @@ public class MetaTree {
     return null;
   }
 
-  private FileMeta addFileMetaToTree(final String path, final FileMeta fileMeta) {
+  private void addFileMetaToTree(final String path, final FileMeta fileMeta) throws IOException {
     final int index = path.lastIndexOf('/');
     final String parentName = path.substring(0, index);
     final String fileName = path.substring(index+1, path.length());
     final DirectoryEntry parentDirectory = getOrCreateDirectoryRecursively(parentName);
     parentDirectory.addChild(new FileEntry(fileName, parentDirectory, fileMeta));
-    return fileMeta;
   }
 
-  private DirectoryEntry getOrCreateDirectoryRecursively(final String path) {
-    final String[] entryNames = StringUtils.split(path, '/');
-    DirectoryEntry curDirectory = ROOT;
+  private DirectoryEntry getOrCreateDirectoryRecursively(final String path) throws IOException {
+    final Entry entry = getEntryInTree(path);
+    if (entry != null) {
+      if (entry.isDirectory()) {
+        return (DirectoryEntry)entry;
+      } else {
+        throw new IOException("Attempt to create a directory for a path for which a file already exists"); // TODO: replace this with a Surf-specific Thrift exception
+      }
+    } else {
+      return createDirectoryRecursively(path);
+    }
+  }
 
-    for (final String entryName : entryNames) {
-      boolean childDirectoryFound = false;
-      for (final Entry child : curDirectory.getChildren()) {
-        if (child.isDirectory() && child.getName().equals(entryName)) {
-          curDirectory = (DirectoryEntry)child;
-          childDirectoryFound = true;
+  /**
+   * First, create a directory in HDFS
+   * Second, create a directory in the tree
+   */
+  private DirectoryEntry createDirectoryRecursively(final String path) throws IOException {
+    final boolean baseSuccess = baseFsClient.mkdirs(path);
+    if (baseSuccess) {
+      final String[] entryNames = StringUtils.split(path, '/');
+      DirectoryEntry curDirectory = ROOT;
+      int indexForExisting;
+      for (indexForExisting = 0; indexForExisting < entryNames.length; indexForExisting++) {
+        boolean childDirectoryFound = false;
+        for (final Entry child : curDirectory.getChildren()) {
+          if (child.isDirectory() && child.getName().equals(entryNames[indexForExisting])) {
+            curDirectory = (DirectoryEntry) child; // we assume that such directory exists in baseFS
+            childDirectoryFound = true;
+            break;
+          }
+        }
+
+        if (!childDirectoryFound) {
           break;
         }
       }
 
-      if (!childDirectoryFound) {
-        final DirectoryEntry childDirectory = new DirectoryEntry(entryName, curDirectory);
+      // recursively mkdirs the rest of the directories
+      int indexForToBeCreated;
+      for (indexForToBeCreated = indexForExisting; indexForToBeCreated < entryNames.length; indexForToBeCreated++) {
+        LOG.log(Level.INFO, "BEFORE " + getTreeString(ROOT));
+        final DirectoryEntry childDirectory = new DirectoryEntry(entryNames[indexForToBeCreated], curDirectory);
         curDirectory.addChild(childDirectory);
         curDirectory = childDirectory;
+        LOG.log(Level.INFO, "AFTER " + getTreeString(ROOT));
       }
+      return curDirectory;
+    } else {
+      throw new IOException("baseFS.mkdirs returned false");
     }
-    return curDirectory;
+  }
+
+  private void registerNewFileMeta(final String path, final FileMeta fileMeta) throws IOException {
+    // The order of execution is important because addFileMetaToTree can fail
+    addFileMetaToTree(path, fileMeta);
+    fileIdToFileMeta.put(fileMeta.getFileId(), fileMeta);
   }
 
   /**

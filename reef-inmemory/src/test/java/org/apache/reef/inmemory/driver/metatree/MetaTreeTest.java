@@ -1,9 +1,8 @@
-package org.apache.reef.inmemory.metatree;
+package org.apache.reef.inmemory.driver.metatree;
 
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.driver.BaseFsClient;
-import org.apache.reef.inmemory.driver.metatree.MetaTree;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -39,6 +38,7 @@ public class MetaTreeTest {
     final String path = "/this/file";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     when(baseFsClient.getFileStatus(path)).thenReturn(new FileMeta());
+    when(baseFsClient.mkdirs(anyString())).thenReturn(true);
     final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
     metaTree.getOrLoadFileMeta(path);
     verify(baseFsClient, times(1)).getFileStatus(path);
@@ -54,6 +54,7 @@ public class MetaTreeTest {
     final String path = "/this/file";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
+    when(baseFsClient.mkdirs(anyString())).thenReturn(true);
     final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
 
     // Create a file
@@ -81,6 +82,7 @@ public class MetaTreeTest {
     final String directoryPath = "/this/dir";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
+    when(baseFsClient.mkdirs(anyString())).thenReturn(true);
     final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
     final int numFiles = 100;
     final ExecutorService executorService = Executors.newCachedThreadPool();
@@ -185,6 +187,7 @@ public class MetaTreeTest {
     final String path = "/this/file";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     when(baseFsClient.getFileStatus(path)).thenReturn(new FileMeta());
+    when(baseFsClient.mkdirs(anyString())).thenReturn(true);
     final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
 
     assertEquals(0, metaTree.unCacheAll());
