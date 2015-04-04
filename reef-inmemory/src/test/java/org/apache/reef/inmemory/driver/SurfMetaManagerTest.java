@@ -71,7 +71,7 @@ public final class SurfMetaManagerTest {
 
       when(metaTree.getOrLoadFileMeta(pathA)).thenReturn(fileMeta);
       when(fileMetaUpdater.update(eq(pathA), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
-      assertEquals(fileMeta, metaManager.load(pathA));
+      assertEquals(fileMeta, metaManager.getOrLoadFileMeta(pathA));
     }
 
     {
@@ -138,7 +138,7 @@ public final class SurfMetaManagerTest {
       when(metaTree.getOrLoadFileMeta(pathA)).thenReturn(fileMeta);
       when(fileMetaUpdater.update(eq(pathA), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
-      assertEquals(fileMeta, metaManager.load(pathA));
+      assertEquals(fileMeta, metaManager.getOrLoadFileMeta(pathA));
     }
 
     final String pathB = "/path/fileB";
@@ -152,7 +152,7 @@ public final class SurfMetaManagerTest {
       when(metaTree.getOrLoadFileMeta(pathB)).thenReturn(fileMeta);
       when(fileMetaUpdater.update(eq(pathB), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
-      assertEquals(fileMeta, metaManager.load(pathB));
+      assertEquals(fileMeta, metaManager.getOrLoadFileMeta(pathB));
     }
 
     final ExecutorService es = Executors.newFixedThreadPool(numNodes * 2);

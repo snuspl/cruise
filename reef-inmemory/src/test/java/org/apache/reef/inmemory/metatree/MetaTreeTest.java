@@ -1,7 +1,6 @@
 package org.apache.reef.inmemory.metatree;
 
 import org.apache.reef.inmemory.common.entity.FileMeta;
-import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.driver.BaseFsClient;
 import org.apache.reef.inmemory.driver.metatree.MetaTree;
@@ -95,7 +94,7 @@ public class MetaTreeTest {
           try {
             final String filePath = directoryPath + "/" + String.valueOf(index);
             metaTree.createFileInBaseAndTree(filePath, blockSize, baseReplication);
-          } catch (final FileAlreadyExistsException e) {
+          } catch (final IOException e) {
             throw new RuntimeException(e);
           }
         }
