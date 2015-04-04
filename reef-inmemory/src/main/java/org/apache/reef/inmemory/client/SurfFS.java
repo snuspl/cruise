@@ -291,7 +291,7 @@ public final class SurfFS extends FileSystem {
    * Fallback: No (TODO)
    *
    * Path cases
-   * 1. Emtpy directory: returns the filestatus of the directory
+   * 1. Empty directory: returns the filestatus of the directory
    * 2. Non-empty directory: returns the filestatuses of the directory's children
    * 3. File: returns the filestatus of the file
    *
