@@ -18,7 +18,7 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
- * TODO: Tests for many other methods are missing & Fix corner cases such as file right under ROOT(e.g. "/hi.txt")
+ * TODO: Tests for many other methods are missing & add failing cases, e.g., when trying to add a file that already exists, mkdir for directory that already exists.
  */
 public class MetaTreeTest {
   private EventRecorder eventRecorder;
