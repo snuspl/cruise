@@ -128,7 +128,7 @@ public final class FlexionDriver {
 
         int sequence = 0;
 
-        for(StageInfo stageInfo : stageInfoList) {
+        for (StageInfo stageInfo : stageInfoList) {
 
             CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
                     stageInfo.getCommGroupName(),
@@ -346,7 +346,7 @@ public final class FlexionDriver {
     }
 
     final private boolean isCtrlTaskId(String id){
-        if(ctrlTaskContextId==null) {
+        if (ctrlTaskContextId==null) {
             return false;
         } else {
             return ctrlTaskContextId.equals(id);

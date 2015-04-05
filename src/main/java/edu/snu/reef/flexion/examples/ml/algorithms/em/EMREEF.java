@@ -20,7 +20,8 @@ public class EMREEF {
                                 .bindImplementation(UserJobInfo.class, EMJobInfo.class)
                                 .bindImplementation(UserParameters.class, EMParameters.class)
                                 .build()
-                ));
+                )
+        );
     }
 
 

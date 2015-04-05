@@ -1,5 +1,7 @@
 package edu.snu.reef.flexion.examples.ml.algorithms.em;
 
+import edu.snu.reef.flexion.core.DataParser;
+import edu.snu.reef.flexion.core.ParseException;
 import edu.snu.reef.flexion.core.UserComputeTask;
 import edu.snu.reef.flexion.examples.ml.data.ClusterStats;
 import edu.snu.reef.flexion.examples.ml.data.ClusterSummary;
@@ -13,7 +15,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.*;
 
-public final class EMMainCmpTask extends UserComputeTask<List<Vector>>
+public final class EMMainCmpTask extends UserComputeTask
         implements DataBroadcastReceiver<List<ClusterSummary>>, DataReduceSender<Map<Integer, ClusterStats>> {
 
     /**
@@ -36,27 +38,36 @@ public final class EMMainCmpTask extends UserComputeTask<List<Vector>>
      */
     private final boolean isCovarianceDiagonal;
 
+    private final DataParser<List<Vector>> dataParser;
+
     /**
      * This class is instantiated by TANG
      * Constructs a single Compute Task for the EM algorithm
+     * @param dataParser
      * @param isCovarianceDiagonal  whether covariance matrices are diagonal or not
      */
     @Inject
-    public EMMainCmpTask(@Parameter(IsCovarianceShared.class) final boolean isCovarianceDiagonal) {
+    public EMMainCmpTask(
+            final DataParser<List<Vector>> dataParser,
+            @Parameter(IsCovarianceShared.class) final boolean isCovarianceDiagonal) {
+        this.dataParser = dataParser;
         this.isCovarianceDiagonal = isCovarianceDiagonal;
     }
 
     @Override
-    public void run(int iteration, List<Vector> data) {
+    public void initialize() throws ParseException {
+        points = dataParser.get();
+    }
 
-        points = data;
+    @Override
+    public void run(int iteration) {
 
         clusterToStats = new HashMap<>();
-        int numClusters = clusterSummaries.size();
+        final int numClusters = clusterSummaries.size();
 
         // Compute the partial statistics of each cluster
         for (final Vector vector : points) {
-            int dimension = vector.size();
+            final int dimension = vector.size();
             Matrix outProd = null;
 
             if (isCovarianceDiagonal) {
@@ -71,19 +82,19 @@ public final class EMMainCmpTask extends UserComputeTask<List<Vector>>
             double denominator = 0;
             double[] numerators = new double[numClusters];
             for (int i = 0; i < numClusters; i++) {
-                ClusterSummary clusterSummary = clusterSummaries.get(i);
-                Vector centroid = clusterSummary.getCentroid().getVector();
-                Matrix covariance = clusterSummary.getCovariance().getMatrix();
-                Double prior = clusterSummary.getPrior();
+                final ClusterSummary clusterSummary = clusterSummaries.get(i);
+                final Vector centroid = clusterSummary.getCentroid();
+                final Matrix covariance = clusterSummary.getCovariance();
+                final Double prior = clusterSummary.getPrior();
 
-                Vector differ = vector.minus(centroid);
+                final Vector differ = vector.minus(centroid);
                 numerators[i] = prior / Math.sqrt(covariance.determinant())
                         * Math.exp(differ.dot(inverse(covariance).times(differ))/(-2));
                 denominator += numerators[i];
             }
 
             for (int i = 0; i < numClusters; i++) {
-                double posterior = denominator == 0 ? 1.0 / numerators.length : numerators[i]/denominator;
+                final double posterior = denominator == 0 ? 1.0 / numerators.length : numerators[i]/denominator;
                 if (!clusterToStats.containsKey(i)) {
                     clusterToStats.put(i, new ClusterStats(times(outProd, posterior),
                             vector.times(posterior), posterior, false));
@@ -111,8 +122,8 @@ public final class EMMainCmpTask extends UserComputeTask<List<Vector>>
      * Compute the inverse of a given matrix
      */
     private final Matrix inverse(Matrix matrix) {
-        int dimension = matrix.rowSize();
-        QRDecomposition qr = new QRDecomposition(matrix);
+        final int dimension = matrix.rowSize();
+        final QRDecomposition qr = new QRDecomposition(matrix);
         return qr.solve(DiagonalMatrix.identity(dimension));
     }
 
@@ -124,7 +135,7 @@ public final class EMMainCmpTask extends UserComputeTask<List<Vector>>
     private final Matrix times (Matrix matrix, double scala) {
         final Matrix result = matrix.clone();
 
-        Iterator<MatrixSlice> sliceIterator=matrix.iterator();
+        final Iterator<MatrixSlice> sliceIterator=matrix.iterator();
         while (sliceIterator.hasNext()) {
             MatrixSlice slice=sliceIterator.next();
             int row = slice.index();

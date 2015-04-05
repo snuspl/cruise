@@ -1,5 +1,8 @@
 package edu.snu.reef.flexion.examples.ml.data;
 
+import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.Vector;
+
 import java.util.Formatter;
 import java.util.Locale;
 
@@ -9,30 +12,26 @@ import java.util.Locale;
  */
 public final class ClusterSummary {
 
-    private final int clusterID;
     private final double prior;
-    private final Centroid centroid;
-    private final Covariance covariance;
+    private final Vector centroid;
+    private final Matrix covariance;
 
 
-    public ClusterSummary(int clusterID, double prior, Centroid centroid, Covariance covariance) {
-        this.clusterID = clusterID;
+    public ClusterSummary(double prior, Vector centroid, Matrix covariance) {
         this.prior = prior;
         this.centroid = centroid;
         this.covariance = covariance;
     }
 
-    public final int getClusterID() { return clusterID; }
-
     public final double getPrior() {
         return prior;
     }
 
-    public final Centroid getCentroid() {
+    public final Vector getCentroid() {
         return centroid;
     }
 
-    public final Covariance getCovariance() {
+    public final Matrix getCovariance() {
         return covariance;
     }
 
@@ -42,14 +41,14 @@ public final class ClusterSummary {
         try (final Formatter formatter = new Formatter(b, Locale.US)) {
             formatter.format("Prior probability: %f\n, ", prior);
             formatter.format("Centroid: ");
-            for (int i = 0; i < centroid.vector.size(); ++i) {
-                formatter.format("%1.3f, ", centroid.vector.get(i));
+            for (int i = 0; i < centroid.size(); ++i) {
+                formatter.format("%1.3f, ", centroid.get(i));
             }
             formatter.format("\n");
             formatter.format("Covariance:, ");
-            for (int i = 0; i < covariance.getMatrix().rowSize(); ++i) {
-                for (int j = 0; j < covariance.getMatrix().columnSize(); ++j) {
-                        formatter.format("%1.3f, ", covariance.getMatrix().get(i, j));
+            for (int i = 0; i < covariance.rowSize(); ++i) {
+                for (int j = 0; j < covariance.columnSize(); ++j) {
+                        formatter.format("%1.3f, ", covariance.get(i, j));
                 }
                 formatter.format("\n");
             }

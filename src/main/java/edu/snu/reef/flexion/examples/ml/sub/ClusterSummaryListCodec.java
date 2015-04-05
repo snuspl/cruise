@@ -15,9 +15,7 @@
  */
 package edu.snu.reef.flexion.examples.ml.sub;
 
-import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.data.ClusterSummary;
-import edu.snu.reef.flexion.examples.ml.data.Covariance;
 import edu.snu.reef.flexion.examples.ml.parameters.IsCovarianceDiagonal;
 import org.apache.mahout.math.*;
 import org.apache.reef.io.serialization.Codec;
@@ -43,36 +41,36 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
     @Override
     public final byte[] encode(final List<ClusterSummary> list) {
 
-        int numClusters = list.size();
+        final int numClusters = list.size();
         int dimension = 0;
         if (numClusters > 0) {
-            dimension = list.get(0).getCentroid().dimension();
+            dimension = list.get(0).getCentroid().size();
         }
 
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE * 2 // for dimension & number of clusters
-                + Integer.SIZE * numClusters// for cluster id
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream(
+                Integer.SIZE * 2 // for dimension and the number of clusters
                 + Double.SIZE * numClusters // for prior
                 + Double.SIZE * dimension * numClusters// for centroids
-                + Double.SIZE * (isDiagonalCovariance? dimension : dimension*dimension) * numClusters); // for covariance matrices
+                + Double.SIZE * (isDiagonalCovariance?
+                        dimension : dimension*dimension) * numClusters); // for covariance matrices
 
         try (final DataOutputStream daos = new DataOutputStream(baos)) {
             daos.writeInt(numClusters);
             daos.writeInt(dimension);
 
             for (final ClusterSummary clusterSummary: list) {
-                daos.writeInt(clusterSummary.getClusterID());
                 daos.writeDouble(clusterSummary.getPrior());
                 for (int i = 0; i < dimension; i++) {
-                    daos.writeDouble(clusterSummary.getCentroid().getVector().get(i));
+                    daos.writeDouble(clusterSummary.getCentroid().get(i));
                 }
                 if (isDiagonalCovariance) {
                     for (int i=0; i<dimension; i++) {
-                        daos.writeDouble(clusterSummary.getCovariance().getMatrix().get(i, i));
+                        daos.writeDouble(clusterSummary.getCovariance().get(i, i));
                     }
                 } else {
                     for (int i=0; i<dimension; i++) {
                         for (int j=0; j<dimension; j++) {
-                            daos.writeDouble(clusterSummary.getCovariance().getMatrix().get(i, j));
+                            daos.writeDouble(clusterSummary.getCovariance().get(i, j));
                         }
                     }
                 }
@@ -95,7 +93,6 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
             final int dimension = dais.readInt();
 
             for (int i = 0; i < numClusters; i++) {
-                final int id = dais.readInt();
                 final double prior = dais.readDouble();
                 final Vector vector = new DenseVector(dimension);
                 for (int j = 0; j < dimension; j++) {
@@ -115,7 +112,7 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
                         }
                     }
                 }
-                resultList.add(id, new ClusterSummary(id, prior, new Centroid(id, vector), new Covariance(id, matrix)));
+                resultList.add(new ClusterSummary(prior, vector, matrix));
             }
         } catch (final IOException e) {
             throw new RuntimeException(e.getCause());

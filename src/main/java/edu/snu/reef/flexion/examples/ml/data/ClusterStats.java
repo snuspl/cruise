@@ -106,13 +106,13 @@ public final class ClusterStats implements Serializable {
         final Vector mean = computeMean();
         final Matrix covariance = outProdSum.clone();
 
-        Iterator<MatrixSlice> sliceIterator=outProdSum.iterator();
+        final Iterator<MatrixSlice> sliceIterator=outProdSum.iterator();
         while (sliceIterator.hasNext()) {
-            MatrixSlice slice=sliceIterator.next();
+            final MatrixSlice slice=sliceIterator.next();
             int row = slice.index();
             for (Vector.Element e : slice.nonZeroes()) {
-                int col=e.index();
-                double squaredSum = e.get();
+                final int col=e.index();
+                final double squaredSum = e.get();
                 covariance.set(row, col, squaredSum/probSum - mean.get(row) * mean.get(col));
             }
         }

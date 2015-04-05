@@ -20,17 +20,15 @@ public abstract class UserControllerTask {
     /**
      * Initialize a user-defined controller task.
      * Results of the previous task can be retrieved from the given key-value store
-     * @param keyValueStore
      */
-    public void initialize(KeyValueStore keyValueStore) {
+    public void initialize() {
     }
 
     /**
      * Clean up a user-defined controller task
      * Results of the current task can be passed to the next task through the given key-value store
-     * @param keyValueStore
      */
-    public void cleanup(KeyValueStore keyValueStore) {
+    public void cleanup() {
     }
 
     public abstract boolean isTerminated(int iteration);

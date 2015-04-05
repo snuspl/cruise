@@ -42,10 +42,17 @@ public final class ClusteringDataParser implements DataParser<List<Vector>> {
     @Override
     public final void parse() {
 
-        List<Vector> points = new ArrayList<>();
+        final List<Vector> points = new ArrayList<>();
 
         for (final Pair<LongWritable, Text> keyValue : dataSet) {
-            String[] split = keyValue.second.toString().trim().split("\\s+");
+
+            final String text = keyValue.second.toString().trim();
+
+            if (text.startsWith("#")) {
+                continue;
+            }
+
+            final String[] split = keyValue.second.toString().trim().split("\\s+");
 
             if (split.length == 0) {
                 continue;

@@ -3,10 +3,8 @@ package edu.snu.reef.flexion.examples.ml.algorithms.em;
 import edu.snu.reef.flexion.core.KeyValueStore;
 import edu.snu.reef.flexion.core.UserControllerTask;
 import edu.snu.reef.flexion.examples.ml.converge.ConvergenceCondition;
-import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.data.ClusterStats;
 import edu.snu.reef.flexion.examples.ml.data.ClusterSummary;
-import edu.snu.reef.flexion.examples.ml.data.Covariance;
 import edu.snu.reef.flexion.examples.ml.key.Centroids;
 import edu.snu.reef.flexion.examples.ml.parameters.IsCovarianceShared;
 import edu.snu.reef.flexion.examples.ml.parameters.MaxIterations;
@@ -14,6 +12,7 @@ import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
 import org.apache.mahout.math.DiagonalMatrix;
 import org.apache.mahout.math.Matrix;
+import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -50,18 +49,20 @@ public final class EMMainCtrlTask extends UserControllerTask
      * List of the centroids of the clusters passed from the preprocess stage
      * Will be updated for each iteration
      */
-    private List<Centroid> centroids = new ArrayList<Centroid>();
+    private List<Vector> centroids = new ArrayList<>();
 
     /**
      * List of the summaries of the clusters to distribute to Compute Tasks
      * Will be updated for each iteration
      */
-    private List<ClusterSummary> clusterSummaries = new ArrayList<ClusterSummary>();
+    private List<ClusterSummary> clusterSummaries = new ArrayList<>();
 
     /**
      * Whether to share a covariance matrix among clusters or not
      */
     private final boolean isCovarianceShared;
+
+    private final KeyValueStore keyValueStore;
 
     /**
      * This class is instantiated by TANG
@@ -69,36 +70,38 @@ public final class EMMainCtrlTask extends UserControllerTask
      * Constructs the Controller Task for EM
      *
      * @param convergenceCondition  conditions for checking convergence of algorithm
+     * @param keyValueStore
      * @param maxIterations maximum number of iterations allowed before job stops
      * @param isCovarianceShared    whether clusters share one covariance matrix or not
      */
     @Inject
     public EMMainCtrlTask(final ConvergenceCondition convergenceCondition,
+                          final KeyValueStore keyValueStore,
                           @Parameter(MaxIterations.class) final int maxIterations,
                           @Parameter(IsCovarianceShared.class) final boolean isCovarianceShared) {
 
         this.convergenceCondition = convergenceCondition;
+        this.keyValueStore = keyValueStore;
         this.maxIterations = maxIterations;
         this.isCovarianceShared = isCovarianceShared;
     }
 
     /**
      * Receive initial centroids from the preprocess task
-     * @param keyValueStore
      */
-    public void initialize(KeyValueStore keyValueStore) {
+    @Override
+    public void initialize() {
 
         // Load the initial centroids from the previous stage
         centroids = keyValueStore.get(Centroids.class);
 
         // Initialize cluster summaries
-        int numClusters = centroids.size();
-        for(int i=0; i<numClusters; i++){
-            Centroid centroid = centroids.get(i);
-            int clusterID = centroid.getClusterId();
-            int dimension = centroid.dimension();
-            clusterSummaries.add(new ClusterSummary(clusterID, 1.0, centroid,
-                    new Covariance(clusterID, DiagonalMatrix.identity(dimension))));
+        final int numClusters = centroids.size();
+        for(int clusterID=0; clusterID<numClusters; clusterID++) {
+            final Vector vector = centroids.get(clusterID);
+            final int dimension = vector.size();
+            clusterSummaries.add(new ClusterSummary(1.0, vector,
+                    DiagonalMatrix.identity(dimension)));
         }
 
     }
@@ -126,17 +129,17 @@ public final class EMMainCtrlTask extends UserControllerTask
         // Compute new prior probability, centroids, and covariance matrices
         for (final Integer clusterID : clusterStatsMap.keySet()) {
             final ClusterStats clusterStats = clusterStatsMap.get(clusterID);
-            final Centroid newCentroid = new Centroid(clusterID, clusterStats.computeMean());
-            Covariance newCovariance = null;
+            final Vector newCentroid = clusterStats.computeMean();
+            Matrix newCovariance = null;
             if (isCovarianceShared) {
-                newCovariance = new Covariance(clusterID, covarianceMatrix);
+                newCovariance = covarianceMatrix;
             } else {
-                newCovariance = new Covariance(clusterID, clusterStats.computeCovariance());
+                newCovariance = clusterStats.computeCovariance();
             }
             final double newPrior = clusterStats.probSum; //unnormalized prior
 
             centroids.set(clusterID, newCentroid);
-            clusterSummaries.set(clusterID, new ClusterSummary(clusterID, newPrior, newCentroid, newCovariance));
+            clusterSummaries.set(clusterID, new ClusterSummary(newPrior, newCentroid, newCovariance));
         }
 
         LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration + 1);

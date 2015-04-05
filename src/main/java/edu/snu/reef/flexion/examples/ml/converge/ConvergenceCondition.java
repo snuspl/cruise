@@ -15,7 +15,7 @@
  */
 package edu.snu.reef.flexion.examples.ml.converge;
 
-import edu.snu.reef.flexion.examples.ml.data.Centroid;
+import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
@@ -28,5 +28,5 @@ public interface ConvergenceCondition {
   /**
    * Check convergence conditions.
    */
-  public boolean checkConvergence(Iterable<Centroid> centroids);
+  public boolean checkConvergence(Iterable<Vector> centroids);
 }

@@ -16,7 +16,7 @@ public class SimpleJobInfo implements UserJobInfo{
 
     @Override
     public List<StageInfo> getStageInfoList() {
-        List<StageInfo> stageInfoList = new LinkedList<>();
+        final List<StageInfo> stageInfoList = new LinkedList<>();
         stageInfoList.add(new StageInfo(SimpleCmpTask.class, SimpleCtrlTask.class, SimpleCommGroup.class)
                 .setBroadcast(SerializableCodec.class)
                 .setReduce(SerializableCodec.class, SimpleReduceFunction.class));

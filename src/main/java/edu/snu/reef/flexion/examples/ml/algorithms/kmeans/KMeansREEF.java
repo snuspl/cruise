@@ -20,7 +20,8 @@ public class KMeansREEF {
                                 .bindImplementation(UserJobInfo.class, KMeansJobInfo.class)
                                 .bindImplementation(UserParameters.class, KMeansParameters.class)
                                 .build()
-                        ));
+                )
+        );
     }
 
 

@@ -9,7 +9,7 @@ import org.apache.reef.tang.annotations.Name;
  * Information of a stage, which corresponds to a BSP algorithm
  * One or more stages compose a job, a unit of work in Flexion
  */
-public final class StageInfo {
+public class StageInfo {
 
     private Class<? extends UserComputeTask> userComputeTaskClass;
     private Class<? extends UserControllerTask> userControllerTaskClass;

@@ -25,10 +25,6 @@ public final class KMeansParameters implements UserParameters {
         this.convThreshold = convThreshold;
         this.maxIterations = maxIterations;
         this.numberOfClusters = numberOfClusters;
-        System.out.println(convThreshold);
-        System.out.println(maxIterations);
-        System.out.println(numberOfClusters);
-
     }
 
     @Override

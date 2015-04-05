@@ -9,29 +9,26 @@ import edu.snu.reef.flexion.groupcomm.interfaces.DataScatterReceiver;
  * Abstract class for user-defined compute tasks.
  * This class should be extended by user-defined compute tasks that override run, initialize, and cleanup methods
  */
-public abstract class UserComputeTask <T> {
+public abstract class UserComputeTask {
 
     /**
      * Main process of a user-defined compute task
      * @param iteration
-     * @param data
      */
-    public abstract void run(int iteration, T data);
+    public abstract void run(int iteration);
 
     /**
      * Initialize a user-defined compute task.
      * Results of the previous task can be retrieved from the given key-value store
-     * @param keyValueStore
      */
-    public void initialize(KeyValueStore keyValueStore) {
+    public void initialize() throws ParseException {
     }
 
     /**
      * Clean up a user-defined compute task
      * Results of the current task can be passed to the next task through the given key-value store
-     * @param keyValueStore
      */
-    public void cleanup(KeyValueStore keyValueStore) {
+    public void cleanup() {
     }
 
     final public boolean isReduceUsed() {

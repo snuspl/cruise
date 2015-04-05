@@ -35,7 +35,7 @@ public class SimpleDataParser implements DataParser<List<String>> {
     @Override
     public final void parse() {
 
-        List<String> texts = new LinkedList<String>();
+        final List<String> texts = new LinkedList<>();
 
         for (final Pair<LongWritable, Text> keyValue : dataSet) {
             texts.add(keyValue.second.toString());

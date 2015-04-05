@@ -16,6 +16,7 @@ public final class SimpleREEF {
                                 .bindNamedParameter(JobIdentifier.class, "Simple REEF")
                                 .bindImplementation(UserJobInfo.class, SimpleJobInfo.class)
                                 .build()
-                ));
+                )
+        );
     }
 }

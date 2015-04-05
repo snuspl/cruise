@@ -27,28 +27,21 @@ public final class ComputeTask implements Task, TaskMessageSource {
 
     private final UserComputeTask userComputeTask;
     private final CommunicationGroupClient commGroup;
-    private final KeyValueStore keyValueStore;
     private final HeartBeatTriggerManager heartBeatTriggerManager;
 
     private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
 
     private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
 
-    private final DataParser dataParser;
-
     private long runTime = -1;
 
     @Inject
     public ComputeTask(final GroupCommClient groupCommClient,
-                       final DataParser dataParser,
-                       final KeyValueStore keyValueStore,
                        final UserComputeTask userComputeTask,
                        @Parameter(CommunicationGroup.class) final String commGroupName,
                        final HeartBeatTriggerManager heartBeatTriggerManager) throws ClassNotFoundException {
 
         this.userComputeTask = userComputeTask;
-        this.dataParser = dataParser;
-        this.keyValueStore = keyValueStore;
         this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
         this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
         this.heartBeatTriggerManager = heartBeatTriggerManager;
@@ -58,19 +51,18 @@ public final class ComputeTask implements Task, TaskMessageSource {
     public final byte[] call(final byte[] memento) throws Exception {
         LOG.log(Level.INFO, "CmpTask commencing...");
 
-        Object dataSet = dataParser.get();
-        userComputeTask.initialize(keyValueStore);
+        userComputeTask.initialize();
         int iteration=0;
         while (!isTerminated()) {
             receiveData();
             final long runStart = System.currentTimeMillis();
-            userComputeTask.run(iteration, dataSet);
+            userComputeTask.run(iteration);
             runTime = System.currentTimeMillis() - runStart;
             sendData(iteration);
             heartBeatTriggerManager.triggerHeartBeat();
             iteration++;
         }
-        userComputeTask.cleanup(keyValueStore);
+        userComputeTask.cleanup();
 
         return null;
     }

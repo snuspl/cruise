@@ -22,18 +22,15 @@ public final class ControllerTask implements Task {
 
     private final UserControllerTask userControllerTask;
     private final CommunicationGroupClient commGroup;
-    private final KeyValueStore keyValueStore;
 
     private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
 
     @Inject
     public ControllerTask(final GroupCommClient groupCommClient,
-                          final KeyValueStore keyValueStore,
                           final UserControllerTask userControllerTask,
                           @Parameter(CommunicationGroup.class) final String commGroupName) throws ClassNotFoundException {
 
         this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
-        this.keyValueStore = keyValueStore;
         this.userControllerTask = userControllerTask;
         this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
     }
@@ -43,7 +40,7 @@ public final class ControllerTask implements Task {
         LOG.log(Level.INFO, "CtrlTask commencing...");
 
         int iteration = 0;
-        userControllerTask.initialize(keyValueStore);
+        userControllerTask.initialize();
         do {
             userControllerTask.run(iteration);
             ctrlMessageBroadcast.send(CtrlMessage.RUN);
@@ -52,7 +49,7 @@ public final class ControllerTask implements Task {
             topologyChanged();
         } while(!userControllerTask.isTerminated(iteration++));
         ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
-        userControllerTask.cleanup(keyValueStore);
+        userControllerTask.cleanup();
 
         return null;
     }

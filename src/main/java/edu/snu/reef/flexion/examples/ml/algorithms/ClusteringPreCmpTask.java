@@ -1,5 +1,7 @@
 package edu.snu.reef.flexion.examples.ml.algorithms;
 
+import edu.snu.reef.flexion.core.DataParser;
+import edu.snu.reef.flexion.core.ParseException;
 import edu.snu.reef.flexion.core.UserComputeTask;
 import edu.snu.reef.flexion.examples.ml.parameters.NumberOfClusters;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherSender;
@@ -11,7 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
-public final class ClusteringPreCmpTask extends UserComputeTask<List<Vector>>
+public final class ClusteringPreCmpTask extends UserComputeTask
         implements DataGatherSender<List<Vector>> {
 
     /**
@@ -29,19 +31,27 @@ public final class ClusteringPreCmpTask extends UserComputeTask<List<Vector>>
      */
     private List<Vector> samples = new LinkedList<>();
 
+    private final DataParser<List<Vector>> dataParser;
+
     /**
-     * This class is instantiated by TANG
-     * Constructs a single Compute Task for k-means
+     * @param dataParser
      * @param numberOfClusters
      */
     @Inject
-    public ClusteringPreCmpTask(@Parameter(NumberOfClusters.class) final int numberOfClusters) {
+    public ClusteringPreCmpTask(
+            final DataParser<List<Vector>> dataParser,
+            @Parameter(NumberOfClusters.class) final int numberOfClusters) {
+        this.dataParser = dataParser;
         this.numberOfClusters = numberOfClusters;
     }
 
     @Override
-    public void run(int iteration, List<Vector> data) {
-        points = data;
+    public void initialize() throws ParseException {
+        points = dataParser.get();
+    }
+
+    @Override
+    public void run(int iteration) {
 
         //randomly sample points so that the number of points are equal to that of clusters
         samples = sample(points, numberOfClusters);
@@ -61,19 +71,19 @@ public final class ClusteringPreCmpTask extends UserComputeTask<List<Vector>>
      */
     static List<Vector> sample(List<Vector> points, int maxNumOfSamples){
 
-        List<Vector> samples = new LinkedList<>();
+        final List<Vector> samples = new LinkedList<>();
 
-        if(points.isEmpty()) {
+        if (points.isEmpty()) {
             return samples;
         }
 
-        Random random = new Random();
-        int numberOfPoints = points.size();
-        int numberOfSamples = Math.min(maxNumOfSamples, numberOfPoints);
-        Vector[] pointArray = points.toArray(new Vector[0]);
+        final Random random = new Random();
+        final int numberOfPoints = points.size();
+        final int numberOfSamples = Math.min(maxNumOfSamples, numberOfPoints);
+        final Vector[] pointArray = points.toArray(new Vector[0]);
 
-        for(int i=0; i<numberOfSamples; i++){
-            int index = random.nextInt(numberOfPoints-1-i);
+        for (int i=0; i<numberOfSamples; i++) {
+            final int index = random.nextInt(numberOfPoints - 1 - i);
             samples.add(pointArray[index]);
             pointArray[index] = pointArray[numberOfPoints-1-i];
         }

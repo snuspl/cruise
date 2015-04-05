@@ -2,7 +2,6 @@ package edu.snu.reef.flexion.examples.ml.algorithms;
 
 import edu.snu.reef.flexion.core.KeyValueStore;
 import edu.snu.reef.flexion.core.UserControllerTask;
-import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.key.Centroids;
 import edu.snu.reef.flexion.examples.ml.parameters.NumberOfClusters;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherReceiver;
@@ -29,20 +28,20 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
      * List of cluster centroids to distribute to Compute Tasks
      * Will be updated for each iteration
      */
-    private final List<Centroid> centroids = new ArrayList<Centroid>();
+    private final List<Vector> centroids = new ArrayList<Vector>();
 
     /**
      * Initial centroids passed from Compute Tasks
      */
     private List<Vector> initialCentroids = null;
 
-    /**
-     * This class is instantiated by TANG
-     *
-     * Constructs the Controller Task for k-means
-     */
+    private final KeyValueStore keyValueStore;
+
     @Inject
-    public ClusteringPreCtrlTask(@Parameter(NumberOfClusters.class) final int numberOfClusters) {
+    public ClusteringPreCtrlTask(
+            final KeyValueStore keyValueStore,
+            @Parameter(NumberOfClusters.class) final int numberOfClusters) {
+        this.keyValueStore = keyValueStore;
         this.numberOfClusters = numberOfClusters;
     }
 
@@ -52,15 +51,10 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
     }
 
     @Override
-    public void cleanup(KeyValueStore keyValueStore) {
-
-        int clusterID = 0;
-        for (final Vector vector : initialCentroids) {
-            centroids.add(new Centroid(clusterID++, vector));
-        }
+    public void cleanup() {
 
         // pass initial centroids to the main process
-        keyValueStore.put(Centroids.class, centroids);
+        keyValueStore.put(Centroids.class, initialCentroids);
     }
 
     @Override
@@ -72,7 +66,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
     @Override
     public void receiveGatherData(List<List<Vector>> initialCentroids) {
 
-        List<Vector> points = new LinkedList<>();
+        final List<Vector> points = new LinkedList<>();
 
         // Flatten the given list of lists
         for(List<Vector> list : initialCentroids) {

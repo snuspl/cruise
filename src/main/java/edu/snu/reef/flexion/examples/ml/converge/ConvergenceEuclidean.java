@@ -15,15 +15,13 @@
  */
 package edu.snu.reef.flexion.examples.ml.converge;
 
-import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.data.EuclideanDistance;
 import edu.snu.reef.flexion.examples.ml.parameters.ConvergenceThreshold;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
 
 /**
  * Default implementation of ConvergenceCondition
@@ -32,48 +30,51 @@ import java.util.Map;
  */
 public final class ConvergenceEuclidean implements ConvergenceCondition {
 
-  Map<Integer, Centroid> oldCentroids;
-  final double convergenceThreshold;
-  final EuclideanDistance euclideanDistance;
+    ArrayList<Vector> oldCentroids;
+    final double convergenceThreshold;
+    final EuclideanDistance euclideanDistance;
 
-  @Inject
-  public ConvergenceEuclidean(
-          final EuclideanDistance euclideanDistance,
-          @Parameter(ConvergenceThreshold.class) final double convergenceThreshold
-  ) {
-    this.euclideanDistance = euclideanDistance;
-    this.convergenceThreshold = convergenceThreshold;
-  }
-
-  @Override
-  public final boolean checkConvergence(Iterable<Centroid> centroids) {
-
-    if (oldCentroids == null) {
-      oldCentroids = new HashMap<>();
-
-      for (final Centroid centroid : centroids) {
-        oldCentroids.put(centroid.getClusterId(), centroid);
-      }
-
-      return false;
+    @Inject
+    public ConvergenceEuclidean(
+            final EuclideanDistance euclideanDistance,
+            @Parameter(ConvergenceThreshold.class) final double convergenceThreshold
+    ) {
+        this.euclideanDistance = euclideanDistance;
+        this.convergenceThreshold = convergenceThreshold;
     }
 
-    boolean hasConverged = true;
-    for (final Centroid centroid : centroids) {
-      Centroid oldCentroid = oldCentroids.get(centroid.getClusterId());
+    @Override
+    public final boolean checkConvergence(Iterable<Vector> centroids) {
 
-      if (hasConverged
-          && distance(centroid.vector, oldCentroid.vector) > convergenceThreshold) {
-        hasConverged = false;
-      }
+        if (oldCentroids == null) {
+            oldCentroids = new ArrayList<>();
 
-      oldCentroids.put(centroid.getClusterId(), centroid);
+            int clusterID = 0;
+            for (final Vector centroid : centroids) {
+                oldCentroids.add(clusterID++, centroid);
+            }
+
+            return false;
+        }
+
+        boolean hasConverged = true;
+        int clusterID = 0;
+        for (final Vector centroid : centroids) {
+            Vector oldCentroid = oldCentroids.get(clusterID);
+
+            if (hasConverged
+                    && distance(centroid, oldCentroid) > convergenceThreshold) {
+                hasConverged = false;
+            }
+
+            oldCentroids.add(clusterID, centroid);
+            clusterID++;
+        }
+
+        return hasConverged;
     }
 
-    return hasConverged;
-  }
-
-  public final double distance(Vector v1, Vector v2) {
-    return euclideanDistance.distance(v1, v2);
-  }
+    public final double distance(Vector v1, Vector v2) {
+        return euclideanDistance.distance(v1, v2);
+    }
 }

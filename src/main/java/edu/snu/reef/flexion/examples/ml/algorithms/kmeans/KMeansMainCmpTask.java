@@ -1,7 +1,8 @@
 package edu.snu.reef.flexion.examples.ml.algorithms.kmeans;
 
+import edu.snu.reef.flexion.core.DataParser;
+import edu.snu.reef.flexion.core.ParseException;
 import edu.snu.reef.flexion.core.UserComputeTask;
-import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.data.VectorDistanceMeasure;
 import edu.snu.reef.flexion.examples.ml.data.VectorSum;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastReceiver;
@@ -14,8 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class KMeansMainCmpTask extends UserComputeTask<List<Vector>>
-        implements DataBroadcastReceiver<List<Centroid>>, DataReduceSender<Map<Integer, VectorSum>> {
+public final class KMeansMainCmpTask extends UserComputeTask
+        implements DataBroadcastReceiver<List<Vector>>, DataReduceSender<Map<Integer, VectorSum>> {
 
     /**
      * Points read from input data to work on
@@ -25,7 +26,7 @@ public final class KMeansMainCmpTask extends UserComputeTask<List<Vector>>
     /**
      * Centroids of clusters
      */
-    private List<Centroid> centroids = new ArrayList<>();
+    private List<Vector> centroids = new ArrayList<>();
 
     /**
      * Vector sum of the points assigned to each cluster
@@ -38,34 +39,40 @@ public final class KMeansMainCmpTask extends UserComputeTask<List<Vector>>
      */
     private final VectorDistanceMeasure distanceMeasure;
 
+    private final DataParser<List<Vector>> dataParser;
+
     /**
      * This class is instantiated by TANG
      * Constructs a single Compute Task for k-means
+     * @param dataParser
      * @param distanceMeasure distance measure to use to compute distances between points
      */
     @Inject
-    public KMeansMainCmpTask(final VectorDistanceMeasure distanceMeasure) {
+    public KMeansMainCmpTask(final VectorDistanceMeasure distanceMeasure,
+                             final DataParser<List<Vector>> dataParser) {
 
         this.distanceMeasure = distanceMeasure;
+        this.dataParser = dataParser;
     }
 
     @Override
-    public void run(int iteration, List<Vector> points) {
+    public void initialize() throws ParseException {
+        points = dataParser.get();
+    }
 
-        this.points = points;
+    @Override
+    public void run(int iteration) {
 
         // Compute the nearest cluster centroid for each point
         pointSum = new HashMap<>();
-
-        System.out.println(points.size());
 
         for (final Vector vector : points) {
             double nearestClusterDist = Double.MAX_VALUE;
             int nearestClusterId = -1;
 
             int clusterId = 0;
-            for (Centroid centroid : centroids) {
-                final double distance = distanceMeasure.distance(centroid.vector, vector);
+            for (Vector centroid : centroids) {
+                final double distance = distanceMeasure.distance(centroid, vector);
                 if (nearestClusterDist > distance) {
                     nearestClusterDist = distance;
                     nearestClusterId = clusterId;
@@ -85,7 +92,7 @@ public final class KMeansMainCmpTask extends UserComputeTask<List<Vector>>
     }
 
     @Override
-    public void receiveBroadcastData(List<Centroid> centroids) {
+    public void receiveBroadcastData(List<Vector> centroids) {
         this.centroids = centroids;
     }
 

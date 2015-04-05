@@ -42,7 +42,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
     @Override
     public final byte[] encode(final Map<Integer, ClusterStats> map) {
 
-        int mapSize = map.size();
+        final int mapSize = map.size();
         int dimension = 0;
         if (mapSize > 0) {
             for (ClusterStats entry: map.values()) {

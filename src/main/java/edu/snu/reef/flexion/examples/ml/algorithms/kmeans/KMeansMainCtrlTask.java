@@ -3,12 +3,12 @@ package edu.snu.reef.flexion.examples.ml.algorithms.kmeans;
 import edu.snu.reef.flexion.core.KeyValueStore;
 import edu.snu.reef.flexion.core.UserControllerTask;
 import edu.snu.reef.flexion.examples.ml.converge.ConvergenceCondition;
-import edu.snu.reef.flexion.examples.ml.data.Centroid;
 import edu.snu.reef.flexion.examples.ml.data.VectorSum;
 import edu.snu.reef.flexion.examples.ml.key.Centroids;
 import edu.snu.reef.flexion.examples.ml.parameters.MaxIterations;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
+import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -20,7 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class KMeansMainCtrlTask extends UserControllerTask
-        implements DataReduceReceiver<Map<Integer, VectorSum>>, DataBroadcastSender<List<Centroid>> {
+        implements DataReduceReceiver<Map<Integer, VectorSum>>, DataBroadcastSender<List<Vector>> {
 
     private static final Logger LOG = Logger.getLogger(KMeansMainCtrlTask.class.getName());
 
@@ -45,7 +45,9 @@ public final class KMeansMainCtrlTask extends UserControllerTask
      * List of cluster centroids to distribute to Compute Tasks
      * Will be updated for each iteration
      */
-    private List<Centroid> centroids = new ArrayList<>();
+    private List<Vector> centroids = new ArrayList<>();
+
+    private final KeyValueStore keyValueStore;
 
     /**
      * This class is instantiated by TANG
@@ -53,31 +55,34 @@ public final class KMeansMainCtrlTask extends UserControllerTask
      * Constructs the Controller Task for k-means
      *
      * @param convergenceCondition conditions for checking convergence of algorithm
+     * @param keyValueStore
      * @param maxIterations maximum number of iterations allowed before job stops
      */
     @Inject
     public KMeansMainCtrlTask(final ConvergenceCondition convergenceCondition,
+                              final KeyValueStore keyValueStore,
                               @Parameter(MaxIterations.class) final int maxIterations) {
 
         this.convergenceCondition = convergenceCondition;
+        this.keyValueStore = keyValueStore;
         this.maxIterations = maxIterations;
     }
 
     /**
      * Receive initial centroids from the preprocess task
-     * @param keyValueStore
      */
-    public void initialize(KeyValueStore keyValueStore) {
+    @Override
+    public void initialize() {
         centroids = keyValueStore.get(Centroids.class);
     }
 
     @Override
     public void run(int iteration) {
 
-        for (final Integer id : pointSum.keySet()) {
-            final VectorSum vectorSum = pointSum.get(id);
-            final Centroid newCentroid = new Centroid(id, vectorSum.computeVectorMean());
-            centroids.set(id, newCentroid);
+        for (final Integer clusterID : pointSum.keySet()) {
+            final VectorSum vectorSum = pointSum.get(clusterID);
+            final Vector newCentroid = vectorSum.computeVectorMean();
+            centroids.set(clusterID, newCentroid);
         }
 
         LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration);
@@ -94,7 +99,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
     }
 
     @Override
-    public List<Centroid> sendBroadcastData(int iteration) {
+    public List<Vector> sendBroadcastData(int iteration) {
         return centroids;
     }
 

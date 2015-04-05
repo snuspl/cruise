@@ -5,9 +5,8 @@ import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceSender;
 
 import javax.inject.Inject;
-import java.util.List;
 
-public final class SimpleCmpTask extends UserComputeTask <List<String>>
+public final class SimpleCmpTask extends UserComputeTask
         implements DataBroadcastReceiver<Integer>, DataReduceSender<Integer> {
 
     private Integer receivedData = 0;
@@ -18,7 +17,7 @@ public final class SimpleCmpTask extends UserComputeTask <List<String>>
     }
 
     @Override
-    public void run(int iter, List<String> data) {
+    public void run(int iteration) {
         float increment = 0;
         for (int i = 0; i < 500000; i++) {
             increment += Math.random();
