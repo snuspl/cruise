@@ -1,7 +1,5 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.inmemory.common.SurfLauncher;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -9,6 +7,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.common.ITUtils;
+import org.apache.reef.inmemory.common.SurfLauncher;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;

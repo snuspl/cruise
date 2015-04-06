@@ -3,9 +3,9 @@ package org.apache.reef.inmemory.driver.hdfs;
 import org.apache.reef.inmemory.common.CacheClearMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
+import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.inmemory.driver.CacheNodeManager;
 import org.apache.reef.inmemory.driver.CacheNodeMessenger;
-import org.apache.reef.inmemory.driver.CacheNode;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;

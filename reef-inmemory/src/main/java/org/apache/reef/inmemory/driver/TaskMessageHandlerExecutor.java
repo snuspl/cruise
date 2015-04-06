@@ -1,10 +1,10 @@
 package org.apache.reef.inmemory.driver;
 
 import org.apache.reef.driver.task.TaskMessage;
-import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
 import org.apache.reef.inmemory.driver.service.SurfMetaServer;
+import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
 import java.util.logging.Level;

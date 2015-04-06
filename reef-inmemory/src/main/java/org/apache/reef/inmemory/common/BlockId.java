@@ -8,16 +8,16 @@ import java.io.Serializable;
  * Block ID to identify blocks cached at each Task.
  */
 public final class BlockId implements Serializable {
-  private final String filePath;
+  private final long fileId;
   private final long offset;
 
   /**
    * Create a block id with information to identify this block.
-   * @param filePath The file which consists of this block.
+   * @param fileId The file which owns this block.
    * @param offset The offset from the start of the file.
    */
-  public BlockId(final String filePath, final long offset) {
-    this.filePath = filePath; // TODO Replace filePath with another unique field (e.g. fileId)
+  public BlockId(final long fileId, final long offset) {
+    this.fileId = fileId;
     this.offset = offset;
   }
 
@@ -26,15 +26,14 @@ public final class BlockId implements Serializable {
    * @param blockMeta Metadata of this block.
    */
   public BlockId(final BlockMeta blockMeta) {
-    this(blockMeta.getFilePath(), blockMeta.getOffSet());
+    this(blockMeta.getFileId(), blockMeta.getOffSet());
   }
 
   /**
-   * Return the path of file.
-   * TODO Replace filePath with another unique field (e.g. fileId)
+   * Return the id of file.
    */
-  public String getFilePath() {
-    return filePath;
+  public long getFileId() {
+    return fileId;
   }
 
   /**
@@ -51,24 +50,21 @@ public final class BlockId implements Serializable {
     if (o == null || getClass() != o.getClass()) return false;
 
     BlockId blockId = (BlockId) o;
-
-    if (offset != blockId.offset) return false;
-    if (filePath != null ? !filePath.equals(blockId.filePath) : blockId.filePath != null) return false;
-
-    return true;
+    return offset == blockId.offset && fileId == blockId.fileId;
   }
 
   @Override
   public int hashCode() {
-    int result = filePath != null ? filePath.hashCode() : 0;
-    result = 31 * result + (int) (offset ^ (offset >>> 32));
+    int result = 17;
+    result = (31 * result) + (int) (fileId ^ (fileId >>> 32));
+    result = (31 * result) + (int) (offset ^ (offset >>> 32));
     return result;
   }
 
   @Override
   public String toString() {
     return "BlockId{" +
-            "filePath='" + filePath + '\'' +
+            "fileId='" + fileId + '\'' +
             ", offset=" + offset +
             '}';
   }

@@ -1,23 +1,21 @@
 package org.apache.reef.inmemory.driver.service;
 
-import org.apache.reef.inmemory.common.entity.*;
-import org.apache.reef.inmemory.common.exceptions.FileAlreadyExistsException;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.remote.NetUtils;
-import org.apache.hadoop.fs.Path;
 import org.apache.reef.inmemory.common.CacheStatusMessage;
+import org.apache.reef.inmemory.common.entity.*;
 import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.replication.Action;
 import org.apache.reef.inmemory.common.replication.AvroReplicationSerializer;
 import org.apache.reef.inmemory.common.replication.Rules;
-import org.apache.reef.inmemory.common.replication.SyncMethod;
 import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
-import org.apache.reef.inmemory.driver.CacheNodeManager;
 import org.apache.reef.inmemory.driver.CacheNode;
+import org.apache.reef.inmemory.driver.CacheNodeManager;
 import org.apache.reef.inmemory.driver.SurfMetaManager;
+import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.remote.NetUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -28,7 +26,6 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -51,12 +48,15 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   private final ServiceRegistry serviceRegistry;
   private final ReplicationPolicy replicationPolicy;
   private final WritingCacheSelectionPolicy writingCacheSelector;
+  private final LocationSorter locationSorter;
+
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
                         final CacheNodeManager cacheNodeManager,
                         final ServiceRegistry serviceRegistry,
                         final WritingCacheSelectionPolicy writingCacheSelector,
                         final ReplicationPolicy replicationPolicy,
+                        final LocationSorter locationSorter,
                         final @Parameter(MetaServerParameters.Port.class) int port,
                         final @Parameter(MetaServerParameters.Timeout.class) int timeout,
                         final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
@@ -65,138 +65,105 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     this.serviceRegistry = serviceRegistry;
     this.replicationPolicy = replicationPolicy;
     this.writingCacheSelector = writingCacheSelector;
+    this.locationSorter = locationSorter;
 
     this.port = port;
     this.timeout = timeout;
     this.numThreads = numThreads;
   }
 
+  /**
+   * Return the fileMeta from MetaTree, loading it from HDFS if not exists
+   */
   @Override
-  public FileMeta getFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
-    // TODO: need (integrated?) tests for this version
+  public FileMeta getOrLoadFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
     try {
-      final FileMeta fileMeta = metaManager.get(new Path(path), new User());
-      final FileMeta updatedFileMeta = metaManager.loadData(fileMeta);
-      return metaManager.sortOnLocation(updatedFileMeta, clientHostname);
-    } catch (java.io.FileNotFoundException e) {
-      throw new FileNotFoundException("File not found at " + path);
+      final FileMeta fileMeta = metaManager.getOrLoadFileMeta(path);
+      return locationSorter.sortMeta(fileMeta, clientHostname);
     } catch (IOException e) {
       throw new FileNotFoundException(e.getMessage());
-    } catch (Throwable e) {
-      LOG.log(Level.SEVERE, "Get metadata failed for "+path, e);
-      throw new TException(e);
     }
   }
 
   @Override
   public boolean exists(final String path) throws TException {
-    try {
-      metaManager.get(new Path(path), new User());
-      return true;
-    } catch (java.io.FileNotFoundException e) {
-      return false;
-    } catch (Throwable e) {
-      LOG.log(Level.SEVERE, "Checking existence failed for "+path, e);
-      throw new TException(e);
-    }
+    return metaManager.exists(path);
   }
 
   @Override
-  public synchronized boolean create(final String path, final short replication, final long blockSize)
-          throws FileAlreadyExistsException, TException {
+  public List<FileMetaStatus> listFileMetaStatus(String path) throws FileNotFoundException, TException {
     try {
-      if (exists(path)) {
-        throw new FileAlreadyExistsException();
-      } else {
-        final boolean isSuccess = metaManager.createFile(path, replication, blockSize);
-        return isSuccess;
-      }
-    } catch (Throwable e) {
-      LOG.log(Level.SEVERE, "Create failed for " + path, e);
-      throw new TException(e);
-    }
-  }
-
-  @Override
-  public synchronized boolean mkdirs(final String path) throws FileAlreadyExistsException, TException {
-    try {
-      // TODO Add a entry in Surf directory hierarchy
-      if (exists(path)) {
-        throw new FileAlreadyExistsException();
-      } else {
-        final boolean isSuccess = metaManager.createDirectory(path);
-        return isSuccess;
-      }
-    } catch (Throwable e) {
-      LOG.log(Level.SEVERE, "Mkdirs failed for " + path, e);
-      throw new TException(e.getCause());
-    }
-  }
-
-  @Override
-  public List<FileMeta> listMeta(String path) throws FileNotFoundException, TException {
-    try {
-      final FileMeta fileMeta = metaManager.get(new Path(path), new User());
-      final List<FileMeta> metaList;
-      if (fileMeta.isDirectory()) {
-        return metaManager.getChildren(fileMeta);
-      } else {
-        metaList = new ArrayList<>(1);
-        metaList.add(fileMeta);
-        return metaList;
-      }
-    } catch (java.io.FileNotFoundException e) {
-      throw new FileNotFoundException("File not found at " + path);
+      return metaManager.listFileMetaStatus(path);
     } catch (IOException e) {
       throw new FileNotFoundException(e.getMessage());
-    } catch (Throwable e) {
-      LOG.log(Level.SEVERE, "List metadata failed for " + path, e);
+    }
+  }
+
+  @Override
+  public void create(final String path, final long blockSize, final short baseFsReplication) throws TException {
+    try {
+      metaManager.create(path, blockSize, baseFsReplication);
+    } catch (IOException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public AllocatedBlockMeta allocateBlock(final String path,
+  public boolean mkdirs(final String path) throws TException {
+    try {
+      return metaManager.mkdirs(path);
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "mkdirs failed at baseFS for " + path, e);
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public boolean rename(final String src, final String dst) throws TException {
+    try {
+      return metaManager.rename(src, dst);
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "rename failed at baseFS for " + src + " to " + dst, e);
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public boolean remove(final String path, final boolean recursive) throws TException {
+    try {
+      return metaManager.remove(path, recursive);
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "remove failed at baseFS for " + path, e);
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public WriteableBlockMeta allocateBlock(final String path,
                                           final long offset,
                                           final String clientAddress) throws TException {
-    if (!exists(path)) {
-      LOG.log(Level.SEVERE, "File {0} is not found", path);
-      throw new FileNotFoundException();
-    } else {
-      try {
-        final FileMeta meta = metaManager.get(new Path(path), new User());
-        final Action action = replicationPolicy.getReplicationAction(path, meta);
-
-        // TODO Consider the locality with clientAddress
-        final int cacheReplicationFactor = action.getCacheReplicationFactor();
-        final List<NodeInfo> selected = writingCacheSelector.select(cacheNodeManager.getCaches(), cacheReplicationFactor);
-
-        final boolean pin = action.getPin();
-        final int baseReplicationFactor = action.getWrite().getBaseReplicationFactor();
-        // TODO Change the SyncMethod in Avro schema to boolean type
-        final boolean isWriteThrough = (action.getWrite().getSync() == SyncMethod.WRITE_THROUGH);
-
-        return new AllocatedBlockMeta(selected, pin, baseReplicationFactor, isWriteThrough);
-      } catch (Throwable throwable) {
-        throw new TException("Fail to resolve replication policy", throwable);
-      }
+    try {
+      final FileMeta meta = metaManager.getFileMeta(path);
+      final Action action = replicationPolicy.getReplicationAction(path, meta);
+      final int replication = action.getReplication(); // TODO: might be better to be of type 'short' in avro
+      final List<NodeInfo> selected = writingCacheSelector.select(cacheNodeManager.getCaches(), replication);
+      final boolean pin = action.getPin();
+      final BlockMeta blockMeta = new BlockMeta(meta.getFileId(), offset, meta.getBlockSize(), selected);
+      return new WriteableBlockMeta(blockMeta, pin, (short) replication);
+    } catch (IOException e) {
+      throw new FileNotFoundException(e.getMessage());
     }
   }
 
   @Override
   public boolean completeFile(final String path, final long fileSize) throws TException {
-    if (!exists(path)) {
-      LOG.log(Level.SEVERE, "File {0} is not found", path);
-      throw new FileNotFoundException();
-    }
-
     try {
-      final FileMeta meta = metaManager.get(new Path(path), new User());
+      final FileMeta meta = metaManager.getFileMeta(path);
       LOG.log(Level.INFO, "Compare the file size of {0} : Expected {1} / Actual {2}",
         new Object[] {path, fileSize, meta.getFileSize()});
       return fileSize == meta.getFileSize();
-    } catch (Throwable throwable) {
-      throw new TException("Fail to complete file" + path, throwable);
+    } catch (IOException e) {
+      throw new FileNotFoundException(e.getMessage());
     }
   }
 
@@ -228,13 +195,10 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   public boolean load(final String path) throws TException {
     LOG.log(Level.INFO, "CLI load command for path {0}", path);
     try {
-      final FileMeta fileMeta = metaManager.get(new Path(path), new User());
-      metaManager.loadData(fileMeta);
+      metaManager.getOrLoadFileMeta(path);
       LOG.log(Level.INFO, "Load succeeded for "+path);
       return true;
-    } catch (java.io.FileNotFoundException e) {
-      throw new FileNotFoundException("File not found at "+path);
-    } catch (Throwable e) {
+    } catch (IOException e) {
       LOG.log(Level.SEVERE, "Load failed for "+path, e);
       throw new TException(e);
     }
@@ -252,7 +216,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public String getReplication() throws org.apache.reef.inmemory.common.exceptions.IOException, TException {
+  public String getReplication() throws TException {
     LOG.log(Level.INFO, "CLI replicationList command");
     final Rules rules = replicationPolicy.getRules();
     if (rules == null) {

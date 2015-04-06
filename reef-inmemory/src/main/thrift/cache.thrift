@@ -19,12 +19,10 @@ service SurfCacheService {
      * Initialize a block in the cache to write data. Client should call this
      * before sending the data through write() once he/she has allocated a block from MetaServer.
      */
-    void initBlock(1:string path, 2:i64 offset, 3:i64 blockSize, 4:entity.AllocatedBlockMeta info)
+    void initBlock(1:i64 blockSize, 2:entity.WriteableBlockMeta info)
 
     /**
      * Receive data packet from the Client and write it into the cache.
-     * blockOffset : Start offset of file associated with this block
-     * innerOffset : Start offset of block associated with ths packet
      */
-    void writeData(1:string path, 2:i64 blockOffset, 3:i64 blockSize, 4:i64 innerOffset, 5:binary buf, 6:bool isLastPacket)
+    void writeData(1:i64 fileId, 2:i64 blockOffset, 3:i64 innerOffset, 4:binary buf, 5:bool isLastPacket)
 }

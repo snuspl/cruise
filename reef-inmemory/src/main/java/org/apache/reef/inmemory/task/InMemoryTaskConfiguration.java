@@ -1,16 +1,16 @@
 package org.apache.reef.inmemory.task;
 
 import com.google.common.cache.Cache;
+import org.apache.reef.inmemory.common.BlockMetaFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
+import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
+import org.apache.reef.inmemory.task.hdfs.HdfsDriverMessageHandler;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.RequiredParameter;
 import org.apache.reef.wake.EStage;
 import org.apache.reef.wake.StageConfiguration;
 import org.apache.reef.wake.impl.ThreadPoolStage;
-import org.apache.reef.inmemory.common.BlockMetaFactory;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
-import org.apache.reef.inmemory.task.hdfs.HdfsBlockLoader;
-import org.apache.reef.inmemory.task.hdfs.HdfsDriverMessageHandler;
 
 /**
  * Builder that creates a Configuration Module to be used at each Task, according to base FS type

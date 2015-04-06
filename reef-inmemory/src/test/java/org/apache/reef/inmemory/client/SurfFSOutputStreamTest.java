@@ -1,7 +1,8 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.inmemory.common.entity.AllocatedBlockMeta;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
+import org.apache.reef.inmemory.common.entity.WriteableBlockMeta;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
 import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
@@ -36,13 +37,13 @@ public final class SurfFSOutputStreamTest {
   @Before
   public void setUp() throws TException {
     metaClient = mock(SurfMetaService.Client.class);
-    final AllocatedBlockMeta allocatedBlockMeta = getAllocatedBlockMeta();
-    when(metaClient.allocateBlock(anyString(), anyInt(), anyString())).thenReturn(allocatedBlockMeta);
+    final WriteableBlockMeta WriteableBlockMeta = getWriteableBlockMeta();
+    when(metaClient.allocateBlock(anyString(), anyInt(), anyString())).thenReturn(WriteableBlockMeta);
     when(metaClient.completeFile(anyString(), anyLong())).thenReturn(true);
 
     final SurfCacheService.Client cacheClient = mock(SurfCacheService.Client.class);
-    doNothing().when(cacheClient).initBlock(anyString(), anyLong(), anyLong(), any(AllocatedBlockMeta.class));
-    doNothing().when(cacheClient).writeData(anyString(), anyLong(), anyLong(), anyLong(), any(ByteBuffer.class), anyBoolean());
+    doNothing().when(cacheClient).initBlock(anyLong(), any(WriteableBlockMeta.class));
+    doNothing().when(cacheClient).writeData(anyLong(), anyLong(), anyLong(), any(ByteBuffer.class), anyBoolean());
 
     cacheClientManager = mock(CacheClientManager.class);
     when(cacheClientManager.get(CACHE_ADDR)).thenReturn(cacheClient);
@@ -83,11 +84,15 @@ public final class SurfFSOutputStreamTest {
     return new SurfFSOutputStream(PATH, metaClient, cacheClientManager, BLOCK_SIZE);
   }
 
-  public AllocatedBlockMeta getAllocatedBlockMeta() {
-    List<NodeInfo> allocatedNodeList = new ArrayList<>();
+  public WriteableBlockMeta getWriteableBlockMeta() {
+    final List<NodeInfo> allocatedNodeList = new ArrayList<>();
     allocatedNodeList.add(new NodeInfo(CACHE_ADDR, ""));
-    AllocatedBlockMeta allocatedBlock = mock(AllocatedBlockMeta.class);
-    when(allocatedBlock.getLocations()).thenReturn(allocatedNodeList);
-    return allocatedBlock;
+
+    final WriteableBlockMeta writableBlockMeta = mock(WriteableBlockMeta.class);
+    final BlockMeta blockMeta = mock(BlockMeta.class);
+
+    when(blockMeta.getLocations()).thenReturn(allocatedNodeList);
+    when(writableBlockMeta.getBlockMeta()).thenReturn(blockMeta);
+    return writableBlockMeta;
   }
 }

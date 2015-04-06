@@ -8,13 +8,6 @@ exception FileNotFoundException{
 }
 
 /**
- * File cannot be created because it already exists at the specified path
- */
-exception FileAlreadyExistsException{
-	1: string message
-}
-
-/**
  * Generic IO Exception
  */
 exception IOException{

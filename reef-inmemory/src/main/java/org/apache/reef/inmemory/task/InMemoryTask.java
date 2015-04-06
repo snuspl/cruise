@@ -1,5 +1,9 @@
 package org.apache.reef.inmemory.task;
 
+import org.apache.reef.inmemory.common.CacheStatusMessage;
+import org.apache.reef.inmemory.task.service.SurfCacheServer;
+import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 import org.apache.reef.task.TaskMessage;
@@ -7,12 +11,8 @@ import org.apache.reef.task.TaskMessageSource;
 import org.apache.reef.task.events.DriverMessage;
 import org.apache.reef.task.events.TaskStart;
 import org.apache.reef.util.Optional;
-import org.apache.reef.tang.annotations.Unit;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
-import org.apache.reef.inmemory.common.CacheStatusMessage;
-import org.apache.reef.inmemory.task.service.SurfCacheServer;
 
 import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;

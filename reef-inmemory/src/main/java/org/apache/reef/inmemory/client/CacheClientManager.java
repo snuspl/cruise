@@ -1,16 +1,7 @@
 package org.apache.reef.inmemory.client;
 
-import com.google.common.net.HostAndPort;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TFramedTransport;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Manages Thrift client connections to the Cache nodes.

@@ -3,9 +3,9 @@ package org.apache.reef.inmemory.common.instrumentation.log;
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
+import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters;
 import org.apache.reef.tang.ExternalConstructor;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters;
 
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;

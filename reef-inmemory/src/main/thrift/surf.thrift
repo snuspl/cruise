@@ -9,11 +9,14 @@ namespace java org.apache.reef.inmemory.common.service
  * interface.
  */
 service SurfMetaService {
+
+  //////////////////// Called by SurfFS
+
   /**
    * Get the list of blocks and locations for the file.
    * The returned list will be sorted by locality w.r.t. clientHostname.
    */
-  entity.FileMeta getFileMeta(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException fnfe)
+  entity.FileMeta getOrLoadFileMeta(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException fnfe)
 
   /**
    * Check whether the file exists in the path
@@ -23,22 +26,35 @@ service SurfMetaService {
   /**
    * Register the Filemeta with given path and blockSize
    */
-  bool create(1:string path, 2:i16 replication, 3:i64 blockSize) throws (1: exceptions.FileAlreadyExistsException fae)
+  void create(1:string path, 2:i64 blockSize, 3:i16 baseFsReplication)
+
+  /**
+   * Rename a directory or a file
+   */
+  bool rename(1:string src, 2:string dst)
+
+  /**
+   * "delete" is a reserved word in Thrift
+   **/
+  bool remove(1:string path, 2:bool recursive)
 
   /**
    * Register the FileMeta and insert an entry to directory structure if successful.
    */
-  bool mkdirs(1:string path) throws (1: exceptions.FileAlreadyExistsException fae)
+  bool mkdirs(1:string path)
 
   /**
-   * List the statuses of the files/directories
+   * List the MetaTreeEntries of the files/directories at the path
    **/
-  list<entity.FileMeta> listMeta(1:string path) throws (1: exceptions.FileNotFoundException fnfe)
+  list<entity.FileMetaStatus> listFileMetaStatus(1:string path)
+
+
+  //////////////////// Called by SurfFSOutputStream
 
   /**
    * Allocate a new Block and return the Block's Metadata (CacheNode, Replication Policy, etc) of the block to write data.
    */
-  entity.AllocatedBlockMeta allocateBlock(1:string path, 2:i64 offset, 3:string clientAddress)
+  entity.WriteableBlockMeta allocateBlock(1:string path, 2:i64 offset, 3:string clientAddress)
 
   /**
    * Announce to the Meta server that the file is complete
