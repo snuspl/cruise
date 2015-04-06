@@ -285,7 +285,14 @@ public class MetaTree {
    * Add newly written blocks reported by CacheNodes
    */
   public void addNewWrittenBlockToFileMetaInTree(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
-    final FileMeta fileMeta = fileIdToFileMeta.get(blockId.getFileId());
+    final FileMeta fileMeta;
+    LOCK.readLock().lock();
+    try {
+      fileMeta = fileIdToFileMeta.get(blockId.getFileId());
+    } finally {
+      LOCK.readLock().unlock();
+    }
+
     if (fileMeta != null) {
       final List<NodeInfo> nodeList = Arrays.asList(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
       final BlockMeta blockMeta = new BlockMeta(blockId.getFileId(), blockId.getOffset(), fileMeta.getBlockSize(), nodeList); // TODO: check replication when we implement replicated write
