@@ -92,7 +92,11 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
   @Override
   public List<FileMetaStatus> listFileMetaStatus(String path) throws FileNotFoundException, TException {
-    return metaManager.listFileMetaStatus(path);
+    try {
+      return metaManager.listFileMetaStatus(path);
+    } catch (IOException e) {
+      throw new FileNotFoundException(e.getMessage());
+    }
   }
 
   @Override
@@ -146,8 +150,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       final boolean pin = action.getPin();
       final BlockMeta blockMeta = new BlockMeta(meta.getFileId(), offset, meta.getBlockSize(), selected);
       return new WriteableBlockMeta(blockMeta, pin, (short) replication);
-    } catch (FileNotFoundException e) {
-      throw new FileNotFoundException(e);
+    } catch (IOException e) {
+      throw new FileNotFoundException(e.getMessage());
     }
   }
 
@@ -158,8 +162,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       LOG.log(Level.INFO, "Compare the file size of {0} : Expected {1} / Actual {2}",
         new Object[] {path, fileSize, meta.getFileSize()});
       return fileSize == meta.getFileSize();
-    } catch (FileNotFoundException e) {
-      throw new FileNotFoundException(e);
+    } catch (IOException e) {
+      throw new FileNotFoundException(e.getMessage());
     }
   }
 
@@ -212,7 +216,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public String getReplication() throws org.apache.reef.inmemory.common.exceptions.IOException, TException {
+  public String getReplication() throws TException {
     LOG.log(Level.INFO, "CLI replicationList command");
     final Rules rules = replicationPolicy.getRules();
     if (rules == null) {

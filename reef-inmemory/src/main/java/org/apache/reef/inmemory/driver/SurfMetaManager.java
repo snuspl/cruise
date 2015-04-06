@@ -5,7 +5,6 @@ import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
-import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.driver.metatree.MetaTree;
 
 import javax.inject.Inject;
@@ -46,11 +45,11 @@ public final class SurfMetaManager {
     return this.metaTree.exists(path);
   }
 
-  public List<FileMetaStatus> listFileMetaStatus(final String path) throws FileNotFoundException {
+  public List<FileMetaStatus> listFileMetaStatus(final String path) throws IOException {
     return this.metaTree.listFileMetaStatus(path);
   }
 
-  public FileMeta getFileMeta(final String path) throws FileNotFoundException {
+  public FileMeta getFileMeta(final String path) throws IOException {
     return this.metaTree.getFileMeta(path);
   }
 

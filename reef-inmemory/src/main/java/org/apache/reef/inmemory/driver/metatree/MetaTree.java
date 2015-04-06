@@ -6,7 +6,6 @@ import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
-import org.apache.reef.inmemory.common.exceptions.FileNotFoundException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.driver.BaseFsClient;
 import org.apache.reef.inmemory.driver.CacheNode;
@@ -52,16 +51,16 @@ public class MetaTree {
    *
    * @param path to the file
    * @return the FileMeta of the path in tree
-   * @throws FileNotFoundException if no FileMeta for the exact path exists in tree
+   * @throws IOException if no FileMeta for the exact path exists in tree
    */
-  public FileMeta getFileMeta(final String path) throws FileNotFoundException {
+  public FileMeta getFileMeta(final String path) throws IOException {
     LOCK.readLock().lock();
     try {
       final Entry entry = getEntryInTree(path);
       if (entry != null && !entry.isDirectory()) {
         return ((FileEntry) entry).getFileMeta();
       } else {
-        throw new FileNotFoundException("FileMeta does not exist in Surf MetaTree");
+        throw new IOException("FileMeta does not exist in Surf MetaTree");
       }
     } finally {
       LOCK.readLock().unlock();
@@ -73,9 +72,9 @@ public class MetaTree {
    *
    * @param path to a directory or a file
    * @return a list of FileMetaStatus
-   * @throws FileNotFoundException if no such directory or file exists for the path
+   * @throws IOException if no such directory or file exists for the path
    */
-  public List<FileMetaStatus> listFileMetaStatus(final String path) throws FileNotFoundException {
+  public List<FileMetaStatus> listFileMetaStatus(final String path) throws IOException {
     LOCK.readLock().lock();
     try {
       final Entry entry = getEntryInTree(path);
@@ -102,7 +101,7 @@ public class MetaTree {
           return Arrays.asList(new FileMetaStatus(path, fileMeta));
         }
       } else {
-        throw new FileNotFoundException("No directory or file found for the path " + path);
+        throw new IOException("No directory or file found for the path " + path);
       }
     } finally {
       LOCK.readLock().unlock();
