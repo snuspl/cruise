@@ -1,4 +1,4 @@
-package edu.snu.reef.flexion.examples;
+package edu.snu.reef.flexion.examples.simple;
 
 import org.apache.reef.tang.annotations.Name;
 

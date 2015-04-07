@@ -6,7 +6,10 @@ import org.apache.reef.tang.Tang;
 import javax.inject.Inject;
 
 
-public final class UserParametersImpl implements UserParameters{
+/**
+ * Default implementation of {@link edu.snu.reef.flexion.core.UserParameters} which returns empty configurations.
+ */
+public final class UserParametersImpl implements UserParameters {
 
     @Inject
     public UserParametersImpl() {

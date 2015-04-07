@@ -20,7 +20,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Whether to assume that covariance matrices are diagonal or not",
-        short_name = "DiagCov",
+        short_name = "isCovDiag",
         default_value = "true")
 public class IsCovarianceDiagonal implements Name<Boolean> {
 }

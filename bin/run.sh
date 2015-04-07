@@ -27,7 +27,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-KMEANS=edu.snu.reef.flexion.examples.SimpleREEF
+KMEANS=edu.snu.reef.flexion.examples.simple.SimpleREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $KMEANS $*"
 echo $CMD

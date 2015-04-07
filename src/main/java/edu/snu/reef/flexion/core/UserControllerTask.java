@@ -19,33 +19,35 @@ public abstract class UserControllerTask {
 
     /**
      * Initialize a user-defined controller task.
-     * Results of the previous task can be retrieved from the given key-value store
+     * Default behavior of this method is to do nothing, but this method can be overridden in subclasses
      */
     public void initialize() {
+        return;
     }
 
     /**
      * Clean up a user-defined controller task
-     * Results of the current task can be passed to the next task through the given key-value store
+     * Default behavior of this method is to do nothing, but this method can be overridden in subclasses
      */
     public void cleanup() {
+        return;
     }
 
     public abstract boolean isTerminated(int iteration);
 
-    final public boolean isReduceUsed(){
+    final public boolean isReduceUsed() {
         return (this instanceof DataReduceReceiver);
     }
 
-    final public boolean isGatherUsed(){
+    final public boolean isGatherUsed() {
         return (this instanceof DataGatherReceiver);
     }
 
-    final public boolean isBroadcastUsed(){
+    final public boolean isBroadcastUsed() {
         return (this instanceof DataBroadcastSender);
     }
 
-    final public boolean isScatterUsed(){
+    final public boolean isScatterUsed() {
         return (this instanceof DataScatterSender);
     }
 }

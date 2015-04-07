@@ -1,4 +1,4 @@
-package edu.snu.reef.flexion.examples;
+package edu.snu.reef.flexion.examples.simple;
 
 import com.microsoft.reef.io.network.group.operators.Reduce;
 import javax.inject.Inject;

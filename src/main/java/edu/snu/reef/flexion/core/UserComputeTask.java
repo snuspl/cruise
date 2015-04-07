@@ -19,16 +19,18 @@ public abstract class UserComputeTask {
 
     /**
      * Initialize a user-defined compute task.
-     * Results of the previous task can be retrieved from the given key-value store
+     * Default behavior of this method is to do nothing, but this method can be overridden in subclasses
      */
     public void initialize() throws ParseException {
+        return;
     }
 
     /**
      * Clean up a user-defined compute task
-     * Results of the current task can be passed to the next task through the given key-value store
+     * Default behavior of this method is to do nothing, but this method can be overridden in subclasses
      */
     public void cleanup() {
+        return;
     }
 
     final public boolean isReduceUsed() {

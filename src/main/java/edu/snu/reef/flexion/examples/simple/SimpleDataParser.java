@@ -1,4 +1,4 @@
-package edu.snu.reef.flexion.examples;
+package edu.snu.reef.flexion.examples.simple;
 
 import edu.snu.reef.flexion.core.DataParser;
 import edu.snu.reef.flexion.core.ParseException;

@@ -94,7 +94,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
     @Override
     public boolean isTerminated(int iteration) {
         return convergenceCondition.checkConvergence(centroids)
-            || (iteration > maxIterations); // First two iterations are used for initialization
+            || (iteration > maxIterations);
 
     }
 

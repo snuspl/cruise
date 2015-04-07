@@ -36,27 +36,26 @@ public final class VectorListCodec implements Codec<List<Vector>> {
   @Override
   public final byte[] encode(final List<Vector> list) {
 
-    /* This codec does not assume consistent centroid vector sizes(dimensions).
-     * Therefore to specify the initial data size,
-     * a quick iteration over the input list to compute
-     * the sums of vector sizes is required.
+    /*
+     * This codec assume that vectors have the same length
      */
-    int vectorSizeSum = 0;
+    int length = 0;
     for (final Vector vector : list) {
-      vectorSizeSum += vector.size();
+      length = vector.size();
     }
 
     final ByteArrayOutputStream baos =
         new ByteArrayOutputStream(Integer.SIZE
-                                  + Integer.SIZE * list.size()
-                                  + Double.SIZE * vectorSizeSum);
+                                  + Integer.SIZE
+                                  + Double.SIZE * length * list.size());
+
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(list.size());
+      daos.writeInt(length);
 
       for (final Vector vector : list) {
-        daos.writeInt(vector.size());
 
-        for (int i = 0; i < vector.size(); i++) {
+        for (int i = 0; i < length; i++) {
           daos.writeDouble(vector.get(i));
         }
       }
@@ -73,11 +72,12 @@ public final class VectorListCodec implements Codec<List<Vector>> {
 
     try (final DataInputStream dais = new DataInputStream(bais)) {
       final int listSize = dais.readInt();
+      final int length = dais.readInt();
 
       for (int i = 0; i < listSize; i++) {
-        final Vector vector = new DenseVector(dais.readInt());
+        final Vector vector = new DenseVector(length);
 
-        for (int j = 0; j < vector.size(); j++) {
+        for (int j = 0; j < length; j++) {
           vector.set(j, dais.readDouble());
         }
         resultList.add(vector);

@@ -69,7 +69,7 @@ public final class ClusteringPreCmpTask extends UserComputeTask
      * @param maxNumOfSamples
      * @return
      */
-    static List<Vector> sample(List<Vector> points, int maxNumOfSamples){
+    static List<Vector> sample(List<Vector> points, int maxNumOfSamples) {
 
         final List<Vector> samples = new LinkedList<>();
 

@@ -68,19 +68,19 @@ public class StageInfo {
         return this;
     }
 
-    public boolean isBroadcastUsed(){
+    public boolean isBroadcastUsed() {
         return this.isBroadcastUsed;
     }
 
-    public boolean isScatterUsed(){
+    public boolean isScatterUsed() {
         return this.isScatterUsed;
     }
 
-    public boolean isGatherUsed(){
+    public boolean isGatherUsed() {
         return this.isGatherUsed;
     }
 
-    public boolean isReduceUsed(){
+    public boolean isReduceUsed() {
         return this.isReduceUsed;
     }
 

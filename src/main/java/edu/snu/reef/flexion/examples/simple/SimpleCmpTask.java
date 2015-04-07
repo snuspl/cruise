@@ -1,4 +1,4 @@
-package edu.snu.reef.flexion.examples;
+package edu.snu.reef.flexion.examples.simple;
 
 import edu.snu.reef.flexion.core.UserComputeTask;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataBroadcastReceiver;
