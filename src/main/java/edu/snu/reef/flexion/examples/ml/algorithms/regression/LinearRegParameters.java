@@ -3,10 +3,7 @@ package edu.snu.reef.flexion.examples.ml.algorithms.regression;
 import edu.snu.reef.flexion.core.UserParameters;
 import edu.snu.reef.flexion.examples.ml.loss.Loss;
 import edu.snu.reef.flexion.examples.ml.loss.SquareLoss;
-import edu.snu.reef.flexion.examples.ml.parameters.Dimension;
-import edu.snu.reef.flexion.examples.ml.parameters.Lambda;
-import edu.snu.reef.flexion.examples.ml.parameters.MaxIterations;
-import edu.snu.reef.flexion.examples.ml.parameters.StepSize;
+import edu.snu.reef.flexion.examples.ml.parameters.*;
 import edu.snu.reef.flexion.examples.ml.regularization.L2Regularization;
 import edu.snu.reef.flexion.examples.ml.regularization.Regularization;
 import org.apache.reef.tang.Configuration;
@@ -19,16 +16,19 @@ import javax.inject.Inject;
 
 public final class LinearRegParameters implements UserParameters {
 
+  private final double convThreshold;
   private final double stepSize;
   private final double lambda;
   private final int maxIterations;
   private final int dimension;
 
   @Inject
-  private LinearRegParameters(@Parameter(StepSize.class) final double stepSize,
+  private LinearRegParameters(@Parameter(ConvergenceThreshold.class) final double convThreshold,
+                              @Parameter(StepSize.class) final double stepSize,
                               @Parameter(Lambda.class) final double lambda,
                               @Parameter(Dimension.class) final int dimension,
                               @Parameter(MaxIterations.class) final int maxIterations) {
+    this.convThreshold = convThreshold;
     this.stepSize = stepSize;
     this.lambda = lambda;
     this.dimension = dimension;
@@ -38,6 +38,7 @@ public final class LinearRegParameters implements UserParameters {
   @Override
   public Configuration getDriverConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
         .bindNamedParameter(StepSize.class, String.valueOf(stepSize))
         .bindNamedParameter(Dimension.class, String.valueOf(dimension))
         .bindNamedParameter(Lambda.class, String.valueOf(lambda))
@@ -67,6 +68,7 @@ public final class LinearRegParameters implements UserParameters {
   @Override
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
         .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
         .build();
   }
@@ -78,6 +80,7 @@ public final class LinearRegParameters implements UserParameters {
     cl.registerShortNameOfClass(Dimension.class);
     cl.registerShortNameOfClass(Lambda.class);
     cl.registerShortNameOfClass(MaxIterations.class);
+    cl.registerShortNameOfClass(ConvergenceThreshold.class);
     return cl;
   }
 
