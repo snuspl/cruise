@@ -10,19 +10,17 @@ import org.apache.reef.tang.Tang;
 
 public class LogisticRegREEF {
 
-    public final static void main(String[] args) throws Exception {
+  public final static void main(String[] args) throws Exception {
 
-        FlexionLauncher.run(
-                Configurations.merge(
-                        FlexionConfiguration.CONF(args, LogisticRegParameters.getCommandLine()),
-                        Tang.Factory.getTang().newConfigurationBuilder()
-                                .bindNamedParameter(JobIdentifier.class, "Logistic Regression")
-                                .bindImplementation(UserJobInfo.class, LogisticRegJobInfo.class)
-                                .bindImplementation(UserParameters.class, LogisticRegParameters.class)
-                                .build()
-                )
-        );
-    }
-
-
+    FlexionLauncher.run(
+        Configurations.merge(
+            FlexionConfiguration.CONF(args, LogisticRegParameters.getCommandLine()),
+            Tang.Factory.getTang().newConfigurationBuilder()
+                .bindNamedParameter(JobIdentifier.class, "Logistic Regression")
+                .bindImplementation(UserJobInfo.class, LogisticRegJobInfo.class)
+                .bindImplementation(UserParameters.class, LogisticRegParameters.class)
+                .build()
+        )
+    );
+  }
 }

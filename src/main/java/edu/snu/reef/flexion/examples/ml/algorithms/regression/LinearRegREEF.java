@@ -10,19 +10,19 @@ import org.apache.reef.tang.Tang;
 
 public class LinearRegREEF {
 
-    public final static void main(String[] args) throws Exception {
+  public final static void main(String[] args) throws Exception {
 
-        FlexionLauncher.run(
-                Configurations.merge(
-                        FlexionConfiguration.CONF(args, LinearRegParameters.getCommandLine()),
-                        Tang.Factory.getTang().newConfigurationBuilder()
-                                .bindNamedParameter(JobIdentifier.class, "Linear Regression")
-                                .bindImplementation(UserJobInfo.class, LinearRegJobInfo.class)
-                                .bindImplementation(UserParameters.class, LinearRegParameters.class)
-                                .build()
-                )
-        );
-    }
+    FlexionLauncher.run(
+        Configurations.merge(
+            FlexionConfiguration.CONF(args, LinearRegParameters.getCommandLine()),
+            Tang.Factory.getTang().newConfigurationBuilder()
+                .bindNamedParameter(JobIdentifier.class, "Linear Regression")
+                .bindImplementation(UserJobInfo.class, LinearRegJobInfo.class)
+                .bindImplementation(UserParameters.class, LinearRegParameters.class)
+                .build()
+        )
+    );
+  }
 
 
 }

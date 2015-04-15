@@ -16,24 +16,26 @@ import java.util.List;
 
 public final class LinearRegJobInfo implements UserJobInfo {
 
-    @Inject
-    public LinearRegJobInfo(){
-    }
+  @Inject
+  public LinearRegJobInfo(){
+  }
 
-    @Override
-    public List<StageInfo> getStageInfoList() {
+  @Override
+  public List<StageInfo> getStageInfoList() {
 
-        final List<StageInfo> stageInfoList = new LinkedList<>();
+    final List<StageInfo> stageInfoList = new LinkedList<>();
 
-        stageInfoList.add(new StageInfo(LinearRegCmpTask.class, LinearRegCtrlTask.class, CommunicationGroup.class)
-                .setBroadcast(LinearModelCodec.class)
-                .setReduce(LinearRegSummaryCodec.class, LinearRegReduceFunction.class));
+    stageInfoList.add(
+        StageInfo.newBuilder(LinearRegCmpTask.class, LinearRegCtrlTask.class, CommunicationGroup.class)
+            .setBroadcast(LinearModelCodec.class)
+            .setReduce(LinearRegSummaryCodec.class, LinearRegReduceFunction.class)
+            .build());
 
-        return stageInfoList;
-    }
+    return stageInfoList;
+  }
 
-    @Override
-    public Class<? extends DataParser> getDataParser() {
-        return RegressionDataParser.class;
-    }
+  @Override
+  public Class<? extends DataParser> getDataParser() {
+    return RegressionDataParser.class;
+  }
 }
