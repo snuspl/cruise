@@ -10,19 +10,19 @@ import org.apache.reef.tang.Tang;
 
 public class EMREEF {
 
-    public final static void main(String[] args) throws Exception {
+  public final static void main(String[] args) throws Exception {
 
-        FlexionLauncher.run(
-                Configurations.merge(
-                        FlexionConfiguration.CONF(args, EMParameters.getCommandLine()),
-                        Tang.Factory.getTang().newConfigurationBuilder()
-                                .bindNamedParameter(JobIdentifier.class, "EM Clustering")
-                                .bindImplementation(UserJobInfo.class, EMJobInfo.class)
-                                .bindImplementation(UserParameters.class, EMParameters.class)
-                                .build()
-                )
-        );
-    }
+    FlexionLauncher.run(
+        Configurations.merge(
+            FlexionConfiguration.CONF(args, EMParameters.getCommandLine()),
+            Tang.Factory.getTang().newConfigurationBuilder()
+                .bindNamedParameter(JobIdentifier.class, "EM Clustering")
+                .bindImplementation(UserJobInfo.class, EMJobInfo.class)
+                .bindImplementation(UserParameters.class, EMParameters.class)
+                .build()
+        )
+    );
+  }
 
 
 }

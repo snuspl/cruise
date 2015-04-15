@@ -17,85 +17,85 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class ControllerTask implements Task {
-    private final static Logger LOG = Logger.getLogger(ControllerTask.class.getName());
-    public final static String TASK_ID = "CtrlTask";
+  private final static Logger LOG = Logger.getLogger(ControllerTask.class.getName());
+  public final static String TASK_ID = "CtrlTask";
 
-    private final UserControllerTask userControllerTask;
-    private final CommunicationGroupClient commGroup;
+  private final UserControllerTask userControllerTask;
+  private final CommunicationGroupClient commGroup;
 
-    private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
+  private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
 
-    @Inject
-    public ControllerTask(final GroupCommClient groupCommClient,
-                          final UserControllerTask userControllerTask,
-                          @Parameter(CommunicationGroup.class) final String commGroupName) throws ClassNotFoundException {
+  @Inject
+  public ControllerTask(final GroupCommClient groupCommClient,
+                        final UserControllerTask userControllerTask,
+                        @Parameter(CommunicationGroup.class) final String commGroupName) throws ClassNotFoundException {
 
-        this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
-        this.userControllerTask = userControllerTask;
-        this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
+    this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
+    this.userControllerTask = userControllerTask;
+    this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
+  }
+
+  @Override
+  public final byte[] call(final byte[] memento) throws Exception {
+    LOG.log(Level.INFO, "CtrlTask commencing...");
+
+    int iteration = 0;
+    userControllerTask.initialize();
+    do {
+      userControllerTask.run(iteration);
+      ctrlMessageBroadcast.send(CtrlMessage.RUN);
+      sendData(iteration);
+      receiveData();
+      topologyChanged();
+    } while(!userControllerTask.isTerminated(iteration++));
+    ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
+    userControllerTask.cleanup();
+
+    return null;
+  }
+
+  /**
+   * Check if group communication topology has changed, and updates it if it has.
+   * @return true if topology has changed, false if not
+   */
+  private final boolean topologyChanged() {
+    if (commGroup.getTopologyChanges().exist()) {
+      commGroup.updateTopology();
+      return true;
+
+    } else {
+      return false;
+    }
+  }
+
+
+  private void sendData(int iteration) throws Exception {
+
+    if (userControllerTask.isBroadcastUsed()) {
+      commGroup.getBroadcastSender(DataBroadcast.class).send(
+          ((DataBroadcastSender) userControllerTask).sendBroadcastData(iteration));
     }
 
-    @Override
-    public final byte[] call(final byte[] memento) throws Exception {
-        LOG.log(Level.INFO, "CtrlTask commencing...");
+    if (userControllerTask.isScatterUsed()) {
+      commGroup.getScatterSender(DataScatter.class).send(
+          ((DataScatterSender) userControllerTask).sendScatterData(iteration));
+    }
+  }
 
-        int iteration = 0;
-        userControllerTask.initialize();
-        do {
-            userControllerTask.run(iteration);
-            ctrlMessageBroadcast.send(CtrlMessage.RUN);
-            sendData(iteration);
-            receiveData();
-            topologyChanged();
-        } while(!userControllerTask.isTerminated(iteration++));
-        ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
-        userControllerTask.cleanup();
+  private void receiveData() throws Exception {
 
-        return null;
+    if (userControllerTask.isGatherUsed()) {
+      ((DataGatherReceiver)userControllerTask).receiveGatherData(
+          commGroup.getGatherReceiver(DataGather.class).receive());
     }
 
-    /**
-     * Check if group communication topology has changed, and updates it if it has.
-     * @return true if topology has changed, false if not
-     */
-    private final boolean topologyChanged() {
-        if (commGroup.getTopologyChanges().exist()) {
-            commGroup.updateTopology();
-            return true;
+    if (userControllerTask.isReduceUsed()) {
 
-        } else {
-            return false;
-        }
-    }
-
-
-    private void sendData(int iteration) throws Exception {
-
-        if (userControllerTask.isBroadcastUsed()) {
-            commGroup.getBroadcastSender(DataBroadcast.class).send(
-                    ((DataBroadcastSender) userControllerTask).sendBroadcastData(iteration));
-        }
-
-        if (userControllerTask.isScatterUsed()) {
-            commGroup.getScatterSender(DataScatter.class).send(
-                    ((DataScatterSender) userControllerTask).sendScatterData(iteration));
-        }
-    }
-
-    private void receiveData() throws Exception {
-
-        if (userControllerTask.isGatherUsed()) {
-            ((DataGatherReceiver)userControllerTask).receiveGatherData(
-                    commGroup.getGatherReceiver(DataGather.class).receive());
-        }
-
-        if (userControllerTask.isReduceUsed()) {
-
-            ((DataReduceReceiver)userControllerTask).receiveReduceData(
-                    commGroup.getReduceReceiver(DataReduce.class).reduce());
-
-        }
+      ((DataReduceReceiver)userControllerTask).receiveReduceData(
+          commGroup.getReduceReceiver(DataReduce.class).reduce());
 
     }
+
+  }
 
 }

@@ -9,12 +9,12 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 @DefaultImplementation(UserParametersImpl.class)
 public interface UserParameters {
 
-    public Configuration getDriverConf();
+  public Configuration getDriverConf();
 
-    public Configuration getServiceConf();
+  public Configuration getServiceConf();
 
-    public Configuration getUserCmpTaskConf();
+  public Configuration getUserCmpTaskConf();
 
-    public Configuration getUserCtrlTaskConf();
+  public Configuration getUserCtrlTaskConf();
 
 }

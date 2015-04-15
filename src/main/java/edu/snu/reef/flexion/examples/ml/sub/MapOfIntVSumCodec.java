@@ -49,8 +49,8 @@ public final class MapOfIntVSumCodec implements Codec<Map<Integer, VectorSum>> {
 
     final ByteArrayOutputStream baos =
         new ByteArrayOutputStream(Integer.SIZE
-                                  + Integer.SIZE * 3 * map.size()
-                                  + Double.SIZE * vectorSizeSum);
+            + Integer.SIZE * 3 * map.size()
+            + Double.SIZE * vectorSizeSum);
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(map.size());
 

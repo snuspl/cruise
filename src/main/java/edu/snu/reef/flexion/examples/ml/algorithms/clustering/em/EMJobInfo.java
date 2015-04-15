@@ -16,28 +16,28 @@ import java.util.List;
 
 public final class EMJobInfo implements UserJobInfo {
 
-    @Inject
-    public EMJobInfo(){
-    }
+  @Inject
+  public EMJobInfo(){
+  }
 
-    @Override
-    public List<StageInfo> getStageInfoList() {
+  @Override
+  public List<StageInfo> getStageInfoList() {
 
-        final List<StageInfo> stageInfoList = new LinkedList<>();
+    final List<StageInfo> stageInfoList = new LinkedList<>();
 
-        // preprocess: initialize the centroids of clusters
-        stageInfoList.add(new ClusteringPreStage());
+    // preprocess: initialize the centroids of clusters
+    stageInfoList.add(new ClusteringPreStage());
 
-        // main process: adjust the centroids and covariance matrices of clusters
-        stageInfoList.add(new StageInfo(EMMainCmpTask.class, EMMainCtrlTask.class, EMMainCommGroup.class)
-                .setBroadcast(ClusterSummaryListCodec.class)
-                .setReduce(MapOfIntClusterStatsCodec.class, MapOfIntClusterStatsReduceFunction.class));
+    // main process: adjust the centroids and covariance matrices of clusters
+    stageInfoList.add(new StageInfo(EMMainCmpTask.class, EMMainCtrlTask.class, EMMainCommGroup.class)
+        .setBroadcast(ClusterSummaryListCodec.class)
+        .setReduce(MapOfIntClusterStatsCodec.class, MapOfIntClusterStatsReduceFunction.class));
 
-        return stageInfoList;
-    }
+    return stageInfoList;
+  }
 
-    @Override
-    public Class<? extends DataParser> getDataParser() {
-        return ClusteringDataParser.class;
-    }
+  @Override
+  public Class<? extends DataParser> getDataParser() {
+    return ClusteringDataParser.class;
+  }
 }

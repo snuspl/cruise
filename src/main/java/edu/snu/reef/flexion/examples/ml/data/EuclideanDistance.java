@@ -31,7 +31,7 @@ public final class EuclideanDistance implements VectorDistanceMeasure {
   @Override
   public final double distance(Vector v1, Vector v2) {
     if (v1.size() != v2.size()) {
-       throw new IllegalArgumentException("Vector dimensions are not consistent");
+      throw new IllegalArgumentException("Vector dimensions are not consistent");
     }
 
     double distance = 0;

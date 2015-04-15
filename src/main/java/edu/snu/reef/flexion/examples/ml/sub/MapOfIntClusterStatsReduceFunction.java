@@ -29,25 +29,25 @@ import java.util.Map;
  */
 public final class MapOfIntClusterStatsReduceFunction implements Reduce.ReduceFunction<Map<Integer, ClusterStats>> {
 
-    @Inject
-    public MapOfIntClusterStatsReduceFunction() {
-    }
+  @Inject
+  public MapOfIntClusterStatsReduceFunction() {
+  }
 
-    @Override
-    public Map<Integer, ClusterStats> apply(Iterable<Map<Integer, ClusterStats>> elements) {
+  @Override
+  public Map<Integer, ClusterStats> apply(Iterable<Map<Integer, ClusterStats>> elements) {
 
-        final Map<Integer, ClusterStats> resultMap = new HashMap<>();
+    final Map<Integer, ClusterStats> resultMap = new HashMap<>();
 
-        for (final Map<Integer, ClusterStats> map : elements) {
-            for (final Integer id : map.keySet()) {
-                if (resultMap.containsKey(id)) {
-                    resultMap.get(id).add(map.get(id));
-                } else {
-                    resultMap.put(id, map.get(id));
-                }
-            }
+    for (final Map<Integer, ClusterStats> map : elements) {
+      for (final Integer id : map.keySet()) {
+        if (resultMap.containsKey(id)) {
+          resultMap.get(id).add(map.get(id));
+        } else {
+          resultMap.put(id, map.get(id));
         }
-
-        return resultMap;
+      }
     }
+
+    return resultMap;
+  }
 }

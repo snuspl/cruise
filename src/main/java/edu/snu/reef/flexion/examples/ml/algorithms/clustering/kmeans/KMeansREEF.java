@@ -10,19 +10,19 @@ import org.apache.reef.tang.Tang;
 
 public class KMeansREEF {
 
-    public final static void main(String[] args) throws Exception {
+  public final static void main(String[] args) throws Exception {
 
-        FlexionLauncher.run(
-                Configurations.merge(
-                        FlexionConfiguration.CONF(args, KMeansParameters.getCommandLine()),
-                        Tang.Factory.getTang().newConfigurationBuilder()
-                                .bindNamedParameter(JobIdentifier.class, "K-means Clustering")
-                                .bindImplementation(UserJobInfo.class, KMeansJobInfo.class)
-                                .bindImplementation(UserParameters.class, KMeansParameters.class)
-                                .build()
-                )
-        );
-    }
+    FlexionLauncher.run(
+        Configurations.merge(
+            FlexionConfiguration.CONF(args, KMeansParameters.getCommandLine()),
+            Tang.Factory.getTang().newConfigurationBuilder()
+                .bindNamedParameter(JobIdentifier.class, "K-means Clustering")
+                .bindImplementation(UserJobInfo.class, KMeansJobInfo.class)
+                .bindImplementation(UserParameters.class, KMeansParameters.class)
+                .build()
+        )
+    );
+  }
 
 
 }

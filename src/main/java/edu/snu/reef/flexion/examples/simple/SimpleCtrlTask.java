@@ -7,33 +7,33 @@ import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
 import javax.inject.Inject;
 
 public final class SimpleCtrlTask extends UserControllerTask
-        implements DataReduceReceiver<Integer>, DataBroadcastSender<Integer> {
+    implements DataReduceReceiver<Integer>, DataBroadcastSender<Integer> {
 
-    private Integer receivedData = 0;
-    private Integer dataToSend = 0;
+  private Integer receivedData = 0;
+  private Integer dataToSend = 0;
 
-    @Inject
-    private SimpleCtrlTask() {
-    }
+  @Inject
+  private SimpleCtrlTask() {
+  }
 
 
-    @Override
-    public void run(int iteration) {
-        dataToSend = receivedData * 2;
-    }
+  @Override
+  public void run(int iteration) {
+    dataToSend = receivedData * 2;
+  }
 
-    @Override
-    public boolean isTerminated(int iteration) {
-        return iteration > 10;
-    }
+  @Override
+  public boolean isTerminated(int iteration) {
+    return iteration > 10;
+  }
 
-    @Override
-    public Integer sendBroadcastData(int iteration) {
-        return dataToSend;
-    }
+  @Override
+  public Integer sendBroadcastData(int iteration) {
+    return dataToSend;
+  }
 
-    @Override
-    public void receiveReduceData(Integer data) {
-        receivedData = data;
-    }
+  @Override
+  public void receiveReduceData(Integer data) {
+    receivedData = data;
+  }
 }

@@ -13,35 +13,35 @@ import java.util.List;
 import java.util.logging.Logger;
 
 public class SimpleDataParser implements DataParser<List<String>> {
-    private final static Logger LOG = Logger.getLogger(SimpleDataParser.class.getName());
+  private final static Logger LOG = Logger.getLogger(SimpleDataParser.class.getName());
 
-    private final DataSet<LongWritable, Text> dataSet;
-    private List<String> result;
+  private final DataSet<LongWritable, Text> dataSet;
+  private List<String> result;
 
-    @Inject
-    public SimpleDataParser(final DataSet<LongWritable, Text> dataSet) {
-        this.dataSet = dataSet;
+  @Inject
+  public SimpleDataParser(final DataSet<LongWritable, Text> dataSet) {
+    this.dataSet = dataSet;
+  }
+
+  @Override
+  public final List<String> get() throws ParseException {
+    if (result == null) {
+      parse();
     }
 
-    @Override
-    public final List<String> get() throws ParseException {
-        if (result == null) {
-            parse();
-        }
+    return result;
+  }
 
-        return result;
+  @Override
+  public final void parse() {
+
+    final List<String> texts = new LinkedList<>();
+
+    for (final Pair<LongWritable, Text> keyValue : dataSet) {
+      texts.add(keyValue.second.toString());
     }
 
-    @Override
-    public final void parse() {
+    result = texts;
 
-        final List<String> texts = new LinkedList<>();
-
-        for (final Pair<LongWritable, Text> keyValue : dataSet) {
-            texts.add(keyValue.second.toString());
-        }
-
-        result = texts;
-
-    }
+  }
 }

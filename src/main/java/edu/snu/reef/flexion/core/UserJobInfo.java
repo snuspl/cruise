@@ -9,8 +9,8 @@ import java.util.List;
  */
 public interface UserJobInfo {
 
-    public abstract List<StageInfo> getStageInfoList();
+  public abstract List<StageInfo> getStageInfoList();
 
-    public abstract Class<? extends DataParser> getDataParser();
+  public abstract Class<? extends DataParser> getDataParser();
 
 }

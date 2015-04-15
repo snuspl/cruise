@@ -20,92 +20,92 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class KMeansMainCtrlTask extends UserControllerTask
-        implements DataReduceReceiver<Map<Integer, VectorSum>>, DataBroadcastSender<List<Vector>> {
+    implements DataReduceReceiver<Map<Integer, VectorSum>>, DataBroadcastSender<List<Vector>> {
 
-    private static final Logger LOG = Logger.getLogger(KMeansMainCtrlTask.class.getName());
+  private static final Logger LOG = Logger.getLogger(KMeansMainCtrlTask.class.getName());
 
-    /**
-     * Check function to determine whether algorithm has converged or not.
-     * This is separate from the default stop condition,
-     * which is based on the number of iterations made.
-     */
-    private final ClusteringConvCond clusteringConvergenceCondition;
+  /**
+   * Check function to determine whether algorithm has converged or not.
+   * This is separate from the default stop condition,
+   * which is based on the number of iterations made.
+   */
+  private final ClusteringConvCond clusteringConvergenceCondition;
 
-    /**
-     * Maximum number of iterations allowed before job stops
-     */
-    private final int maxIterations;
+  /**
+   * Maximum number of iterations allowed before job stops
+   */
+  private final int maxIterations;
 
-    /**
-     * Vector sum of the points assigned to each cluster
-     */
-    private Map<Integer, VectorSum> pointSum = new HashMap<>();
+  /**
+   * Vector sum of the points assigned to each cluster
+   */
+  private Map<Integer, VectorSum> pointSum = new HashMap<>();
 
-    /**
-     * List of cluster centroids to distribute to Compute Tasks
-     * Will be updated for each iteration
-     */
-    private List<Vector> centroids = new ArrayList<>();
+  /**
+   * List of cluster centroids to distribute to Compute Tasks
+   * Will be updated for each iteration
+   */
+  private List<Vector> centroids = new ArrayList<>();
 
-    private final KeyValueStore keyValueStore;
+  private final KeyValueStore keyValueStore;
 
-    /**
-     * This class is instantiated by TANG
-     *
-     * Constructs the Controller Task for k-means
-     *
-     * @param clusteringConvergenceCondition conditions for checking convergence of algorithm
-     * @param keyValueStore
-     * @param maxIterations maximum number of iterations allowed before job stops
-     */
-    @Inject
-    public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
-                              final KeyValueStore keyValueStore,
-                              @Parameter(MaxIterations.class) final int maxIterations) {
+  /**
+   * This class is instantiated by TANG
+   *
+   * Constructs the Controller Task for k-means
+   *
+   * @param clusteringConvergenceCondition conditions for checking convergence of algorithm
+   * @param keyValueStore
+   * @param maxIterations maximum number of iterations allowed before job stops
+   */
+  @Inject
+  public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
+                            final KeyValueStore keyValueStore,
+                            @Parameter(MaxIterations.class) final int maxIterations) {
 
-        this.clusteringConvergenceCondition = clusteringConvergenceCondition;
-        this.keyValueStore = keyValueStore;
-        this.maxIterations = maxIterations;
+    this.clusteringConvergenceCondition = clusteringConvergenceCondition;
+    this.keyValueStore = keyValueStore;
+    this.maxIterations = maxIterations;
+  }
+
+  /**
+   * Receive initial centroids from the preprocess task
+   */
+  @Override
+  public void initialize() {
+    centroids = keyValueStore.get(Centroids.class);
+  }
+
+  @Override
+  public void run(int iteration) {
+
+    for (final Integer clusterID : pointSum.keySet()) {
+      final VectorSum vectorSum = pointSum.get(clusterID);
+      final Vector newCentroid = vectorSum.computeVectorMean();
+      centroids.set(clusterID, newCentroid);
     }
 
-    /**
-     * Receive initial centroids from the preprocess task
-     */
-    @Override
-    public void initialize() {
-        centroids = keyValueStore.get(Centroids.class);
-    }
+    LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration);
+    LOG.log(Level.INFO, "" + centroids);
+    LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration);
 
-    @Override
-    public void run(int iteration) {
+  }
 
-        for (final Integer clusterID : pointSum.keySet()) {
-            final VectorSum vectorSum = pointSum.get(clusterID);
-            final Vector newCentroid = vectorSum.computeVectorMean();
-            centroids.set(clusterID, newCentroid);
-        }
+  @Override
+  public boolean isTerminated(int iteration) {
+    return clusteringConvergenceCondition.checkConvergence(centroids)
+        || (iteration > maxIterations);
 
-        LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration);
-        LOG.log(Level.INFO, "" + centroids);
-        LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration);
+  }
 
-    }
+  @Override
+  public List<Vector> sendBroadcastData(int iteration) {
+    return centroids;
+  }
 
-    @Override
-    public boolean isTerminated(int iteration) {
-        return clusteringConvergenceCondition.checkConvergence(centroids)
-            || (iteration > maxIterations);
-
-    }
-
-    @Override
-    public List<Vector> sendBroadcastData(int iteration) {
-        return centroids;
-    }
-
-    @Override
-    public void receiveReduceData(Map<Integer, VectorSum> pointSum) {
-        this.pointSum = pointSum;
-    }
+  @Override
+  public void receiveReduceData(Map<Integer, VectorSum> pointSum) {
+    this.pointSum = pointSum;
+  }
 
 }

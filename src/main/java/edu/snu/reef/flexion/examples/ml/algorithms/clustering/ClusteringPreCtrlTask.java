@@ -15,69 +15,69 @@ import java.util.List;
 import java.util.logging.Logger;
 
 public final class ClusteringPreCtrlTask extends UserControllerTask
-        implements DataGatherReceiver<List<Vector>> {
+    implements DataGatherReceiver<List<Vector>> {
 
-    private static final Logger LOG = Logger.getLogger(ClusteringPreCtrlTask.class.getName());
+  private static final Logger LOG = Logger.getLogger(ClusteringPreCtrlTask.class.getName());
 
-    /**
-     * Number of clusters
-     */
-    private final int numberOfClusters;
+  /**
+   * Number of clusters
+   */
+  private final int numberOfClusters;
 
-    /**
-     * List of cluster centroids to distribute to Compute Tasks
-     * Will be updated for each iteration
-     */
-    private final List<Vector> centroids = new ArrayList<Vector>();
+  /**
+   * List of cluster centroids to distribute to Compute Tasks
+   * Will be updated for each iteration
+   */
+  private final List<Vector> centroids = new ArrayList<Vector>();
 
-    /**
-     * Initial centroids passed from Compute Tasks
-     */
-    private List<Vector> initialCentroids = null;
+  /**
+   * Initial centroids passed from Compute Tasks
+   */
+  private List<Vector> initialCentroids = null;
 
-    private final KeyValueStore keyValueStore;
+  private final KeyValueStore keyValueStore;
 
-    @Inject
-    public ClusteringPreCtrlTask(
-            final KeyValueStore keyValueStore,
-            @Parameter(NumberOfClusters.class) final int numberOfClusters) {
-        this.keyValueStore = keyValueStore;
-        this.numberOfClusters = numberOfClusters;
+  @Inject
+  public ClusteringPreCtrlTask(
+      final KeyValueStore keyValueStore,
+      @Parameter(NumberOfClusters.class) final int numberOfClusters) {
+    this.keyValueStore = keyValueStore;
+    this.numberOfClusters = numberOfClusters;
+  }
+
+  @Override
+  public void run(int iteration) {
+    //do nothing
+  }
+
+  @Override
+  public void cleanup() {
+
+    // pass initial centroids to the main process
+    keyValueStore.put(Centroids.class, initialCentroids);
+  }
+
+  @Override
+  public boolean isTerminated(int iteration) {
+    return true;
+
+  }
+
+  @Override
+  public void receiveGatherData(List<List<Vector>> initialCentroids) {
+
+    final List<Vector> points = new LinkedList<>();
+
+    // Flatten the given list of lists
+    for(List<Vector> list : initialCentroids) {
+      for(Vector vector: list){
+        points.add(vector);
+      }
     }
 
-    @Override
-    public void run(int iteration) {
-        //do nothing
-    }
+    //sample initial centroids
+    this.initialCentroids = ClusteringPreCmpTask.sample(points, numberOfClusters);
 
-    @Override
-    public void cleanup() {
-
-        // pass initial centroids to the main process
-        keyValueStore.put(Centroids.class, initialCentroids);
-    }
-
-    @Override
-    public boolean isTerminated(int iteration) {
-        return true;
-
-    }
-
-    @Override
-    public void receiveGatherData(List<List<Vector>> initialCentroids) {
-
-        final List<Vector> points = new LinkedList<>();
-
-        // Flatten the given list of lists
-        for(List<Vector> list : initialCentroids) {
-            for(Vector vector: list){
-                points.add(vector);
-            }
-        }
-
-        //sample initial centroids
-        this.initialCentroids = ClusteringPreCmpTask.sample(points, numberOfClusters);
-
-    }
+  }
 
 }

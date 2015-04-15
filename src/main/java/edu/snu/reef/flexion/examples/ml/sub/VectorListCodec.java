@@ -46,8 +46,8 @@ public final class VectorListCodec implements Codec<List<Vector>> {
 
     final ByteArrayOutputStream baos =
         new ByteArrayOutputStream(Integer.SIZE
-                                  + Integer.SIZE
-                                  + Double.SIZE * length * list.size());
+            + Integer.SIZE
+            + Double.SIZE * length * list.size());
 
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(list.size());

@@ -32,98 +32,98 @@ import java.util.Map;
  */
 public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, ClusterStats>> {
 
-    private final boolean DiagonalCovariance;
+  private final boolean DiagonalCovariance;
 
-    @Inject
-    public MapOfIntClusterStatsCodec(@Parameter(IsCovarianceDiagonal.class) final boolean DiagonalCovariance) {
-        this.DiagonalCovariance = DiagonalCovariance;
+  @Inject
+  public MapOfIntClusterStatsCodec(@Parameter(IsCovarianceDiagonal.class) final boolean DiagonalCovariance) {
+    this.DiagonalCovariance = DiagonalCovariance;
+  }
+
+  @Override
+  public final byte[] encode(final Map<Integer, ClusterStats> map) {
+
+    final int mapSize = map.size();
+    int dimension = 0;
+    if (mapSize > 0) {
+      for (ClusterStats entry: map.values()) {
+        dimension = entry.pointSum.size();
+        break;
+      }
     }
 
-    @Override
-    public final byte[] encode(final Map<Integer, ClusterStats> map) {
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE * 2 // for dimension & map size
+        + Integer.SIZE * mapSize// for cluster id
+        + Double.SIZE * mapSize // for probability sum
+        + Double.SIZE * dimension * mapSize// for point sum
+        + Double.SIZE * (DiagonalCovariance? dimension : dimension*dimension) * mapSize); // for outer product sum
 
-        final int mapSize = map.size();
-        int dimension = 0;
-        if (mapSize > 0) {
-            for (ClusterStats entry: map.values()) {
-                dimension = entry.pointSum.size();
-                break;
-            }
+    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+      daos.writeInt(map.size());
+      daos.writeInt(dimension);
+
+      for (final Integer id : map.keySet()) {
+        daos.writeInt(id);
+        ClusterStats clusterSummary = map.get(id);
+        daos.writeDouble(clusterSummary.probSum);
+        for (int j = 0; j < clusterSummary.pointSum.size(); j++) {
+          daos.writeDouble(clusterSummary.pointSum.get(j));
         }
-
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE * 2 // for dimension & map size
-                + Integer.SIZE * mapSize// for cluster id
-                + Double.SIZE * mapSize // for probability sum
-                + Double.SIZE * dimension * mapSize// for point sum
-                + Double.SIZE * (DiagonalCovariance? dimension : dimension*dimension) * mapSize); // for outer product sum
-
-        try (final DataOutputStream daos = new DataOutputStream(baos)) {
-            daos.writeInt(map.size());
-            daos.writeInt(dimension);
-
-            for (final Integer id : map.keySet()) {
-                daos.writeInt(id);
-                ClusterStats clusterSummary = map.get(id);
-                daos.writeDouble(clusterSummary.probSum);
-                for (int j = 0; j < clusterSummary.pointSum.size(); j++) {
-                    daos.writeDouble(clusterSummary.pointSum.get(j));
-                }
-                if (DiagonalCovariance) {
-                    for (int i=0; i<dimension; i++) {
-                        daos.writeDouble(clusterSummary.outProdSum.get(i, i));
-                    }
-                } else {
-                    for (int i=0; i<dimension; i++) {
-                        for (int j=0; j<dimension; j++) {
-                            daos.writeDouble(clusterSummary.outProdSum.get(i, j));
-                        }
-                    }
-                }
+        if (DiagonalCovariance) {
+          for (int i=0; i<dimension; i++) {
+            daos.writeDouble(clusterSummary.outProdSum.get(i, i));
+          }
+        } else {
+          for (int i=0; i<dimension; i++) {
+            for (int j=0; j<dimension; j++) {
+              daos.writeDouble(clusterSummary.outProdSum.get(i, j));
             }
-        } catch (final IOException e) {
-            throw new RuntimeException(e.getCause());
+          }
         }
-
-        return baos.toByteArray();
+      }
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
     }
 
-    @Override
-    public final Map<Integer, ClusterStats> decode(final byte[] data) {
-        final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-        final Map<Integer, ClusterStats> resultMap = new HashMap<>();
+    return baos.toByteArray();
+  }
 
-        try (final DataInputStream dais = new DataInputStream(bais)) {
+  @Override
+  public final Map<Integer, ClusterStats> decode(final byte[] data) {
+    final ByteArrayInputStream bais = new ByteArrayInputStream(data);
+    final Map<Integer, ClusterStats> resultMap = new HashMap<>();
 
-            final int mapSize = dais.readInt();
-            final int dimension = dais.readInt();
+    try (final DataInputStream dais = new DataInputStream(bais)) {
 
-            for (int i = 0; i < mapSize; i++) {
-                final int id = dais.readInt();
-                final double probSum = dais.readDouble();
-                final Vector pointSum = new DenseVector(dimension);
-                for (int j = 0; j < dimension; j++) {
-                    pointSum.set(j, dais.readDouble());
-                }
-                Matrix outProdSum = null;
-                if (DiagonalCovariance) {
-                    outProdSum = new SparseMatrix(dimension, dimension);
-                    for (int j=0; j<dimension; j++) {
-                        outProdSum.set(j, j, dais.readDouble());
-                    }
-                } else {
-                    outProdSum = new DenseMatrix(dimension, dimension);
-                    for (int j=0; j<dimension; j++) {
-                        for(int k=0; k<dimension; k++) {
-                            outProdSum.set(j, k, dais.readDouble());
-                        }
-                    }
-                }
-                resultMap.put(id, new ClusterStats(outProdSum, pointSum, probSum));
-            }
-        } catch (final IOException e) {
-            throw new RuntimeException(e.getCause());
+      final int mapSize = dais.readInt();
+      final int dimension = dais.readInt();
+
+      for (int i = 0; i < mapSize; i++) {
+        final int id = dais.readInt();
+        final double probSum = dais.readDouble();
+        final Vector pointSum = new DenseVector(dimension);
+        for (int j = 0; j < dimension; j++) {
+          pointSum.set(j, dais.readDouble());
         }
-
-        return resultMap;
+        Matrix outProdSum = null;
+        if (DiagonalCovariance) {
+          outProdSum = new SparseMatrix(dimension, dimension);
+          for (int j=0; j<dimension; j++) {
+            outProdSum.set(j, j, dais.readDouble());
+          }
+        } else {
+          outProdSum = new DenseMatrix(dimension, dimension);
+          for (int j=0; j<dimension; j++) {
+            for(int k=0; k<dimension; k++) {
+              outProdSum.set(j, k, dais.readDouble());
+            }
+          }
+        }
+        resultMap.put(id, new ClusterStats(outProdSum, pointSum, probSum));
+      }
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
     }
+
+    return resultMap;
+  }
 }

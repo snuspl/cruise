@@ -9,19 +9,19 @@ import java.util.HashMap;
  */
 public final class KeyValueStore {
 
-    private final HashMap<Class<? extends Key>, Object> hashMap;
+  private final HashMap<Class<? extends Key>, Object> hashMap;
 
-    @Inject
-    public KeyValueStore() {
-        hashMap = new HashMap<>();
-    }
+  @Inject
+  public KeyValueStore() {
+    hashMap = new HashMap<>();
+  }
 
-    public <T> void put(Class<? extends Key<T>> key, T value) {
-        hashMap.put(key, value);
-    }
+  public <T> void put(Class<? extends Key<T>> key, T value) {
+    hashMap.put(key, value);
+  }
 
-    @SuppressWarnings("unchecked")
-    public <T> T get(Class<? extends Key<T>> key) {
-        return (T) hashMap.get(key);
-    }
+  @SuppressWarnings("unchecked")
+  public <T> T get(Class<? extends Key<T>> key) {
+    return (T) hashMap.get(key);
+  }
 }

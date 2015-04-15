@@ -29,93 +29,93 @@ import java.util.Iterator;
  */
 public final class ClusterStats implements Serializable {
 
-    /**
-     * weighted sum of outer product of data points
-     */
+  /**
+   * weighted sum of outer product of data points
+   */
 
-    public Matrix outProdSum;
+  public Matrix outProdSum;
 
-    /**
-     * weighted pointSum of data points
-     */
-    public Vector pointSum;
+  /**
+   * weighted pointSum of data points
+   */
+  public Vector pointSum;
 
-    /**
-     * pointSum of probability
-     */
-    public double probSum =0; // error occurs without initialize
+  /**
+   * pointSum of probability
+   */
+  public double probSum =0; // error occurs without initialize
 
 
-    /**
-     * We may select whether to create a deep copy of @member pointSum and @member outProdSum, or just a reference.
-     * @param outProdSum
-     * @param pointSum
-     * @param probSum
-     * @param isDeepCopy
-     */
-    public ClusterStats(final Matrix outProdSum, final Vector pointSum, final double probSum, final boolean isDeepCopy) {
-        if (isDeepCopy) {
-            this.outProdSum = outProdSum.clone();
-            this.pointSum = pointSum.clone();
-        } else {
-            this.outProdSum = outProdSum;
-            this.pointSum = pointSum;
-        }
-        this.probSum = probSum;
+  /**
+   * We may select whether to create a deep copy of @member pointSum and @member outProdSum, or just a reference.
+   * @param outProdSum
+   * @param pointSum
+   * @param probSum
+   * @param isDeepCopy
+   */
+  public ClusterStats(final Matrix outProdSum, final Vector pointSum, final double probSum, final boolean isDeepCopy) {
+    if (isDeepCopy) {
+      this.outProdSum = outProdSum.clone();
+      this.pointSum = pointSum.clone();
+    } else {
+      this.outProdSum = outProdSum;
+      this.pointSum = pointSum;
     }
+    this.probSum = probSum;
+  }
 
-    public ClusterStats(final Matrix outProdSum, final Vector pointSum, final double probSum) {
-        this(outProdSum, pointSum, probSum, false);
+  public ClusterStats(final Matrix outProdSum, final Vector pointSum, final double probSum) {
+    this(outProdSum, pointSum, probSum, false);
+  }
+
+  /**
+   * A deep copy constructor
+   */
+  public ClusterStats(final ClusterStats clusterStats, final boolean isDeepCopy) {
+    this(clusterStats.outProdSum, clusterStats.pointSum, clusterStats.probSum, isDeepCopy);
+  }
+
+  /**
+   * Add the given statistics to the current statistics
+   * @param clusterStats
+   */
+  public final void add(ClusterStats clusterStats) {
+    this.outProdSum = this.outProdSum.plus(clusterStats.outProdSum);
+    this.pointSum = this.pointSum.plus(clusterStats.pointSum);
+    this.probSum += clusterStats.probSum;
+  }
+
+  /**
+   * Compute mean from the statistics
+   * @return
+   */
+  public final Vector computeMean() {
+    final Vector mean = new DenseVector(pointSum.size());
+    for (int i = 0; i < mean.size(); i++) {
+      mean.set(i, pointSum.get(i) / probSum);
     }
+    return mean;
+  }
 
-    /**
-     * A deep copy constructor
-     */
-    public ClusterStats(final ClusterStats clusterStats, final boolean isDeepCopy) {
-        this(clusterStats.outProdSum, clusterStats.pointSum, clusterStats.probSum, isDeepCopy);
+  /**
+   * Compute the covariance matrix from the statistics
+   * @return
+   */
+  public final Matrix computeCovariance() {
+
+    final Vector mean = computeMean();
+    final Matrix covariance = outProdSum.clone();
+
+    final Iterator<MatrixSlice> sliceIterator=outProdSum.iterator();
+    while (sliceIterator.hasNext()) {
+      final MatrixSlice slice=sliceIterator.next();
+      int row = slice.index();
+      for (Vector.Element e : slice.nonZeroes()) {
+        final int col=e.index();
+        final double squaredSum = e.get();
+        covariance.set(row, col, squaredSum/probSum - mean.get(row) * mean.get(col));
+      }
     }
-
-    /**
-     * Add the given statistics to the current statistics
-     * @param clusterStats
-     */
-    public final void add(ClusterStats clusterStats) {
-        this.outProdSum = this.outProdSum.plus(clusterStats.outProdSum);
-        this.pointSum = this.pointSum.plus(clusterStats.pointSum);
-        this.probSum += clusterStats.probSum;
-    }
-
-    /**
-     * Compute mean from the statistics
-     * @return
-     */
-    public final Vector computeMean() {
-        final Vector mean = new DenseVector(pointSum.size());
-        for (int i = 0; i < mean.size(); i++) {
-            mean.set(i, pointSum.get(i) / probSum);
-        }
-        return mean;
-    }
-
-    /**
-     * Compute the covariance matrix from the statistics
-     * @return
-     */
-    public final Matrix computeCovariance() {
-
-        final Vector mean = computeMean();
-        final Matrix covariance = outProdSum.clone();
-
-        final Iterator<MatrixSlice> sliceIterator=outProdSum.iterator();
-        while (sliceIterator.hasNext()) {
-            final MatrixSlice slice=sliceIterator.next();
-            int row = slice.index();
-            for (Vector.Element e : slice.nonZeroes()) {
-                final int col=e.index();
-                final double squaredSum = e.get();
-                covariance.set(row, col, squaredSum/probSum - mean.get(row) * mean.get(col));
-            }
-        }
-        return covariance;
-    }
+    return covariance;
+  }
 }

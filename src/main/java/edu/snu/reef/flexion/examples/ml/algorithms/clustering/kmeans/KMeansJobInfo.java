@@ -16,28 +16,28 @@ import java.util.List;
 
 public final class KMeansJobInfo implements UserJobInfo {
 
-    @Inject
-    public KMeansJobInfo(){
-    }
+  @Inject
+  public KMeansJobInfo(){
+  }
 
-    @Override
-    public List<StageInfo> getStageInfoList() {
+  @Override
+  public List<StageInfo> getStageInfoList() {
 
-        final List<StageInfo> stageInfoList = new LinkedList<>();
+    final List<StageInfo> stageInfoList = new LinkedList<>();
 
-        // preprocess: initialize the centroids of clusters
-        stageInfoList.add(new ClusteringPreStage());
+    // preprocess: initialize the centroids of clusters
+    stageInfoList.add(new ClusteringPreStage());
 
-        // main process: adjust the centroids of clusters
-        stageInfoList.add(new StageInfo(KMeansMainCmpTask.class, KMeansMainCtrlTask.class, KMeansMainCommGroup.class)
-                .setBroadcast(CentroidListCodec.class)
-                .setReduce(MapOfIntVSumCodec.class, MapOfIntVSumReduceFunction.class));
+    // main process: adjust the centroids of clusters
+    stageInfoList.add(new StageInfo(KMeansMainCmpTask.class, KMeansMainCtrlTask.class, KMeansMainCommGroup.class)
+        .setBroadcast(CentroidListCodec.class)
+        .setReduce(MapOfIntVSumCodec.class, MapOfIntVSumReduceFunction.class));
 
-        return stageInfoList;
-    }
+    return stageInfoList;
+  }
 
-    @Override
-    public Class<? extends DataParser> getDataParser() {
-        return ClusteringDataParser.class;
-    }
+  @Override
+  public Class<? extends DataParser> getDataParser() {
+    return ClusteringDataParser.class;
+  }
 }

@@ -17,7 +17,7 @@ public class LinearModelCodec implements Codec<LinearModel> {
   @Override
   public byte[] encode(LinearModel model) {
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE +
-                                                                 Double.SIZE * model.getParameters().size());
+        Double.SIZE * model.getParameters().size());
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(model.getParameters().size());
 
@@ -45,11 +45,11 @@ public class LinearModelCodec implements Codec<LinearModel> {
         v.set(i, dais.readDouble());
       }
       model = new LinearModel(v);
-      
+
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
-    
+
     return model;
   }
 }

@@ -31,93 +31,93 @@ import java.util.List;
  */
 public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>> {
 
-    private final boolean isDiagonalCovariance;
+  private final boolean isDiagonalCovariance;
 
-    @Inject
-    public ClusterSummaryListCodec(@Parameter(IsCovarianceDiagonal.class) final boolean isDiagonalCovariance) {
-        this.isDiagonalCovariance = isDiagonalCovariance;
+  @Inject
+  public ClusterSummaryListCodec(@Parameter(IsCovarianceDiagonal.class) final boolean isDiagonalCovariance) {
+    this.isDiagonalCovariance = isDiagonalCovariance;
+  }
+
+  @Override
+  public final byte[] encode(final List<ClusterSummary> list) {
+
+    final int numClusters = list.size();
+    int dimension = 0;
+    if (numClusters > 0) {
+      dimension = list.get(0).getCentroid().size();
     }
 
-    @Override
-    public final byte[] encode(final List<ClusterSummary> list) {
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream(
+        Integer.SIZE * 2 // for dimension and the number of clusters
+            + Double.SIZE * numClusters // for prior
+            + Double.SIZE * dimension * numClusters// for centroids
+            + Double.SIZE * (isDiagonalCovariance?
+            dimension : dimension*dimension) * numClusters); // for covariance matrices
 
-        final int numClusters = list.size();
-        int dimension = 0;
-        if (numClusters > 0) {
-            dimension = list.get(0).getCentroid().size();
+    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+      daos.writeInt(numClusters);
+      daos.writeInt(dimension);
+
+      for (final ClusterSummary clusterSummary: list) {
+        daos.writeDouble(clusterSummary.getPrior());
+        for (int i = 0; i < dimension; i++) {
+          daos.writeDouble(clusterSummary.getCentroid().get(i));
         }
-
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream(
-                Integer.SIZE * 2 // for dimension and the number of clusters
-                + Double.SIZE * numClusters // for prior
-                + Double.SIZE * dimension * numClusters// for centroids
-                + Double.SIZE * (isDiagonalCovariance?
-                        dimension : dimension*dimension) * numClusters); // for covariance matrices
-
-        try (final DataOutputStream daos = new DataOutputStream(baos)) {
-            daos.writeInt(numClusters);
-            daos.writeInt(dimension);
-
-            for (final ClusterSummary clusterSummary: list) {
-                daos.writeDouble(clusterSummary.getPrior());
-                for (int i = 0; i < dimension; i++) {
-                    daos.writeDouble(clusterSummary.getCentroid().get(i));
-                }
-                if (isDiagonalCovariance) {
-                    for (int i=0; i<dimension; i++) {
-                        daos.writeDouble(clusterSummary.getCovariance().get(i, i));
-                    }
-                } else {
-                    for (int i=0; i<dimension; i++) {
-                        for (int j=0; j<dimension; j++) {
-                            daos.writeDouble(clusterSummary.getCovariance().get(i, j));
-                        }
-                    }
-                }
+        if (isDiagonalCovariance) {
+          for (int i=0; i<dimension; i++) {
+            daos.writeDouble(clusterSummary.getCovariance().get(i, i));
+          }
+        } else {
+          for (int i=0; i<dimension; i++) {
+            for (int j=0; j<dimension; j++) {
+              daos.writeDouble(clusterSummary.getCovariance().get(i, j));
             }
-        } catch (final IOException e) {
-            throw new RuntimeException(e.getCause());
+          }
         }
-
-        return baos.toByteArray();
+      }
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
     }
 
-    @Override
-    public final List<ClusterSummary> decode(final byte[] data) {
-        final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-        final List<ClusterSummary> resultList = new ArrayList<>();
+    return baos.toByteArray();
+  }
 
-        try (final DataInputStream dais = new DataInputStream(bais)) {
+  @Override
+  public final List<ClusterSummary> decode(final byte[] data) {
+    final ByteArrayInputStream bais = new ByteArrayInputStream(data);
+    final List<ClusterSummary> resultList = new ArrayList<>();
 
-            final int numClusters = dais.readInt();
-            final int dimension = dais.readInt();
+    try (final DataInputStream dais = new DataInputStream(bais)) {
 
-            for (int i = 0; i < numClusters; i++) {
-                final double prior = dais.readDouble();
-                final Vector vector = new DenseVector(dimension);
-                for (int j = 0; j < dimension; j++) {
-                    vector.set(j, dais.readDouble());
-                }
-                Matrix matrix = null;
-                if (isDiagonalCovariance) {
-                    matrix = new SparseMatrix(dimension, dimension);
-                    for (int j=0; j<dimension; j++) {
-                        matrix.set(j, j, dais.readDouble());
-                    }
-                } else {
-                    matrix = new DenseMatrix(dimension, dimension);
-                    for (int j=0; j<dimension; j++) {
-                        for(int k=0; k<dimension; k++) {
-                            matrix.set(j, k, dais.readDouble());
-                        }
-                    }
-                }
-                resultList.add(new ClusterSummary(prior, vector, matrix));
+      final int numClusters = dais.readInt();
+      final int dimension = dais.readInt();
+
+      for (int i = 0; i < numClusters; i++) {
+        final double prior = dais.readDouble();
+        final Vector vector = new DenseVector(dimension);
+        for (int j = 0; j < dimension; j++) {
+          vector.set(j, dais.readDouble());
+        }
+        Matrix matrix = null;
+        if (isDiagonalCovariance) {
+          matrix = new SparseMatrix(dimension, dimension);
+          for (int j=0; j<dimension; j++) {
+            matrix.set(j, j, dais.readDouble());
+          }
+        } else {
+          matrix = new DenseMatrix(dimension, dimension);
+          for (int j=0; j<dimension; j++) {
+            for(int k=0; k<dimension; k++) {
+              matrix.set(j, k, dais.readDouble());
             }
-        } catch (final IOException e) {
-            throw new RuntimeException(e.getCause());
+          }
         }
-
-        return resultList;
+        resultList.add(new ClusterSummary(prior, vector, matrix));
+      }
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
     }
+
+    return resultList;
+  }
 }

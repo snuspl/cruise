@@ -5,19 +5,19 @@ import javax.inject.Inject;
 
 public class SimpleReduceFunction implements Reduce.ReduceFunction<Integer> {
 
-    @Inject
-    public SimpleReduceFunction() {
+  @Inject
+  public SimpleReduceFunction() {
+  }
+
+  @Override
+  public final Integer apply(Iterable<Integer> dataList) {
+    Integer sum = 0;
+    Integer count = 0;
+    for (final Integer data : dataList) {
+      sum += data;
+      count++;
     }
 
-    @Override
-    public final Integer apply(Iterable<Integer> dataList) {
-        Integer sum = 0;
-        Integer count = 0;
-        for (final Integer data : dataList) {
-            sum += data;
-            count++;
-        }
-
-        return sum/count;
-    }
+    return sum/count;
+  }
 }

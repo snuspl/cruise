@@ -29,67 +29,67 @@ import java.util.List;
  */
 public final class CentroidListCodec implements Codec<List<Vector>> {
 
-    @Inject
-    public CentroidListCodec() {
-    }
+  @Inject
+  public CentroidListCodec() {
+  }
 
-    @Override
-    public final byte[] encode(final List<Vector> list) {
+  @Override
+  public final byte[] encode(final List<Vector> list) {
 
     /* This codec does not assume consistent centroid vector sizes(dimensions).
      * Therefore to specify the initial data size,
      * a quick iteration over the input list to compute
      * the sums of vector sizes is required.
      */
-        final int numClusters = list.size();
-        int dimension = 0;
-        if (numClusters > 0) {
-            dimension = list.get(0).size();
-        }
-
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream(
-                Integer.SIZE * 2 // for dimension and the number of clusters
-                + Double.SIZE * dimension * numClusters);
-        try (final DataOutputStream daos = new DataOutputStream(baos)) {
-            daos.writeInt(numClusters);
-            daos.writeInt(dimension);
-            for (final Vector centroid : list) {
-                for (int i = 0; i < dimension; i++) {
-                    daos.writeDouble(centroid.get(i));
-                }
-            }
-
-        } catch (final IOException e) {
-            throw new RuntimeException(e.getCause());
-        }
-
-
-        return baos.toByteArray();
+    final int numClusters = list.size();
+    int dimension = 0;
+    if (numClusters > 0) {
+      dimension = list.get(0).size();
     }
 
-    @Override
-    public final List<Vector> decode(final byte[] data) {
-        final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-        final List<Vector> list = new ArrayList<>();
-        int numClusters = 0;
-        int dimension = 0;
-
-        try (final DataInputStream dais = new DataInputStream(bais)) {
-            numClusters = dais.readInt();
-            dimension = dais.readInt();
-
-            for (int clusterID = 0; clusterID < numClusters; clusterID++) {
-                final Vector vector = new DenseVector(dimension);
-                for (int i = 0; i < dimension; i++) {
-                    vector.set(i, dais.readDouble());
-                }
-                list.add(vector);
-            }
-
-        } catch (final IOException e) {
-            throw new RuntimeException(e.getCause());
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream(
+        Integer.SIZE * 2 // for dimension and the number of clusters
+            + Double.SIZE * dimension * numClusters);
+    try (final DataOutputStream daos = new DataOutputStream(baos)) {
+      daos.writeInt(numClusters);
+      daos.writeInt(dimension);
+      for (final Vector centroid : list) {
+        for (int i = 0; i < dimension; i++) {
+          daos.writeDouble(centroid.get(i));
         }
+      }
 
-        return list;
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
     }
+
+
+    return baos.toByteArray();
+  }
+
+  @Override
+  public final List<Vector> decode(final byte[] data) {
+    final ByteArrayInputStream bais = new ByteArrayInputStream(data);
+    final List<Vector> list = new ArrayList<>();
+    int numClusters = 0;
+    int dimension = 0;
+
+    try (final DataInputStream dais = new DataInputStream(bais)) {
+      numClusters = dais.readInt();
+      dimension = dais.readInt();
+
+      for (int clusterID = 0; clusterID < numClusters; clusterID++) {
+        final Vector vector = new DenseVector(dimension);
+        for (int i = 0; i < dimension; i++) {
+          vector.set(i, dais.readDouble());
+        }
+        list.add(vector);
+      }
+
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
+    }
+
+    return list;
+  }
 }
