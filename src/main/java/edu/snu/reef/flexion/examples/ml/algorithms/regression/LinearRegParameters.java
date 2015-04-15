@@ -48,10 +48,16 @@ public final class LinearRegParameters implements UserParameters {
   }
 
   @Override
+  public Configuration getServiceConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(Dimension.class, String.valueOf(dimension))
+        .build();
+  }
+
+  @Override
   public Configuration getUserCmpTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(StepSize.class, String.valueOf(stepSize))
-        .bindNamedParameter(Dimension.class, String.valueOf(dimension))
         .bindNamedParameter(Lambda.class, String.valueOf(lambda))
         .bindImplementation(Loss.class, SquareLoss.class)
         .bindImplementation(Regularization.class, L2Regularization.class)
@@ -62,7 +68,6 @@ public final class LinearRegParameters implements UserParameters {
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
-        .bindNamedParameter(Dimension.class, String.valueOf(dimension))
         .build();
   }
 

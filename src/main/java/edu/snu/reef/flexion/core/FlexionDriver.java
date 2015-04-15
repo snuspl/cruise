@@ -201,7 +201,7 @@ public final class FlexionDriver {
 
                     // Add a Key-Value Store service with the Group Communication service
                     final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
-                    finalServiceConf = Configurations.merge(groupCommServiceConf, keyValueStoreConf);
+                    finalServiceConf = Configurations.merge(userParameters.getServiceConf(), groupCommServiceConf, keyValueStoreConf);
 
                 } else {
                     LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
@@ -209,7 +209,7 @@ public final class FlexionDriver {
                     // Add a Data Parse service and a Key-Value Store service with the Group Communication service
                     final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
                     final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
-                    finalServiceConf = Configurations.merge(groupCommServiceConf, dataParseConf, keyValueStoreConf);
+                    finalServiceConf = Configurations.merge(userParameters.getServiceConf(), groupCommServiceConf, dataParseConf, keyValueStoreConf);
                 }
 
                 activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);

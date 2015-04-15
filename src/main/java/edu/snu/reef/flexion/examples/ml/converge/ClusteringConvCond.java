@@ -20,9 +20,9 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
  * Interface for a check function that decides whether
- * the algorithm has converged or not.
+ * a clustering algorithm has converged or not.
  */
-@DefaultImplementation(ClusteringConvergenceEuclidean.class)
+@DefaultImplementation(ClusteringConvEuclidean.class)
 public interface ClusteringConvCond {
 
   /**

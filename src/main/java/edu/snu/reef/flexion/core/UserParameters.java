@@ -11,6 +11,8 @@ public interface UserParameters {
 
     public Configuration getDriverConf();
 
+    public Configuration getServiceConf();
+
     public Configuration getUserCmpTaskConf();
 
     public Configuration getUserCtrlTaskConf();

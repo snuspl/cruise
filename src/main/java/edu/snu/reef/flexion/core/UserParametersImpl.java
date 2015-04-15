@@ -11,23 +11,28 @@ import javax.inject.Inject;
  */
 public final class UserParametersImpl implements UserParameters {
 
-    @Inject
-    public UserParametersImpl() {
+  @Inject
+  public UserParametersImpl() {
 
-    }
+  }
 
-    @Override
-    public Configuration getDriverConf() {
-        return Tang.Factory.getTang().newConfigurationBuilder().build();
-    }
+  @Override
+  public Configuration getDriverConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder().build();
+  }
 
-    @Override
-    public Configuration getUserCmpTaskConf() {
-        return Tang.Factory.getTang().newConfigurationBuilder().build();
-    }
+  @Override
+  public Configuration getServiceConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder().build();
+  }
 
-    public Configuration getUserCtrlTaskConf() {
-        return Tang.Factory.getTang().newConfigurationBuilder().build();
-    }
+  @Override
+  public Configuration getUserCmpTaskConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder().build();
+  }
+
+  public Configuration getUserCtrlTaskConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder().build();
+  }
 
 }

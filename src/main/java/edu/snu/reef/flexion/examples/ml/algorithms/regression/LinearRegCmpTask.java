@@ -5,7 +5,7 @@ import edu.snu.reef.flexion.core.ParseException;
 import edu.snu.reef.flexion.core.UserComputeTask;
 import edu.snu.reef.flexion.examples.ml.data.LinearModel;
 import edu.snu.reef.flexion.examples.ml.data.Row;
-import edu.snu.reef.flexion.examples.ml.data.SGDSummary;
+import edu.snu.reef.flexion.examples.ml.data.LinearRegSummary;
 import edu.snu.reef.flexion.examples.ml.loss.Loss;
 import edu.snu.reef.flexion.examples.ml.parameters.StepSize;
 import edu.snu.reef.flexion.examples.ml.regularization.Regularization;
@@ -18,7 +18,7 @@ import javax.inject.Inject;
 import java.util.List;
 
 public class LinearRegCmpTask extends UserComputeTask
-    implements DataReduceSender<SGDSummary>, DataBroadcastReceiver<LinearModel> {
+    implements DataReduceSender<LinearRegSummary>, DataBroadcastReceiver<LinearModel> {
 
   private double stepSize;
   private final Loss loss;
@@ -71,7 +71,7 @@ public class LinearRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public SGDSummary sendReduceData(int iteration) {
-    return new SGDSummary(this.model, 1, this.lossSum);
+  public LinearRegSummary sendReduceData(int iteration) {
+    return new LinearRegSummary(this.model, 1, this.lossSum);
   }
 }

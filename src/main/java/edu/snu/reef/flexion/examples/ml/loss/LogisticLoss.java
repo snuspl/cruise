@@ -24,6 +24,9 @@ import javax.inject.Inject;
  */
 public final class LogisticLoss implements Loss {
 
+  private final int maxExponent = 100;
+  private final int minExponent = -100;
+
   @Inject
   public LogisticLoss() {
   }
@@ -35,7 +38,21 @@ public final class LogisticLoss implements Loss {
 
   @Override
   public final Vector gradient(final Vector feature, final double predict, final double output){
-    final double exp = Math.exp(-predict * output);
-    return feature.times(-output * exp / (1 + exp));
+
+    // http://lingpipe-blog.com/2012/02/16/howprevent-overflow-underflow-logistic-regression/
+    final double exponent = -predict * output;
+
+//    final double max = Math.max(exponent, 0);
+//    final double logSumExp = max + Math.log(Math.exp(-max)+Math.exp(exponent-max));
+//    return feature.times(output * (Math.exp(-logSumExp)-1));
+
+    if (exponent > maxExponent) { // overflow
+      return feature.times(-output);
+    } else if (exponent < minExponent) { // underflow
+      return feature.times(0);
+    } else {
+      final double exp = Math.exp(exponent);
+      return feature.times(-output * (exp / (1 + exp)));
+    }
   }
 }

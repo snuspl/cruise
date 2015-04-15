@@ -20,6 +20,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Threshold value for algorithm convergence",
                 short_name = "convThr",
-                default_value = "0.01")
+                default_value = "0.0001")
 public final class ConvergenceThreshold implements Name<Double> {
 }

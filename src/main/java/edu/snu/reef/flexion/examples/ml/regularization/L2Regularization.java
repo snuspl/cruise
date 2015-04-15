@@ -15,7 +15,7 @@
  */
 package edu.snu.reef.flexion.examples.ml.regularization;
 
-import edu.snu.reef.flexion.examples.ml.algorithms.sgd.data.Model;
+import edu.snu.reef.flexion.examples.ml.data.Model;
 import edu.snu.reef.flexion.examples.ml.parameters.Lambda;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;

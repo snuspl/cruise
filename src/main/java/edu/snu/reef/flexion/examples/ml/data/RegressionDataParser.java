@@ -53,7 +53,7 @@ public final class RegressionDataParser implements DataParser<List<Row>> {
 
   @Override
   public final List<Row> get() throws ParseException {
-    LOG.log(Level.INFO, "ClassificationDataParser called {0} times", count.incrementAndGet());
+    LOG.log(Level.INFO, "RegressionDataParser called {0} times", count.incrementAndGet());
     if (result == null) {
       parse();
     }
@@ -81,7 +81,7 @@ public final class RegressionDataParser implements DataParser<List<Row>> {
       if (split.length == 0) {
         continue;
       } else if (split.length != dimension+1) {
-        parseException = new ParseException("Parsed failed: the number of features is not "+dimension);
+        parseException = new ParseException("Parse failed: the number of features is not "+dimension);
         return;
       }
 

@@ -4,8 +4,8 @@ import edu.snu.reef.flexion.core.DataParser;
 import edu.snu.reef.flexion.core.ParseException;
 import edu.snu.reef.flexion.core.UserComputeTask;
 import edu.snu.reef.flexion.examples.ml.data.LinearModel;
+import edu.snu.reef.flexion.examples.ml.data.LogisticRegSummary;
 import edu.snu.reef.flexion.examples.ml.data.Row;
-import edu.snu.reef.flexion.examples.ml.data.SGDSummary;
 import edu.snu.reef.flexion.examples.ml.loss.Loss;
 import edu.snu.reef.flexion.examples.ml.parameters.StepSize;
 import edu.snu.reef.flexion.examples.ml.regularization.Regularization;
@@ -18,7 +18,7 @@ import javax.inject.Inject;
 import java.util.List;
 
 public class LogisticRegCmpTask extends UserComputeTask
-    implements DataReduceSender<SGDSummary>, DataBroadcastReceiver<LinearModel> {
+    implements DataReduceSender<LogisticRegSummary>, DataBroadcastReceiver<LinearModel> {
 
   private double stepSize;
   private final Loss loss;
@@ -27,7 +27,8 @@ public class LogisticRegCmpTask extends UserComputeTask
   private DataParser<List<Row>> dataParser;
   private List<Row> rows;
   private LinearModel model;
-  private double lossSum = 0;
+  private int posNum = 0;
+  private int negNum = 0;
 
   @Inject
   public LogisticRegCmpTask(@Parameter(StepSize.class) final double stepSize,
@@ -48,12 +49,17 @@ public class LogisticRegCmpTask extends UserComputeTask
   @Override
   public final void run(int iteration) {
 
-    // measure loss
-    lossSum = 0;
+    // measure accuracy
+    posNum = 0;
+    negNum = 0;
     for (final Row row : rows) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());
-      lossSum += loss.loss(predict, output);
+      if (output * predict > 0) {
+        posNum++;
+      } else {
+        negNum++;
+      }
     }
 
     // optimize
@@ -71,7 +77,7 @@ public class LogisticRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public SGDSummary sendReduceData(int iteration) {
-    return new SGDSummary(this.model, 1, this.lossSum);
+  public LogisticRegSummary sendReduceData(int iteration) {
+    return new LogisticRegSummary(this.model, 1, posNum, negNum);
   }
 }

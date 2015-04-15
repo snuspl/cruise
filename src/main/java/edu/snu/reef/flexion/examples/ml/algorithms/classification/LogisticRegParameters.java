@@ -33,6 +33,7 @@ public final class LogisticRegParameters implements UserParameters {
     this.lambda = lambda;
     this.dimension = dimension;
     this.maxIterations = maxIterations;
+    System.out.println("dimension: "+dimension); //debug
   }
 
   @Override
@@ -48,10 +49,16 @@ public final class LogisticRegParameters implements UserParameters {
   }
 
   @Override
+  public Configuration getServiceConf() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(Dimension.class, String.valueOf(dimension))
+        .build();
+  }
+
+  @Override
   public Configuration getUserCmpTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(StepSize.class, String.valueOf(stepSize))
-        .bindNamedParameter(Dimension.class, String.valueOf(dimension))
         .bindNamedParameter(Lambda.class, String.valueOf(lambda))
         .bindImplementation(Loss.class, LogisticLoss.class)
         .bindImplementation(Regularization.class, L2Regularization.class)
@@ -62,7 +69,6 @@ public final class LogisticRegParameters implements UserParameters {
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
-        .bindNamedParameter(Dimension.class, String.valueOf(dimension))
         .build();
   }
 

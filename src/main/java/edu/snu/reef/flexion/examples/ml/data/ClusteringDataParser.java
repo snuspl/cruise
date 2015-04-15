@@ -52,7 +52,7 @@ public final class ClusteringDataParser implements DataParser<List<Vector>> {
                 continue;
             }
 
-            final String[] split = keyValue.second.toString().trim().split("\\s+");
+            final String[] split = text.split("\\s+");
 
             if (split.length == 0) {
                 continue;

@@ -4,19 +4,22 @@ package edu.snu.reef.flexion.examples.ml.data;
 public class LogisticRegSummary {
 
   private final LinearModel model;
-  private int count = 0;
-  private double loss = 0;
+  private int count;
+  private int posNum;
+  private int negNum;
 
-  public LogisticRegSummary(LinearModel model, int count, double loss) {
+  public LogisticRegSummary(LinearModel model, int count, int posNum, int negNum) {
     this.model = model;
     this.count = count;
-    this.loss = loss;
+    this.posNum = posNum;
+    this.negNum = negNum;
   }
 
   public void plus(LogisticRegSummary summary) {
     this.model.setParameters(this.model.getParameters().plus(summary.getModel().getParameters()));
     this.count += summary.count;
-    this.loss += summary.loss;
+    this.posNum += summary.posNum;
+    this.negNum += summary.negNum;
   }
 
   public LinearModel getModel() {
@@ -27,8 +30,12 @@ public class LogisticRegSummary {
     return count;
   }
 
-  public double getLoss() {
-    return loss;
+  public int getPosNum() {
+    return posNum;
+  }
+
+  public int getNegNum() {
+    return negNum;
   }
 
 }

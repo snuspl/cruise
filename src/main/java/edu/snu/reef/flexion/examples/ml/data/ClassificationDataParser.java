@@ -37,6 +37,9 @@ public final class ClassificationDataParser implements DataParser<List<Row>> {
   private final static Logger LOG = Logger.getLogger(ClassificationDataParser.class.getName());
   private final AtomicInteger count = new AtomicInteger(0);
 
+  private final int positiveLabel = 1;
+  private final int negativeLabel = -1;
+
   private final int dimension;
   private final DataSet<LongWritable, Text> dataSet;
   private List<Row> result;
@@ -44,8 +47,7 @@ public final class ClassificationDataParser implements DataParser<List<Row>> {
 
 
   @Inject
-  public ClassificationDataParser(
-      @Parameter(Dimension.class) final int dimension,
+  public ClassificationDataParser(@Parameter(Dimension.class) final int dimension,
       final DataSet<LongWritable, Text> dataSet) {
     this.dimension = dimension;
     this.dataSet = dataSet;
@@ -71,27 +73,44 @@ public final class ClassificationDataParser implements DataParser<List<Row>> {
     result = new ArrayList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
-      String[] split = keyValue.second.toString().trim().split(",");
-      if (split.length != dimension+1) {
-        parseException = new ParseException("Parsed failed: the number of features is not "+dimension);
+
+      final String text = keyValue.second.toString().trim();
+      if (text.startsWith("#")) {
+        continue;
+      }
+
+      final String[] split = text.split("\\s+");
+      if (split.length == 0) {
+        continue;
+      } else if (split.length != dimension+1) {
+        parseException = new ParseException(
+            String.format("Parse failed: the number of features should be %d", dimension));
         return;
       }
 
-     double output;
-     final Vector feature = new DenseVector(split.length);
-     try {
-       output = Double.valueOf(split[dimension]);
-       for (int i = 0; i < dimension; i++) {
-         feature.set(i, Double.valueOf(split[i]));
-       }
-       feature.set(dimension, 1);
+      int output;
+      final Vector feature = new DenseVector(split.length);
+      try {
+        output = Integer.valueOf(split[dimension]);
+        if (output!=positiveLabel && output!=negativeLabel) {
+          throw new NumberFormatException();
+        }
+      } catch (final NumberFormatException e) {
+        parseException = new ParseException(
+            String.format("Parse failed: last column value should be either %d or %d", positiveLabel, negativeLabel));
+        return;
+      }
+      try {
+        for (int i = 0; i < dimension; i++) {
+          feature.set(i, Double.valueOf(split[i]));
+        }
+        feature.set(dimension, 1);
+      } catch (final NumberFormatException e) {
+        parseException = new ParseException("Parse failed: numbers should be DOUBLE");
+        return;
+      }
 
-     } catch (final NumberFormatException e) {
-       parseException = new ParseException("Parse failed: numbers should be DOUBLE");
-       return;
-     }
-
-     result.add(new Row(output, feature));
+      result.add(new Row(output, feature));
     }
   }
 }

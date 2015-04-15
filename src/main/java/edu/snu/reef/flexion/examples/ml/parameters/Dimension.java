@@ -19,7 +19,6 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "feature dimension of the data set",
-                short_name = "dim",
-                default_value = "2")
+                short_name = "dim")
 public final class Dimension implements Name<Integer> {
 }

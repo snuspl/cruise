@@ -2,7 +2,7 @@ package edu.snu.reef.flexion.examples.ml.algorithms.clustering.em;
 
 import edu.snu.reef.flexion.core.KeyValueStore;
 import edu.snu.reef.flexion.core.UserControllerTask;
-import edu.snu.reef.flexion.examples.ml.converge.ConvergenceCondition;
+import edu.snu.reef.flexion.examples.ml.converge.ClusteringConvCond;
 import edu.snu.reef.flexion.examples.ml.data.ClusterStats;
 import edu.snu.reef.flexion.examples.ml.data.ClusterSummary;
 import edu.snu.reef.flexion.examples.ml.key.Centroids;
@@ -33,7 +33,7 @@ public final class EMMainCtrlTask extends UserControllerTask
      * This is separate from the default stop condition,
      * which is based on the number of iterations made.
      */
-    private final ConvergenceCondition convergenceCondition;
+    private final ClusteringConvCond clusteringConvergenceCondition;
 
     /**
      * Maximum number of iterations allowed before job stops
@@ -69,18 +69,18 @@ public final class EMMainCtrlTask extends UserControllerTask
      *
      * Constructs the Controller Task for EM
      *
-     * @param convergenceCondition  conditions for checking convergence of algorithm
+     * @param clusteringConvergenceCondition  conditions for checking convergence of algorithm
      * @param keyValueStore
      * @param maxIterations maximum number of iterations allowed before job stops
      * @param isCovarianceShared    whether clusters share one covariance matrix or not
      */
     @Inject
-    public EMMainCtrlTask(final ConvergenceCondition convergenceCondition,
+    public EMMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
                           final KeyValueStore keyValueStore,
                           @Parameter(MaxIterations.class) final int maxIterations,
                           @Parameter(IsCovarianceShared.class) final boolean isCovarianceShared) {
 
-        this.convergenceCondition = convergenceCondition;
+        this.clusteringConvergenceCondition = clusteringConvergenceCondition;
         this.keyValueStore = keyValueStore;
         this.maxIterations = maxIterations;
         this.isCovarianceShared = isCovarianceShared;
@@ -150,7 +150,7 @@ public final class EMMainCtrlTask extends UserControllerTask
 
     @Override
     public boolean isTerminated(int iteration) {
-        return convergenceCondition.checkConvergence(centroids)
+        return clusteringConvergenceCondition.checkConvergence(centroids)
             || (iteration > maxIterations); // First two iterations are used for initialization
 
     }

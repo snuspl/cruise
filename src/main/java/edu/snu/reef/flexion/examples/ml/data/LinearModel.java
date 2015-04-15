@@ -15,24 +15,13 @@
  */
 package edu.snu.reef.flexion.examples.ml.data;
 
-import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.Vector;
-
-import java.util.Random;
 
 public final class LinearModel implements Model {
   private Vector parameters;
 
   public LinearModel(final Vector parameters) {
     this.parameters = parameters;
-  }
-
-  public LinearModel(final int dimension) {
-    parameters = new DenseVector(dimension);
-    Random random = new Random();
-    for(int i=0; i<dimension; i++) {
-      parameters.set(i, random.nextDouble());
-    }
   }
 
   public Vector getParameters() {

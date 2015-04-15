@@ -2,7 +2,7 @@ package edu.snu.reef.flexion.examples.ml.algorithms.clustering.kmeans;
 
 import edu.snu.reef.flexion.core.KeyValueStore;
 import edu.snu.reef.flexion.core.UserControllerTask;
-import edu.snu.reef.flexion.examples.ml.converge.ConvergenceCondition;
+import edu.snu.reef.flexion.examples.ml.converge.ClusteringConvCond;
 import edu.snu.reef.flexion.examples.ml.data.VectorSum;
 import edu.snu.reef.flexion.examples.ml.key.Centroids;
 import edu.snu.reef.flexion.examples.ml.parameters.MaxIterations;
@@ -29,7 +29,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
      * This is separate from the default stop condition,
      * which is based on the number of iterations made.
      */
-    private final ConvergenceCondition convergenceCondition;
+    private final ClusteringConvCond clusteringConvergenceCondition;
 
     /**
      * Maximum number of iterations allowed before job stops
@@ -54,16 +54,16 @@ public final class KMeansMainCtrlTask extends UserControllerTask
      *
      * Constructs the Controller Task for k-means
      *
-     * @param convergenceCondition conditions for checking convergence of algorithm
+     * @param clusteringConvergenceCondition conditions for checking convergence of algorithm
      * @param keyValueStore
      * @param maxIterations maximum number of iterations allowed before job stops
      */
     @Inject
-    public KMeansMainCtrlTask(final ConvergenceCondition convergenceCondition,
+    public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
                               final KeyValueStore keyValueStore,
                               @Parameter(MaxIterations.class) final int maxIterations) {
 
-        this.convergenceCondition = convergenceCondition;
+        this.clusteringConvergenceCondition = clusteringConvergenceCondition;
         this.keyValueStore = keyValueStore;
         this.maxIterations = maxIterations;
     }
@@ -93,7 +93,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
 
     @Override
     public boolean isTerminated(int iteration) {
-        return convergenceCondition.checkConvergence(centroids)
+        return clusteringConvergenceCondition.checkConvergence(centroids)
             || (iteration > maxIterations);
 
     }
