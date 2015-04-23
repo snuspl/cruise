@@ -41,13 +41,14 @@ public final class ControllerTask implements Task {
 
     int iteration = 0;
     userControllerTask.initialize();
-    do {
-      userControllerTask.run(iteration);
+    while(!userControllerTask.isTerminated(iteration)) {
       ctrlMessageBroadcast.send(CtrlMessage.RUN);
       sendData(iteration);
       receiveData();
+      userControllerTask.run(iteration);
       topologyChanged();
-    } while(!userControllerTask.isTerminated(iteration++));
+      iteration++;
+    }
     ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
     userControllerTask.cleanup();
 

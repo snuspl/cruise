@@ -151,7 +151,7 @@ public final class EMMainCtrlTask extends UserControllerTask
   @Override
   public boolean isTerminated(int iteration) {
     return clusteringConvergenceCondition.checkConvergence(centroids)
-        || (iteration > maxIterations); // First two iterations are used for initialization
+        || (iteration >= maxIterations);
 
   }
 

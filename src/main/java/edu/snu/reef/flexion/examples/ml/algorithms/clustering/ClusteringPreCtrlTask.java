@@ -59,7 +59,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
 
   @Override
   public boolean isTerminated(int iteration) {
-    return true;
+    return iteration > 0;
 
   }
 

@@ -48,7 +48,7 @@ public class LogisticRegCtrlTask extends UserControllerTask
   
   @Override
   public final boolean isTerminated(int iteration) {
-    return convergeCondition.checkConvergence(model) || iteration > maxIter;
+    return convergeCondition.checkConvergence(model) || iteration >= maxIter;
   }
 
   @Override
