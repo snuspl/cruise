@@ -7,10 +7,9 @@ import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
 import javax.inject.Inject;
 
 public final class SimpleCtrlTask extends UserControllerTask
-    implements DataReduceReceiver<Integer>, DataBroadcastSender<Integer> {
+    implements DataReduceReceiver<Integer>, DataBroadcastSender<String> {
 
-  private Integer receivedData = 0;
-  private Integer dataToSend = 0;
+  private Integer count = 0;
 
   @Inject
   private SimpleCtrlTask() {
@@ -19,21 +18,21 @@ public final class SimpleCtrlTask extends UserControllerTask
 
   @Override
   public void run(int iteration) {
-    dataToSend = receivedData * 2;
+    System.out.println(String.format("Number of Tasks Printing Message: %d", count));
   }
 
   @Override
   public boolean isTerminated(int iteration) {
-    return iteration > 10;
+    return iteration >= 10;
   }
 
   @Override
-  public Integer sendBroadcastData(int iteration) {
-    return dataToSend;
+  public String sendBroadcastData(int iteration) {
+    return String.format("Hello, REEF!: %d", iteration);
   }
 
   @Override
   public void receiveReduceData(Integer data) {
-    receivedData = data;
+    this.count = data;
   }
 }

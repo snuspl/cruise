@@ -7,10 +7,10 @@ import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceSender;
 import javax.inject.Inject;
 
 public final class SimpleCmpTask extends UserComputeTask
-    implements DataBroadcastReceiver<Integer>, DataReduceSender<Integer> {
+    implements DataBroadcastReceiver<String>, DataReduceSender<Integer> {
 
-  private Integer receivedData = 0;
-  private Integer dataToSend = 0;
+  private String message = null;
+  private Integer count = 0;
 
   @Inject
   private SimpleCmpTask() {
@@ -18,21 +18,20 @@ public final class SimpleCmpTask extends UserComputeTask
 
   @Override
   public void run(int iteration) {
-    float increment = 0;
-    for (int i = 0; i < 500000; i++) {
-      increment += Math.random();
-    }
-    dataToSend = (int) (receivedData + increment);
+    System.out.println(message);
+    count++;
+
   }
 
   @Override
-  public void receiveBroadcastData(Integer data) {
-    receivedData = data;
+  public void receiveBroadcastData(String data) {
+    message = data;
+    count = 0;
   }
 
   @Override
   public Integer sendReduceData(int iteration) {
-    return dataToSend;
+    return count;
   }
 
 }
