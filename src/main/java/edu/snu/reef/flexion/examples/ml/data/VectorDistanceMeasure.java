@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package edu.snu.reef.flexion.examples.ml.data;
 
-import edu.snu.reef.flexion.examples.ml.data.EuclideanDistance;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
