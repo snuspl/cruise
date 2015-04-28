@@ -1,3 +1,5 @@
+# name: sample_regression
+# description: syntactic data for regression (e.g., Linear regression)
 # original model: 0.5 - 3x1 + 2x2 -1.5x3
 # original noise: random error with 1.0 standard deviation
 0.8025330637390305 -0.9015460884175122 2.080920790428163 -6.06830178525787

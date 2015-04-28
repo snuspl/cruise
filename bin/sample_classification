@@ -1,3 +1,5 @@
+# name: sample_classification
+# description: syntactic data for classification (e.g., Logistic regression)
 # original model: 0.5 - 3x1 + 2x2 -1.5x3
 # original accuracy: 90%
 0.8025330637390305 -0.9015460884175122 2.080920790428163 -1
