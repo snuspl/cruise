@@ -23,7 +23,6 @@ import javax.inject.Inject;
 
 public final class SimpleCmpTask extends UserComputeTask
     implements DataBroadcastReceiver<String>, DataReduceSender<Integer> {
-
   private String message = null;
   private Integer count = 0;
 
@@ -39,7 +38,7 @@ public final class SimpleCmpTask extends UserComputeTask
   }
 
   @Override
-  public void receiveBroadcastData(String data) {
+  public void receiveBroadcastData(int iteration, String data) {
     message = data;
     count = 0;
   }

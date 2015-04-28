@@ -32,7 +32,6 @@ public final class ClusterStats implements Serializable {
   /**
    * weighted sum of outer product of data points
    */
-
   public Matrix outProdSum;
 
   /**
@@ -44,7 +43,6 @@ public final class ClusterStats implements Serializable {
    * pointSum of probability
    */
   public double probSum =0; // error occurs without initialize
-
 
   /**
    * We may select whether to create a deep copy of @member pointSum and @member outProdSum, or just a reference.
@@ -102,7 +100,6 @@ public final class ClusterStats implements Serializable {
    * @return
    */
   public final Matrix computeCovariance() {
-
     final Vector mean = computeMean();
     final Matrix covariance = outProdSum.clone();
 

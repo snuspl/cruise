@@ -24,6 +24,7 @@ import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
 import edu.snu.reef.flexion.groupcomm.names.*;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.driver.task.TaskMessage;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
@@ -102,15 +103,13 @@ public final class FlexionDriver {
    * Map to record which stage is being executed by each evaluator which is identified by context id
    */
   private final Map<String, Integer> contextToStageSequence;
-
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
-
   private final UserParameters userParameters;
 
   /**
    * This class is instantiated by TANG
    *
-   * Constructor for Driver of k-means job.
+   * Constructor for the Driver of a Flexion job.
    * Store various objects as well as configuring Group Communication with
    * Broadcast and Reduce operations to use.
    *
@@ -132,29 +131,22 @@ public final class FlexionDriver {
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
     initializeCommDriver();
-
-
   }
 
   /**
    * Initialize the group communication driver
    */
   private void initializeCommDriver(){
-
     int sequence = 0;
-
     for (StageInfo stageInfo : stageInfoList) {
-
       CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
           stageInfo.getCommGroupName(),
           dataLoadingService.getNumberOfPartitions() + 1);
-
       commGroup.addBroadcast(CtrlMsgBroadcast.class,
           BroadcastOperatorSpec.newBuilder()
               .setSenderId(getCtrlTaskId(sequence))
               .setDataCodecClass(SerializableCodec.class)
               .build());
-
       if (stageInfo.isBroadcastUsed()) {
         commGroup.addBroadcast(DataBroadcast.class,
             BroadcastOperatorSpec.newBuilder()
@@ -162,7 +154,6 @@ public final class FlexionDriver {
                 .setDataCodecClass(stageInfo.getBroadcastCodecClass())
                 .build());
       }
-
       if (stageInfo.isScatterUsed()) {
         commGroup.addScatter(DataScatter.class,
             ScatterOperatorSpec.newBuilder()
@@ -170,7 +161,6 @@ public final class FlexionDriver {
                 .setDataCodecClass(stageInfo.getScatterCodecClass())
                 .build());
       }
-
       if (stageInfo.isReduceUsed()) {
         commGroup.addReduce(DataReduce.class,
             ReduceOperatorSpec.newBuilder()
@@ -179,7 +169,6 @@ public final class FlexionDriver {
                 .setReduceFunctionClass(stageInfo.getReduceFunctionClass())
                 .build());
       }
-
       if (stageInfo.isGatherUsed()) {
         commGroup.addGather(DataGather.class,
             GatherOperatorSpec.newBuilder()
@@ -187,15 +176,14 @@ public final class FlexionDriver {
                 .setDataCodecClass(stageInfo.getGatherCodecClass())
                 .build());
       }
-
       commGroupDriverList.add(commGroup);
       commGroup.finalise();
       sequence++;
     }
-
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
+
     @Override
     public void onNext(final ActiveContext activeContext) {
 
@@ -228,7 +216,6 @@ public final class FlexionDriver {
         }
 
         activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
-
       } else {
         submitTask(activeContext, 0);
       }
@@ -251,6 +238,7 @@ public final class FlexionDriver {
    * Receives metrics from compute tasks
    */
   final class TaskMessageHandler implements EventHandler<TaskMessage> {
+
     @Override
     public void onNext(final TaskMessage message) {
       final long result = codecLong.decode(message.get());
@@ -279,34 +267,16 @@ public final class FlexionDriver {
       } else {
         submitTask(activeContext, nextSequence);
       }
-
     }
   }
 
-  /**
-   * When a certain Compute Task fails, we add the Task back and let it participate in
-   * Group Communication again. However if the failed Task is the Controller Task,
-   * we just shut down the whole job because it's hard to recover the cluster centroid info.
-   */
-    /*final class FailedTaskHandler implements EventHandler<FailedTask> {
-        @Override
-        public void onNext(FailedTask failedTask) {
-            LOG.info(failedTask.getId() + " has failed.");
+  final class FailedTaskHandler implements EventHandler<FailedTask> {
 
-            // Stop the whole job if the failed Task is the Controller Task
-            if (isCtrlTaskId(failedTask.getActiveContext().get().getId())) {
-                throw new RuntimeException("Controller Task failed; aborting job");
-            } else {
-
-                ActiveContext activeContext = failedTask.getActiveContext().get();
-                String contextId = activeContext.getId();
-                int currentSequence = contextToStageSequence.get(contextId);
-                submitTask(activeContext, currentSequence);
-            }
-
-        }
-    }*/
-
+    @Override
+    public void onNext(FailedTask failedTask) {
+      LOG.info(failedTask.getId() + " has failed.");
+    }
+  }
 
   /**
    * Execute the task of the given stage
@@ -314,7 +284,6 @@ public final class FlexionDriver {
    * @param stageSequence
    */
   final private void submitTask(ActiveContext activeContext, int stageSequence) {
-
     contextToStageSequence.put(activeContext.getId(), stageSequence);
     StageInfo taskInfo = stageInfoList.get(stageSequence);
     CommunicationGroupDriver commGroup = commGroupDriverList.get(stageSequence);

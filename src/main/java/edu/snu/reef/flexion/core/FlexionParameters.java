@@ -83,5 +83,4 @@ public final class FlexionParameters {
   public final int getTimeout() {
     return timeout;
   }
-
 }

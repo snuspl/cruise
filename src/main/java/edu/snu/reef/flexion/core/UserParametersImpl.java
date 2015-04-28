@@ -28,7 +28,6 @@ public final class UserParametersImpl implements UserParameters {
 
   @Inject
   public UserParametersImpl() {
-
   }
 
   @Override
@@ -49,5 +48,4 @@ public final class UserParametersImpl implements UserParameters {
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder().build();
   }
-
 }

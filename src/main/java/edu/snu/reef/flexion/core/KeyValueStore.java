@@ -23,7 +23,6 @@ import java.util.HashMap;
  * Simple Key-value store used by key-value store service
  */
 public final class KeyValueStore {
-
   private final HashMap<Class<? extends Key>, Object> hashMap;
 
   @Inject

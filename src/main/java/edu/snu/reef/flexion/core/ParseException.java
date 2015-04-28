@@ -19,9 +19,7 @@ package edu.snu.reef.flexion.core;
  * Exception used by DataParser.
  */
 public final class ParseException extends Exception {
-
   public ParseException(String msg) {
     super(msg);
   }
-
 }

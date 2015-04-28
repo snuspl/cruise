@@ -16,7 +16,6 @@
 package edu.snu.reef.flexion.examples.ml.data;
 
 public class LinearRegSummary {
-
   private final LinearModel model;
   private int count = 0;
   private double loss = 0;
@@ -44,5 +43,4 @@ public class LinearRegSummary {
   public double getLoss() {
     return loss;
   }
-
 }

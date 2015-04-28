@@ -23,6 +23,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  */
 @DefaultImplementation(EuclideanDistance.class)
 public interface VectorDistanceMeasure {
+
   /**
    * Compute distance between @param v1 and @param v2
    */

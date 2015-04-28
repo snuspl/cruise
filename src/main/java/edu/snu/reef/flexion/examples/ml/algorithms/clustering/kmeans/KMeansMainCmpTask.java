@@ -53,7 +53,6 @@ public final class KMeansMainCmpTask extends UserComputeTask
    * Default measure is Euclidean distance
    */
   private final VectorDistanceMeasure distanceMeasure;
-
   private final DataParser<List<Vector>> dataParser;
 
   /**
@@ -80,11 +79,9 @@ public final class KMeansMainCmpTask extends UserComputeTask
 
     // Compute the nearest cluster centroid for each point
     pointSum = new HashMap<>();
-
     for (final Vector vector : points) {
       double nearestClusterDist = Double.MAX_VALUE;
       int nearestClusterId = -1;
-
       int clusterId = 0;
       for (Vector centroid : centroids) {
         final double distance = distanceMeasure.distance(centroid, vector);
@@ -102,12 +99,10 @@ public final class KMeansMainCmpTask extends UserComputeTask
         pointSum.get(nearestClusterId).add(vector);
       }
     }
-
-
   }
 
   @Override
-  public void receiveBroadcastData(List<Vector> centroids) {
+  public void receiveBroadcastData(int iteration, List<Vector> centroids) {
     this.centroids = centroids;
   }
 

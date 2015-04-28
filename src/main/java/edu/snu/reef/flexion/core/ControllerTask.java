@@ -34,17 +34,14 @@ import java.util.logging.Logger;
 public final class ControllerTask implements Task {
   private final static Logger LOG = Logger.getLogger(ControllerTask.class.getName());
   public final static String TASK_ID = "CtrlTask";
-
   private final UserControllerTask userControllerTask;
   private final CommunicationGroupClient commGroup;
-
   private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
 
   @Inject
   public ControllerTask(final GroupCommClient groupCommClient,
                         final UserControllerTask userControllerTask,
                         @Parameter(CommunicationGroup.class) final String commGroupName) throws ClassNotFoundException {
-
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.userControllerTask = userControllerTask;
     this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
@@ -59,7 +56,7 @@ public final class ControllerTask implements Task {
     while(!userControllerTask.isTerminated(iteration)) {
       ctrlMessageBroadcast.send(CtrlMessage.RUN);
       sendData(iteration);
-      receiveData();
+      receiveData(iteration);
       userControllerTask.run(iteration);
       topologyChanged();
       iteration++;
@@ -78,40 +75,30 @@ public final class ControllerTask implements Task {
     if (commGroup.getTopologyChanges().exist()) {
       commGroup.updateTopology();
       return true;
-
     } else {
       return false;
     }
   }
 
-
   private void sendData(int iteration) throws Exception {
-
     if (userControllerTask.isBroadcastUsed()) {
       commGroup.getBroadcastSender(DataBroadcast.class).send(
           ((DataBroadcastSender) userControllerTask).sendBroadcastData(iteration));
     }
-
     if (userControllerTask.isScatterUsed()) {
       commGroup.getScatterSender(DataScatter.class).send(
           ((DataScatterSender) userControllerTask).sendScatterData(iteration));
     }
   }
 
-  private void receiveData() throws Exception {
-
+  private void receiveData(int iteration) throws Exception {
     if (userControllerTask.isGatherUsed()) {
-      ((DataGatherReceiver)userControllerTask).receiveGatherData(
+      ((DataGatherReceiver)userControllerTask).receiveGatherData(iteration,
           commGroup.getGatherReceiver(DataGather.class).receive());
     }
-
     if (userControllerTask.isReduceUsed()) {
-
-      ((DataReduceReceiver)userControllerTask).receiveReduceData(
+      ((DataReduceReceiver)userControllerTask).receiveReduceData(iteration,
           commGroup.getReduceReceiver(DataReduce.class).reduce());
-
     }
-
   }
-
 }

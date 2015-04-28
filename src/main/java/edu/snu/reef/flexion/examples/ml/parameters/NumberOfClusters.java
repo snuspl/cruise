@@ -22,5 +22,4 @@ import org.apache.reef.tang.annotations.NamedParameter;
         short_name = "numCls",
         default_value = "5")
 public final class NumberOfClusters implements Name<Integer> {
-
 }

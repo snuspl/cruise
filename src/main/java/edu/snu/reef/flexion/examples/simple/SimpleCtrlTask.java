@@ -23,13 +23,11 @@ import javax.inject.Inject;
 
 public final class SimpleCtrlTask extends UserControllerTask
     implements DataReduceReceiver<Integer>, DataBroadcastSender<String> {
-
   private Integer count = 0;
 
   @Inject
   private SimpleCtrlTask() {
   }
-
 
   @Override
   public void run(int iteration) {
@@ -47,7 +45,7 @@ public final class SimpleCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void receiveReduceData(Integer data) {
+  public void receiveReduceData(int iteration, Integer data) {
     this.count = data;
   }
 }

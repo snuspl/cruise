@@ -24,9 +24,7 @@ import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 
 public class KMeansREEF {
-
   public final static void main(String[] args) throws Exception {
-
     FlexionLauncher.run(
         Configurations.merge(
             FlexionConfiguration.CONF(args, KMeansParameters.getCommandLine()),
@@ -38,6 +36,4 @@ public class KMeansREEF {
         )
     );
   }
-
-
 }

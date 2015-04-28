@@ -49,7 +49,6 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
    * Initial centroids passed from Compute Tasks
    */
   private List<Vector> initialCentroids = null;
-
   private final KeyValueStore keyValueStore;
 
   @Inject
@@ -79,8 +78,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void receiveGatherData(List<List<Vector>> initialCentroids) {
-
+  public void receiveGatherData(int iteration, List<List<Vector>> initialCentroids) {
     final List<Vector> points = new LinkedList<>();
 
     // Flatten the given list of lists
@@ -92,7 +90,5 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
 
     //sample initial centroids
     this.initialCentroids = ClusteringPreCmpTask.sample(points, numberOfClusters);
-
   }
-
 }

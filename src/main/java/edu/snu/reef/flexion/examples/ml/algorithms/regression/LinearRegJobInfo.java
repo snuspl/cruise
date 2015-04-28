@@ -36,7 +36,6 @@ public final class LinearRegJobInfo implements UserJobInfo {
 
   @Override
   public List<StageInfo> getStageInfoList() {
-
     final List<StageInfo> stageInfoList = new LinkedList<>();
 
     stageInfoList.add(

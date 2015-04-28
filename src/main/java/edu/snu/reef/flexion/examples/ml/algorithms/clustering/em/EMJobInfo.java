@@ -36,7 +36,6 @@ public final class EMJobInfo implements UserJobInfo {
 
   @Override
   public List<StageInfo> getStageInfoList() {
-
     final List<StageInfo> stageInfoList = new LinkedList<>();
 
     // preprocess: initialize the centroids of clusters

@@ -24,9 +24,7 @@ import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 
 public class LinearRegREEF {
-
   public final static void main(String[] args) throws Exception {
-
     FlexionLauncher.run(
         Configurations.merge(
             FlexionConfiguration.CONF(args, LinearRegParameters.getCommandLine()),
@@ -38,6 +36,4 @@ public class LinearRegREEF {
         )
     );
   }
-
-
 }

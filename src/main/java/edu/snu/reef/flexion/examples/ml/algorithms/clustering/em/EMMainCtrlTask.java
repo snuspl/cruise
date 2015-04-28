@@ -76,7 +76,6 @@ public final class EMMainCtrlTask extends UserControllerTask
    * Whether to share a covariance matrix among clusters or not
    */
   private final boolean isCovarianceShared;
-
   private final KeyValueStore keyValueStore;
 
   /**
@@ -118,7 +117,6 @@ public final class EMMainCtrlTask extends UserControllerTask
       clusterSummaries.add(new ClusterSummary(1.0, vector,
           DiagonalMatrix.identity(dimension)));
     }
-
   }
 
   @Override
@@ -160,18 +158,16 @@ public final class EMMainCtrlTask extends UserControllerTask
     LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration + 1);
     LOG.log(Level.INFO, "" + clusterSummaries);
     LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration + 1);
-
   }
 
   @Override
   public boolean isTerminated(int iteration) {
     return clusteringConvergenceCondition.checkConvergence(centroids)
         || (iteration >= maxIterations);
-
   }
 
   @Override
-  public void receiveReduceData(Map<Integer, ClusterStats> data) {
+  public void receiveReduceData(int iteration, Map<Integer, ClusterStats> data) {
     clusterStatsMap = data;
   }
 

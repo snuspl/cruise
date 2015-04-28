@@ -58,11 +58,9 @@ public final class CentroidListCodec implements Codec<List<Vector>> {
           daos.writeDouble(centroid.get(i));
         }
       }
-
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
-
 
     return baos.toByteArray();
   }
@@ -85,7 +83,6 @@ public final class CentroidListCodec implements Codec<List<Vector>> {
         }
         list.add(vector);
       }
-
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }

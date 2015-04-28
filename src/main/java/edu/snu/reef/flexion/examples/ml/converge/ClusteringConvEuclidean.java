@@ -29,52 +29,49 @@ import java.util.ArrayList;
  * a certain threshold after an iteration
  */
 public final class ClusteringConvEuclidean implements ClusteringConvCond {
+  private ArrayList<Vector> oldCentroids;
+  private final double convergenceThreshold;
+  final EuclideanDistance euclideanDistance;
 
-    ArrayList<Vector> oldCentroids;
-    final double convergenceThreshold;
-    final EuclideanDistance euclideanDistance;
+  @Inject
+  public ClusteringConvEuclidean(
+      final EuclideanDistance euclideanDistance,
+      @Parameter(ConvergenceThreshold.class) final double convergenceThreshold) {
+    this.euclideanDistance = euclideanDistance;
+    this.convergenceThreshold = convergenceThreshold;
+  }
 
-    @Inject
-    public ClusteringConvEuclidean(
-        final EuclideanDistance euclideanDistance,
-        @Parameter(ConvergenceThreshold.class) final double convergenceThreshold
-    ) {
-        this.euclideanDistance = euclideanDistance;
-        this.convergenceThreshold = convergenceThreshold;
+  @Override
+  public final boolean checkConvergence(Iterable<Vector> centroids) {
+    if (oldCentroids == null) {
+      oldCentroids = new ArrayList<>();
+
+      int clusterID = 0;
+      for (final Vector centroid : centroids) {
+        oldCentroids.add(clusterID++, centroid);
+      }
+
+      return false;
     }
 
-    @Override
-    public final boolean checkConvergence(Iterable<Vector> centroids) {
+    boolean hasConverged = true;
+    int clusterID = 0;
+    for (final Vector centroid : centroids) {
+      Vector oldCentroid = oldCentroids.get(clusterID);
 
-        if (oldCentroids == null) {
-            oldCentroids = new ArrayList<>();
+      if (hasConverged
+          && distance(centroid, oldCentroid) > convergenceThreshold) {
+        hasConverged = false;
+      }
 
-            int clusterID = 0;
-            for (final Vector centroid : centroids) {
-                oldCentroids.add(clusterID++, centroid);
-            }
-
-            return false;
-        }
-
-        boolean hasConverged = true;
-        int clusterID = 0;
-        for (final Vector centroid : centroids) {
-            Vector oldCentroid = oldCentroids.get(clusterID);
-
-            if (hasConverged
-                    && distance(centroid, oldCentroid) > convergenceThreshold) {
-                hasConverged = false;
-            }
-
-            oldCentroids.add(clusterID, centroid);
-            clusterID++;
-        }
-
-        return hasConverged;
+      oldCentroids.add(clusterID, centroid);
+      clusterID++;
     }
 
-    public final double distance(Vector v1, Vector v2) {
-        return euclideanDistance.distance(v1, v2);
-    }
+    return hasConverged;
+  }
+
+  public final double distance(Vector v1, Vector v2) {
+    return euclideanDistance.distance(v1, v2);
+  }
 }

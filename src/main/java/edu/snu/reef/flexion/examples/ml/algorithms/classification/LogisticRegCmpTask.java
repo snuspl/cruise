@@ -34,11 +34,9 @@ import java.util.List;
 
 public class LogisticRegCmpTask extends UserComputeTask
     implements DataReduceSender<LogisticRegSummary>, DataBroadcastReceiver<LinearModel> {
-
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
-
   private DataParser<List<Row>> dataParser;
   private List<Row> rows;
   private LinearModel model;
@@ -87,7 +85,7 @@ public class LogisticRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public final void receiveBroadcastData(LinearModel model) {
+  public final void receiveBroadcastData(int iteration, LinearModel model) {
     this.model = model;
   }
 

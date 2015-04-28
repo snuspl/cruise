@@ -24,7 +24,6 @@ import org.apache.reef.tang.annotations.Name;
  * One or more stages compose a job, a unit of work in Flexion
  */
 public final class StageInfo {
-
   private final Class<? extends UserComputeTask> userComputeTaskClass;
   private final Class<? extends UserControllerTask> userControllerTaskClass;
   private final Class<? extends Name<String>> commGroupName;
@@ -75,7 +74,6 @@ public final class StageInfo {
   }
 
   public static class Builder implements org.apache.reef.util.Builder<StageInfo> {
-
     private Class<? extends UserComputeTask> userComputeTaskClass;
     private Class<? extends UserControllerTask> userControllerTaskClass;
     private Class<? extends Name<String>> commGroupName;
@@ -141,7 +139,6 @@ public final class StageInfo {
           isReduceUsed, reduceCodecClass, reduceFunctionClass);
     }
   }
-
 
   public boolean isBroadcastUsed() {
     return this.isBroadcastUsed;

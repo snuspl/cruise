@@ -30,7 +30,6 @@ import org.apache.reef.tang.formats.CommandLine;
 import javax.inject.Inject;
 
 public final class LogisticRegParameters implements UserParameters {
-
   private final double convThreshold;
   private final double stepSize;
   private final double lambda;
@@ -98,5 +97,4 @@ public final class LogisticRegParameters implements UserParameters {
     cl.registerShortNameOfClass(ConvergenceThreshold.class);
     return cl;
   }
-
 }

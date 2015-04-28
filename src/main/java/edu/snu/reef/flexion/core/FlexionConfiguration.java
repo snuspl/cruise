@@ -24,14 +24,11 @@ import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import java.io.IOException;
 
 public final class FlexionConfiguration extends ConfigurationModuleBuilder {
-
-
   public final static Configuration CONF(String[] args) throws IOException {
     return CONF(args, new CommandLine());
   }
 
   public final static Configuration CONF(String[] args, CommandLine cl) throws IOException {
-
     cl.registerShortNameOfClass(EvaluatorSize.class);
     cl.registerShortNameOfClass(OnLocal.class);
     cl.registerShortNameOfClass(EvaluatorNum.class);
@@ -39,9 +36,6 @@ public final class FlexionConfiguration extends ConfigurationModuleBuilder {
     cl.registerShortNameOfClass(InputDir.class);
     final ConfigurationBuilder cb = cl.getBuilder();
     cl.processCommandLine(args);
-
     return cb.build();
-
   }
-
 }

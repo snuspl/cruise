@@ -37,11 +37,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Job launch code for the K-means Clustering REEF job
+ * Job launch code for Flexion jobs
  */
 public final class FlexionLauncher {
   private static final Logger LOG = Logger.getLogger(FlexionLauncher.class.getName());
-
   private final FlexionParameters flexionParameters;
 
   @Inject
@@ -61,7 +60,6 @@ public final class FlexionLauncher {
     }
 
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
-
   }
 
   private final LauncherStatus run() throws InjectionException {
@@ -90,9 +88,8 @@ public final class FlexionLauncher {
         .set(DriverConfiguration.DRIVER_IDENTIFIER, flexionParameters.getIdentifier())
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, FlexionDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_TASK_MESSAGE, FlexionDriver.TaskMessageHandler.class)
-        .set(DriverConfiguration.ON_TASK_COMPLETED, FlexionDriver.TaskCompletedHandler.class);
-    //.set(DriverConfiguration.ON_TASK_FAILED, FlexionDriver.FailedTaskHandler.class);
-
+        .set(DriverConfiguration.ON_TASK_COMPLETED, FlexionDriver.TaskCompletedHandler.class)
+        .set(DriverConfiguration.ON_TASK_FAILED, FlexionDriver.FailedTaskHandler.class);
 
     final EvaluatorRequest evalRequest = EvaluatorRequest.newBuilder()
         .setNumber(1)
@@ -111,18 +108,13 @@ public final class FlexionLauncher {
     return Configurations.merge(driverConfWithDataLoad,
         GroupCommService.getConfiguration(),
         flexionParameters.getDriverConf());
-
   }
-
 
   private final String processInputDir(final String inputDir) {
     if (!flexionParameters.getOnLocal()) {
       return inputDir;
     }
-
     final File inputFile = new File(inputDir);
-
     return "file:///" + inputFile.getAbsolutePath();
   }
-
 }

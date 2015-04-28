@@ -26,7 +26,6 @@ import java.util.Locale;
  * This class represents a set of vectors by their sum and count.
  */
 public final class VectorSum implements Serializable {
-
   public Vector sum;
   public int count;
 
@@ -86,10 +85,8 @@ public final class VectorSum implements Serializable {
         totalVectorSum = new VectorSum(vectorSum);
         continue;
       }
-
       totalVectorSum.add(vectorSum);
     }
-
     return totalVectorSum;
   }
 
@@ -100,10 +97,8 @@ public final class VectorSum implements Serializable {
         vectorSum = new VectorSum(vector, 1, true);
         continue;
       }
-
       vectorSum.add(vector);
     }
-
     return vectorSum;
   }
 
@@ -131,7 +126,6 @@ public final class VectorSum implements Serializable {
         formatter.format("%1.3f)", sum.get(sum.size() - 1));
       }
     }
-
     return b.toString();
   }
 }

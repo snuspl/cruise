@@ -35,23 +35,18 @@ public class LinearModelCodec implements Codec<LinearModel> {
         Double.SIZE * model.getParameters().size());
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(model.getParameters().size());
-
       for (int i = 0; i < model.getParameters().size(); i++) {
         daos.writeDouble(model.getParameters().get(i));
       }
-
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
-
     return baos.toByteArray();
   }
-
 
   @Override
   public LinearModel decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-
     LinearModel model;
     try (final DataInputStream dais = new DataInputStream(bais)) {
       final int vecSize = dais.readInt();
@@ -60,11 +55,9 @@ public class LinearModelCodec implements Codec<LinearModel> {
         v.set(i, dais.readDouble());
       }
       model = new LinearModel(v);
-
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
-
     return model;
   }
 }

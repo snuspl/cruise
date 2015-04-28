@@ -31,7 +31,6 @@ import java.util.Map;
  * Codec for encoding and decoding a map of Integer vs. clusterStats
  */
 public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, ClusterStats>> {
-
   private final boolean DiagonalCovariance;
 
   @Inject
@@ -41,7 +40,6 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
 
   @Override
   public final byte[] encode(final Map<Integer, ClusterStats> map) {
-
     final int mapSize = map.size();
     int dimension = 0;
     if (mapSize > 0) {
@@ -60,7 +58,6 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(map.size());
       daos.writeInt(dimension);
-
       for (final Integer id : map.keySet()) {
         daos.writeInt(id);
         ClusterStats clusterSummary = map.get(id);
@@ -93,10 +90,8 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
     final Map<Integer, ClusterStats> resultMap = new HashMap<>();
 
     try (final DataInputStream dais = new DataInputStream(bais)) {
-
       final int mapSize = dais.readInt();
       final int dimension = dais.readInt();
-
       for (int i = 0; i < mapSize; i++) {
         final int id = dais.readInt();
         final double probSum = dais.readDouble();

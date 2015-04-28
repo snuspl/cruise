@@ -52,9 +52,7 @@ public final class VectorListCodec implements Codec<List<Vector>> {
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(list.size());
       daos.writeInt(length);
-
       for (final Vector vector : list) {
-
         for (int i = 0; i < length; i++) {
           daos.writeDouble(vector.get(i));
         }
@@ -73,16 +71,13 @@ public final class VectorListCodec implements Codec<List<Vector>> {
     try (final DataInputStream dais = new DataInputStream(bais)) {
       final int listSize = dais.readInt();
       final int length = dais.readInt();
-
       for (int i = 0; i < listSize; i++) {
         final Vector vector = new DenseVector(length);
-
         for (int j = 0; j < length; j++) {
           vector.set(j, dais.readDouble());
         }
         resultList.add(vector);
       }
-
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }

@@ -27,7 +27,6 @@ import java.util.logging.Logger;
  * Should be inserted alongside a context.
  */
 public class KeyValueStoreService {
-
   private static Logger LOG = Logger.getLogger(KeyValueStoreService.class.getName());
 
   public static Configuration getServiceConfiguration() {
@@ -39,5 +38,4 @@ public class KeyValueStoreService {
         .newConfigurationBuilder(partialServiceConf)
         .build();
   }
-
 }

@@ -23,9 +23,7 @@ import java.util.List;
  * which specify a data parser and stages composing the job
  */
 public interface UserJobInfo {
-
   public abstract List<StageInfo> getStageInfoList();
 
   public abstract Class<? extends DataParser> getDataParser();
-
 }

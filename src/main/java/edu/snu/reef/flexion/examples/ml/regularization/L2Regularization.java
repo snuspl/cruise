@@ -26,7 +26,6 @@ import javax.inject.Inject;
  * Class that represents ||w||_2^2.
  */
 public final class L2Regularization implements Regularization {
-
   private double lambda;
 
   @Inject
@@ -43,5 +42,4 @@ public final class L2Regularization implements Regularization {
   public Vector gradient(final Model model) {
     return model.getParameters().times(lambda);
   }
-
 }

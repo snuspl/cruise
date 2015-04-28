@@ -60,7 +60,6 @@ public final class DataParseService {
         .set(ServiceConfiguration.SERVICES, dataParseClass)
         .set(ServiceConfiguration.ON_CONTEXT_STARTED, ContextStartHandler.class)
         .build();
-
     return Tang.Factory.getTang()
         .newConfigurationBuilder(partialServiceConf)
         .bindImplementation(DataParser.class, dataParseClass)

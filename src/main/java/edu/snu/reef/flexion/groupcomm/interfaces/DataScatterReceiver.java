@@ -16,5 +16,5 @@
 package edu.snu.reef.flexion.groupcomm.interfaces;
 
 public interface DataScatterReceiver<T> {
-  void receiveScatterData(T data);
+  public void receiveScatterData(int iteration, T data);
 }

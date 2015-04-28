@@ -30,63 +30,54 @@ import java.util.List;
 import java.util.logging.Logger;
 
 public final class ClusteringDataParser implements DataParser<List<Vector>> {
-    private final static Logger LOG = Logger.getLogger(ClusteringDataParser.class.getName());
+  private final static Logger LOG = Logger.getLogger(ClusteringDataParser.class.getName());
 
-    private final DataSet<LongWritable, Text> dataSet;
-    private List<Vector> result;
-    private ParseException parseException;
+  private final DataSet<LongWritable, Text> dataSet;
+  private List<Vector> result;
+  private ParseException parseException;
 
-    @Inject
-    public ClusteringDataParser(final DataSet<LongWritable, Text> dataSet) {
-        this.dataSet = dataSet;
+  @Inject
+  public ClusteringDataParser(final DataSet<LongWritable, Text> dataSet) {
+    this.dataSet = dataSet;
+  }
+
+  @Override
+  public final List<Vector> get() throws ParseException {
+    if (result == null) {
+      parse();
     }
-
-    @Override
-    public final List<Vector> get() throws ParseException {
-        if (result == null) {
-            parse();
-        }
-
-        if (parseException != null) {
-            throw parseException;
-        }
-
-        return result;
+    if (parseException != null) {
+      throw parseException;
     }
+    return result;
+  }
 
-    @Override
-    public final void parse() {
+  @Override
+  public final void parse() {
+    final List<Vector> points = new ArrayList<>();
 
-        final List<Vector> points = new ArrayList<>();
+    for (final Pair<LongWritable, Text> keyValue : dataSet) {
+      final String text = keyValue.second.toString().trim();
+      if (text.startsWith("#")) {
+        continue;
+      }
 
-        for (final Pair<LongWritable, Text> keyValue : dataSet) {
+      final String[] split = text.split("\\s+");
+      if (split.length == 0) {
+        continue;
+      }
 
-            final String text = keyValue.second.toString().trim();
-
-            if (text.startsWith("#")) {
-                continue;
-            }
-
-            final String[] split = text.split("\\s+");
-
-            if (split.length == 0) {
-                continue;
-            }
-
-            final Vector point = new DenseVector(split.length);
-            try {
-                for (int i = 0; i < split.length; i++) {
-                    point.set(i, Double.valueOf(split[i]));
-                }
-                points.add(point);
-
-            } catch (final NumberFormatException e) {
-                parseException = new ParseException("Parse failed: each field should be a number");
-                return;
-            }
+      final Vector point = new DenseVector(split.length);
+      try {
+        for (int i = 0; i < split.length; i++) {
+          point.set(i, Double.valueOf(split[i]));
         }
-
-        result = points;
-
+        points.add(point);
+      } catch (final NumberFormatException e) {
+        parseException = new ParseException("Parse failed: each field should be a number");
+        return;
+      }
     }
+    result = points;
+  }
 }

@@ -45,7 +45,6 @@ public final class ClusteringPreCmpTask extends UserComputeTask
    * Sampled points
    */
   private List<Vector> samples = new LinkedList<>();
-
   private final DataParser<List<Vector>> dataParser;
 
   /**
@@ -70,7 +69,6 @@ public final class ClusteringPreCmpTask extends UserComputeTask
 
     //randomly sample points so that the number of points are equal to that of clusters
     samples = sample(points, numberOfClusters);
-
   }
 
   @Override
@@ -85,17 +83,16 @@ public final class ClusteringPreCmpTask extends UserComputeTask
    * @return
    */
   static List<Vector> sample(List<Vector> points, int maxNumOfSamples) {
-
     final List<Vector> samples = new LinkedList<>();
 
     if (points.isEmpty()) {
       return samples;
     }
 
+    final Vector[] pointArray = points.toArray(new Vector[0]);
     final Random random = new Random();
     final int numberOfPoints = points.size();
     final int numberOfSamples = Math.min(maxNumOfSamples, numberOfPoints);
-    final Vector[] pointArray = points.toArray(new Vector[0]);
 
     for (int i=0; i<numberOfSamples; i++) {
       final int index = random.nextInt(numberOfPoints - 1 - i);
@@ -105,6 +102,4 @@ public final class ClusteringPreCmpTask extends UserComputeTask
 
     return samples;
   }
-
-
 }

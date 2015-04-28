@@ -28,7 +28,6 @@ import org.apache.reef.tang.formats.CommandLine;
 import javax.inject.Inject;
 
 public final class KMeansParameters implements UserParameters {
-
   private final double convThreshold;
   private final int maxIterations;
   private final int numberOfClusters;
@@ -80,5 +79,4 @@ public final class KMeansParameters implements UserParameters {
     cl.registerShortNameOfClass(NumberOfClusters.class);
     return cl;
   }
-
 }

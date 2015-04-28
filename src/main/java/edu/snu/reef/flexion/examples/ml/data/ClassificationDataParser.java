@@ -35,16 +35,14 @@ import java.util.logging.Logger;
 
 public final class ClassificationDataParser implements DataParser<List<Row>> {
   private final static Logger LOG = Logger.getLogger(ClassificationDataParser.class.getName());
-  private final AtomicInteger count = new AtomicInteger(0);
 
+  private final AtomicInteger count = new AtomicInteger(0);
   private final int positiveLabel = 1;
   private final int negativeLabel = -1;
-
   private final int dimension;
   private final DataSet<LongWritable, Text> dataSet;
   private List<Row> result;
   private ParseException parseException;
-
 
   @Inject
   public ClassificationDataParser(@Parameter(Dimension.class) final int dimension,
@@ -109,7 +107,6 @@ public final class ClassificationDataParser implements DataParser<List<Row>> {
         parseException = new ParseException("Parse failed: numbers should be DOUBLE");
         return;
       }
-
       result.add(new Row(output, feature));
     }
   }

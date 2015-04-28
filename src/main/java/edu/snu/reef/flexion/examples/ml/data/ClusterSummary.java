@@ -26,11 +26,9 @@ import java.util.Locale;
  * The summary includes (1) prior probability, (2) the centroid, and (3) the covariance matrix
  */
 public final class ClusterSummary {
-
   private final double prior;
   private final Vector centroid;
   private final Matrix covariance;
-
 
   public ClusterSummary(double prior, Vector centroid, Matrix covariance) {
     this.prior = prior;
@@ -71,5 +69,4 @@ public final class ClusterSummary {
     }
     return b.toString();
   }
-
 }

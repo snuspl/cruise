@@ -30,7 +30,6 @@ import java.util.List;
  * Codec for encoding and decoding a Cluster Summary List
  */
 public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>> {
-
   private final boolean isDiagonalCovariance;
 
   @Inject
@@ -88,7 +87,6 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
     final List<ClusterSummary> resultList = new ArrayList<>();
 
     try (final DataInputStream dais = new DataInputStream(bais)) {
-
       final int numClusters = dais.readInt();
       final int dimension = dais.readInt();
 

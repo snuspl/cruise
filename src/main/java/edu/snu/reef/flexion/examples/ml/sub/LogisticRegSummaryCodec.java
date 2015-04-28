@@ -28,7 +28,6 @@ public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
 
   @Inject
   public LogisticRegSummaryCodec(){
-
   }
 
   @Override
@@ -39,16 +38,15 @@ public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
         + Integer.SIZE // negNum
         + Integer.SIZE // parameter size
         + Double.SIZE * model.getParameters().size());
+
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(summary.getCount());
       daos.writeInt(summary.getPosNum());
       daos.writeInt(summary.getNegNum());
       daos.writeInt(model.getParameters().size());
-
       for (int i = 0; i < model.getParameters().size(); i++) {
         daos.writeDouble(model.getParameters().get(i));
       }
-
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
@@ -60,11 +58,11 @@ public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
   @Override
   public LogisticRegSummary decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-
     LinearModel model;
     int count;
     int posNum;
     int negNum;
+
     try (final DataInputStream dais = new DataInputStream(bais)) {
       count = dais.readInt();
       posNum = dais.readInt();
@@ -82,5 +80,4 @@ public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
 
     return new LogisticRegSummary(model, count, posNum, negNum);
   }
-
 }

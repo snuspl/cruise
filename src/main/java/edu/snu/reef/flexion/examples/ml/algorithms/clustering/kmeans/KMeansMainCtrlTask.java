@@ -61,7 +61,6 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    * Will be updated for each iteration
    */
   private List<Vector> centroids = new ArrayList<>();
-
   private final KeyValueStore keyValueStore;
 
   /**
@@ -93,7 +92,6 @@ public final class KMeansMainCtrlTask extends UserControllerTask
 
   @Override
   public void run(int iteration) {
-
     for (final Integer clusterID : pointSum.keySet()) {
       final VectorSum vectorSum = pointSum.get(clusterID);
       final Vector newCentroid = vectorSum.computeVectorMean();
@@ -103,14 +101,12 @@ public final class KMeansMainCtrlTask extends UserControllerTask
     LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration);
     LOG.log(Level.INFO, "" + centroids);
     LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration);
-
   }
 
   @Override
   public boolean isTerminated(int iteration) {
     return clusteringConvergenceCondition.checkConvergence(centroids)
         || (iteration >= maxIterations);
-
   }
 
   @Override
@@ -119,8 +115,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void receiveReduceData(Map<Integer, VectorSum> pointSum) {
+  public void receiveReduceData(int iteration, Map<Integer, VectorSum> pointSum) {
     this.pointSum = pointSum;
   }
-
 }

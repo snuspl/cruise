@@ -36,7 +36,6 @@ public final class LogisticRegJobInfo implements UserJobInfo {
 
   @Override
   public List<StageInfo> getStageInfoList() {
-
     final List<StageInfo> stageInfoList = new LinkedList<>();
 
     stageInfoList.add(
@@ -44,7 +43,6 @@ public final class LogisticRegJobInfo implements UserJobInfo {
             .setBroadcast(LinearModelCodec.class)
             .setReduce(LogisticRegSummaryCodec.class, LogisticRegReduceFunction.class)
             .build());
-
 
     return stageInfoList;
   }

@@ -35,13 +35,12 @@ import java.util.logging.Logger;
 
 public final class RegressionDataParser implements DataParser<List<Row>> {
   private final static Logger LOG = Logger.getLogger(RegressionDataParser.class.getName());
-  private final AtomicInteger count = new AtomicInteger(0);
 
+  private final AtomicInteger count = new AtomicInteger(0);
   private final int dimension;
   private final DataSet<LongWritable, Text> dataSet;
   private List<Row> result;
   private ParseException parseException;
-
 
   @Inject
   public RegressionDataParser(

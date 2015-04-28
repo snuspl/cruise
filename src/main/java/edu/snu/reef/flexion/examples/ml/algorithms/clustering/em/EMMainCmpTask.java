@@ -52,7 +52,6 @@ public final class EMMainCmpTask extends UserComputeTask
    * whether covariance matrices are diagonal or not
    */
   private final boolean isCovarianceDiagonal;
-
   private final DataParser<List<Vector>> dataParser;
 
   /**
@@ -76,7 +75,6 @@ public final class EMMainCmpTask extends UserComputeTask
 
   @Override
   public void run(int iteration) {
-
     clusterToStats = new HashMap<>();
     final int numClusters = clusterSummaries.size();
 
@@ -119,8 +117,6 @@ public final class EMMainCmpTask extends UserComputeTask
         }
       }
     }
-
-
   }
 
   @Override
@@ -129,7 +125,7 @@ public final class EMMainCmpTask extends UserComputeTask
   }
 
   @Override
-  public void receiveBroadcastData(List<ClusterSummary> data) {
+  public void receiveBroadcastData(int iteration, List<ClusterSummary> data) {
     this.clusterSummaries = data;
   }
 
@@ -142,14 +138,12 @@ public final class EMMainCmpTask extends UserComputeTask
     return qr.solve(DiagonalMatrix.identity(dimension));
   }
 
-
   /**
    * Return a new matrix containing the product of each value of the recipient and the argument
    * This method exploits sparsity of the matrix, that is, considers only non-zero entries
    */
   private final Matrix times (Matrix matrix, double scala) {
     final Matrix result = matrix.clone();
-
     final Iterator<MatrixSlice> sliceIterator=matrix.iterator();
     while (sliceIterator.hasNext()) {
       MatrixSlice slice=sliceIterator.next();
@@ -160,6 +154,5 @@ public final class EMMainCmpTask extends UserComputeTask
       }
     }
     return result;
-
   }
 }

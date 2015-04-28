@@ -29,23 +29,20 @@ import javax.inject.Inject;
  * a certain threshold in terms of Euclidean distance after an iteration
  */
 public class LinearModelConvEuclidean implements  LinearModelConvCond {
-
-  LinearModel oldModel;
-  final double convergenceThreshold;
-  final EuclideanDistance euclideanDistance;
+  private LinearModel oldModel;
+  private final double convergenceThreshold;
+  private final EuclideanDistance euclideanDistance;
 
   @Inject
   public LinearModelConvEuclidean(
       final EuclideanDistance euclideanDistance,
-      @Parameter(ConvergenceThreshold.class) final double convergenceThreshold
-  ) {
+      @Parameter(ConvergenceThreshold.class) final double convergenceThreshold) {
     this.euclideanDistance = euclideanDistance;
     this.convergenceThreshold = convergenceThreshold;
   }
 
   @Override
   public final boolean checkConvergence(LinearModel model) {
-
     if (oldModel == null) {
       oldModel = new LinearModel(model.getParameters().clone());
       return false;
@@ -57,5 +54,4 @@ public class LinearModelConvEuclidean implements  LinearModelConvCond {
   public final double distance(Vector v1, Vector v2) {
     return euclideanDistance.distance(v1, v2);
   }
-
 }
