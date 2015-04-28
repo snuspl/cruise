@@ -58,6 +58,7 @@ public final class FlexionParameters {
 
   public final Configuration getDriverConf() {
     Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(EvaluatorNum.class, String.valueOf(evalNum))
         .bindImplementation(UserJobInfo.class, userJobInfo.getClass())
         .bindImplementation(UserParameters.class, userParameters.getClass())
         .build();

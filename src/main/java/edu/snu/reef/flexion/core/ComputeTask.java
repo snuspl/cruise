@@ -23,6 +23,7 @@ import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherSender;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceSender;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataScatterReceiver;
 import edu.snu.reef.flexion.groupcomm.names.*;
+import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
@@ -37,8 +38,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class ComputeTask implements Task, TaskMessageSource {
+  public final static String TASK_ID_PREFIX = "CmpTask";
   private final static Logger LOG = Logger.getLogger(ComputeTask.class.getName());
-  public final static String TASK_ID = "CmpTask";
+
+  private final String taskId;
   private final UserComputeTask userComputeTask;
   private final CommunicationGroupClient commGroup;
   private final HeartBeatTriggerManager heartBeatTriggerManager;
@@ -49,9 +52,11 @@ public final class ComputeTask implements Task, TaskMessageSource {
   @Inject
   public ComputeTask(final GroupCommClient groupCommClient,
                      final UserComputeTask userComputeTask,
+                     @Parameter(TaskConfigurationOptions.Identifier.class) String taskId,
                      @Parameter(CommunicationGroup.class) final String commGroupName,
                      final HeartBeatTriggerManager heartBeatTriggerManager) throws ClassNotFoundException {
     this.userComputeTask = userComputeTask;
+    this.taskId = taskId;
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
     this.heartBeatTriggerManager = heartBeatTriggerManager;
@@ -59,7 +64,7 @@ public final class ComputeTask implements Task, TaskMessageSource {
 
   @Override
   public final byte[] call(final byte[] memento) throws Exception {
-    LOG.log(Level.INFO, "CmpTask commencing...");
+    LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
     userComputeTask.initialize();
     int iteration=0;
@@ -86,7 +91,7 @@ public final class ComputeTask implements Task, TaskMessageSource {
       ((DataScatterReceiver)userComputeTask).receiveScatterData(iteration,
           commGroup.getScatterReceiver(DataScatter.class).receive());
     }
-  };
+  }
 
   private void sendData(int iteration) throws Exception {
     if (userComputeTask.isGatherUsed()) {

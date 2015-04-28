@@ -23,6 +23,7 @@ import edu.snu.reef.flexion.groupcomm.interfaces.DataGatherReceiver;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataReduceReceiver;
 import edu.snu.reef.flexion.groupcomm.interfaces.DataScatterSender;
 import edu.snu.reef.flexion.groupcomm.names.*;
+import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
@@ -32,8 +33,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class ControllerTask implements Task {
+  public final static String TASK_ID_PREFIX = "CtrlTask";
   private final static Logger LOG = Logger.getLogger(ControllerTask.class.getName());
-  public final static String TASK_ID = "CtrlTask";
+
+  private final String taskId;
   private final UserControllerTask userControllerTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
@@ -41,15 +44,17 @@ public final class ControllerTask implements Task {
   @Inject
   public ControllerTask(final GroupCommClient groupCommClient,
                         final UserControllerTask userControllerTask,
+                        @Parameter(TaskConfigurationOptions.Identifier.class) String taskId,
                         @Parameter(CommunicationGroup.class) final String commGroupName) throws ClassNotFoundException {
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.userControllerTask = userControllerTask;
+    this.taskId = taskId;
     this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
   }
 
   @Override
   public final byte[] call(final byte[] memento) throws Exception {
-    LOG.log(Level.INFO, "CtrlTask commencing...");
+    LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
     int iteration = 0;
     userControllerTask.initialize();
@@ -58,7 +63,7 @@ public final class ControllerTask implements Task {
       sendData(iteration);
       receiveData(iteration);
       userControllerTask.run(iteration);
-      topologyChanged();
+      updateTopology();
       iteration++;
     }
     ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
@@ -68,15 +73,11 @@ public final class ControllerTask implements Task {
   }
 
   /**
-   * Check if group communication topology has changed, and updates it if it has.
-   * @return true if topology has changed, false if not
+   * Update the group communication topology, if it has changed
    */
-  private final boolean topologyChanged() {
+  private final void updateTopology() {
     if (commGroup.getTopologyChanges().exist()) {
       commGroup.updateTopology();
-      return true;
-    } else {
-      return false;
     }
   }
 

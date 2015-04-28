@@ -50,7 +50,8 @@ public class LogisticRegCtrlTask extends UserControllerTask
   
   @Override
   public final void run(int iteration) {
-    LOG.log(Level.INFO, "{0}-th iteration accuracy: {1}%, new model: {2}", new Object[] { iteration, accuracy*100, model });
+    LOG.log(Level.INFO, "{0}-th iteration accuracy: {1}%, new model: {2}",
+        new Object[] { iteration, accuracy * 100, model });
   }
   
   @Override
@@ -65,7 +66,8 @@ public class LogisticRegCtrlTask extends UserControllerTask
 
   @Override
   public void receiveReduceData(int iteration, LogisticRegSummary summary) {
-    this.accuracy = ((double) summary.getPosNum()) / (summary.getPosNum()+summary.getNegNum());
-    this.model = new LinearModel(summary.getModel().getParameters().times(1.0/summary.getCount()));
+    this.accuracy = ((double) summary.getPosNum()) / (summary.getPosNum() + summary.getNegNum());
+    this.model = new LinearModel(summary.getModel().getParameters()
+        .times(1.0 / summary.getCount()));
   }
 }

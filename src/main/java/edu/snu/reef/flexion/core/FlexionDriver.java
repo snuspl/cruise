@@ -22,11 +22,9 @@ import com.microsoft.reef.io.network.nggroup.impl.config.GatherOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ReduceOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
 import edu.snu.reef.flexion.groupcomm.names.*;
+import edu.snu.reef.flexion.parameters.EvaluatorNum;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.task.CompletedTask;
-import org.apache.reef.driver.task.FailedTask;
-import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.driver.task.TaskMessage;
+import org.apache.reef.driver.task.*;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -34,6 +32,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
@@ -103,8 +102,15 @@ public final class FlexionDriver {
    * Map to record which stage is being executed by each evaluator which is identified by context id
    */
   private final Map<String, Integer> contextToStageSequence;
+
+  /**
+   * The number of evaluators assigned for Compute Tasks
+   */
+  private final Integer evalNum;
+
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final UserParameters userParameters;
+
 
   /**
    * This class is instantiated by TANG
@@ -120,7 +126,8 @@ public final class FlexionDriver {
   private FlexionDriver(final GroupCommDriver groupCommDriver,
                         final DataLoadingService dataLoadingService,
                         final UserJobInfo userJobInfo,
-                        final UserParameters userParameters)
+                        final UserParameters userParameters,
+                        @Parameter(EvaluatorNum.class) final Integer evalNum)
       throws IllegalAccessException, InstantiationException,
       NoSuchMethodException, InvocationTargetException {
     this.groupCommDriver = groupCommDriver;
@@ -130,6 +137,7 @@ public final class FlexionDriver {
     this.commGroupDriverList = new LinkedList<>();
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
+    this.evalNum = evalNum;
     initializeCommDriver();
   }
 
@@ -140,8 +148,7 @@ public final class FlexionDriver {
     int sequence = 0;
     for (StageInfo stageInfo : stageInfoList) {
       CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
-          stageInfo.getCommGroupName(),
-          dataLoadingService.getNumberOfPartitions() + 1);
+          stageInfo.getCommGroupName(), evalNum + 1);
       commGroup.addBroadcast(CtrlMsgBroadcast.class,
           BroadcastOperatorSpec.newBuilder()
               .setSenderId(getCtrlTaskId(sequence))
@@ -249,6 +256,14 @@ public final class FlexionDriver {
     }
   }
 
+  final class TaskRunningHandler implements EventHandler<RunningTask> {
+
+    @Override
+    public void onNext(RunningTask runningTask) {
+      LOG.info(runningTask.getId() + " has started.");
+    }
+  }
+
   /**
    * When a certain task completes, the following task is submitted
    */
@@ -270,7 +285,7 @@ public final class FlexionDriver {
     }
   }
 
-  final class FailedTaskHandler implements EventHandler<FailedTask> {
+  final class TaskFailedHandler implements EventHandler<FailedTask> {
 
     @Override
     public void onNext(FailedTask failedTask) {
@@ -338,11 +353,11 @@ public final class FlexionDriver {
   }
 
   final private String getCtrlTaskId(int sequence) {
-    return ControllerTask.TASK_ID + "-" + sequence;
+    return ControllerTask.TASK_ID_PREFIX + "-" + sequence;
   }
 
   final private String getCmpTaskId(int sequence) {
-    return ComputeTask.TASK_ID + "-" + sequence;
+    return ComputeTask.TASK_ID_PREFIX + "-" + sequence;
   }
 
 

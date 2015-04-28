@@ -44,7 +44,7 @@ public final class FlexionLauncher {
   private final FlexionParameters flexionParameters;
 
   @Inject
-  private FlexionLauncher(FlexionParameters flexionParameters) {
+  private FlexionLauncher(final FlexionParameters flexionParameters) {
     this.flexionParameters = flexionParameters;
   }
 
@@ -89,7 +89,8 @@ public final class FlexionLauncher {
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, FlexionDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_TASK_MESSAGE, FlexionDriver.TaskMessageHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, FlexionDriver.TaskCompletedHandler.class)
-        .set(DriverConfiguration.ON_TASK_FAILED, FlexionDriver.FailedTaskHandler.class);
+        .set(DriverConfiguration.ON_TASK_RUNNING, FlexionDriver.TaskRunningHandler.class)
+        .set(DriverConfiguration.ON_TASK_FAILED, FlexionDriver.TaskFailedHandler.class);
 
     final EvaluatorRequest evalRequest = EvaluatorRequest.newBuilder()
         .setNumber(1)

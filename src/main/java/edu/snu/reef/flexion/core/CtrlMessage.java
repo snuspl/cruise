@@ -18,6 +18,11 @@ package edu.snu.reef.flexion.core;
 import java.io.Serializable;
 
 public enum CtrlMessage implements Serializable {
-  TERMINATE, RUN
+
+  // run the next iteration of the main loop
+  RUN,
+
+  // break the main loop of @ComputeTask and run cleanup before terminating the current task
+  TERMINATE
 }
 
