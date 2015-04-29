@@ -6,14 +6,16 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
-import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.FileMetaStatusFactory;
+import org.apache.reef.inmemory.common.entity.FileMetaStatus;
 import org.apache.reef.inmemory.driver.BaseFsClient;
 
 import javax.inject.Inject;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 
 /**
  * Client wrapper to work with HDFS.
@@ -21,11 +23,14 @@ import java.util.EnumSet;
 public class HDFSClient implements BaseFsClient {
 
   private final DistributedFileSystem dfs;
+  private final FileMetaStatusFactory fileMetaStatusFactory;
   private final int bufferSize;
 
   @Inject
-  public HDFSClient(final FileSystem baseFs) throws IOException {
+  public HDFSClient(final FileSystem baseFs,
+                    final FileMetaStatusFactory fileMetaStatusFactory) throws IOException {
     this.dfs = new DistributedFileSystem();
+    this.fileMetaStatusFactory = fileMetaStatusFactory;
 
     dfs.initialize(baseFs.getUri(), baseFs.getConf());
     bufferSize = dfs.getServerDefaults().getFileBufferSize();
@@ -60,18 +65,17 @@ public class HDFSClient implements BaseFsClient {
     return dfs.rename(new Path(src), new Path(dst));
   }
 
-  /**
-   * Only "File" is expected for the given path (TODO: allow querying directory)
-   */
   @Override
-  public FileMeta getFileStatus(final String path) throws IOException {
-    final FileStatus fileStatus = dfs.getFileStatus(new Path(path));
-    if (fileStatus == null || fileStatus.isDirectory()) {
-      throw new FileNotFoundException();
+  public FileMetaStatus getFileStatus(final String path) throws IOException {
+    return fileMetaStatusFactory.newFileMetaStatus(dfs.getFileStatus(new Path(path)));
+  }
+
+  @Override
+  public List<FileMetaStatus> listStatus(final String path) throws IOException {
+    final List<FileMetaStatus> fileMetaStatusList = new ArrayList<>();
+    for (final FileStatus fileStatus : dfs.listStatus(new Path(path))) {
+      fileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(fileStatus));
     }
-    final FileMeta fileMeta = new FileMeta();
-    fileMeta.setBlockSize(fileStatus.getBlockSize());
-    fileMeta.setFileSize(fileStatus.getLen());
-    return fileMeta;
+    return fileMetaStatusList;
   }
 }

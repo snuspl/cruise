@@ -44,10 +44,14 @@ service SurfMetaService {
   bool mkdirs(1:string path)
 
   /**
-   * List the MetaTreeEntries of the files/directories at the path
-   **/
+   * List FileMetaStatuses
+   */
   list<entity.FileMetaStatus> listFileMetaStatus(1:string path)
 
+  /**
+   * Get FileMetaStatus
+   */
+  entity.FileMetaStatus getFileMetaStatus(1:string path)
 
   //////////////////// Called by SurfFSOutputStream
 

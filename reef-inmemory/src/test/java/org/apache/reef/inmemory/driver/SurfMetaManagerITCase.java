@@ -9,6 +9,7 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.FileMetaStatusFactory;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
@@ -81,9 +82,10 @@ public final class SurfMetaManagerITCase {
 
     baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
     final HdfsBlockLocationGetter blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
-    final HDFSClient baseFsClient = new HDFSClient(baseFs);
-    final MetaTree metaTree = new MetaTree(baseFsClient, RECORD);
 
+    final FileMetaStatusFactory fileMetaStatusFactory = new FileMetaStatusFactory(replicationPolicy);
+    final HDFSClient baseFsClient = new HDFSClient(baseFs, fileMetaStatusFactory);
+    final MetaTree metaTree = new MetaTree(baseFsClient, new NullEventRecorder(), fileMetaStatusFactory);
     final FileMetaUpdater fileMetaUpdater = new HdfsFileMetaUpdater(manager, messenger, selector, cacheLocationRemover, blockMetaFactory, blockInfoFactory, replicationPolicy, baseFs, blockLocationGetter);
 
     metaManager = new SurfMetaManager(messenger, cacheLocationRemover, fileMetaUpdater, blockMetaFactory, metaTree);
