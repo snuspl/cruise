@@ -12,6 +12,7 @@ import org.apache.reef.inmemory.driver.BaseFsClient;
 import org.apache.reef.inmemory.driver.CacheNode;
 
 import javax.inject.Inject;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
@@ -118,7 +119,8 @@ public class MetaTree {
         if (entry.isDirectory()) {
           if (((DirectoryEntry) entry).getChildren().size() > 0) {
             for (final Entry childEntry : ((DirectoryEntry) entry).getChildren()) {
-              surfFileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(path, childEntry));
+              final String childPath = path + "/" + childEntry.getName();
+              surfFileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(childPath, childEntry));
             }
           } else {
             surfFileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(path, entry));
@@ -179,7 +181,14 @@ public class MetaTree {
       LOCK.readLock().unlock();
     }
 
-    final FileMetaStatus fileMetaStatus = baseFsClient.getFileStatus(path); // throws FileNotFoundException/IOException, sets blockSize & fileSize
+    final FileMetaStatus fileMetaStatus = baseFsClient.getFileStatus(path);
+
+    // No directory-level load allowed for now
+    if (fileMetaStatus.isIsdir()) {
+      throw new FileNotFoundException();
+    }
+
+    // TODO: factory? (with imestamp, ACL)
     final FileMeta fileMeta = new FileMeta(
             atomicFileId.incrementAndGet(),
             fileMetaStatus.getLength(),

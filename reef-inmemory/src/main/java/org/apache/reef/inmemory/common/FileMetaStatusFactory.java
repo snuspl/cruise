@@ -24,7 +24,7 @@ public class FileMetaStatusFactory {
     if (entry.isDirectory()) {
       final FileMetaStatus fileMetaStatus = new FileMetaStatus();
       fileMetaStatus.setPath(path);
-      fileMetaStatus.setIsdir(false);
+      fileMetaStatus.setIsdir(true);
       // TODO: we might need to assign other attributes (need to investigate into how HDFS does it)
       return fileMetaStatus;
     } else {

@@ -108,9 +108,6 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     }
   }
 
-
-
-
   @Override
   public void create(final String path, final long blockSize, final short baseFsReplication) throws TException {
     try {
