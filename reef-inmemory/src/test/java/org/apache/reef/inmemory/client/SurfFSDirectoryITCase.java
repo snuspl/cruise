@@ -103,10 +103,14 @@ public final class SurfFSDirectoryITCase {
     final FileStatus[] fileStatuses = surfFs.listStatus(new Path(NONEMPTY));
     for (int i = 0; i < 5; i++) {
       final FileStatus fileStatus = fileStatuses[i];
-      LOG.log(Level.INFO, "filestatus " + fileStatus.getPath().toString());
       assertEquals(NONEMPTY + "/" + String.valueOf(i), fileStatus.getPath().toUri().getPath());
       assertEquals(i, fileStatus.getLen());
       // TODO: Test other attributes in FileStatus
+    }
+    {
+      final FileStatus fileStatus = surfFs.getFileStatus(new Path(NONEMPTY));
+      assertEquals(NONEMPTY, fileStatus.getPath().toUri().getPath());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
     }
   }
 
@@ -130,15 +134,32 @@ public final class SurfFSDirectoryITCase {
       assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
+    {
+      final FileStatus fileStatus = surfFs.getFileStatus(new Path(LEVEL1));
+      assertEquals(LEVEL1, fileStatus.getPath().toUri().getPath());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
+    }
+
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL2))) {
       assertEquals(LEVEL3, fileStatus.getPath().toUri().getPath());
       assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
+    {
+      final FileStatus fileStatus = surfFs.getFileStatus(new Path(LEVEL2));
+      assertEquals(LEVEL2, fileStatus.getPath().toUri().getPath());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
+    }
+
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL3))) {
       assertEquals(LEVEL3, fileStatus.getPath().toUri().getPath());
       assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
+    }
+    {
+      final FileStatus fileStatus = surfFs.getFileStatus(new Path(LEVEL3));
+      assertEquals(LEVEL3, fileStatus.getPath().toUri().getPath());
+      assertTrue("Should be a directory", fileStatus.isDirectory());
     }
   }
 
