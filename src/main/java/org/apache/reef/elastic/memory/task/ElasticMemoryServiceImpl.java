@@ -4,24 +4,31 @@ import org.apache.reef.io.data.loading.api.DataSet;
 
 public class ElasticMemoryServiceImpl implements ElasticMemoryService {
 
-  private final ElasticMem elasticMem = new ElasticMem();
+  private final ElasticMemoryData elasticMemoryData = new ElasticMemoryData();
 
   /**
-   * Stage dataSet into Elastic Memory Service
+   * Stage dataSet into Elastic Memory Service, specifying dataType
    *
+   * @param dataType
    * @param dataSet
    */
   @Override
-  public void stageMemory(DataSet dataSet) {
-    elasticMem.addData(dataSet);
+  public void stageDataSet(String dataType, DataSet dataSet) {
+    if(dataType == null) {
+      dataType = "default";
+    }
+    elasticMemoryData.addData(dataType, dataSet);
   }
 
   /**
-   * return iterator for staged dataSet
+   * return staged dataSet
    */
   @Override
-  public DataSet getDataSet() {
-    return elasticMem.getData();
+  public DataSet getDataSet(String dataType) {
+    if(dataType == null) {
+      dataType = "default";
+    }
+    return elasticMemoryData.getData(dataType);
   }
 
   /**
@@ -31,11 +38,22 @@ public class ElasticMemoryServiceImpl implements ElasticMemoryService {
    */
   @Override
   public String showMemoryStatus() {
-    return elasticMem.toString();
+    return elasticMemoryData.toString();
   }
 
   /**
-   * Query driver-side serivce about update status of elastic memory map
+   * Show memory status of specific dataType in string form
+   *
+   * @param dataType
+   * @return
+   */
+  @Override
+  public String showMemoryStatus(String dataType) {
+    return elasticMemoryData.showDataStatus(dataType);
+  }
+
+  /**
+   * Query driver-side about update status of elastic memory map
    *
    * @return
    */

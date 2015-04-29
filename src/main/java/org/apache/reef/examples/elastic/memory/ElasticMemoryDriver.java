@@ -24,8 +24,6 @@ import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
-import org.apache.reef.poison.PoisonedConfiguration;
-import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.BindException;
@@ -41,9 +39,9 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @Unit
-public class LineCounter {
+public class ElasticMemoryDriver {
 
-  private static final Logger LOG = Logger.getLogger(LineCounter.class.getName());
+  private static final Logger LOG = Logger.getLogger(ElasticMemoryDriver.class.getName());
 
   private final AtomicInteger ctrlCtxIds = new AtomicInteger();
   private final AtomicInteger lineCnt = new AtomicInteger();
@@ -52,7 +50,7 @@ public class LineCounter {
   private final DataLoadingService dataLoadingService;
 
   @Inject
-  public LineCounter(final DataLoadingService dataLoadingService) {
+  public ElasticMemoryDriver(final DataLoadingService dataLoadingService) {
     this.dataLoadingService = dataLoadingService;
     this.completedDataTasks.set(dataLoadingService.getNumberOfPartitions());
   }

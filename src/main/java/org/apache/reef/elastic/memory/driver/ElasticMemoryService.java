@@ -2,6 +2,8 @@ package org.apache.reef.elastic.memory.driver;
 
 import org.apache.reef.annotations.audience.DriverSide;
 
+import java.util.List;
+
 /**
  * Driver-side interface of ElasticMemoryService
  */
@@ -9,27 +11,48 @@ import org.apache.reef.annotations.audience.DriverSide;
 interface ElasticMemoryService {
 
   /**
+   * Add a new evaluator that has size
+   * @param size
+   */
+  void add(int size);
+
+  /**
+   *
+   * @param evalId
+   */
+  void del(String evalId);
+
+  /**
+   *
+   * @param evalId
+   * @param size
+   */
+  void resize(String evalId, int size);
+
+  /**
    * Move state to destination evaluator
    *
-   * @param state
+   * @param partition
    * @param destEvalId
    */
-  void move(State state, String destEvalId);
+  void move(Partition partition, String destEvalId);
 
   /**
-   * Merge state0 and state1 into destEvalId
-   * @param state0
-   * @param state1
+   * Merge states into single destination evaluator
+   * @param partitions
    * @param destEvalId
    */
-  void merge(State state0, State state1, String destEvalId);
+  void merge(List<Partition> partitions, String destEvalId);
 
   /**
-   * Split state into destEvalId0 and destEvalId1
+   * Split state into destEvalIds
    *
-   * @param state
-   * @param destEvalId0
-   * @param destEvalId1
+   * @param partition
+   * @param destEvalIds
    */
-  void split(State state, String destEvalId0, String destEvalId1);
+  void split(Partition partition, List<String> destEvalIds, HashFunc hashFunc);
 }
+
+// add, del, move -> split, merge
+
+// naming

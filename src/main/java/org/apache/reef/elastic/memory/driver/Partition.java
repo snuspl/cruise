@@ -9,15 +9,24 @@ import org.apache.reef.annotations.audience.Private;
  */
 @DriverSide
 @Private
-final class State {
+final class Partition {
   private final String evalId;
-  /* metadata of target task memory */
 
-  State(String evalId) {
+  /* metadata of target task memory */
+  private final String dataType;
+  int start_offset;
+  int length;
+
+  Partition(String evalId, String dataType) {
     this.evalId = evalId;
+    this.dataType = dataType;
   }
 
   public String getEvalId() {
     return evalId;
+  }
+
+  public String getDataType() {
+    return dataType;
   }
 }

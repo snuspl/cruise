@@ -18,13 +18,11 @@
  */
 package org.apache.reef.examples.elastic.memory;
 
-import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
-import org.apache.reef.driver.evaluator.EvaluatorRequest;
-import org.apache.reef.io.data.loading.api.DataLoadingRequestBuilder;
+import org.apache.reef.io.network.group.impl.driver.GroupCommService;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -35,6 +33,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.BindException;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
 
@@ -51,31 +50,43 @@ public class ElasticMemoryREEF {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryREEF.class.getName());
 
   /**
-   * The upper limit on the number of Evaluators that the local resourcemanager will hand out concurrently
+   * The upper limit on the number of Evaluators that the local resource manager will hand out concurrently
    */
   private static final int MAX_NUMBER_OF_EVALUATORS = 16;
 
-  public static void main(final String[] args)
-      throws InjectionException, BindException, IOException {
+  private static boolean isLocal;
+  private static int jobTimeout;
+  private static int splitNum;
+  private static String inputDir;
 
-    final Tang tang = Tang.Factory.getTang();
+  private static Configuration parseCommandLine(final String[] args) {
+    final JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
 
-    final JavaConfigurationBuilder cb = tang.newConfigurationBuilder();
+    try {
+      new CommandLine(cb)
+          .registerShortNameOfClass(Local.class)
+          .registerShortNameOfClass(TimeOut.class)
+          .registerShortNameOfClass(SplitNum.class)
+          .registerShortNameOfClass(InputDir.class)
+          .processCommandLine(args);
+    } catch (IOException ex) {
+      final String msg = "Unable to parse command line";
+      LOG.log(Level.SEVERE, msg, ex);
+      throw new RuntimeException(msg, ex);
+    }
+    return cb.build();
+  }
 
-    new CommandLine(cb)
-        .registerShortNameOfClass(Local.class)
-        .registerShortNameOfClass(TimeOut.class)
-        .registerShortNameOfClass(SplitNum.class)
-        .registerShortNameOfClass(ElasticMemoryREEF.InputDir.class)
-        .processCommandLine(args);
+  private static void storeCommandLineArgs(
+      final Configuration commandLineConf) throws InjectionException {
+    final Injector injector = Tang.Factory.getTang().newInjector(commandLineConf);
+    isLocal = injector.getNamedInstance(Local.class);
+    jobTimeout = injector.getNamedInstance(TimeOut.class) * 60 * 1000;
+    splitNum = injector.getNamedInstance(SplitNum.class);
+    inputDir = injector.getNamedInstance(InputDir.class);
+  }
 
-    final Injector injector = tang.newInjector(cb.build());
-
-    final boolean isLocal = injector.getNamedInstance(Local.class);
-    final int jobTimeout = injector.getNamedInstance(TimeOut.class) * 60 * 1000;
-    final int splitNum = injector.getNamedInstance(SplitNum.class);
-    final String inputDir = injector.getNamedInstance(ElasticMemoryREEF.InputDir.class);
-
+  private static Configuration getRuntimeConfiguration() {
     final Configuration runtimeConfiguration;
     if (isLocal) {
       LOG.log(Level.INFO, "Running Data Loading demo on the local runtime");
@@ -86,27 +97,48 @@ public class ElasticMemoryREEF {
       LOG.log(Level.INFO, "Running Data Loading demo on YARN");
       runtimeConfiguration = YarnClientConfiguration.CONF.build();
     }
+    return runtimeConfiguration;
+  }
 
-    final EvaluatorRequest computeRequest = EvaluatorRequest.newBuilder()
-        .setMemory(512)
-        .setNumberOfCores(1)
+  private static Configuration getDriverConfiguration() {
+    final Configuration driverConfiguration = DriverConfiguration.CONF
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(ElasticMemoryDriver.class))
+//        .set(DriverConfiguration.ON_DRIVER_STARTED, ElasticMemoryDriver.StartHandler.class)
+//        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, ElasticMemoryDriver.EvaluatorAllocateHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, ElasticMemoryDriver.ContextActiveHandler.class)
+//        .set(DriverConfiguration.ON_CONTEXT_CLOSED, ElasticMemoryDriver.ContextCloseHandler.class)
+        .set(DriverConfiguration.ON_TASK_COMPLETED, ElasticMemoryDriver.TaskCompletedHandler.class)
+//        .set(DriverConfiguration.ON_TASK_FAILED, ElasticMemoryDriver.FailedTaskHandler.class)
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "ElasticMemoryREEF")
+        .build();
+    final Configuration groupCommServConfiguration = GroupCommService.getConfiguration();
+
+    final Configuration mergedDriverConfiguration = Tang.Factory.getTang()
+        .newConfigurationBuilder(groupCommServConfiguration, driverConfiguration)
         .build();
 
-    final Configuration dataLoadConfiguration = new DataLoadingRequestBuilder()
-        .setMemoryMB(1024)
-        .setInputFormatClass(TextInputFormat.class)
-        .setInputPath(inputDir)
-        .setNumberOfDesiredSplits(splitNum)
-        .setComputeRequest(computeRequest)
-        .setDriverConfigurationModule(DriverConfiguration.CONF
-            .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(LineCounter.class))
-            .set(DriverConfiguration.ON_CONTEXT_ACTIVE, LineCounter.ContextActiveHandler.class)
-            .set(DriverConfiguration.ON_TASK_COMPLETED, LineCounter.TaskCompletedHandler.class)
-            .set(DriverConfiguration.DRIVER_IDENTIFIER, "ElasticMemoryREEF"))
-        .build();
+    return mergedDriverConfiguration;
+  }
 
-    final LauncherStatus state =
-        DriverLauncher.getLauncher(runtimeConfiguration).run(dataLoadConfiguration, jobTimeout);
+  private static LauncherStatus runElasticMemory(
+      final Configuration runtimeConfiguration) throws InjectionException {
+    final Configuration driverConfiguration = getDriverConfiguration();
+
+    LOG.info(new AvroConfigurationSerializer().toString(driverConfiguration));
+
+    return DriverLauncher.getLauncher(runtimeConfiguration).run(driverConfiguration, jobTimeout);
+  }
+
+  public static void main(final String[] args)
+      throws InjectionException, BindException, IOException {
+
+    final Configuration parsedConfig = parseCommandLine(args);
+
+    storeCommandLineArgs(parsedConfig);
+
+    final Configuration runtimeConfiguration = getRuntimeConfiguration();
+
+    final LauncherStatus state = runElasticMemory(runtimeConfiguration);
 
     LOG.log(Level.INFO, "REEF job completed: {0}", state);
   }

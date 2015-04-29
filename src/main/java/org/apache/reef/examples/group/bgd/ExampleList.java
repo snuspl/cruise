@@ -16,51 +16,57 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.reef.examples.elastic.memory;
+package org.apache.reef.examples.group.bgd;
 
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.reef.annotations.audience.TaskSide;
-import org.apache.reef.elastic.memory.task.ElasticMemoryServiceImpl;
+import org.apache.reef.examples.group.bgd.data.Example;
+import org.apache.reef.examples.group.bgd.data.parser.Parser;
 import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
-import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The task that iterates over the data set to count the number of records.
- * Assumes TextInputFormat and that records represent lines.
+ *
  */
-@TaskSide
-public class LineCountingTask implements Task {
+public class ExampleList {
 
-  private static final Logger LOG = Logger.getLogger(LineCountingTask.class.getName());
+  private static final Logger LOG = Logger.getLogger(ExampleList.class.getName());
 
+  private final List<Example> examples = new ArrayList<>();
   private final DataSet<LongWritable, Text> dataSet;
+  private final Parser<String> parser;
 
   @Inject
-  public LineCountingTask(final DataSet<LongWritable, Text> dataSet) {
+  public ExampleList(final DataSet<LongWritable, Text> dataSet, final Parser<String> parser) {
     this.dataSet = dataSet;
+    this.parser = parser;
   }
 
-  @Override
-  public byte[] call(final byte[] memento) throws Exception {
-    LOG.log(Level.FINER, "LineCounting task started");
-
-    ElasticMemoryServiceImpl elasticMemoryService = new ElasticMemoryServiceImpl();
-
-    elasticMemoryService.stageDataSet(null, dataSet);
-    DataSet<LongWritable, Text> data = elasticMemoryService.getDataSet(null);
-
-    int numEx = 0;
-    for (final Pair<LongWritable, Text> keyValue : data) {
-      // LOG.log(Level.FINEST, "Read line: {0}", keyValue);
-      ++numEx;
+  /**
+   * @return the examples
+   */
+  public List<Example> getExamples() {
+    if (examples.isEmpty()) {
+      loadData();
     }
-    LOG.log(Level.FINER, "LineCounting task finished: read {0} lines", numEx);
-    return Integer.toString(numEx).getBytes();
+    return examples;
+  }
+
+  private void loadData() {
+    LOG.info("Loading data");
+    int i = 0;
+    for (final Pair<LongWritable, Text> examplePair : dataSet) {
+      final Example example = parser.parse(examplePair.second.toString());
+      examples.add(example);
+      if (++i % 2000 == 0) {
+        LOG.log(Level.FINE, "Done parsing {0} lines", i);
+      }
+    }
   }
 }

@@ -19,7 +19,7 @@
 #
 
 # EXAMPLE USAGE 
-# ./run.sh org.apache.reef.examples.data.loading.DataLoadingREEF -local true -timeout 2 -inMemory true -input file:///Users/xyzi/WORKING_DIRECTORY/dataSet/als
+# ./run.sh org.apache.reef.examples.elastic.memory.ElasticMemoryREEF -local true -timeout 2 -input file:///Users/xyzi/WORKING_DIRECTORY/dataSet/als -split 3
 
 # RUNTIME
 SELF_JAR=`echo ./target/elastic_memory-*-SNAPSHOT-shaded.jar`
