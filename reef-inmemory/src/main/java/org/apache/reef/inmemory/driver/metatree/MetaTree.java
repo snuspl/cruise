@@ -188,7 +188,7 @@ public class MetaTree {
       throw new FileNotFoundException();
     }
 
-    // TODO: factory? (with imestamp, ACL)
+    // TODO: factory? (with timestamp, ACL)
     final FileMeta fileMeta = new FileMeta(
             atomicFileId.incrementAndGet(),
             fileMetaStatus.getLength(),
