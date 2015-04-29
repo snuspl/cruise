@@ -12,6 +12,7 @@ import org.apache.reef.inmemory.driver.BaseFsClient;
 import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.EnumSet;
 
 /**
@@ -31,10 +32,9 @@ public class HDFSClient implements BaseFsClient {
   }
 
   @Override
-  public void create(final String path, final short replication, final long blockSize) throws IOException {
-    dfs.create(new Path(path), FsPermission.getFileDefault(), EnumSet.of(CreateFlag.CREATE),
+  public OutputStream create(final String path, final short replication, final long blockSize) throws IOException {
+    return dfs.create(new Path(path), FsPermission.getFileDefault(), EnumSet.of(CreateFlag.CREATE),
             bufferSize, replication, blockSize, null, null);
-    // TODO: we might want to hold onto FSOutputStream later when we implement writing to HDFS
   }
 
   @Override

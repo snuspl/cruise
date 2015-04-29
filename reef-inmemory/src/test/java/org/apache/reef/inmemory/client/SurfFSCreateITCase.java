@@ -18,6 +18,7 @@ import java.net.URI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -31,8 +32,7 @@ public final class SurfFSCreateITCase {
 
   private static final String TESTDIR = ITUtils.getTestDir();
 
-  private static final String UNCLOSED = TESTDIR+"/"+"CREATE.unclosed";
-  private static final String CLOSED = TESTDIR+"/"+"CREATE.closed";
+  private static final String TO_CREATE = TESTDIR + "/" + "CREATE_to_create";
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
@@ -68,44 +68,38 @@ public final class SurfFSCreateITCase {
   @AfterClass
   public static void tearDownClass() {
     try {
-      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
-      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+      surfFs.delete(new Path(TESTDIR), true);
     } catch (IOException e) {
-      LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
+      LOG.log(Level.WARNING, "Failure occurred during cleanup", e);
     }
     surfLauncher.close();
   }
 
+  /**
+   * Test the file is created in Surf.
+   * @throws IOException
+   */
   @Test
-  public void testOutputStreamNotClosed() throws IOException {
-    surfFs.create(new Path(UNCLOSED));
+  public void testCreate() throws IOException {
+    final Path path = new Path(TO_CREATE);
+    final FSDataOutputStream out = surfFs.create(path);
+    out.close();
 
+    // The file should be visible both in the Surf and the BaseFs.
+    assertTrue(surfFs.exists(path));
+    assertTrue(baseFs.exists(path));
+
+    // Another create() fails because the file exists already.
     try {
-      surfFs.create(new Path(UNCLOSED));
-      fail("Should return IOException. Because the file exists");
+      surfFs.create(path);
+      fail("Should throw IOException because the file exists already");
     } catch (IOException e) {
       // passed
     } catch (Exception e) {
-      fail("Should return IOException, instead returned "+e);
-    }
-  }
-
-  @Test
-  public void testOutputStreamClosed() throws IOException {
-    final FSDataOutputStream out1 = surfFs.create(new Path(CLOSED));
-    out1.close();
-
-    // should fail
-    try {
-      surfFs.create(new Path(CLOSED));
-      fail("Should return IOException. Because the file exists");
-    } catch (IOException e) {
-      // passed
-    } catch (Exception e) {
-      fail("Should return IOException, instead returned "+e);
+      fail("Should return IOException, instead returned " + e);
     }
 
-    // should not fail
-    surfFs.open(new Path(CLOSED));
+    // Check the file can be opened.
+    surfFs.open(path);
   }
 }

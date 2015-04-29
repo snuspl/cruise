@@ -12,6 +12,7 @@ import org.apache.reef.inmemory.driver.CacheNode;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -157,8 +158,9 @@ public class MetaTree {
    * Second, create a file in the tree
    */
   public void createFile(final String path, final long blockSize, final short baseFsReplication) throws IOException {
-    // Exploit the lease in HDFS to prevent concurrent create(and thus write) of a file
-    baseFsClient.create(path, baseFsReplication, blockSize); // TODO: hold onto the outputstream (close later)
+    // To allow cache servers write data to the BaseFs, Surf closes the OutputStream right after the file is created.
+    final OutputStream outputStream = baseFsClient.create(path, baseFsReplication, blockSize);
+    outputStream.close();
 
     final FileMeta fileMeta = new FileMeta();
     final long fileId = atomicFileId.incrementAndGet();
