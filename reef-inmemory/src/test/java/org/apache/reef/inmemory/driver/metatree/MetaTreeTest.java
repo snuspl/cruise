@@ -7,6 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -53,7 +54,7 @@ public class MetaTreeTest {
   public void testCreateFile() throws Exception {
     final String path = "/this/file";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
-    doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
+    when(baseFsClient.create(anyString(), anyShort(), anyLong())).thenReturn(mock(OutputStream.class));
     when(baseFsClient.mkdirs(anyString())).thenReturn(true);
     final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
 
@@ -81,7 +82,7 @@ public class MetaTreeTest {
   public void testConcurrentCreateFile() throws Throwable {
     final String directoryPath = "/this/dir";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
-    doNothing().when(baseFsClient).create(anyString(), anyShort(), anyLong());
+    when(baseFsClient.create(anyString(), anyShort(), anyLong())).thenReturn(mock(OutputStream.class));
     when(baseFsClient.mkdirs(anyString())).thenReturn(true);
     final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
     final int numFiles = 100;

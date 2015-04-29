@@ -39,11 +39,14 @@ public final class SurfFSReadITCase {
 
   private static final String TESTDIR = ITUtils.getTestDir();
 
-  private static final String SHORT_FILE_PATH = TESTDIR+"/"+"COUNT.short";
+  private static final String SHORT_FILE_PATH = TESTDIR + "/" + "COUNT.short";
   private static final int SHORT_FILE_NUM_CHUNKS = 1;
 
-  private static final String LONG_FILE_PATH = TESTDIR+"/"+"COUNT.long";
+  private static final String LONG_FILE_PATH = TESTDIR + "/" + "COUNT.long";
   private static final int LONG_FILE_NUM_CHUNKS = 140;
+
+  private static final String WRITE_FILE_PATH = TESTDIR + "/" + "WRITE.surf";
+  private static final int WRITE_FILE_NUM_CHUNKS = 1024;
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
@@ -353,5 +356,21 @@ public final class SurfFSReadITCase {
     final FSDataInputStream inWithNoFallback = surfFsWithoutFallback.open(new Path(SHORT_FILE_PATH));
     assertFalse(inWithNoFallback.getWrappedStream() instanceof FallbackFSInputStream);
     assertTrue(inWithNoFallback.getWrappedStream() instanceof SurfFSInputStream);
+  }
+
+  /**
+   * Test the file can be read after written in Surf
+   * @throws IOException
+   */
+  @Test
+  public void testReadFileWrittenInSurf() throws IOException {
+    final Path path = new Path(WRITE_FILE_PATH);
+    final FSDataOutputStream stream = surfFs.create(path);
+    for (int i = 0; i < WRITE_FILE_NUM_CHUNKS; i++) {
+      stream.write(CHUNK);
+    }
+    stream.close();
+
+    read(surfFs, WRITE_FILE_PATH, WRITE_FILE_NUM_CHUNKS);
   }
 }
