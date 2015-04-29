@@ -8,12 +8,14 @@
   <artifactId>flexion</artifactId>
   <name>Elastic MPI optimizer and runtime</name>
   <version>0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <reef.version>0.10-incubating-SNAPSHOT</reef.version>
+    <reef.version>0.10.0-incubating</reef.version>
     <shimoga.version>0.1-SNAPSHOT</shimoga.version>
     <hadoop.version>2.4.0</hadoop.version>
+    <mahout.version>0.9</mahout.version>
   </properties>
 
   <dependencies>
@@ -78,6 +80,11 @@
     </dependency>
     <!-- End of HADOOP -->
     <dependency>
+      <groupId>org.apache.mahout</groupId>
+      <artifactId>mahout-math</artifactId>
+      <version>${mahout.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
       <version>2.5.0</version>
@@ -95,14 +102,6 @@
           <target>1.7</target>
           <showDeprecation>true</showDeprecation>
           <encoding>${project.build.sourceEncoding}</encoding>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>com.mycila.maven-license-plugin</groupId>
-        <artifactId>maven-license-plugin</artifactId>
-        <configuration>
-          <header>LICENSE.txt</header>
-          <strictCheck>true</strictCheck>
         </configuration>
       </plugin>
       <plugin>
