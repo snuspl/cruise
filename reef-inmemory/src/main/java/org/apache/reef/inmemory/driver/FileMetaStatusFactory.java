@@ -1,4 +1,4 @@
-package org.apache.reef.inmemory.common;
+package org.apache.reef.inmemory.driver;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.permission.FsPermission;
@@ -12,6 +12,9 @@ import javax.inject.Inject;
 import java.net.URI;
 import java.nio.file.Paths;
 
+/**
+ * Used to create an instance of FileMetaStatus from either Entry in Surf or FileStatus fetched from HDFS
+ */
 public class FileMetaStatusFactory {
   private final ReplicationPolicy replicationPolicy;
 
@@ -20,6 +23,9 @@ public class FileMetaStatusFactory {
     this.replicationPolicy = replicationPolicy;
   }
 
+  /**
+   * Create an instance of FileMetaStatus from an Entry in Surf
+   */
   public FileMetaStatus newFileMetaStatus(final String path, final Entry entry) {
     if (entry.isDirectory()) {
       final FileMetaStatus fileMetaStatus = new FileMetaStatus();
@@ -47,7 +53,10 @@ public class FileMetaStatusFactory {
     }
   }
 
-  public FileMetaStatus newFileMetaStatus(final FileStatus fileStatus) throws java.io.IOException {
+  /**
+   * Create an instance of FileMetaStatus from a FileStatus fetched from HDFS
+   */
+  public FileMetaStatus newFileMetaStatus(final FileStatus fileStatus) {
     return new FileMetaStatus(
             fileStatus.getPath().toString(),
             fileStatus.getLen(),

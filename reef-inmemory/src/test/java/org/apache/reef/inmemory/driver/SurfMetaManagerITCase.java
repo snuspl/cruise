@@ -9,7 +9,6 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.FileMetaStatusFactory;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;

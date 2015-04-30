@@ -2,7 +2,7 @@ package org.apache.reef.inmemory.driver.metatree;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.FileMetaStatusFactory;
+import org.apache.reef.inmemory.driver.FileMetaStatusFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;

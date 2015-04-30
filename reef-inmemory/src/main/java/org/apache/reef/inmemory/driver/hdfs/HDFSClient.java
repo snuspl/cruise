@@ -6,7 +6,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
-import org.apache.reef.inmemory.common.FileMetaStatusFactory;
+import org.apache.reef.inmemory.driver.FileMetaStatusFactory;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
 import org.apache.reef.inmemory.driver.BaseFsClient;
 

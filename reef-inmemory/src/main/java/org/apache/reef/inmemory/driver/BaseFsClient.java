@@ -57,7 +57,7 @@ public interface BaseFsClient {
   /**
    * Get the status of file from BaseFs.
    * @param path the path of the file
-   * @return the status of the file, which is encoded in FileMeta
+   * @return FileStatus of the path
    * @throws IOException if it failed to get the status from BaseFs or the file is not found.
    */
   public FileMetaStatus getFileStatus(final String path) throws IOException;
