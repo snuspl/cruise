@@ -91,9 +91,18 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   @Override
-  public List<FileMetaStatus> listFileMetaStatus(String path) throws FileNotFoundException, TException {
+  public List<FileMetaStatus> listFileMetaStatus(final String path) throws FileNotFoundException, TException {
     try {
       return metaManager.listFileMetaStatus(path);
+    } catch (IOException e) {
+      throw new FileNotFoundException(e.getMessage());
+    }
+  }
+
+  @Override
+  public FileMetaStatus getFileMetaStatus(final String path) throws FileNotFoundException, TException {
+    try {
+      return metaManager.getFileMetaStatus(path);
     } catch (IOException e) {
       throw new FileNotFoundException(e.getMessage());
     }

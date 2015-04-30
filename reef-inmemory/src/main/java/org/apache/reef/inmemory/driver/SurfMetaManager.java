@@ -9,6 +9,7 @@ import org.apache.reef.inmemory.driver.metatree.MetaTree;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,6 +44,10 @@ public final class SurfMetaManager {
 
   public boolean exists(final String path) {
     return this.metaTree.exists(path);
+  }
+
+  public FileMetaStatus getFileMetaStatus(final String path) throws IOException {
+    return this.metaTree.getFileMetaStatus(path);
   }
 
   public List<FileMetaStatus> listFileMetaStatus(final String path) throws IOException {

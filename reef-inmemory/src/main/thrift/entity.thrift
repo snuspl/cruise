@@ -44,7 +44,15 @@ struct WriteableBlockMeta {
  * Client gets this from Driver and converts it into FileStatus
  */
 struct FileMetaStatus {
-  1: string path,                   // Path of this FileMeta
-  2: FileMeta fileMeta,             // FileMeta
-  // TODO: add replication info
+  1: string path
+  2: i64 length,
+  3: bool isdir,
+  4: i16 block_replication,
+  5: i64 blocksize,
+  6: i64 modification_time,
+  7: i64 access_time,
+  8: i16 permisison,
+  9: string owner,
+  10: string group,
+  11: string symlink,
 }

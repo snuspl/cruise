@@ -103,11 +103,11 @@ public final class SurfFSDirectoryITCase {
     final FileStatus[] fileStatuses = surfFs.listStatus(new Path(NONEMPTY));
     for (int i = 0; i < 5; i++) {
       final FileStatus fileStatus = fileStatuses[i];
-      LOG.log(Level.INFO, "filestatus " + fileStatus.getPath().toString());
       assertEquals(NONEMPTY + "/" + String.valueOf(i), fileStatus.getPath().toUri().getPath());
       assertEquals(i, fileStatus.getLen());
       // TODO: Test other attributes in FileStatus
     }
+    testGetFileStatusOnDir(NONEMPTY);
   }
 
   /**
@@ -130,16 +130,21 @@ public final class SurfFSDirectoryITCase {
       assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
+    testGetFileStatusOnDir(LEVEL1);
+
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL2))) {
       assertEquals(LEVEL3, fileStatus.getPath().toUri().getPath());
       assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
+    testGetFileStatusOnDir(LEVEL2);
+
     for (FileStatus fileStatus : surfFs.listStatus(new Path(LEVEL3))) {
       assertEquals(LEVEL3, fileStatus.getPath().toUri().getPath());
       assertTrue("Should be a directory", fileStatus.isDirectory());
       // TODO: Test other attributes in FileStatus
     }
+    testGetFileStatusOnDir(LEVEL3);
   }
 
   /**
@@ -191,5 +196,11 @@ public final class SurfFSDirectoryITCase {
     for (int i = 0; i < 5; i ++) {
       assertFalse("Should not exist as its parent directory is deleted", surfFs.exists(new Path(DELETE, String.valueOf(i))));
     }
+  }
+
+  private void testGetFileStatusOnDir(final String path) throws IOException {
+    final FileStatus fileStatus = surfFs.getFileStatus(new Path(path));
+    assertEquals(path, fileStatus.getPath().toUri().getPath());
+    assertTrue("Should be a directory", fileStatus.isDirectory());
   }
 }

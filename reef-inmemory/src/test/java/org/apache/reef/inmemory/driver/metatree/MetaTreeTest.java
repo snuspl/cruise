@@ -1,6 +1,8 @@
 package org.apache.reef.inmemory.driver.metatree;
 
+import org.apache.reef.inmemory.driver.FileMetaStatusFactory;
 import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.FileMetaStatus;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.driver.BaseFsClient;
 import org.junit.Before;
@@ -23,12 +25,14 @@ import static org.mockito.Mockito.*;
  */
 public class MetaTreeTest {
   private EventRecorder eventRecorder;
+  private FileMetaStatusFactory fileMetaStatusFactory;
   private static final long blockSize = 128L * 1024 * 1024;
   private static final short baseReplication = (short)1;
 
   @Before
   public void setUp() throws Exception {
     eventRecorder = mock(EventRecorder.class);
+    fileMetaStatusFactory = mock(FileMetaStatusFactory.class);
   }
 
   /**
@@ -38,9 +42,9 @@ public class MetaTreeTest {
   public void testGetOrLoadFileMeta() throws IOException {
     final String path = "/this/file";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
-    when(baseFsClient.getFileStatus(path)).thenReturn(new FileMeta());
+    when(baseFsClient.getFileStatus(path)).thenReturn(new FileMetaStatus());
     when(baseFsClient.mkdirs(anyString())).thenReturn(true);
-    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
+    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder, fileMetaStatusFactory);
     metaTree.getOrLoadFileMeta(path);
     verify(baseFsClient, times(1)).getFileStatus(path);
     metaTree.getOrLoadFileMeta(path);
@@ -56,7 +60,7 @@ public class MetaTreeTest {
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     when(baseFsClient.create(anyString(), anyShort(), anyLong())).thenReturn(mock(OutputStream.class));
     when(baseFsClient.mkdirs(anyString())).thenReturn(true);
-    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
+    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder, fileMetaStatusFactory);
 
     // Create a file
     metaTree.createFile(path, blockSize, baseReplication);
@@ -84,7 +88,7 @@ public class MetaTreeTest {
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     when(baseFsClient.create(anyString(), anyShort(), anyLong())).thenReturn(mock(OutputStream.class));
     when(baseFsClient.mkdirs(anyString())).thenReturn(true);
-    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
+    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder, fileMetaStatusFactory);
     final int numFiles = 100;
     final ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -132,7 +136,7 @@ public class MetaTreeTest {
     final String directoryPath = "/this/dir";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     when(baseFsClient.mkdirs(directoryPath)).thenReturn(true);
-    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
+    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder, fileMetaStatusFactory);
 
     assertTrue("mkdirs should succeed", metaTree.mkdirs(directoryPath));
     verify(baseFsClient, times(1)).mkdirs(directoryPath);
@@ -148,7 +152,7 @@ public class MetaTreeTest {
     final String parentDirectoryPath = "/this/dir";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
     when(baseFsClient.mkdirs(anyString())).thenReturn(true);
-    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
+    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder, fileMetaStatusFactory);
     final int numDirs = 100;
     final ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -187,9 +191,9 @@ public class MetaTreeTest {
   public void testUnCacheAll() throws Throwable {
     final String path = "/this/file";
     final BaseFsClient baseFsClient = mock(BaseFsClient.class);
-    when(baseFsClient.getFileStatus(path)).thenReturn(new FileMeta());
+    when(baseFsClient.getFileStatus(path)).thenReturn(new FileMetaStatus());
     when(baseFsClient.mkdirs(anyString())).thenReturn(true);
-    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder);
+    final MetaTree metaTree = new MetaTree(baseFsClient, eventRecorder, fileMetaStatusFactory);
 
     assertEquals(0, metaTree.unCacheAll());
     metaTree.getOrLoadFileMeta(path);

@@ -21,6 +21,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -187,20 +188,20 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Loads data into Surf from HDFS: Yes
-   * Consistency guarantee: Only for the first load (not responsible for changes in HDFS after)
+   * Loads data into Surf from HDFS: No
+   * Consistency guarantee: If same metadata exists in both Surf and HDFS, Surf's overwrites HDFS's
    * Fallback: Yes
    *
-   * @param path to the file in question (TODO: support directory)
-   * @return {@code FileStatus} of the file loaded in Surf
+   * @param path to the file/directory in question
+   * @return {@code FileStatus} of the file/directory
    * @throws IOException
    */
   @Override
   public FileStatus getFileStatus(final Path path) throws IOException {
     try {
       final String pathStr = toAbsolutePathInString(path);
-      final FileMeta meta = getMetaClient().getOrLoadFileMeta(pathStr, localAddress);
-      return toFileStatus(new FileMetaStatus(pathStr, meta));
+      final FileMetaStatus fileMetaStatus = getMetaClient().getFileMetaStatus(pathStr);
+      return toFileStatus(fileMetaStatus);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       if (isFallback) {
         LOG.log(Level.WARNING, "The file is not found in Surf, trying baseFs...", e);
@@ -215,6 +216,8 @@ public final class SurfFS extends FileSystem {
       } else {
         throw new IOException ("Failed to get File Status from Surf", e);
       }
+    } catch (URISyntaxException e) {
+      throw new IOException(e);
     }
   }
 
@@ -304,34 +307,15 @@ public final class SurfFS extends FileSystem {
     final String pathStr = toAbsolutePathInString(path);
     try {
       final List<FileMetaStatus> fileMetaStatusList = getMetaClient().listFileMetaStatus(pathStr);
-      final List<FileStatus> baseFileStatuses = new ArrayList<>(Arrays.asList(baseFs.listStatus(new Path(pathStr))));
-      final List<FileStatus> result = new ArrayList<>();
-
-      if (fileMetaStatusList.size() == 1) {
-        final FileMetaStatus fileMetaStatus = fileMetaStatusList.get(0);
-        if (fileMetaStatus.isSetFileMeta() && fileMetaStatus.getPath().equals(pathStr)) {
-          // if the path is a file in Surf, nothing else matters
-          return new FileStatus[]{toFileStatus(fileMetaStatusList.get(0))};
-        }
+      final FileStatus[] fileStatuses = new FileStatus[fileMetaStatusList.size()];
+      for (int i = 0; i < fileMetaStatusList.size(); i++) {
+        final FileMetaStatus fileMetaStatus = fileMetaStatusList.get(i);
+        fileStatuses[i] = (toFileStatus(fileMetaStatus));
       }
-
-      for (final FileMetaStatus fileMetaStatus : fileMetaStatusList) {
-        final FileStatus surfFileStatus = toFileStatus(fileMetaStatus);
-        result.add(surfFileStatus);
-
-        for (final FileStatus baseFileStatus : baseFileStatuses) {
-          if (Path.getPathWithoutSchemeAndAuthority(baseFileStatus.getPath())
-                  .equals(Path.getPathWithoutSchemeAndAuthority(surfFileStatus.getPath()))) {
-
-            baseFileStatuses.remove(baseFileStatus);
-            break;
-          }
-        }
-      }
-
-      result.addAll(baseFileStatuses);
-      return result.toArray(new FileStatus[result.size()]);
+      return fileStatuses;
     } catch (TException e) {
+      throw new IOException(e);
+    } catch (URISyntaxException e) {
       throw new IOException(e);
     }
   }
@@ -410,42 +394,27 @@ public final class SurfFS extends FileSystem {
         conf.getInt(CACHECLIENT_BUFFER_SIZE_KEY, CACHECLIENT_BUFFER_SIZE_DEFAULT));
   }
 
-  /**
-   * TODO: handle attributes currently set to -1/null when we implement FileStatus-forwarding logic in Driver
-   */
-  private FileStatus toFileStatus(final FileMetaStatus fileMetaStatus) {
-    final Path path = toAbsoluteSurfPath((new Path(fileMetaStatus.getPath())));
-    final FileMeta meta = fileMetaStatus.getFileMeta();
-
-    if (meta != null) {
-      final long length = meta.getFileSize();
-      final long blockSize = meta.getBlockSize();
-      final boolean isDir = false;
-
-      // TODO
-      final int replication = 1;
-      final long modificationTime = -1;
-      final long accessTime = -1;
-      final String owner = null;
-      final String group = null;
-      final Path symLink = null;
-      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
-              FsPermission.getFileDefault(), owner, group, symLink, path);
+  private FileStatus toFileStatus(final FileMetaStatus fileMetaStatus) throws URISyntaxException {
+    final Path path;
+    final String fileMetaStatusPath = fileMetaStatus.getPath();
+    if (new URI(fileMetaStatusPath).getScheme() == null) {
+      path = addSurfSchemeAndAuthority(fileMetaStatusPath);
     } else {
-      final boolean isDir = true;
-
-      // TODO
-      final long length = -1;
-      final int replication = -1;
-      final long blockSize = -1;
-      final long modificationTime = -1;
-      final long accessTime = -1;
-      final String owner = null;
-      final String group = null;
-      final Path symLink = null;
-      return new FileStatus(length, isDir, replication, blockSize, modificationTime, accessTime,
-              FsPermission.getFileDefault(), owner, group, symLink, path);
+      path = new Path(fileMetaStatusPath);
     }
+
+    return new FileStatus(
+            fileMetaStatus.getLength(),
+            fileMetaStatus.isIsdir(),
+            fileMetaStatus.getBlock_replication(),
+            fileMetaStatus.getBlocksize(),
+            fileMetaStatus.getModification_time(),
+            fileMetaStatus.getAccess_time(),
+            new FsPermission(fileMetaStatus.getPermisison()),
+            fileMetaStatus.getOwner(),
+            fileMetaStatus.getGroup(),
+            null, // TODO: SymLink
+            path);
   }
 
   private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
@@ -483,6 +452,10 @@ public final class SurfFS extends FileSystem {
    */
   public Path toAbsoluteSurfPath(final Path path) {
     final String absPathStr = toAbsolutePathInString(path);
+    return new Path(uri.getScheme(), uri.getAuthority(), absPathStr);
+  }
+
+  public Path addSurfSchemeAndAuthority(final String absPathStr) {
     return new Path(uri.getScheme(), uri.getAuthority(), absPathStr);
   }
 

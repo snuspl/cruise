@@ -1,9 +1,10 @@
 package org.apache.reef.inmemory.driver;
 
-import org.apache.reef.inmemory.common.entity.FileMeta;
+import org.apache.reef.inmemory.common.entity.FileMetaStatus;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
 
 /**
  * Intermediate between SurfMetaManager and BaseFs; methods are primitive operations
@@ -56,8 +57,16 @@ public interface BaseFsClient {
   /**
    * Get the status of file from BaseFs.
    * @param path the path of the file
-   * @return the status of the file, which is encoded in FileMeta
+   * @return FileStatus of the path
    * @throws IOException if it failed to get the status from BaseFs or the file is not found.
    */
-  public FileMeta getFileStatus(final String path) throws IOException;
+  public FileMetaStatus getFileStatus(final String path) throws IOException;
+
+  /**
+   * List status of path from BaseFs.
+   * @param path the path
+   * @return list of FileMetaStatus
+   * @throws IOException if it failed to get the status from BaseFs or the file is not found.
+   */
+  public List<FileMetaStatus> listStatus(final String path) throws IOException;
 }

@@ -7,6 +7,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.driver.task.RunningTask;
+import org.apache.reef.inmemory.driver.FileMetaStatusFactory;
 import org.apache.reef.inmemory.common.ITUtils;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
@@ -68,7 +69,9 @@ public class MetaTreeITCase {
     hdfsClient.create(new Path(EXISTING_FILE)).close();
 
     final FileSystem baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
-    metaTree = new MetaTree(new HDFSClient(baseFs), new NullEventRecorder());
+    final FileMetaStatusFactory fileMetaStatusFactory = new FileMetaStatusFactory(replicationPolicy);
+    final HDFSClient baseFsClient = new HDFSClient(baseFs, fileMetaStatusFactory);
+    metaTree = new MetaTree(baseFsClient, new NullEventRecorder(), fileMetaStatusFactory);
   }
 
   /**

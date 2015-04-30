@@ -51,17 +51,16 @@ public final class SurfFSMetadataITCase {
     baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
-    final FSDataOutputStream stream = baseFs.create(new Path(ABSPATH));
-    stream.writeUTF("Hello Readme");
-    stream.close();
-
     surfLauncher.launch(baseFs);
 
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
+
+    final FSDataOutputStream stream = surfFs.create(new Path(ABSPATH));
+    stream.writeUTF("Hello Readme");
+    stream.close();
   }
 
   /**

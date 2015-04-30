@@ -81,9 +81,10 @@ public final class SurfMetaManagerITCase {
 
     baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
     final HdfsBlockLocationGetter blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
-    final HDFSClient baseFsClient = new HDFSClient(baseFs);
-    final MetaTree metaTree = new MetaTree(baseFsClient, RECORD);
 
+    final FileMetaStatusFactory fileMetaStatusFactory = new FileMetaStatusFactory(replicationPolicy);
+    final HDFSClient baseFsClient = new HDFSClient(baseFs, fileMetaStatusFactory);
+    final MetaTree metaTree = new MetaTree(baseFsClient, new NullEventRecorder(), fileMetaStatusFactory);
     final FileMetaUpdater fileMetaUpdater = new HdfsFileMetaUpdater(manager, messenger, selector, cacheLocationRemover, blockMetaFactory, blockInfoFactory, replicationPolicy, baseFs, blockLocationGetter);
 
     metaManager = new SurfMetaManager(messenger, cacheLocationRemover, fileMetaUpdater, blockMetaFactory, metaTree);

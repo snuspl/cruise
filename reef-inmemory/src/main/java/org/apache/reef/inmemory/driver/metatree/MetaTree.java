@@ -2,6 +2,7 @@ package org.apache.reef.inmemory.driver.metatree;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.driver.FileMetaStatusFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
@@ -11,8 +12,11 @@ import org.apache.reef.inmemory.driver.BaseFsClient;
 import org.apache.reef.inmemory.driver.CacheNode;
 
 import javax.inject.Inject;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -35,14 +39,17 @@ public class MetaTree {
   private final EventRecorder RECORD;// TODO: make use of this
   private final BaseFsClient baseFsClient;
   private final AtomicLong atomicFileId;
+  private final FileMetaStatusFactory fileMetaStatusFactory;
 
   @Inject
   public MetaTree(final BaseFsClient baseFsClient,
-                  final EventRecorder recorder) {
+                  final EventRecorder recorder,
+                  final FileMetaStatusFactory fileMetaStatusFactory) {
     this.ROOT = new DirectoryEntry("/", null);
     this.RECORD = recorder;
     this.baseFsClient = baseFsClient;
     this.atomicFileId = new AtomicLong(0);
+    this.fileMetaStatusFactory = fileMetaStatusFactory;
   }
 
   //////// Read-Lock Methods: Operations that only query the tree
@@ -68,42 +75,82 @@ public class MetaTree {
     }
   }
 
+  public FileMetaStatus getFileMetaStatus(final String path) throws IOException {
+    // STEP 1: Query BaseFS
+    final FileMetaStatus baseFileMetaStatus = baseFsClient.getFileStatus(path);
+
+    LOCK.readLock().lock();
+    try {
+      // STEP 2: Query MetaTree return based on the result
+      final Entry entry = getEntryInTree(path);
+      if (entry != null) {
+        // If found, return Surf's FileMetaStatus
+        LOG.log(Level.INFO, "getfile surf: " + path);
+        return fileMetaStatusFactory.newFileMetaStatus(path, entry);
+      } else {
+        // If not found, return Base's FileMetaStatus
+        LOG.log(Level.INFO, "getfile base: " + baseFileMetaStatus.toString());
+
+        return baseFileMetaStatus;
+      }
+    } finally {
+      LOCK.readLock().unlock();
+    }
+  }
+
   /**
-   * List entries at path
+   * List FileMetaStatus at path
+   * All same entries from BaseFS are overriden by those in Surf
    *
    * @param path to a directory or a file
    * @return a list of FileMetaStatus
    * @throws IOException if no such directory or file exists for the path
    */
   public List<FileMetaStatus> listFileMetaStatus(final String path) throws IOException {
+    // STEP 1: Query BaseFS
+    final List<FileMetaStatus> baseFileMetaStatusList = baseFsClient.listStatus(path);
+
     LOCK.readLock().lock();
     try {
+      // STEP 2: Query MetaTree
+      final List<FileMetaStatus> surfFileMetaStatusList = new ArrayList<>();
       final Entry entry = getEntryInTree(path);
-
       if (entry != null) {
         if (entry.isDirectory()) {
-          final List<FileMetaStatus> fileMetaStatus = new ArrayList<>();
-
           if (((DirectoryEntry) entry).getChildren().size() > 0) {
             for (final Entry childEntry : ((DirectoryEntry) entry).getChildren()) {
-              if (childEntry.isDirectory()) {
-                fileMetaStatus.add(new FileMetaStatus(path + "/" + childEntry.getName(), null));
-              } else {
-                fileMetaStatus.add(new FileMetaStatus(path + "/" + childEntry.getName(), ((FileEntry) childEntry).getFileMeta()));
-              }
+              final String childPath = path + "/" + childEntry.getName();
+              surfFileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(childPath, childEntry));
             }
           } else {
-            fileMetaStatus.add(new FileMetaStatus(path, null));
+            surfFileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(path, entry));
           }
-
-          return fileMetaStatus;
         } else {
-          final FileMeta fileMeta = ((FileEntry) entry).getFileMeta();
-          return Arrays.asList(new FileMetaStatus(path, fileMeta));
+          surfFileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(path, entry));
         }
-      } else {
-        throw new IOException("No directory or file found for the path " + path);
       }
+
+      // STEP 3: Merge the results from above
+      final List<FileMetaStatus> duplicateInBase = new ArrayList<>();
+      for (final FileMetaStatus surfFileMetaStatus : surfFileMetaStatusList) {
+        LOG.log(Level.INFO, "surf: " + surfFileMetaStatus.toString());
+        for (final FileMetaStatus baseFileMetaStatus : baseFileMetaStatusList) {
+          LOG.log(Level.INFO, "base: " + baseFileMetaStatus.toString());
+          try {
+            final String surfPath = new URI(surfFileMetaStatus.getPath()).getPath();
+            final String basePath = new URI(baseFileMetaStatus.getPath()).getPath();
+            if (surfPath.equals(basePath)) {
+              duplicateInBase.add(baseFileMetaStatus);
+            }
+          } catch (URISyntaxException e) {
+            throw new IOException(e);
+          }
+        }
+      }
+      baseFileMetaStatusList.removeAll(duplicateInBase);
+      surfFileMetaStatusList.addAll(baseFileMetaStatusList);
+
+      return surfFileMetaStatusList;
     } finally {
       LOCK.readLock().unlock();
     }
@@ -134,9 +181,19 @@ public class MetaTree {
       LOCK.readLock().unlock();
     }
 
-    final FileMeta fileMeta = baseFsClient.getFileStatus(path); // throws FileNotFoundException/IOException, sets blockSize & fileSize
-    final long fileId = atomicFileId.incrementAndGet();
-    fileMeta.setFileId(fileId);
+    final FileMetaStatus fileMetaStatus = baseFsClient.getFileStatus(path);
+
+    // No directory-level load allowed for now
+    if (fileMetaStatus.isIsdir()) {
+      throw new FileNotFoundException();
+    }
+
+    // TODO: factory? (with timestamp, ACL)
+    final FileMeta fileMeta = new FileMeta(
+            atomicFileId.incrementAndGet(),
+            fileMetaStatus.getLength(),
+            fileMetaStatus.getBlocksize(),
+            new ArrayList<BlockMeta>());
 
     LOCK.writeLock().lock();
     try {
@@ -145,7 +202,6 @@ public class MetaTree {
       if (entry != null && !entry.isDirectory()) {
         return ((FileEntry) entry).getFileMeta();
       }
-
       registerNewFileMeta(path, fileMeta);
       return fileMeta;
     } finally {
