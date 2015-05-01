@@ -10,6 +10,7 @@ import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 
 import javax.inject.Inject;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Paths;
 
 /**
@@ -56,9 +57,9 @@ public class FileMetaStatusFactory {
   /**
    * Create an instance of FileMetaStatus from a FileStatus fetched from HDFS
    */
-  public FileMetaStatus newFileMetaStatus(final FileStatus fileStatus) {
+  public FileMetaStatus newFileMetaStatus(final FileStatus fileStatus) throws URISyntaxException {
     return new FileMetaStatus(
-            fileStatus.getPath().toString(),
+            new URI(fileStatus.getPath().toString()).getPath(), // remove scheme and authority
             fileStatus.getLen(),
             fileStatus.isDirectory(),
             fileStatus.getReplication(),

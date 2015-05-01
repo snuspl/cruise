@@ -15,8 +15,6 @@ import javax.inject.Inject;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -133,17 +131,9 @@ public class MetaTree {
       // STEP 3: Merge the results from above
       final List<FileMetaStatus> duplicateInBase = new ArrayList<>();
       for (final FileMetaStatus surfFileMetaStatus : surfFileMetaStatusList) {
-        LOG.log(Level.INFO, "surf: " + surfFileMetaStatus.toString());
         for (final FileMetaStatus baseFileMetaStatus : baseFileMetaStatusList) {
-          LOG.log(Level.INFO, "base: " + baseFileMetaStatus.toString());
-          try {
-            final String surfPath = new URI(surfFileMetaStatus.getPath()).getPath();
-            final String basePath = new URI(baseFileMetaStatus.getPath()).getPath();
-            if (surfPath.equals(basePath)) {
-              duplicateInBase.add(baseFileMetaStatus);
-            }
-          } catch (URISyntaxException e) {
-            throw new IOException(e);
+          if (surfFileMetaStatus.getPath().equals(baseFileMetaStatus.getPath())) {
+            duplicateInBase.add(baseFileMetaStatus);
           }
         }
       }
@@ -428,7 +418,7 @@ public class MetaTree {
    * Second, create a directory in the tree
    */
   private DirectoryEntry createDirectoryRecursively(final String path) throws IOException {
-    final boolean baseSuccess = baseFsClient.mkdirs(path);
+    final boolean baseSuccess = baseFsClient.mkdirs(path); // TODO: this can become a bottleneck as the caller of createDirectoryRecursively() holds onto writeLock
     if (baseSuccess) {
       final String[] entryNames = StringUtils.split(path, '/');
       DirectoryEntry curDirectory = ROOT;
