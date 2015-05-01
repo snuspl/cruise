@@ -5,8 +5,8 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>edu.snu.reef</groupId>
-  <artifactId>flexion</artifactId>
-  <name>Elastic MPI optimizer and runtime</name>
+  <artifactId>dolphin</artifactId>
+  <name>Dolphin</name>
   <version>0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 

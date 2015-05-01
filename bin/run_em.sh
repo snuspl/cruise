@@ -21,7 +21,7 @@
 # ./run_em.sh -numCls 4 -convThr 0.01 -maxIter 20 -local true -split 4 -input sample_cluster
 
 # RUNTIME
-SELF_JAR=../target/flexion-0.1-SNAPSHOT-shaded.jar
+SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=org.apache.reef.util.logging.Config'
 
@@ -29,7 +29,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-EM=edu.snu.reef.flexion.examples.ml.algorithms.clustering.em.EMREEF
+EM=edu.snu.reef.dolphin.examples.ml.algorithms.clustering.em.EMREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $EM $*"
 echo $CMD
