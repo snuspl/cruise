@@ -13,6 +13,7 @@ import org.apache.reef.inmemory.driver.BaseFsClient;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -67,14 +68,22 @@ public class HDFSClient implements BaseFsClient {
 
   @Override
   public FileMetaStatus getFileStatus(final String path) throws IOException {
-    return fileMetaStatusFactory.newFileMetaStatus(dfs.getFileStatus(new Path(path)));
+    try {
+      return fileMetaStatusFactory.newFileMetaStatus(dfs.getFileStatus(new Path(path)));
+    } catch (URISyntaxException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override
   public List<FileMetaStatus> listStatus(final String path) throws IOException {
     final List<FileMetaStatus> fileMetaStatusList = new ArrayList<>();
     for (final FileStatus fileStatus : dfs.listStatus(new Path(path))) {
-      fileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(fileStatus));
+      try {
+        fileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(fileStatus));
+      } catch (URISyntaxException e) {
+        throw new IOException(e);
+      }
     }
     return fileMetaStatusList;
   }

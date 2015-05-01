@@ -397,14 +397,6 @@ public final class SurfFS extends FileSystem {
   }
 
   private FileStatus toFileStatus(final FileMetaStatus fileMetaStatus) throws URISyntaxException {
-    final Path path;
-    final String fileMetaStatusPath = fileMetaStatus.getPath();
-    if (new URI(fileMetaStatusPath).getScheme() == null) {
-      path = addSurfSchemeAndAuthority(fileMetaStatusPath);
-    } else {
-      path = new Path(fileMetaStatusPath);
-    }
-
     return new FileStatus(
             fileMetaStatus.getLength(),
             fileMetaStatus.isIsdir(),
@@ -416,7 +408,7 @@ public final class SurfFS extends FileSystem {
             fileMetaStatus.getOwner(),
             fileMetaStatus.getGroup(),
             null, // TODO: SymLink
-            path);
+            new Path(uri.getScheme(), uri.getAuthority(), fileMetaStatus.getPath()));
   }
 
   private BlockLocation getBlockLocation(List<NodeInfo> locations, long start, long len) {
@@ -454,10 +446,6 @@ public final class SurfFS extends FileSystem {
    */
   public Path toAbsoluteSurfPath(final Path path) {
     final String absPathStr = toAbsolutePathInString(path);
-    return new Path(uri.getScheme(), uri.getAuthority(), absPathStr);
-  }
-
-  public Path addSurfSchemeAndAuthority(final String absPathStr) {
     return new Path(uri.getScheme(), uri.getAuthority(), absPathStr);
   }
 
