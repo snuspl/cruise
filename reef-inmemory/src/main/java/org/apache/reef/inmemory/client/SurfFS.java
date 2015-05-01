@@ -97,7 +97,9 @@ public final class SurfFS extends FileSystem {
     this.uri = uri;
     this.baseFsUri = URI.create(baseFsAddress);
     this.baseFs = new DistributedFileSystem();
+    final Event initializeDfsEvent = RECORD.event("client.initialize.dfs", uri.toString()).start();
     this.baseFs.initialize(this.baseFsUri, conf);
+    RECORD.record(initializeDfsEvent.stop());
     this.workingDir = toAbsoluteSurfPath(baseFs.getWorkingDirectory());
     this.setConf(conf);
 
