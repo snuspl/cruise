@@ -22,7 +22,7 @@
 # ./run_regression.sh -dim 3 -maxIter 20 -stepSize 0.001 -lambda 0.1 -local true -split 4 -input sample_regression
 
 # RUNTIME
-SELF_JAR=../target/flexion-0.1-SNAPSHOT-shaded.jar
+SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=org.apache.reef.util.logging.Config'
 
@@ -30,7 +30,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.reef.flexion.examples.ml.algorithms.regression.LinearRegREEF
+ALG=edu.snu.reef.dolphin.examples.ml.algorithms.regression.LinearRegREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $ALG $*"
 echo $CMD
