@@ -19,9 +19,9 @@ public final class CacheEntryCaller implements Callable<CacheEntry> {
   }
 
   /**
-   * This call will load a reference to the loader in the soft cache.
-   * The actual loading is not initiated here, but rather by the CacheEntryExecutor.
-   * The call to pinCache will pin the CacheEntry, by adding it to a companion strong referenced cache.
+   * This call will load a reference to the CacheEntry in the soft cache.
+   * The actual block loading is initiated in the BlockLoaderExecutor invoked by InMemoryCacheImpl.load().
+   * CacheEntry's state is managed by the state machine implemented in MemoryManager.
    */
   @Override
   public CacheEntry call() throws Exception {
