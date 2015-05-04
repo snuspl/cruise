@@ -26,6 +26,9 @@ import java.util.logging.Logger;
 
 /**
  * Manages all operations that has to do with Surf metadata(FileEntry, DirectoryEntry, FileMeta)
+ * The tree reflects a directory structure where each node represents a directory/file name
+ * and contains a pointer to its parent directory
+ * Each node that represents a file also contains a FileMeta.
  */
 public class MetaTree {
   private static final Logger LOG = Logger.getLogger(MetaTree.class.getName());
@@ -178,7 +181,7 @@ public class MetaTree {
       throw new FileNotFoundException();
     }
 
-    // TODO: factory? (with timestamp, ACL)
+    // TODO: we may want to store other metadata in the filemeta such as timestamp, ACL
     final FileMeta fileMeta = new FileMeta(
             atomicFileId.incrementAndGet(),
             fileMetaStatus.getLength(),
@@ -208,12 +211,12 @@ public class MetaTree {
     final OutputStream outputStream = baseFsClient.create(path, baseFsReplication, blockSize);
     outputStream.close();
 
-    final FileMeta fileMeta = new FileMeta();
-    final long fileId = atomicFileId.incrementAndGet();
-    fileMeta.setFileId(fileId);
-    fileMeta.setFileSize(0);
-    fileMeta.setBlockSize(blockSize);
-    fileMeta.setBlocks(new ArrayList<BlockMeta>());
+    // TODO: we may want to store other metadata in the filemeta such as timestamp, ACL
+    final FileMeta fileMeta = new FileMeta(
+            atomicFileId.incrementAndGet(),
+            0,
+            blockSize,
+            new ArrayList<BlockMeta>());
 
     LOCK.writeLock().lock();
     try {

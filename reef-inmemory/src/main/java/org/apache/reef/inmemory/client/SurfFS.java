@@ -245,7 +245,7 @@ public final class SurfFS extends FileSystem {
     try {
       final FileMeta metadata = getMetaClient().getOrLoadFileMeta(toAbsolutePathInString(file.getPath()), localAddress);
       long startRemaining = start;
-      Iterator<BlockMeta> iter = metadata.getBlocksIterator();
+      final Iterator<BlockMeta> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
       if (iter == null) {
         return new BlockLocation[0];
@@ -417,7 +417,7 @@ public final class SurfFS extends FileSystem {
     final String[] topologyPaths = new String[locations.size()];
 
     int idx = 0;
-    for (NodeInfo location : locations) {
+    for (final NodeInfo location : locations) {
       addresses[idx] = location.getAddress();
       hosts[idx] = HostAndPort.fromString(location.getAddress()).getHostText();
       topologyPaths[idx] = location.getRack() + "/" + location.getAddress();

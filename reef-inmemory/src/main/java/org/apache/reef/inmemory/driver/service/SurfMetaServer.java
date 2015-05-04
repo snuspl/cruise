@@ -300,7 +300,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
       this.server.stop();
   }
 
-  public void appendBasicStatus(final StringBuilder builder,
+  private void appendBasicStatus(final StringBuilder builder,
                                 final CacheNode cache,
                                 final long currentTimestamp) {
     builder.append(cache.getAddress())

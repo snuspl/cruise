@@ -19,6 +19,10 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * FSOutputStream for Surf.
+ * Request MetaServer to allocate new blocks, on which it writes data.
+ */
 public final class SurfFSOutputStream extends OutputStream {
   private static final Logger LOG = Logger.getLogger(SurfFSOutputStream.class.getName());
   private static final int PACKET_SIZE = 4194304; // 4MB
@@ -197,7 +201,7 @@ public final class SurfFSOutputStream extends OutputStream {
     curBlockInnerOffset = totalInnerOffset % blockSize;
   }
 
-  private class Packet {
+  private static class Packet {
     final WriteableBlockMeta writeableBlockMeta;
     final long blockInnerOffset;
     final ByteBuffer buf;

@@ -261,7 +261,6 @@ public final class MemoryManager {
    * Call on cache removal (eviction).
    * Notifies threads waiting for memory to free up.
    * Updates statistics.
-   * @param blockId
    */
   public synchronized void remove(final BlockId blockId, final long blockSize, final boolean pinned) {
     LOG.log(Level.INFO, blockId+" statistics before remove: "+statistics);

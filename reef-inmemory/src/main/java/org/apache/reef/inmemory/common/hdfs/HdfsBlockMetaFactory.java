@@ -17,25 +17,11 @@ public final class HdfsBlockMetaFactory implements BlockMetaFactory<LocatedBlock
   }
 
   /**
-   * Create a new BlockMeta with the assigned BlockId and allocated nodes.
-   * Fields unknown at the creation time are marked as -1 or null.
-   */
-  @Override
-  public BlockMeta newBlockMeta(final BlockId blockId, final long blockSize, final List<NodeInfo> nodes) {
-    BlockMeta blockMeta = new BlockMeta();
-    blockMeta.setFileId(blockId.getFileId());
-    blockMeta.setOffSet(blockId.getOffset());
-    blockMeta.setLength(blockSize);
-    blockMeta.setLocations(nodes);
-    return blockMeta;
-  }
-
-  /**
    * Create a new BlockMeta using identifying information from LocatedBlock. Does /not/ copy
    * location information (as it is not identifying information).
    */
   @Override
-  public BlockMeta newBlockMeta(final long fileId, final LocatedBlock locatedBlock) throws IOException {
+  public BlockMeta newBlockMeta(final long fileId, final LocatedBlock locatedBlock) {
     BlockMeta blockMeta = new BlockMeta();
     blockMeta.setFileId(fileId);
     blockMeta.setOffSet(locatedBlock.getStartOffset());

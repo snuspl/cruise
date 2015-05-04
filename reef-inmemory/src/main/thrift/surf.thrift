@@ -44,12 +44,14 @@ service SurfMetaService {
   bool mkdirs(1:string path)
 
   /**
-   * List FileMetaStatuses
+   * List all possible FileMetaStatuses at the path.
+   * For example, if the path points to a directory, list all FileMetaStatus of children files/directories.
    */
   list<entity.FileMetaStatus> listFileMetaStatus(1:string path)
 
   /**
-   * Get FileMetaStatus
+   * Get a single FileMetaStatus at the path.
+   * For example, if the path points to a directory, get the FileMetaStatus of that single directory.
    */
   entity.FileMetaStatus getFileMetaStatus(1:string path)
 

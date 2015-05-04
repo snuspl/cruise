@@ -11,6 +11,8 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 public class MetaClientManagerImpl implements MetaClientManager {
+
+  @Override
   public SurfMetaService.Client get(final String address) throws TTransportException {
     final HostAndPort metaAddress = HostAndPort.fromString(address);
     final TTransport transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));

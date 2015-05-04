@@ -76,14 +76,16 @@ public final class HdfsBlockInfo implements Serializable {
     HdfsBlockInfo that = (HdfsBlockInfo) o;
 
     if (!filePath.equals(that.filePath)) return false;
-    if (blockSize != that.blockSize) return false;
     if (offset != that.offset) return false;
+    if (blockId != that.blockId) return false;
+    if (blockSize != that.blockSize) return false;
     return true;
   }
 
   @Override
   public int hashCode() {
     int result = filePath != null ? filePath.hashCode() : 0;
+    result = 31 * result + (int) (blockId ^ (blockId >>> 32));
     result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
     result = 31 * result + (int) (generationTimestamp ^ (generationTimestamp >>> 32));
     result = 31 * result + (poolId != null ? poolId.hashCode() : 0);
@@ -95,6 +97,7 @@ public final class HdfsBlockInfo implements Serializable {
   @Override
   public String toString() {
     return filePath + ", "
+            + blockId + ", "
             + blockSize + ", "
             + offset;
   }
