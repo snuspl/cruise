@@ -17,6 +17,10 @@ public class HdfsBlockInfoFactory implements BaseFsBlockInfoFactory<LocatedBlock
 
   /**
    * Create a new HdfsBlockInfo using information from LocatedBlock
+   * @param filePath Path of file, to be added to block ID
+   * @param locatedBlock The block's metadata used in HDFS
+   * @return The block information to access the block in HDFS
+   * @throws IOException if the block token of FsMetadata cannot be encoded as a url string
    */
   @Override
   public HdfsBlockInfo newBlockInfo(final String filePath, final LocatedBlock locatedBlock) throws IOException {

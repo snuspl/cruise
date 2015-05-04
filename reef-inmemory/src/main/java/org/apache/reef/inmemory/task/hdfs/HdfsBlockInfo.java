@@ -76,9 +76,12 @@ public final class HdfsBlockInfo implements Serializable {
     HdfsBlockInfo that = (HdfsBlockInfo) o;
 
     if (!filePath.equals(that.filePath)) return false;
-    if (offset != that.offset) return false;
     if (blockId != that.blockId) return false;
     if (blockSize != that.blockSize) return false;
+    if (generationTimestamp != that.generationTimestamp) return false;
+    if (!poolId.equals(that.poolId)) return false;
+    if (!encodedToken.equals(that.encodedToken)) return false;
+    if (offset != that.offset) return false;
     return true;
   }
 

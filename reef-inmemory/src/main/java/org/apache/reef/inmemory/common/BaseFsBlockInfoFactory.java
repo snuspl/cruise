@@ -11,7 +11,7 @@ public interface BaseFsBlockInfoFactory<FsMetadata, FsBlockInfo> {
    * @param filePath Path of file, to be added to block ID
    * @param metadata FS-specific block metadata
    * @return Base-FS specific block ID information
-   * @throws IOException if the block token of FsMetadata cannot be encoded as a url string
+   * @throws IOException if the FsMetadata cannot be translated to FsBlockInfo
    */
   public FsBlockInfo newBlockInfo(String filePath, FsMetadata metadata) throws IOException;
 }
