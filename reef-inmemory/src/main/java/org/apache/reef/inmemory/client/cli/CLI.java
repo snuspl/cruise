@@ -1,6 +1,10 @@
 package org.apache.reef.inmemory.client.cli;
 
 import com.google.common.net.HostAndPort;
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.reef.inmemory.client.SurfFS;
+import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.JavaConfigurationBuilder;
@@ -9,10 +13,6 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
-import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.reef.inmemory.client.SurfFS;
-import org.apache.reef.inmemory.common.service.SurfManagementService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TMultiplexedProtocol;
@@ -55,7 +55,7 @@ public final class CLI {
   public static final class Address implements Name<String> {
   }
 
-  @NamedParameter(doc = "Underlying DFS address", short_name = "dfs_address", default_value = "hdfs://localhost:9000")
+  @NamedParameter(doc = "Base DFS address", short_name = "dfs_address", default_value = "hdfs://localhost:9000")
   public static final class DfsAddress implements Name<String> {
   }
 

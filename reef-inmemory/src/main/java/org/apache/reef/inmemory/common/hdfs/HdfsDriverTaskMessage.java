@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.common.hdfs;
 
-import org.apache.reef.util.Optional;
 import org.apache.reef.inmemory.common.CacheClearMessage;
+import org.apache.reef.util.Optional;
 
 import java.io.Serializable;
 

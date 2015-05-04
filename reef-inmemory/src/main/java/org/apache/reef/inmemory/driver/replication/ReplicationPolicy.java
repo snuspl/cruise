@@ -10,7 +10,7 @@ import java.io.IOException;
  * The replication policy
  * returns a replication Action with the number of replicas and whether the file should be pinned,
  * based on the supplied path and its metadata. In case of writing data into cache,
- * the Action includes two more variables - number of replication and synchronization method to UnderFS
+ * the Action includes two more variables - number of replication and synchronization method to the base FS
  */
 public interface ReplicationPolicy {
   /**

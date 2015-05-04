@@ -1,12 +1,12 @@
 package org.apache.reef.inmemory.task.hdfs;
 
-import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
-import org.apache.reef.task.events.DriverMessage;
-import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
+import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.task.DriverMessageHandler;
 import org.apache.reef.inmemory.task.InMemoryCache;
+import org.apache.reef.task.events.DriverMessage;
+import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -34,14 +34,14 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
   }
 
   @Override
-  public void onNext(DriverMessage driverMessage) {
+  public void onNext(final DriverMessage driverMessage) {
     if (driverMessage.get().isPresent()) {
       final HdfsDriverTaskMessage msg = HDFS_CODEC.decode(driverMessage.get().get());
       if (msg.getHdfsBlockMessage().isPresent()) {
         LOG.log(Level.INFO, "Received load block msg");
         final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
-        final HdfsBlockLoader loader = new HdfsBlockLoader(
-                blockMsg.getBlockId(), blockMsg.getLocations(), blockMsg.isPin(), cache.getLoadingBufferSize(), RECORD);
+        final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getBlockInfo(),
+                blockMsg.getLocations(), blockMsg.isPin(), cache.getLoadingBufferSize(), RECORD);
 
         try {
           cache.load(loader);

@@ -1,20 +1,23 @@
 package org.apache.reef.inmemory.task;
 
-import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.CacheStatistics;
 import org.apache.reef.inmemory.common.CacheUpdates;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.MemoryLimitException;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Memory manager keeps track of memory statistics and applies admission control
- * when there is too much memory pressure to load.
- * Memory usage is calculated as the amount of loading + pinned memory (memory that cannot be GC'd)
+ * when there is too much memory pressure.
+ * Memory usage is calculated as the amount of copying + pinned memory (memory that cannot be GC'd)
  * and memory usage is not allowed within slack of the total Heap size.
  */
 public final class MemoryManager {
@@ -40,21 +43,20 @@ public final class MemoryManager {
 
   private static enum CacheEntryState {
     INSERTED,
-    LOAD_STARTED,
-    LOAD_SUCCEEDED,
-    LOAD_FAILED,
-    REMOVED_DURING_LOAD,
+    COPY_STARTED,
+    COPY_SUCCEEDED,
+    COPY_FAILED,
+    REMOVED_DURING_COPY,
     REMOVED
   }
 
   /**
    * Call during cache insert call.
    */
-  public synchronized void cacheInsert(final BlockId blockId, final boolean pin) {
+  public synchronized void cacheInsert(final BlockId blockId, final long blockSize, final boolean pin) {
     if (isState(blockId, CacheEntryState.INSERTED)) {
       throw new RuntimeException(blockId+" has been previously inserted");
     }
-    final long blockSize = blockId.getBlockSize();
 
     final long cached = statistics.getCacheBytes();
     if (cached < 0) {
@@ -65,7 +67,7 @@ public final class MemoryManager {
       statistics.addPinnedBytes(blockSize);
       lru.addPinned(blockId);
     } else {
-      lru.add(blockId);
+      lru.add(blockId, blockSize);
     }
 
     setState(blockId, CacheEntryState.INSERTED);
@@ -73,17 +75,15 @@ public final class MemoryManager {
   }
 
   /**
-   * Call before starting block loading.
-   * Will wait for memory to free up if too much memory is being used for pin + load.
+   * Call before starting block copying.
+   * Will wait for memory to free up if too much memory is being used for pin + copy.
    * Updates statistics.
-   * @param blockSize
    */
-  public synchronized List<BlockId> loadStart(final BlockId blockId, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
-    LOG.log(Level.INFO, blockId+" statistics before loadStart: "+statistics);
-    final long blockSize = blockId.getBlockSize();
+  public synchronized List<BlockId> copyStart(final BlockId blockId, final long blockSize, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
+    LOG.log(Level.INFO, blockId+" statistics before copyStart: "+statistics);
 
-    boolean canLoad = false;
-    while (!canLoad) {
+    boolean canCopy = false;
+    while (!canCopy) {
       // Check every iteration
       if (isState(blockId, CacheEntryState.REMOVED)) {
         if (pin) {
@@ -100,7 +100,7 @@ public final class MemoryManager {
       }
 
       final long usableCache = cacheSize - statistics.getPinnedBytes();
-      final long freeCache = usableCache - statistics.getCacheBytes() - statistics.getLoadingBytes();
+      final long freeCache = usableCache - statistics.getCacheBytes() - statistics.getCopyingBytes();
       LOG.log(Level.INFO, blockId+" size: "+blockSize+" free cache: "+freeCache+" usable cache: "+usableCache);
       if (blockSize > usableCache) {
         throw new MemoryLimitException(blockId+" ran out of usable cache: "+usableCache);
@@ -111,11 +111,11 @@ public final class MemoryManager {
         }
       }
 
-      canLoad = (blockSize <= freeCache);
-      LOG.log(Level.INFO, blockId+" statistics during loadStart: "+statistics);
+      canCopy = (blockSize <= freeCache);
+      LOG.log(Level.INFO, blockId+" statistics during copyStart: "+statistics);
 
-      if (!canLoad) {
-        LOG.log(Level.WARNING, "Waiting to load block, "+statistics);
+      if (!canCopy) {
+        LOG.log(Level.WARNING, "Waiting to copy block, "+statistics);
         try {
           wait();
         } catch (InterruptedException e) {
@@ -127,16 +127,18 @@ public final class MemoryManager {
     if (pin) {
       // nothing
     } else {
-      statistics.addLoadingBytes(blockSize);
+      statistics.addCopyingBytes(blockSize);
     }
-    setState(blockId, CacheEntryState.LOAD_STARTED);
-    LOG.log(Level.INFO, blockId+" statistics after loadStart: "+statistics);
-    return null; // No need to evict, can start loading
+    setState(blockId, CacheEntryState.COPY_STARTED);
+    LOG.log(Level.INFO, blockId + " statistics after copyStart: " + statistics);
+    return null; // No need to evict, can start copying
   }
 
-  public synchronized void loadStartFail(final BlockId blockId, final boolean pin, final Exception exception) {
-    LOG.log(Level.INFO, blockId+" statistics before loadStartFail: "+statistics);
-    final long blockSize = blockId.getBlockSize();
+  /**
+   * Call when copyStart failure.
+   */
+  public synchronized void copyStartFail(final BlockId blockId, final long blockSize, final boolean pin, final Exception exception) {
+    LOG.log(Level.INFO, blockId+" statistics before copyStartFail: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
     }
@@ -152,134 +154,147 @@ public final class MemoryManager {
   }
 
   /**
-   * Call on load success.
-   * Notifies threads waiting for memory to free up.
-   * Updates statistics.
-   * @param blockSize
-   * @param pin
+   * Call on load success. Notifies threads waiting for memory to free up and updates statistics.
    */
-  public synchronized void loadSuccess(final BlockId blockId, final boolean pin) {
-    LOG.log(Level.INFO, blockId+" statistics before loadSuccess: "+statistics);
-    if (statistics.getCacheBytes() < 0) {
-      throw new RuntimeException(blockId+" cached is less than zero");
-    }
-
-    final long blockSize = blockId.getBlockSize();
-    final CacheEntryState state = getState(blockId);
-    switch(state) {
-      case LOAD_STARTED:
-        if (pin) {
-          // nothing
-        } else {
-          statistics.subtractLoadingBytes(blockSize);
-          statistics.addCacheBytes(blockSize);
-        }
-        setState(blockId, CacheEntryState.LOAD_SUCCEEDED);
-        notifyAll();
-        break;
-      case REMOVED_DURING_LOAD:
-        if (pin) {
-          statistics.subtractPinnedBytes(blockSize);
-        } else {
-          statistics.subtractLoadingBytes(blockSize);
-        }
-        lru.evicted(blockId);
-        statistics.addEvictedBytes(blockSize);
-        updates.addRemoval(blockId);
-        setState(blockId, CacheEntryState.REMOVED);
-        notifyAll();
-        break;
-      default:
-        throw new RuntimeException(blockId+" unexpected state on loadSuccess "+getState(blockId));
-    }
-
-    LOG.log(Level.INFO, blockId + " statistics after loadSuccess: " + statistics);
+  public void loadSuccess(final BlockId id, final long blockSize, final boolean pin) {
+    copySuccess(id, blockSize, pin);
   }
 
   /**
-   * Call on load failure.
-   * Notifies threads waiting for memory to free up.
-   * Updates statistics.
-   * @param blockSize
+   * Call on write success. Notifies threads waiting for memory to free up, updates statistics,
+   * and report the amount of written data.
    */
-  public synchronized void loadFail(final BlockId blockId, final boolean pinned, final Throwable throwable) {
-    LOG.log(Level.INFO, blockId+" statistics before loadFail: "+statistics);
+  public void writeSuccess(final BlockId id, final long blockSize, final boolean pin, final long nWritten) {
+    final CacheEntryState state = copySuccess(id, blockSize, pin);
+    if (state == CacheEntryState.COPY_SUCCEEDED) {
+      updates.addAddition(id, nWritten);
+    }
+  }
+
+  /**
+   * Call on success of the copy.
+   * @return The state of entry.
+   */
+  private synchronized CacheEntryState copySuccess(final BlockId blockId, final long blockSize, final boolean pin) {
+    LOG.log(Level.INFO, blockId+" statistics before copySuccess: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
     }
 
-    final long blockSize = blockId.getBlockSize();
-    final CacheEntryState state = getState(blockId);
-    switch(state) {
-      case LOAD_STARTED:
-        if (pinned) {
-          statistics.subtractPinnedBytes(blockSize);
+    final CacheEntryState originState = getState(blockId);
+    final CacheEntryState targetState;
+    switch(originState) {
+      case COPY_STARTED:
+        if (pin) {
+          // nothing
         } else {
-          statistics.subtractLoadingBytes(blockSize);
+          statistics.subtractCopyingBytes(blockSize);
+          statistics.addCacheBytes(blockSize);
         }
-        updates.addFailure(blockId, throwable);
-        setState(blockId, CacheEntryState.LOAD_FAILED);
+        targetState = CacheEntryState.COPY_SUCCEEDED;
+        setState(blockId, targetState);
         notifyAll();
         break;
-      case REMOVED_DURING_LOAD:
+      case REMOVED_DURING_COPY:
+        if (pin) {
+          statistics.subtractPinnedBytes(blockSize);
+        } else {
+          statistics.subtractCopyingBytes(blockSize);
+        }
+        lru.evicted(blockSize);
+        statistics.addEvictedBytes(blockSize);
+        updates.addRemoval(blockId);
+        targetState = CacheEntryState.REMOVED;
+        setState(blockId, targetState);
+        notifyAll();
+        break;
+      default:
+        throw new RuntimeException(blockId+" unexpected state on copySuccess "+getState(blockId));
+    }
+
+    LOG.log(Level.INFO, blockId + " statistics after copySuccess: " + statistics);
+    return targetState;
+  }
+  /**
+   * Call on copy failure.
+   * Notifies threads waiting for memory to free up.
+   * Updates statistics.
+   */
+  public synchronized void copyFail(final BlockId blockId, final long blockSize, final boolean pinned, final Throwable throwable) {
+    LOG.log(Level.INFO, blockId+" statistics before copyFail: "+statistics);
+    if (statistics.getCacheBytes() < 0) {
+      throw new RuntimeException(blockId+" cached is less than zero");
+    }
+
+    final CacheEntryState state = getState(blockId);
+    switch(state) {
+      case COPY_STARTED:
         if (pinned) {
           statistics.subtractPinnedBytes(blockSize);
         } else {
-          statistics.subtractLoadingBytes(blockSize);
+          statistics.subtractCopyingBytes(blockSize);
         }
-        lru.evicted(blockId);
+        updates.addFailure(blockId, throwable);
+        setState(blockId, CacheEntryState.COPY_FAILED);
+        notifyAll();
+        break;
+      case REMOVED_DURING_COPY:
+        if (pinned) {
+          statistics.subtractPinnedBytes(blockSize);
+        } else {
+          statistics.subtractCopyingBytes(blockSize);
+        }
+        lru.evicted(blockSize);
         statistics.addEvictedBytes(blockSize);
         updates.addFailure(blockId, throwable);
         setState(blockId, CacheEntryState.REMOVED);
         notifyAll();
         break;
       default:
-        throw new RuntimeException(blockId+" unexpected state on loadFail "+getState(blockId));
+        throw new RuntimeException(blockId+" unexpected state on copyFail "+getState(blockId));
     }
 
-    LOG.log(Level.INFO, blockId + " statistics after loadFail: " + statistics);
+    LOG.log(Level.INFO, blockId + " statistics after copyFail: " + statistics);
   }
 
   /**
    * Call on cache removal (eviction).
    * Notifies threads waiting for memory to free up.
    * Updates statistics.
-   * @param blockId
    */
-  public synchronized void remove(final BlockId blockId, final boolean pinned) {
+  public synchronized void remove(final BlockId blockId, final long blockSize, final boolean pinned) {
     LOG.log(Level.INFO, blockId+" statistics before remove: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
     }
 
-    final long blockSize = blockId.getBlockSize();
     final CacheEntryState state = getState(blockId);
     switch(state) {
       case INSERTED:
         if (pinned) {
           statistics.subtractPinnedBytes(blockSize);
         }
-        lru.evicted(blockId);
+        lru.evicted(blockSize);
         statistics.addEvictedBytes(blockSize);
         updates.addRemoval(blockId);
         setState(blockId, CacheEntryState.REMOVED);
         break;
-      case LOAD_STARTED:
-        setState(blockId, CacheEntryState.REMOVED_DURING_LOAD);
+      case COPY_STARTED:
+        setState(blockId, CacheEntryState.REMOVED_DURING_COPY);
         break;
-      case LOAD_FAILED:
-        lru.evicted(blockId);
+      case COPY_FAILED:
+        lru.evicted(blockSize);
         statistics.addEvictedBytes(blockSize);
         // don't update as removed, already updated as failed
         setState(blockId, CacheEntryState.REMOVED);
         break;
-      case LOAD_SUCCEEDED:
+      case COPY_SUCCEEDED:
         if (pinned) {
           statistics.subtractPinnedBytes(blockSize);
         } else {
           statistics.subtractCacheBytes(blockSize);
         }
-        lru.evicted(blockId);
+        lru.evicted(blockSize);
         statistics.addEvictedBytes(blockSize);
         updates.addRemoval(blockId);
         setState(blockId, CacheEntryState.REMOVED);

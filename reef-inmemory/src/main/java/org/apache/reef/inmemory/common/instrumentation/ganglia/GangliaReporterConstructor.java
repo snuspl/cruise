@@ -3,9 +3,9 @@ package org.apache.reef.inmemory.common.instrumentation.ganglia;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.ganglia.GangliaReporter;
+import info.ganglia.gmetric4j.gmetric.GMetric;
 import org.apache.reef.tang.ExternalConstructor;
 import org.apache.reef.tang.annotations.Parameter;
-import info.ganglia.gmetric4j.gmetric.GMetric;
 
 import javax.inject.Inject;
 import java.io.IOException;

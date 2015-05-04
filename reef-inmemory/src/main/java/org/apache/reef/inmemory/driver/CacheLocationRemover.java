@@ -1,6 +1,7 @@
 package org.apache.reef.inmemory.driver;
 
-import org.apache.reef.inmemory.task.BlockId;
+
+import org.apache.reef.inmemory.common.BlockId;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -20,21 +21,21 @@ public final class CacheLocationRemover {
   public CacheLocationRemover() {
   }
 
-  private final Map<String, Map<BlockId, List<String>>> pendingRemoves = new HashMap<>();
+  private final Map<Long, Map<BlockId, List<String>>> pendingRemoves = new HashMap<>();
 
   /**
    * Remove metadata of location where block is no longer stored.
    * Does not edit metadata directly, but rather logs the removal information.
-   * @param filePath File's path
+   * @param fileId File's id
    * @param blockId Block's ID
    * @param nodeAddress Location's address
    */
-  public synchronized void remove(final String filePath, final BlockId blockId, final String nodeAddress) {
+  public synchronized void remove(final long fileId, final BlockId blockId, final String nodeAddress) {
     // Get blockMap (create if needed)
-    Map<BlockId, List<String>> blockMap = pendingRemoves.get(filePath);
+    Map<BlockId, List<String>> blockMap = pendingRemoves.get(fileId);
     if (blockMap == null) {
       blockMap = new HashMap<>();
-      pendingRemoves.put(filePath, blockMap);
+      pendingRemoves.put(fileId, blockMap);
     }
 
     // Get locations (create if needed)
@@ -51,12 +52,12 @@ public final class CacheLocationRemover {
   /**
    * Pull all pending removals for the given file path.
    * The pending removals returned are removed.
-   * @param filePath File path to receive logs on.
+   * @param fileId File id
    * @return Per each BlockId, the list of locations removed.
    */
-  public synchronized Map<BlockId, List<String>> pullPendingRemoves(final String filePath) {
-    final Map<BlockId, List<String>> toReturn = pendingRemoves.get(filePath);
-    pendingRemoves.remove(filePath);
+  public synchronized Map<BlockId, List<String>> pullPendingRemoves(final long fileId) {
+    final Map<BlockId, List<String>> toReturn = pendingRemoves.get(fileId);
+    pendingRemoves.remove(fileId);
     return toReturn;
   }
 }

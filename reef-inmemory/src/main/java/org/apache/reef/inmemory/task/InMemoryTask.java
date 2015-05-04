@@ -1,17 +1,18 @@
 package org.apache.reef.inmemory.task;
 
+import org.apache.reef.inmemory.common.CacheStatusMessage;
+import org.apache.reef.inmemory.task.service.SurfCacheServer;
+import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 import org.apache.reef.task.TaskMessage;
 import org.apache.reef.task.TaskMessageSource;
 import org.apache.reef.task.events.DriverMessage;
 import org.apache.reef.task.events.TaskStart;
 import org.apache.reef.util.Optional;
-import org.apache.reef.tang.annotations.Unit;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
-import org.apache.reef.inmemory.common.CacheStatusMessage;
-import org.apache.reef.inmemory.task.service.SurfCacheServer;
 
 import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;
@@ -32,16 +33,19 @@ public class InMemoryTask implements Task, TaskMessageSource {
   private final SurfCacheServer dataServer;
   private final InMemoryCache cache;
   private final DriverMessageHandler driverMessageHandler;
+  private final HeartBeatTriggerManager heartBeatTriggerManager;
 
   private boolean isDone = false;
 
   @Inject
   InMemoryTask(final InMemoryCache cache,
                final SurfCacheServer dataServer,
-               final DriverMessageHandler driverMessageHandler) throws InjectionException {
+               final DriverMessageHandler driverMessageHandler,
+               final HeartBeatTriggerManager heartBeatTriggerManager) throws InjectionException {
     this.cache = cache;
     this.dataServer = dataServer;
     this.driverMessageHandler = driverMessageHandler;
+    this.heartBeatTriggerManager = heartBeatTriggerManager;
   }
 
   /**
@@ -50,6 +54,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
    */
   @Override
   public byte[] call(byte[] arg0) throws Exception {
+    this.heartBeatTriggerManager.triggerHeartBeat();
     final String message = "Done";
     while(true) {
       synchronized (this) {

@@ -1,12 +1,12 @@
 package org.apache.reef.inmemory.task.service;
 
-import org.apache.reef.inmemory.common.BlockIdFactory;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
+import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
-import org.apache.reef.inmemory.task.BlockId;
 import org.apache.reef.inmemory.task.InMemoryCache;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,12 +37,12 @@ public class SurfCacheServerTest {
   @Test
   public void testFindEphemeralPort() throws IOException {
     final int bufferSize = 8 * 1024 * 1024;
-    final SurfCacheServer cacheServer = new SurfCacheServer(null, null, 0, 0, 1, bufferSize, RECORD);
+    final SurfCacheServer cacheServer = new SurfCacheServer(null, 0, 0, 1, bufferSize, RECORD);
     final int bindPort = cacheServer.initBindPort();
     assertEquals(bindPort, cacheServer.getBindPort());
     assertNotEquals(0, cacheServer.getBindPort());
 
-    final SurfCacheServer secondServer = new SurfCacheServer(null, null, 0, 0, 1, bufferSize, RECORD);
+    final SurfCacheServer secondServer = new SurfCacheServer(null, 0, 0, 1, bufferSize, RECORD);
 
     // Should not immediately give back the same port
     final int secondPort = secondServer.initBindPort();
@@ -59,18 +59,15 @@ public class SurfCacheServerTest {
    * Test that loading data from cache server works well with different block size and buffer size.
    */
   @Test
-  public void testBufferSize() throws IOException, BlockLoadingException, BlockNotFoundException {
+  public void testBufferSize() throws IOException, BlockLoadingException, BlockNotFoundException, BlockWritingException {
     // Randomly generate buffer with length as blockSize
-    final int blockSize = random.nextInt(1024) + 1;
+    final int blockSize = random.nextInt(1024) + 4;
     byte[] buffer = new byte[blockSize];
     random.nextBytes(buffer);
 
     // Mock objects used to create SurfCacheServer
-    BlockId id = Mockito.mock(BlockId.class);
-    when(id.getBlockSize()).thenReturn((long) blockSize);
-    BlockInfo blockInfo = Mockito.mock(BlockInfo.class);
-    BlockIdFactory factory = Mockito.mock(BlockIdFactory.class);
-    when(factory.newBlockId(blockInfo)).thenReturn(id);
+    BlockMeta blockMeta = Mockito.mock(BlockMeta.class);
+    final BlockId id = new BlockId(blockMeta);
 
     /*
      * Cache is supposed to return the data specified by index.
@@ -86,12 +83,12 @@ public class SurfCacheServerTest {
       when(cache.get(id, i)).thenReturn(Arrays.copyOfRange(buffer, chunkStart, chunkEnd));
     }
 
-    final SurfCacheServer cacheServer = new SurfCacheServer(cache, factory, 0, 0, 1, bufferSize, RECORD);
+    final SurfCacheServer cacheServer = new SurfCacheServer(cache, 0, 0, 1, bufferSize, RECORD);
 
     int nRead = 0;
     byte[] readBuffer = new byte[blockSize];
     while (nRead < blockSize) {
-      ByteBuffer loadedBuffer = cacheServer.getData(blockInfo, nRead, blockSize-nRead);
+      ByteBuffer loadedBuffer = cacheServer.getData(blockMeta, nRead, blockSize-nRead);
       int nReceived = loadedBuffer.remaining();
       loadedBuffer.get(readBuffer, nRead, loadedBuffer.remaining());
       nRead += nReceived;

@@ -1,12 +1,12 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
-import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.inmemory.common.CacheClearMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
-import org.apache.reef.inmemory.driver.CacheManager;
-import org.apache.reef.inmemory.driver.CacheMessenger;
 import org.apache.reef.inmemory.driver.CacheNode;
+import org.apache.reef.inmemory.driver.CacheNodeManager;
+import org.apache.reef.inmemory.driver.CacheNodeMessenger;
+import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -14,20 +14,20 @@ import java.util.List;
 /**
  * Implements HDFS-specific messaging
  */
-public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage> {
+public final class HdfsCacheNodeMessenger implements CacheNodeMessenger<HdfsBlockMessage> {
 
   private static final ObjectSerializableCodec<HdfsDriverTaskMessage> CODEC = new ObjectSerializableCodec<>();
 
-  private final CacheManager cacheManager;
+  private final CacheNodeManager cacheNodeManager;
 
   @Inject
-  public HdfsCacheMessenger(final CacheManager cacheManager) {
-    this.cacheManager = cacheManager;
+  public HdfsCacheNodeMessenger(final CacheNodeManager cacheNodeManager) {
+    this.cacheNodeManager = cacheNodeManager;
   }
 
   @Override
   public void clear(final String taskId) {
-    final CacheNode node = cacheManager.getCache(taskId);
+    final CacheNode node = cacheNodeManager.getCache(taskId);
     if (node != null) {
       node.send(CODEC.encode(HdfsDriverTaskMessage.clearMessage(new CacheClearMessage())));
     }
@@ -35,7 +35,7 @@ public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage
 
   @Override
   public void clearAll() {
-    final List<CacheNode> nodes = cacheManager.getCaches();
+    final List<CacheNode> nodes = cacheNodeManager.getCaches();
     for (final CacheNode node : nodes) {
       node.send(CODEC.encode(HdfsDriverTaskMessage.clearMessage(new CacheClearMessage())));
     }
@@ -43,7 +43,7 @@ public final class HdfsCacheMessenger implements CacheMessenger<HdfsBlockMessage
 
   @Override
   public void addBlock(final String taskId, final HdfsBlockMessage msg) {
-    final CacheNode node = cacheManager.getCache(taskId);
+    final CacheNode node = cacheNodeManager.getCache(taskId);
     if (node != null) {
       node.send(CODEC.encode(HdfsDriverTaskMessage.hdfsBlockMessage(msg)));
     }

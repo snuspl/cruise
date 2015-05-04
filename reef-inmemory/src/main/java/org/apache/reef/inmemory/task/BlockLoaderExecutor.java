@@ -1,16 +1,15 @@
 package org.apache.reef.inmemory.task;
 
 
-import com.google.common.cache.Cache;
-import org.apache.reef.wake.EventHandler;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.exceptions.BlockNotFoundException;
 import org.apache.reef.inmemory.common.exceptions.ConnectionFailedException;
 import org.apache.reef.inmemory.common.exceptions.MemoryLimitException;
 import org.apache.reef.inmemory.common.exceptions.TransferFailedException;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,13 +22,13 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
 
   private static final Logger LOG = Logger.getLogger(BlockLoaderExecutor.class.getName());
 
-  private final Cache<BlockId, BlockLoader> cache;
+  private final CacheAdmissionController cacheAdmissionController;
   private final MemoryManager memoryManager;
 
   @Inject
-  public BlockLoaderExecutor(final Cache<BlockId, BlockLoader> cache,
+  public BlockLoaderExecutor(final CacheAdmissionController cacheAdmissionController,
                              final MemoryManager memoryManager) {
-    this.cache = cache;
+    this.cacheAdmissionController = cacheAdmissionController;
     this.memoryManager = memoryManager;
   }
 
@@ -44,36 +43,22 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
   public void onNext(BlockLoader loader) {
     LOG.log(Level.INFO, "Start loading block {0}", loader.getBlockId());
     final BlockId blockId = loader.getBlockId();
+    final long blockSize = loader.getBlockSize();
     final boolean pin = loader.isPinned();
 
-    // 1. If the cache is full, an eviction list is returned by loadStart.
-    // 2. Each block in the eviction list is invalidated here.
-    // 3. loadStart must be called again; the Memory Manager then ensures that
-    //    eviction has successfully taken place and been booked, and returns null if true.
-    // TODO: there's a possibility of starvation here:
-    //    Between 2 and 3, a new block can be inserted and obtain memory that has just been evicted.
-    //    If blocks are continually inserted, this will starve the evicting block.
+    // Reserve enough memory space in the cache for block
     try {
-      boolean needSpace = true;
-      while (needSpace) {
-        final List<BlockId> evictionList = memoryManager.loadStart(blockId, pin);
-        needSpace = (evictionList != null);
-        if (needSpace) {
-          for (final BlockId toEvict : evictionList) {
-            LOG.log(Level.INFO, toEvict+" eviction request being made");
-            cache.invalidate(toEvict);
-          }
-        }
-      }
+      cacheAdmissionController.reserveSpace(blockId, blockSize, pin);
     } catch (BlockNotFoundException e) {
       LOG.log(Level.INFO, "Already removed block {0}", blockId);
       return;
     } catch (MemoryLimitException e) {
       LOG.log(Level.SEVERE, "Memory limit reached", e);
-      memoryManager.loadStartFail(blockId, pin, e);
+      memoryManager.copyStartFail(blockId, blockSize, pin, e);
       return;
     }
 
+    // Load the actual data in the block
     try {
       loader.loadBlock();
       loader = null;
@@ -81,25 +66,25 @@ public final class BlockLoaderExecutor implements EventHandler<BlockLoader> {
     } catch (ConnectionFailedException e) {
       loader = null;
       LOG.log(Level.WARNING, "Failed to load block {0} because of connection failure", blockId);
-      memoryManager.loadFail(blockId, pin, e);
+      memoryManager.copyFail(blockId, blockSize, pin, e);
       return;
     } catch (TransferFailedException e) {
       loader = null;
       LOG.log(Level.WARNING, "An error occurred while transferring the block {0} from the Datanode", blockId);
-      memoryManager.loadFail(blockId, pin, e);
+      memoryManager.copyFail(blockId, blockSize, pin, e);
       return;
     } catch (IOException e) {
       loader = null;
       LOG.log(Level.WARNING, "Failed to load block "+blockId, e);
-      memoryManager.loadFail(blockId, pin, e);
+      memoryManager.copyFail(blockId, blockSize, pin, e);
       return;
     } catch (Throwable t) {
       loader = null;
       LOG.log(Level.SEVERE, "Unexpected throwable at "+blockId, t);
-      memoryManager.loadFail(blockId, pin, t);
+      memoryManager.copyFail(blockId, blockSize, pin, t);
       return;
     }
 
-    memoryManager.loadSuccess(blockId, pin);
+    memoryManager.loadSuccess(blockId, blockSize, pin);
   }
 }

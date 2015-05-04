@@ -1,8 +1,5 @@
 package org.apache.reef.inmemory.driver;
 
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import org.apache.reef.driver.task.RunningTask;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -10,25 +7,19 @@ import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
-import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.reef.driver.task.RunningTask;
+import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.ITUtils;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
-import org.apache.reef.inmemory.common.entity.User;
-import org.apache.reef.inmemory.common.hdfs.HdfsBlockIdFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockInfoFactory;
+import org.apache.reef.inmemory.common.hdfs.HdfsBlockMetaFactory;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.NullEventRecorder;
 import org.apache.reef.inmemory.common.replication.Action;
-import org.apache.reef.inmemory.common.replication.SyncMethod;
-import org.apache.reef.inmemory.common.replication.Write;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheLoader;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheMessenger;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheSelectionPolicy;
-import org.apache.reef.inmemory.driver.hdfs.HdfsCacheUpdater;
-import org.apache.reef.inmemory.driver.hdfs.HdfsRandomCacheSelectionPolicy;
-import org.apache.reef.inmemory.driver.locality.LocationSorter;
-import org.apache.reef.inmemory.driver.locality.YarnLocationSorter;
+import org.apache.reef.inmemory.driver.hdfs.*;
+import org.apache.reef.inmemory.driver.metatree.MetaTree;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.junit.After;
 import org.junit.Before;
@@ -55,40 +46,31 @@ public final class SurfMetaManagerITCase {
   private static final int blockSize = 512;
   private static final String TESTDIR = ITUtils.getTestDir();
 
-  private EventRecorder RECORD;
   private FileSystem fs;
-  private CacheManager manager;
-  private HdfsCacheMessenger messenger;
-  private CacheLoader<Path, FileMeta> loader;
-  private LoadingCacheConstructor constructor;
-  private LoadingCache<Path, FileMeta> cache;
-  private CacheUpdater cacheUpdater;
-  private LocationSorter locationSorter;
-  private HdfsCacheSelectionPolicy selector;
-  private CacheLocationRemover cacheLocationRemover;
-  private HdfsBlockIdFactory blockFactory;
-  private ReplicationPolicy replicationPolicy;
   private SurfMetaManager metaManager;
+  private FileSystem baseFs;
+  private CacheLocationRemover cacheLocationRemover;
 
   @Before
   public void setUp() throws IOException {
-    RECORD = new NullEventRecorder();
-    manager = TestUtils.cacheManager();
-    messenger = new HdfsCacheMessenger(manager);
-    selector = new HdfsRandomCacheSelectionPolicy();
+    final EventRecorder RECORD = new NullEventRecorder();
+    final CacheNodeManager manager = TestUtils.cacheManager();
+    final HdfsCacheNodeMessenger messenger = new HdfsCacheNodeMessenger(manager);
+    final HdfsCacheSelectionPolicy selector = new HdfsRandomCacheSelectionPolicy();
     cacheLocationRemover = new CacheLocationRemover();
-    blockFactory = new HdfsBlockIdFactory();
-    replicationPolicy = mock(ReplicationPolicy.class);
+    final HdfsBlockMetaFactory blockMetaFactory = new HdfsBlockMetaFactory();
+    final HdfsBlockInfoFactory blockInfoFactory = new HdfsBlockInfoFactory();
+    final ReplicationPolicy replicationPolicy = mock(ReplicationPolicy.class);
 
     for (int i = 0; i < 3; i++) {
       final RunningTask task = TestUtils.mockRunningTask("" + i, "host" + i);
 
       manager.addRunningTask(task);
-      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001+i));
+      manager.handleHeartbeat(task.getId(), TestUtils.cacheStatusMessage(18001 + i));
     }
     List<CacheNode> selectedNodes = manager.getCaches();
     assertEquals(3, selectedNodes.size());
-    when(replicationPolicy.getReplicationAction(anyString(), any(FileMeta.class))).thenReturn(new Action(3, false, new Write(SyncMethod.WRITE_BACK, 1)));
+    when(replicationPolicy.getReplicationAction(anyString(), any(FileMeta.class))).thenReturn(new Action(3, false));
 
     Configuration hdfsConfig = new HdfsConfiguration();
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
@@ -97,15 +79,15 @@ public final class SurfMetaManagerITCase {
     fs = ITUtils.getHdfs(hdfsConfig);
     fs.mkdirs(new Path(TESTDIR));
 
-    loader = new HdfsCacheLoader(
-            manager, messenger, selector, blockFactory, replicationPolicy, fs.getUri().toString(), RECORD);
-    constructor = new LoadingCacheConstructor(loader);
-    cache = constructor.newInstance();
+    baseFs = new BaseFsConstructor(ITUtils.getBaseFsAddress()).newInstance();
+    final HdfsBlockLocationGetter blockLocationGetter = new HdfsBlockLocationGetter(baseFs);
 
-    cacheUpdater = new HdfsCacheUpdater(manager, messenger, selector, cacheLocationRemover, blockFactory, replicationPolicy, fs.getUri().toString());
-    locationSorter = new YarnLocationSorter(new YarnConfiguration());
+    final FileMetaStatusFactory fileMetaStatusFactory = new FileMetaStatusFactory(replicationPolicy);
+    final HDFSClient baseFsClient = new HDFSClient(baseFs, fileMetaStatusFactory);
+    final MetaTree metaTree = new MetaTree(baseFsClient, new NullEventRecorder(), fileMetaStatusFactory);
+    final FileMetaUpdater fileMetaUpdater = new HdfsFileMetaUpdater(manager, messenger, selector, cacheLocationRemover, blockMetaFactory, blockInfoFactory, replicationPolicy, baseFs, blockLocationGetter);
 
-    metaManager = new SurfMetaManager(cache, messenger, cacheLocationRemover, cacheUpdater, locationSorter);
+    metaManager = new SurfMetaManager(messenger, cacheLocationRemover, fileMetaUpdater, blockMetaFactory, metaTree);
   }
 
   /**
@@ -114,6 +96,7 @@ public final class SurfMetaManagerITCase {
   @After
   public void tearDown() throws IOException {
     fs.delete(new Path(TESTDIR), true);
+    baseFs.close();
   }
 
   /**
@@ -124,13 +107,13 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentLoad() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = TESTDIR+"/largeFile";
+    final String path = TESTDIR + "/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
             .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
 
-    final int numThreads =  10;
+    final int numThreads = 10;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
@@ -141,7 +124,7 @@ public final class SurfMetaManagerITCase {
         @Override
         public void run() {
           try {
-            fileMetas[index] = metaManager.getFile(new Path(path), new User(), "host0");
+            fileMetas[index] = metaManager.getOrLoadFileMeta(path);
           } catch (final Throwable t) {
             fail(t.toString());
             throw new RuntimeException(t);
@@ -154,9 +137,9 @@ public final class SurfMetaManagerITCase {
       futures[i].get();
     }
 
-    // They should all return different fileMetas
+    // They should all return different fileMetas (thanks to deepCopy())
     for (int i = 0; i < numThreads - 1; i++) {
-      for (int j = i+1; j < numThreads; j++) {
+      for (int j = i + 1; j < numThreads; j++) {
         assertFalse(fileMetas[i] == fileMetas[j]);
       }
     }
@@ -166,15 +149,16 @@ public final class SurfMetaManagerITCase {
     assertNotNull(fileMeta);
     assertNotNull(fileMeta.getBlocks());
     assertEquals(blockSize, fileMeta.getBlockSize());
-    assertEquals(largeFile.toString(), fileMeta.getFullPath());
+    assertEquals(chunkLength * numChunks, fileMeta.getFileSize());
 
-    final List<BlockInfo> blocks = fileMeta.getBlocks();
+    final List<BlockMeta> blocks = fileMeta.getBlocks();
     assertEquals(locatedBlocks.getLocatedBlocks().size(), blocks.size());
     final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
             ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
     assertEquals(numBlocksComputed, blocks.size());
     for (int i = 0; i < blocks.size(); i++) {
-      assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), blocks.get(i).getBlockId());
+      assertEquals(locatedBlocks.get(i).getStartOffset(), blocks.get(i).getOffSet());
+      assertEquals(locatedBlocks.get(i).getBlockSize(), blocks.get(i).getLength());
       assertEquals(3, blocks.get(i).getLocationsSize());
     }
   }
@@ -187,34 +171,34 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = TESTDIR+"/largeFile";
+    final String path = TESTDIR + "/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
-            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
+            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength * numChunks);
 
-    final FileMeta fileMeta = metaManager.getFile(new Path(path), new User(), "host0");
+    final FileMeta fileMeta = metaManager.getOrLoadFileMeta(path);
 
-    final List<BlockInfo> blocks = fileMeta.getBlocks();
+    final List<BlockMeta> blocks = fileMeta.getBlocks();
     // Remove first location from first block
     {
-      final BlockInfo block = blocks.get(0);
+      final BlockMeta block = blocks.get(0);
       final Iterator<NodeInfo> it = block.getLocationsIterator();
       final NodeInfo nodeInfo = it.next();
-      cacheLocationRemover.remove(fileMeta.getFullPath(), blockFactory.newBlockId(block), nodeInfo.getAddress());
+      cacheLocationRemover.remove(fileMeta.getFileId(), new BlockId(block), nodeInfo.getAddress());
     }
     // Remove all locations from second block
     {
-      final BlockInfo block = blocks.get(1);
+      final BlockMeta block = blocks.get(1);
       final Iterator<NodeInfo> it = block.getLocationsIterator();
       while (it.hasNext()) {
         final NodeInfo nodeInfo = it.next();
-        cacheLocationRemover.remove(fileMeta.getFullPath(), blockFactory.newBlockId(block), nodeInfo.getAddress());
+        cacheLocationRemover.remove(fileMeta.getFileId(), new BlockId(block), nodeInfo.getAddress());
       }
     }
     // (Leave rest of the blocks alone)
 
-    final int numThreads =  10;
+    final int numThreads = 10;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
@@ -225,7 +209,7 @@ public final class SurfMetaManagerITCase {
         @Override
         public void run() {
           try {
-            fileMetas[index] = metaManager.getFile(new Path(path), new User(), "host0");
+            fileMetas[index] = metaManager.getOrLoadFileMeta(path);
           } catch (final Throwable t) {
             fail(t.toString());
             throw new RuntimeException(t);
@@ -244,13 +228,14 @@ public final class SurfMetaManagerITCase {
       final FileMeta updatedFileMeta = fileMetas[index];
       assertFalse(updatedFileMeta == fileMeta);
 
-      final List<BlockInfo> updatedBlocks = updatedFileMeta.getBlocks();
+      final List<BlockMeta> updatedBlocks = updatedFileMeta.getBlocks();
       assertEquals(locatedBlocks.getLocatedBlocks().size(), updatedBlocks.size());
       final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
               ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
       assertEquals(numBlocksComputed, updatedBlocks.size());
       for (int i = 0; i < updatedBlocks.size(); i++) {
-        assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), updatedBlocks.get(i).getBlockId());
+        assertEquals(locatedBlocks.get(i).getStartOffset(), updatedBlocks.get(i).getOffSet());
+        assertEquals(locatedBlocks.get(i).getBlockSize(), updatedBlocks.get(i).getLength());
         assertTrue(updatedBlocks.get(i).getLocationsSize() > 0);
         assertTrue(3 >= updatedBlocks.get(i).getLocationsSize());
       }
@@ -265,20 +250,19 @@ public final class SurfMetaManagerITCase {
   public void testConcurrentRemoveAndUpdate() throws Throwable {
     final int chunkLength = 2000;
     final int numChunks = 20;
-    final String path = TESTDIR+"/largeFile";
+    final String path = TESTDIR + "/largeFile";
     final Path largeFile = ITUtils.writeFile(fs, path, chunkLength, numChunks);
 
-    final LocatedBlocks locatedBlocks = ((DistributedFileSystem)fs)
-            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength*numChunks);
+    final LocatedBlocks locatedBlocks = ((DistributedFileSystem) fs)
+            .getClient().getLocatedBlocks(largeFile.toString(), 0, chunkLength * numChunks);
 
-    final FileMeta fileMeta = metaManager.getFile(new Path(path), new User(), "host0");
-
-    final int numThreads =  20;
+    final FileMeta fileMeta = metaManager.getOrLoadFileMeta(path);
+    final int numThreads = 20;
     final ExecutorService e = Executors.newFixedThreadPool(numThreads);
     final Future<?>[] futures = new Future<?>[numThreads];
     final FileMeta[] fileMetas = new FileMeta[numThreads];
 
-    final List<BlockInfo> blocks = fileMeta.getBlocks();
+    final List<BlockMeta> blocks = fileMeta.getBlocks();
     for (int i = 0; i < numThreads; i++) {
       final int index = i;
       futures[index] = e.submit(new Runnable() {
@@ -286,13 +270,13 @@ public final class SurfMetaManagerITCase {
         public void run() {
           try {
             if (index % 2 == 0) {
-              fileMetas[index] = metaManager.getFile(new Path(path), new User(), "host0");
+              fileMetas[index] = metaManager.getOrLoadFileMeta(path);
             } else {
-              final BlockInfo block = blocks.get(index);
+              final BlockMeta block = blocks.get(index);
               final Iterator<NodeInfo> it = block.getLocationsIterator();
               while (it.hasNext()) {
                 final NodeInfo nodeInfo = it.next();
-                cacheLocationRemover.remove(fileMeta.getFullPath(), blockFactory.newBlockId(block), nodeInfo.getAddress());
+                cacheLocationRemover.remove(fileMeta.getFileId(), new BlockId(block), nodeInfo.getAddress());
               }
             }
           } catch (final Throwable t) {
@@ -316,13 +300,14 @@ public final class SurfMetaManagerITCase {
       final FileMeta updatedFileMeta = fileMetas[index];
       assertFalse(updatedFileMeta == fileMeta);
 
-      final List<BlockInfo> updatedBlocks = updatedFileMeta.getBlocks();
+      final List<BlockMeta> updatedBlocks = updatedFileMeta.getBlocks();
       assertEquals(locatedBlocks.getLocatedBlocks().size(), updatedBlocks.size());
       final int numBlocksComputed = (chunkLength * numChunks) / blockSize +
               ((chunkLength * numChunks) % blockSize == 0 ? 0 : 1); // 1, if there is a remainder
       assertEquals(numBlocksComputed, updatedBlocks.size());
       for (int i = 0; i < updatedBlocks.size(); i++) {
-        assertEquals(locatedBlocks.get(i).getBlock().getBlockId(), updatedBlocks.get(i).getBlockId());
+        assertEquals(locatedBlocks.get(i).getStartOffset(), updatedBlocks.get(i).getOffSet());
+        assertEquals(locatedBlocks.get(i).getBlockSize(), updatedBlocks.get(i).getLength());
         assertTrue(updatedBlocks.get(i).getLocationsSize() > 0);
         assertTrue(3 >= updatedBlocks.get(i).getLocationsSize());
       }

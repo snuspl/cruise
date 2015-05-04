@@ -10,7 +10,7 @@ import java.util.List;
  * Supports FS-agnostic Task Management operations. Implementing classes must
  * support concurrent calls from multiple threads.
  */
-public interface CacheManager {
+public interface CacheNodeManager {
 
   /**
    * Request the specified number of evaluators with the memory size

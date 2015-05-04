@@ -1,7 +1,5 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.client.DriverLauncher;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -10,8 +8,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.reef.inmemory.Launch;
 import org.apache.reef.inmemory.common.ITUtils;
+import org.apache.reef.inmemory.common.SurfLauncher;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -23,71 +22,42 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
 
 /**
- * Tests for SurfFS methods that delegate to a Base FS.
- * The tests instantiate Surf with a single Driver and Task on a new thread.
- * The tests connecting to a HDFS minicluster as the Base FS.
- *
- * Because the systems under tests are loosely coupled, the test relies on
- * timeouts and sleep calls to roughly synchronize startup and shutdown times.
- * See comments on these times below before changing these test cases.
- *
+ * Test reading HDFS files(initially uncached) via Surf
+
  * Fallback is turned off, except where explicitly tested. This is to avoid
  * silently passing tests when Surf failed but Base FS recovered.
  */
-public final class SurfFSOpenITCase {
+public final class SurfFSReadITCase {
 
-  private static final Logger LOG = Logger.getLogger(SurfFSOpenITCase.class.getName());
+  private static final Logger LOG = Logger.getLogger(SurfFSReadITCase.class.getName());
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;
-
-  private static ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-  /**
-   * The total execution time of Surf. The test must wait for this timeout in order to exit gracefully
-   * (without leaving behind orphan processes). When adding more test cases,
-   * you may need to increase this value.
-   */
-  private static final int SURF_TIMEOUT = 40 * 1000;
-
-  /**
-   * The time to wait for Surf to complete startup. If Surf startup time increases, you may need
-   * to increase this value.
-   */
-  private static final int SURF_STARTUP_SLEEP = 15 * 1000;
-
-  /**
-   * The time to wait for Surf graceful shutdown. If this time expires,
-   * the user will have to hunt down orphan processes.
-   */
-  private static final int SURF_SHUTDOWN_WAIT = 40 * 1000;
 
   private static final byte[] CHUNK = new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5, (byte)6, (byte)7, (byte)8};
 
   private static final String TESTDIR = ITUtils.getTestDir();
 
-  private static final String SHORT_FILE_PATH = TESTDIR+"/"+"COUNT.short";
+  private static final String SHORT_FILE_PATH = TESTDIR + "/" + "COUNT.short";
   private static final int SHORT_FILE_NUM_CHUNKS = 1;
 
-  private static final String LONG_FILE_PATH = TESTDIR+"/"+"COUNT.long";
+  private static final String LONG_FILE_PATH = TESTDIR + "/" + "COUNT.long";
   private static final int LONG_FILE_NUM_CHUNKS = 140;
+
+  private static final String WRITE_FILE_PATH = TESTDIR + "/" + "WRITE.surf";
+  private static final int WRITE_FILE_NUM_CHUNKS = 1024;
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
 
   private static final int DFS_BLOCK_SIZE_VALUE = 512;
 
-  private static final Object lock = new Object();
-  private static final AtomicBoolean jobFinished = new AtomicBoolean(false);
+  private static final SurfLauncher surfLauncher = new SurfLauncher();
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -116,38 +86,8 @@ public final class SurfFSOpenITCase {
     }
     stream2.close();
 
-    executorService.submit(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          final org.apache.reef.tang.Configuration clConf = Launch.parseCommandLine(new String[]{"-dfs_address", baseFs.getUri().toString()});
-          final org.apache.reef.tang.Configuration fileConf = Launch.parseConfigFile();
-          final org.apache.reef.tang.Configuration runtimeConfig = Launch.getRuntimeConfiguration(clConf, fileConf);
-          final org.apache.reef.tang.Configuration launchConfig = Launch.getLaunchConfiguration(clConf, fileConf);
+    surfLauncher.launch(baseFs);
 
-          DriverLauncher.getLauncher(runtimeConfig).run(launchConfig, SURF_TIMEOUT);
-          jobFinished.set(true);
-          synchronized (lock) {
-            lock.notifyAll();
-          }
-        } catch (Exception e) {
-          throw new RuntimeException("Could not run Surf instance", e);
-        }
-      }
-    });
-
-    try {
-      Thread.sleep(SURF_STARTUP_SLEEP); // Wait for Surf setup before continuing
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
-  /**
-   * Set up surfFs client; the client connects to REEF that was created in setUpClass
-   */
-  @Before
-  public void setUp() throws IOException {
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
     conf.setInt(SurfFS.CACHECLIENT_BUFFER_SIZE_KEY, 64);
@@ -166,16 +106,7 @@ public final class SurfFSOpenITCase {
   @AfterClass
   public static void tearDownClass() throws Exception {
     baseFs.delete(new Path(TESTDIR), true);
-    if (!jobFinished.get()) {
-      LOG.log(Level.INFO, "Waiting for Surf job to complete...");
-      synchronized (lock) {
-        lock.wait(SURF_SHUTDOWN_WAIT);
-      }
-    }
-
-    if (!jobFinished.get()) {
-      LOG.log(Level.SEVERE, "Surf did not exit gracefully. Please check for orphan processes (e.g. using `ps`) and kill them!");
-    }
+    surfLauncher.close();
   }
 
   private void assertBufEqualsChunk(final byte[] buf, int position, int length) {
@@ -435,5 +366,21 @@ public final class SurfFSOpenITCase {
 
     final FSDataInputStream in = surfFsWithFallback.open(new Path(SHORT_FILE_PATH));
     assertTrue(in.getWrappedStream() instanceof FallbackFSInputStream);
+  }
+
+  /**
+   * Test the file can be read after written in Surf
+   * @throws IOException
+   */
+  @Test
+  public void testReadFileWrittenInSurf() throws IOException {
+    final Path path = new Path(WRITE_FILE_PATH);
+    final FSDataOutputStream stream = surfFs.create(path);
+    for (int i = 0; i < WRITE_FILE_NUM_CHUNKS; i++) {
+      stream.write(CHUNK);
+    }
+    stream.close();
+
+    read(surfFs, WRITE_FILE_PATH, WRITE_FILE_NUM_CHUNKS);
   }
 }

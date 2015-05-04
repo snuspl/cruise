@@ -6,17 +6,17 @@ import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.inmemory.common.CacheStatusMessage;
+import org.apache.reef.inmemory.common.DfsParameters;
 import org.apache.reef.inmemory.common.Instrumentor;
+import org.apache.reef.inmemory.task.CacheParameters;
+import org.apache.reef.inmemory.task.InMemoryTask;
+import org.apache.reef.inmemory.task.InMemoryTaskConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.BindException;
 import org.apache.reef.wake.StageConfiguration;
-import org.apache.reef.inmemory.common.CacheStatusMessage;
-import org.apache.reef.inmemory.common.DfsParameters;
-import org.apache.reef.inmemory.task.CacheParameters;
-import org.apache.reef.inmemory.task.InMemoryTask;
-import org.apache.reef.inmemory.task.InMemoryTaskConfiguration;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -30,9 +30,9 @@ import java.util.logging.Logger;
  * Provides an implementation for CacheManager. Messaging is taken care of
  * at CacheMessenger, because it must be implemented per Base FS.
  */
-public final class CacheManagerImpl implements CacheManager {
+public final class CacheNodeManagerImpl implements CacheNodeManager {
 
-  private static final Logger LOG = Logger.getLogger(CacheManagerImpl.class.getName());
+  private static final Logger LOG = Logger.getLogger(CacheNodeManagerImpl.class.getName());
 
   private final EvaluatorRequestor evaluatorRequestor;
   private final String dfsType;
@@ -48,14 +48,14 @@ public final class CacheManagerImpl implements CacheManager {
   private final Map<String, CacheNode> caches = new HashMap<>();
 
   @Inject
-  public CacheManagerImpl(final EvaluatorRequestor evaluatorRequestor,
-                          final @Parameter(DfsParameters.Type.class) String dfsType,
-                          final @Parameter(CacheParameters.Port.class) int cachePort,
-                          final @Parameter(CacheParameters.Memory.class) int cacheMemory,
-                          final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
-                          final @Parameter(CacheParameters.HeapSlack.class) double cacheHeapSlack,
-                          final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads,
-                          final Instrumentor instrumentor) {
+  public CacheNodeManagerImpl(final EvaluatorRequestor evaluatorRequestor,
+                              final @Parameter(DfsParameters.Type.class) String dfsType,
+                              final @Parameter(CacheParameters.Port.class) int cachePort,
+                              final @Parameter(CacheParameters.Memory.class) int cacheMemory,
+                              final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
+                              final @Parameter(CacheParameters.HeapSlack.class) double cacheHeapSlack,
+                              final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads,
+                              final Instrumentor instrumentor) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.dfsType = dfsType;
     this.cachePort = cachePort;
@@ -146,12 +146,15 @@ public final class CacheManagerImpl implements CacheManager {
     if (pendingTasks.containsKey(taskId) && msg.getBindPort() != 0) {
       final RunningTask task = pendingTasks.remove(taskId);
       final CacheNode cache = new CacheNode(task, msg.getBindPort());
+      cache.setLatestStatistics(msg.getStatistics());
+      cache.setLatestTimestamp(System.currentTimeMillis());
       caches.put(taskId, cache);
       LOG.log(Level.INFO, "Cache "+cache.getAddress()+" added from task "+cache.getTaskId());
     } else if (caches.containsKey(taskId)) {
       final CacheNode cache = caches.get(taskId);
       cache.setLatestStatistics(msg.getStatistics());
       cache.setLatestTimestamp(System.currentTimeMillis());
+      caches.put(taskId, cache);
     }
   }
 }

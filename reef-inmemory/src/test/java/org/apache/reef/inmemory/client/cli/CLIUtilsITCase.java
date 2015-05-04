@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.client.SurfFS;
 import org.apache.reef.inmemory.common.ITUtils;
+import org.apache.reef.inmemory.common.SurfLauncher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -34,6 +35,8 @@ public final class CLIUtilsITCase {
   private final static String[] dirPaths = new String[] {TESTDIR+"/1", TESTDIR+"/1/2", TESTDIR+"/1/2/3"};
   private final static String[] filePaths = new String[] {"A", "B", "C"};
 
+  private static final SurfLauncher surfLauncher = new SurfLauncher();
+
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
    * Don't run destructive tests on the elements created here.
@@ -43,17 +46,19 @@ public final class CLIUtilsITCase {
     Configuration hdfsConfig = new HdfsConfiguration();
     baseFs = ITUtils.getHdfs(hdfsConfig);
 
+    surfLauncher.launch(baseFs);
+
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
     surfFs = new SurfFS();
     surfFs.initialize(URI.create("surf://localhost:18000"), conf);
 
-    baseFs.mkdirs(new Path(dirPaths[2]));
+    surfFs.mkdirs(new Path(dirPaths[2]));
     allPaths = new ArrayList<>(dirPaths.length * filePaths.length);
     for (String dir : dirPaths) {
       for (String file : filePaths) {
         final Path path = new Path(dir + "/" + file);
-        final FSDataOutputStream stream = baseFs.create(path);
+        final FSDataOutputStream stream = surfFs.create(path);
         stream.write((byte)1);
         stream.close();
         allPaths.add(path.toUri().getPath());
@@ -67,8 +72,10 @@ public final class CLIUtilsITCase {
   @AfterClass
   public static void tearDownClass() throws IOException {
     for (final String dirPath : dirPaths) {
+      // TODO The directories should be deleted from Surf once delete operation is implemented.
       baseFs.delete(new Path(dirPath), true);
     }
+    surfLauncher.close();
   }
 
   /**

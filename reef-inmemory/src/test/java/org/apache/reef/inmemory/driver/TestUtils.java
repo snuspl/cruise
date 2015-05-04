@@ -41,7 +41,7 @@ public class TestUtils {
     return new CacheStatusMessage(new CacheStatistics(), new CacheUpdates(), port);
   }
 
-  public static CacheManager cacheManager() {
-    return new CacheManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0, mock(Instrumentor.class));
+  public static CacheNodeManager cacheManager() {
+    return new CacheNodeManagerImpl(mock(EvaluatorRequestor.class), "test", 0, 0, 0, 0, 0, mock(Instrumentor.class));
   }
 }

@@ -23,20 +23,21 @@ import static org.mockito.Mockito.*;
 public final class SurfFSFallbackTest {
   private FileSystem surfFs;
   private FileSystem baseFs;
-  private SurfMetaService.Client metaClient;
   private final Path path = new Path("/test/path");
 
   /**
-   * Initialize the metaClient that throws an Exception on getFileMeta
+   * Initialize the metaClient that throws an Exception on get
    */
   @Before
   public void setUp() throws Exception {
-    metaClient = mock(SurfMetaService.Client.class);
-    doThrow(TException.class).when(metaClient).getFileMeta(anyString(), anyString());
+    final SurfMetaService.Client metaClient = mock(SurfMetaService.Client.class);
+    doThrow(TException.class).when(metaClient).getOrLoadFileMeta(anyString(), anyString());
+    final MetaClientManager metaClientManager = mock(MetaClientManager.class);
+    when(metaClientManager.get(anyString())).thenReturn(metaClient);
 
     baseFs = mock(FileSystem.class);
 
-    surfFs = new SurfFS(baseFs, metaClient, new NullEventRecorder());
+    surfFs = new SurfFS(baseFs, metaClientManager, new NullEventRecorder());
   }
 
   /**

@@ -1,16 +1,16 @@
 package org.apache.reef.inmemory.driver.service;
 
-import com.google.common.cache.LoadingCache;
+import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.driver.*;
 import org.apache.reef.inmemory.driver.locality.LocationSorter;
+import org.apache.reef.inmemory.driver.metatree.MetaTree;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
+import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Test for SurfMetaServer
@@ -25,21 +25,23 @@ public final class SurfMetaServerTest {
   @Test
   public void testExceptionTranslation() throws Throwable {
 
-    final LoadingCache loadingCache = mock(LoadingCache.class);
-    when(loadingCache.get(anyObject())).thenThrow(java.io.FileNotFoundException.class);
-    final CacheMessenger cacheMessenger = mock(CacheMessenger.class);
-    final CacheManager cacheManager = mock(CacheManager.class);
+    final CacheNodeMessenger cacheNodeMessenger = mock(CacheNodeMessenger.class);
+    final CacheNodeManager cacheNodeManager = mock(CacheNodeManager.class);
     final ServiceRegistry serviceRegistry = mock(ServiceRegistry.class);
     final ReplicationPolicy replicationPolicy = mock(ReplicationPolicy.class);
+    final WritingCacheSelectionPolicy writingCacheSelectionPolicy = mock(WritingCacheSelectionPolicy.class);
     final CacheLocationRemover cacheLocationRemover = new CacheLocationRemover();
-    final CacheUpdater cacheUpdater = mock(CacheUpdater.class);
+    final FileMetaUpdater fileMetaUpdater = mock(FileMetaUpdater.class);
+    final BlockMetaFactory blockMetaFactory = mock(BlockMetaFactory.class);
     final LocationSorter locationSorter = mock(LocationSorter.class);
+    final MetaTree metaTree = mock(MetaTree.class);
 
-    final SurfMetaManager metaManager = new SurfMetaManager(loadingCache, cacheMessenger, cacheLocationRemover, cacheUpdater, locationSorter);
+    final SurfMetaManager metaManager = new SurfMetaManager(cacheNodeMessenger, cacheLocationRemover,
+            fileMetaUpdater, blockMetaFactory, metaTree);
 
     try {
       final SurfMetaServer metaService = new SurfMetaServer(
-              metaManager, cacheManager, serviceRegistry, replicationPolicy, 18000, 10, 1);
+              metaManager, cacheNodeManager, serviceRegistry, writingCacheSelectionPolicy, replicationPolicy, locationSorter, 18000, 10, 1);
       metaService.load("/nonexistent/path");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof org.apache.reef.inmemory.common.exceptions.FileNotFoundException);

@@ -1,7 +1,5 @@
 package org.apache.reef.inmemory.task.hdfs;
 
-import org.apache.reef.inmemory.task.BlockId;
-
 import java.io.Serializable;
 
 /**
@@ -16,7 +14,7 @@ import java.io.Serializable;
  * - HDFS's LocatedBlock cannot be used, as it does not define an equals()
  *   method.
  */
-public final class HdfsBlockId implements BlockId, Serializable {
+public final class HdfsBlockInfo implements Serializable {
 
   private final String filePath;
   private final long offset;
@@ -26,13 +24,13 @@ public final class HdfsBlockId implements BlockId, Serializable {
   private final String poolId;
   private final String encodedToken;
 
-  public HdfsBlockId(final String filePath,
-                     final long offset,
-                     final long blockId,
-                     final long blockSize,
-                     final long generationTimestamp,
-                     final String poolId,
-                     final String encodedToken) {
+  public HdfsBlockInfo(final String filePath,
+                       final long offset,
+                       final long blockId,
+                       final long blockSize,
+                       final long generationTimestamp,
+                       final String poolId,
+                       final String encodedToken) {
     this.filePath = filePath;
     this.offset = offset;
     this.blockId = blockId;
@@ -42,24 +40,20 @@ public final class HdfsBlockId implements BlockId, Serializable {
     this.encodedToken = encodedToken;
   }
 
-  @Override
   public String getFilePath() {
     return filePath;
   }
 
-  @Override
   public long getOffset() {
     return offset;
   }
 
-  @Override
-  public long getUniqueId() {
-    return blockId;
-  }
-
-  @Override
   public long getBlockSize() {
     return blockSize;
+  }
+
+  public long getUniqueId() {
+    return blockId;
   }
 
   public long getGenerationTimestamp() {
@@ -79,33 +73,35 @@ public final class HdfsBlockId implements BlockId, Serializable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
-    HdfsBlockId that = (HdfsBlockId) o;
+    HdfsBlockInfo that = (HdfsBlockInfo) o;
 
+    if (!filePath.equals(that.filePath)) return false;
     if (blockId != that.blockId) return false;
     if (blockSize != that.blockSize) return false;
     if (generationTimestamp != that.generationTimestamp) return false;
-    if (encodedToken != null ? !encodedToken.equals(that.encodedToken) : that.encodedToken != null) return false;
-    if (poolId != null ? !poolId.equals(that.poolId) : that.poolId != null) return false;
-
+    if (!poolId.equals(that.poolId)) return false;
+    if (!encodedToken.equals(that.encodedToken)) return false;
+    if (offset != that.offset) return false;
     return true;
   }
 
   @Override
   public int hashCode() {
-    int result = (int) (blockId ^ (blockId >>> 32));
+    int result = filePath != null ? filePath.hashCode() : 0;
+    result = 31 * result + (int) (blockId ^ (blockId >>> 32));
     result = 31 * result + (int) (blockSize ^ (blockSize >>> 32));
     result = 31 * result + (int) (generationTimestamp ^ (generationTimestamp >>> 32));
     result = 31 * result + (poolId != null ? poolId.hashCode() : 0);
     result = 31 * result + (encodedToken != null ? encodedToken.hashCode() : 0);
+    result = 31 * result + (int) (offset ^ (offset >>> 32));
     return result;
   }
 
   @Override
   public String toString() {
-    return blockId + ", "
+    return filePath + ", "
+            + blockId + ", "
             + blockSize + ", "
-            + generationTimestamp + ", "
-            + poolId + ", "
-            + encodedToken;
+            + offset;
   }
 }

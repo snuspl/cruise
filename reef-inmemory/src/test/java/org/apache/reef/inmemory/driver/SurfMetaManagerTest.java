@@ -1,16 +1,12 @@
 package org.apache.reef.inmemory.driver;
 
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import org.apache.hadoop.fs.Path;
+import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
-import org.apache.reef.inmemory.common.entity.BlockInfo;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
-import org.apache.reef.inmemory.common.entity.User;
-import org.apache.reef.inmemory.driver.locality.LocationSorter;
-import org.apache.reef.inmemory.task.BlockId;
-import org.apache.reef.inmemory.common.MockBlockId;
+import org.apache.reef.inmemory.driver.metatree.MetaTree;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -21,7 +17,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -29,10 +27,12 @@ import static org.mockito.Mockito.*;
  */
 public final class SurfMetaManagerTest {
   private static final long blockSize = 128L * 1024 * 1024;
-  private CacheMessenger cacheMessenger;
+  private static final long fileSize = blockSize * 2;
+  private static final long blockLength = blockSize / 2;
+  private CacheNodeMessenger cacheNodeMessenger;
   private CacheLocationRemover cacheLocationRemover;
-  private CacheUpdater cacheUpdater;
-  private LocationSorter locationSorter;
+  private FileMetaUpdater fileMetaUpdater;
+  private BlockMetaFactory blockMetaFactory;
 
   /**
    * Setup the Meta Manager with a mock CacheLoader that returns
@@ -41,99 +41,16 @@ public final class SurfMetaManagerTest {
    */
   @Before
   public void setUp() throws Exception {
-    cacheMessenger = mockCacheMessenger();
+    cacheNodeMessenger = mockCacheMessenger();
     cacheLocationRemover = new CacheLocationRemover();
-    cacheUpdater = mock(CacheUpdater.class);
-    locationSorter = mock(LocationSorter.class);
+    fileMetaUpdater = mock(FileMetaUpdater.class);
+    blockMetaFactory = mock(BlockMetaFactory.class);
   }
 
-  private static User defaultUser() {
-    final User user = new User();
-    user.setId("surf");
-    user.setGroup("surf");
-    return user;
-  }
-
-  private static CacheMessenger mockCacheMessenger() {
-    final CacheMessenger cacheMessenger = mock(CacheMessenger.class);
-    doNothing().when(cacheMessenger).clearAll();
-    return cacheMessenger;
-  }
-
-  /**
-   * Verify that load is called only when the path given does not exist.
-   * @throws Throwable
-   */
-  @Test
-  public void testGet() throws Throwable {
-    final Path path = new Path("/path");
-    final User user = defaultUser();
-
-    final CacheLoader<Path, FileMeta> cacheLoader = mock(CacheLoader.class);
-    final FileMeta fileMeta = new FileMeta();
-    when(cacheLoader.load(path)).thenReturn(fileMeta);
-    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
-    final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
-    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, locationSorter);
-    when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
-
-    metaManager.getFile(path, user);
-    verify(cacheLoader, times(1)).load(path);
-    metaManager.getFile(path, user);
-    verify(cacheLoader, times(1)).load(path);
-  }
-
-  /**
-   * Verify that clear properly clears the cache, and returns the number of
-   * previously loaded paths.
-   * @throws Throwable
-   */
-  @Test
-  public void testClear() throws Throwable {
-    final Path path = new Path("/path");
-    final User user = defaultUser();
-
-    final CacheLoader<Path, FileMeta> cacheLoader = mock(CacheLoader.class);
-    final FileMeta fileMeta = new FileMeta();
-    when(cacheLoader.load(path)).thenReturn(fileMeta);
-    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
-    final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
-    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, locationSorter);
-    when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
-
-    assertEquals(0, metaManager.clear());
-    metaManager.getFile(path, user);
-    assertEquals(1, metaManager.clear());
-    assertEquals(0, metaManager.clear());
-  }
-
-  private FileMeta fileMeta(final Path path, final long[] blockIds, final String[] locations) {
-    final FileMeta fileMeta = new FileMeta();
-    fileMeta.setFullPath(path.toString());
-    fileMeta.setBlockSize(blockSize);
-    for (final long blockId : blockIds) {
-      final BlockInfo blockInfo = new BlockInfo();
-      fileMeta.addToBlocks(blockInfo);
-      blockInfo.setFilePath(path.toString());
-      blockInfo.setBlockId(blockId);
-      for (final String location : locations) {
-        final NodeInfo nodeInfo = new NodeInfo();
-        nodeInfo.setAddress(location);
-        nodeInfo.setRack("/default");
-        blockInfo.addToLocations(nodeInfo);
-      }
-    }
-    return fileMeta;
-  }
-
-  private static void addRemoval(final CacheUpdates updates, final Path path, final long blockSize, final long uniqueId) {
-    final BlockId blockId = new MockBlockId(uniqueId, blockSize, path.toString());
-    updates.addRemoval(blockId);
-  }
-
-  private static void addFailure(final CacheUpdates updates, final Path path, final long blockSize, final long uniqueId) {
-    final BlockId blockId = new MockBlockId(uniqueId, blockSize, path.toString());
-    updates.addFailure(blockId, new IOException("Test"));
+  private static CacheNodeMessenger mockCacheMessenger() {
+    final CacheNodeMessenger cacheNodeMessenger = mock(CacheNodeMessenger.class);
+    doNothing().when(cacheNodeMessenger).clearAll();
+    return cacheNodeMessenger;
   }
 
   /**
@@ -141,35 +58,33 @@ public final class SurfMetaManagerTest {
    */
   @Test
   public void testApplyUpdates() throws Throwable {
-    final CacheLoader<Path, FileMeta> cacheLoader = mock(CacheLoader.class);
-    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
-    final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
-    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, locationSorter);
-
+    final MetaTree metaTree = mock(MetaTree.class);
+    final SurfMetaManager metaManager =
+            new SurfMetaManager(cacheNodeMessenger, cacheLocationRemover, fileMetaUpdater, blockMetaFactory, metaTree);
     final String[] addresses = new String[]{ "localhost:17001", "localhost:17002", "localhost:17003" };
-    final User user = defaultUser();
+    final String pathA = "/path/fileA";
+    final long pathAFileId = 1;
 
-    final Path pathA = new Path("/path/fileA");
     {
-      final long[] blockIds = new long[]{0, 1, 2, 3};
-      final FileMeta fileMeta = fileMeta(pathA, blockIds, addresses);
-      when(cacheLoader.load(pathA)).thenReturn(fileMeta);
-      when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
+      final long[] blockOffsets = new long[]{0, 1, 2, 3};
+      final FileMeta fileMeta = fileMeta(pathAFileId, blockOffsets, addresses);
 
-      assertEquals(fileMeta, metaManager.getFile(pathA, user));
+      when(metaTree.getOrLoadFileMeta(pathA)).thenReturn(fileMeta);
+      when(fileMetaUpdater.update(eq(pathA), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
+      assertEquals(fileMeta, metaManager.getOrLoadFileMeta(pathA));
     }
 
     {
       final CacheUpdates updates = new CacheUpdates();
-      addRemoval(updates, pathA, blockSize, 0);
-      addRemoval(updates, pathA, blockSize, 1);
-      addRemoval(updates, pathA, blockSize, 2);
-      addRemoval(updates, pathA, blockSize, 3);
+      addRemoval(updates, pathAFileId, 0);
+      addRemoval(updates, pathAFileId, 1);
+      addRemoval(updates, pathAFileId, 2);
+      addRemoval(updates, pathAFileId, 3);
       final CacheNode cacheNode = mock(CacheNode.class);
       when(cacheNode.getAddress()).thenReturn(addresses[0]);
-      metaManager.applyUpdates(cacheNode, updates);
+      metaManager.applyCacheNodeUpdates(cacheNode, updates);
 
-      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathA.toString());
+      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathAFileId);
       assertEquals(4, pendingRemoves.size());
       for (final BlockId blockId : pendingRemoves.keySet()) {
         assertEquals(1, pendingRemoves.get(blockId).size());
@@ -178,15 +93,15 @@ public final class SurfMetaManagerTest {
 
     {
       final CacheUpdates updates = new CacheUpdates();
-      addFailure(updates, pathA, blockSize, 0);
-      addFailure(updates, pathA, blockSize, 1);
-      addRemoval(updates, pathA, blockSize, 2);
-      addRemoval(updates, pathA, blockSize, 3);
+      addFailure(updates, pathAFileId, 0);
+      addFailure(updates, pathAFileId, 1);
+      addRemoval(updates, pathAFileId, 2);
+      addRemoval(updates, pathAFileId, 3);
       final CacheNode cacheNode = mock(CacheNode.class);
       when(cacheNode.getAddress()).thenReturn(addresses[1]);
-      metaManager.applyUpdates(cacheNode, updates);
+      metaManager.applyCacheNodeUpdates(cacheNode, updates);
 
-      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathA.toString());
+      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathAFileId);
       assertEquals(4, pendingRemoves.size());
       for (final BlockId blockId : pendingRemoves.keySet()) {
         assertEquals(1, pendingRemoves.get(blockId).size());
@@ -200,43 +115,44 @@ public final class SurfMetaManagerTest {
    */
   @Test
   public void testConcurrentUpdates() throws Throwable {
-    final CacheLoader<Path, FileMeta> cacheLoader = mock(CacheLoader.class);
-    final LoadingCacheConstructor constructor = new LoadingCacheConstructor(cacheLoader);
-    final LoadingCache<Path, FileMeta> cache = constructor.newInstance();
-    final SurfMetaManager metaManager = new SurfMetaManager(cache, cacheMessenger, cacheLocationRemover, cacheUpdater, locationSorter);
+    final MetaTree metaTree = mock(MetaTree.class);
+    final SurfMetaManager metaManager =
+            new SurfMetaManager(cacheNodeMessenger, cacheLocationRemover, fileMetaUpdater, blockMetaFactory, metaTree);
 
     final int numNodes = 10;
     int port = 17000;
     final String[] addresses = new String[numNodes];
     for (int i = 0; i < numNodes; i++) {
-      addresses[i] = "localhost:"+(port++);
+      addresses[i] = "localhost:" + (port++);
     }
-    final User user = defaultUser();
 
     final int numBlocks = 200;
-    final Path pathA = new Path("/path/fileA");
+    final String pathA = "/path/fileA";
+    final long pathAFileId = 1;
     {
-      final long[] blockIds = new long[numBlocks];
+      final long[] blockOffsets = new long[numBlocks];
       for (int i = 0; i < numBlocks; i++) {
-        blockIds[i] = i;
+        blockOffsets[i] = i;
       }
-      final FileMeta fileMeta = fileMeta(pathA, blockIds, addresses);
-      when(cacheLoader.load(pathA)).thenReturn(fileMeta);
-      when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
+      final FileMeta fileMeta = fileMeta(pathAFileId, blockOffsets, addresses);
+      when(metaTree.getOrLoadFileMeta(pathA)).thenReturn(fileMeta);
+      when(fileMetaUpdater.update(eq(pathA), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
 
-      assertEquals(fileMeta, metaManager.getFile(pathA, user));
+      assertEquals(fileMeta, metaManager.getOrLoadFileMeta(pathA));
     }
 
-    final Path pathB = new Path("/path/fileB");
+    final String pathB = "/path/fileB";
+    final long pathBFileId = 2;
     {
-      final long[] blockIds = new long[numBlocks];
+      final long[] blockOffsets = new long[numBlocks];
       for (int i = 0; i < numBlocks; i++) {
-        blockIds[i] = numBlocks + i;
+        blockOffsets[i] = numBlocks + i;
       }
-      final FileMeta fileMeta = fileMeta(pathB, blockIds, addresses);
-      when(cacheLoader.load(pathB)).thenReturn(fileMeta);
-      when(cacheUpdater.updateMeta(any(Path.class), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
-      assertEquals(fileMeta, metaManager.getFile(pathB, user));
+      final FileMeta fileMeta = fileMeta(pathBFileId, blockOffsets, addresses);
+      when(metaTree.getOrLoadFileMeta(pathB)).thenReturn(fileMeta);
+      when(fileMetaUpdater.update(eq(pathB), eq(fileMeta))).thenReturn(fileMeta.deepCopy());
+
+      assertEquals(fileMeta, metaManager.getOrLoadFileMeta(pathB));
     }
 
     final ExecutorService es = Executors.newFixedThreadPool(numNodes * 2);
@@ -247,11 +163,11 @@ public final class SurfMetaManagerTest {
         public void run() {
           final CacheUpdates updates = new CacheUpdates();
           for (int j = 0; j < numBlocks; j++) {
-            addRemoval(updates, pathA, blockSize, j);
+            addRemoval(updates, pathAFileId, j);
           }
           final CacheNode cacheNode = mock(CacheNode.class);
           when(cacheNode.getAddress()).thenReturn(address);
-          metaManager.applyUpdates(cacheNode, updates);
+          metaManager.applyCacheNodeUpdates(cacheNode, updates);
         }
       });
       es.submit(new Runnable() {
@@ -259,11 +175,11 @@ public final class SurfMetaManagerTest {
         public void run() {
           final CacheUpdates updates = new CacheUpdates();
           for (int j = 0; j < numBlocks; j++) {
-            addRemoval(updates, pathB, blockSize, numBlocks + j);
+            addRemoval(updates, pathBFileId, numBlocks + j);
           }
           final CacheNode cacheNode = mock(CacheNode.class);
           when(cacheNode.getAddress()).thenReturn(address);
-          metaManager.applyUpdates(cacheNode, updates);
+          metaManager.applyCacheNodeUpdates(cacheNode, updates);
         }
       });
     }
@@ -272,7 +188,7 @@ public final class SurfMetaManagerTest {
     assertTrue(terminated);
 
     {
-      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathA.toString());
+      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathAFileId);
       assertEquals(numBlocks, pendingRemoves.size());
       for (final BlockId blockId : pendingRemoves.keySet()) {
         assertEquals(10, pendingRemoves.get(blockId).size());
@@ -280,11 +196,42 @@ public final class SurfMetaManagerTest {
     }
 
     {
-      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathB.toString());
+      final Map<BlockId, List<String>> pendingRemoves = cacheLocationRemover.pullPendingRemoves(pathBFileId);
       assertEquals(numBlocks, pendingRemoves.size());
       for (final BlockId blockId : pendingRemoves.keySet()) {
         assertEquals(10, pendingRemoves.get(blockId).size());
       }
     }
+  }
+
+  private FileMeta fileMeta(final long fileId, final long[] offsets, final String[] locations) {
+    final FileMeta fileMeta = new FileMeta();
+    fileMeta.setFileId(fileId);
+    fileMeta.setFileSize(fileSize);
+    fileMeta.setBlockSize(blockSize);
+    for (final long offset : offsets) {
+      final BlockMeta blockMeta = new BlockMeta();
+      fileMeta.addToBlocks(blockMeta);
+      blockMeta.setFileId(fileId);
+      blockMeta.setLength(blockLength);
+      blockMeta.setOffSet(offset);
+      for (final String location : locations) {
+        final NodeInfo nodeInfo = new NodeInfo();
+        nodeInfo.setAddress(location);
+        nodeInfo.setRack("/default");
+        blockMeta.addToLocations(nodeInfo);
+      }
+    }
+    return fileMeta;
+  }
+
+  private static void addRemoval(final CacheUpdates updates, final long fileId, final long offset) {
+    final BlockId blockId = new BlockId(fileId, offset);
+    updates.addRemoval(blockId);
+  }
+
+  private static void addFailure(final CacheUpdates updates, final long fileId, final long offset) {
+    final BlockId blockId = new BlockId(fileId, offset);
+    updates.addFailure(blockId, new IOException("Test"));
   }
 }

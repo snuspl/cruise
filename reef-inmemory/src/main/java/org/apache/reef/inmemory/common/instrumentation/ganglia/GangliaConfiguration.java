@@ -1,9 +1,9 @@
 package org.apache.reef.inmemory.common.instrumentation.ganglia;
 
+import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.RequiredParameter;
-import org.apache.reef.inmemory.common.instrumentation.InstrumentationParameters;
 
 /**
  * A configuration module for Ganglia-specific parameters

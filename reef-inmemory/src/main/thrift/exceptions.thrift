@@ -8,13 +8,6 @@ exception FileNotFoundException{
 }
 
 /**
- * File cannot be created because it already exists at the specified path
- */
-exception FileAlreadyExistsException{
-	1: string message
-}
-
-/**
  * Generic IO Exception
  */
 exception IOException{
@@ -29,8 +22,22 @@ exception BlockLoadingException{
 }
 
 /**
+* The Cache block could not be retrieved, because it is being written
+**/
+exception BlockWritingException{
+    1: i64 bytesWritten,
+}
+
+/**
  * The Cache block could not be retrieved, because it was not found
  */
 exception BlockNotFoundException{
+    1: string message
+}
+
+/**
+ * The Cache block is not able to write data received from the Client
+ */
+exception BlockNotWritableException{
     1: string message
 }

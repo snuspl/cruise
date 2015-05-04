@@ -8,21 +8,24 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.reef.inmemory.common.ITUtils;
+import org.apache.reef.inmemory.common.SurfLauncher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for SurfFS methods that delegate to a Base FS.
- * The tests use HDFS as the Base FS, by connecting to a base HDFS minicluster
+ * Tests for SurfFS methods that deal with FileMeta.
  */
-public final class SurfFSDelegationITCase {
+public final class SurfFSMetadataITCase {
+  private static final Logger LOG = Logger.getLogger(SurfFSMetadataITCase.class.getName());
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;
@@ -32,7 +35,9 @@ public final class SurfFSDelegationITCase {
   private static final String ABSPATH = TESTDIR+"/"+TESTFILE;
 
   private static final String SURF = "surf";
-  private static final String SURF_ADDRESS = "localhost:9001";
+  private static final String SURF_ADDRESS = "localhost:18000";
+
+  private static final SurfLauncher surfLauncher = new SurfLauncher();
 
   /**
    * Connect to HDFS cluster for integration test, and create test elements.
@@ -46,23 +51,30 @@ public final class SurfFSDelegationITCase {
     baseFs = ITUtils.getHdfs(hdfsConfig);
     baseFs.mkdirs(new Path(TESTDIR));
 
-    final FSDataOutputStream stream = baseFs.create(new Path(ABSPATH));
-    stream.writeUTF("Hello Readme");
-    stream.close();
+    surfLauncher.launch(baseFs);
 
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
-
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
+
+    final FSDataOutputStream stream = surfFs.create(new Path(ABSPATH));
+    stream.writeUTF("Hello Readme");
+    stream.close();
   }
 
   /**
    * Remove all directories.
    */
   @AfterClass
-  public static void tearDownClass() throws IOException {
-    baseFs.delete(new Path(TESTDIR), true);
+  public static void tearDownClass() {
+    try {
+      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
+      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+    } catch (IOException e) {
+      LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
+    }
+    surfLauncher.close();
   }
 
   /**
@@ -145,7 +157,7 @@ public final class SurfFSDelegationITCase {
   public void testHdfsPathToSurf() {
     Path path = new Path(baseFs.getUri().toString(), ABSPATH);
     assertTrue(path.isAbsolute());
-    Path surfPath = surfFs.pathToSurf(path);
+    Path surfPath = surfFs.toAbsoluteSurfPath(path);
     assertTrue(surfPath.isAbsolute());
 
     URI surfUri = surfPath.toUri();
@@ -161,7 +173,7 @@ public final class SurfFSDelegationITCase {
   public void testSurfPathToHdfs() {
     Path path = new Path(surfFs.getUri().toString(), ABSPATH);
     assertTrue(path.isAbsolute());
-    Path hdfsPath = surfFs.pathToBase(path);
+    Path hdfsPath = surfFs.toAbsoluteBasePath(path);
     assertTrue(hdfsPath.isAbsolute());
 
     URI hdfsUri = hdfsPath.toUri();

@@ -15,12 +15,8 @@
         }
       ],
       "action" : {
-        "cache_replication_factor" : 5,
-        "pin"    : true,
-        "write" : {
-          "sync" : "WRITE_BACK",
-          "base_replication_factor" : 3
-        }
+        "replication" : 5,
+        "pin"    : true
       }
     },
     {
@@ -33,21 +29,13 @@
         }
       ],
       "action" : {
-        "cache_replication_factor" : -1,
-        "pin"    : false,
-        "write" : {
-          "sync" : "WRITE_THROUGH",
-          "base_replication_factor" : 3
-        }
+        "replication" : -1,
+        "pin"    : false
       }
     }
   ],
   "default" : {
-    "cache_replication_factor" : 2,
-    "pin"    : false,
-    "write" : {
-      "sync" : "WRITE_BACK",
-      "base_replication_factor" : 3
-    }
+    "replication" : 2,
+    "pin"    : false
   }
 }
