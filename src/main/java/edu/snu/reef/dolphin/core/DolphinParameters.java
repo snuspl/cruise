@@ -22,6 +22,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.io.File;
 
 public final class DolphinParameters {
   private final String identifier;
@@ -30,6 +31,7 @@ public final class DolphinParameters {
   private final int evalNum;
   private final int evalSize;
   private final String inputDir;
+  private final String outputDir;
   private final boolean onLocal;
   private final int timeout;
 
@@ -40,6 +42,7 @@ public final class DolphinParameters {
                             @Parameter(EvaluatorNum.class) final int evalNum,
                             @Parameter(EvaluatorSize.class) final int evalSize,
                             @Parameter(InputDir.class) final String inputDir,
+                            @Parameter(OutputDir.class) final String outputDir,
                             @Parameter(OnLocal.class) final boolean onLocal,
                             @Parameter(Timeout.class) final int timeout) {
     this.identifier = identifier;
@@ -48,21 +51,43 @@ public final class DolphinParameters {
     this.evalNum = evalNum;
     this.evalSize = evalSize;
     this.inputDir = inputDir;
+    this.outputDir = outputDir;
     this.onLocal = onLocal;
     this.timeout = timeout;
   }
 
-  public final String getIdentifier() {
-    return identifier;
-  }
-
+  /**
+   * Return a configuration for the driver
+   * @return
+   */
   public final Configuration getDriverConf() {
     Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(EvaluatorNum.class, String.valueOf(evalNum))
+        .bindNamedParameter(OutputDir.class, processOutputDir(outputDir, onLocal))
+        .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
         .bindImplementation(UserJobInfo.class, userJobInfo.getClass())
         .bindImplementation(UserParameters.class, userParameters.getClass())
         .build();
     return Configurations.merge(userParameters.getDriverConf(), driverConf);
+  }
+
+  /**
+   * If a relative local file path is given as the output directory,
+   * transform the relative path into the absolute path based on the current directory where the user runs REEF.
+   * @param outputDir path of the output directory given by the user
+   * @param onLocal whether the path of the output directory given by the user is a local path
+   * @return
+   */
+  private final static String processOutputDir(final String outputDir, final boolean onLocal) {
+    if (!onLocal) {
+      return outputDir;
+    }
+    final File outputFile = new File(outputDir);
+    return outputFile.getAbsolutePath();
+  }
+
+  public final String getIdentifier() {
+    return identifier;
   }
 
   public final int getEvalNum() {

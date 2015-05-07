@@ -23,6 +23,8 @@ import com.microsoft.reef.io.network.nggroup.impl.config.ReduceOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
 import edu.snu.reef.dolphin.groupcomm.names.*;
 import edu.snu.reef.dolphin.parameters.EvaluatorNum;
+import edu.snu.reef.dolphin.parameters.OnLocal;
+import edu.snu.reef.dolphin.parameters.OutputDir;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.task.*;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
@@ -108,6 +110,8 @@ public final class DolphinDriver {
    */
   private final Integer evalNum;
 
+  private final String outputDir;
+  private final boolean onLocal;
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final UserParameters userParameters;
 
@@ -121,12 +125,19 @@ public final class DolphinDriver {
    *
    * @param groupCommDriver manager for Group Communication configurations
    * @param dataLoadingService manager for Data Loading configurations
+   * @param userJobInfo
+   * @param userParameters
+   * @param outputDir
+   * @param onLocal
+   * @param evalNum
    */
   @Inject
   private DolphinDriver(final GroupCommDriver groupCommDriver,
                         final DataLoadingService dataLoadingService,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
+                        @Parameter(OutputDir.class) final String outputDir,
+                        @Parameter(OnLocal.class) final boolean onLocal,
                         @Parameter(EvaluatorNum.class) final Integer evalNum)
       throws IllegalAccessException, InstantiationException,
       NoSuchMethodException, InvocationTargetException {
@@ -137,6 +148,8 @@ public final class DolphinDriver {
     this.commGroupDriverList = new LinkedList<>();
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
+    this.outputDir = outputDir;
+    this.onLocal = onLocal;
     this.evalNum = evalNum;
     initializeCommDriver();
   }
@@ -209,17 +222,23 @@ public final class DolphinDriver {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
           ctrlTaskContextId = getContextId(groupCommContextConf);
 
-          // Add a Key-Value Store service with the Group Communication service
+          // Add the Key-Value Store service, the Output service, and the Group Communication service
+          final Configuration outputConf = OutputService.getServiceConfiguration(
+              activeContext.getEvaluatorId(), outputDir, onLocal);
           final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
-          finalServiceConf = Configurations.merge(userParameters.getServiceConf(), groupCommServiceConf, keyValueStoreConf);
-
+          finalServiceConf = Configurations.merge(
+              userParameters.getServiceConf(), groupCommServiceConf, outputConf, keyValueStoreConf);
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
-          // Add a Data Parse service and a Key-Value Store service with the Group Communication service
+          // Add the Data Parse service, the Key-Value Store service,
+          // the Output service, and the Group Communication service
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
           final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
-          finalServiceConf = Configurations.merge(userParameters.getServiceConf(), groupCommServiceConf, dataParseConf, keyValueStoreConf);
+          final Configuration outputConf = OutputService.getServiceConfiguration(
+              activeContext.getEvaluatorId(), outputDir, onLocal);
+          finalServiceConf = Configurations.merge(
+              userParameters.getServiceConf(), groupCommServiceConf, dataParseConf, outputConf, keyValueStoreConf);
         }
 
         activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
