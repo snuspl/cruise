@@ -16,6 +16,7 @@
 package edu.snu.reef.dolphin.examples.ml.algorithms.clustering.em;
 
 import edu.snu.reef.dolphin.core.KeyValueStore;
+import edu.snu.reef.dolphin.core.OutputStreamProvider;
 import edu.snu.reef.dolphin.core.UserControllerTask;
 import edu.snu.reef.dolphin.examples.ml.converge.ClusteringConvCond;
 import edu.snu.reef.dolphin.examples.ml.data.ClusterStats;
@@ -31,6 +32,8 @@ import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -77,6 +80,7 @@ public final class EMMainCtrlTask extends UserControllerTask
    */
   private final boolean isCovarianceShared;
   private final KeyValueStore keyValueStore;
+  private final OutputStreamProvider outputStreamProvider;
 
   /**
    * This class is instantiated by TANG
@@ -85,17 +89,20 @@ public final class EMMainCtrlTask extends UserControllerTask
    *
    * @param clusteringConvergenceCondition  conditions for checking convergence of algorithm
    * @param keyValueStore
+   * @param outputStreamProvider
    * @param maxIterations maximum number of iterations allowed before job stops
    * @param isCovarianceShared    whether clusters share one covariance matrix or not
    */
   @Inject
   public EMMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
                         final KeyValueStore keyValueStore,
+                        final OutputStreamProvider outputStreamProvider,
                         @Parameter(MaxIterations.class) final int maxIterations,
                         @Parameter(IsCovarianceShared.class) final boolean isCovarianceShared) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;
     this.keyValueStore = keyValueStore;
+    this.outputStreamProvider = outputStreamProvider;
     this.maxIterations = maxIterations;
     this.isCovarianceShared = isCovarianceShared;
   }
@@ -174,5 +181,28 @@ public final class EMMainCtrlTask extends UserControllerTask
   @Override
   public List<ClusterSummary> sendBroadcastData(int iteration) {
     return clusterSummaries;
+  }
+
+  @Override
+  public void cleanup() {
+
+    //output the centroids and covariances of the clusters
+    DataOutputStream centroidStream = null;
+    DataOutputStream covarianceStream = null;
+    try {
+      centroidStream = outputStreamProvider.create("centroids");
+      covarianceStream = outputStreamProvider.create("covariances");
+      centroidStream.writeBytes("cluster_id,centroid\n");
+      covarianceStream.writeBytes("cluster_id,covariance\n");
+      for(int i=0; i<centroids.size(); i++) {
+        centroidStream.writeBytes(String.format("%d,%s\n", (i + 1), centroids.get(i).toString()));
+        covarianceStream.writeBytes(String.format("%d,%s\n", (i + 1), clusterSummaries.get(i).getCovariance().toString()));
+      }
+    } catch (Exception e){
+      e.printStackTrace();
+    } finally {
+      try { centroidStream.close(); } catch (IOException e) {}
+      try { covarianceStream.close(); } catch (IOException e) {}
+    }
   }
 }

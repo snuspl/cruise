@@ -15,6 +15,7 @@
  */
 package edu.snu.reef.dolphin.examples.ml.algorithms.classification;
 
+import edu.snu.reef.dolphin.core.OutputStreamProvider;
 import edu.snu.reef.dolphin.core.UserControllerTask;
 import edu.snu.reef.dolphin.examples.ml.converge.LinearModelConvCond;
 import edu.snu.reef.dolphin.examples.ml.data.LinearModel;
@@ -27,6 +28,8 @@ import org.apache.mahout.math.DenseVector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,11 +41,14 @@ public class LogisticRegCtrlTask extends UserControllerTask
   private final int maxIter;
   private double accuracy;
   private LinearModel model;
+  private final OutputStreamProvider outputStreamProvider;
 
   @Inject
-  public LogisticRegCtrlTask(final LinearModelConvCond convergeCondition,
+  public LogisticRegCtrlTask(final OutputStreamProvider outputStreamProvider,
+                             final LinearModelConvCond convergeCondition,
                              @Parameter(MaxIterations.class) final int maxIter,
                              @Parameter(Dimension.class) final int dimension) {
+    this.outputStreamProvider = outputStreamProvider;
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;
     this.model = new LinearModel(new DenseVector(dimension+1));
@@ -69,5 +75,24 @@ public class LogisticRegCtrlTask extends UserControllerTask
     this.accuracy = ((double) summary.getPosNum()) / (summary.getPosNum() + summary.getNegNum());
     this.model = new LinearModel(summary.getModel().getParameters()
         .times(1.0 / summary.getCount()));
+  }
+
+  @Override
+  public void cleanup() {
+
+    //output the learned model and its accuracy
+    DataOutputStream modelStream = null;
+    DataOutputStream accuracyStream = null;
+    try {
+      modelStream = outputStreamProvider.create("model");
+      accuracyStream = outputStreamProvider.create("accuracy");
+      modelStream.writeBytes(model.toString());
+      accuracyStream.writeBytes(String.valueOf(accuracy));
+    } catch (Exception e){
+      e.printStackTrace();
+    } finally {
+      try { modelStream.close(); } catch (IOException e) {}
+      try { accuracyStream.close(); } catch (IOException e) {}
+    }
   }
 }
