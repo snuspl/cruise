@@ -43,5 +43,4 @@ public interface OutputStreamProvider {
    * @throws IOException
    */
   public void close() throws IOException;
-
 }

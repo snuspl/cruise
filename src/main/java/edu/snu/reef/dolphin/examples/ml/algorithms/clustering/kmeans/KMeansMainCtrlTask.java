@@ -144,5 +144,4 @@ public final class KMeansMainCtrlTask extends UserControllerTask
       try { outputStream.close(); } catch (IOException e) {}
     }
   }
-
 }

@@ -106,5 +106,4 @@ public final class OutputService {
   @NamedParameter(doc = "Id of the current evaluator")
   final class EvaluatorId implements Name<String> {
   }
-
 }
