@@ -68,7 +68,7 @@ public final class OutputStreamProviderHDFS implements OutputStreamProvider {
 
   @Override
   public void close() throws IOException {
-    if(fs==null) {
+    if(fs!=null) {
       fs.close();
     }
   }
