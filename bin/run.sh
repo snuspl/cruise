@@ -19,7 +19,7 @@
 #
 
 # EXAMPLE USAGE 
-# ./run.sh -local true -split 4 -input sample
+# ./run.sh -local true -split 4 -input sample -output output_simple
 
 # RUNTIME
 SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
