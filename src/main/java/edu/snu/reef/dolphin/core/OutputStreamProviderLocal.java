@@ -25,40 +25,43 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
- * Implementation of {@link OutputWriter} for an output file on the local disk
+ * Implementation of {@link OutputStreamProvider} which provides FileOutputStreams on the local disk
  */
-public final class OutputWriterLocal implements OutputWriter {
+public final class OutputStreamProviderLocal implements OutputStreamProvider {
 
   /**
-   * Path of the output file on the local disk to write outputs
+   * Path of the output directory on the local disk to write outputs
    */
   private final String outputPath;
 
   /**
-   * Output stream to the output file on the local disk
+   * Id of the current evaluator
    */
-  private DataOutputStream outputStream;
+  private final String evaluatorId;
 
   @Inject
-  private OutputWriterLocal(
-      @Parameter(OutputService.OutputPath.class) String outputPath) {
+  private OutputStreamProviderLocal(
+      @Parameter(OutputService.OutputPath.class) String outputPath,
+      @Parameter(OutputService.EvaluatorId.class) final String evaluatorId) {
     this.outputPath = outputPath;
+    this.evaluatorId = evaluatorId;
   }
 
   @Override
-  public void create() throws IOException {
-    File file = new File(outputPath);
-    file.getParentFile().mkdirs();
-    outputStream = new DataOutputStream(new FileOutputStream(file));
+  public void initialize() throws IOException {
+    File file = new File(outputPath+File.separator+evaluatorId);
+    if(!file.exists()) {
+      file.mkdirs();
+    }
   }
 
   @Override
-  public void write(final String string) throws IOException {
-    outputStream.writeUTF(string);
+  public DataOutputStream create(String name) throws IOException {
+    File file = new File(outputPath+File.separator+evaluatorId+File.separator+name);
+    return new DataOutputStream(new FileOutputStream(file));
   }
 
   @Override
   public void close() throws IOException {
-    outputStream.close();
   }
 }

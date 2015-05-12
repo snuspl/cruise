@@ -26,19 +26,19 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 /**
- * Implementation of {@link OutputWriter} for an output file on HDFS
+ * Implementation of {@link OutputStreamProvider} which provides FileOutputStreams on HDFS
  */
-public final class OutputWriterHDFS implements OutputWriter {
+public final class OutputStreamProviderHDFS implements OutputStreamProvider {
 
   /**
-   * Path of the output file on HDFS to write outputs
+   * Path of the output directory on HDFS to write outputs
    */
   private final String outputPath;
 
   /**
-   * Output stream to the output file on HDFS
+   * Id of the current evaluator
    */
-  private DataOutputStream outputStream;
+  private final String evaluatorId;
 
   /**
    * HDFS File system
@@ -46,26 +46,30 @@ public final class OutputWriterHDFS implements OutputWriter {
   private FileSystem fs;
 
   @Inject
-  private OutputWriterHDFS(
-      @Parameter(OutputService.OutputPath.class) String outputPath) {
+  private OutputStreamProviderHDFS(
+      @Parameter(OutputService.OutputPath.class) final String outputPath,
+      @Parameter(OutputService.EvaluatorId.class) final String evaluatorId) {
     this.outputPath = outputPath;
+    this.evaluatorId = evaluatorId;
   }
 
   @Override
-  public void create() throws IOException {
-    JobConf jobConf= new JobConf();
-    fs = FileSystem.get(jobConf);
-    outputStream = fs.create(new Path(outputPath));
+  public void initialize() throws IOException {
   }
 
   @Override
-  public void write(final String string) throws IOException {
-    outputStream.writeUTF(string);
+  public DataOutputStream create(String name) throws IOException {
+    if(fs==null) {
+      JobConf jobConf= new JobConf();
+      fs = FileSystem.get(jobConf);
+    }
+    return fs.create(new Path(outputPath + Path.SEPARATOR + evaluatorId + Path.SEPARATOR + name));
   }
 
   @Override
   public void close() throws IOException {
-    outputStream.close();
-    fs.close();
+    if(fs==null) {
+      fs.close();
+    }
   }
 }

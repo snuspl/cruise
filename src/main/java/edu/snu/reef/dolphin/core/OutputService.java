@@ -15,7 +15,6 @@
  */
 package edu.snu.reef.dolphin.core;
 
-import org.apache.hadoop.fs.Path;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
@@ -41,13 +40,13 @@ public final class OutputService {
   private static Logger LOG = Logger.getLogger(OutputService.class.getName());
 
   /**
-   * Output writer provides a user interface through which tasks write their output
+   * A provider through which users create output streams
    */
-  private final OutputWriter outputWriter;
+  private final OutputStreamProvider outputStreamProvider;
 
   @Inject
-  private OutputService(OutputWriter outputWriter) {
-    this.outputWriter = outputWriter;
+  private OutputService(OutputStreamProvider outputStreamProvider) {
+    this.outputStreamProvider = outputStreamProvider;
   }
 
   /**
@@ -59,38 +58,29 @@ public final class OutputService {
    */
   public static Configuration getServiceConfiguration(
       final String evaluatorId, final String outputDir, final boolean onLocal) {
-    Class<? extends OutputWriter> outputWriterClass = onLocal ? OutputWriterLocal.class : OutputWriterHDFS.class;
+    Class<? extends OutputStreamProvider> outputStreamProviderClass
+        = onLocal ? OutputStreamProviderLocal.class : OutputStreamProviderHDFS.class;
 
     Configuration partialServiceConf = ServiceConfiguration.CONF
-        .set(ServiceConfiguration.SERVICES, outputWriterClass)
+        .set(ServiceConfiguration.SERVICES, outputStreamProviderClass)
         .set(ServiceConfiguration.ON_CONTEXT_STARTED, ContextStartHandler.class)
         .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
         .build();
 
     return Tang.Factory.getTang()
         .newConfigurationBuilder(partialServiceConf)
-        .bindImplementation(OutputWriter.class, outputWriterClass)
-        .bindNamedParameter(OutputPath.class, getFullOutputPath(outputDir, evaluatorId))
+        .bindImplementation(OutputStreamProvider.class, outputStreamProviderClass)
+        .bindNamedParameter(OutputPath.class, outputDir)
+        .bindNamedParameter(EvaluatorId.class, evaluatorId)
         .build();
-  }
-
-  /**
-   * Return an output file path which are the concatenation of
-   * the output directory path given by the user and the id of the current evaluator
-   * @param outputDir output directory path given by the user
-   * @param evaluatorID id of the current evaluator
-   * @return
-   */
-  private static String getFullOutputPath(final String outputDir, final String evaluatorID) {
-    return outputDir + Path.SEPARATOR + evaluatorID;
   }
 
   private final class ContextStartHandler implements EventHandler<ContextStart> {
     @Override
     public void onNext(ContextStart contextStart) {
-      LOG.log(Level.INFO, "Context started, create outputWriter.");
+      LOG.log(Level.INFO, "Context started, create the OutputStreamProvider.");
       try {
-        outputWriter.create();
+        outputStreamProvider.initialize();
       } catch (IOException e) {
         e.printStackTrace();
       }
@@ -100,16 +90,21 @@ public final class OutputService {
   private final class ContextStopHandler implements EventHandler<ContextStop> {
     @Override
     public void onNext(ContextStop contextStop) {
-      LOG.log(Level.INFO, "Context stopped, close outputWriter.");
+      LOG.log(Level.INFO, "Context stopped, close the OutputStreamProvider.");
       try {
-        outputWriter.close();
+        outputStreamProvider.close();
       } catch (IOException e) {
         e.printStackTrace();
       }
     }
   }
 
-  @NamedParameter(doc = "File to write output data to")
+  @NamedParameter(doc = "Path of the directory to write output data to")
   final class OutputPath implements Name<String> {
   }
+
+  @NamedParameter(doc = "Id of the current evaluator")
+  final class EvaluatorId implements Name<String> {
+  }
+
 }

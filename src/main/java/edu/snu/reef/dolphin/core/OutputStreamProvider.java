@@ -15,29 +15,33 @@
  */
 package edu.snu.reef.dolphin.core;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 /**
- * An interface of an output writer, through which tasks write their output
+ * A provider through which users create output streams
  */
-public interface OutputWriter {
+public interface OutputStreamProvider {
 
   /**
-   * Write the given string to the output file
-   * @param string string to write
+   * initialize provider
    * @throws IOException
    */
-  public void write(final String string) throws IOException;
+  public void initialize() throws IOException;
 
   /**
-   * Create the output writer
-   * @throws IOException
+   * create an output stream using the given name
+   * @param name name of the created output stream.
+   *             it is used as the name of the file if the created output stream is a file output stream
+   * @throws java.io.IOException
    */
-  void create() throws IOException;
+  public DataOutputStream create(final String name) throws IOException;
+
 
   /**
-   * Close the output writer
+   * release unused resources
    * @throws IOException
    */
-  void close() throws IOException;
+  public void close() throws IOException;
+
 }
