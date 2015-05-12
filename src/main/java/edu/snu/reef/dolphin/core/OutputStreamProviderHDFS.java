@@ -55,21 +55,21 @@ public final class OutputStreamProviderHDFS implements OutputStreamProvider {
 
   @Override
   public void initialize() throws IOException {
+    final JobConf jobConf= new JobConf();
+    fs = FileSystem.get(jobConf);
   }
 
   @Override
   public DataOutputStream create(String name) throws IOException {
-    if(fs==null) {
-      JobConf jobConf= new JobConf();
-      fs = FileSystem.get(jobConf);
+    final String directoryPath = outputPath + Path.SEPARATOR + name;
+    if(!fs.exists(new Path(directoryPath))) {
+      fs.mkdirs(new Path(directoryPath));
     }
-    return fs.create(new Path(outputPath + Path.SEPARATOR + evaluatorId + Path.SEPARATOR + name));
+    return fs.create(new Path(directoryPath + Path.SEPARATOR + evaluatorId));
   }
 
   @Override
   public void close() throws IOException {
-    if(fs!=null) {
-      fs.close();
-    }
+    fs.close();
   }
 }
