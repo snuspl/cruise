@@ -223,8 +223,7 @@ public final class DolphinDriver {
           ctrlTaskContextId = getContextId(groupCommContextConf);
 
           // Add the Key-Value Store service, the Output service, and the Group Communication service
-          final Configuration outputConf = OutputService.getServiceConfiguration(
-              activeContext.getEvaluatorId(), outputDir, onLocal);
+          final Configuration outputConf = OutputService.getServiceConfiguration(outputDir, onLocal);
           final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, outputConf, keyValueStoreConf);
@@ -235,8 +234,7 @@ public final class DolphinDriver {
           // the Output service, and the Group Communication service
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
           final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
-          final Configuration outputConf = OutputService.getServiceConfiguration(
-              activeContext.getEvaluatorId(), outputDir, onLocal);
+          final Configuration outputConf = OutputService.getServiceConfiguration(outputDir, onLocal);
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, dataParseConf, outputConf, keyValueStoreConf);
         }

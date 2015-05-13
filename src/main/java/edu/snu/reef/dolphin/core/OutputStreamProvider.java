@@ -37,6 +37,11 @@ public interface OutputStreamProvider {
    */
   public DataOutputStream create(final String name) throws IOException;
 
+  /**
+   * set the id of the current task
+   * @param taskId id of the current task
+   */
+  public void setTaskId(final String taskId);
 
   /**
    * release unused resources

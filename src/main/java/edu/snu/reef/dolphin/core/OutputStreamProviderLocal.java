@@ -35,16 +35,14 @@ public final class OutputStreamProviderLocal implements OutputStreamProvider {
   private final String outputPath;
 
   /**
-   * Id of the current evaluator
+   * Id of the current task
    */
-  private final String evaluatorId;
+  private String taskId;
 
   @Inject
   private OutputStreamProviderLocal(
-      @Parameter(OutputService.OutputPath.class) String outputPath,
-      @Parameter(OutputService.EvaluatorId.class) final String evaluatorId) {
+      @Parameter(OutputService.OutputPath.class) String outputPath) {
     this.outputPath = outputPath;
-    this.evaluatorId = evaluatorId;
   }
 
   @Override
@@ -58,11 +56,16 @@ public final class OutputStreamProviderLocal implements OutputStreamProvider {
     if(!file.exists()) {
       file.mkdirs();
     }
-    file = new File(directory + File.separator + evaluatorId);
+    file = new File(directory + File.separator + taskId);
     return new DataOutputStream(new FileOutputStream(file));
   }
 
   @Override
   public void close() throws IOException {
+  }
+
+  @Override
+  public void setTaskId(String taskId) {
+    this.taskId = taskId;
   }
 }

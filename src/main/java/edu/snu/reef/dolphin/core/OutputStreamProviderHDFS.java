@@ -36,9 +36,9 @@ public final class OutputStreamProviderHDFS implements OutputStreamProvider {
   private final String outputPath;
 
   /**
-   * Id of the current evaluator
+   * Id of the current task
    */
-  private final String evaluatorId;
+  private String taskId;
 
   /**
    * HDFS File system
@@ -47,10 +47,8 @@ public final class OutputStreamProviderHDFS implements OutputStreamProvider {
 
   @Inject
   private OutputStreamProviderHDFS(
-      @Parameter(OutputService.OutputPath.class) final String outputPath,
-      @Parameter(OutputService.EvaluatorId.class) final String evaluatorId) {
+      @Parameter(OutputService.OutputPath.class) final String outputPath) {
     this.outputPath = outputPath;
-    this.evaluatorId = evaluatorId;
   }
 
   @Override
@@ -65,11 +63,16 @@ public final class OutputStreamProviderHDFS implements OutputStreamProvider {
     if(!fs.exists(new Path(directoryPath))) {
       fs.mkdirs(new Path(directoryPath));
     }
-    return fs.create(new Path(directoryPath + Path.SEPARATOR + evaluatorId));
+    return fs.create(new Path(directoryPath + Path.SEPARATOR + taskId));
   }
 
   @Override
   public void close() throws IOException {
     fs.close();
+  }
+
+  @Override
+  public void setTaskId(String taskId) {
+    this.taskId = taskId;
   }
 }

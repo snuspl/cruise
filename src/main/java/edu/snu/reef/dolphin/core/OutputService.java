@@ -23,6 +23,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.task.events.TaskStart;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -51,13 +52,11 @@ public final class OutputService {
 
   /**
    * Provides a configuration for Output service
-   * @param evaluatorId
    * @param outputDir
    * @param onLocal
    * @return
    */
-  public static Configuration getServiceConfiguration(
-      final String evaluatorId, final String outputDir, final boolean onLocal) {
+  public static Configuration getServiceConfiguration(final String outputDir, final boolean onLocal) {
     Class<? extends OutputStreamProvider> outputStreamProviderClass
         = onLocal ? OutputStreamProviderLocal.class : OutputStreamProviderHDFS.class;
 
@@ -65,13 +64,13 @@ public final class OutputService {
         .set(ServiceConfiguration.SERVICES, outputStreamProviderClass)
         .set(ServiceConfiguration.ON_CONTEXT_STARTED, ContextStartHandler.class)
         .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
+        .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
         .build();
 
     return Tang.Factory.getTang()
         .newConfigurationBuilder(partialServiceConf)
         .bindImplementation(OutputStreamProvider.class, outputStreamProviderClass)
         .bindNamedParameter(OutputPath.class, outputDir)
-        .bindNamedParameter(EvaluatorId.class, evaluatorId)
         .build();
   }
 
@@ -99,11 +98,15 @@ public final class OutputService {
     }
   }
 
-  @NamedParameter(doc = "Path of the directory to write output data to")
-  final class OutputPath implements Name<String> {
+  private final class TaskStartHandler implements EventHandler<TaskStart> {
+    @Override
+    public void onNext(TaskStart taskStart) {
+      LOG.log(Level.INFO, String.format("Task %s started, create the OutputStreamProvider.", taskStart.getId()));
+      outputStreamProvider.setTaskId(taskStart.getId());
+    }
   }
 
-  @NamedParameter(doc = "Id of the current evaluator")
-  final class EvaluatorId implements Name<String> {
+  @NamedParameter(doc = "Path of the directory to write output data to")
+  final class OutputPath implements Name<String> {
   }
 }
