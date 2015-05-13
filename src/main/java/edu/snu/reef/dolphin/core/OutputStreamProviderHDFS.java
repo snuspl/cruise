@@ -15,7 +15,6 @@
  */
 package edu.snu.reef.dolphin.core;
 
-
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
@@ -47,13 +46,9 @@ public final class OutputStreamProviderHDFS implements OutputStreamProvider {
 
   @Inject
   private OutputStreamProviderHDFS(
-      @Parameter(OutputService.OutputPath.class) final String outputPath) {
+      @Parameter(OutputService.OutputPath.class) final String outputPath) throws IOException {
     this.outputPath = outputPath;
-  }
-
-  @Override
-  public void initialize() throws IOException {
-    final JobConf jobConf= new JobConf();
+    final JobConf jobConf = new JobConf();
     fs = FileSystem.get(jobConf);
   }
 

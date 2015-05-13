@@ -24,15 +24,9 @@ import java.io.IOException;
 public interface OutputStreamProvider {
 
   /**
-   * initialize provider
-   * @throws IOException
-   */
-  public void initialize() throws IOException;
-
-  /**
    * create an output stream using the given name
    * @param name name of the created output stream.
-   *             it is used as the name of the file if the created output stream is a file output stream
+   *             it is used as the name of the directory if the created output stream is a file output stream
    * @throws java.io.IOException
    */
   public DataOutputStream create(final String name) throws IOException;

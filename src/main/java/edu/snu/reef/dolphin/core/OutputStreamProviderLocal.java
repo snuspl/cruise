@@ -15,7 +15,6 @@
  */
 package edu.snu.reef.dolphin.core;
 
-
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -43,10 +42,6 @@ public final class OutputStreamProviderLocal implements OutputStreamProvider {
   private OutputStreamProviderLocal(
       @Parameter(OutputService.OutputPath.class) String outputPath) {
     this.outputPath = outputPath;
-  }
-
-  @Override
-  public void initialize() throws IOException {
   }
 
   @Override

@@ -95,7 +95,6 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   @Override
   public void initialize() {
     centroids = keyValueStore.get(Centroids.class);
-
   }
 
   @Override
@@ -131,17 +130,13 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   public void cleanup() {
 
     //output the centroids of the clusters
-    DataOutputStream outputStream = null;
-    try {
-      outputStream = outputStreamProvider.create("centroids");
-      outputStream.writeBytes("cluster_id,centroid\n");
-      for(int i=0; i<centroids.size(); i++) {
-        outputStream.writeBytes(String.format("%d,%s\n", (i + 1), centroids.get(i).toString()));
+    try (final DataOutputStream centroidStream = outputStreamProvider.create("centroids")) {
+      centroidStream.writeBytes(String.format("cluster_id,centroid%n"));
+      for (int i = 0; i < centroids.size(); i++) {
+        centroidStream.writeBytes(String.format("%d,%s%n", (i + 1), centroids.get(i).toString()));
       }
-    } catch (Exception e){
-      e.printStackTrace();
-    } finally {
-      try { outputStream.close(); } catch (IOException e) {}
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 }

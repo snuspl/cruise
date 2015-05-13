@@ -16,7 +16,6 @@
 package edu.snu.reef.dolphin.core;
 
 import org.apache.reef.driver.context.ServiceConfiguration;
-import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
@@ -62,7 +61,6 @@ public final class OutputService {
 
     Configuration partialServiceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, outputStreamProviderClass)
-        .set(ServiceConfiguration.ON_CONTEXT_STARTED, ContextStartHandler.class)
         .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
         .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
         .build();
@@ -74,18 +72,6 @@ public final class OutputService {
         .build();
   }
 
-  private final class ContextStartHandler implements EventHandler<ContextStart> {
-    @Override
-    public void onNext(ContextStart contextStart) {
-      LOG.log(Level.INFO, "Context started, create the OutputStreamProvider.");
-      try {
-        outputStreamProvider.initialize();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-  }
-
   private final class ContextStopHandler implements EventHandler<ContextStop> {
     @Override
     public void onNext(ContextStop contextStop) {
@@ -93,7 +79,7 @@ public final class OutputService {
       try {
         outputStreamProvider.close();
       } catch (IOException e) {
-        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }
   }

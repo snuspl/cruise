@@ -79,18 +79,15 @@ public class LinearRegCtrlTask extends UserControllerTask
   public void cleanup() {
 
     //output the learned model and its accuracy
-    DataOutputStream modelStream = null;
-    DataOutputStream accuracyStream = null;
-    try {
-      modelStream = outputStreamProvider.create("model");
-      accuracyStream = outputStreamProvider.create("loss");
+    try (final DataOutputStream modelStream = outputStreamProvider.create("model")) {
       modelStream.writeBytes(model.toString());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    try (final DataOutputStream accuracyStream = outputStreamProvider.create("loss")) {
       accuracyStream.writeBytes(String.valueOf(lossSum));
-    } catch (Exception e){
-      e.printStackTrace();
-    } finally {
-      try { modelStream.close(); } catch (IOException e) {}
-      try { accuracyStream.close(); } catch (IOException e) {}
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 }
