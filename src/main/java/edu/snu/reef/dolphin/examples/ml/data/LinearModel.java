@@ -42,7 +42,7 @@ public final class LinearModel implements Model {
   @Override
   public String toString() {
     final StringBuffer buffer = new StringBuffer();
-    for(int i=0; i<parameters.size()-1; i++) {
+    for (int i = 0; i < parameters.size() - 1; i++) {
       buffer.append(String.valueOf(parameters.get(i)));
       buffer.append("x"+(i+1)+" + ");
     }
