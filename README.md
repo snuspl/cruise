@@ -8,7 +8,7 @@ Dolphin
     ```
     git clone https://github.com/cmssnu/dolphin
     cd dolphin
-    mvn build install
+    mvn clean install
     ```
     
 ### How to run Dolphin
