@@ -21,7 +21,7 @@ package org.apache.reef.examples.elastic.memory;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.annotations.audience.TaskSide;
-import org.apache.reef.elastic.memory.task.ElasticMemoryServiceImpl;
+import org.apache.reef.elastic.memory.task.ElasticMemoryServiceClientImpl;
 import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.task.Task;
@@ -50,7 +50,7 @@ public class LineCountingTask implements Task {
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.FINER, "LineCounting task started");
 
-    ElasticMemoryServiceImpl elasticMemoryService = new ElasticMemoryServiceImpl();
+    ElasticMemoryServiceClientImpl elasticMemoryService = new ElasticMemoryServiceClientImpl();
 
     elasticMemoryService.stageDataSet(null, dataSet);
     DataSet<LongWritable, Text> data = elasticMemoryService.getDataSet(null);

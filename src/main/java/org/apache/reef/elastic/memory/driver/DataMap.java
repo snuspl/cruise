@@ -6,7 +6,7 @@ public class DataMap<K> {
 
   Map<String, Map<K, String>> typeToKeyToEval;
 
-  public void remove(String dataType, K ) {
+  public void remove(String dataType) {
 
   }
 
