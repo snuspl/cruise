@@ -34,10 +34,13 @@ public final class SurfFSWriteITCase {
 
   private static final String TESTDIR = ITUtils.getTestDir();
 
-  private static final String SHORT = TESTDIR+"/"+"WRITE.short";
+  private static final String SMALL = TESTDIR+"/"+"WRITE.short";
   private static final int SMALL_SIZE = 1;
 
-  private static final String LONG = TESTDIR+"/"+"WRITE.long";
+  private static final String ONE_MB = TESTDIR+"/"+"WRITE.onemb";
+  private static final int ONE_MB_SIZE = 1024 * 1024 / b.length;
+
+  private static final String PACKET = TESTDIR+"/"+"WRITE.packet";
   private static final int PACKET_SIZE = SurfFSOutputStream.getPacketSize() / b.length;
 
   private static final String SURF = "surf";
@@ -63,17 +66,26 @@ public final class SurfFSWriteITCase {
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
 
-    final FSDataOutputStream stream1 = surfFs.create(new Path(SHORT), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
+    // FILE_SIZE < BLOCK_SIZE < PACKET_SIZE
+    final FSDataOutputStream stream1 = surfFs.create(new Path(SMALL), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
     for (int i = 0; i < SMALL_SIZE; i++) {
       stream1.write(b);
     }
     stream1.close();
 
-    final FSDataOutputStream stream2 = surfFs.create(new Path(LONG), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
-    for (int i = 0; i < PACKET_SIZE; i++) {
+    // PACKET_SIZE > FILE_SIZE == BLOCK_SIZE
+    final FSDataOutputStream stream2 = surfFs.create(new Path(ONE_MB), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
+    for (int i = 0; i < ONE_MB_SIZE; i++) {
       stream2.write(b);
     }
     stream2.close();
+
+    // FILE_SIZE == PACKET_SIZE < BLOCK_SIZE
+    final FSDataOutputStream stream3 = surfFs.create(new Path(PACKET));
+    for (int i = 0; i < PACKET_SIZE; i++) {
+      stream3.write(b);
+    }
+    stream3.close();
   }
 
   @AfterClass
@@ -101,14 +113,16 @@ public final class SurfFSWriteITCase {
 
   @Test
   public void testRead() throws IOException {
-    read(SHORT, SMALL_SIZE);
-    read(LONG, PACKET_SIZE);
+    read(SMALL, SMALL_SIZE);
+    read(ONE_MB, ONE_MB_SIZE);
+    read(PACKET, PACKET_SIZE);
   }
 
   @Test
   public void testExists() throws IOException {
-    assertTrue(surfFs.exists(new Path(SHORT)));
-    assertTrue(surfFs.exists(new Path(LONG)));
+    assertTrue(surfFs.exists(new Path(SMALL)));
+    read(ONE_MB, ONE_MB_SIZE);
+    assertTrue(surfFs.exists(new Path(PACKET)));
     assertFalse(surfFs.exists(new Path("Not_exists")));
   }
 }
