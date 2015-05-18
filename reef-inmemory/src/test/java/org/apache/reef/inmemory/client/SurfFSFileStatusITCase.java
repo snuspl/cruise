@@ -92,31 +92,34 @@ public final class SurfFSFileStatusITCase {
     testListStatusOfDir(new Path(ROOTDIR));
   }
 
-  /**
-   * Test ls using a relative path
-   */
-  @Test
-  public void testRelPathListStatus() throws IOException {
-    // testListStatusOfFile(new Path(TESTFILE)); TODO
-  }
-
-
   private void testListStatusOfDir(final Path dirPath) throws IOException {
     final FileStatus[] statuses = surfFs.listStatus(dirPath);
-    assertEquals(1, statuses.length);
-    final FileStatus fileStatusLS = statuses[0];
-    testFileStatusOfTestFile(fileStatusLS);
+    boolean tested = false;
+    for (final FileStatus fileStatusLS : statuses) {
+      // Since there can be remaining directories from other tests, we only check the file we created in this test
+      if (fileStatusLS.getPath().toUri().getPath().equals(ABSPATH)) {
+        testFileStatusOfTestFile(fileStatusLS);
+        tested = true;
+      }
+    }
+    assertTrue(tested);
   }
 
   private void testListStatusOfFile(final Path filePath) throws IOException {
     final FileStatus fileStatusGFS = surfFs.getFileStatus(filePath);
-    final FileStatus[] statuses = surfFs.listStatus(filePath);
-    assertEquals(1, statuses.length);
-    final FileStatus fileStatusLS = statuses[0];
-
-    assertEquals(fileStatusGFS.getPath(), fileStatusLS.getPath());
     testFileStatusOfTestFile(fileStatusGFS);
-    testFileStatusOfTestFile(fileStatusLS);
+    boolean tested = false;
+
+    final FileStatus[] statuses = surfFs.listStatus(filePath);
+    for (final FileStatus fileStatusLS : statuses) {
+      // Since there can be remaining directories from other tests, we only check the file we created in this test
+      if (fileStatusLS.getPath().toUri().getPath().equals(ABSPATH)) {
+        assertEquals(fileStatusGFS.getPath(), fileStatusLS.getPath());
+        testFileStatusOfTestFile(fileStatusLS);
+        tested = true;
+      }
+    }
+    assertTrue(tested);
   }
 
   private void testFileStatusOfTestFile(final FileStatus fileStatus) throws IOException {
@@ -124,7 +127,6 @@ public final class SurfFSFileStatusITCase {
     final URI uri = fileStatus.getPath().toUri();
     assertEquals(SURF, uri.getScheme());
     assertEquals(SURF_ADDRESS, uri.getAuthority());
-    assertEquals(ABSPATH, uri.getPath());
   }
 
   /**
