@@ -131,13 +131,15 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   private void flush(final boolean close) throws IOException {
-    flushLocalBuf(close);
+    if (!nothingGotWritten()) { // if nothing got written at all, there's no need to send anything to a CacheServer
+      flushLocalBuf(close);
 
-    while (packetQueue.size() > 0) {
-      try {
-        Thread.sleep(FLUSH_CHECK_INTERVAL);
-      } catch (InterruptedException e) {
-        throw new IOException(e);
+      while (packetQueue.size() > 0) {
+        try {
+          Thread.sleep(FLUSH_CHECK_INTERVAL);
+        } catch (InterruptedException e) {
+          throw new IOException(e);
+        }
       }
     }
   }
@@ -158,22 +160,18 @@ public final class SurfFSOutputStream extends OutputStream {
    */
   private void flushBuf(final byte[] b, final int start, final int end, final boolean close) throws IOException {
     final int len = end - start;
-    final boolean somethingToWrite = len > 0;
+    if (curBlockInnerOffset == 0 && len != 0) { // only when there's some more to write...
+      curWritableBlockMeta = allocateBlockAtMetaServer(curBlockOffset);
+    }
 
-    if (somethingToWrite) {
-      if (curBlockInnerOffset == 0) {
-        curWritableBlockMeta = allocateBlockAtMetaServer(curBlockOffset);
-      }
-
-      if (curBlockInnerOffset + len < blockSize) {
-        sendPacket(ByteBuffer.wrap(b, start, len), len, close);
-      } else if (curBlockInnerOffset + len == blockSize) {
-        sendPacket(ByteBuffer.wrap(b, start, len), len, true);
-      } else {
-        final int possibleLen = (int) (blockSize - curBlockInnerOffset); // this must be int because "possibleLen < len"
-        sendPacket(ByteBuffer.wrap(b, start, possibleLen), possibleLen, true);
-        flushBuf(b, start + possibleLen, end, close); // Create another packet with the leftovers
-      }
+    if (curBlockInnerOffset + len < blockSize) {
+      sendPacket(ByteBuffer.wrap(b, start, len), len, close);
+    } else if (curBlockInnerOffset + len == blockSize) {
+      sendPacket(ByteBuffer.wrap(b, start, len), len, true);
+    } else {
+      final int possibleLen = (int) (blockSize - curBlockInnerOffset); // this must be int because "possibleLen < len"
+      sendPacket(ByteBuffer.wrap(b, start, possibleLen), possibleLen, true);
+      flushBuf(b, start + possibleLen, end, close); // Create another packet with the leftovers
     }
   }
 
@@ -231,7 +229,7 @@ public final class SurfFSOutputStream extends OutputStream {
       while(!isClosed) {
         try {
           final Packet packet = packetQueue.take();
-          if (packet.blockInnerOffset == 0) {
+          if (packet.blockInnerOffset == 0 && packet.buf.limit() > 0) { // only when we need to actually write sth...
             // Initialize block at the cache server for the first packet of a block
             initCacheClient(packet.writeableBlockMeta);
           }
@@ -263,7 +261,14 @@ public final class SurfFSOutputStream extends OutputStream {
     }
   }
 
+  private boolean nothingGotWritten() {
+    return localBufWriteCount == 0 && curBlockOffset == 0 && curBlockInnerOffset == 0;
+  }
+
   // Methods used for unit tests.
+  protected static int getPacketSize() {
+    return PACKET_SIZE;
+  }
 
   protected int getLocalBufWriteCount() {
     return localBufWriteCount;
@@ -271,10 +276,6 @@ public final class SurfFSOutputStream extends OutputStream {
 
   protected long getCurBlockInnerOffset() {
     return curBlockInnerOffset;
-  }
-
-  protected int getPacketSize() {
-    return PACKET_SIZE;
   }
 
   protected long getCurBlockOffset() {

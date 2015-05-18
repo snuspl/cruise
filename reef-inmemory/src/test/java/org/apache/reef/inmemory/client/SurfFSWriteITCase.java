@@ -35,10 +35,10 @@ public final class SurfFSWriteITCase {
   private static final String TESTDIR = ITUtils.getTestDir();
 
   private static final String SHORT = TESTDIR+"/"+"WRITE.short";
-  private static final int SIZE1 = 1;
+  private static final int SMALL_SIZE = 1;
 
   private static final String LONG = TESTDIR+"/"+"WRITE.long";
-  private static final int SIZE2 = 200;
+  private static final int PACKET_SIZE = SurfFSOutputStream.getPacketSize() / b.length;
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
@@ -64,13 +64,13 @@ public final class SurfFSWriteITCase {
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
 
     final FSDataOutputStream stream1 = surfFs.create(new Path(SHORT), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
-    for (int i = 0; i < SIZE1; i++) {
+    for (int i = 0; i < SMALL_SIZE; i++) {
       stream1.write(b);
     }
     stream1.close();
 
     final FSDataOutputStream stream2 = surfFs.create(new Path(LONG), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
-    for (int i = 0; i < SIZE2; i++) {
+    for (int i = 0; i < PACKET_SIZE; i++) {
       stream2.write(b);
     }
     stream2.close();
@@ -101,8 +101,8 @@ public final class SurfFSWriteITCase {
 
   @Test
   public void testRead() throws IOException {
-    read(SHORT, SIZE1);
-    read(LONG, SIZE2);
+    read(SHORT, SMALL_SIZE);
+    read(LONG, PACKET_SIZE);
   }
 
   @Test
