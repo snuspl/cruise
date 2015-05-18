@@ -86,12 +86,9 @@ public class MetaTree {
       final Entry entry = getEntryInTree(path);
       if (entry != null) {
         // If found, return Surf's FileMetaStatus
-        LOG.log(Level.INFO, "getfile surf: " + path);
         return fileMetaStatusFactory.newFileMetaStatus(path, entry);
       } else {
         // If not found, return Base's FileMetaStatus
-        LOG.log(Level.INFO, "getfile base: " + baseFileMetaStatus.toString());
-
         return baseFileMetaStatus;
       }
     } finally {
@@ -120,7 +117,7 @@ public class MetaTree {
         if (entry.isDirectory()) {
           if (((DirectoryEntry) entry).getChildren().size() > 0) {
             for (final Entry childEntry : ((DirectoryEntry) entry).getChildren()) {
-              final String childPath = path + "/" + childEntry.getName();
+              final String childPath = (entry == ROOT ? "/" + childEntry.getName() : path + "/" + childEntry.getName());
               surfFileMetaStatusList.add(fileMetaStatusFactory.newFileMetaStatus(childPath, childEntry));
             }
           } else {

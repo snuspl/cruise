@@ -198,6 +198,26 @@ public final class SurfFSDirectoryITCase {
     }
   }
 
+  /**
+   * Test set/get of working directory
+   */
+  @Test
+  public void testWorkingDirectory() throws IOException {
+    final Path path = new Path("/workingdir");
+    baseFs.mkdirs(path);
+
+    final Path original = surfFs.getWorkingDirectory();
+
+    surfFs.setWorkingDirectory(path);
+    assertEquals(path, surfFs.getWorkingDirectory());
+
+    // Restore for other tests
+    surfFs.setWorkingDirectory(original);
+    assertEquals(original, surfFs.getWorkingDirectory());
+
+    surfFs.delete(path, true);
+  }
+
   private void testGetFileStatusOnDir(final String path) throws IOException {
     final FileStatus fileStatus = surfFs.getFileStatus(new Path(path));
     assertEquals(path, fileStatus.getPath().toUri().getPath());
