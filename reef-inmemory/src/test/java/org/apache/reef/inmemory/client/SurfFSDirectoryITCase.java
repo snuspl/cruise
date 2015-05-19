@@ -225,7 +225,7 @@ public final class SurfFSDirectoryITCase {
     assertEquals(ITUtils.getTestDir() + "/" + file, fileStatuses[0].getPath().toUri().getPath());
 
     // Clean up to avoid conflicts with other tests
-    assertTrue(surfFs.delete(file, true));
+    assertTrue("delete() must return true, as the file should be found", surfFs.delete(file, true));
   }
 
   private void testGetFileStatusOnDir(final String path) throws IOException {

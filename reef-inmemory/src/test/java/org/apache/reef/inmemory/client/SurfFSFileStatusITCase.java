@@ -102,7 +102,7 @@ public final class SurfFSFileStatusITCase {
         tested = true;
       }
     }
-    assertTrue(tested);
+    assertTrue("A filestatus whose path is ABSPATH must be tested", tested);
   }
 
   private void testListStatusOfFile(final Path filePath) throws IOException {
@@ -119,7 +119,7 @@ public final class SurfFSFileStatusITCase {
         tested = true;
       }
     }
-    assertTrue(tested);
+    assertTrue("A filestatus whose path is ABSPATH must be tested", tested);
   }
 
   private void testFileStatusOfTestFile(final FileStatus fileStatus) throws IOException {
