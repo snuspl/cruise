@@ -120,9 +120,9 @@ public final class SurfFSWriteITCase {
 
   @Test
   public void testExists() throws IOException {
-    assertTrue(surfFs.exists(new Path(SMALL)));
-    read(ONE_MB, ONE_MB_SIZE);
-    assertTrue(surfFs.exists(new Path(PACKET)));
-    assertFalse(surfFs.exists(new Path("Not_exists")));
+    assertTrue("Should exist", surfFs.exists(new Path(SMALL)));
+    assertTrue("Should exist", surfFs.exists(new Path(ONE_MB)));
+    assertTrue("Should exist", surfFs.exists(new Path(PACKET)));
+    assertFalse("Should not exist", surfFs.exists(new Path("Not_exists")));
   }
 }
