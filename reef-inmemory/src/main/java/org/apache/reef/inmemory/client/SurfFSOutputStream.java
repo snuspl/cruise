@@ -131,7 +131,7 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   private void flush(final boolean close) throws IOException {
-    if (!nothingGotWritten()) { // if nothing got written at all, there's no need to send anything to a CacheServer
+    if (!nothingWasWritten()) { // if nothing got written at all, there's no need to send anything to a CacheServer
       flushLocalBuf(close);
 
       while (packetQueue.size() > 0) {
@@ -261,7 +261,7 @@ public final class SurfFSOutputStream extends OutputStream {
     }
   }
 
-  private boolean nothingGotWritten() {
+  private boolean nothingWasWritten() {
     return localBufWriteCount == 0 && curBlockOffset == 0 && curBlockInnerOffset == 0;
   }
 
