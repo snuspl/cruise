@@ -47,7 +47,7 @@ public final class SurfFSWriteITCase {
   private static final String SURF_ADDRESS = "localhost:18000";
 
   private static final short REPLICATION = 3;
-  private static final int BLOCK_SIZE = 1024; // Need to be a multiple of 512 (Hadoop Checksum Policy)
+  private static final int BLOCK_SIZE = 1024 * 1024; // 1MB, Need to be a multiple of 512 (Hadoop Checksum Policy)
   private static final int BUFFER_SIZE = 4096;
 
   private static final SurfLauncher surfLauncher = new SurfLauncher();
@@ -66,22 +66,22 @@ public final class SurfFSWriteITCase {
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
 
-    // FILE_SIZE < PACKET_SIZE
+    // FILE_SIZE(8B) < BLOCK_SIZE(1MB) < PACKET_SIZE(4MB)
     final FSDataOutputStream stream1 = surfFs.create(new Path(SMALL), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
     for (int i = 0; i < SMALL_SIZE; i++) {
       stream1.write(b);
     }
     stream1.close();
 
-    // PACKET_SIZE > FILE_SIZE
+    // FILE_SIZE(1MB) == BLOCK_SIZE(1MB) < PACKET_SIZE(4MB)
     final FSDataOutputStream stream2 = surfFs.create(new Path(ONE_MB), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
     for (int i = 0; i < ONE_MB_SIZE; i++) {
       stream2.write(b);
     }
     stream2.close();
 
-    // FILE_SIZE == PACKET_SIZE < BLOCK_SIZE
-    final FSDataOutputStream stream3 = surfFs.create(new Path(PACKET));
+    // FILE_SIZE(4MB) == PACKET_SIZE(4MB) < BLOCK_SIZE(64MB)
+    final FSDataOutputStream stream3 = surfFs.create(new Path(PACKET)); // use the default BLOCK_SIZE (64MB)
     for (int i = 0; i < PACKET_SIZE; i++) {
       stream3.write(b);
     }

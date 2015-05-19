@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  */
 public final class SurfFSOutputStream extends OutputStream {
   private static final Logger LOG = Logger.getLogger(SurfFSOutputStream.class.getName());
-  private static final int PACKET_SIZE = 4194304; // 4MB
+  private static final int PACKET_SIZE = 4 * 1024 * 1024; // 4MB
   private static final int MAX_PACKETS = 80;
   private static final int COMPLETE_FILE_RETRY_NUM = 5;
   private static final int COMPLETE_FILE_RETRY_INTERVAL = 400;
