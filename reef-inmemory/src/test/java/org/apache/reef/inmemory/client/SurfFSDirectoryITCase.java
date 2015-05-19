@@ -20,6 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test Surf's directory-related operations
@@ -196,6 +197,35 @@ public final class SurfFSDirectoryITCase {
     for (int i = 0; i < 5; i ++) {
       assertFalse("Should not exist as its parent directory is deleted", surfFs.exists(new Path(DELETE, String.valueOf(i))));
     }
+  }
+
+  /**
+   * Test set/get of working directory
+   */
+  @Test
+  public void testWorkingDirectory() throws IOException {
+    final Path newWorkingDir = new Path("/workingdir");
+    final Path originalWorkingDir = surfFs.getWorkingDirectory();
+
+    // Set new working directory
+    surfFs.setWorkingDirectory(newWorkingDir);
+    assertEquals(newWorkingDir, surfFs.getWorkingDirectory());
+
+    // Restore for other tests
+    surfFs.setWorkingDirectory(originalWorkingDir);
+    assertEquals(originalWorkingDir, surfFs.getWorkingDirectory());
+
+    // Test relative file path
+    final Path file = new Path("file");
+    final FSDataOutputStream stream = surfFs.create(file);
+    stream.close();
+    assertEquals(ITUtils.getTestDir()+"/"+file, surfFs.getFileStatus(file).getPath().toUri().getPath());
+    final FileStatus[] fileStatuses = surfFs.listStatus(file);
+    assertEquals(1, fileStatuses.length);
+    assertEquals(ITUtils.getTestDir() + "/" + file, fileStatuses[0].getPath().toUri().getPath());
+
+    // Clean up to avoid conflicts with other tests
+    assertTrue("delete() must return true, as the file should be found", surfFs.delete(file, true));
   }
 
   private void testGetFileStatusOnDir(final String path) throws IOException {

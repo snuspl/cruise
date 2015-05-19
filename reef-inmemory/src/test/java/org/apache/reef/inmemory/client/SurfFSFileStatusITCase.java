@@ -22,17 +22,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests for SurfFS methods that deal with FileMeta.
+ * Tests SurfFS methods that query FileStatus.
  */
-public final class SurfFSMetadataITCase {
-  private static final Logger LOG = Logger.getLogger(SurfFSMetadataITCase.class.getName());
+public final class SurfFSFileStatusITCase {
+  private static final Logger LOG = Logger.getLogger(SurfFSFileStatusITCase.class.getName());
 
   private static FileSystem baseFs;
   private static SurfFS surfFs;
+  private static final byte[] b = new byte[]{(byte)1, (byte)2, (byte)3, (byte)4, (byte)5, (byte)6, (byte)7, (byte)8};
 
-  private static final String TESTDIR = ITUtils.getTestDir();
+  private static final String ROOTDIR = "/";
   private static final String TESTFILE = "README.md";
-  private static final String ABSPATH = TESTDIR+"/"+TESTFILE;
+  private static final String ABSPATH = ROOTDIR +TESTFILE;
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
@@ -49,48 +50,28 @@ public final class SurfFSMetadataITCase {
     hdfsConfig.setInt(DFSConfigKeys.DFS_REPLICATION_KEY, 3);
 
     baseFs = ITUtils.getHdfs(hdfsConfig);
-    baseFs.mkdirs(new Path(TESTDIR));
-
     surfLauncher.launch(baseFs);
-
     final Configuration conf = new Configuration();
     conf.set(SurfFS.BASE_FS_ADDRESS_KEY, baseFs.getUri().toString());
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
 
     final FSDataOutputStream stream = surfFs.create(new Path(ABSPATH));
-    stream.writeUTF("Hello Readme");
+    stream.write(b);
     stream.close();
   }
 
   /**
-   * Remove all directories.
+   * Clean up
    */
   @AfterClass
   public static void tearDownClass() {
     try {
-      baseFs.delete(new Path(TESTDIR), true); // TODO: Delete when SurfFs.delete is implemented
-      // surfFs.delete(new Path(TESTDIR), true); TODO: Enable when SurfFs.delete is implemented
+      surfFs.delete(new Path(ROOTDIR), true);
     } catch (IOException e) {
-      LOG.log(Level.SEVERE, "Failed to delete " + TESTDIR, e);
+      LOG.log(Level.SEVERE, "Failed to delete " + ROOTDIR, e);
     }
     surfLauncher.close();
-  }
-
-  /**
-   * Test ls on directory
-   */
-  @Test
-  public void testDirectoryListStatus() throws IOException {
-    FileStatus[] statuses = surfFs.listStatus(new Path(SURF, SURF_ADDRESS, TESTDIR));
-    for (FileStatus status : statuses) {
-      URI uri = status.getPath().toUri();
-      assertEquals(SURF, uri.getScheme());
-      assertEquals(SURF_ADDRESS, uri.getAuthority());
-      assertEquals(ABSPATH, uri.getPath());
-
-      assertEquals(status, surfFs.getFileStatus(status.getPath()));
-    }
   }
 
   /**
@@ -98,18 +79,8 @@ public final class SurfFSMetadataITCase {
    */
   @Test
   public void testFullPathListStatus() throws IOException {
-    Path filePath = new Path(SURF, SURF_ADDRESS, ABSPATH);
-    FileStatus fileStatus = surfFs.getFileStatus(filePath);
-
-    FileStatus[] statuses = surfFs.listStatus(filePath);
-    for (FileStatus status : statuses) {
-      URI uri = status.getPath().toUri();
-      assertEquals(SURF, uri.getScheme());
-      assertEquals(SURF_ADDRESS, uri.getAuthority());
-      assertEquals(ABSPATH, uri.getPath());
-
-      assertEquals(fileStatus, status);
-    }
+    testListStatusOfFile(new Path(SURF, SURF_ADDRESS, ABSPATH));
+    testListStatusOfDir(new Path(SURF, SURF_ADDRESS, ROOTDIR));
   }
 
   /**
@@ -117,37 +88,45 @@ public final class SurfFSMetadataITCase {
    */
   @Test
   public void testAbsPathListStatus() throws IOException {
-    Path filePath = new Path(ABSPATH);
-    FileStatus fileStatus = surfFs.getFileStatus(filePath);
-
-    FileStatus[] statuses = surfFs.listStatus(filePath);
-    for (FileStatus status : statuses) {
-      URI uri = status.getPath().toUri();
-      assertEquals(SURF, uri.getScheme());
-      assertEquals(SURF_ADDRESS, uri.getAuthority());
-      assertEquals(ABSPATH, uri.getPath());
-
-      assertEquals(fileStatus, status);
-    }
+    testListStatusOfFile(new Path(ABSPATH));
+    testListStatusOfDir(new Path(ROOTDIR));
   }
 
-  /**
-   * Test ls using a relative path
-   */
-  @Test
-  public void testRelPathListStatus() throws IOException {
-    Path filePath = new Path(TESTFILE);
-    FileStatus fileStatus = surfFs.getFileStatus(filePath);
-
-    FileStatus[] statuses = surfFs.listStatus(filePath);
-    for (FileStatus status : statuses) {
-      URI uri = status.getPath().toUri();
-      assertEquals(SURF, uri.getScheme());
-      assertEquals(SURF_ADDRESS, uri.getAuthority());
-      assertEquals(ABSPATH, uri.getPath());
-
-      assertEquals(fileStatus, status);
+  private void testListStatusOfDir(final Path dirPath) throws IOException {
+    final FileStatus[] statuses = surfFs.listStatus(dirPath);
+    boolean tested = false;
+    for (final FileStatus fileStatusLS : statuses) {
+      // Since there can be remaining directories from other tests, we only check the file we created in this test
+      if (fileStatusLS.getPath().toUri().getPath().equals(ABSPATH)) {
+        testFileStatusOfTestFile(fileStatusLS);
+        tested = true;
+      }
     }
+    assertTrue("A filestatus whose path is ABSPATH must be tested", tested);
+  }
+
+  private void testListStatusOfFile(final Path filePath) throws IOException {
+    final FileStatus fileStatusGFS = surfFs.getFileStatus(filePath);
+    testFileStatusOfTestFile(fileStatusGFS);
+    boolean tested = false;
+
+    final FileStatus[] statuses = surfFs.listStatus(filePath);
+    for (final FileStatus fileStatusLS : statuses) {
+      // Since there can be remaining directories from other tests, we only check the file we created in this test
+      if (fileStatusLS.getPath().toUri().getPath().equals(ABSPATH)) {
+        assertEquals(fileStatusGFS.getPath(), fileStatusLS.getPath());
+        testFileStatusOfTestFile(fileStatusLS);
+        tested = true;
+      }
+    }
+    assertTrue("A filestatus whose path is ABSPATH must be tested", tested);
+  }
+
+  private void testFileStatusOfTestFile(final FileStatus fileStatus) throws IOException {
+    assertEquals(b.length, fileStatus.getLen());
+    final URI uri = fileStatus.getPath().toUri();
+    assertEquals(SURF, uri.getScheme());
+    assertEquals(SURF_ADDRESS, uri.getAuthority());
   }
 
   /**
@@ -180,23 +159,5 @@ public final class SurfFSMetadataITCase {
     assertEquals(baseFs.getUri().getScheme(), hdfsUri.getScheme());
     assertEquals(baseFs.getUri().getAuthority(), hdfsUri.getAuthority());
     assertEquals(ABSPATH, hdfsUri.getPath());
-  }
-
-  /**
-   * Test set/get of working directory
-   */
-  @Test
-  public void testWorkingDirectory() throws IOException {
-    Path path = new Path("/user/otheruser");
-    baseFs.mkdirs(path);
-
-    Path original = surfFs.getWorkingDirectory();
-
-    surfFs.setWorkingDirectory(path);
-    assertEquals(path, surfFs.getWorkingDirectory());
-
-    // Restore for other tests
-    surfFs.setWorkingDirectory(original);
-    assertEquals(original, surfFs.getWorkingDirectory());
   }
 }
