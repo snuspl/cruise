@@ -34,17 +34,20 @@ public final class SurfFSWriteITCase {
 
   private static final String TESTDIR = ITUtils.getTestDir();
 
-  private static final String SHORT = TESTDIR+"/"+"WRITE.short";
-  private static final int SIZE1 = 1;
+  private static final String SMALL = TESTDIR+"/"+"WRITE.short";
+  private static final int SMALL_SIZE = 1;
 
-  private static final String LONG = TESTDIR+"/"+"WRITE.long";
-  private static final int SIZE2 = 200;
+  private static final String ONE_MB = TESTDIR+"/"+"WRITE.onemb";
+  private static final int ONE_MB_SIZE = 1024 * 1024 / b.length;
+
+  private static final String PACKET = TESTDIR+"/"+"WRITE.packet";
+  private static final int PACKET_SIZE = SurfFSOutputStream.getPacketSize() / b.length;
 
   private static final String SURF = "surf";
   private static final String SURF_ADDRESS = "localhost:18000";
 
   private static final short REPLICATION = 3;
-  private static final int BLOCK_SIZE = 1024; // Need to be a multiple of 512 (Hadoop Checksum Policy)
+  private static final int BLOCK_SIZE = 1024 * 1024; // 1MB, Need to be a multiple of 512 (Hadoop Checksum Policy)
   private static final int BUFFER_SIZE = 4096;
 
   private static final SurfLauncher surfLauncher = new SurfLauncher();
@@ -63,17 +66,26 @@ public final class SurfFSWriteITCase {
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
 
-    final FSDataOutputStream stream1 = surfFs.create(new Path(SHORT), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
-    for (int i = 0; i < SIZE1; i++) {
+    // FILE_SIZE(8B) < BLOCK_SIZE(1MB) < PACKET_SIZE(4MB)
+    final FSDataOutputStream stream1 = surfFs.create(new Path(SMALL), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
+    for (int i = 0; i < SMALL_SIZE; i++) {
       stream1.write(b);
     }
     stream1.close();
 
-    final FSDataOutputStream stream2 = surfFs.create(new Path(LONG), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
-    for (int i = 0; i < SIZE2; i++) {
+    // FILE_SIZE(1MB) == BLOCK_SIZE(1MB) < PACKET_SIZE(4MB)
+    final FSDataOutputStream stream2 = surfFs.create(new Path(ONE_MB), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
+    for (int i = 0; i < ONE_MB_SIZE; i++) {
       stream2.write(b);
     }
     stream2.close();
+
+    // FILE_SIZE(4MB) == PACKET_SIZE(4MB) < BLOCK_SIZE(64MB)
+    final FSDataOutputStream stream3 = surfFs.create(new Path(PACKET)); // use the default BLOCK_SIZE (64MB)
+    for (int i = 0; i < PACKET_SIZE; i++) {
+      stream3.write(b);
+    }
+    stream3.close();
   }
 
   @AfterClass
@@ -101,14 +113,16 @@ public final class SurfFSWriteITCase {
 
   @Test
   public void testRead() throws IOException {
-    read(SHORT, SIZE1);
-    read(LONG, SIZE2);
+    read(SMALL, SMALL_SIZE);
+    read(ONE_MB, ONE_MB_SIZE);
+    read(PACKET, PACKET_SIZE);
   }
 
   @Test
   public void testExists() throws IOException {
-    assertTrue(surfFs.exists(new Path(SHORT)));
-    assertTrue(surfFs.exists(new Path(LONG)));
-    assertFalse(surfFs.exists(new Path("Not_exists")));
+    assertTrue("Should exist", surfFs.exists(new Path(SMALL)));
+    assertTrue("Should exist", surfFs.exists(new Path(ONE_MB)));
+    assertTrue("Should exist", surfFs.exists(new Path(PACKET)));
+    assertFalse("Should not exist", surfFs.exists(new Path("Not_exists")));
   }
 }

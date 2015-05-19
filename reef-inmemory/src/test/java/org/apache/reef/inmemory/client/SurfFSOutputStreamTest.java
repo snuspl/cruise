@@ -69,7 +69,7 @@ public final class SurfFSOutputStreamTest {
     final byte[] data = new byte[fileSize];
 
     surfFSOutputStream.write(data);
-    assertEquals(fileSize % surfFSOutputStream.getPacketSize(), surfFSOutputStream.getLocalBufWriteCount());
+    assertEquals(fileSize % SurfFSOutputStream.getPacketSize(), surfFSOutputStream.getLocalBufWriteCount());
 
     surfFSOutputStream.flush();
     assertEquals(0, surfFSOutputStream.getLocalBufWriteCount());
