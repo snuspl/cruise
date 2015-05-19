@@ -135,7 +135,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
       for (int i = 0; i < centroids.size(); i++) {
         centroidStream.writeBytes(String.format("%d,%s%n", (i + 1), centroids.get(i).toString()));
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
   }

@@ -41,7 +41,6 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -138,9 +137,7 @@ public final class DolphinDriver {
                         final UserParameters userParameters,
                         @Parameter(OutputDir.class) final String outputDir,
                         @Parameter(OnLocal.class) final boolean onLocal,
-                        @Parameter(EvaluatorNum.class) final Integer evalNum)
-      throws IllegalAccessException, InstantiationException,
-      NoSuchMethodException, InvocationTargetException {
+                        @Parameter(EvaluatorNum.class) final Integer evalNum) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
     this.userJobInfo = userJobInfo;

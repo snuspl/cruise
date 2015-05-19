@@ -46,12 +46,16 @@ public final class OutputStreamProviderLocal implements OutputStreamProvider {
 
   @Override
   public DataOutputStream create(String name) throws IOException {
-    final String directory = outputPath + File.separator + name;
-    File file = new File(directory);
-    if(!file.exists()) {
-      file.mkdirs();
+    final String directoryPath = outputPath + File.separator + name;
+    final File directory = new File(directoryPath);
+
+    synchronized (OutputStreamProviderLocal.class) {
+      if (!directory.exists()) {
+        directory.mkdirs();
+      }
     }
-    file = new File(directory + File.separator + taskId);
+
+    final File file = new File(directoryPath + File.separator + taskId);
     return new DataOutputStream(new FileOutputStream(file));
   }
 

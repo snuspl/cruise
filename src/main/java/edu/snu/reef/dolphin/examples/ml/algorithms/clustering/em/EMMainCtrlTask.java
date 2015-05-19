@@ -187,20 +187,18 @@ public final class EMMainCtrlTask extends UserControllerTask
   public void cleanup() {
 
     //output the centroids and covariances of the clusters
-    try (final DataOutputStream centroidStream = outputStreamProvider.create("centroids")) {
+    try (final DataOutputStream centroidStream = outputStreamProvider.create("centroids");
+         final DataOutputStream covarianceStream = outputStreamProvider.create("covariances")
+    ) {
       centroidStream.writeBytes(String.format("cluster_id,centroid%n"));
       for (int i = 0; i < centroids.size(); i++) {
         centroidStream.writeBytes(String.format("%d,%s%n", (i + 1), centroids.get(i).toString()));
       }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    try (final DataOutputStream covarianceStream = outputStreamProvider.create("covariances")) {
       covarianceStream.writeBytes(String.format("cluster_id,covariance%n"));
       for (int i = 0; i < centroids.size(); i++) {
         covarianceStream.writeBytes(String.format("%d,%s%n", (i + 1), clusterSummaries.get(i).getCovariance().toString()));
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
   }

@@ -51,7 +51,7 @@ public class LinearRegCtrlTask extends UserControllerTask
     this.outputStreamProvider = outputStreamProvider;
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;
-    this.model = new LinearModel(new DenseVector(dimension+1));
+    this.model = new LinearModel(new DenseVector(dimension + 1));
   }
   
   @Override
@@ -79,14 +79,12 @@ public class LinearRegCtrlTask extends UserControllerTask
   public void cleanup() {
 
     //output the learned model and its accuracy
-    try (final DataOutputStream modelStream = outputStreamProvider.create("model")) {
+    try (final DataOutputStream modelStream = outputStreamProvider.create("model");
+         final DataOutputStream accuracyStream = outputStreamProvider.create("loss")
+    ) {
       modelStream.writeBytes(model.toString());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    try (final DataOutputStream accuracyStream = outputStreamProvider.create("loss")) {
       accuracyStream.writeBytes(String.valueOf(lossSum));
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
   }

@@ -55,7 +55,7 @@ public final class OutputStreamProviderHDFS implements OutputStreamProvider {
   @Override
   public DataOutputStream create(String name) throws IOException {
     final String directoryPath = outputPath + Path.SEPARATOR + name;
-    if(!fs.exists(new Path(directoryPath))) {
+    if (!fs.exists(new Path(directoryPath))) {
       fs.mkdirs(new Path(directoryPath));
     }
     return fs.create(new Path(directoryPath + Path.SEPARATOR + taskId));
