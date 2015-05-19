@@ -66,14 +66,14 @@ public final class SurfFSWriteITCase {
     surfFs = new SurfFS();
     surfFs.initialize(URI.create(SURF + "://" + SURF_ADDRESS), conf);
 
-    // FILE_SIZE < BLOCK_SIZE < PACKET_SIZE
+    // FILE_SIZE < PACKET_SIZE
     final FSDataOutputStream stream1 = surfFs.create(new Path(SMALL), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
     for (int i = 0; i < SMALL_SIZE; i++) {
       stream1.write(b);
     }
     stream1.close();
 
-    // PACKET_SIZE > FILE_SIZE == BLOCK_SIZE
+    // PACKET_SIZE > FILE_SIZE
     final FSDataOutputStream stream2 = surfFs.create(new Path(ONE_MB), true, BUFFER_SIZE, REPLICATION, BLOCK_SIZE);
     for (int i = 0; i < ONE_MB_SIZE; i++) {
       stream2.write(b);
