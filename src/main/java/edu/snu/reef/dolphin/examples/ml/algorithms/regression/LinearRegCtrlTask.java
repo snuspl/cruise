@@ -15,6 +15,7 @@
  */
 package edu.snu.reef.dolphin.examples.ml.algorithms.regression;
 
+import edu.snu.reef.dolphin.core.OutputStreamProvider;
 import edu.snu.reef.dolphin.core.UserControllerTask;
 import edu.snu.reef.dolphin.examples.ml.converge.LinearModelConvCond;
 import edu.snu.reef.dolphin.examples.ml.data.LinearModel;
@@ -27,6 +28,8 @@ import org.apache.mahout.math.DenseVector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,19 +41,23 @@ public class LinearRegCtrlTask extends UserControllerTask
   private final int maxIter;
   private double lossSum;
   private LinearModel model;
+  private final OutputStreamProvider outputStreamProvider;
 
   @Inject
-  public LinearRegCtrlTask(final LinearModelConvCond convergeCondition,
+  public LinearRegCtrlTask(final OutputStreamProvider outputStreamProvider,
+                           final LinearModelConvCond convergeCondition,
                            @Parameter(MaxIterations.class) final int maxIter,
                            @Parameter(Dimension.class) final int dimension) {
+    this.outputStreamProvider = outputStreamProvider;
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;
-    this.model = new LinearModel(new DenseVector(dimension+1));
+    this.model = new LinearModel(new DenseVector(dimension + 1));
   }
   
   @Override
   public final void run(int iteration) {
-    LOG.log(Level.INFO, "{0}-th iteration loss sum: {1}, new model: {2}", new Object[] { iteration, lossSum, model });
+    LOG.log(Level.INFO, "{0}-th iteration loss sum: {1}, new model: {2}",
+        new Object[] { iteration, lossSum, model });
   }
   
   @Override
@@ -66,6 +73,20 @@ public class LinearRegCtrlTask extends UserControllerTask
   @Override
   public void receiveReduceData(int iteration, LinearRegSummary sgdSummary) {
     this.lossSum = sgdSummary.getLoss();
-    this.model = new LinearModel(sgdSummary.getModel().getParameters().times(1.0/sgdSummary.getCount()));
+    this.model = new LinearModel(sgdSummary.getModel().getParameters()
+        .times(1.0 / sgdSummary.getCount()));
+  }
+
+  @Override
+  public void cleanup() {
+
+    //output the learned model and its accuracy
+    try (final DataOutputStream modelStream = outputStreamProvider.create("model");
+         final DataOutputStream accuracyStream = outputStreamProvider.create("loss")) {
+      modelStream.writeBytes(model.toString());
+      accuracyStream.writeBytes(String.valueOf(lossSum));
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

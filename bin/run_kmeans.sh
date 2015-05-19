@@ -19,7 +19,7 @@
 #
 
 # EXAMPLE USAGE 
-# ./run_kmeans.sh -numCls 4 -convThr 0.01 -maxIter 20 -local true -split 4 -input sample_cluster
+# ./run_kmeans.sh -numCls 4 -convThr 0.01 -maxIter 20 -local true -split 4 -input sample_cluster -output output_kmeans
 
 # RUNTIME
 SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar

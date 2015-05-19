@@ -16,6 +16,7 @@
 package edu.snu.reef.dolphin.examples.ml.algorithms.clustering.kmeans;
 
 import edu.snu.reef.dolphin.core.KeyValueStore;
+import edu.snu.reef.dolphin.core.OutputStreamProvider;
 import edu.snu.reef.dolphin.core.UserControllerTask;
 import edu.snu.reef.dolphin.examples.ml.converge.ClusteringConvCond;
 import edu.snu.reef.dolphin.examples.ml.data.VectorSum;
@@ -27,6 +28,8 @@ import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -62,6 +65,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    */
   private List<Vector> centroids = new ArrayList<>();
   private final KeyValueStore keyValueStore;
+  private final OutputStreamProvider outputStreamProvider;
 
   /**
    * This class is instantiated by TANG
@@ -70,14 +74,17 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    *
    * @param clusteringConvergenceCondition conditions for checking convergence of algorithm
    * @param keyValueStore
+   * @param outputStreamProvider
    * @param maxIterations maximum number of iterations allowed before job stops
    */
   @Inject
   public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
                             final KeyValueStore keyValueStore,
+                            final OutputStreamProvider outputStreamProvider,
                             @Parameter(MaxIterations.class) final int maxIterations) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;
+    this.outputStreamProvider = outputStreamProvider;
     this.keyValueStore = keyValueStore;
     this.maxIterations = maxIterations;
   }
@@ -117,5 +124,19 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   @Override
   public void receiveReduceData(int iteration, Map<Integer, VectorSum> pointSum) {
     this.pointSum = pointSum;
+  }
+
+  @Override
+  public void cleanup() {
+
+    //output the centroids of the clusters
+    try (final DataOutputStream centroidStream = outputStreamProvider.create("centroids")) {
+      centroidStream.writeBytes(String.format("cluster_id,centroid%n"));
+      for (int i = 0; i < centroids.size(); i++) {
+        centroidStream.writeBytes(String.format("%d,%s%n", (i + 1), centroids.get(i).toString()));
+      }
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

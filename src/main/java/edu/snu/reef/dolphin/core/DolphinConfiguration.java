@@ -34,6 +34,7 @@ public final class DolphinConfiguration extends ConfigurationModuleBuilder {
     cl.registerShortNameOfClass(EvaluatorNum.class);
     cl.registerShortNameOfClass(Timeout.class);
     cl.registerShortNameOfClass(InputDir.class);
+    cl.registerShortNameOfClass(OutputDir.class);
     final ConfigurationBuilder cb = cl.getBuilder();
     cl.processCommandLine(args);
     return cb.build();
