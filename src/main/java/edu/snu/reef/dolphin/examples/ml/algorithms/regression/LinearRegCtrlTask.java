@@ -56,7 +56,8 @@ public class LinearRegCtrlTask extends UserControllerTask
   
   @Override
   public final void run(int iteration) {
-    LOG.log(Level.INFO, "{0}-th iteration loss sum: {1}, new model: {2}", new Object[] { iteration, lossSum, model });
+    LOG.log(Level.INFO, "{0}-th iteration loss sum: {1}, new model: {2}",
+        new Object[] { iteration, lossSum, model });
   }
   
   @Override
@@ -72,7 +73,8 @@ public class LinearRegCtrlTask extends UserControllerTask
   @Override
   public void receiveReduceData(int iteration, LinearRegSummary sgdSummary) {
     this.lossSum = sgdSummary.getLoss();
-    this.model = new LinearModel(sgdSummary.getModel().getParameters().times(1.0/sgdSummary.getCount()));
+    this.model = new LinearModel(sgdSummary.getModel().getParameters()
+        .times(1.0 / sgdSummary.getCount()));
   }
 
   @Override
@@ -80,8 +82,7 @@ public class LinearRegCtrlTask extends UserControllerTask
 
     //output the learned model and its accuracy
     try (final DataOutputStream modelStream = outputStreamProvider.create("model");
-         final DataOutputStream accuracyStream = outputStreamProvider.create("loss")
-    ) {
+         final DataOutputStream accuracyStream = outputStreamProvider.create("loss")) {
       modelStream.writeBytes(model.toString());
       accuracyStream.writeBytes(String.valueOf(lossSum));
     } catch (final IOException e) {
