@@ -32,8 +32,12 @@ public final class SurfFSFallbackTest {
   public void setUp() throws Exception {
     final SurfMetaService.Client metaClient = mock(SurfMetaService.Client.class);
     doThrow(TException.class).when(metaClient).getOrLoadFileMeta(anyString(), anyString());
+
+    final MetaClientWrapper metaClientWrapper = mock(MetaClientWrapper.class);
+    when(metaClientWrapper.getClient()).thenReturn(metaClient);
+
     final MetaClientManager metaClientManager = mock(MetaClientManager.class);
-    when(metaClientManager.get(anyString())).thenReturn(metaClient);
+    when(metaClientManager.get(anyString())).thenReturn(metaClientWrapper);
 
     baseFs = mock(FileSystem.class);
 

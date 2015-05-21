@@ -4,7 +4,6 @@ import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.entity.WriteableBlockMeta;
 import org.apache.reef.inmemory.common.service.SurfCacheService;
-import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 
 import java.io.IOException;
@@ -31,7 +30,7 @@ public final class SurfFSOutputStream extends OutputStream {
   private static final int COMPLETE_FILE_RETRY_INTERVAL = 400;
   private static final int FLUSH_CHECK_INTERVAL = 100;
 
-  private final SurfMetaService.Client metaClient;
+  private final MetaClientWrapper metaClientWrapper;
   private final String path;
   private final long blockSize;
   private final String localAddress;
@@ -47,11 +46,11 @@ public final class SurfFSOutputStream extends OutputStream {
   private volatile boolean isClosed; // shared with PacketStreamer
 
   public SurfFSOutputStream(final String path,
-                            final SurfMetaService.Client metaClient,
+                            final MetaClientWrapper metaClientWrapper,
                             final CacheClientManager cacheClientManager,
                             final long blockSize) throws UnknownHostException {
     this.path = path;
-    this.metaClient = metaClient;
+    this.metaClientWrapper = metaClientWrapper;
     this.blockSize = blockSize;
     this.localAddress = InetAddress.getLocalHost().getHostName();
     this.isClosed = false;
@@ -111,15 +110,18 @@ public final class SurfFSOutputStream extends OutputStream {
     boolean success = false;
     try {
       for (int i = 0; i < COMPLETE_FILE_RETRY_NUM; i++) {
-        success = metaClient.completeFile(path, fileSize);
+        success = metaClientWrapper.getClient().completeFile(path, fileSize);
         if (success) {
           break;
         } else {
           Thread.sleep(COMPLETE_FILE_RETRY_INTERVAL);
         }
       }
+      metaClientWrapper.close();
     } catch (TException | InterruptedException e) {
       throw new IOException("Failed while closing the file", e);
+    } catch (Exception e) {
+      throw new IOException("Failed to close the Meta Client in close " + path, e);
     }
     if (!success) {
       throw new IOException("File not closed");
@@ -179,7 +181,7 @@ public final class SurfFSOutputStream extends OutputStream {
 
   private WriteableBlockMeta allocateBlockAtMetaServer(final long blockOffset) throws IOException {
     try {
-      return metaClient.allocateBlock(path, blockOffset, localAddress);
+      return metaClientWrapper.getClient().allocateBlock(path, blockOffset, localAddress);
     } catch (TException e) {
       throw new IOException("metaClient.allocateBlock failed", e);
     }
