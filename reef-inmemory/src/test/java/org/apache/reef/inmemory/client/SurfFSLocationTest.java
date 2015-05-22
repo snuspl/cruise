@@ -63,8 +63,12 @@ public final class SurfFSLocationTest {
 
     final SurfMetaService.Client metaClient = mock(SurfMetaService.Client.class);
     when(metaClient.getOrLoadFileMeta(anyString(), anyString())).thenReturn(fileMeta);
+
+    final MetaClientWrapper metaClientWrapper = mock(MetaClientWrapper.class);
+    when(metaClientWrapper.getClient()).thenReturn(metaClient);
+
     final MetaClientManager metaClientManager = mock(MetaClientManager.class);
-    when(metaClientManager.get(anyString())).thenReturn(metaClient);
+    when(metaClientManager.get(anyString())).thenReturn(metaClientWrapper);
 
     final Configuration conf = new Configuration();
     surfFs = new SurfFS(mock(FileSystem.class), metaClientManager, new NullEventRecorder());

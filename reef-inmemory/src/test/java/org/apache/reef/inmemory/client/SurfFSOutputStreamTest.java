@@ -31,15 +31,18 @@ public final class SurfFSOutputStreamTest {
   private static final int BLOCK_SIZE = 800;
   private static String CACHE_ADDR = "testCacheAddress";
 
-  private SurfMetaService.Client metaClient;
+  private MetaClientWrapper metaClientWrapper;
   private CacheClientManager cacheClientManager;
 
   @Before
   public void setUp() throws TException {
-    metaClient = mock(SurfMetaService.Client.class);
+    final SurfMetaService.Client metaClient = mock(SurfMetaService.Client.class);
     final WriteableBlockMeta WriteableBlockMeta = getWriteableBlockMeta();
     when(metaClient.allocateBlock(anyString(), anyInt(), anyString())).thenReturn(WriteableBlockMeta);
     when(metaClient.completeFile(anyString(), anyLong())).thenReturn(true);
+
+    metaClientWrapper = mock(MetaClientWrapper.class);
+    when(metaClientWrapper.getClient()).thenReturn(metaClient);
 
     final SurfCacheService.Client cacheClient = mock(SurfCacheService.Client.class);
     doNothing().when(cacheClient).initBlock(anyLong(), any(WriteableBlockMeta.class));
@@ -81,7 +84,7 @@ public final class SurfFSOutputStreamTest {
   }
 
   public SurfFSOutputStream getSurfFSOutputStream() throws UnknownHostException {
-    return new SurfFSOutputStream(PATH, metaClient, cacheClientManager, BLOCK_SIZE);
+    return new SurfFSOutputStream(PATH, metaClientWrapper, cacheClientManager, BLOCK_SIZE);
   }
 
   public WriteableBlockMeta getWriteableBlockMeta() {

@@ -13,7 +13,6 @@ import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.instrumentation.BasicEventRecorder;
 import org.apache.reef.inmemory.common.instrumentation.Event;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
-import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 
@@ -56,11 +55,11 @@ public final class SurfFS extends FileSystem {
 
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
-  // These cannot be final, because the empty constructor + intialize() are called externally
+  // These cannot be final, because the empty constructor + initialize() are called externally
   private EventRecorder RECORD;
   private FileSystem baseFs;
   private String localAddress;
-  private String metaserverAddress;
+  private String metaServerAddress;
 
   private URI uri;
   private Path workingDir;
@@ -106,15 +105,14 @@ public final class SurfFS extends FileSystem {
     this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
 
     final Event resolveAddressEvent = RECORD.event("client.resolve-address", baseFsUri.toString()).start();
-    this.metaserverAddress = getMetaserverResolver().getAddress();
-    LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaserverAddress);
+    this.metaServerAddress = getMetaserverResolver().getAddress();
+    LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaServerAddress);
     RECORD.record(resolveAddressEvent.stop());
 
     // TODO: Works on local and cluster. Will it work across all platforms? (NetUtils gives the wrong address.)
     this.localAddress = InetAddress.getLocalHost().getHostName();
 
-    LOG.log(Level.INFO, "localAddress: {0}",
-            localAddress);
+    LOG.log(Level.INFO, "localAddress: {0}", localAddress);
     RECORD.record(initializeEvent.stop());
   }
 
@@ -158,11 +156,10 @@ public final class SurfFS extends FileSystem {
   public FSDataInputStream open(final Path path, final int bufferSize) throws IOException {
     final String pathStr = toAbsolutePathInString(path);
     final Event openEvent = RECORD.event("client.open", pathStr).start();
-    LOG.log(Level.INFO, "Open called on {0}, using {1}",
-            new Object[]{path, pathStr});
+    LOG.log(Level.INFO, "Open called on {0}, using {1}", new Object[]{path, pathStr});
 
-    try {
-      final FileMeta metadata = getMetaClient().getOrLoadFileMeta(pathStr, localAddress);
+    try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
+      final FileMeta metadata = metaClientWrapper.getClient().getOrLoadFileMeta(pathStr, localAddress);
       final CacheClientManager cacheClientManager = getCacheClientManager();
       final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
       if (isFallback) {
@@ -184,6 +181,8 @@ public final class SurfFS extends FileSystem {
       } else {
         throw new IOException(e);
       }
+    } catch (Exception e) {
+      throw new IOException("Failed to close the Meta Client in open " + path, e);
     } finally {
       RECORD.record(openEvent.stop());
     }
@@ -200,9 +199,9 @@ public final class SurfFS extends FileSystem {
    */
   @Override
   public FileStatus getFileStatus(final Path path) throws IOException {
-    try {
+    try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
       final String pathStr = toAbsolutePathInString(path);
-      final FileMetaStatus fileMetaStatus = getMetaClient().getFileMetaStatus(pathStr);
+      final FileMetaStatus fileMetaStatus = metaClientWrapper.getClient().getFileMetaStatus(pathStr);
       return toFileStatus(fileMetaStatus);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
       if (isFallback) {
@@ -220,6 +219,8 @@ public final class SurfFS extends FileSystem {
       }
     } catch (URISyntaxException e) {
       throw new IOException(e);
+    } catch (Exception e) {
+      throw new IOException("Failed to close the Meta Client in getFileStatus " + path, e);
     }
   }
 
@@ -236,14 +237,12 @@ public final class SurfFS extends FileSystem {
    */
   @Override
   public BlockLocation[] getFileBlockLocations(final FileStatus file, final long start, final long len) throws IOException {
-
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
       new Object[]{file.getPath(), toAbsolutePathInString(file.getPath())});
-
     final List<BlockLocation> blockLocations = new LinkedList<>();
 
-    try {
-      final FileMeta metadata = getMetaClient().getOrLoadFileMeta(toAbsolutePathInString(file.getPath()), localAddress);
+    try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
+      final FileMeta metadata = metaClientWrapper.getClient().getOrLoadFileMeta(toAbsolutePathInString(file.getPath()), localAddress);
       long startRemaining = start;
       final Iterator<BlockMeta> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
@@ -287,6 +286,8 @@ public final class SurfFS extends FileSystem {
       } else {
         throw new IOException(e);
       }
+    } catch (Exception e) {
+      throw new IOException("Failed to close the Meta Client in getFileBlockLocations " + file, e);
     }
   }
 
@@ -307,8 +308,8 @@ public final class SurfFS extends FileSystem {
   @Override
   public FileStatus[] listStatus(final Path path) throws IOException {
     final String pathStr = toAbsolutePathInString(path);
-    try {
-      final List<FileMetaStatus> fileMetaStatusList = getMetaClient().listFileMetaStatus(pathStr);
+    try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
+      final List<FileMetaStatus> fileMetaStatusList = metaClientWrapper.getClient().listFileMetaStatus(pathStr);
       final FileStatus[] fileStatuses = new FileStatus[fileMetaStatusList.size()];
       for (int i = 0; i < fileMetaStatusList.size(); i++) {
         final FileMetaStatus fileMetaStatus = fileMetaStatusList.get(i);
@@ -319,6 +320,8 @@ public final class SurfFS extends FileSystem {
       throw new IOException(e);
     } catch (URISyntaxException e) {
       throw new IOException(e);
+    } catch (Exception e) {
+      throw new IOException("Failed to close the Meta Client in listStatus " + path, e);
     }
   }
 
@@ -328,12 +331,13 @@ public final class SurfFS extends FileSystem {
     // TODO: handle permission, overwrite, bufferSize, progress
     final String pathStr = toAbsolutePathInString(path);
     try {
-      final SurfMetaService.Client metaClient = getMetaClient();
+      // This MetaClient Wrapper is closed via SurfFSOutputStream.close() since OutputStream uses it.
+      final MetaClientWrapper metaClientWrapper = getMetaClientWrapper();
       final CacheClientManager cacheClientManager = getCacheClientManager();
-      metaClient.create(pathStr, blockSize, baseFsReplication);
-      return new FSDataOutputStream(new SurfFSOutputStream(pathStr, metaClient, cacheClientManager, blockSize), new Statistics("surf"));
+      metaClientWrapper.getClient().create(pathStr, blockSize, baseFsReplication);
+      return new FSDataOutputStream(new SurfFSOutputStream(pathStr, metaClientWrapper, cacheClientManager, blockSize), new Statistics("surf"));
     } catch (TException e) {
-      throw new IOException("Failed to create a file in " + pathStr, e);
+      throw new IOException("Failed to create " + path, e);
     }
   }
 
@@ -350,10 +354,12 @@ public final class SurfFS extends FileSystem {
   @Override
   public boolean mkdirs(final Path path, final FsPermission fsPermission) throws IOException {
     final String pathStr = toAbsolutePathInString(path);
-    try {
-      return getMetaClient().mkdirs(pathStr);
+    try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()){
+      return metaClientWrapper.getClient().mkdirs(pathStr);
     } catch (TException e) {
       throw new IOException("Failed to make directory in " + pathStr, e);
+    } catch (Exception e) {
+      throw new IOException("Failed to close the Meta Client in mkdirs: " + pathStr, e);
     }
   }
 
@@ -361,28 +367,32 @@ public final class SurfFS extends FileSystem {
   public boolean rename(final Path src, final Path dst) throws IOException {
     final String srcPathStr = toAbsolutePathInString(src);
     final String dstPathStr = toAbsolutePathInString(dst);
-    try {
-      return getMetaClient().rename(srcPathStr, dstPathStr);
+    try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
+      return metaClientWrapper.getClient().rename(srcPathStr, dstPathStr);
     } catch (TException e) {
       throw new IOException("Failed to rename " + src + " to " + dst);
+    } catch (Exception e) {
+      throw new IOException("Failed to close the Meta Client in rename " + src + " to " + dst);
     }
   }
 
   @Override
   public boolean delete(final Path path, final boolean recursive) throws IOException {
     final String pathStr = toAbsolutePathInString(path);
-    try {
-      return getMetaClient().remove(pathStr, recursive);
+    try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
+      return metaClientWrapper.getClient().remove(pathStr, recursive);
     } catch (TException e) {
       throw new IOException("Failed to delete " + path);
+    } catch (Exception e) {
+      throw new IOException("Failed to close the Meta Client in delete " + path);
     }
   }
 
   /**
-   * Instantiate and return a new MetaClient for thread-safety
+   * Instantiate a new MetaClient for thread-safety and return the wrapper object.
    */
-  private SurfMetaService.Client getMetaClient() throws TTransportException {
-    return this.metaClientManager.get(this.metaserverAddress);
+  private MetaClientWrapper getMetaClientWrapper() throws TTransportException {
+    return this.metaClientManager.get(this.metaServerAddress);
   }
 
   /**

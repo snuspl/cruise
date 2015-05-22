@@ -29,7 +29,7 @@ public class BaseFsConstructor implements ExternalConstructor<FileSystem> {
       final FileSystem dfs = FileSystem.get(nameNodeUri, new Configuration());
       return dfs;
     } catch (IOException e) {
-      throw new RuntimeException("Failed to connect DFS Client in " + this.dfsAddress);
+      throw new RuntimeException("Failed to connect DFS Client in " + this.dfsAddress, e);
     }
   }
 }

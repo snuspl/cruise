@@ -1,6 +1,5 @@
 package org.apache.reef.inmemory.client;
 
-import org.apache.reef.inmemory.common.service.SurfMetaService;
 import org.apache.thrift.transport.TTransportException;
 
 /**
@@ -8,7 +7,8 @@ import org.apache.thrift.transport.TTransportException;
  */
 public interface MetaClientManager {
   /**
-   * Instantiate and return a new metaClient
+   * Instantiate a new metaClient and return the wrapper object.
+   * The client is acquired via MetaClientWrapper.getClient().
    */
-  public SurfMetaService.Client get(String address) throws TTransportException;
+  public MetaClientWrapper get(String address) throws TTransportException;
 }
