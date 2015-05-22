@@ -14,8 +14,8 @@ import org.apache.thrift.transport.TTransportException;
  * Wrap the Meta Client to release the resources properly when the connection is finished.
  */
 public class MetaClientWrapper implements AutoCloseable {
-  final SurfMetaService.Client client;
-  private TTransport transport;
+  private final SurfMetaService.Client client;
+  private final TTransport transport;
 
   public MetaClientWrapper(final String address) throws TTransportException {
     final HostAndPort metaAddress = HostAndPort.fromString(address);
@@ -31,8 +31,6 @@ public class MetaClientWrapper implements AutoCloseable {
 
   @Override
   public void close() throws Exception {
-    if (transport != null) {
-      transport.close(); // The Socket is also closed internally.
-    }
+    transport.close(); // The Socket is also closed internally.
   }
 }

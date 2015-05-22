@@ -117,19 +117,23 @@ public final class SurfFSOutputStream extends OutputStream {
           Thread.sleep(COMPLETE_FILE_RETRY_INTERVAL);
         }
       }
-      metaClientWrapper.close();
     } catch (TException | InterruptedException e) {
       throw new IOException("Failed while closing the file", e);
-    } catch (Exception e) {
-      throw new IOException("Failed to close the Meta Client in close " + path, e);
-    }
-    if (!success) {
-      throw new IOException("File not closed");
-    }
+    } finally {
+      try {
+        metaClientWrapper.close();
+      } catch (Exception e) {
+        throw new IOException("Failed to close the Meta Client in close " + path, e);
+      }
 
-    // Now we are safe to terminate the PacketStreamer thread
-    this.isClosed = true;
-    this.executor.shutdown();
+      if (!success) {
+        throw new IOException("File not closed");
+      }
+
+      // Now we are safe to terminate the PacketStreamer thread
+      this.isClosed = true;
+      this.executor.shutdown();
+    }
   }
 
   private void flush(final boolean close) throws IOException {
