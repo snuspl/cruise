@@ -3,14 +3,18 @@ package org.apache.reef.inmemory.driver;
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.driver.metatree.MetaTree;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -71,7 +75,42 @@ public final class SurfMetaManager {
   }
 
   public boolean remove(final String path, final boolean recursive) throws IOException {
-    return this.metaTree.remove(path, recursive);
+    // return this.metaTree.remove(path, recursive); TODO remove this
+    final FileMeta fileMeta = this.metaTree.getFileMeta(path);
+    final Map<NodeInfo, List<BlockId>> blockIds = getBlockIdsGroupByCacheNode(fileMeta);
+
+    // TODO This will take a while because it contacts to the BaseFS. (Are you sure?)
+    final boolean metaTreeEntryRemoved = this.metaTree.remove(path, recursive);
+    if (metaTreeEntryRemoved) {
+      cacheNodeMessenger.deleteBlocks(blockIds);
+    }
+    return metaTreeEntryRemoved;
+  }
+
+  /**
+   * Get the block ids of a file.
+   * @param fileMeta The FileMeta stored for the file.
+   * @return Block ids grouped by Cache node.
+   */
+  private Map<NodeInfo, List<BlockId>> getBlockIdsGroupByCacheNode(final FileMeta fileMeta) {
+    final List<BlockMeta> blockMetas = fileMeta.getBlocks();
+    final Map<NodeInfo, List<BlockId>> nodeToBlockIds = new HashMap<>();
+
+    for (final BlockMeta blockMeta : blockMetas) {
+      final BlockId blockId = new BlockId(blockMeta);
+      final List<NodeInfo> nodeInfos = blockMeta.getLocations();
+      for (final NodeInfo nodeInfo : nodeInfos) {
+        final List<BlockId> blockIds;
+        if (nodeToBlockIds.containsKey(nodeInfo)) {
+          blockIds = nodeToBlockIds.get(nodeInfo);
+        } else {
+          blockIds = new ArrayList<>();
+        }
+        blockIds.add(blockId);
+        // TODO Check whether the id is added even the blockIds is not updated explicitly.
+      }
+    }
+    return nodeToBlockIds;
   }
 
   /**
