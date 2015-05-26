@@ -139,7 +139,7 @@ An example json file looks like:
         }
       ],
       "action" : {
-        "factor" : 4,
+        "replication" : 4,
         "pin"    : true
       }
     },
@@ -153,13 +153,13 @@ An example json file looks like:
         }
       ],
       "action" : {
-        "factor" : -1,
+        "replication" : -1,
         "pin"    : false
       }
     }
   ],
   "default" : {
-    "factor" : 2,
+    "replication" : 2,
     "pin"    : false
   }
 }
