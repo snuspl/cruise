@@ -161,4 +161,15 @@ public final class InMemoryCacheImpl implements InMemoryCache {
   public CacheUpdates pullUpdates() {
     return memoryManager.pullUpdates();
   }
+
+  @Override
+  public void delete(final BlockId blockId) {
+    final CacheEntry entry = cache.getIfPresent(blockId);
+    if (entry == null) {
+      LOG.log(Level.INFO, "The entry to delete is not found. BlockId: {0}", blockId);
+    } else {
+      entry.markAsDeleted();
+      cache.invalidate(blockId);
+    }
+  }
 }

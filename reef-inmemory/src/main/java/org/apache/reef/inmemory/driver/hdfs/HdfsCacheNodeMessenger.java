@@ -54,16 +54,13 @@ public final class HdfsCacheNodeMessenger implements CacheNodeMessenger<HdfsBloc
   }
 
   @Override
-  public void deleteBlocks(final Map<NodeInfo, List<BlockId>> blockIds) { // TODO Better name
-    final List<CacheNode> nodes = cacheNodeManager.getCaches();
-    // TODO This will check all the live nodes. What if there are missing cache nodes even they appear in the mappings?
-    // TODO Rather than iterating two lists, we can achieve better performance iterating the much smaller list only once.
-    for (final CacheNode node : nodes) {
+  public void deleteBlocks(final Map<NodeInfo, List<BlockId>> nodeToBlocks) {
+    for (final CacheNode node : cacheNodeManager.getCaches()) {
       final String address = node.getAddress();
       final String rack = node.getRack();
       final NodeInfo nodeInfo = new NodeInfo(address, rack);
-      if (blockIds.containsKey(nodeInfo)) {
-        final BlocksDeleteMessage message = new BlocksDeleteMessage(blockIds.get(nodeInfo));
+      if (nodeToBlocks.containsKey(nodeInfo)) {
+        final BlocksDeleteMessage message = new BlocksDeleteMessage(nodeToBlocks.get(nodeInfo));
         node.send(CODEC.encode(HdfsDriverTaskMessage.deleteMessage(message)));
       }
     }

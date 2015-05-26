@@ -75,42 +75,39 @@ public final class SurfMetaManager {
   }
 
   public boolean remove(final String path, final boolean recursive) throws IOException {
-    // return this.metaTree.remove(path, recursive); TODO remove this
-    final FileMeta fileMeta = this.metaTree.getFileMeta(path);
-    final Map<NodeInfo, List<BlockId>> blockIds = getBlockIdsGroupByCacheNode(fileMeta);
+    final Map<NodeInfo, List<BlockId>> nodeToBlocks = getBlockIdsGroupByCacheNode(path);
 
-    // TODO This will take a while because it contacts to the BaseFS. (Are you sure?)
-    final boolean metaTreeEntryRemoved = this.metaTree.remove(path, recursive);
-    if (metaTreeEntryRemoved) {
-      cacheNodeMessenger.deleteBlocks(blockIds);
+    final boolean removedFromMetaTree = this.metaTree.remove(path, recursive);
+    if (removedFromMetaTree) {
+      cacheNodeMessenger.deleteBlocks(nodeToBlocks);
     }
-    return metaTreeEntryRemoved;
+    return removedFromMetaTree;
   }
 
   /**
    * Get the block ids of a file.
-   * @param fileMeta The FileMeta stored for the file.
-   * @return Block ids grouped by Cache node.
+   * @param path The path to delete.
+   * @return Block ids grouped by Cache node. Returns an empty mapping if there is nothing to delete.
    */
-  private Map<NodeInfo, List<BlockId>> getBlockIdsGroupByCacheNode(final FileMeta fileMeta) {
-    final List<BlockMeta> blockMetas = fileMeta.getBlocks();
-    final Map<NodeInfo, List<BlockId>> nodeToBlockIds = new HashMap<>();
+  private Map<NodeInfo, List<BlockId>> getBlockIdsGroupByCacheNode(final String path) {
+    final Map<NodeInfo, List<BlockId>> nodeToBlocks = new HashMap<>();
 
-    for (final BlockMeta blockMeta : blockMetas) {
-      final BlockId blockId = new BlockId(blockMeta);
-      final List<NodeInfo> nodeInfos = blockMeta.getLocations();
-      for (final NodeInfo nodeInfo : nodeInfos) {
-        final List<BlockId> blockIds;
-        if (nodeToBlockIds.containsKey(nodeInfo)) {
-          blockIds = nodeToBlockIds.get(nodeInfo);
-        } else {
-          blockIds = new ArrayList<>();
+    try {
+      final FileMeta fileMeta = this.metaTree.getFileMeta(path);
+      final List<BlockMeta> blocks = fileMeta.getBlocks();
+      for (final BlockMeta blockMeta : blocks) {
+        for (final NodeInfo nodeInfo : blockMeta.getLocations()) {
+          if (!nodeToBlocks.containsKey(nodeInfo)) {
+            nodeToBlocks.put(nodeInfo, new ArrayList<BlockId>());
+          }
+          final List<BlockId> blockIds = nodeToBlocks.get(nodeInfo);
+          blockIds.add(new BlockId(blockMeta));
         }
-        blockIds.add(blockId);
-        // TODO Check whether the id is added even the blockIds is not updated explicitly.
       }
+    } catch (IOException e) {
+      // When an entry does not exist or the entry is a directory. We do not have to delete any block.
     }
-    return nodeToBlockIds;
+    return nodeToBlocks;
   }
 
   /**

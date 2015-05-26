@@ -262,7 +262,8 @@ public final class MemoryManager {
    * Notifies threads waiting for memory to free up.
    * Updates statistics.
    */
-  public synchronized void remove(final BlockId blockId, final long blockSize, final boolean pinned) {
+  public synchronized void remove(final BlockId blockId, final long blockSize, final boolean pinned,
+                                  final boolean manuallyDeleted) {
     LOG.log(Level.INFO, blockId+" statistics before remove: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -270,6 +271,7 @@ public final class MemoryManager {
 
     final CacheEntryState state = getState(blockId);
     switch(state) {
+      // TODO Is there any possibility an entry is deleted before accomplishing copy?
       case INSERTED:
         if (pinned) {
           statistics.subtractPinnedBytes(blockSize);
@@ -294,9 +296,11 @@ public final class MemoryManager {
         } else {
           statistics.subtractCacheBytes(blockSize);
         }
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
-        updates.addRemoval(blockId);
+        if (!manuallyDeleted) { // When the block is evicted.
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+          updates.addRemoval(blockId);
+        }
         setState(blockId, CacheEntryState.REMOVED);
         notifyAll();
         break;

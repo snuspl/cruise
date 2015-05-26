@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Message sent from driver to Task to delete Blocks.
+ * Message sent from Driver to Task to delete blocks.
  */
 public class BlocksDeleteMessage implements Serializable {
   private final List<BlockId> blockIds;

@@ -28,7 +28,7 @@ public interface CacheNodeMessenger<T> {
   public void addBlock(String taskId, T msg);
 
   /**
-   * Remove blocks in the Caches
+   * Send requests of removing blocks to the Caches
    */
-  public void deleteBlocks(Map<NodeInfo, List<BlockId>> blockIds); // TODO Better parameter name
+  public void deleteBlocks(Map<NodeInfo, List<BlockId>> nodeToBlocks);
 }

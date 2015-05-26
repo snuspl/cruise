@@ -10,6 +10,7 @@ import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * Interface for InMemory Cache.
@@ -77,4 +78,10 @@ public interface InMemoryCache {
    * @return The latest updates from the cache Task
    */
   public CacheUpdates pullUpdates();
+
+  /**
+   * Remove blocks from the cache
+   * @param blockId Block id to delete
+   */
+  public void delete(BlockId blockId);
 }
