@@ -33,6 +33,7 @@ import org.apache.reef.io.network.group.api.task.GroupCommClient;
 import org.apache.reef.io.network.impl.NetworkService;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
@@ -56,31 +57,50 @@ public final class CmpTask implements Task {
   private final ElasticMemoryMessageSender elasticMemoryMessageSender;
   private final MemoryStoreClient memoryStoreClient;
 
+  private final CmpTaskReady cmpTaskReady;
+  private final HeartBeatTriggerManager heartBeatTriggerManager;
+
   @Inject
   public CmpTask(
       @Parameter(WorkerTaskOptions.Destinations.class) final Set<String> destinations,
       final GroupCommClient groupCommClient,
       final ElasticMemoryMessageSender elasticMemoryMessageSender,
-      final MemoryStoreClient memoryStoreClient) {
+      final MemoryStoreClient memoryStoreClient,
+      final CmpTaskReady cmpTaskReady,
+      final HeartBeatTriggerManager heartBeatTriggerManager) {
     this.communicationGroupClient = groupCommClient.getCommunicationGroup(CommGroupName.class);
     this.broadcastReceiver = communicationGroupClient.getBroadcastReceiver(DataBroadcast.class);
     this.elasticMemoryMessageSender = elasticMemoryMessageSender;
     this.destinations = destinations;
     this.memoryStoreClient = memoryStoreClient;
+    this.cmpTaskReady = cmpTaskReady;
+    this.heartBeatTriggerManager = heartBeatTriggerManager;
   }
 
   public byte[] call(byte[] memento) throws InterruptedException, NetworkException {
     LOG.log(Level.INFO, "CmpTask commencing...");
     String receivedString = broadcastReceiver.receive();
     System.out.println("Received via GroupComm: " + receivedString);
+    System.out.println();
+
     System.out.println("Store a string in EM");
     memoryStoreClient.putMovable(ExampleKey.class, destinations.toString() + " must not see this.");
     System.out.println(memoryStoreClient.get(ExampleKey.class));
-    System.out.println("Sending via NetworkServiceWrapper");
-    System.out.println(destinations);
-    for (final String dest : destinations) {
-      elasticMemoryMessageSender.send(dest, "clazzName!", "clazzInstance".getBytes());
-    }
+    System.out.println();
+
+    cmpTaskReady.setReady(true);
+    heartBeatTriggerManager.triggerHeartBeat();
+
+    System.out.println("Waiting 10 seconds.");
+    Thread.sleep(10);
+    System.out.println("Waked up!");
+
+//    System.out.println("Sending via NetworkServiceWrapper");
+//    System.out.println(destinations);
+//    for (final String dest : destinations) {
+//      elasticMemoryMessageSender.send(dest, "clazzName!", "clazzInstance".getBytes());
+//    }
+
     return null;
   }
 }

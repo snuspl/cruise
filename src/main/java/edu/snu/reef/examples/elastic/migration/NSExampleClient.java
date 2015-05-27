@@ -16,6 +16,7 @@
 
 package edu.snu.reef.examples.elastic.migration;
 
+import edu.snu.reef.elastic.memory.driver.ContextMsgSender;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -47,10 +48,13 @@ public final class NSExampleClient {
         .set(DriverConfiguration.ON_DRIVER_STARTED, NSExampleDriver.DriverStartHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, NSExampleDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_CLOSED, NSExampleDriver.ContextCloseHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STOP, NSExampleDriver.DriverStopHandler.class)
+        .set(DriverConfiguration.ON_TASK_MESSAGE, NSExampleDriver.TaskMessageHandler.class)
         .build();
 
     return Tang.Factory.getTang()
         .newConfigurationBuilder(driverConfiguration,
+                                 ContextMsgSender.getConfiguration(),
                                  GroupCommService.getConfiguration(),
                                  NameServerConfiguration.CONF.build())
         .build();

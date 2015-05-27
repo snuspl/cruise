@@ -16,10 +16,12 @@
 
 package edu.snu.reef.examples.elastic.migration;
 
+import edu.snu.reef.elastic.memory.ElasticMemoryControlMessage;
+import edu.snu.reef.elastic.memory.ElasticMemoryControlMessageCodec;
+import edu.snu.reef.elastic.memory.ElasticMemoryControlMessageHandler;
+import edu.snu.reef.elastic.memory.driver.ContextMsgSender;
 import edu.snu.reef.elastic.memory.ns.*;
 import edu.snu.reef.elastic.memory.task.ElasticMemoryService;
-import edu.snu.reef.elastic.memory.task.ElasticMemoryServiceClient;
-import edu.snu.reef.elastic.memory.task.MemoryStoreClient;
 import edu.snu.reef.examples.parameters.DataBroadcast;
 import edu.snu.reef.examples.parameters.CommGroupName;
 import edu.snu.reef.examples.parameters.WorkerTaskOptions;
@@ -30,7 +32,9 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.driver.task.TaskMessage;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
+import org.apache.reef.evaluator.context.parameters.ContextMessageHandlers;
 import org.apache.reef.io.network.group.api.driver.CommunicationGroupDriver;
 import org.apache.reef.io.network.group.api.driver.GroupCommDriver;
 import org.apache.reef.io.network.group.impl.config.BroadcastOperatorSpec;
@@ -42,6 +46,7 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.time.event.StartTime;
+import org.apache.reef.wake.time.event.StopTime;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -70,13 +75,28 @@ public final class NSExampleDriver {
   private final int workerNum;
   private final AtomicBoolean controllerTaskSubmitted;
 
+  private final ContextMsgSender contextMsgSender;
+  private final ReadyCodec readyCodec;
+  private final AtomicInteger notReadyTasks;
+  private final ElasticMemoryControlMessageCodec msgCodec;
+
   @Inject
   public NSExampleDriver(final EvaluatorRequestor requestor,
                          final GroupCommDriver groupCommDriver,
                          final NameServer nameServer,
-                         final LocalAddressProvider localAddressProvider) throws InjectionException {
+                         final LocalAddressProvider localAddressProvider,
+                         final ContextMsgSender contextMsgSender,
+                         final ReadyCodec readyCodec,
+                         final ElasticMemoryControlMessageCodec msgCodec) throws InjectionException {
+    this.contextMsgSender = contextMsgSender;
+//    System.out.println(contextMsgSender);
+    this.readyCodec = readyCodec;
+    this.msgCodec = msgCodec;
+
     // TODO: fix
     this.workerNum = 2;
+
+    this.notReadyTasks = new AtomicInteger(this.workerNum);
 
     this.requestor = requestor;
     this.groupCommDriver = groupCommDriver;
@@ -98,6 +118,13 @@ public final class NSExampleDriver {
       cmpTaskNames.add(CmpTask.TASK_ID_PREFIX + i);
     }
     this.controllerTaskSubmitted = new AtomicBoolean(false);
+  }
+
+  public final class DriverStopHandler implements EventHandler<StopTime> {
+    @Override
+    public void onNext(final StopTime stopTime) {
+//      System.out.println(contextMsgSender);
+    }
   }
 
   public final class DriverStartHandler implements EventHandler<StartTime> {
@@ -122,7 +149,8 @@ public final class NSExampleDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       // Submit context for Group Communication and an additional Network Service
-      final Configuration contextConf = groupCommDriver.getContextConfiguration();
+      final Configuration partialContextConf = groupCommDriver.getContextConfiguration();
+      final Configuration finalContextConf;
       final Configuration partialServiceConf = groupCommDriver.getServiceConfiguration();
       final Configuration finalServiceConf;
 
@@ -130,12 +158,18 @@ public final class NSExampleDriver {
         // I will be the Control Evaluator if no one already is
         LOG.log(Level.INFO, "Submitting Ctrl context to AllocatedEvaluator: {0}", allocatedEvaluator);
 
-        groupCommControllerId = contextId(contextConf);
+        groupCommControllerId = contextId(partialContextConf);
+        finalContextConf = partialContextConf;
         finalServiceConf = partialServiceConf;
 
       } else {
         // I will be a Compute Evaluator
         LOG.log(Level.INFO, "Submitting Cmp context to AllocatedEvaluator: {0}", allocatedEvaluator);
+
+        finalContextConf = Configurations.merge(partialContextConf,
+            Tang.Factory.getTang().newConfigurationBuilder()
+                .bindSetEntry(ContextMessageHandlers.class, ElasticMemoryControlMessageHandler.class)
+                .build());
 
         // register additional NetworkService in context by using NSWrapper
         final Configuration nsWrapperServiceConf = ServiceConfiguration.CONF
@@ -157,7 +191,7 @@ public final class NSExampleDriver {
                                                 additionalServiceConf);
       }
 
-      allocatedEvaluator.submitContextAndService(contextConf, finalServiceConf);
+      allocatedEvaluator.submitContextAndService(finalContextConf, finalServiceConf);
     }
   }
 
@@ -190,6 +224,7 @@ public final class NSExampleDriver {
         final Configuration basicTaskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, CmpTask.TASK_ID_PREFIX + slaveTaskIndex)
             .set(TaskConfiguration.TASK, CmpTask.class)
+            .set(TaskConfiguration.ON_SEND_MESSAGE, CmpTaskReady.class)
             .build();
         final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder(basicTaskConf);
 //        jcb.bindImplementation(MemoryStoreClient.class, ElasticMemoryServiceClient.class);
@@ -214,6 +249,21 @@ public final class NSExampleDriver {
         LOG.log(Level.FINE, "Closing parent context: {0}", parentContext.getId());
         parentContext.close();
       }
+    }
+  }
+
+  public final class TaskMessageHandler implements EventHandler<TaskMessage> {
+    @Override
+    public void onNext(final TaskMessage taskMessage) {
+      System.out.println("Received task message.");
+      System.out.println(taskMessage.getContextId());
+      final Boolean result = readyCodec.decode(taskMessage.get());
+      System.out.println(result);
+      if (result && notReadyTasks.decrementAndGet() == 0) {
+        System.out.println("READY!!");
+        contextMsgSender.send(taskMessage.getContextId(), msgCodec.encode(new ElasticMemoryControlMessage("GOOD")));
+      }
+      System.out.println();
     }
   }
 
