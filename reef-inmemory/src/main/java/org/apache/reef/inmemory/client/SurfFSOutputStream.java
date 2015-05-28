@@ -11,10 +11,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,6 +26,7 @@ public final class SurfFSOutputStream extends OutputStream {
   private static final int COMPLETE_FILE_RETRY_NUM = 5;
   private static final int COMPLETE_FILE_RETRY_INTERVAL = 400;
   private static final int FLUSH_CHECK_INTERVAL = 100;
+  private boolean isLastPacketSent = false;
 
   private final MetaClientWrapper metaClientWrapper;
   private final String path;
@@ -166,7 +164,14 @@ public final class SurfFSOutputStream extends OutputStream {
    */
   private void flushBuf(final byte[] b, final int start, final int end, final boolean close) throws IOException {
     final int len = end - start;
-    if (curBlockInnerOffset == 0 && len != 0) { // only when there's some more to write...
+
+    if (isLastPacketSent && len == 0) {
+      // when lastPacket was sent and there's no actual data to send, we should not send anything at all
+      // This handles the corner case of hdfs dfs -copyFromLocal which calls close() twice
+      return;
+    }
+
+    if (curBlockInnerOffset == 0 && len > 0) { // only when there's some more to write...
       curWritableBlockMeta = allocateBlockAtMetaServer(curBlockOffset);
     }
 
@@ -194,6 +199,7 @@ public final class SurfFSOutputStream extends OutputStream {
                           final boolean isLastPacket) throws IOException {
     try {
       packetQueue.put(new Packet(curWritableBlockMeta, curBlockInnerOffset, buf, isLastPacket));
+      isLastPacketSent = isLastPacket;
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
