@@ -8,9 +8,7 @@ import org.apache.reef.inmemory.common.exceptions.MemoryLimitException;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,6 +28,12 @@ public final class MemoryManager {
   private CacheUpdates updates;
 
   private Map<BlockId, CacheEntryState> cacheEntries = new HashMap<>();
+
+  /**
+   * To keep the block ids that are removed during load. Since the loading is done asynchronously,
+   * the memory status is updated in the callback (copySuccess).
+   */
+  private Set<BlockId> manuallyDeletedBlocks = new HashSet<>();
 
   @Inject
   public MemoryManager(final LRUEvictionManager lru,
@@ -201,9 +205,15 @@ public final class MemoryManager {
         } else {
           statistics.subtractCopyingBytes(blockSize);
         }
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
-        updates.addRemoval(blockId);
+
+        if (manuallyDeletedBlocks.contains(blockId)) {
+          manuallyDeletedBlocks.remove(blockId);
+          // Do nothing for manual delete
+        } else {
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+          updates.addRemoval(blockId);
+        }
         targetState = CacheEntryState.REMOVED;
         setState(blockId, targetState);
         notifyAll();
@@ -244,8 +254,15 @@ public final class MemoryManager {
         } else {
           statistics.subtractCopyingBytes(blockSize);
         }
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
+
+        if (manuallyDeletedBlocks.contains(blockId)) {
+          manuallyDeletedBlocks.remove(blockId);
+          // Do nothing for manual delete
+        } else {
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+        }
+
         updates.addFailure(blockId, throwable);
         setState(blockId, CacheEntryState.REMOVED);
         notifyAll();
@@ -271,7 +288,6 @@ public final class MemoryManager {
 
     final CacheEntryState state = getState(blockId);
     switch(state) {
-      // TODO Is there any possibility an entry is deleted before accomplishing copy?
       case INSERTED:
         if (pinned) {
           statistics.subtractPinnedBytes(blockSize);
@@ -283,6 +299,8 @@ public final class MemoryManager {
         break;
       case COPY_STARTED:
         setState(blockId, CacheEntryState.REMOVED_DURING_COPY);
+        manuallyDeletedBlocks.add(blockId);
+        // The statistics are updated once loading is done.
         break;
       case COPY_FAILED:
         lru.evicted(blockSize);

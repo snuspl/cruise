@@ -125,8 +125,7 @@ public final class InMemoryCacheImplTest {
   }
 
   /**
-   * Ask cache to prepare for a blockLoader, and check correctness of preparation
-   * {@code cache.prepareToWrite} marks the blockLoader as on the loading stage.
+   * Test that prepares to write a block. Cache reserves memory space as the size of the block.
    */
   @Test
   public void testPrepare() throws IOException, BlockNotFoundException {
@@ -584,6 +583,9 @@ public final class InMemoryCacheImplTest {
     assertBlockLoaded(pinnedLoader, pinnedId);
   }
 
+  /**
+   * Test that pins 50 * 128 MB = 6.4 GB of blocks, which do not fit in the cache
+   */
   @Test
   public void testTooManyPinned() throws Exception {
     {
@@ -614,6 +616,112 @@ public final class InMemoryCacheImplTest {
       assertEquals(0, updates.getRemovals().size());
     }
   }
+
+  /**
+   * Test that deletes a loaded block
+   */
+  @Test
+  public void testDelete() throws Exception {
+    final BlockId blockId = randomBlockId();
+    final int blockSize = 8096;
+
+    final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), false);
+
+    cache.load(loader);
+    assertBlockLoaded(loader, blockId);
+
+    assertEquals(blockSize, statistics.getCacheBytes());
+    assertEquals(0, statistics.getPinnedBytes());
+    assertEquals(0, statistics.getEvictedBytes());
+
+    cache.delete(blockId);
+    assertBlockNotFound(blockId, blockSize);
+
+    assertEquals(0, statistics.getCacheBytes());
+    assertEquals(0, statistics.getPinnedBytes());
+    assertEquals(0, statistics.getEvictedBytes());
+  }
+
+  /**
+   * Test that deletes pinned block
+   */
+  @Test
+  public void testDeletePinnedBlock() throws Exception {
+    final BlockId blockId = randomBlockId();
+    final int blockSize = 8096;
+
+    final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), true);
+
+    cache.load(loader);
+    assertBlockLoaded(loader, blockId);
+
+    assertEquals(0, statistics.getCacheBytes());
+    assertEquals(blockSize, statistics.getPinnedBytes());
+    assertEquals(0, statistics.getEvictedBytes());
+
+    cache.delete(blockId);
+    assertBlockNotFound(blockId, blockSize);
+
+    assertEquals(0, statistics.getCacheBytes());
+    assertEquals(0, statistics.getPinnedBytes());
+    assertEquals(0, statistics.getEvictedBytes());
+  }
+
+  /**
+   * Test that deletes a block while loading data
+   */
+  @Test
+  public void testDeleteDuringLoad() throws Exception {
+    final int numThreads = 2;
+    final ExecutorService e = Executors.newFixedThreadPool(numThreads);
+
+    final byte[] firstLoadBuffer = twos(1024);
+    final long blockSize = firstLoadBuffer.length;
+    final BlockId blockId = randomBlockId();
+    assertBlockNotFound(blockId, firstLoadBuffer.length);
+
+    // Start long-running block load
+    final BlockLoader firstLoader;
+    {
+      firstLoader = new SleepingBlockLoader(blockId, blockSize, false, firstLoadBuffer, 3000, new AtomicInteger(0), cache.getLoadingBufferSize());
+      e.submit(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            cache.load(firstLoader);
+          } catch (IOException e1) {
+            fail("IOException " + e1);
+          }
+        }
+      });
+    }
+
+    Thread.sleep(500); // Allow the block load to start
+
+    assertEquals(1024, cache.getStatistics().getCopyingBytes());
+    assertEquals(0, cache.getStatistics().getCacheBytes());
+    assertEquals(0, cache.getStatistics().getPinnedBytes());
+    assertEquals(0, cache.getStatistics().getEvictedBytes());
+
+    cache.delete(blockId);
+    assertBlockNotFound(blockId, firstLoadBuffer.length);
+
+    // Looks copying until the block loading completes
+    assertEquals(1024, cache.getStatistics().getCopyingBytes());
+    assertEquals(0, cache.getStatistics().getCacheBytes());
+    assertEquals(0, cache.getStatistics().getPinnedBytes());
+    assertEquals(0, cache.getStatistics().getEvictedBytes());
+
+    Thread.sleep(3000); // Allow the block load to finish
+
+    // Delete is applied once the loading is complete
+    assertBlockNotFound(blockId, firstLoadBuffer.length);
+    assertEquals(0, cache.getStatistics().getCopyingBytes());
+    assertEquals(0, cache.getStatistics().getCacheBytes());
+    assertEquals(0, cache.getStatistics().getPinnedBytes());
+    assertEquals(0, cache.getStatistics().getEvictedBytes());
+  }
+
 
   /**
    * Test that adding 20 * 128 MB = 2.5 GB of blocks concurrently does not cause an OutOfMemory exception
