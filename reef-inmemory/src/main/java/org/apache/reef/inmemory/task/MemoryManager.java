@@ -299,7 +299,9 @@ public final class MemoryManager {
         break;
       case COPY_STARTED:
         setState(blockId, CacheEntryState.REMOVED_DURING_COPY);
-        manuallyDeletedBlocks.add(blockId);
+        if (deletedManually) {
+          manuallyDeletedBlocks.add(blockId);
+        }
         // The statistics are updated once loading is done.
         break;
       case COPY_FAILED:
