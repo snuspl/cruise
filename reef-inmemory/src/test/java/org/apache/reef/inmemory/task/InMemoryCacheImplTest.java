@@ -722,7 +722,6 @@ public final class InMemoryCacheImplTest {
     assertEquals(0, cache.getStatistics().getEvictedBytes());
   }
 
-
   /**
    * Test that adding 20 * 128 MB = 2.5 GB of blocks concurrently does not cause an OutOfMemory exception
    */

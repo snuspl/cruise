@@ -136,7 +136,6 @@ public final class InMemoryCacheImpl implements InMemoryCache {
     return entry == returnedEntry;
   }
 
-
   @Override
   public int getLoadingBufferSize() {
     return loadingBufferSize;

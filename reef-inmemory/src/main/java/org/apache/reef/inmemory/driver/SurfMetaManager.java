@@ -105,7 +105,7 @@ public final class SurfMetaManager {
         }
       }
     } catch (IOException e) {
-      // When an entry does not exist or the entry is a directory. We do not have to delete any block.
+      // When the entry does not exist or is a directory, we do not have to delete any block.
     }
     return nodeToBlocks;
   }
