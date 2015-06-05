@@ -52,7 +52,7 @@ public interface CacheEntry {
   public void markAsDeleted();
 
   /**
-   * @return {@code true} if this block is not evicted, but deleted.
+   * @return {@code true} if this block is deleted manually.
    */
-  public boolean isManuallyDeleted();
+  public boolean isDeletedManually();
 }

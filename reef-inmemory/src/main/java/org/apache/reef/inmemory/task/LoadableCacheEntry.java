@@ -9,7 +9,7 @@ import org.apache.reef.inmemory.common.exceptions.BlockNotWritableException;
  */
 public class LoadableCacheEntry implements CacheEntry {
   private final BlockLoader blockLoader;
-  private boolean manuallyDeleted = false;
+  private boolean deletedManually = false;
 
   LoadableCacheEntry(final BlockLoader blockLoader) {
     this.blockLoader = blockLoader;
@@ -42,11 +42,11 @@ public class LoadableCacheEntry implements CacheEntry {
 
   @Override
   public void markAsDeleted() {
-    manuallyDeleted = true;
+    deletedManually = true;
   }
 
   @Override
-  public boolean isManuallyDeleted() {
-    return manuallyDeleted;
+  public boolean isDeletedManually() {
+    return deletedManually;
   }
 }

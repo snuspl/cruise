@@ -280,7 +280,7 @@ public final class MemoryManager {
    * Updates statistics.
    */
   public synchronized void remove(final BlockId blockId, final long blockSize, final boolean pinned,
-                                  final boolean manuallyDeleted) {
+                                  final boolean deletedManually) {
     LOG.log(Level.INFO, blockId+" statistics before remove: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -314,7 +314,7 @@ public final class MemoryManager {
         } else {
           statistics.subtractCacheBytes(blockSize);
         }
-        if (!manuallyDeleted) { // When the block is evicted.
+        if (!deletedManually) { // When the block is evicted.
           lru.evicted(blockSize);
           statistics.addEvictedBytes(blockSize);
           updates.addRemoval(blockId);

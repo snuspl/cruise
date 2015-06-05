@@ -11,7 +11,7 @@ import java.io.IOException;
  */
 public class WritableCacheEntry implements CacheEntry {
   private final BlockWriter blockWriter;
-  private boolean manuallyDeleted = false;
+  private boolean deletedManually = false;
 
   WritableCacheEntry(final BlockWriter blockWriter) {
     this.blockWriter = blockWriter;
@@ -48,11 +48,11 @@ public class WritableCacheEntry implements CacheEntry {
 
   @Override
   public void markAsDeleted() {
-    manuallyDeleted = true;
+    deletedManually = true;
   }
 
   @Override
-  public boolean isManuallyDeleted() {
-    return manuallyDeleted;
+  public boolean isDeletedManually() {
+    return deletedManually;
   }
 }
