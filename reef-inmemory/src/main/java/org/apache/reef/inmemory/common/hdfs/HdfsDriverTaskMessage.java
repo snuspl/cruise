@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.common.hdfs;
 
 import org.apache.reef.inmemory.common.CacheClearMessage;
-import org.apache.reef.inmemory.common.BlocksDeleteMessage;
+import org.apache.reef.inmemory.common.DeleteBlocksMessage;
 import org.apache.reef.util.Optional;
 
 import java.io.Serializable;
@@ -14,7 +14,7 @@ public final class HdfsDriverTaskMessage implements Serializable {
 
   private Optional<HdfsBlockMessage> hdfsBlockMessage = Optional.empty();
   private Optional<CacheClearMessage> clearMessage = Optional.empty();
-  private Optional<BlocksDeleteMessage> deleteBlocksMessage = Optional.empty();
+  private Optional<DeleteBlocksMessage> deleteBlocksMessage = Optional.empty();
 
   public static HdfsDriverTaskMessage hdfsBlockMessage(HdfsBlockMessage hdfsBlockMessage) {
     HdfsDriverTaskMessage msg = new HdfsDriverTaskMessage();
@@ -28,9 +28,9 @@ public final class HdfsDriverTaskMessage implements Serializable {
     return msg;
   }
 
-  public static HdfsDriverTaskMessage deleteMessage(BlocksDeleteMessage blocksDeleteMessage) {
+  public static HdfsDriverTaskMessage deleteMessage(DeleteBlocksMessage deleteBlocksMessage) {
     HdfsDriverTaskMessage msg = new HdfsDriverTaskMessage();
-    msg.deleteBlocksMessage = Optional.of(blocksDeleteMessage);
+    msg.deleteBlocksMessage = Optional.of(deleteBlocksMessage);
     return msg;
   }
 
@@ -42,7 +42,7 @@ public final class HdfsDriverTaskMessage implements Serializable {
     return clearMessage;
   }
 
-  public Optional<BlocksDeleteMessage> getDeleteMessage() {
+  public Optional<DeleteBlocksMessage> getDeleteMessage() {
     return deleteBlocksMessage;
   }
 }

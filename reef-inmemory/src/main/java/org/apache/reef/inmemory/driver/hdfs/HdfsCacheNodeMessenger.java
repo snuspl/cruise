@@ -1,7 +1,7 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
 import org.apache.reef.inmemory.common.BlockId;
-import org.apache.reef.inmemory.common.BlocksDeleteMessage;
+import org.apache.reef.inmemory.common.DeleteBlocksMessage;
 import org.apache.reef.inmemory.common.CacheClearMessage;
 import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
@@ -60,7 +60,7 @@ public final class HdfsCacheNodeMessenger implements CacheNodeMessenger<HdfsBloc
       final String rack = node.getRack();
       final NodeInfo nodeInfo = new NodeInfo(address, rack);
       if (nodeToBlocks.containsKey(nodeInfo)) {
-        final BlocksDeleteMessage message = new BlocksDeleteMessage(nodeToBlocks.get(nodeInfo));
+        final DeleteBlocksMessage message = new DeleteBlocksMessage(nodeToBlocks.get(nodeInfo));
         node.send(CODEC.encode(HdfsDriverTaskMessage.deleteMessage(message)));
       }
     }

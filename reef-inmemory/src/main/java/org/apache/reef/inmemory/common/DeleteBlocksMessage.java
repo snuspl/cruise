@@ -6,14 +6,14 @@ import java.util.List;
 /**
  * Message sent from Driver to Task to delete blocks.
  */
-public class BlocksDeleteMessage implements Serializable {
+public class DeleteBlocksMessage implements Serializable {
   private final List<BlockId> blockIds;
 
   /**
    * Create a message to delete blocks in a cache node.
    * @param blockIds Block ids that are loaded in the cache node.
    */
-  public BlocksDeleteMessage(final List<BlockId> blockIds) {
+  public DeleteBlocksMessage(final List<BlockId> blockIds) {
     this.blockIds = blockIds;
   }
 
