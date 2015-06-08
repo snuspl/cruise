@@ -1,6 +1,6 @@
 package edu.snu.reef.elastic.memory.driver;
 
-import edu.snu.reef.elastic.memory.ElasticMemoryDataMsg;
+import edu.snu.reef.em.msg.ElasticMemoryDataMsg;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 

@@ -16,8 +16,8 @@
 
 package edu.snu.reef.elastic.memory.ns;
 
-import edu.snu.reef.elastic.memory.ElasticMemoryDataMsgCodec;
-import edu.snu.reef.elastic.memory.ElasticMemoryDataMsgHandler;
+import edu.snu.reef.em.msg.ElasticMemoryDataMsgCodec;
+import edu.snu.reef.em.msg.ElasticMemoryDataMsgHandler;
 import edu.snu.reef.elastic.memory.driver.ElasticMemoryMessageHandlerWrapper;
 import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
 import org.apache.reef.io.network.impl.NetworkService;

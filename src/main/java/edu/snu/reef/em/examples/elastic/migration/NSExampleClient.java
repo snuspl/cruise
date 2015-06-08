@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package edu.snu.reef.examples.elastic.migration;
+package edu.snu.reef.em.examples.elastic.migration;
 
 import edu.snu.reef.elastic.memory.driver.ContextMsgSender;
 import org.apache.reef.client.DriverConfiguration;

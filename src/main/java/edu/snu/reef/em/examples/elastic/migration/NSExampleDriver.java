@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package edu.snu.reef.examples.elastic.migration;
+package edu.snu.reef.em.examples.elastic.migration;
 
-import edu.snu.reef.elastic.memory.ElasticMemoryCtrlMsg;
-import edu.snu.reef.elastic.memory.ElasticMemoryCtrlMsgCodec;
-import edu.snu.reef.elastic.memory.ElasticMemoryCtrlMsgHandler;
+import edu.snu.reef.em.msg.ElasticMemoryCtrlMsg;
+import edu.snu.reef.em.msg.ElasticMemoryCtrlMsgCodec;
+import edu.snu.reef.em.msg.ElasticMemoryCtrlMsgHandler;
 import edu.snu.reef.elastic.memory.driver.ContextMsgSender;
 import edu.snu.reef.elastic.memory.ns.*;
 import edu.snu.reef.elastic.memory.task.ElasticMemoryService;
-import edu.snu.reef.examples.parameters.DataBroadcast;
-import edu.snu.reef.examples.parameters.CommGroupName;
-import edu.snu.reef.examples.parameters.WorkerTaskOptions;
+import edu.snu.reef.em.examples.parameters.DataBroadcast;
+import edu.snu.reef.em.examples.parameters.CommGroupName;
+import edu.snu.reef.em.examples.parameters.WorkerTaskOptions;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ClosedContext;
 import org.apache.reef.driver.context.ServiceConfiguration;

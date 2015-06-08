@@ -1,4 +1,4 @@
-package edu.snu.reef.elastic.memory;
+package edu.snu.reef.em.msg;
 
 import org.apache.reef.io.network.impl.StreamingCodec;
 

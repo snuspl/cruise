@@ -1,4 +1,4 @@
-package edu.snu.reef.elastic.memory;
+package edu.snu.reef.em.msg;
 
 public final class ElasticMemoryCtrlMsg {
 

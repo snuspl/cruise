@@ -1,22 +1,21 @@
-package edu.snu.reef.elastic.memory;
+package edu.snu.reef.em.examples.elastic.migration;
 
 import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
 import java.io.*;
 
-public final class ElasticMemoryCtrlMsgCodec implements Codec<ElasticMemoryCtrlMsg> {
+public final class ReadyCodec implements Codec<Boolean> {
 
   @Inject
-  public ElasticMemoryCtrlMsgCodec() {
+  public ReadyCodec() {
   }
 
   @Override
-  public byte[] encode(ElasticMemoryCtrlMsg msg) {
+  public byte[] encode(final Boolean bool) {
     try (final ByteArrayOutputStream bstream = new ByteArrayOutputStream()) {
       try (final DataOutputStream dstream = new DataOutputStream(bstream)) {
-        dstream.writeUTF(msg.getDataClassName());
-        dstream.writeUTF(msg.getDestId());
+        dstream.writeBoolean(bool);
       }
       return bstream.toByteArray();
 
@@ -26,12 +25,10 @@ public final class ElasticMemoryCtrlMsgCodec implements Codec<ElasticMemoryCtrlM
   }
 
   @Override
-  public ElasticMemoryCtrlMsg decode(final byte[] data) {
+  public Boolean decode(final byte[] data) {
     try (final ByteArrayInputStream bstream = new ByteArrayInputStream(data)) {
       try (final DataInputStream dstream = new DataInputStream(bstream)) {
-        final String dataClassName = dstream.readUTF();
-        final String destId = dstream.readUTF();
-        return new ElasticMemoryCtrlMsg(dataClassName, destId);
+        return dstream.readBoolean();
       }
     } catch  (final IOException e) {
       throw new RuntimeException(e);

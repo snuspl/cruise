@@ -1,4 +1,4 @@
-package edu.snu.reef.elastic.memory;
+package edu.snu.reef.elastic.memory.serializer;
 
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.DefaultImplementation;

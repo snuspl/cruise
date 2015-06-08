@@ -1,6 +1,6 @@
 package edu.snu.reef.elastic.memory.task;
 
-import edu.snu.reef.elastic.memory.ElasticMemoryDataMsg;
+import edu.snu.reef.em.msg.ElasticMemoryDataMsg;
 import org.apache.reef.annotations.audience.TaskSide;
 import edu.snu.reef.elastic.memory.ns.NSWrapper;
 import org.apache.reef.exception.evaluator.NetworkException;

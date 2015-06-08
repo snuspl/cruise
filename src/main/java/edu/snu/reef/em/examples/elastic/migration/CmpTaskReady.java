@@ -1,4 +1,4 @@
-package edu.snu.reef.examples.elastic.migration;
+package edu.snu.reef.em.examples.elastic.migration;
 
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.task.TaskMessage;

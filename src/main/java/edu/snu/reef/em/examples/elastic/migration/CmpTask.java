@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package edu.snu.reef.examples.elastic.migration;
+package edu.snu.reef.em.examples.elastic.migration;
 
 import edu.snu.reef.elastic.memory.task.ElasticMemoryMessageSender;
 import edu.snu.reef.elastic.memory.task.MemoryStoreClient;
-import edu.snu.reef.examples.parameters.*;
+import edu.snu.reef.em.examples.parameters.*;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
 import org.apache.reef.io.network.group.api.task.CommunicationGroupClient;
@@ -28,7 +28,6 @@ import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
-import java.util.LinkedList;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;

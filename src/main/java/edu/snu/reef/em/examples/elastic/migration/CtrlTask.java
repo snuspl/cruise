@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package edu.snu.reef.examples.elastic.migration;
+package edu.snu.reef.em.examples.elastic.migration;
 
-import edu.snu.reef.examples.parameters.CommGroupName;
-import edu.snu.reef.examples.parameters.DataBroadcast;
+import edu.snu.reef.em.examples.parameters.CommGroupName;
+import edu.snu.reef.em.examples.parameters.DataBroadcast;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
 import org.apache.reef.io.network.group.api.task.CommunicationGroupClient;
