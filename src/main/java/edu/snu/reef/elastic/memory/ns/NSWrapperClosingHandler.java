@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,15 +23,15 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 
 public final class NSWrapperClosingHandler implements EventHandler<ContextStop> {
-  private final NetworkService<?> networkService;
+  private final NetworkService networkService;
 
   @Inject
-  public NSWrapperClosingHandler(final NSWrapper<?> networkServiceWrapper) {
+  public NSWrapperClosingHandler(final NSWrapper networkServiceWrapper) {
     this.networkService = networkServiceWrapper.getNetworkService();
   }
 
   @Override
-  public void onNext(ContextStop arg0) {
+  public void onNext(ContextStop contextStop) {
     try {
       networkService.close();
     } catch (Exception e) {

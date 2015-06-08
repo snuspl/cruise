@@ -16,29 +16,19 @@
 
 package edu.snu.reef.examples.elastic.migration;
 
-import edu.snu.reef.elastic.memory.ElasticMemoryMessage;
-import edu.snu.reef.elastic.memory.ns.NSWrapper;
 import edu.snu.reef.elastic.memory.task.ElasticMemoryMessageSender;
 import edu.snu.reef.elastic.memory.task.MemoryStoreClient;
-import edu.snu.reef.examples.parameters.DataBroadcast;
-import edu.snu.reef.examples.parameters.ExampleKey;
-import edu.snu.reef.examples.parameters.WorkerTaskOptions;
-import edu.snu.reef.examples.parameters.CommGroupName;
+import edu.snu.reef.examples.parameters.*;
 import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.network.Connection;
-import org.apache.reef.io.network.Message;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
 import org.apache.reef.io.network.group.api.task.CommunicationGroupClient;
 import org.apache.reef.io.network.group.api.task.GroupCommClient;
-import org.apache.reef.io.network.impl.NetworkService;
-import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
-import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
+import java.util.LinkedList;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -84,16 +74,19 @@ public final class CmpTask implements Task {
     System.out.println();
 
     System.out.println("Store a string in EM");
-    memoryStoreClient.putMovable(ExampleKey.class, destinations.toString() + " must not see this.");
-    System.out.println(memoryStoreClient.get(ExampleKey.class));
+    memoryStoreClient.putMovable("String", destinations.toString() + " must not see this.");
+    System.out.println(memoryStoreClient.get("String"));
     System.out.println();
 
     cmpTaskReady.setReady(true);
     heartBeatTriggerManager.triggerHeartBeat();
 
     System.out.println("Waiting 10 seconds.");
-    Thread.sleep(10);
+    Thread.sleep(10000);
     System.out.println("Waked up!");
+
+    System.out.println("New data is");
+    System.out.println(memoryStoreClient.get("String"));
 
 //    System.out.println("Sending via NetworkServiceWrapper");
 //    System.out.println(destinations);

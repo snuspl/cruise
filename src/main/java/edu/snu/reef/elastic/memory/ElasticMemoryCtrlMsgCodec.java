@@ -5,17 +5,18 @@ import org.apache.reef.io.serialization.Codec;
 import javax.inject.Inject;
 import java.io.*;
 
-public final class ElasticMemoryControlMessageCodec implements Codec<ElasticMemoryControlMessage> {
+public final class ElasticMemoryCtrlMsgCodec implements Codec<ElasticMemoryCtrlMsg> {
 
   @Inject
-  public ElasticMemoryControlMessageCodec() {
+  public ElasticMemoryCtrlMsgCodec() {
   }
 
   @Override
-  public byte[] encode(ElasticMemoryControlMessage msg) {
+  public byte[] encode(ElasticMemoryCtrlMsg msg) {
     try (final ByteArrayOutputStream bstream = new ByteArrayOutputStream()) {
       try (final DataOutputStream dstream = new DataOutputStream(bstream)) {
-        dstream.writeUTF(msg.getString());
+        dstream.writeUTF(msg.getDataClassName());
+        dstream.writeUTF(msg.getDestId());
       }
       return bstream.toByteArray();
 
@@ -25,10 +26,12 @@ public final class ElasticMemoryControlMessageCodec implements Codec<ElasticMemo
   }
 
   @Override
-  public ElasticMemoryControlMessage decode(final byte[] data) {
+  public ElasticMemoryCtrlMsg decode(final byte[] data) {
     try (final ByteArrayInputStream bstream = new ByteArrayInputStream(data)) {
       try (final DataInputStream dstream = new DataInputStream(bstream)) {
-        return new ElasticMemoryControlMessage(dstream.readUTF());
+        final String dataClassName = dstream.readUTF();
+        final String destId = dstream.readUTF();
+        return new ElasticMemoryCtrlMsg(dataClassName, destId);
       }
     } catch  (final IOException e) {
       throw new RuntimeException(e);

@@ -5,14 +5,14 @@ import org.apache.reef.io.network.impl.StreamingCodec;
 import javax.inject.Inject;
 import java.io.*;
 
-public final class ElasticMemoryMessageCodec implements StreamingCodec<ElasticMemoryMessage> {
+public final class ElasticMemoryDataMsgCodec implements StreamingCodec<ElasticMemoryDataMsg> {
 
   @Inject
-  public ElasticMemoryMessageCodec() {
+  public ElasticMemoryDataMsgCodec() {
   }
 
   @Override
-  public byte[] encode(final ElasticMemoryMessage msg) {
+  public byte[] encode(final ElasticMemoryDataMsg msg) {
     try (final ByteArrayOutputStream bstream = new ByteArrayOutputStream()) {
       try (final DataOutputStream dstream = new DataOutputStream(bstream)) {
         encodeToStream(msg, dstream);
@@ -25,14 +25,17 @@ public final class ElasticMemoryMessageCodec implements StreamingCodec<ElasticMe
   }
 
   @Override
-  public void encodeToStream(final ElasticMemoryMessage msg, final DataOutputStream dstream) {
+  public void encodeToStream(final ElasticMemoryDataMsg msg, final DataOutputStream dstream) {
     try {
+      final byte[][] dataArray = msg.getData();
       dstream.writeUTF(msg.getFrom());
       dstream.writeUTF(msg.getTo());
-      dstream.writeInt(ElasticMemoryMessage.Type.toInt(msg.getMsgType()));
       dstream.writeUTF(msg.getDataClassName());
-      dstream.writeInt(msg.getData().length);
-      dstream.write(msg.getData());
+      dstream.writeInt(dataArray.length);
+      for (final byte[] data : dataArray) {
+        dstream.writeInt(data.length);
+        dstream.write(data);
+      }
 
     } catch (final IOException e) {
       throw new RuntimeException(e);
@@ -40,7 +43,7 @@ public final class ElasticMemoryMessageCodec implements StreamingCodec<ElasticMe
   }
 
   @Override
-  public ElasticMemoryMessage decode(final byte[] data) {
+  public ElasticMemoryDataMsg decode(final byte[] data) {
     try (final ByteArrayInputStream bstream = new ByteArrayInputStream(data)) {
       try (final DataInputStream dstream = new DataInputStream(bstream)) {
         return decodeFromStream(dstream);
@@ -51,17 +54,18 @@ public final class ElasticMemoryMessageCodec implements StreamingCodec<ElasticMe
   }
 
   @Override
-  public ElasticMemoryMessage decodeFromStream(final DataInputStream dstream) {
+  public ElasticMemoryDataMsg decodeFromStream(final DataInputStream dstream) {
     try {
       final String from = dstream.readUTF();
       final String to = dstream.readUTF();
-      final ElasticMemoryMessage.Type msgType = ElasticMemoryMessage.Type.toType(dstream.readInt());
       final String dataClassName = dstream.readUTF();
-      final int dataLength  = dstream.readInt();
-      final byte[] data = new byte[dataLength];
-      dstream.readFully(data);
+      final byte[][] data = new byte[dstream.readInt()][];
+      for (int index = 0; index < data.length; index++) {
+        data[index] = new byte[dstream.readInt()];
+        dstream.readFully(data[index]);
+      }
 
-      return new ElasticMemoryMessage(from, to, msgType, dataClassName, data);
+      return new ElasticMemoryDataMsg(from, to, dataClassName, data);
 
     } catch (final IOException e) {
       throw new RuntimeException(e);

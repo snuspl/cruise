@@ -16,9 +16,9 @@
 
 package edu.snu.reef.examples.elastic.migration;
 
-import edu.snu.reef.elastic.memory.ElasticMemoryControlMessage;
-import edu.snu.reef.elastic.memory.ElasticMemoryControlMessageCodec;
-import edu.snu.reef.elastic.memory.ElasticMemoryControlMessageHandler;
+import edu.snu.reef.elastic.memory.ElasticMemoryCtrlMsg;
+import edu.snu.reef.elastic.memory.ElasticMemoryCtrlMsgCodec;
+import edu.snu.reef.elastic.memory.ElasticMemoryCtrlMsgHandler;
 import edu.snu.reef.elastic.memory.driver.ContextMsgSender;
 import edu.snu.reef.elastic.memory.ns.*;
 import edu.snu.reef.elastic.memory.task.ElasticMemoryService;
@@ -78,7 +78,7 @@ public final class NSExampleDriver {
   private final ContextMsgSender contextMsgSender;
   private final ReadyCodec readyCodec;
   private final AtomicInteger notReadyTasks;
-  private final ElasticMemoryControlMessageCodec msgCodec;
+  private final ElasticMemoryCtrlMsgCodec msgCodec;
 
   @Inject
   public NSExampleDriver(final EvaluatorRequestor requestor,
@@ -87,7 +87,7 @@ public final class NSExampleDriver {
                          final LocalAddressProvider localAddressProvider,
                          final ContextMsgSender contextMsgSender,
                          final ReadyCodec readyCodec,
-                         final ElasticMemoryControlMessageCodec msgCodec) throws InjectionException {
+                         final ElasticMemoryCtrlMsgCodec msgCodec) throws InjectionException {
     this.contextMsgSender = contextMsgSender;
 //    System.out.println(contextMsgSender);
     this.readyCodec = readyCodec;
@@ -168,7 +168,7 @@ public final class NSExampleDriver {
 
         finalContextConf = Configurations.merge(partialContextConf,
             Tang.Factory.getTang().newConfigurationBuilder()
-                .bindSetEntry(ContextMessageHandlers.class, ElasticMemoryControlMessageHandler.class)
+                .bindSetEntry(ContextMessageHandlers.class, ElasticMemoryCtrlMsgHandler.class)
                 .build());
 
         // register additional NetworkService in context by using NSWrapper
@@ -253,6 +253,8 @@ public final class NSExampleDriver {
   }
 
   public final class TaskMessageHandler implements EventHandler<TaskMessage> {
+    private String prevTaskId = "DEFAULT";
+
     @Override
     public void onNext(final TaskMessage taskMessage) {
       System.out.println("Received task message.");
@@ -261,8 +263,10 @@ public final class NSExampleDriver {
       System.out.println(result);
       if (result && notReadyTasks.decrementAndGet() == 0) {
         System.out.println("READY!!");
-        contextMsgSender.send(taskMessage.getContextId(), msgCodec.encode(new ElasticMemoryControlMessage("GOOD")));
+        contextMsgSender.send(taskMessage.getContextId(),
+            msgCodec.encode(new ElasticMemoryCtrlMsg("String", prevTaskId)));
       }
+      prevTaskId = taskMessage.getId();
       System.out.println();
     }
   }

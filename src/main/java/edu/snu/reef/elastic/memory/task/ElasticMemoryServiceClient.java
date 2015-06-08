@@ -2,7 +2,6 @@ package edu.snu.reef.elastic.memory.task;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.annotations.audience.TaskSide;
-import edu.snu.reef.elastic.memory.Key;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -13,8 +12,8 @@ import java.util.Map;
 @TaskSide
 public final class ElasticMemoryServiceClient implements MemoryStoreClient {
 
-  private final Map<Class<? extends Key>, List<Object>> localDataMap;
-  private final Map<Class<? extends Key>, List<Object>> elasticDataMap;
+  private final Map<String, List> localDataMap;
+  private final Map<String, List> elasticDataMap;
 
   @Inject
   public ElasticMemoryServiceClient() {
@@ -23,34 +22,32 @@ public final class ElasticMemoryServiceClient implements MemoryStoreClient {
   }
 
   @Override
-  public <T> void putLocal(Class<? extends Key<T>> key, T value) {
+  public <T> void putLocal(String key, T value) {
     List<Object> singleObjectList = new LinkedList<>();
     singleObjectList.add(value);
     localDataMap.put(key, singleObjectList);
   }
 
   @Override
-  @SuppressWarnings("unchecked")
-  public <T> void putLocal(Class<? extends Key<T>> key, List<T> values) {
-    localDataMap.put(key, (List<Object>)values);
+  public <T> void putLocal(String key, List<T> values) {
+    localDataMap.put(key, values);
   }
 
   @Override
-  public <T> void putMovable(Class<? extends Key<T>> key, T value) {
+  public <T> void putMovable(String key, T value) {
     List<Object> singleObjectList = new LinkedList<>();
     singleObjectList.add(value);
     elasticDataMap.put(key, singleObjectList);
   }
 
   @Override
-  @SuppressWarnings("unchecked")
-  public <T> void putMovable(Class<? extends Key<T>> key, List<T> values) {
-    elasticDataMap.put(key, (List<Object>)values);
+  public <T> void putMovable(String key, List<T> values) {
+    elasticDataMap.put(key, values);
   }
 
   @Override
   @SuppressWarnings("unchecked")
-  public <T> List<T> get(Class<? extends Key<T>> key) {
+  public <T> List<T> get(String key) {
     final List<T> retList = new LinkedList<>();
     if (localDataMap.containsKey(key)) {
       retList.addAll((List<T>)localDataMap.get(key));
@@ -59,6 +56,12 @@ public final class ElasticMemoryServiceClient implements MemoryStoreClient {
       retList.addAll((List<T>)elasticDataMap.get(key));
     }
     return retList;
+  }
+
+  @Override
+  public void remove(String key) {
+    localDataMap.remove(key);
+    elasticDataMap.remove(key);
   }
 
   @Override
