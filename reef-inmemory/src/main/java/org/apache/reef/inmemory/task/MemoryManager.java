@@ -207,8 +207,8 @@ public final class MemoryManager {
         }
 
         if (manuallyDeletedBlocks.contains(blockId)) {
+          lru.remove(blockId);
           manuallyDeletedBlocks.remove(blockId);
-          // Do nothing for manual delete
         } else {
           lru.evicted(blockSize);
           statistics.addEvictedBytes(blockSize);
@@ -256,8 +256,8 @@ public final class MemoryManager {
         }
 
         if (manuallyDeletedBlocks.contains(blockId)) {
+          lru.remove(blockId);
           manuallyDeletedBlocks.remove(blockId);
-          // Do nothing for manual delete
         } else {
           lru.evicted(blockSize);
           statistics.addEvictedBytes(blockSize);
@@ -292,21 +292,30 @@ public final class MemoryManager {
         if (pinned) {
           statistics.subtractPinnedBytes(blockSize);
         }
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
-        updates.addRemoval(blockId);
+
+        if (deletedManually) {
+          lru.remove(blockId);
+        } else {
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+          updates.addRemoval(blockId);
+        }
         setState(blockId, CacheEntryState.REMOVED);
         break;
       case COPY_STARTED:
-        setState(blockId, CacheEntryState.REMOVED_DURING_COPY);
         if (deletedManually) {
           manuallyDeletedBlocks.add(blockId);
         }
         // The statistics are updated once loading is done.
+        setState(blockId, CacheEntryState.REMOVED_DURING_COPY);
         break;
       case COPY_FAILED:
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
+        if (deletedManually) {
+          lru.remove(blockId);
+        } else {
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+        }
         // don't update as removed, already updated as failed
         setState(blockId, CacheEntryState.REMOVED);
         break;
@@ -316,7 +325,10 @@ public final class MemoryManager {
         } else {
           statistics.subtractCacheBytes(blockSize);
         }
-        if (!deletedManually) { // When the block is evicted.
+
+        if (deletedManually) {
+          lru.remove(blockId);
+        } else {
           lru.evicted(blockSize);
           statistics.addEvictedBytes(blockSize);
           updates.addRemoval(blockId);

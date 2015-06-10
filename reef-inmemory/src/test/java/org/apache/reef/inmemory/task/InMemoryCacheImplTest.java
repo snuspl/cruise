@@ -723,6 +723,44 @@ public final class InMemoryCacheImplTest {
   }
 
   /**
+   * Test that the deleted blocks are excluded from being selected to evict.
+   * If the blocks are not handled properly after removal, a deadlock occurs while choosing candidates.
+   */
+  @Test(timeout = 60000)
+  public void testEvictionAfterRemoval() throws IOException, InterruptedException {
+    final int blockSize = 128 * 1024 * 1024;
+
+    // Load 1.28 GB data and delete the data right after loaded.
+    final long iterationsToRemove = 10;
+    for (int i = 0; i < iterationsToRemove; i++) {
+      final BlockId blockId = randomBlockId();
+      final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), false);
+
+      cache.load(loader);
+      cache.delete(blockId);
+    }
+
+    // Enforce eviction by loading 6.4 GB data
+    final long iterations = 50;
+    for (int i = 0; i < iterations; i++) {
+      final BlockId blockId = randomBlockId();
+      final BlockLoader loader = new MockBlockLoader(blockId, blockSize, new OnesBufferLoader(blockSize), false);
+
+      cache.load(loader);
+      Thread.sleep(10);
+    }
+
+    System.out.println("Statistics: " + cache.getStatistics());
+
+    final long usableCache = (long) (cache.getStatistics().getMaxBytes() * (1.0 - slack));
+    final long expectedCached = usableCache - (usableCache % blockSize);
+    final long expectedEvicted = (blockSize * iterations) - expectedCached;
+
+    assertEquals(expectedCached, statistics.getCacheBytes());
+    assertEquals(expectedEvicted, statistics.getEvictedBytes());
+  }
+
+  /**
    * Test that adding 20 * 128 MB = 2.5 GB of blocks concurrently does not cause an OutOfMemory exception
    */
   @Test
