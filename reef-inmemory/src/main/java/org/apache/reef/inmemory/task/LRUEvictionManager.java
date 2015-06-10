@@ -11,8 +11,10 @@ import java.util.logging.Logger;
  * An LRU eviction implementation.
  * On memory usage, the manager must be informed when
  * - A block has been inserted into the cache: add()
+ * - A block has been pinned into the cache: addPinned()
  * - A block has been read from the cache: use()
- * - A block has been removed from the cache: evicted()
+ * - A block has been removed from the cache: remove()
+ * - A block has been evicted from the cache: evicted()
  */
 public final class LRUEvictionManager {
   private static final Logger LOG = Logger.getLogger(LRUEvictionManager.class.getName());
@@ -41,6 +43,14 @@ public final class LRUEvictionManager {
   }
 
   /**
+   * Invoke when a block has been pinned into the cache
+   * @param blockId Pinned block
+   */
+  public synchronized void addPinned(final BlockId blockId) {
+    pinned.add(blockId);
+  }
+
+  /**
    * Invoke when a block has been read from the cache
    * @param blockId Read block
    */
@@ -52,7 +62,7 @@ public final class LRUEvictionManager {
   }
 
   /**
-   * Invoke when a block has been removed from the cache.
+   * Invoke when a block has been evicted from the cache.
    * @param spaceEvicted Space cleared by eviction
    */
   public synchronized void evicted(final long spaceEvicted) {
@@ -60,13 +70,20 @@ public final class LRUEvictionManager {
   }
 
   /**
-   * Invoke when a block has been pinned into the cache
-   * @param blockId Pinned block
+   * Invoke when a block has been manually removed from the cache
+   * @param blockId Removed block
    */
-  public synchronized void addPinned(final BlockId blockId) {
-    pinned.add(blockId);
+  public synchronized void remove(final BlockId blockId) {
+    LRUEntry entry = head;
+    while (entry != null) {
+      if (blockId.equals(entry.blockId)) {
+        final LRUEntry entryToRemove = index.remove(blockId);
+        entryToRemove.exit();
+      } else {
+        entry = entry.prev;
+      }
+    }
   }
-
   /**
    * Evict blocks.
    * A list of Block IDs is returned, and the caller _must_ remove these blocks from the cache.
