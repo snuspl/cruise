@@ -93,10 +93,10 @@ public final class KMeansMainCmpTask extends UserComputeTask
       }
 
       // Compute vector sums for each cluster centroid
-      if (pointSum.containsKey(nearestClusterId) == false) {
-        pointSum.put(nearestClusterId, new VectorSum(vector, 1, true));
-      } else {
+      if (pointSum.containsKey(nearestClusterId)) {
         pointSum.get(nearestClusterId).add(vector);
+      } else {
+        pointSum.put(nearestClusterId, new VectorSum(vector, 1, true));
       }
     }
   }
