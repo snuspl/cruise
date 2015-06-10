@@ -24,7 +24,7 @@ public interface DataParser<T> {
    * @return parsed data as format T
    * @throws ParseException parsing has failed due to incorrect input format
    */
-  public T get() throws ParseException, ParseException;
+  public T get() throws ParseException;
 
   /**
    * Parse data input and keep it for later get() calls
