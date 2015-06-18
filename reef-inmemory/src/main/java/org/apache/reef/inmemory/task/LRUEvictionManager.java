@@ -74,14 +74,9 @@ public final class LRUEvictionManager {
    * @param blockId Removed block
    */
   public synchronized void remove(final BlockId blockId) {
-    LRUEntry entry = head;
-    while (entry != null) {
-      if (blockId.equals(entry.blockId)) {
-        final LRUEntry entryToRemove = index.remove(blockId);
-        entryToRemove.exit();
-      } else {
-        entry = entry.prev;
-      }
+    final LRUEntry entry = index.get(blockId);
+    if (entry != null) {
+      entry.exit();
     }
   }
   /**
