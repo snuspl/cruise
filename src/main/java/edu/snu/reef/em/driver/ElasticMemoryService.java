@@ -1,8 +1,11 @@
 package edu.snu.reef.em.driver;
 
+import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.driver.evaluator.EvaluatorRequest;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Driver-side interface of ElasticMemoryService
@@ -11,48 +14,44 @@ import java.util.List;
 interface ElasticMemoryService {
 
   /**
-   * Add a new evaluator that has size
-   * @param size
+   * Add new evaluators as specified
+   *
+   * @param number number of evaluators to add
+   * @param megaBytes memory size of each new evaluator in MB
+   * @param cores number of cores of each new evaluator
    */
-//  void add(int size);
-//
-//  /**
-//   *
-//   * @param evalId
-//   */
-//  void del(String evalId);
-//
-//  /**
-//   *
-//   * @param evalId
-//   * @param size
-//   */
-//  void resize(String evalId, int size);
-//
-//  /**
-//   * Move state to destination evaluator
-//   *
-//   * @param partition
-//   * @param destEvalId
-//   */
-//  void move(Partition partition, String destEvalId);
-//
-//  /**
-//   * Merge states into single destination evaluator
-//   * @param partitions
-//   * @param destEvalId
-//   */
-//  void merge(List<Partition> partitions, String destEvalId);
-//
-//  /**
-//   * Split state into destEvalIds
-//   *
-//   * @param partition
-//   * @param destEvalIds
-//   */
-//  void split(Partition partition, List<String> destEvalIds, HashFunc hashFunc);
+  void add(int number, int megaBytes, int cores);
+
+  /**
+   * Release the evaluator specified by a given identifier
+   *
+   * @param evalId identifier of the evaluator to release
+   */
+  void delete(String evalId);
+
+  /**
+   * Resize the evaluator specified by a given identifier
+   *
+   * @param evalId identifier of the evaluator to delete
+   * @param megaBytes new memory size in MB
+   * @param cores new number of cores
+   */
+  void resize(String evalId, int megaBytes, int cores);
+
+  /**
+   * Move a part of an evaluator's state to another evaluator
+   *
+   * @param dataClassName data type to perform this operation
+   * @param rangeSet the range of integer identifiers that specify the state to move
+   * @param srcEvalId identifier of the source evaluator
+   * @param destEvalId identifier of the destination evaluator
+   */
+  void move(String dataClassName, Set<IntRange> rangeSet, String srcEvalId, String destEvalId);
+
+  /**
+   * Persist the state of an evaluator into stable storage
+   *
+   * @param evalId identifier of the evaluator whose state should be persisted
+   */
+  void checkpoint(String evalId);
 }
-
-// add, del, move -> split, merge
-
-// naming
