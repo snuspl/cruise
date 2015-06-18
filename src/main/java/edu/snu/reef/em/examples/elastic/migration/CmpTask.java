@@ -16,8 +16,8 @@
 
 package edu.snu.reef.em.examples.elastic.migration;
 
-import edu.snu.reef.elastic.memory.task.ElasticMemoryMessageSender;
-import edu.snu.reef.elastic.memory.task.MemoryStoreClient;
+import edu.snu.reef.em.task.ElasticMemoryMessageSender;
+import edu.snu.reef.em.task.MemoryStoreClient;
 import edu.snu.reef.em.examples.parameters.*;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.api.operators.Broadcast;

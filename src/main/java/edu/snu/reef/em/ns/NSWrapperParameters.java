@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package edu.snu.reef.elastic.memory.ns;
+package edu.snu.reef.em.ns;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;

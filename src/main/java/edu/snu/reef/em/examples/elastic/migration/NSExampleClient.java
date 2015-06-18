@@ -16,7 +16,7 @@
 
 package edu.snu.reef.em.examples.elastic.migration;
 
-import edu.snu.reef.elastic.memory.driver.ContextMsgSender;
+import edu.snu.reef.em.driver.ContextMsgSender;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;

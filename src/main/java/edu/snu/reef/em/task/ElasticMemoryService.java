@@ -1,4 +1,4 @@
-package edu.snu.reef.elastic.memory.task;
+package edu.snu.reef.em.task;
 
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;

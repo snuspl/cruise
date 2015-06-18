@@ -1,4 +1,4 @@
-package edu.snu.reef.elastic.memory.task;
+package edu.snu.reef.em.task;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.annotations.audience.TaskSide;

@@ -1,4 +1,4 @@
-package edu.snu.reef.elastic.memory.driver;
+package edu.snu.reef.em.driver;
 
 public class IntegerHashFunc implements HashFunc<Integer> {
   private final int maxValue;

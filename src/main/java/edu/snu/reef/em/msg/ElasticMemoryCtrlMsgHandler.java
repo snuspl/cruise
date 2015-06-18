@@ -1,8 +1,8 @@
 package edu.snu.reef.em.msg;
 
-import edu.snu.reef.elastic.memory.serializer.Serializer;
-import edu.snu.reef.elastic.memory.task.ElasticMemoryMessageSender;
-import edu.snu.reef.elastic.memory.task.MemoryStoreClient;
+import edu.snu.reef.em.serializer.Serializer;
+import edu.snu.reef.em.task.ElasticMemoryMessageSender;
+import edu.snu.reef.em.task.MemoryStoreClient;
 import org.apache.reef.evaluator.context.ContextMessageHandler;
 import org.apache.reef.io.serialization.Codec;
 

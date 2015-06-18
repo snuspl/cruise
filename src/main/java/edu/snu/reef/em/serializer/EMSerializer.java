@@ -1,4 +1,4 @@
-package edu.snu.reef.elastic.memory.serializer;
+package edu.snu.reef.em.serializer;
 
 import edu.snu.reef.em.examples.parameters.StringCodec;
 import org.apache.reef.io.serialization.Codec;
