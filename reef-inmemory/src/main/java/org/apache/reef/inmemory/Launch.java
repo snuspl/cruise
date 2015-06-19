@@ -57,9 +57,9 @@ public class Launch
   public static final class Local implements Name<Boolean> {
   }
 
-  @NamedParameter(doc = "Number of threads to support for local runtime",
-    short_name = "local_threads", default_value = "2")
-  public static final class LocalThreads implements Name<Integer> {
+  @NamedParameter(doc = "Number of maximum evaluators that can be created in the local runtime",
+    short_name = "local_max_num_eval", default_value = "2")
+  public static final class LocalMaxNumEval implements Name<Integer> {
   }
 
   // See: JVMHeapSlack class
@@ -93,7 +93,7 @@ public class Launch
       Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(Local.class);
-    cl.registerShortNameOfClass(LocalThreads.class);
+    cl.registerShortNameOfClass(LocalMaxNumEval.class);
     cl.registerShortNameOfClass(ReefJvmHeapSlack.class);
     cl.registerShortNameOfClass(ReplicationRulesPath.class);
     cl.registerShortNameOfClass(MetaServerParameters.Port.class);
@@ -198,9 +198,9 @@ public class Launch
     final boolean isLocal = chooseNamedInstance(Local.class, clInjector, fileInjector);
     final Configuration runtimeConfig;
     if(isLocal) {
-      final int localThreads = chooseNamedInstance(LocalThreads.class, clInjector, fileInjector);
+      final int localMaxNumEvals = chooseNamedInstance(LocalMaxNumEval.class, clInjector, fileInjector);
       runtimeConfig = LocalRuntimeConfiguration.CONF
-              .set(LocalRuntimeConfiguration.NUMBER_OF_THREADS, localThreads)
+              .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, localMaxNumEvals)
               .build();
     } else {
       final double jvmHeapSlack = chooseNamedInstance(ReefJvmHeapSlack.class, clInjector, fileInjector);
