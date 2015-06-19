@@ -46,7 +46,8 @@ public final class CacheConstructor implements ExternalConstructor<Cache> {
       final CacheEntry entry  = notification.getValue();
       final long blockSize = entry.getBlockSize();
       final boolean pinned = entry.isPinned();
-      memoryManager.remove(blockId, blockSize, pinned);
+      final boolean deletedManually = entry.isDeletedManually();
+      memoryManager.remove(blockId, blockSize, pinned, deletedManually);
     }
   };
 

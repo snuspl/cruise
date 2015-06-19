@@ -1,6 +1,9 @@
 package org.apache.reef.inmemory.driver.hdfs;
 
+import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.DeleteBlocksMessage;
 import org.apache.reef.inmemory.common.CacheClearMessage;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
 import org.apache.reef.inmemory.driver.CacheNode;
@@ -10,6 +13,7 @@ import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Implements HDFS-specific messaging
@@ -46,6 +50,19 @@ public final class HdfsCacheNodeMessenger implements CacheNodeMessenger<HdfsBloc
     final CacheNode node = cacheNodeManager.getCache(taskId);
     if (node != null) {
       node.send(CODEC.encode(HdfsDriverTaskMessage.hdfsBlockMessage(msg)));
+    }
+  }
+
+  @Override
+  public void deleteBlocks(final Map<NodeInfo, List<BlockId>> nodeToBlocks) {
+    for (final CacheNode node : cacheNodeManager.getCaches()) {
+      final String address = node.getAddress();
+      final String rack = node.getRack();
+      final NodeInfo nodeInfo = new NodeInfo(address, rack);
+      if (nodeToBlocks.containsKey(nodeInfo)) {
+        final DeleteBlocksMessage message = new DeleteBlocksMessage(nodeToBlocks.get(nodeInfo));
+        node.send(CODEC.encode(HdfsDriverTaskMessage.deleteMessage(message)));
+      }
     }
   }
 }

@@ -3,14 +3,18 @@ package org.apache.reef.inmemory.driver;
 import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.CacheUpdates;
+import org.apache.reef.inmemory.common.entity.BlockMeta;
 import org.apache.reef.inmemory.common.entity.FileMeta;
 import org.apache.reef.inmemory.common.entity.FileMetaStatus;
+import org.apache.reef.inmemory.common.entity.NodeInfo;
 import org.apache.reef.inmemory.driver.metatree.MetaTree;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -71,7 +75,39 @@ public final class SurfMetaManager {
   }
 
   public boolean remove(final String path, final boolean recursive) throws IOException {
-    return this.metaTree.remove(path, recursive);
+    final Map<NodeInfo, List<BlockId>> nodeToBlocks = getBlockIdsGroupByCacheNode(path);
+
+    final boolean removedFromMetaTree = this.metaTree.remove(path, recursive);
+    if (removedFromMetaTree) {
+      cacheNodeMessenger.deleteBlocks(nodeToBlocks);
+    }
+    return removedFromMetaTree;
+  }
+
+  /**
+   * Get the block ids of a file.
+   * @param path The path to delete.
+   * @return Block ids grouped by Cache node. Returns an empty mapping if there is nothing to delete.
+   */
+  private Map<NodeInfo, List<BlockId>> getBlockIdsGroupByCacheNode(final String path) {
+    final Map<NodeInfo, List<BlockId>> nodeToBlocks = new HashMap<>();
+
+    try {
+      final FileMeta fileMeta = this.metaTree.getFileMeta(path);
+      final List<BlockMeta> blocks = fileMeta.getBlocks();
+      for (final BlockMeta blockMeta : blocks) {
+        for (final NodeInfo nodeInfo : blockMeta.getLocations()) {
+          if (!nodeToBlocks.containsKey(nodeInfo)) {
+            nodeToBlocks.put(nodeInfo, new ArrayList<BlockId>());
+          }
+          final List<BlockId> blockIds = nodeToBlocks.get(nodeInfo);
+          blockIds.add(new BlockId(blockMeta));
+        }
+      }
+    } catch (IOException e) {
+      // When the entry does not exist or is a directory, we do not have to delete any block.
+    }
+    return nodeToBlocks;
   }
 
   /**

@@ -45,4 +45,14 @@ public interface CacheEntry {
    * @return the size of this block.
    */
   public long getBlockSize();
+
+  /**
+   * Mark this entry is deleted by user's request, not by eviction.
+   */
+  public void markAsDeleted();
+
+  /**
+   * @return {@code true} if this block is deleted manually.
+   */
+  public boolean isDeletedManually();
 }

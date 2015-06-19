@@ -8,9 +8,7 @@ import org.apache.reef.inmemory.common.exceptions.MemoryLimitException;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,6 +28,12 @@ public final class MemoryManager {
   private CacheUpdates updates;
 
   private Map<BlockId, CacheEntryState> cacheEntries = new HashMap<>();
+
+  /**
+   * To keep the block ids that are removed during load. Since the loading is done asynchronously,
+   * the memory status is updated in the callback (copySuccess).
+   */
+  private Set<BlockId> manuallyDeletedBlocks = new HashSet<>();
 
   @Inject
   public MemoryManager(final LRUEvictionManager lru,
@@ -201,9 +205,15 @@ public final class MemoryManager {
         } else {
           statistics.subtractCopyingBytes(blockSize);
         }
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
-        updates.addRemoval(blockId);
+
+        if (manuallyDeletedBlocks.contains(blockId)) {
+          lru.remove(blockId);
+          manuallyDeletedBlocks.remove(blockId);
+        } else {
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+          updates.addRemoval(blockId);
+        }
         targetState = CacheEntryState.REMOVED;
         setState(blockId, targetState);
         notifyAll();
@@ -244,8 +254,15 @@ public final class MemoryManager {
         } else {
           statistics.subtractCopyingBytes(blockSize);
         }
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
+
+        if (manuallyDeletedBlocks.contains(blockId)) {
+          lru.remove(blockId);
+          manuallyDeletedBlocks.remove(blockId);
+        } else {
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+        }
+
         updates.addFailure(blockId, throwable);
         setState(blockId, CacheEntryState.REMOVED);
         notifyAll();
@@ -262,7 +279,8 @@ public final class MemoryManager {
    * Notifies threads waiting for memory to free up.
    * Updates statistics.
    */
-  public synchronized void remove(final BlockId blockId, final long blockSize, final boolean pinned) {
+  public synchronized void remove(final BlockId blockId, final long blockSize, final boolean pinned,
+                                  final boolean deletedManually) {
     LOG.log(Level.INFO, blockId+" statistics before remove: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -274,17 +292,30 @@ public final class MemoryManager {
         if (pinned) {
           statistics.subtractPinnedBytes(blockSize);
         }
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
-        updates.addRemoval(blockId);
+
+        if (deletedManually) {
+          lru.remove(blockId);
+        } else {
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+          updates.addRemoval(blockId);
+        }
         setState(blockId, CacheEntryState.REMOVED);
         break;
       case COPY_STARTED:
+        if (deletedManually) {
+          manuallyDeletedBlocks.add(blockId);
+        }
+        // The statistics are updated once loading is done.
         setState(blockId, CacheEntryState.REMOVED_DURING_COPY);
         break;
       case COPY_FAILED:
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
+        if (deletedManually) {
+          lru.remove(blockId);
+        } else {
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+        }
         // don't update as removed, already updated as failed
         setState(blockId, CacheEntryState.REMOVED);
         break;
@@ -294,9 +325,14 @@ public final class MemoryManager {
         } else {
           statistics.subtractCacheBytes(blockSize);
         }
-        lru.evicted(blockSize);
-        statistics.addEvictedBytes(blockSize);
-        updates.addRemoval(blockId);
+
+        if (deletedManually) {
+          lru.remove(blockId);
+        } else {
+          lru.evicted(blockSize);
+          statistics.addEvictedBytes(blockSize);
+          updates.addRemoval(blockId);
+        }
         setState(blockId, CacheEntryState.REMOVED);
         notifyAll();
         break;

@@ -1,5 +1,7 @@
 package org.apache.reef.inmemory.task.hdfs;
 
+import org.apache.reef.inmemory.common.BlockId;
+import org.apache.reef.inmemory.common.DeleteBlocksMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsBlockMessage;
 import org.apache.reef.inmemory.common.hdfs.HdfsDriverTaskMessage;
 import org.apache.reef.inmemory.common.instrumentation.EventRecorder;
@@ -52,6 +54,12 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
       } else if (msg.getClearMessage().isPresent()) {
         LOG.log(Level.INFO, "Received cache clear msg");
         cache.clear();
+      } else if (msg.getDeleteMessage().isPresent()) {
+        LOG.log(Level.INFO, "Received delete block msg");
+        final DeleteBlocksMessage deleteMsg = msg.getDeleteMessage().get();
+        for (final BlockId blockId : deleteMsg.getBlockIds()){
+          cache.delete(blockId);
+        }
       }
     }
   }
