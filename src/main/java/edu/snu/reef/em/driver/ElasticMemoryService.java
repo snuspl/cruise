@@ -10,7 +10,7 @@ import java.util.Set;
  * Driver-side interface of ElasticMemoryService
  */
 @DriverSide
-interface ElasticMemoryService {
+public interface ElasticMemoryService {
 
   /**
    * Add new evaluators as specified

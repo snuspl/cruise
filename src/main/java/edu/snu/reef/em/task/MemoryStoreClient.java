@@ -19,7 +19,7 @@ public interface MemoryStoreClient {
    * @param value data item to register
    * @param <T> the actual data type
    */
-  public <T> void putLocal(String key, T value);
+  <T> void putLocal(String key, T value);
 
   /**
    * Register data items that must not be moved to other evaluators
@@ -28,7 +28,7 @@ public interface MemoryStoreClient {
    * @param values list of data items to register
    * @param <T> the actual data type
    */
-  public <T> void putLocal(String key, List<T> values);
+  <T> void putLocal(String key, List<T> values);
 
   /**
    * Register a data item that can be migrated around evaluators for job optimization
@@ -37,7 +37,7 @@ public interface MemoryStoreClient {
    * @param value data item to register
    * @param <T> the actual data type
    */
-  public <T> void putMovable(String key, T value);
+ <T> void putMovable(String key, T value);
 
   /**
    * Register data items that can be migrated around evaluators for job optimization
@@ -46,7 +46,7 @@ public interface MemoryStoreClient {
    * @param values list of data items to register
    * @param <T> the actual data type
    */
-  public <T> void putMovable(String key, List<T> values);
+  <T> void putMovable(String key, List<T> values);
 
   /**
    * Fetch data of a certain key from this store
@@ -55,7 +55,7 @@ public interface MemoryStoreClient {
    * @param <T> the actual data type
    * @return data corresponding to the input key
    */
-  public <T> List<T> get(String key);
+  <T> List<T> get(String key);
 
   /**
    * Fetch the global integer ids of data associated with a certain key
@@ -63,18 +63,18 @@ public interface MemoryStoreClient {
    * @param key key string that represents a certain data type
    * @return integer ids of data corresponding to the input key
    */
-  public Set<IntRange> getIds(String key);
+  Set<IntRange> getIds(String key);
 
   /**
    * Completely remove data associated with a certain key from this store
    *
    * @param key key string that represents a certain data type
    */
-  public void remove(String key);
+  void remove(String key);
 
   /**
    * Query about the update status of this store
    */
-  public boolean hasChanged();
+  boolean hasChanged();
 }
 
