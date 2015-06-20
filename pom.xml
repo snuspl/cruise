@@ -18,6 +18,14 @@
     <mahout.version>0.9</mahout.version>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>in-project-repo</id>
+      <name>In Project Repository</name>
+      <url>file://${project.basedir}/lib/</url>
+    </repository>
+  </repositories>
+
   <dependencies>
     <dependency>
       <groupId>org.apache.reef</groupId>
