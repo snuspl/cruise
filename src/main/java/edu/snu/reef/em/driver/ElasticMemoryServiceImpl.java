@@ -5,7 +5,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import java.util.List;
 
 @DriverSide
-public class ElasticMemoryServiceImpl implements ElasticMemoryService {
+public class ElasticMemoryServiceImpl {//implements ElasticMemoryService {
 
 //  @Override
 //  public void add(int size) {

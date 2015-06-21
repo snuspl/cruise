@@ -1,12 +1,11 @@
 package edu.snu.reef.em.task;
 
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.TaskSide;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @TaskSide
 public final class LocalMemoryServiceClient implements MemoryStoreClient {
@@ -48,6 +47,10 @@ public final class LocalMemoryServiceClient implements MemoryStoreClient {
     return (List<T>)localDataMap.get(key);
   }
 
+  @Override
+  public Set<IntRange> getIds(String key) {
+    throw new NotImplementedException();
+  }
   @Override
   public void remove(String key) {
     localDataMap.remove(key);

@@ -1,13 +1,11 @@
 package edu.snu.reef.em.task;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.TaskSide;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @TaskSide
 public final class ElasticMemoryServiceClient implements MemoryStoreClient {
@@ -56,6 +54,11 @@ public final class ElasticMemoryServiceClient implements MemoryStoreClient {
       retList.addAll((List<T>)elasticDataMap.get(key));
     }
     return retList;
+  }
+
+  @Override
+  public Set<IntRange> getIds(String key) {
+    throw new NotImplementedException();
   }
 
   @Override
