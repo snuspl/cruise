@@ -48,7 +48,6 @@ public final class NSExampleClient {
         .set(DriverConfiguration.ON_DRIVER_STARTED, NSExampleDriver.DriverStartHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, NSExampleDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_CLOSED, NSExampleDriver.ContextCloseHandler.class)
-        .set(DriverConfiguration.ON_DRIVER_STOP, NSExampleDriver.DriverStopHandler.class)
         .set(DriverConfiguration.ON_TASK_MESSAGE, NSExampleDriver.TaskMessageHandler.class)
         .build();
 

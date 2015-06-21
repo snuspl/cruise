@@ -17,6 +17,7 @@
 package edu.snu.reef.em.examples.elastic.migration;
 
 import edu.snu.reef.em.driver.ElasticMemoryDriverConfiguration;
+import edu.snu.reef.em.driver.ElasticMemoryService;
 import edu.snu.reef.em.msg.ElasticMemoryCtrlMsg;
 import edu.snu.reef.em.msg.ElasticMemoryCtrlMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryCtrlMsgHandler;
@@ -68,33 +69,25 @@ public final class NSExampleDriver {
   private String groupCommControllerId;
 
   private final AtomicInteger cmpTaskCount;
-  private final String nameServerAddr;
-  private final int nameServerPort;
   private final List<String> cmpTaskNames;
   private final int workerNum;
   private final AtomicBoolean controllerTaskSubmitted;
 
-  private final ContextMsgSender contextMsgSender;
   private final ReadyCodec readyCodec;
   private final AtomicInteger notReadyTasks;
-  private final ElasticMemoryCtrlMsgCodec msgCodec;
 
   private final ElasticMemoryDriverConfiguration emDriverConf;
+  private final ElasticMemoryService emService;
 
   @Inject
   public NSExampleDriver(final EvaluatorRequestor requestor,
                          final GroupCommDriver groupCommDriver,
-                         final NameServer nameServer,
-                         final LocalAddressProvider localAddressProvider,
-                         final ContextMsgSender contextMsgSender,
                          final ReadyCodec readyCodec,
-                         final ElasticMemoryCtrlMsgCodec msgCodec,
-                         final ElasticMemoryDriverConfiguration emDriverConf) throws InjectionException {
-    this.contextMsgSender = contextMsgSender;
-//    System.out.println(contextMsgSender);
+                         final ElasticMemoryDriverConfiguration emDriverConf,
+                         final ElasticMemoryService emService) throws InjectionException {
     this.readyCodec = readyCodec;
-    this.msgCodec = msgCodec;
     this.emDriverConf = emDriverConf;
+    this.emService = emService;
 
     // TODO: fix
     this.workerNum = 2;
@@ -112,22 +105,12 @@ public final class NSExampleDriver {
                 .build())
         .finalise();
 
-    this.nameServerAddr = localAddressProvider.getLocalAddress();
-    this.nameServerPort = nameServer.getPort();
-
     this.cmpTaskCount = new AtomicInteger(0);
     this.cmpTaskNames = new ArrayList<>();
     for (int i = 0; i < workerNum; i++) {
       cmpTaskNames.add(CmpTask.TASK_ID_PREFIX + i);
     }
     this.controllerTaskSubmitted = new AtomicBoolean(false);
-  }
-
-  public final class DriverStopHandler implements EventHandler<StopTime> {
-    @Override
-    public void onNext(final StopTime stopTime) {
-//      System.out.println(contextMsgSender);
-    }
   }
 
   public final class DriverStartHandler implements EventHandler<StartTime> {
@@ -245,8 +228,7 @@ public final class NSExampleDriver {
       System.out.println(result);
       if (result && notReadyTasks.decrementAndGet() == 0) {
         System.out.println("READY!!");
-        contextMsgSender.send(taskMessage.getContextId(),
-            msgCodec.encode(new ElasticMemoryCtrlMsg("String", prevTaskId)));
+        emService.move("String", null, taskMessage.getContextId(), prevTaskId);
       }
       prevTaskId = taskMessage.getId();
       System.out.println();

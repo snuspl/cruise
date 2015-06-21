@@ -2,6 +2,7 @@ package edu.snu.reef.em.driver;
 
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.List;
 import java.util.Set;
@@ -10,6 +11,7 @@ import java.util.Set;
  * Driver-side interface of ElasticMemoryService
  */
 @DriverSide
+@DefaultImplementation(ElasticMemoryServiceImpl.class)
 public interface ElasticMemoryService {
 
   /**
