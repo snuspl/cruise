@@ -16,15 +16,12 @@
 
 package edu.snu.reef.em.ns;
 
-import edu.snu.reef.em.msg.ElasticMemoryDataMsgCodec;
-import edu.snu.reef.em.driver.ElasticMemoryMessageHandlerWrapperImpl;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
-import org.apache.reef.io.network.impl.NetworkService;
-import org.apache.reef.io.network.impl.NetworkServiceParameters;
 import org.apache.reef.io.network.naming.NameServer;
-import org.apache.reef.io.network.naming.NameServerParameters;
-import org.apache.reef.tang.*;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.Codec;
