@@ -43,7 +43,6 @@ public final class CmpTask implements Task {
   private final Broadcast.Receiver<String> broadcastReceiver;
   private final Set<String> destinations;
 
-  private final ElasticMemoryMessageSender elasticMemoryMessageSender;
   private final MemoryStoreClient memoryStoreClient;
 
   private final CmpTaskReady cmpTaskReady;
@@ -53,13 +52,11 @@ public final class CmpTask implements Task {
   public CmpTask(
       @Parameter(WorkerTaskOptions.Destinations.class) final Set<String> destinations,
       final GroupCommClient groupCommClient,
-      final ElasticMemoryMessageSender elasticMemoryMessageSender,
       final MemoryStoreClient memoryStoreClient,
       final CmpTaskReady cmpTaskReady,
       final HeartBeatTriggerManager heartBeatTriggerManager) {
     this.communicationGroupClient = groupCommClient.getCommunicationGroup(CommGroupName.class);
     this.broadcastReceiver = communicationGroupClient.getBroadcastReceiver(DataBroadcast.class);
-    this.elasticMemoryMessageSender = elasticMemoryMessageSender;
     this.destinations = destinations;
     this.memoryStoreClient = memoryStoreClient;
     this.cmpTaskReady = cmpTaskReady;
@@ -86,12 +83,6 @@ public final class CmpTask implements Task {
 
     System.out.println("New data is");
     System.out.println(memoryStoreClient.get("String"));
-
-//    System.out.println("Sending via NetworkServiceWrapper");
-//    System.out.println(destinations);
-//    for (final String dest : destinations) {
-//      elasticMemoryMessageSender.send(dest, "clazzName!", "clazzInstance".getBytes());
-//    }
 
     return null;
   }
