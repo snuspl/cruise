@@ -1,6 +1,4 @@
-*.iml
-*.idea
-*.class
 target
-test
 REEF_LOCAL_RUNTIME
+.idea
+*.iml

@@ -2,7 +2,6 @@ package edu.snu.reef.em.driver;
 
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.driver.evaluator.EvaluatorRequest;
 
 import java.util.List;
 import java.util.Set;
@@ -11,7 +10,7 @@ import java.util.Set;
  * Driver-side interface of ElasticMemoryService
  */
 @DriverSide
-interface ElasticMemoryService {
+public interface ElasticMemoryService {
 
   /**
    * Add new evaluators as specified
