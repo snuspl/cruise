@@ -16,12 +16,11 @@
 
 package edu.snu.reef.em.examples.elastic.migration;
 
+import edu.snu.reef.em.driver.ElasticMemoryDriverConfiguration;
 import edu.snu.reef.em.msg.ElasticMemoryCtrlMsg;
 import edu.snu.reef.em.msg.ElasticMemoryCtrlMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryCtrlMsgHandler;
 import edu.snu.reef.em.driver.ContextMsgSender;
-import edu.snu.reef.em.ns.*;
-import edu.snu.reef.em.task.ElasticMemoryService;
 import edu.snu.reef.em.examples.parameters.DataBroadcast;
 import edu.snu.reef.em.examples.parameters.CommGroupName;
 import edu.snu.reef.em.examples.parameters.WorkerTaskOptions;
@@ -80,6 +79,8 @@ public final class NSExampleDriver {
   private final AtomicInteger notReadyTasks;
   private final ElasticMemoryCtrlMsgCodec msgCodec;
 
+  private final ElasticMemoryDriverConfiguration emDriverConf;
+
   @Inject
   public NSExampleDriver(final EvaluatorRequestor requestor,
                          final GroupCommDriver groupCommDriver,
@@ -87,11 +88,13 @@ public final class NSExampleDriver {
                          final LocalAddressProvider localAddressProvider,
                          final ContextMsgSender contextMsgSender,
                          final ReadyCodec readyCodec,
-                         final ElasticMemoryCtrlMsgCodec msgCodec) throws InjectionException {
+                         final ElasticMemoryCtrlMsgCodec msgCodec,
+                         final ElasticMemoryDriverConfiguration emDriverConf) throws InjectionException {
     this.contextMsgSender = contextMsgSender;
 //    System.out.println(contextMsgSender);
     this.readyCodec = readyCodec;
     this.msgCodec = msgCodec;
+    this.emDriverConf = emDriverConf;
 
     // TODO: fix
     this.workerNum = 2;
@@ -166,29 +169,8 @@ public final class NSExampleDriver {
         // I will be a Compute Evaluator
         LOG.log(Level.INFO, "Submitting Cmp context to AllocatedEvaluator: {0}", allocatedEvaluator);
 
-        finalContextConf = Configurations.merge(partialContextConf,
-            Tang.Factory.getTang().newConfigurationBuilder()
-                .bindSetEntry(ContextMessageHandlers.class, ElasticMemoryCtrlMsgHandler.class)
-                .build());
-
-        // register additional NetworkService in context by using NSWrapper
-        final Configuration nsWrapperServiceConf = ServiceConfiguration.CONF
-            .set(ServiceConfiguration.SERVICES, NSWrapper.class)
-            .set(ServiceConfiguration.ON_TASK_STARTED, BindNSWrapperToTask.class)
-            .set(ServiceConfiguration.ON_TASK_STOP, UnbindNSWrapperFromTask.class)
-            .set(ServiceConfiguration.ON_CONTEXT_STOP, NSWrapperClosingHandler.class)
-            .build();
-
-        // parameters needed for NSWrapper to make NetworkService
-        final Configuration additionalServiceConf = Tang.Factory.getTang()
-            .newConfigurationBuilder(nsWrapperServiceConf,
-                                     ElasticMemoryService.getServiceConfiguration())
-            .bindNamedParameter(NSWrapperParameters.NameServerAddr.class, nameServerAddr)
-            .bindNamedParameter(NSWrapperParameters.NameServerPort.class, Integer.toString(nameServerPort))
-            .build();
-
-        finalServiceConf = Configurations.merge(partialServiceConf,
-                                                additionalServiceConf);
+        finalContextConf = Configurations.merge(partialContextConf, emDriverConf.getContextConfiguration());
+        finalServiceConf = Configurations.merge(partialServiceConf, emDriverConf.getServiceConfiguration());
       }
 
       allocatedEvaluator.submitContextAndService(finalContextConf, finalServiceConf);

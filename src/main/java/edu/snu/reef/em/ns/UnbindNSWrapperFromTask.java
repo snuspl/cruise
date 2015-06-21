@@ -34,10 +34,10 @@ public final class UnbindNSWrapperFromTask implements EventHandler<TaskStop> {
   private final IdentifierFactory idFac;
 
   @Inject
-  public UnbindNSWrapperFromTask(
-      final NSWrapper<?> nsWrapper,
-      final @Parameter(NetworkServiceParameters.NetworkServiceIdentifierFactory.class) IdentifierFactory idFac) {
-    this.ns = nsWrapper.getNetworkService();
+  private UnbindNSWrapperFromTask(
+      final NSWrapperClient nsWrapperDriver,
+      @Parameter(NetworkServiceParameters.NetworkServiceIdentifierFactory.class) final IdentifierFactory idFac) {
+    this.ns = nsWrapperDriver.getNetworkService();
     this.idFac = idFac;
   }
 

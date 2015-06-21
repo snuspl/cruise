@@ -8,12 +8,12 @@ import javax.inject.Inject;
 import java.util.*;
 
 @TaskSide
-public final class LocalMemoryServiceClient implements MemoryStoreClient {
+public final class LocalMemoryStoreClient implements MemoryStoreClient {
 
   private final Map<String, List> localDataMap;
 
   @Inject
-  public LocalMemoryServiceClient() {
+  public LocalMemoryStoreClient() {
     localDataMap = new HashMap<>();
   }
 

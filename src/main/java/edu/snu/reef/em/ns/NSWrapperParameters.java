@@ -16,17 +16,49 @@
 
 package edu.snu.reef.em.ns;
 
+import org.apache.reef.io.network.TransportFactory;
+import org.apache.reef.io.network.impl.MessagingTransportFactory;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.wake.remote.Codec;
 
 /**
  * Named parameters for NetworkServiceWrappers
  */
 public class NSWrapperParameters {
-  @NamedParameter(doc = "Name server address for NetworkServiceWrapper")
+
+  @NamedParameter(doc = "Network service codec for NSWrapper")
+  public static class NetworkServiceCodec implements Name<Codec<?>> {
+  }
+
+  @NamedParameter(doc = "Network message receive handler for NSWrapper")
+  public static class NetworkServiceHandler implements Name<EventHandler<?>> {
+  }
+
+  @NamedParameter(doc = "Network exception handler for NSWrapper")
+  public static class NetworkServiceExceptionHandler implements Name<EventHandler<?>> {
+  }
+
+  @NamedParameter(doc = "Port number for NSWrapper")
+  public static class NetworkServicePort implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "Identifier factory for NSWrapper", default_class = StringIdentifierFactory.class)
+  public static class NetworkServiceIdentifierFactory implements Name<IdentifierFactory> {
+  }
+
+  @NamedParameter(doc = "Transport factory for NSWrapper", default_class = MessagingTransportFactory.class)
+  public static class NetworkServiceTransportFactory implements Name<TransportFactory> {
+  }
+
+  @NamedParameter(doc = "Name server address for NSWrapper")
   public static class NameServerAddr implements Name<String> {
   }
-  @NamedParameter(doc = "Name server port for NetworkServiceWrapper")
+
+  @NamedParameter(doc = "Name server port for NSWrapper")
   public static class NameServerPort implements Name<Integer> {
   }
 }

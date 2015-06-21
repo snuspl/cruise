@@ -29,14 +29,15 @@ import javax.inject.Inject;
  * Binds NSWrapper to a Task
  */
 public final class BindNSWrapperToTask implements EventHandler<TaskStart> {
+
   private final NetworkService<?> ns;
   private final IdentifierFactory idFac;
 
   @Inject
-  public BindNSWrapperToTask(
-      final NSWrapper<?> nsWrapper,
-      final @Parameter(NetworkServiceParameters.NetworkServiceIdentifierFactory.class) IdentifierFactory idFac) {
-    this.ns = nsWrapper.getNetworkService();
+  private BindNSWrapperToTask(
+      final NSWrapperClient nsWrapperClient,
+      @Parameter(NSWrapperParameters.NetworkServiceIdentifierFactory.class) final IdentifierFactory idFac) {
+    this.ns = nsWrapperClient.getNetworkService();
     this.idFac = idFac;
   }
 

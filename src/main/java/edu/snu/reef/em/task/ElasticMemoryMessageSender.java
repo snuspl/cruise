@@ -1,8 +1,9 @@
 package edu.snu.reef.em.task;
 
 import edu.snu.reef.em.msg.ElasticMemoryDataMsg;
+import edu.snu.reef.em.ns.NSWrapperClient;
 import org.apache.reef.annotations.audience.TaskSide;
-import edu.snu.reef.em.ns.NSWrapper;
+import edu.snu.reef.em.ns.NSWrapperDriver;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.impl.NetworkService;
@@ -20,8 +21,8 @@ public final class ElasticMemoryMessageSender {
   private final IdentifierFactory identifierFactory;
 
   @Inject
-  public ElasticMemoryMessageSender(final NSWrapper<ElasticMemoryDataMsg> nsWrapper) {
-    this.networkService = nsWrapper.getNetworkService();
+  public ElasticMemoryMessageSender(final NSWrapperClient<ElasticMemoryDataMsg> nsWrapperClient) {
+    this.networkService = nsWrapperClient.getNetworkService();
     this.identifierFactory = new StringIdentifierFactory();
   }
 
