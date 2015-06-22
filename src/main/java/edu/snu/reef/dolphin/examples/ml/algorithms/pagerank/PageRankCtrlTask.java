@@ -56,7 +56,7 @@ public class PageRankCtrlTask extends UserControllerTask
   /**
    * Map of <nodeid, rank>
    */
-  private Map<Integer,Double> rank;
+  private final Map<Integer,Double> rank;
 
   /**
    * Output stream provider to save the final ranks
@@ -87,7 +87,7 @@ public class PageRankCtrlTask extends UserControllerTask
   }
 
   @Override
-  public final Map<Integer,Double> sendBroadcastData(int iteration) {
+  public final Map<Integer, Double> sendBroadcastData(int iteration) {
     return rank;
   }
 
@@ -99,9 +99,11 @@ public class PageRankCtrlTask extends UserControllerTask
   @Override
   public void receiveReduceData(int iteration, PageRankSummary increment) {
     rank.clear();
-    for (Map.Entry<Integer,Double> entry : increment.getModel().entrySet()) {
-      Integer nodeId = entry.getKey();
-      Double contribution = entry.getValue();
+    LOG.log(Level.SEVERE, "xxxxxx{0}", new Object [] {iteration});
+    LOG.log(Level.SEVERE, "xxxxxx{0} {1}", new Object [] {iteration, increment.getModel()});
+    for (Map.Entry<Integer, Double> entry : increment.getModel().entrySet()) {
+      final Integer nodeId = entry.getKey();
+      final Double contribution = entry.getValue();
       if (rank.containsKey(nodeId)) {
         rank.put(nodeId, rank.get(nodeId) + contribution);
       } else {
@@ -118,7 +120,7 @@ public class PageRankCtrlTask extends UserControllerTask
     //output the ranks
     try (final DataOutputStream rankStream = outputStreamProvider.create("rank")) {
       rankStream.writeBytes(String.format("node_id,rank%n"));
-      for (Map.Entry<Integer,Double> entry : rank.entrySet()) {
+      for (Map.Entry<Integer, Double> entry : rank.entrySet()) {
         rankStream.writeBytes(String.format("%d,%f%n", entry.getKey(), entry.getValue()));
       }
     } catch (final IOException e) {

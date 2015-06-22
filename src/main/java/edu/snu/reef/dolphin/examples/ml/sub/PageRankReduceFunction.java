@@ -29,8 +29,10 @@ public class PageRankReduceFunction implements Reduce.ReduceFunction<PageRankSum
   @Override
   public final PageRankSummary apply(Iterable<PageRankSummary> summaryList) {
     PageRankSummary reducedSummary = null;
+    System.out.println("yyyyy");
     for (final PageRankSummary summary : summaryList) {
-      if (reducedSummary==null) {
+      System.out.println("yyyyy-" + summary.getModel());
+      if (reducedSummary == null) {
         reducedSummary = summary;
       } else {
         reducedSummary.plus(summary);

@@ -27,28 +27,35 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * PageRank algorithm compute class
+ *
+ * Reference
+ * - http://en.wikipedia.org/wiki/PageRank
+ * - https://github.com/apache/spark/blob/master/graphx/src/main/scala/org/apache/spark/graphx/lib/PageRank.scala
+ */
 public class PageRankCmpTask extends UserComputeTask
-    implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer,Double>> {
+    implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer, Double>> {
 
   /**
    * Adjacency list data parser
    */
-  private DataParser<Map<Integer,List<Integer>>> dataParser;
+  private final DataParser<Map<Integer, List<Integer>>> dataParser;
 
   /**
    * Subgraph consists a node and its outgoing neighbor set
    */
-  private Map<Integer,List<Integer>> subgraphs;
+  private Map<Integer, List<Integer>> subgraphs;
 
   /**
    * Map of current rank
    */
-  private Map<Integer,Double> rank;
+  private Map<Integer, Double> rank;
 
   /**
    * Map of contributed increment to outgoing neighbor nodes
    */
-  private Map<Integer,Double> increment;
+  private final Map<Integer, Double> increment = new HashMap<>();
 
   /**
    * This class is instantiated by TANG
@@ -56,7 +63,7 @@ public class PageRankCmpTask extends UserComputeTask
    * @param dataParser
    */
   @Inject
-  public PageRankCmpTask(DataParser<Map<Integer,List<Integer>>> dataParser) {
+  public PageRankCmpTask(final DataParser<Map<Integer, List<Integer>>> dataParser) {
     this.dataParser = dataParser;
   }
 
@@ -75,13 +82,25 @@ public class PageRankCmpTask extends UserComputeTask
 
   @Override
   public final void run(int iteration) {
-    increment = new HashMap<>();
-    for (Map.Entry<Integer,List<Integer>> entry : subgraphs.entrySet()) {
+    increment.clear();
+    for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
       final Integer nodeId = entry.getKey();
       final List<Integer> outList = entry.getValue();
 
+      // Add itself to ensure existence in graph
+      if (!increment.containsKey(nodeId)) {
+        increment.put(nodeId, 0.0d);
+      }
+      // Skip distribution if it has no outbound neighbor
+      if (outList.size() == 0) {
+        continue;
+      }
+
+      // The rank of node is distributed evenly to its outbound neighbor nodes.
+      // Compute a contribution per each node
       final double contribution = rank.get(nodeId) * 1.0d / outList.size();
-      for (Integer adjNode : outList) {
+      // Add the contribution to each node
+      for (final Integer adjNode : outList) {
         if (increment.containsKey(adjNode)) {
           increment.put(adjNode, increment.get(adjNode) + contribution);
         } else {
@@ -99,9 +118,10 @@ public class PageRankCmpTask extends UserComputeTask
    */
   @Override
   public final void receiveBroadcastData(int iteration, Map<Integer,Double> rank) {
-    if (iteration > 1) {
-      this.rank = rank;
+    if (iteration < 1) {
+      return;
     }
+    this.rank = rank;
   }
 
   /**

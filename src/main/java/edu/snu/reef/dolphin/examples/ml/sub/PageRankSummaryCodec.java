@@ -33,15 +33,15 @@ public class PageRankSummaryCodec implements Codec<PageRankSummary> {
   }
 
   @Override
-  public byte[] encode(PageRankSummary summary) {
-    final Map<Integer,Double> model = summary.getModel();
+  public byte[] encode(final PageRankSummary summary) {
+    final Map<Integer, Double> model = summary.getModel();
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE // count
         + (Integer.SIZE + Double.SIZE) * model.size());
 
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(model.size());
 
-      for (Map.Entry<Integer,Double> entry : model.entrySet()) {
+      for (Map.Entry<Integer, Double> entry : model.entrySet()) {
         daos.writeInt(entry.getKey());
         daos.writeDouble(entry.getValue());
       }
@@ -55,15 +55,13 @@ public class PageRankSummaryCodec implements Codec<PageRankSummary> {
   @Override
   public PageRankSummary decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-    Map<Integer,Double> model;
-    int count;
+    final Map<Integer, Double> model = new HashMap<>();
 
     try (final DataInputStream dais = new DataInputStream(bais)) {
-      count = dais.readInt();
-      model = new HashMap<>();
+      final int count = dais.readInt();
       for (int i = 0; i < count; i++) {
-        Integer nodeId = dais.readInt();
-        Double value = dais.readDouble();
+        final Integer nodeId = dais.readInt();
+        final Double value = dais.readDouble();
         model.put(nodeId, value);
       }
     } catch (final IOException e) {

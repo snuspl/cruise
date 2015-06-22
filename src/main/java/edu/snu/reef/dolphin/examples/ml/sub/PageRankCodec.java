@@ -33,7 +33,6 @@ public final class PageRankCodec implements Codec<Map<Integer, Double>> {
 
   @Override
   public final byte[] encode(final Map<Integer, Double> map) {
-
     final int size = map.size();
 
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(
@@ -55,10 +54,9 @@ public final class PageRankCodec implements Codec<Map<Integer, Double>> {
   public final Map<Integer, Double> decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final Map<Integer, Double> map = new HashMap<>();
-    int size = 0;
 
     try (final DataInputStream dais = new DataInputStream(bais)) {
-      size = dais.readInt();
+      final int size = dais.readInt();
 
       for (int i = 0; i < size; i++) {
         int nodeId = dais.readInt();

@@ -31,7 +31,7 @@ import java.util.List;
 public final class PageRankJobInfo implements UserJobInfo {
 
   @Inject
-  public PageRankJobInfo(){
+  public PageRankJobInfo() {
   }
 
   @Override
