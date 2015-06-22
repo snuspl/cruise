@@ -1,0 +1,59 @@
+[
+{
+  "namespace": "edu.snu.reef.em.avro",
+  "type": "record",
+  "name": "UnitIdPair",
+  "fields":
+  [
+    {"name": "unit", "type": "bytes"},
+    {"name": "id", "type": "int"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.reef.em.avro",
+  "type": "record",
+  "name": "CtrlMsg",
+  "fields":
+  [
+    {"name": "dataClassName", "type": "string"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.reef.em.avro",
+  "type": "record",
+  "name": "DataMsg",
+  "fields":
+  [
+    {"name": "dataClassName", "type": "string"},
+    {"name": "units", "type": {"type": "array", "items": "UnitIdPair"}}
+  ]
+},
+
+{
+  "namespace": "edu.snu.reef.em.avro",
+  "type": "record",
+  "name": "IdRequest",
+  "fields":
+  [
+    {"name": "dataClassName", "type": "string"},
+    {"name": "unitCount", "type": "int"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.reef.em.avro",
+  "type": "record",
+  "name": "AvroElasticMemoryMessage",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "Type", "symbols": ["CtrlMsg", "DataMsg", "IdRequest"]}},
+    {"name": "srcId", "type" : "string"},
+    {"name": "destId", "type" : "string"},
+    {"name": "ctrlMsg", "type": ["null", "CtrlMsg"]},
+    {"name": "dataMsg", "type": ["null", "DataMsg"]},
+    {"name": "idRequest", "type": ["null", "IdRequest"]}
+  ]
+}
+]
