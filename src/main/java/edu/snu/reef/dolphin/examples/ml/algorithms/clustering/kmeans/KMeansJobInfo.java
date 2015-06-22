@@ -18,6 +18,8 @@ package edu.snu.reef.dolphin.examples.ml.algorithms.clustering.kmeans;
 import edu.snu.reef.dolphin.core.DataParser;
 import edu.snu.reef.dolphin.core.StageInfo;
 import edu.snu.reef.dolphin.core.UserJobInfo;
+import edu.snu.reef.dolphin.core.metric.MetricTrackerGC;
+import edu.snu.reef.dolphin.core.metric.MetricTrackerTime;
 import edu.snu.reef.dolphin.examples.ml.algorithms.clustering.ClusteringPreStageBuilder;
 import edu.snu.reef.dolphin.examples.ml.data.ClusteringDataParser;
 import edu.snu.reef.dolphin.examples.ml.sub.CentroidListCodec;
@@ -46,6 +48,7 @@ public final class KMeansJobInfo implements UserJobInfo {
         StageInfo.newBuilder(KMeansMainCmpTask.class, KMeansMainCtrlTask.class, KMeansMainCommGroup.class)
             .setBroadcast(CentroidListCodec.class)
             .setReduce(MapOfIntVSumCodec.class, MapOfIntVSumReduceFunction.class)
+            .addMetricTrackers(MetricTrackerTime.class, MetricTrackerGC.class)
             .build());
 
     return stageInfoList;

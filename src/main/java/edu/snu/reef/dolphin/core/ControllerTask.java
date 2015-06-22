@@ -18,17 +18,21 @@ package edu.snu.reef.dolphin.core;
 import com.microsoft.reef.io.network.group.operators.Broadcast;
 import com.microsoft.reef.io.network.nggroup.api.task.CommunicationGroupClient;
 import com.microsoft.reef.io.network.nggroup.api.task.GroupCommClient;
+import edu.snu.reef.dolphin.core.metric.MetricManager;
+import edu.snu.reef.dolphin.core.metric.MetricTracker;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataGatherReceiver;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataReduceReceiver;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataScatterSender;
 import edu.snu.reef.dolphin.groupcomm.names.*;
+import edu.snu.reef.dolphin.core.metric.MetricTrackers;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,34 +44,45 @@ public final class ControllerTask implements Task {
   private final UserControllerTask userControllerTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
+  private final MetricManager metricManager;
+  private final Set<MetricTracker> metricTrackerSet;
 
   @Inject
   public ControllerTask(final GroupCommClient groupCommClient,
                         final UserControllerTask userControllerTask,
-                        @Parameter(TaskConfigurationOptions.Identifier.class) String taskId,
-                        @Parameter(CommunicationGroup.class) final String commGroupName) throws ClassNotFoundException {
+                        @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
+                        @Parameter(CommunicationGroup.class) final String commGroupName,
+                        final MetricManager metricManager,
+                        @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet) throws ClassNotFoundException {
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.userControllerTask = userControllerTask;
     this.taskId = taskId;
     this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
+    this.metricManager = metricManager;
+    this.metricTrackerSet = metricTrackerSet;
   }
 
   @Override
   public final byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
-    int iteration = 0;
     userControllerTask.initialize();
-    while(!userControllerTask.isTerminated(iteration)) {
-      ctrlMessageBroadcast.send(CtrlMessage.RUN);
-      sendData(iteration);
-      receiveData(iteration);
-      userControllerTask.run(iteration);
-      updateTopology();
-      iteration++;
+    try (final MetricManager metricManager = this.metricManager;) {
+      metricManager.registerTrackers(metricTrackerSet);
+      int iteration = 0;
+      while(!userControllerTask.isTerminated(iteration)) {
+        metricManager.start();
+        ctrlMessageBroadcast.send(CtrlMessage.RUN);
+        sendData(iteration);
+        receiveData(iteration);
+        userControllerTask.run(iteration);
+        metricManager.stop();
+        updateTopology();
+        iteration++;
+      }
+      ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
+      userControllerTask.cleanup();
     }
-    ctrlMessageBroadcast.send(CtrlMessage.TERMINATE);
-    userControllerTask.cleanup();
 
     return null;
   }
@@ -81,7 +96,7 @@ public final class ControllerTask implements Task {
     }
   }
 
-  private void sendData(int iteration) throws Exception {
+  private final void sendData(final int iteration) throws Exception {
     if (userControllerTask.isBroadcastUsed()) {
       commGroup.getBroadcastSender(DataBroadcast.class).send(
           ((DataBroadcastSender) userControllerTask).sendBroadcastData(iteration));
@@ -92,7 +107,7 @@ public final class ControllerTask implements Task {
     }
   }
 
-  private void receiveData(int iteration) throws Exception {
+  private final void receiveData(final int iteration) throws Exception {
     if (userControllerTask.isGatherUsed()) {
       ((DataGatherReceiver)userControllerTask).receiveGatherData(iteration,
           commGroup.getGatherReceiver(DataGather.class).receive());

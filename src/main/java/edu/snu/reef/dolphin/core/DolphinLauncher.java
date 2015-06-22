@@ -87,7 +87,7 @@ public final class DolphinLauncher {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, dolphinParameters.getIdentifier())
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, DolphinDriver.ActiveContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_MESSAGE, DolphinDriver.TaskMessageHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_MESSAGE, DolphinDriver.ContextMessageHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, DolphinDriver.TaskCompletedHandler.class)
         .set(DriverConfiguration.ON_TASK_RUNNING, DolphinDriver.TaskRunningHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, DolphinDriver.TaskFailedHandler.class);

@@ -16,9 +16,13 @@
 package edu.snu.reef.dolphin.core;
 
 import com.microsoft.reef.io.network.group.operators.Reduce;
+import edu.snu.reef.dolphin.core.metric.MetricTracker;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.util.Optional;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Information of a stage, which corresponds to a BSP algorithm
@@ -34,21 +38,23 @@ public final class StageInfo {
   private final Optional<? extends Class<? extends Codec>> gatherCodecClassOptional;
   private final Optional<? extends Class<? extends Codec>> reduceCodecClassOptional;
   private final Optional<? extends Class<? extends Reduce.ReduceFunction>> reduceFunctionClassOptional;
+  private final Optional<Set<Class<? extends MetricTracker>>> metricTrackerClassSet;
 
-  public static Builder newBuilder(Class<? extends UserComputeTask> userComputeTaskClass,
-                                   Class<? extends UserControllerTask> userControllerTaskClass,
-                                   Class<? extends Name<String>> communicationGroup) {
+  public static Builder newBuilder(final Class<? extends UserComputeTask> userComputeTaskClass,
+                                   final Class<? extends UserControllerTask> userControllerTaskClass,
+                                   final Class<? extends Name<String>> communicationGroup) {
     return new StageInfo.Builder(userComputeTaskClass, userControllerTaskClass, communicationGroup);
   }
 
-  private StageInfo(Class<? extends UserComputeTask> userComputeTaskClass,
-                   Class<? extends UserControllerTask> userControllerTaskClass,
-                   Class<? extends Name<String>> communicationGroup,
-                   Class<? extends Codec> broadcastCodecClass,
-                   Class<? extends Codec> scatterCodecClass,
-                   Class<? extends Codec> gatherCodecClass,
-                   Class<? extends Codec> reduceCodecClass,
-                   Class<? extends Reduce.ReduceFunction> reduceFunctionClass) {
+  private StageInfo(final Class<? extends UserComputeTask> userComputeTaskClass,
+                    final Class<? extends UserControllerTask> userControllerTaskClass,
+                    final Class<? extends Name<String>> communicationGroup,
+                    final Class<? extends Codec> broadcastCodecClass,
+                    final Class<? extends Codec> scatterCodecClass,
+                    final Class<? extends Codec> gatherCodecClass,
+                    final Class<? extends Codec> reduceCodecClass,
+                    final Class<? extends Reduce.ReduceFunction> reduceFunctionClass,
+                    final Set<Class<? extends MetricTracker>> metricTrackerClassSet) {
     this.userComputeTaskClass = userComputeTaskClass;
     this.userControllerTaskClass = userControllerTaskClass;
     this.commGroupName = communicationGroup;
@@ -57,6 +63,7 @@ public final class StageInfo {
     this.gatherCodecClassOptional = Optional.ofNullable(gatherCodecClass);
     this.reduceCodecClassOptional = Optional.ofNullable(reduceCodecClass);
     this.reduceFunctionClassOptional = Optional.ofNullable(reduceFunctionClass);
+    this.metricTrackerClassSet = Optional.ofNullable(metricTrackerClassSet);
   }
 
   public boolean isBroadcastUsed() {
@@ -95,6 +102,10 @@ public final class StageInfo {
     return reduceFunctionClassOptional.get();
   }
 
+  public Set<Class<? extends MetricTracker>> getMetricTrackerClassSet() {
+    return metricTrackerClassSet.get();
+  }
+
   public Class<? extends UserComputeTask> getUserCmpTaskClass() {
     return this.userComputeTaskClass;
   }
@@ -116,15 +127,16 @@ public final class StageInfo {
     private Class<? extends Codec> gatherCodecClass = null;
     private Class<? extends Codec> reduceCodecClass = null;
     private Class<? extends Reduce.ReduceFunction> reduceFunctionClass = null;
+    private Set<Class<? extends MetricTracker>> metricTrackerSet = null;
 
     /**
      * @param userComputeTaskClass  user-defined compute task
      * @param userControllerTaskClass   user-defined controller task
      * @param communicationGroup    name of the communication group used by this stage
      */
-    public Builder(Class<? extends UserComputeTask> userComputeTaskClass,
-                   Class<? extends UserControllerTask> userControllerTaskClass,
-                   Class<? extends Name<String>> communicationGroup) {
+    public Builder(final Class<? extends UserComputeTask> userComputeTaskClass,
+                   final Class<? extends UserControllerTask> userControllerTaskClass,
+                   final Class<? extends Name<String>> communicationGroup) {
       this.userComputeTaskClass = userComputeTaskClass;
       this.userControllerTaskClass = userControllerTaskClass;
       this.commGroupName = communicationGroup;
@@ -152,10 +164,19 @@ public final class StageInfo {
       return this;
     }
 
+    public Builder addMetricTrackers(Class<? extends MetricTracker>... metricTrackerClasses) {
+      metricTrackerSet = new HashSet<>();
+      for(int i = 0; i < metricTrackerClasses.length; i++) {
+        this.metricTrackerSet.add(metricTrackerClasses[i]);
+      }
+      return this;
+    }
+
     @Override
     public StageInfo build() {
       return new StageInfo(userComputeTaskClass, userControllerTaskClass, commGroupName,
-          broadcastCodecClass, scatterCodecClass, gatherCodecClass, reduceCodecClass, reduceFunctionClass);
+          broadcastCodecClass, scatterCodecClass, gatherCodecClass, reduceCodecClass, reduceFunctionClass,
+          metricTrackerSet);
     }
   }
 }
