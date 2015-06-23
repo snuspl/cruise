@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 SK Telecom
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,8 +99,6 @@ public class PageRankCtrlTask extends UserControllerTask
   @Override
   public void receiveReduceData(int iteration, PageRankSummary increment) {
     rank.clear();
-    LOG.log(Level.SEVERE, "xxxxxx{0}", new Object [] {iteration});
-    LOG.log(Level.SEVERE, "xxxxxx{0} {1}", new Object [] {iteration, increment.getModel()});
     for (Map.Entry<Integer, Double> entry : increment.getModel().entrySet()) {
       final Integer nodeId = entry.getKey();
       final Double contribution = entry.getValue();

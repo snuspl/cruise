@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 SK Telecom
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ public class PageRankCmpTask extends UserComputeTask
   public void initialize() throws ParseException {
     subgraphs = dataParser.get();
     rank = new HashMap<>();
-    for (Integer key : subgraphs.keySet()) {
+    for (final Integer key : subgraphs.keySet()) {
       rank.put(key, 1.0d);
     }
   }

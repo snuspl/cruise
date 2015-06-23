@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 SK Telecom
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,15 +63,11 @@ public final class AdjacencyListParser implements DataParser<Map<Integer, List<I
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
       final String text = keyValue.second.toString().trim();
-      if (text.startsWith("#")) {
+      if (text.startsWith("#") || 0 == text.length()) {
         continue;
       }
 
       final String[] split = text.split("\\s+");
-      if (split.length == 0) {
-        continue;
-      }
-
       final List<Integer> outdegree = new ArrayList<>(split.length - 1);
       try {
         int nodeId = Integer.valueOf(split[0]);

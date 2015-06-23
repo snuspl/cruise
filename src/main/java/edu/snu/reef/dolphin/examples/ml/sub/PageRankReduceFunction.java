@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 SK Telecom
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,9 +29,7 @@ public class PageRankReduceFunction implements Reduce.ReduceFunction<PageRankSum
   @Override
   public final PageRankSummary apply(Iterable<PageRankSummary> summaryList) {
     PageRankSummary reducedSummary = null;
-    System.out.println("yyyyy");
     for (final PageRankSummary summary : summaryList) {
-      System.out.println("yyyyy-" + summary.getModel());
       if (reducedSummary == null) {
         reducedSummary = summary;
       } else {
