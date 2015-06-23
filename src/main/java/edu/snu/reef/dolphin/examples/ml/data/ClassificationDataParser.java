@@ -73,14 +73,12 @@ public final class ClassificationDataParser implements DataParser<List<Row>> {
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
 
       final String text = keyValue.second.toString().trim();
-      if (text.startsWith("#")) {
+      if (text.startsWith("#") || 0 == text.length()) {
         continue;
       }
 
       final String[] split = text.split("\\s+");
-      if (split.length == 0) {
-        continue;
-      } else if (split.length != dimension+1) {
+      if (split.length != dimension+1) {
         parseException = new ParseException(
             String.format("Parse failed: the number of features should be %d", dimension));
         return;
