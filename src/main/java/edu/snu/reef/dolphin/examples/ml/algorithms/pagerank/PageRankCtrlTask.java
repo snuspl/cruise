@@ -99,15 +99,7 @@ public class PageRankCtrlTask extends UserControllerTask
   @Override
   public void receiveReduceData(int iteration, PageRankSummary increment) {
     rank.clear();
-    for (Map.Entry<Integer, Double> entry : increment.getModel().entrySet()) {
-      final Integer nodeId = entry.getKey();
-      final Double contribution = entry.getValue();
-      if (rank.containsKey(nodeId)) {
-        rank.put(nodeId, rank.get(nodeId) + contribution);
-      } else {
-        rank.put(nodeId, contribution);
-      }
-    }
+    rank.putAll(increment.getModel());
     for (Integer key : rank.keySet()) {
       rank.put(key, (1 - dampingFactor) + dampingFactor * rank.get(key));
     }
