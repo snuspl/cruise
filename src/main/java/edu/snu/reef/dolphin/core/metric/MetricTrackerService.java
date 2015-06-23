@@ -41,12 +41,8 @@ public final class MetricTrackerService {
    * @return service configuration for the metric tracker service
    */
   public static Configuration getServiceConfiguration() {
-    final Configuration partialServiceConf = ServiceConfiguration.CONF
+    return ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, MetricManager.class)
-        .build();
-
-    return Tang.Factory.getTang()
-        .newConfigurationBuilder(partialServiceConf)
         .build();
   }
 
