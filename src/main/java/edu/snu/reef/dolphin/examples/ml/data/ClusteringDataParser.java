@@ -58,7 +58,7 @@ public final class ClusteringDataParser implements DataParser<List<Vector>> {
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
       final String text = keyValue.second.toString().trim();
-      if (text.startsWith("#") || 0 == text.length()) {
+      if (text.startsWith("#") || text.length() == 0) {
         continue;
       }
 
