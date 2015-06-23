@@ -24,9 +24,9 @@ import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
 import edu.snu.reef.dolphin.core.metric.MetricCodec;
 import edu.snu.reef.dolphin.core.metric.MetricTracker;
 import edu.snu.reef.dolphin.core.metric.MetricTrackerService;
+import edu.snu.reef.dolphin.core.metric.MetricTrackers;
 import edu.snu.reef.dolphin.groupcomm.names.*;
 import edu.snu.reef.dolphin.parameters.EvaluatorNum;
-import edu.snu.reef.dolphin.core.metric.MetricTrackers;
 import edu.snu.reef.dolphin.parameters.OnLocal;
 import edu.snu.reef.dolphin.parameters.OutputDir;
 import org.apache.reef.driver.context.ActiveContext;
@@ -117,7 +117,7 @@ public final class DolphinDriver {
   /**
    * Codec for metrics
    */
-  private final MetricCodec metricCodec = new MetricCodec();
+  private final MetricCodec metricCodec;
 
   private final String outputDir;
   private final boolean onLocal;
@@ -136,6 +136,7 @@ public final class DolphinDriver {
    * @param dataLoadingService manager for Data Loading configurations
    * @param userJobInfo
    * @param userParameters
+   * @param metricCodec
    * @param outputDir
    * @param onLocal
    * @param evalNum
@@ -145,6 +146,7 @@ public final class DolphinDriver {
                         final DataLoadingService dataLoadingService,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
+                        final MetricCodec metricCodec,
                         @Parameter(OutputDir.class) final String outputDir,
                         @Parameter(OnLocal.class) final boolean onLocal,
                         @Parameter(EvaluatorNum.class) final Integer evalNum) {
@@ -155,6 +157,7 @@ public final class DolphinDriver {
     this.commGroupDriverList = new LinkedList<>();
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
+    this.metricCodec = metricCodec;
     this.outputDir = outputDir;
     this.onLocal = onLocal;
     this.evalNum = evalNum;

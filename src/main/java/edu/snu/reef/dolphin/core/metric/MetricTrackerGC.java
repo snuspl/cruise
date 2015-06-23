@@ -29,12 +29,12 @@ public final class MetricTrackerGC implements MetricTracker {
   /**
    * key for the GC count measure (the number of garbage collection)
    */
-  public final static String KEY_METRIC_GC_COUNT = "METRIC_GC_COUNT";
+  public static final String KEY_METRIC_GC_COUNT = "METRIC_GC_COUNT";
 
   /**
    * key for the GC time measure (elapsed time for garbage collection)
    */
-  public final static String KEY_METRIC_GC_TIME = "METRIC_GC_TIME";
+  public static final String KEY_METRIC_GC_TIME = "METRIC_GC_TIME";
 
   /**
    * total number of garbage collections that have occurred when starting to track measures
@@ -55,6 +55,7 @@ public final class MetricTrackerGC implements MetricTracker {
   public MetricTrackerGC() {
   }
 
+  @Override
   public void start() {
     startGCCount = 0;
     startGCTime = 0;
@@ -70,10 +71,11 @@ public final class MetricTrackerGC implements MetricTracker {
     }
   }
 
+  @Override
   public Map<String, Double> stop() {
     long endGCCount = 0;
     long endGCTime = 0;
-    for(final GarbageCollectorMXBean garbageCollectorMXBean : ManagementFactory.getGarbageCollectorMXBeans()) {
+    for (final GarbageCollectorMXBean garbageCollectorMXBean : ManagementFactory.getGarbageCollectorMXBeans()) {
       final long localCount = garbageCollectorMXBean.getCollectionCount();
       final long localTime = garbageCollectorMXBean.getCollectionTime();
       if (localCount > 0) {
@@ -85,11 +87,12 @@ public final class MetricTrackerGC implements MetricTracker {
     }
 
     final Map<String, Double> result = new TreeMap<>();
-    result.put(KEY_METRIC_GC_COUNT, (double)(endGCCount - startGCCount));
-    result.put(KEY_METRIC_GC_TIME, (double)(endGCTime - startGCTime));
+    result.put(KEY_METRIC_GC_COUNT, (double) (endGCCount - startGCCount));
+    result.put(KEY_METRIC_GC_TIME, (double) (endGCTime - startGCTime));
     return result;
   }
 
+  @Override
   public void close() {
   }
 }

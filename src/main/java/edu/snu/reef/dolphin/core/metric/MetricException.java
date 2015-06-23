@@ -15,22 +15,18 @@
  */
 package edu.snu.reef.dolphin.core.metric;
 
-import java.util.Map;
-
 /**
- * Interface that metric trackers implement
+ * Thrown when metric tracking fails. Metric tracking commonly fails for two reasons.
+ * The first is that the tracking is started again before the previous tracking is stopped.
+ * The second is that tracking is stopped before being started.
  */
-public interface MetricTracker extends AutoCloseable {
+public class MetricException extends Exception {
 
   /**
-   * start tracking metrics
+   * Constructs a new exception with the specified detail message.
+   * @param message the detail message.
    */
-  void start();
-
-  /**
-   * stop tracking metrics and return currently tracked metrics
-   * @return key and value of metrics
-   */
-  Map<String, Double> stop();
-
+  public MetricException(final String message) {
+    super(message);
+  }
 }

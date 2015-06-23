@@ -45,7 +45,7 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
   /**
    * Codec for metrics
    */
-  private final MetricCodec metricCodec = new MetricCodec();
+  private final MetricCodec metricCodec;
 
   /**
    * Manager of the trigger of hear beat on which tracked metrics are sent
@@ -53,19 +53,27 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
   private final HeartBeatTriggerManager heartBeatTriggerManager;
 
   /**
+   * Whether tracking metrics is started or not
+   */
+  private boolean isStarted = false;
+
+  /**
    * This class is instantiated by TANG
    *
    * Constructor for the metric manager, which accepts Heartbeat Trigger Manager as a parameter
    * @param heartBeatTriggerManager manager for sending heartbeat to the driver
+   * @param metricCodec codec for metrics
    */
   @Inject
-  public MetricManager(final HeartBeatTriggerManager heartBeatTriggerManager) {
+  public MetricManager(final HeartBeatTriggerManager heartBeatTriggerManager,
+                       final MetricCodec metricCodec) {
     this.heartBeatTriggerManager = heartBeatTriggerManager;
+    this.metricCodec = metricCodec;
   }
 
   /**
    * Register metric trackers
-   * @param trackers  trackers to register
+   * @param trackers trackers to register
    */
   public void registerTrackers(final Collection<MetricTracker> trackers) {
     metricTrackerList.addAll(trackers);
@@ -75,31 +83,38 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
   /**
    * Start registered metric trackers
    */
-  public void start() {
-    for (final MetricTracker metricTracker: metricTrackerList) {
+  public void start() throws MetricException {
+    if (isStarted) {
+      throw new MetricException("Metric tracking cannot be started again before the previous tracking finishes");
+    }
+    for (final MetricTracker metricTracker : metricTrackerList) {
       metricTracker.start();
     }
+    isStarted = true;
   }
 
   /**
    * Stop registered metric trackers
    * Gathered measures are sent to the driver
    */
-  public void stop() {
-    synchronized (this) {
-      for (final MetricTracker metricTracker: metricTrackerList) {
-        metrics.putAll(metricTracker.stop());
-      }
-      heartBeatTriggerManager.triggerHeartBeat();
-      metrics.clear();
+  public synchronized void stop() throws MetricException {
+    if(!isStarted) {
+      throw new MetricException("Metric tracking should be started first before being stopped");
     }
+    for (final MetricTracker metricTracker : metricTrackerList) {
+      metrics.putAll(metricTracker.stop());
+    }
+    heartBeatTriggerManager.triggerHeartBeat();
+    metrics.clear();
+    isStarted = false;
   }
 
   /**
    * Close registered metric trackers
    */
-  public void close() {
-    for (final MetricTracker metricTracker: metricTrackerList) {
+  @Override
+  public void close() throws Exception {
+    for (final MetricTracker metricTracker : metricTrackerList) {
       metricTracker.close();
     }
     metricTrackerList.clear();
@@ -108,20 +123,18 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
 
   /**
    * Return a message (gathered metrics) to be sent to the driver
-   * @return  message
+   * @return message
    */
   @Override
-  public Optional<ContextMessage> getMessage() {
+  public synchronized Optional<ContextMessage> getMessage() {
     LOG.log(Level.INFO, "Context Message Sent");
-    synchronized (this) {
-      if (metrics.isEmpty()) {
-        return Optional.empty();
-      } else {
-        final Optional<ContextMessage> message = Optional.of(ContextMessage.from(
-            MetricTrackerService.class.getName(),
-            metricCodec.encode(metrics)));
-        return message;
-      }
+    if (metrics.isEmpty()) {
+      return Optional.empty();
+    } else {
+      final Optional<ContextMessage> message = Optional.of(ContextMessage.from(
+          MetricTrackerService.class.getName(),
+          metricCodec.encode(metrics)));
+      return message;
     }
   }
 }

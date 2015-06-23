@@ -41,17 +41,17 @@ public final class MetricTrackerMemory implements MetricTracker {
   /**
    * key for the Max memory measure (maximum memory usage)
    */
-  public final static String KEY_METRIC_MEMORY_MAX = "METRIC_MEMORY_MAX";
+  public static final String KEY_METRIC_MEMORY_MAX = "METRIC_MEMORY_MAX";
 
   /**
    * Key for the Average memory measure (average memory usage)
    */
-  public final static String KEY_METRIC_MEMORY_AVERAGE = "METRIC_MEMORY_AVERAGE";
+  public static final String KEY_METRIC_MEMORY_AVERAGE = "METRIC_MEMORY_AVERAGE";
 
   /**
    * value returned when memory usage was never measured
    */
-  public final static double VALUE_METRIC_MEMORY_UNKNOWN = -1.0;
+  public static final double VALUE_METRIC_MEMORY_UNKNOWN = -1.0;
 
   /**
    * time interval between metric tracking
@@ -82,6 +82,10 @@ public final class MetricTrackerMemory implements MetricTracker {
    * Whether the thread measuring should close or not
    */
   private boolean shouldTerminate = false;
+
+  /**
+   * MemoryMXBean for measuring memory usage
+   */
   private final MemoryMXBean mbean = ManagementFactory.getMemoryMXBean();
 
   /**
@@ -91,41 +95,38 @@ public final class MetricTrackerMemory implements MetricTracker {
    * @param measureInterval time interval between metric tracking
    */
   @Inject
-  public MetricTrackerMemory(@Parameter(MeasureInterval.class) Long measureInterval) {
+  public MetricTrackerMemory(@Parameter(MeasureInterval.class) final Long measureInterval) {
     this.measureInterval = measureInterval;
     new Thread(new Daemon()).start();
   }
 
-  public void start() {
-    synchronized(this) {
-      shouldStop = false;
-      maxMemory = 0;
-      sumMemory = 0;
-      measureTimes = 0;
-      this.notify();
-    }
+  @Override
+  public synchronized void start() {
+    shouldStop = false;
+    maxMemory = 0;
+    sumMemory = 0;
+    measureTimes = 0;
+    this.notify();
   }
 
-  public Map<String, Double> stop() {
+  @Override
+  public synchronized Map<String, Double> stop() {
     final Map<String, Double> result = new TreeMap<>();
-    synchronized(this){
-      shouldStop = true;
-      if (measureTimes == 0) {
-        result.put(KEY_METRIC_MEMORY_MAX, VALUE_METRIC_MEMORY_UNKNOWN);
-        result.put(KEY_METRIC_MEMORY_AVERAGE, VALUE_METRIC_MEMORY_UNKNOWN);
-      } else {
-        result.put(KEY_METRIC_MEMORY_MAX, (double) maxMemory);
-        result.put(KEY_METRIC_MEMORY_AVERAGE, ((double) sumMemory) / measureTimes);
-      }
+    shouldStop = true;
+    if (measureTimes == 0) {
+      result.put(KEY_METRIC_MEMORY_MAX, VALUE_METRIC_MEMORY_UNKNOWN);
+      result.put(KEY_METRIC_MEMORY_AVERAGE, VALUE_METRIC_MEMORY_UNKNOWN);
+    } else {
+      result.put(KEY_METRIC_MEMORY_MAX, (double) maxMemory);
+      result.put(KEY_METRIC_MEMORY_AVERAGE, ((double) sumMemory) / measureTimes);
     }
     return result;
   }
 
-  public void close() {
-    synchronized(this) {
-      shouldTerminate = true;
-      this.notify();
-    }
+  @Override
+  public synchronized void close() {
+    shouldTerminate = true;
+    this.notify();
   }
 
   private class Daemon implements Runnable {
@@ -134,7 +135,7 @@ public final class MetricTrackerMemory implements MetricTracker {
     public void run() {
 
       while (true) {
-        synchronized (MetricTrackerMemory.this) {
+        synchronized(MetricTrackerMemory.this) {
           if (shouldTerminate) {
             break;
           } else if (shouldStop) {
@@ -142,7 +143,7 @@ public final class MetricTrackerMemory implements MetricTracker {
 
               //wait until stop or close method is called
               MetricTrackerMemory.this.wait();
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
               throw new RuntimeException(e);
             }
             continue;
@@ -155,7 +156,7 @@ public final class MetricTrackerMemory implements MetricTracker {
         }
         try {
           Thread.sleep(measureInterval);
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
           throw new RuntimeException(e);
         }
       }

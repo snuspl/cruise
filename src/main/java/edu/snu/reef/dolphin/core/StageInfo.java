@@ -164,7 +164,7 @@ public final class StageInfo {
       return this;
     }
 
-    public Builder addMetricTrackers(Class<? extends MetricTracker>... metricTrackerClasses) {
+    public Builder addMetricTrackers(final Class<? extends MetricTracker>... metricTrackerClasses) {
       metricTrackerSet = new HashSet<>();
       for(int i = 0; i < metricTrackerClasses.length; i++) {
         this.metricTrackerSet.add(metricTrackerClasses[i]);

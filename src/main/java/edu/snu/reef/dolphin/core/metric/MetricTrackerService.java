@@ -23,6 +23,8 @@ import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Unit;
 
+import javax.inject.Inject;
+
 /**
  * A simple metric tracker class given in the form of a service.
  * Should be inserted alongside a context.
@@ -30,9 +32,13 @@ import org.apache.reef.tang.annotations.Unit;
 @Unit
 public final class MetricTrackerService {
 
+  @Inject
+  private MetricTrackerService() {
+  }
+
   /**
    * Return the service configuration for the metric tracker service
-   * @return  service configuration for the metric tracker service
+   * @return service configuration for the metric tracker service
    */
   public static Configuration getServiceConfiguration() {
     final Configuration partialServiceConf = ServiceConfiguration.CONF
@@ -46,23 +52,19 @@ public final class MetricTrackerService {
 
   /**
    * Return the context configuration for the metric tracker service
-   * @return  context configuration for the metric tracker service
+   * @return context configuration for the metric tracker service
    */
   public static Configuration getContextConfiguration() {
-    final Configuration contextConf = ContextConfiguration.CONF
+    return ContextConfiguration.CONF
         .set(ContextConfiguration.IDENTIFIER, MetricTrackerService.class.getName())
         .set(ContextConfiguration.ON_SEND_MESSAGE, MetricManager.class)
-        .build();
-
-    return Tang.Factory.getTang()
-        .newConfigurationBuilder(contextConf)
         .build();
   }
 
   /**
    * Add a context message source to the pre-existed context configuration
    * @param previousConfiguration pre-existed context configuration
-   * @return
+   * @return context configuration to which a context message source is added
    */
   public static Configuration getContextConfiguration(final Configuration previousConfiguration) {
     Configuration contextConf = Tang.Factory.getTang().newConfigurationBuilder()

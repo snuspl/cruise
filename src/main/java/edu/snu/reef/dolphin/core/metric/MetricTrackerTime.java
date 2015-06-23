@@ -27,12 +27,12 @@ public final class MetricTrackerTime implements MetricTracker {
   /**
    * key for the Wall-clock time measure
    */
-  public final static String KEY_METRIC_WALL_CLOCK_TIME = "METRIC_WALL_CLOCK_TIME";
+  public static final String KEY_METRIC_WALL_CLOCK_TIME = "METRIC_WALL_CLOCK_TIME";
 
   /**
    * elapsed time when starting to track measures
    */
-  public long startTime = 0;
+  private long startTime = 0;
 
   /**
    * This class is instantiated by TANG
@@ -40,13 +40,15 @@ public final class MetricTrackerTime implements MetricTracker {
    * Constructor for the wall-clock time tracker
    */
   @Inject
-  public MetricTrackerTime(){
+  public MetricTrackerTime() {
   }
 
+  @Override
   public void start() {
     startTime = System.currentTimeMillis();
   }
 
+  @Override
   public Map<String, Double> stop() {
     final long endTime = System.currentTimeMillis();
     final Map<String, Double> result = new TreeMap<>();
@@ -54,6 +56,7 @@ public final class MetricTrackerTime implements MetricTracker {
     return result;
   }
 
+  @Override
   public void close() {
   }
 }
