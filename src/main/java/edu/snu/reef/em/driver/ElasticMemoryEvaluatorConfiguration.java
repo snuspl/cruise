@@ -14,12 +14,12 @@ import org.apache.reef.tang.Tang;
 
 import javax.inject.Inject;
 
-public class ElasticMemoryDriverConfiguration {
+public class ElasticMemoryEvaluatorConfiguration {
 
   final NSWrapperDriver nsWrapperDriver;
 
   @Inject
-  private ElasticMemoryDriverConfiguration(final NSWrapperDriver nsWrapperDriver) {
+  private ElasticMemoryEvaluatorConfiguration(final NSWrapperDriver nsWrapperDriver) {
     this.nsWrapperDriver = nsWrapperDriver;
   }
 

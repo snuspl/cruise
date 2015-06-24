@@ -57,12 +57,12 @@ public final class NSWrapperDriver {
     return getConfiguration(codecClass, recvHandlerClass, exHandlerClass, networkServicePort, localNameServerAddr, localNameServerPort);
   }
 
-  public Configuration getConfiguration(final Class<? extends Codec<?>> codecClass,
-                                        final Class<? extends EventHandler<?>> recvHandlerClass,
-                                        final Class<? extends EventHandler<?>> exHandlerClass,
-                                        final Integer networkServicePort,
-                                        final String nameServerAddr,
-                                        final Integer nameServerPort) {
+  public static Configuration getConfiguration(final Class<? extends Codec<?>> codecClass,
+                                               final Class<? extends EventHandler<?>> recvHandlerClass,
+                                               final Class<? extends EventHandler<?>> exHandlerClass,
+                                               final Integer networkServicePort,
+                                               final String nameServerAddr,
+                                               final Integer nameServerPort) {
     final Configuration parameterConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NSWrapperParameters.NetworkServiceCodec.class, codecClass)
         .bindNamedParameter(NSWrapperParameters.NetworkServiceHandler.class, recvHandlerClass)
