@@ -19,7 +19,7 @@
 #
 
 # RUNTIME
-SELF_JAR=`echo ./target/elastic-memory-*-SNAPSHOT-shaded.jar`
+SELF_JAR=`echo ../target/elastic-memory-*-SNAPSHOT-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=org.apache.reef.util.logging.Config'
 
