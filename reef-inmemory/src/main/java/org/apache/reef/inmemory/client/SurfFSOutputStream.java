@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 /**
  * FSOutputStream for Surf.
  * Request MetaServer to allocate new blocks, on which it writes data.
+ * TODO: This class needs refactoring to tighten the state management.
  */
 public final class SurfFSOutputStream extends OutputStream {
   private static final Logger LOG = Logger.getLogger(SurfFSOutputStream.class.getName());
@@ -166,8 +167,11 @@ public final class SurfFSOutputStream extends OutputStream {
     final int len = end - start;
 
     if (isLastPacketSent && len == 0) {
-      // when lastPacket was sent and there's no actual data to send, we should not send anything at all
-      // This handles the corner case of hdfs dfs -copyFromLocal which calls close() twice
+      /*
+       * When lastPacket was sent and there's no actual data to send, we should not send anything at all
+       * TODO: This is a hotfix to solve #261. More robust solution is needed. See #268.
+       */
+      LOG.log(Level.WARNING, "close() is not supposed to be called again, since the last packet of the file is sent");
       return;
     }
 
