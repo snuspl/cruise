@@ -16,6 +16,7 @@
 
 package edu.snu.reef.em.ns;
 
+import edu.snu.reef.em.ns.api.NSWrapper;
 import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.io.network.impl.NetworkService;
 import org.apache.reef.wake.EventHandler;
@@ -27,8 +28,8 @@ public final class NSWrapperClosingHandler implements EventHandler<ContextStop> 
   private final NetworkService networkService;
 
   @Inject
-  private NSWrapperClosingHandler(final NSWrapperClient nsWrapperClient) {
-    this.networkService = nsWrapperClient.getNetworkService();
+  private NSWrapperClosingHandler(final NSWrapper nsWrapper) {
+    this.networkService = nsWrapper.getNetworkService();
   }
 
   @Override

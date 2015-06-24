@@ -17,7 +17,7 @@
 package edu.snu.reef.em.examples.elastic.migration;
 
 import edu.snu.reef.em.driver.api.ElasticMemory;
-import edu.snu.reef.em.driver.impl.ElasticMemoryConfigurationImpl;
+import edu.snu.reef.em.driver.impl.ElasticMemoryConfiguration;
 import edu.snu.reef.em.examples.parameters.DataBroadcast;
 import edu.snu.reef.em.examples.parameters.CommGroupName;
 import edu.snu.reef.em.examples.parameters.WorkerTaskOptions;
@@ -67,14 +67,14 @@ public final class NSExampleDriver {
   private final ReadyCodec readyCodec;
   private final AtomicInteger notReadyTasks;
 
-  private final ElasticMemoryConfigurationImpl emConf;
+  private final ElasticMemoryConfiguration emConf;
   private final ElasticMemory emService;
 
   @Inject
   public NSExampleDriver(final EvaluatorRequestor requestor,
                          final GroupCommDriver groupCommDriver,
                          final ReadyCodec readyCodec,
-                         final ElasticMemoryConfigurationImpl emConf,
+                         final ElasticMemoryConfiguration emConf,
                          final ElasticMemory emService) throws InjectionException {
     this.readyCodec = readyCodec;
     this.emConf = emConf;

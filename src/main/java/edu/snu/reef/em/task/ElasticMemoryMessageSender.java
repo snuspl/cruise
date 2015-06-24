@@ -4,7 +4,7 @@ import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
 import edu.snu.reef.em.avro.DataMsg;
 import edu.snu.reef.em.avro.Type;
 import edu.snu.reef.em.avro.UnitIdPair;
-import edu.snu.reef.em.ns.NSWrapperClient;
+import edu.snu.reef.em.ns.api.NSWrapper;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -24,8 +24,8 @@ public final class ElasticMemoryMessageSender {
   private final IdentifierFactory identifierFactory;
 
   @Inject
-  public ElasticMemoryMessageSender(final NSWrapperClient<AvroElasticMemoryMessage> nsWrapperClient) {
-    this.networkService = nsWrapperClient.getNetworkService();
+  public ElasticMemoryMessageSender(final NSWrapper<AvroElasticMemoryMessage> nsWrapper) {
+    this.networkService = nsWrapper.getNetworkService();
     this.identifierFactory = new StringIdentifierFactory();
   }
 

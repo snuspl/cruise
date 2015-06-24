@@ -1,6 +1,7 @@
-package edu.snu.reef.em.utils;
+package edu.snu.reef.em.msg;
 
 import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
+import edu.snu.reef.em.utils.SingleMessageBroadcastHandler;
 
 import javax.inject.Inject;
 

@@ -5,9 +5,10 @@ import edu.snu.reef.em.avro.CtrlMsg;
 import edu.snu.reef.em.avro.Type;
 import edu.snu.reef.em.driver.api.ElasticMemory;
 import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
-import edu.snu.reef.em.ns.NSWrapperClient;
+import edu.snu.reef.em.ns.impl.NSWrapperImpl;
+import edu.snu.reef.em.ns.api.NSWrapper;
 import edu.snu.reef.em.task.ElasticMemoryMessageSender;
-import edu.snu.reef.em.utils.ElasticMemoryMessageBroadcaster;
+import edu.snu.reef.em.msg.ElasticMemoryMessageBroadcaster;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -31,24 +32,27 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
-                            final NameServer nameServer,
                             final LocalAddressProvider localAddressProvider,
+                            final NameServer nameServer,
                             @Parameter(DriverIdentifier.class) final String driverId) {
     this.requestor = requestor;
 
-    final ElasticMemoryMessageBroadcaster broadcaster =
-        new ElasticMemoryMessageBroadcaster();
-    broadcaster.addHandler(new ElasticMemoryMessageBroadcastHandlerDriver());
+    final ElasticMemoryMessageBroadcaster broadcaster = new ElasticMemoryMessageBroadcaster();
+    broadcaster.addHandler(new ElasticMemoryMsgHandlerDriver());
 
-    final NSWrapperClient<AvroElasticMemoryMessage> nsWrapper =
-        new NSWrapperClient<>(new StringIdentifierFactory(),
-            new ElasticMemoryMessageCodec(),
-            broadcaster,
-            new ExceptionHandler(),
-            0,
-            localAddressProvider.getLocalAddress(),
-            nameServer.getPort(),
-            new MessagingTransportFactory());
+    // TODO: To receive a Tang injection of NSWrapper, Tang must know the
+    // NameServer's address and port beforehand. However, the client has no
+    // means of providing Tang with the information, and thus we currently use
+    // `new` to instantiate NSWrapper.
+    final NSWrapper<AvroElasticMemoryMessage> nsWrapper =
+        new NSWrapperImpl<>(new StringIdentifierFactory(),
+                        new ElasticMemoryMessageCodec(),
+                        broadcaster,
+                        new ExceptionHandler(),
+                        0,
+                        localAddressProvider.getLocalAddress(),
+                        nameServer.getPort(),
+                        new MessagingTransportFactory());
     nsWrapper.getNetworkService().registerId(nsWrapper.getNetworkService().getIdentifierFactory().getNewInstance(driverId));
 
     this.sender = new ElasticMemoryMessageSender(nsWrapper);
@@ -63,19 +67,21 @@ public final class ElasticMemoryImpl implements ElasticMemory {
         .build());
   }
 
+  // TODO: implement
   @Override
   public void delete(final String evalId) {
     throw new NotImplementedException();
   }
 
+  // TODO: implement
   @Override
   public void resize(final String evalId, final int megaBytes, final int cores) {
     throw new NotImplementedException();
   }
 
+  // TODO: @param rangeSet is currently not being used.
   @Override
   public void move(String dataClassName, Set<IntRange> rangeSet, String srcEvalId, String destEvalId) {
-
     final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
         .setType(Type.CtrlMsg)
         .setSrcId(srcEvalId)
@@ -86,6 +92,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     sender.send(srcEvalId, msg);
   }
 
+  // TODO: implement
   @Override
   public void checkpoint(String evalId) {
     throw new NotImplementedException();

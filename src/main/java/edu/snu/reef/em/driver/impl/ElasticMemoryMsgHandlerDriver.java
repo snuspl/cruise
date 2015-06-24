@@ -10,10 +10,13 @@ import javax.inject.Inject;
  * Represents the driver-side message handler for receiving ElasticMemoryMessages.
  */
 @DriverSide
-public final class ElasticMemoryMessageBroadcastHandlerDriver implements EventHandler<AvroElasticMemoryMessage> {
+public final class ElasticMemoryMsgHandlerDriver implements EventHandler<AvroElasticMemoryMessage> {
 
+  // TODO: This constructor should be declared `private`, but ElasticMemoryImpl
+  // needs to directly instantiate this class in order to use NSWrapper and thus
+  // we keep this constructor `default`.
   @Inject
-  public ElasticMemoryMessageBroadcastHandlerDriver() {
+  ElasticMemoryMsgHandlerDriver() {
   }
 
   @Override

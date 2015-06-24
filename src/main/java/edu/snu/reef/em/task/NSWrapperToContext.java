@@ -1,6 +1,6 @@
 package edu.snu.reef.em.task;
 
-import edu.snu.reef.em.ns.NSWrapperClient;
+import edu.snu.reef.em.ns.api.NSWrapper;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.io.network.impl.NetworkService;
@@ -17,8 +17,8 @@ public final class NSWrapperToContext {
   private IdentifierFactory ifac;
 
   @Inject
-  private NSWrapperToContext(final NSWrapperClient nsWrapperClient) {
-    this.networkService = nsWrapperClient.getNetworkService();
+  private NSWrapperToContext(final NSWrapper nsWrapper) {
+    this.networkService = nsWrapper.getNetworkService();
     this.ifac = this.networkService.getIdentifierFactory();
   }
 

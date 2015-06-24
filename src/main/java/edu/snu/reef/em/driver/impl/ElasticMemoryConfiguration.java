@@ -1,10 +1,9 @@
 package edu.snu.reef.em.driver.impl;
 
-import edu.snu.reef.em.driver.api.ElasticMemoryConfiguration;
 import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
-import edu.snu.reef.em.ns.NSWrapperDriver;
+import edu.snu.reef.em.ns.NSWrapperConfiguration;
 import edu.snu.reef.em.task.*;
-import edu.snu.reef.em.utils.ElasticMemoryMessageBroadcaster;
+import edu.snu.reef.em.msg.ElasticMemoryMessageBroadcaster;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
@@ -15,17 +14,22 @@ import org.apache.reef.tang.Tang;
 
 import javax.inject.Inject;
 
+/**
+ * Configuration class for setting evaluator configurations of ElasticMemoryService.
+ */
 @DriverSide
-public final class ElasticMemoryConfigurationImpl implements ElasticMemoryConfiguration {
+public final class ElasticMemoryConfiguration {
 
-  private final NSWrapperDriver nsWrapperDriver;
+  private final NSWrapperConfiguration nsWrapperConfiguration;
 
   @Inject
-  private ElasticMemoryConfigurationImpl(final NSWrapperDriver nsWrapperDriver) {
-    this.nsWrapperDriver = nsWrapperDriver;
+  private ElasticMemoryConfiguration(final NSWrapperConfiguration nsWrapperConfiguration) {
+    this.nsWrapperConfiguration = nsWrapperConfiguration;
   }
 
-  @Override
+  /**
+   * @return configuration that should be merged with a ContextConfiguration to form a context
+   */
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(ContextStartHandlers.class, NSHandlerBind.ContextStartHandler.class)
@@ -35,11 +39,13 @@ public final class ElasticMemoryConfigurationImpl implements ElasticMemoryConfig
         .build();
   }
 
-  @Override
+  /**
+   * @return service configuration that should be passed along with a ContextConfiguration
+   */
   public Configuration getServiceConfiguration() {
     final Configuration nsWrapperConf =
-        nsWrapperDriver.getConfiguration(ElasticMemoryMessageCodec.class,
-                                         ElasticMemoryMessageBroadcaster.class);
+        nsWrapperConfiguration.getConfiguration(ElasticMemoryMessageCodec.class,
+                                                ElasticMemoryMessageBroadcaster.class);
 
     final Configuration serviceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, ElasticMemoryStore.class)

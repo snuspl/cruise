@@ -16,6 +16,8 @@
 
 package edu.snu.reef.em.ns;
 
+import edu.snu.reef.em.ns.impl.NSWrapperImpl;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
 import org.apache.reef.io.network.naming.NameServer;
@@ -30,17 +32,19 @@ import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import javax.inject.Inject;
 
 /**
- * Wrapper class for NetworkService
+ * Configuration class for NSWrapper.
+ * This class must be instantiated, otherwise configuring the
+ * NameServer's address and port statically would be impossible.
  */
-public final class NSWrapperDriver {
+@DriverSide
+public final class NSWrapperConfiguration {
 
   private final String localNameServerAddr;
   private final Integer localNameServerPort;
 
   @Inject
-  private NSWrapperDriver(final NameServer nameServer,
-                          final LocalAddressProvider localAddressProvider) throws InjectionException {
-
+  private NSWrapperConfiguration(final NameServer nameServer,
+                                 final LocalAddressProvider localAddressProvider) throws InjectionException {
     this.localNameServerAddr = localAddressProvider.getLocalAddress();
     this.localNameServerPort = nameServer.getPort();
   }
@@ -53,7 +57,7 @@ public final class NSWrapperDriver {
   public Configuration getConfiguration(final Class<? extends Codec<?>> codecClass,
                                         final Class<? extends EventHandler<?>> recvHandlerClass,
                                         final Class<? extends EventHandler<?>> exHandlerClass,
-                                        final int networkServicePort) {
+                                        final Integer networkServicePort) {
     return getConfiguration(codecClass, recvHandlerClass, exHandlerClass, networkServicePort, localNameServerAddr, localNameServerPort);
   }
 
@@ -73,7 +77,7 @@ public final class NSWrapperDriver {
         .build();
 
     final Configuration serviceConf = ServiceConfiguration.CONF
-        .set(ServiceConfiguration.SERVICES, NSWrapperClient.class)
+        .set(ServiceConfiguration.SERVICES, NSWrapperImpl.class)
         .set(ServiceConfiguration.ON_CONTEXT_STOP, NSWrapperClosingHandler.class)
         .build();
 

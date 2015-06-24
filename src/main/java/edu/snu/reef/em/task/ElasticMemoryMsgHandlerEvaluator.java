@@ -1,9 +1,11 @@
-package edu.snu.reef.em.msg;
+package edu.snu.reef.em.task;
 
-import edu.snu.reef.em.avro.*;
+import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
+import edu.snu.reef.em.avro.CtrlMsg;
+import edu.snu.reef.em.avro.DataMsg;
+import edu.snu.reef.em.avro.UnitIdPair;
 import edu.snu.reef.em.serializer.Serializer;
-import edu.snu.reef.em.task.ElasticMemoryMessageSender;
-import edu.snu.reef.em.task.MemoryStore;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.wake.EventHandler;
 
@@ -13,17 +15,21 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElasticMemoryMessage> {
-  private static final Logger LOG = Logger.getLogger(ElasticMemoryDataMsgHandler.class.getName());
+/**
+ * Represents the evaluator-side message handler for receiving ElasticMemoryMessages.
+ */
+@EvaluatorSide
+public final class ElasticMemoryMsgHandlerEvaluator implements EventHandler<AvroElasticMemoryMessage> {
+  private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandlerEvaluator.class.getName());
 
   private final MemoryStore memoryStore;
   private final Serializer serializer;
   private final ElasticMemoryMessageSender sender;
 
   @Inject
-  public ElasticMemoryDataMsgHandler(final MemoryStore memoryStore,
-                                     final ElasticMemoryMessageSender sender,
-                                     final Serializer serializer) {
+  private ElasticMemoryMsgHandlerEvaluator(final MemoryStore memoryStore,
+                                           final ElasticMemoryMessageSender sender,
+                                           final Serializer serializer) {
     this.memoryStore = memoryStore;
     this.serializer = serializer;
     this.sender = sender;
@@ -31,7 +37,7 @@ public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElast
 
   @Override
   public void onNext(final AvroElasticMemoryMessage msg) {
-    LOG.entering(AvroElasticMemoryMessage.class.getSimpleName(), "onNext", msg);
+    LOG.entering(ElasticMemoryMsgHandlerEvaluator.class.getSimpleName(), "onNext", msg);
 
     System.out.println("Message source: " + msg.getSrcId());
     System.out.println("Message destination: " + msg.getDestId());
@@ -46,12 +52,10 @@ public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElast
         break;
 
       default:
-        throw new RuntimeException("Not Excepted: msg");
+        throw new RuntimeException("Unexpected message: " + msg);
     }
 
-
-
-    LOG.exiting(AvroElasticMemoryMessage.class.getSimpleName(), "onNext", msg);
+    LOG.exiting(ElasticMemoryMsgHandlerEvaluator.class.getSimpleName(), "onNext", msg);
   }
 
   private void onDataMsg(final AvroElasticMemoryMessage msg) {
