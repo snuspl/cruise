@@ -15,7 +15,7 @@ public final class NSWrapperClient<T> {
   private final NetworkService<T> networkService;
 
   @Inject
-  private NSWrapperClient(@Parameter(NSWrapperParameters.NetworkServiceIdentifierFactory.class) final IdentifierFactory identifierFactory,
+  public NSWrapperClient(@Parameter(NSWrapperParameters.NetworkServiceIdentifierFactory.class) final IdentifierFactory identifierFactory,
                           @Parameter(NSWrapperParameters.NetworkServiceCodec.class) final Codec<T> codec,
                           @Parameter(NSWrapperParameters.NetworkServiceHandler.class) final EventHandler<Message<T>> recvHandler,
                           @Parameter(NSWrapperParameters.NetworkServiceExceptionHandler.class) final EventHandler<Exception> exHandler,

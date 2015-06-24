@@ -11,7 +11,7 @@ public final class ElasticMemoryMessageHandlerWrapperImpl implements ElasticMemo
   private EventHandler<AvroElasticMemoryMessage> elasticMemoryMessageHandler;
 
   @Inject
-  private ElasticMemoryMessageHandlerWrapperImpl() {
+  public ElasticMemoryMessageHandlerWrapperImpl() {
   }
 
   public void setHandler(final EventHandler<AvroElasticMemoryMessage> elasticMemoryMessageEventHandler) {

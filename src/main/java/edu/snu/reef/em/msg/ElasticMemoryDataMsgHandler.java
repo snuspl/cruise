@@ -1,15 +1,14 @@
 package edu.snu.reef.em.msg;
 
-import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
-import edu.snu.reef.em.avro.DataMsg;
-import edu.snu.reef.em.avro.Type;
-import edu.snu.reef.em.avro.UnitIdPair;
+import edu.snu.reef.em.avro.*;
 import edu.snu.reef.em.serializer.Serializer;
+import edu.snu.reef.em.task.ElasticMemoryMessageSender;
 import edu.snu.reef.em.task.MemoryStoreClient;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -19,12 +18,15 @@ public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElast
 
   private final MemoryStoreClient memoryStoreClient;
   private final Serializer serializer;
+  private final ElasticMemoryMessageSender sender;
 
   @Inject
   public ElasticMemoryDataMsgHandler(final MemoryStoreClient memoryStoreClient,
+                                     final ElasticMemoryMessageSender sender,
                                      final Serializer serializer) {
     this.memoryStoreClient = memoryStoreClient;
     this.serializer = serializer;
+    this.sender = sender;
   }
 
   @Override
@@ -34,8 +36,25 @@ public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElast
     System.out.println("Message source: " + msg.getSrcId());
     System.out.println("Message destination: " + msg.getDestId());
     System.out.println("Message type: " + msg.getType());
-    assert(msg.getType() == Type.DataMsg);
+    switch (msg.getType()) {
+      case DataMsg:
+        onDataMsg(msg);
+        break;
 
+      case CtrlMsg:
+        onCtrlMsg(msg);
+        break;
+
+      default:
+        throw new RuntimeException("Not Excepted: msg");
+    }
+
+
+
+    LOG.exiting(AvroElasticMemoryMessage.class.getSimpleName(), "onNext", msg);
+  }
+
+  private void onDataMsg(final AvroElasticMemoryMessage msg) {
     final DataMsg dataMsg = msg.getDataMsg();
 
     final Codec codec = serializer.getCodec(dataMsg.getDataClassName().toString());
@@ -50,7 +69,31 @@ public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElast
     System.out.println(memoryStoreClient.get(dataMsg.getDataClassName().toString()));
 
     memoryStoreClient.putMovable(dataMsg.getDataClassName().toString(), list);
+  }
 
-    LOG.exiting(AvroElasticMemoryMessage.class.getSimpleName(), "onNext", msg);
+  private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
+    final CtrlMsg ctrlMsg = msg.getCtrlMsg();
+
+    final String key = ctrlMsg.getDataClassName().toString();
+    final Codec codec = serializer.getCodec(key);
+    System.out.println(codec);
+
+    final List list = memoryStoreClient.get(key);
+    memoryStoreClient.remove(key);
+    System.out.println(list);
+    System.out.println();
+
+    final List<UnitIdPair> unitIdPairList = new LinkedList<>();
+
+    for (int index = 0; index < list.size(); index++) {
+      final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+          .setUnit(ByteBuffer.wrap(codec.encode(list.get(index))))
+          .setId(0)
+          .build();
+
+      unitIdPairList.add(unitIdPair);
+    }
+
+    sender.send(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList);
   }
 }

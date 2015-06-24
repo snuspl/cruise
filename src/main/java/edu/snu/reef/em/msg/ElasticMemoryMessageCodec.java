@@ -10,7 +10,7 @@ public class ElasticMemoryMessageCodec
     implements Codec<AvroElasticMemoryMessage> {
 
   @Inject
-  private ElasticMemoryMessageCodec() {
+  public ElasticMemoryMessageCodec() {
   }
 
   @Override
