@@ -26,12 +26,15 @@ import org.apache.reef.tang.formats.CommandLine;
 import javax.inject.Inject;
 
 public final class PageRankParameters implements UserParameters {
+  private final double convThreshold;
   private final double dampingFactor;
   private final int maxIterations;
 
   @Inject
-  private PageRankParameters(@Parameter(DampingFactor.class) final double dampingFactor,
+  private PageRankParameters(@Parameter(ConvergenceThreshold.class) final double convThreshold,
+                             @Parameter(DampingFactor.class) final double dampingFactor,
                              @Parameter(MaxIterations.class) final int maxIterations) {
+    this.convThreshold = convThreshold;
     this.dampingFactor = dampingFactor;
     this.maxIterations = maxIterations;
   }
@@ -39,6 +42,7 @@ public final class PageRankParameters implements UserParameters {
   @Override
   public Configuration getDriverConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
         .bindNamedParameter(DampingFactor.class, String.valueOf(dampingFactor))
         .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
         .build();
@@ -57,6 +61,7 @@ public final class PageRankParameters implements UserParameters {
   @Override
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
         .bindNamedParameter(DampingFactor.class, String.valueOf(dampingFactor))
         .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
         .build();
@@ -65,6 +70,7 @@ public final class PageRankParameters implements UserParameters {
   public static CommandLine getCommandLine() {
     final ConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
+    cl.registerShortNameOfClass(ConvergenceThreshold.class);
     cl.registerShortNameOfClass(DampingFactor.class);
     cl.registerShortNameOfClass(MaxIterations.class);
     return cl;

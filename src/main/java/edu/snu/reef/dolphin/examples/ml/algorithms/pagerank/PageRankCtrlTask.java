@@ -17,6 +17,7 @@ package edu.snu.reef.dolphin.examples.ml.algorithms.pagerank;
 
 import edu.snu.reef.dolphin.core.OutputStreamProvider;
 import edu.snu.reef.dolphin.core.UserControllerTask;
+import edu.snu.reef.dolphin.examples.ml.converge.PageRankConvCond;
 import edu.snu.reef.dolphin.examples.ml.data.PageRankSummary;
 import edu.snu.reef.dolphin.examples.ml.parameters.DampingFactor;
 import edu.snu.reef.dolphin.examples.ml.parameters.MaxIterations;
@@ -44,6 +45,13 @@ public class PageRankCtrlTask extends UserControllerTask
   private final static Logger LOG = Logger.getLogger(PageRankCtrlTask.class.getName());
 
   /**
+   * Check function to determine whether algorithm has converged or not.
+   * This is separate from the default stop condition,
+   * which is based on the number of iterations made.
+   */
+  private final PageRankConvCond pageRankConvergenceCondition;
+
+  /**
    * Damping Factor
    */
   private final double dampingFactor;
@@ -56,7 +64,7 @@ public class PageRankCtrlTask extends UserControllerTask
   /**
    * Map of <nodeid, rank>
    */
-  private final Map<Integer,Double> rank;
+  private Map<Integer,Double> rank;
 
   /**
    * Output stream provider to save the final ranks
@@ -69,12 +77,14 @@ public class PageRankCtrlTask extends UserControllerTask
    * Constructs the Controller Task for PageRank
    *
    * @param outputStreamProvider
-   * @param maxIterations maximum number of iterations allowed before job stops
+   * @param maxIter maximum number of iterations allowed before job stops
    */
   @Inject
-  public PageRankCtrlTask(final OutputStreamProvider outputStreamProvider,
+  public PageRankCtrlTask(final PageRankConvCond pageRankConvergenceCondition,
+                          final OutputStreamProvider outputStreamProvider,
                           @Parameter(DampingFactor.class) final double dampingFactor,
                           @Parameter(MaxIterations.class) final int maxIter) {
+    this.pageRankConvergenceCondition = pageRankConvergenceCondition;
     this.outputStreamProvider = outputStreamProvider;
     this.dampingFactor = dampingFactor;
     this.maxIter = maxIter;
@@ -93,13 +103,13 @@ public class PageRankCtrlTask extends UserControllerTask
 
   @Override
   public final boolean isTerminated(int iteration) {
-    return iteration >= maxIter;
+    return pageRankConvergenceCondition.checkConvergence(rank)
+        || iteration >= maxIter;
   }
 
   @Override
   public void receiveReduceData(int iteration, PageRankSummary increment) {
-    rank.clear();
-    rank.putAll(increment.getModel());
+    rank = increment.getModel();
     for (Integer key : rank.keySet()) {
       rank.put(key, (1 - dampingFactor) + dampingFactor * rank.get(key));
     }

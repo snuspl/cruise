@@ -18,10 +18,10 @@ package edu.snu.reef.dolphin.examples.ml.data;
 import java.util.Map;
 
 public class PageRankSummary {
-  private final Map<Integer, Double> model;
+  private final Map<Integer, Double> contributionSum;
 
-  public PageRankSummary(final Map<Integer, Double> model) {
-    this.model = model;
+  public PageRankSummary(final Map<Integer, Double> contributionSum) {
+    this.contributionSum = contributionSum;
   }
 
   public void plus(final PageRankSummary summary) {
@@ -29,15 +29,15 @@ public class PageRankSummary {
       final Integer nodeId = entry.getKey();
       final Double contribution = entry.getValue();
 
-      if (model.containsKey(nodeId)) {
-        model.put(nodeId, model.get(nodeId) + contribution);
+      if (contributionSum.containsKey(nodeId)) {
+        contributionSum.put(nodeId, contributionSum.get(nodeId) + contribution);
       } else {
-        model.put(nodeId, contribution);
+        contributionSum.put(nodeId, contribution);
       }
     }
   }
 
   public Map<Integer, Double> getModel() {
-    return model;
+    return contributionSum;
   }
 }
