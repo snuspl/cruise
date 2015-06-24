@@ -1,4 +1,4 @@
-package edu.snu.reef.em.task;
+package edu.snu.reef.em.evaluator;
 
 import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
 import org.apache.reef.annotations.audience.EvaluatorSide;

@@ -1,13 +1,14 @@
-package edu.snu.reef.em.task;
+package edu.snu.reef.em.evaluator;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.IntRange;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.TaskSide;
 
 import javax.inject.Inject;
 import java.util.*;
 
-@TaskSide
+@EvaluatorSide
 public final class ElasticMemoryStore implements MemoryStore {
 
   private final Map<String, List> localDataMap;

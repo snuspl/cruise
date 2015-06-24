@@ -1,15 +1,16 @@
-package edu.snu.reef.em.task;
+package edu.snu.reef.em.evaluator;
 
 import org.apache.commons.lang.math.IntRange;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.TaskSide;
 
 import java.util.List;
 import java.util.Set;
 
 /**
- * Task-side interface of MemoryStore
+ * Evaluator-side interface of MemoryStore
  */
-@TaskSide
+@EvaluatorSide
 public interface MemoryStore {
 
   /**

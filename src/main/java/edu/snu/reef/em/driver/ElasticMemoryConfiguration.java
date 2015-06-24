@@ -4,7 +4,7 @@ import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
 import edu.snu.reef.em.ns.NSWrapperConfiguration;
 import edu.snu.reef.em.ns.NSWrapperContextRegister;
-import edu.snu.reef.em.task.*;
+import edu.snu.reef.em.evaluator.*;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
