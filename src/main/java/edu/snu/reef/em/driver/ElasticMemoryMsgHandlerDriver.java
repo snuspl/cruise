@@ -1,4 +1,4 @@
-package edu.snu.reef.em.driver.impl;
+package edu.snu.reef.em.driver;
 
 import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
 import org.apache.reef.annotations.audience.DriverSide;

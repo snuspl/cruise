@@ -17,7 +17,7 @@
 package edu.snu.reef.em.examples.elastic.migration;
 
 import edu.snu.reef.em.driver.api.ElasticMemory;
-import edu.snu.reef.em.driver.impl.ElasticMemoryConfiguration;
+import edu.snu.reef.em.driver.ElasticMemoryConfiguration;
 import edu.snu.reef.em.examples.parameters.DataBroadcast;
 import edu.snu.reef.em.examples.parameters.CommGroupName;
 import edu.snu.reef.em.examples.parameters.WorkerTaskOptions;

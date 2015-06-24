@@ -1,4 +1,4 @@
-package edu.snu.reef.em.driver.impl;
+package edu.snu.reef.em.driver;
 
 import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;

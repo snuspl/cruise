@@ -3,6 +3,7 @@ package edu.snu.reef.em.driver.impl;
 import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
 import edu.snu.reef.em.avro.CtrlMsg;
 import edu.snu.reef.em.avro.Type;
+import edu.snu.reef.em.driver.ElasticMemoryMsgHandlerDriver;
 import edu.snu.reef.em.driver.api.ElasticMemory;
 import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
