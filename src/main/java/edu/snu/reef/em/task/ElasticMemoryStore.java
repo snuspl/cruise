@@ -62,9 +62,16 @@ public final class ElasticMemoryStore implements MemoryStore {
   }
 
   @Override
-  public void remove(String key) {
-    localDataMap.remove(key);
-    elasticDataMap.remove(key);
+  @SuppressWarnings("unchecked")
+  public <T> List<T> remove(String key) {
+    final List<T> retList = new LinkedList<>();
+    if (localDataMap.containsKey(key)) {
+      retList.addAll((List<T>)localDataMap.remove(key));
+    }
+    if (elasticDataMap.containsKey(key)) {
+      retList.addAll((List<T>)elasticDataMap.remove(key));
+    }
+    return retList;
   }
 
   @Override

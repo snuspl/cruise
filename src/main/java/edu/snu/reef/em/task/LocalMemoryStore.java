@@ -51,9 +51,11 @@ public final class LocalMemoryStore implements MemoryStore {
   public Set<IntRange> getIds(String key) {
     throw new NotImplementedException();
   }
+
   @Override
-  public void remove(String key) {
-    localDataMap.remove(key);
+  @SuppressWarnings("unchecked")
+  public <T> List<T> remove(String key) {
+    return localDataMap.remove(key);
   }
 
   @Override

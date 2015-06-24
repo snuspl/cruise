@@ -70,7 +70,7 @@ public interface MemoryStore {
    *
    * @param key key string that represents a certain data type
    */
-  void remove(String key);
+  <T> List<T> remove(String key);
 
   /**
    * Query about the update status of this store
