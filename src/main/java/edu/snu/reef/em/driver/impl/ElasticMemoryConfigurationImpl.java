@@ -3,10 +3,8 @@ package edu.snu.reef.em.driver.impl;
 import edu.snu.reef.em.driver.api.ElasticMemoryConfiguration;
 import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
 import edu.snu.reef.em.ns.NSWrapperDriver;
-import edu.snu.reef.em.task.ElasticMemoryClient;
-import edu.snu.reef.em.task.ElasticMemoryStore;
-import edu.snu.reef.em.task.MemoryStore;
-import edu.snu.reef.em.task.NSWrapperToContext;
+import edu.snu.reef.em.task.*;
+import edu.snu.reef.em.utils.ElasticMemoryMessageBroadcastHandler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
@@ -30,9 +28,10 @@ public final class ElasticMemoryConfigurationImpl implements ElasticMemoryConfig
   @Override
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextStartHandlers.class, ElasticMemoryClient.class)
+        .bindSetEntry(ContextStartHandlers.class, NSHandlerBind.ContextStartHandler.class)
         .bindSetEntry(ContextStartHandlers.class, NSWrapperToContext.BindNSWrapperToContext.class)
         .bindSetEntry(ContextStopHandlers.class, NSWrapperToContext.UnbindNSWrapperToContext.class)
+        .bindSetEntry(ContextStopHandlers.class, NSHandlerBind.ContextStopHandler.class)
         .build();
   }
 
@@ -40,7 +39,7 @@ public final class ElasticMemoryConfigurationImpl implements ElasticMemoryConfig
   public Configuration getServiceConfiguration() {
     final Configuration nsWrapperConf =
         nsWrapperDriver.getConfiguration(ElasticMemoryMessageCodec.class,
-                                         ElasticMemoryMessageHandlerWrapperImpl.class);
+                                         ElasticMemoryMessageBroadcastHandler.class);
 
     final Configuration serviceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, ElasticMemoryStore.class)

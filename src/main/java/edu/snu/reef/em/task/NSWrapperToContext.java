@@ -17,7 +17,7 @@ public final class NSWrapperToContext {
   private IdentifierFactory ifac;
 
   @Inject
-  private NSWrapperToContext(NSWrapperClient nsWrapperClient) {
+  private NSWrapperToContext(final NSWrapperClient nsWrapperClient) {
     this.networkService = nsWrapperClient.getNetworkService();
     this.ifac = this.networkService.getIdentifierFactory();
   }

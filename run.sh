@@ -18,11 +18,8 @@
 # under the License.
 #
 
-# EXAMPLE USAGE 
-# ./run.sh org.apache.reef.examples.elastic.memory.ElasticMemoryREEF -local true -timeout 2 -input file:///Users/xyzi/WORKING_DIRECTORY/dataSet/als -split 3
-
 # RUNTIME
-SELF_JAR=`echo ./target/elastic_memory-*-SNAPSHOT-shaded.jar`
+SELF_JAR=`echo ./target/elastic-memory-*-SNAPSHOT-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=org.apache.reef.util.logging.Config'
 
@@ -30,6 +27,8 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $*"
+JOB='edu.snu.reef.em.examples.elastic.migration.NSExampleClient'
+
+CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $JOB $*"
 echo $CMD
 $CMD # 2> /dev/null

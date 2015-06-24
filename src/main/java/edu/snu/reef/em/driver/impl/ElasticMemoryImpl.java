@@ -7,6 +7,7 @@ import edu.snu.reef.em.driver.api.ElasticMemory;
 import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
 import edu.snu.reef.em.ns.NSWrapperClient;
 import edu.snu.reef.em.task.ElasticMemoryMessageSender;
+import edu.snu.reef.em.utils.ElasticMemoryMessageBroadcastHandler;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -35,10 +36,14 @@ public final class ElasticMemoryImpl implements ElasticMemory {
                             @Parameter(DriverIdentifier.class) final String driverId) {
     this.requestor = requestor;
 
+    final ElasticMemoryMessageBroadcastHandler msgHandler =
+        new ElasticMemoryMessageBroadcastHandler();
+    msgHandler.addHandler(new ElasticMemoryMessageBroadcastHandlerDriver());
+
     final NSWrapperClient<AvroElasticMemoryMessage> nsWrapper =
         new NSWrapperClient<>(new StringIdentifierFactory(),
             new ElasticMemoryMessageCodec(),
-            new ElasticMemoryMessageHandlerWrapperImpl(),
+            msgHandler,
             new ExceptionHandler(),
             0,
             localAddressProvider.getLocalAddress(),
