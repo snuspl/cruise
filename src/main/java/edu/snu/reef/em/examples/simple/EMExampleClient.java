@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package edu.snu.reef.em.examples.elastic.migration;
+package edu.snu.reef.em.examples.simple;
 
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
-import org.apache.reef.io.network.group.impl.driver.GroupCommService;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.util.EnvironmentUtils;
 
@@ -31,30 +30,25 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Client for Network Service Example
+ * Client for EMExample
  */
-public final class NSExampleClient {
+public final class EMExampleClient {
 
-  private static final Logger LOG = Logger.getLogger(NSExampleClient.class.getName());
+  private static final Logger LOG = Logger.getLogger(EMExampleClient.class.getName());
   private static final int TIMEOUT = 100000;
-  private static final int MAX_NUM_OF_EVALUATORS = 16;
+  private static final int MAX_NUM_OF_EVALUATORS = 2;
 
   public static Configuration getDriverConfiguration() {
     Configuration driverConfiguration = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(NSExampleDriver.class))
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "NSExampleDriver")
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, NSExampleDriver.EvaluatorAllocatedHandler.class)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, NSExampleDriver.DriverStartHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, NSExampleDriver.ActiveContextHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_CLOSED, NSExampleDriver.ContextCloseHandler.class)
-        .set(DriverConfiguration.ON_TASK_MESSAGE, NSExampleDriver.TaskMessageHandler.class)
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(EMExampleDriver.class))
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "EMExampleDriver")
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, EMExampleDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, EMExampleDriver.DriverStartHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, EMExampleDriver.ActiveContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_MESSAGE, EMExampleDriver.TaskMessageHandler.class)
         .build();
 
-    return Tang.Factory.getTang()
-        .newConfigurationBuilder(driverConfiguration,
-                                 GroupCommService.getConfiguration(),
-                                 NameServerConfiguration.CONF.build())
-        .build();
+    return Configurations.merge(driverConfiguration, NameServerConfiguration.CONF.build());
   }
 
   public static LauncherStatus runNSExample(final Configuration runtimeConf, final int timeOut)

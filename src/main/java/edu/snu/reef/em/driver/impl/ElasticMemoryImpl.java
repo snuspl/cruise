@@ -43,8 +43,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     broadcaster.addHandler(new ElasticMemoryMsgHandlerDriver());
 
     // TODO: To receive a Tang injection of NSWrapper, Tang must know the
-    // NameServer's address and port beforehand. However, the client has no
-    // means of providing Tang with the information, and thus we currently use
+    // NameServer's address and port beforehand. However, the client may not
+    // provide Tang with the information, and thus we currently use
     // `new` to instantiate NSWrapper.
     final NSWrapper<AvroElasticMemoryMessage> nsWrapper =
         new NSWrapperImpl<>(new StringIdentifierFactory(),
