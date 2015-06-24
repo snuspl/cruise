@@ -16,7 +16,8 @@ service SurfMetaService {
    * Get the list of blocks and locations for the file.
    * The returned list will be sorted by locality w.r.t. clientHostname.
    */
-  entity.FileMeta getOrLoadFileMeta(1:string path, 2:string clientHostname) throws (1: exceptions.FileNotFoundException fnfe)
+  entity.FileMeta getOrLoadFileMeta(1:string path, 2:string clientHostname)
+      throws (1: exceptions.FileNotFoundException fnfe)
 
   /**
    * Check whether the file exists in the path
@@ -53,7 +54,7 @@ service SurfMetaService {
    * Get a single FileMetaStatus at the path.
    * For example, if the path points to a directory, get the FileMetaStatus of that single directory.
    */
-  entity.FileMetaStatus getFileMetaStatus(1:string path)
+  entity.FileMetaStatus getFileMetaStatus(1:string path) throws (1:exceptions.FileNotFoundException fnfe)
 
   //////////////////// Called by SurfFSOutputStream
 
