@@ -1,6 +1,5 @@
 package edu.snu.reef.em.driver;
 
-import edu.snu.reef.em.msg.ElasticMemoryCtrlMsgHandler;
 import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
 import edu.snu.reef.em.ns.NSWrapperDriver;
 import edu.snu.reef.em.task.ElasticMemoryClient;
@@ -9,10 +8,8 @@ import edu.snu.reef.em.task.MemoryStoreClient;
 import edu.snu.reef.em.task.NSWrapperToContext;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
-import org.apache.reef.evaluator.context.parameters.ContextMessageHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
-import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -31,7 +28,6 @@ public class ElasticMemoryEvaluatorConfiguration {
 
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextMessageHandlers.class, ElasticMemoryCtrlMsgHandler.class)
         .bindSetEntry(ContextStartHandlers.class, ElasticMemoryClient.class)
         .bindSetEntry(ContextStartHandlers.class, NSWrapperToContext.BindNSWrapperToContext.class)
         .bindSetEntry(ContextStopHandlers.class, NSWrapperToContext.UnbindNSWrapperToContext.class)
