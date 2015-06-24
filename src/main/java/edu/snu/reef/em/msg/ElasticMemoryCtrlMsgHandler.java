@@ -1,12 +1,17 @@
 package edu.snu.reef.em.msg;
 
+import edu.snu.reef.em.avro.UnitIdPair;
 import edu.snu.reef.em.serializer.Serializer;
 import edu.snu.reef.em.task.ElasticMemoryMessageSender;
 import edu.snu.reef.em.task.MemoryStoreClient;
+import edu.snu.reef.em.utils.AvroUtils;
+import org.apache.avro.io.BufferedBinaryEncoder;
 import org.apache.reef.evaluator.context.ContextMessageHandler;
 import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
+import java.nio.ByteBuffer;
+import java.util.LinkedList;
 import java.util.List;
 
 public final class ElasticMemoryCtrlMsgHandler implements ContextMessageHandler {
@@ -42,11 +47,17 @@ public final class ElasticMemoryCtrlMsgHandler implements ContextMessageHandler 
     System.out.println(list);
     System.out.println();
 
-    final byte[][] data = new byte[list.size()][];
-    for (int index = 0; index < data.length; index++) {
-      data[index] = codec.encode(list.get(index));
+    final List<UnitIdPair> unitIdPairList = new LinkedList<>();
+
+    for (int index = 0; index < list.size(); index++) {
+      final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+          .setUnit(ByteBuffer.wrap(codec.encode(list.get(index))))
+          .setId(0)
+          .build();
+
+      unitIdPairList.add(unitIdPair);
     }
 
-    sender.send(decodedMsg.getDestId(), decodedMsg.getDataClassName(), data);
+    sender.send(decodedMsg.getDestId(), decodedMsg.getDataClassName(), unitIdPairList);
   }
 }

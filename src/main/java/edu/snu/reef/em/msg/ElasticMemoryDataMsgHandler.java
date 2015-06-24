@@ -1,5 +1,9 @@
 package edu.snu.reef.em.msg;
 
+import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
+import edu.snu.reef.em.avro.DataMsg;
+import edu.snu.reef.em.avro.Type;
+import edu.snu.reef.em.avro.UnitIdPair;
 import edu.snu.reef.em.serializer.Serializer;
 import edu.snu.reef.em.task.MemoryStoreClient;
 import org.apache.reef.io.serialization.Codec;
@@ -10,7 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public final class ElasticMemoryDataMsgHandler implements EventHandler<ElasticMemoryDataMsg> {
+public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElasticMemoryMessage> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryDataMsgHandler.class.getName());
 
   private final MemoryStoreClient memoryStoreClient;
@@ -24,24 +28,29 @@ public final class ElasticMemoryDataMsgHandler implements EventHandler<ElasticMe
   }
 
   @Override
-  public void onNext(final ElasticMemoryDataMsg msg) {
-    LOG.entering(ElasticMemoryDataMsgHandler.class.getSimpleName(), "onNext", msg);
+  public void onNext(final AvroElasticMemoryMessage msg) {
+    LOG.entering(AvroElasticMemoryMessage.class.getSimpleName(), "onNext", msg);
 
-    System.out.println(msg.getFrom());
-    System.out.println(msg.getTo());
-    System.out.println(msg.getDataClassName());
-    final Codec codec = serializer.getCodec(msg.getDataClassName());
+    System.out.println("Message source: " + msg.getSrcId());
+    System.out.println("Message destination: " + msg.getDestId());
+    System.out.println("Message type: " + msg.getType());
+    assert(msg.getType() == Type.DataMsg);
+
+    final DataMsg dataMsg = msg.getDataMsg();
+
+    final Codec codec = serializer.getCodec(dataMsg.getDataClassName().toString());
     final List list = new LinkedList();
-    for (final byte[] data : msg.getData()) {
+    for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
+      final byte[] data = unitIdPair.getUnit().array();
       System.out.println(codec.decode(data));
       list.add(codec.decode(data));
     }
-    list.addAll(memoryStoreClient.get(msg.getDataClassName()));
+    list.addAll(memoryStoreClient.get(dataMsg.getDataClassName().toString()));
     System.out.println("Original data is");
-    System.out.println(memoryStoreClient.get(msg.getDataClassName()));
+    System.out.println(memoryStoreClient.get(dataMsg.getDataClassName().toString()));
 
-    memoryStoreClient.putMovable(msg.getDataClassName(), list);
+    memoryStoreClient.putMovable(dataMsg.getDataClassName().toString(), list);
 
-    LOG.exiting(ElasticMemoryDataMsgHandler.class.getSimpleName(), "onNext", msg);
+    LOG.exiting(AvroElasticMemoryMessage.class.getSimpleName(), "onNext", msg);
   }
 }

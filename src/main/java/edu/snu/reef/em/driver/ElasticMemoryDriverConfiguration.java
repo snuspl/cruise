@@ -3,6 +3,7 @@ package edu.snu.reef.em.driver;
 import edu.snu.reef.em.msg.ElasticMemoryCtrlMsgHandler;
 import edu.snu.reef.em.msg.ElasticMemoryDataMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryDataMsgHandler;
+import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
 import edu.snu.reef.em.ns.*;
 import edu.snu.reef.em.task.ElasticMemoryClient;
 import edu.snu.reef.em.task.ElasticMemoryStoreClient;
@@ -34,7 +35,7 @@ public class ElasticMemoryDriverConfiguration {
 
   public Configuration getServiceConfiguration() {
     final Configuration nsWrapperConf =
-        nsWrapperDriver.getConfiguration(ElasticMemoryDataMsgCodec.class,
+        nsWrapperDriver.getConfiguration(ElasticMemoryMessageCodec.class,
                                          ElasticMemoryMessageHandlerWrapperImpl.class);
 
     final Configuration serviceConf = ServiceConfiguration.CONF

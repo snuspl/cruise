@@ -51,9 +51,9 @@
     {"name": "type", "type": {"type": "enum", "name": "Type", "symbols": ["CtrlMsg", "DataMsg", "IdRequest"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
-    {"name": "ctrlMsg", "type": ["null", "CtrlMsg"]},
-    {"name": "dataMsg", "type": ["null", "DataMsg"]},
-    {"name": "idRequest", "type": ["null", "IdRequest"]}
+    {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
+    {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
+    {"name": "idRequest", "type": ["null", "IdRequest"], "default": null}
   ]
 }
 ]
