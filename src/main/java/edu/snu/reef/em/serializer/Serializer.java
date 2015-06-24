@@ -6,5 +6,5 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 @DefaultImplementation(EMSerializer.class)
 public interface Serializer {
 
-  public Codec getCodec(String name);
+  Codec getCodec(String name);
 }
