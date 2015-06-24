@@ -168,12 +168,7 @@ public final class SurfFS extends FileSystem {
         return new FSDataInputStream(surfFSInputStream);
       }
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      if (isFallback) {
-        LOG.log(Level.WARNING, "Surf FileNotFoundException ", e);
-        return baseFs.open(path, bufferSize);
-      } else {
-        throw new FileNotFoundException(e.getMessage());
-      }
+      throw new FileNotFoundException(e.getMessage());
     } catch (TException e) {
       if (isFallback) {
         LOG.log(Level.WARNING, "Surf TException", e);
@@ -204,12 +199,7 @@ public final class SurfFS extends FileSystem {
       final FileMetaStatus fileMetaStatus = metaClientWrapper.getClient().getFileMetaStatus(pathStr);
       return toFileStatus(fileMetaStatus);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      if (isFallback) {
-        LOG.log(Level.WARNING, "The file is not found in Surf, trying baseFs...", e);
-        return baseFs.getFileStatus(toAbsoluteBasePath(path));
-      } else {
-        throw new java.io.FileNotFoundException("File not found in the meta server");
-      }
+      throw new FileNotFoundException("File not found in the meta server");
     } catch (TException e) {
       if (isFallback) {
         LOG.log(Level.WARNING, "Surf TException, trying baseFs...", e);
@@ -273,12 +263,7 @@ public final class SurfFS extends FileSystem {
       return blockLocations.toArray(new BlockLocation[blockLocations.size()]);
 
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      if (isFallback) {
-        LOG.log(Level.WARNING, "FileNotFoundException: ", e);
-        return baseFs.getFileBlockLocations(file, start, len);
-      } else {
-        throw new FileNotFoundException(e.getMessage());
-      }
+      throw new FileNotFoundException(e.getMessage());
     } catch (TException e) {
       if (isFallback) {
         LOG.log(Level.WARNING, "TException: ", e);
@@ -316,9 +301,7 @@ public final class SurfFS extends FileSystem {
         fileStatuses[i] = (toFileStatus(fileMetaStatus));
       }
       return fileStatuses;
-    } catch (TException e) {
-      throw new IOException(e);
-    } catch (URISyntaxException e) {
+    } catch (TException | URISyntaxException e) {
       throw new IOException(e);
     } catch (Exception e) {
       throw new IOException("Failed to close the Meta Client in listStatus " + path, e);
