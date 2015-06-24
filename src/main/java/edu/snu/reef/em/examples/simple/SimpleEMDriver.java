@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,8 +40,8 @@ import java.util.logging.Logger;
  * Driver code for EMExample
  */
 @Unit
-public final class EMExampleDriver {
-  private static final Logger LOG = Logger.getLogger(EMExampleDriver.class.getName());
+public final class SimpleEMDriver {
+  private static final Logger LOG = Logger.getLogger(SimpleEMDriver.class.getName());
   private static final String CONTEXT_ID_PREFIX = "CmpContext-";
   private static final String TASK_ID_PREFIX = "CmpTask-";
 
@@ -51,9 +51,9 @@ public final class EMExampleDriver {
   private final ElasticMemory emService;
 
   @Inject
-  public EMExampleDriver(final EvaluatorRequestor requestor,
-                         final ElasticMemoryConfiguration emConf,
-                         final ElasticMemory emService) throws InjectionException {
+  public SimpleEMDriver(final EvaluatorRequestor requestor,
+                        final ElasticMemoryConfiguration emConf,
+                        final ElasticMemory emService) throws InjectionException {
     this.requestor = requestor;
     this.emConf = emConf;
     this.emService = emService;
@@ -62,7 +62,7 @@ public final class EMExampleDriver {
   public final class DriverStartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      EMExampleDriver.this.requestor.submit(EvaluatorRequest.newBuilder()
+      SimpleEMDriver.this.requestor.submit(EvaluatorRequest.newBuilder()
           .setNumber(2)
           .setMemory(64)
           .setNumberOfCores(1)

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,9 +25,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
-/**
- * Compute Task for the example
- */
 public final class CmpTask implements Task {
   private static final Logger LOG = Logger.getLogger(CmpTask.class.getName());
   public static final String KEY = "INTEGER";
@@ -56,13 +53,15 @@ public final class CmpTask implements Task {
   public byte[] call(byte[] memento) throws InterruptedException {
     LOG.info("CmpTask commencing...");
 
-    System.out.println(memoryStore.get(KEY));
+    LOG.info("Before sleep, memory store contains: ");
+    LOG.info(memoryStore.get(KEY).toString());
 
     cmpTaskReady.setReady(true);
     heartBeatTriggerManager.triggerHeartBeat();
     Thread.sleep(SLEEP_MILLISECONDS);
 
-    System.out.println(memoryStore.get(KEY));
+    LOG.info("After sleep, memory store contains: ");
+    LOG.info(memoryStore.get(KEY).toString());
 
     return null;
   }

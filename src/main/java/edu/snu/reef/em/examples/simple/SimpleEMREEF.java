@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,20 +32,20 @@ import java.util.logging.Logger;
 /**
  * Client for EMExample
  */
-public final class EMExampleClient {
+public final class SimpleEMREEF {
 
-  private static final Logger LOG = Logger.getLogger(EMExampleClient.class.getName());
+  private static final Logger LOG = Logger.getLogger(SimpleEMREEF.class.getName());
   private static final int TIMEOUT = 100000;
   private static final int MAX_NUM_OF_EVALUATORS = 2;
 
   public static Configuration getDriverConfiguration() {
     Configuration driverConfiguration = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(EMExampleDriver.class))
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "EMExampleDriver")
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, EMExampleDriver.EvaluatorAllocatedHandler.class)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, EMExampleDriver.DriverStartHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, EMExampleDriver.ActiveContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_MESSAGE, EMExampleDriver.TaskMessageHandler.class)
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(SimpleEMDriver.class))
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "SimpleEMDriver")
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, SimpleEMDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, SimpleEMDriver.DriverStartHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, SimpleEMDriver.ActiveContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_MESSAGE, SimpleEMDriver.TaskMessageHandler.class)
         .build();
 
     return Configurations.merge(driverConfiguration, NameServerConfiguration.CONF.build());
