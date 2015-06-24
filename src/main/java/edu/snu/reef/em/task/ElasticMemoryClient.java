@@ -7,7 +7,7 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
-public class ElasticMemoryClient implements EventHandler<ContextStart> {
+public final class ElasticMemoryClient implements EventHandler<ContextStart> {
 
   private final ElasticMemoryMessageHandlerWrapper emMsgHandlerWrapper;
   private final ElasticMemoryDataMsgHandler emDataMsgHandler;

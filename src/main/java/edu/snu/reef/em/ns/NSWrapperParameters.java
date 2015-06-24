@@ -28,7 +28,7 @@ import org.apache.reef.wake.remote.Codec;
 /**
  * Named parameters for NetworkServiceWrappers
  */
-public class NSWrapperParameters {
+public final class NSWrapperParameters {
 
   @NamedParameter(doc = "Network service codec for NSWrapper")
   public static class NetworkServiceCodec implements Name<Codec<?>> {

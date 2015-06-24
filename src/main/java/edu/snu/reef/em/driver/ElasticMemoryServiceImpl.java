@@ -23,7 +23,7 @@ import javax.inject.Inject;
 import java.util.Set;
 
 @DriverSide
-public class ElasticMemoryServiceImpl implements ElasticMemoryService {
+public final class ElasticMemoryServiceImpl implements ElasticMemoryService {
   private final EvaluatorRequestor requestor;
   private final ElasticMemoryMessageSender sender;
 

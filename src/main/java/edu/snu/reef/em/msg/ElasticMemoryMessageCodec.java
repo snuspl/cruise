@@ -6,7 +6,7 @@ import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
-public class ElasticMemoryMessageCodec
+public final class ElasticMemoryMessageCodec
     implements Codec<AvroElasticMemoryMessage> {
 
   @Inject
