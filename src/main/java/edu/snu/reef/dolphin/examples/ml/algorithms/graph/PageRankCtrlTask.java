@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.reef.dolphin.examples.ml.algorithms.pagerank;
+package edu.snu.reef.dolphin.examples.ml.algorithms.graph;
 
 import edu.snu.reef.dolphin.core.OutputStreamProvider;
 import edu.snu.reef.dolphin.core.UserControllerTask;
