@@ -23,15 +23,15 @@ import javax.inject.Inject;
 import java.util.Set;
 
 @DriverSide
-public final class ElasticMemoryServiceImpl implements ElasticMemoryService {
+public final class ElasticMemoryImpl implements ElasticMemory {
   private final EvaluatorRequestor requestor;
   private final ElasticMemoryMessageSender sender;
 
   @Inject
-  private ElasticMemoryServiceImpl(final EvaluatorRequestor requestor,
-                                   final NameServer nameServer,
-                                   final LocalAddressProvider localAddressProvider,
-                                   @Parameter(DriverIdentifier.class) final String driverId) {
+  private ElasticMemoryImpl(final EvaluatorRequestor requestor,
+                            final NameServer nameServer,
+                            final LocalAddressProvider localAddressProvider,
+                            @Parameter(DriverIdentifier.class) final String driverId) {
     this.requestor = requestor;
 
     final NSWrapperClient<AvroElasticMemoryMessage> nsWrapper =

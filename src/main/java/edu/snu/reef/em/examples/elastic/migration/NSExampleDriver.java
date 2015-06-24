@@ -16,8 +16,8 @@
 
 package edu.snu.reef.em.examples.elastic.migration;
 
+import edu.snu.reef.em.driver.ElasticMemory;
 import edu.snu.reef.em.driver.ElasticMemoryEvaluatorConfiguration;
-import edu.snu.reef.em.driver.ElasticMemoryService;
 import edu.snu.reef.em.examples.parameters.DataBroadcast;
 import edu.snu.reef.em.examples.parameters.CommGroupName;
 import edu.snu.reef.em.examples.parameters.WorkerTaskOptions;
@@ -68,17 +68,17 @@ public final class NSExampleDriver {
   private final AtomicInteger notReadyTasks;
 
   private final ElasticMemoryEvaluatorConfiguration emEvalConf;
-  private final ElasticMemoryService emService;
+  private final ElasticMemory elasticMemory;
 
   @Inject
   public NSExampleDriver(final EvaluatorRequestor requestor,
                          final GroupCommDriver groupCommDriver,
                          final ReadyCodec readyCodec,
                          final ElasticMemoryEvaluatorConfiguration emEvalConf,
-                         final ElasticMemoryService emService) throws InjectionException {
+                         final ElasticMemory emService) throws InjectionException {
     this.readyCodec = readyCodec;
     this.emEvalConf = emEvalConf;
-    this.emService = emService;
+    this.elasticMemory = emService;
 
     // TODO: fix
     this.workerNum = 2;
@@ -218,7 +218,7 @@ public final class NSExampleDriver {
       System.out.println(result);
       if (result && notReadyTasks.decrementAndGet() == 0) {
         System.out.println("READY!!");
-        emService.move("String", null, taskMessage.getContextId(), prevContextId);
+        elasticMemory.move("String", null, taskMessage.getContextId(), prevContextId);
       }
       prevContextId = taskMessage.getContextId();
       System.out.println();

@@ -10,8 +10,8 @@ import java.util.Set;
  * Driver-side interface of ElasticMemoryService
  */
 @DriverSide
-@DefaultImplementation(ElasticMemoryServiceImpl.class)
-public interface ElasticMemoryService {
+@DefaultImplementation(ElasticMemoryImpl.class)
+public interface ElasticMemory {
 
   /**
    * Add new evaluators as specified
