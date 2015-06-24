@@ -26,7 +26,7 @@ import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.Codec;
 
 /**
- * Named parameters for NetworkServiceWrappers
+ * Named parameters for NSWrapper
  */
 public final class NSWrapperParameters {
 
@@ -42,7 +42,7 @@ public final class NSWrapperParameters {
   public static class NetworkServiceExceptionHandler implements Name<EventHandler<?>> {
   }
 
-  @NamedParameter(doc = "Port number for NSWrapper")
+  @NamedParameter(doc = "Network service port number for NSWrapper")
   public static class NetworkServicePort implements Name<Integer> {
   }
 

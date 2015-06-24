@@ -23,6 +23,10 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
+/**
+ * EventHandler for closing the NetworkService provided by NSWrapper when
+ * context terminates.
+ */
 public final class NSWrapperClosingHandler implements EventHandler<ContextStop> {
 
   private final NetworkService networkService;
@@ -37,7 +41,7 @@ public final class NSWrapperClosingHandler implements EventHandler<ContextStop> 
     try {
       networkService.close();
     } catch (final Exception e) {
-      throw new RuntimeException("Exception while closing NetworkService", e);
+      throw new RuntimeException("Exception while closing NetworkService provided by NSWrapper", e);
     }
   }
 }

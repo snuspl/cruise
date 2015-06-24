@@ -1,6 +1,6 @@
 package edu.snu.reef.em.task;
 
-import edu.snu.reef.em.msg.ElasticMemoryMessageBroadcaster;
+import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.tang.annotations.Unit;
@@ -11,11 +11,11 @@ import javax.inject.Inject;
 @Unit
 public final class NSHandlerBind {
 
-  private final ElasticMemoryMessageBroadcaster broadcaster;
+  private final ElasticMemoryMsgBroadcaster broadcaster;
   private final ElasticMemoryMsgHandlerEvaluator handlerEvaluator;
 
   @Inject
-  private NSHandlerBind(final ElasticMemoryMessageBroadcaster broadcaster,
+  private NSHandlerBind(final ElasticMemoryMsgBroadcaster broadcaster,
                         final ElasticMemoryMsgHandlerEvaluator handlerEvaluator) {
     this.broadcaster = broadcaster;
     this.handlerEvaluator = handlerEvaluator;

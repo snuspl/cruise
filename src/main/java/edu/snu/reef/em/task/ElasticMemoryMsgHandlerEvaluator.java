@@ -4,6 +4,7 @@ import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
 import edu.snu.reef.em.avro.CtrlMsg;
 import edu.snu.reef.em.avro.DataMsg;
 import edu.snu.reef.em.avro.UnitIdPair;
+import edu.snu.reef.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.reef.em.serializer.Serializer;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.Codec;
@@ -24,11 +25,11 @@ public final class ElasticMemoryMsgHandlerEvaluator implements EventHandler<Avro
 
   private final MemoryStore memoryStore;
   private final Serializer serializer;
-  private final ElasticMemoryMessageSender sender;
+  private final ElasticMemoryMsgSender sender;
 
   @Inject
   private ElasticMemoryMsgHandlerEvaluator(final MemoryStore memoryStore,
-                                           final ElasticMemoryMessageSender sender,
+                                           final ElasticMemoryMsgSender sender,
                                            final Serializer serializer) {
     this.memoryStore = memoryStore;
     this.serializer = serializer;
@@ -98,6 +99,6 @@ public final class ElasticMemoryMsgHandlerEvaluator implements EventHandler<Avro
       unitIdPairList.add(unitIdPair);
     }
 
-    sender.send(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList);
+    sender.sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList);
   }
 }

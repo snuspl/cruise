@@ -1,9 +1,9 @@
 package edu.snu.reef.em.driver.impl;
 
-import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
+import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
+import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
 import edu.snu.reef.em.ns.NSWrapperConfiguration;
 import edu.snu.reef.em.task.*;
-import edu.snu.reef.em.msg.ElasticMemoryMessageBroadcaster;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
@@ -44,8 +44,8 @@ public final class ElasticMemoryConfiguration {
    */
   public Configuration getServiceConfiguration() {
     final Configuration nsWrapperConf =
-        nsWrapperConfiguration.getConfiguration(ElasticMemoryMessageCodec.class,
-                                                ElasticMemoryMessageBroadcaster.class);
+        nsWrapperConfiguration.getConfiguration(ElasticMemoryMsgCodec.class,
+                                                ElasticMemoryMsgBroadcaster.class);
 
     final Configuration serviceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, ElasticMemoryStore.class)

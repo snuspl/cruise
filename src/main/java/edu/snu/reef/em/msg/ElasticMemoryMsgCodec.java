@@ -10,13 +10,13 @@ import javax.inject.Inject;
  * Codec for AvroElasticMemoryMessages.
  * Simply uses AvroUtils to encode and decode messages.
  */
-public final class ElasticMemoryMessageCodec
+public final class ElasticMemoryMsgCodec
     implements Codec<AvroElasticMemoryMessage> {
 
   // TODO: declared `public` because of ElasticMemoryImpl.
   // Should be instantiated through Tang.
   @Inject
-  public ElasticMemoryMessageCodec() {
+  public ElasticMemoryMsgCodec() {
   }
 
   @Override

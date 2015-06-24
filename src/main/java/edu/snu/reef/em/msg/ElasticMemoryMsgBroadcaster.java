@@ -10,10 +10,10 @@ import javax.inject.Inject;
  * due to its generic type parameter. This class fixes that generic type to
  * AvroElasticMemoryMessage, allowing Tang static configuration and injection.
  */
-public final class ElasticMemoryMessageBroadcaster
+public final class ElasticMemoryMsgBroadcaster
     extends SingleMessageBroadcastHandler<AvroElasticMemoryMessage> {
 
   @Inject
-  public ElasticMemoryMessageBroadcaster() {
+  public ElasticMemoryMsgBroadcaster() {
   }
 }

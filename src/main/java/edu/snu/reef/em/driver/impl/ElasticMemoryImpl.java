@@ -4,11 +4,12 @@ import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
 import edu.snu.reef.em.avro.CtrlMsg;
 import edu.snu.reef.em.avro.Type;
 import edu.snu.reef.em.driver.api.ElasticMemory;
-import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
+import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
+import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
+import edu.snu.reef.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.reef.em.ns.impl.NSWrapperImpl;
 import edu.snu.reef.em.ns.api.NSWrapper;
-import edu.snu.reef.em.task.ElasticMemoryMessageSender;
-import edu.snu.reef.em.msg.ElasticMemoryMessageBroadcaster;
+import edu.snu.reef.em.msg.impl.ElasticMemoryMsgSenderImpl;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -28,7 +29,7 @@ import java.util.Set;
 @DriverSide
 public final class ElasticMemoryImpl implements ElasticMemory {
   private final EvaluatorRequestor requestor;
-  private final ElasticMemoryMessageSender sender;
+  private final ElasticMemoryMsgSender sender;
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
@@ -37,7 +38,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
                             @Parameter(DriverIdentifier.class) final String driverId) {
     this.requestor = requestor;
 
-    final ElasticMemoryMessageBroadcaster broadcaster = new ElasticMemoryMessageBroadcaster();
+    final ElasticMemoryMsgBroadcaster broadcaster = new ElasticMemoryMsgBroadcaster();
     broadcaster.addHandler(new ElasticMemoryMsgHandlerDriver());
 
     // TODO: To receive a Tang injection of NSWrapper, Tang must know the
@@ -46,7 +47,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     // `new` to instantiate NSWrapper.
     final NSWrapper<AvroElasticMemoryMessage> nsWrapper =
         new NSWrapperImpl<>(new StringIdentifierFactory(),
-                        new ElasticMemoryMessageCodec(),
+                        new ElasticMemoryMsgCodec(),
                         broadcaster,
                         new ExceptionHandler(),
                         0,
@@ -55,7 +56,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
                         new MessagingTransportFactory());
     nsWrapper.getNetworkService().registerId(nsWrapper.getNetworkService().getIdentifierFactory().getNewInstance(driverId));
 
-    this.sender = new ElasticMemoryMessageSender(nsWrapper);
+    this.sender = new ElasticMemoryMsgSenderImpl(nsWrapper);
   }
 
   @Override
