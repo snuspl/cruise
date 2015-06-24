@@ -59,6 +59,9 @@ public final class SimpleEMDriver {
     this.emService = emService;
   }
 
+  /**
+   * Spawn two small containers.
+   */
   public final class DriverStartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
@@ -70,6 +73,9 @@ public final class SimpleEMDriver {
     }
   }
 
+  /**
+   * Configure allocated evaluators with EM configuration and give them id numbers.
+   */
   public final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     private final AtomicInteger activeEvaluatorCount = new AtomicInteger(0);
 
@@ -89,6 +95,9 @@ public final class SimpleEMDriver {
     }
   }
 
+  /**
+   * CmpTask-0 goes on CmpContext-0, and CmpTask-1 goes on CmpContext-1.
+   */
   public final class ActiveContextHandler implements EventHandler<ActiveContext> {
 
     @Override
@@ -106,6 +115,9 @@ public final class SimpleEMDriver {
     }
   }
 
+  /**
+   * When both tasks are ready, make the faster one send all of its data to the slower one.
+   */
   public final class TaskMessageHandler implements EventHandler<TaskMessage> {
     private static final String DEFAULT_STRING = "DEFAULT";
     private AtomicReference<String> prevContextId = new AtomicReference<>(DEFAULT_STRING);
@@ -115,8 +127,11 @@ public final class SimpleEMDriver {
       LOG.info("Received task message from " + taskMessage.getContextId());
 
       if (!prevContextId.compareAndSet(DEFAULT_STRING, taskMessage.getContextId())) {
-        LOG.info("Move data from " + prevContextId.get() + " to " + taskMessage.getContextId());
-        emService.move(CmpTask.KEY, null, prevContextId.get(), taskMessage.getContextId());
+        // second evaluator goes here
+        LOG.info("Move data from " + taskMessage.getContextId() + " to " + prevContextId.get());
+        emService.move(CmpTask.KEY, null, taskMessage.getContextId(), prevContextId.get());
+      } else {
+        // first evaluator goes this way
       }
     }
   }

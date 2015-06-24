@@ -55,6 +55,7 @@ public final class CmpTask implements Task {
 
     LOG.info("Before sleep, memory store contains: ");
     LOG.info(memoryStore.get(KEY).toString());
+    // Should be [100, 200]
 
     cmpTaskReady.setReady(true);
     heartBeatTriggerManager.triggerHeartBeat();
@@ -62,6 +63,8 @@ public final class CmpTask implements Task {
 
     LOG.info("After sleep, memory store contains: ");
     LOG.info(memoryStore.get(KEY).toString());
+    // Fast evaluator should be [100, 200, 100, 200]
+    // Slow evaluator should be []
 
     return null;
   }

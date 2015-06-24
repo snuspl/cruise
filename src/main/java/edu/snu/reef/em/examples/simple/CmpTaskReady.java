@@ -6,6 +6,10 @@ import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 
+/**
+ * If heartbeat is triggered when task is ready, send a meaningless TaskMessage.
+ * If not, then send nothing (Option.empty()).
+ */
 public final class CmpTaskReady implements TaskMessageSource {
 
   private Boolean ready;
