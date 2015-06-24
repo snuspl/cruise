@@ -199,7 +199,7 @@ public final class SurfFS extends FileSystem {
       final FileMetaStatus fileMetaStatus = metaClientWrapper.getClient().getFileMetaStatus(pathStr);
       return toFileStatus(fileMetaStatus);
     } catch (org.apache.reef.inmemory.common.exceptions.FileNotFoundException e) {
-      throw new FileNotFoundException("File not found in the meta server");
+      throw new FileNotFoundException(e.getMessage());
     } catch (TException e) {
       if (isFallback) {
         LOG.log(Level.WARNING, "Surf TException, trying baseFs...", e);
