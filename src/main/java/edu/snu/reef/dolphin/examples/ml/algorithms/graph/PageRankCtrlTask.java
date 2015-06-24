@@ -41,7 +41,7 @@ import java.util.logging.Logger;
  * - https://github.com/apache/spark/blob/master/graphx/src/main/scala/org/apache/spark/graphx/lib/PageRank.scala
  */
 public class PageRankCtrlTask extends UserControllerTask
-    implements DataReduceReceiver<PageRankSummary>, DataBroadcastSender<Map<Integer,Double>> {
+    implements DataReduceReceiver<PageRankSummary>, DataBroadcastSender<Map<Integer, Double>> {
   private final static Logger LOG = Logger.getLogger(PageRankCtrlTask.class.getName());
 
   /**
@@ -64,7 +64,7 @@ public class PageRankCtrlTask extends UserControllerTask
   /**
    * Map of <nodeid, rank>
    */
-  private Map<Integer,Double> rank;
+  private Map<Integer, Double> rank;
 
   /**
    * Output stream provider to save the final ranks

@@ -117,7 +117,7 @@ public class PageRankCmpTask extends UserComputeTask
    * @param rank
    */
   @Override
-  public final void receiveBroadcastData(int iteration, Map<Integer,Double> rank) {
+  public final void receiveBroadcastData(int iteration, Map<Integer, Double> rank) {
     if (iteration < 1) {
       return;
     }
