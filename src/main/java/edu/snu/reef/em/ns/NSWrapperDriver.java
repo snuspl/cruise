@@ -74,8 +74,6 @@ public final class NSWrapperDriver {
 
     final Configuration serviceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, NSWrapperClient.class)
-        .set(ServiceConfiguration.ON_TASK_STARTED, BindNSWrapperToTask.class)
-        .set(ServiceConfiguration.ON_TASK_STOP, UnbindNSWrapperFromTask.class)
         .set(ServiceConfiguration.ON_CONTEXT_STOP, NSWrapperClosingHandler.class)
         .build();
 
