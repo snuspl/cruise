@@ -4,7 +4,6 @@ import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import java.util.List;
 import java.util.Set;
 
 /**

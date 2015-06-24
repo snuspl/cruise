@@ -9,7 +9,6 @@ import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 
 import javax.inject.Inject;
-import java.util.List;
 import java.util.Set;
 
 @DriverSide

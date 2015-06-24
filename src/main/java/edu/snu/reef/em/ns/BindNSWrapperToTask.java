@@ -17,7 +17,6 @@
 package edu.snu.reef.em.ns;
 
 import org.apache.reef.io.network.impl.NetworkService;
-import org.apache.reef.io.network.impl.NetworkServiceParameters;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.events.TaskStart;
 import org.apache.reef.wake.EventHandler;

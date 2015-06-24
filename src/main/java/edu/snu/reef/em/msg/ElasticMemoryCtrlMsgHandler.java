@@ -4,8 +4,6 @@ import edu.snu.reef.em.avro.UnitIdPair;
 import edu.snu.reef.em.serializer.Serializer;
 import edu.snu.reef.em.task.ElasticMemoryMessageSender;
 import edu.snu.reef.em.task.MemoryStoreClient;
-import edu.snu.reef.em.utils.AvroUtils;
-import org.apache.avro.io.BufferedBinaryEncoder;
 import org.apache.reef.evaluator.context.ContextMessageHandler;
 import org.apache.reef.io.serialization.Codec;
 

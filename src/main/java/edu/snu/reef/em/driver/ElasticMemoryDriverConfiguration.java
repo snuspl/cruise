@@ -1,20 +1,16 @@
 package edu.snu.reef.em.driver;
 
 import edu.snu.reef.em.msg.ElasticMemoryCtrlMsgHandler;
-import edu.snu.reef.em.msg.ElasticMemoryDataMsgCodec;
-import edu.snu.reef.em.msg.ElasticMemoryDataMsgHandler;
 import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
 import edu.snu.reef.em.ns.*;
 import edu.snu.reef.em.task.ElasticMemoryClient;
 import edu.snu.reef.em.task.ElasticMemoryStoreClient;
 import edu.snu.reef.em.task.MemoryStoreClient;
 import org.apache.reef.driver.context.ServiceConfiguration;
-import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.parameters.ContextMessageHandlers;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
