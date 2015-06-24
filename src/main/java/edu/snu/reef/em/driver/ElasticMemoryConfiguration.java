@@ -3,6 +3,7 @@ package edu.snu.reef.em.driver;
 import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
 import edu.snu.reef.em.ns.NSWrapperConfiguration;
+import edu.snu.reef.em.ns.NSWrapperContextRegister;
 import edu.snu.reef.em.task.*;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
@@ -33,9 +34,9 @@ public final class ElasticMemoryConfiguration {
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(ContextStartHandlers.class, NSHandlerBind.ContextStartHandler.class)
-        .bindSetEntry(ContextStartHandlers.class, NSWrapperToContext.BindNSWrapperToContext.class)
-        .bindSetEntry(ContextStopHandlers.class, NSWrapperToContext.UnbindNSWrapperToContext.class)
+        .bindSetEntry(ContextStartHandlers.class, NSWrapperContextRegister.RegisterContextHandler.class)
         .bindSetEntry(ContextStopHandlers.class, NSHandlerBind.ContextStopHandler.class)
+        .bindSetEntry(ContextStopHandlers.class, NSWrapperContextRegister.UnregisterContextHandler.class)
         .build();
   }
 
