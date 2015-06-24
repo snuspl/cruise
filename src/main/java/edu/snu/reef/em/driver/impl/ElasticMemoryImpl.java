@@ -1,8 +1,9 @@
-package edu.snu.reef.em.driver;
+package edu.snu.reef.em.driver.impl;
 
 import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
 import edu.snu.reef.em.avro.CtrlMsg;
 import edu.snu.reef.em.avro.Type;
+import edu.snu.reef.em.driver.api.ElasticMemory;
 import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
 import edu.snu.reef.em.ns.NSWrapperClient;
 import edu.snu.reef.em.task.ElasticMemoryMessageSender;

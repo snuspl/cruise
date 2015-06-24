@@ -16,8 +16,8 @@
 
 package edu.snu.reef.em.examples.elastic.migration;
 
-import edu.snu.reef.em.driver.ElasticMemory;
-import edu.snu.reef.em.driver.ElasticMemoryEvaluatorConfiguration;
+import edu.snu.reef.em.driver.api.ElasticMemory;
+import edu.snu.reef.em.driver.impl.ElasticMemoryConfigurationImpl;
 import edu.snu.reef.em.examples.parameters.DataBroadcast;
 import edu.snu.reef.em.examples.parameters.CommGroupName;
 import edu.snu.reef.em.examples.parameters.WorkerTaskOptions;
@@ -67,18 +67,18 @@ public final class NSExampleDriver {
   private final ReadyCodec readyCodec;
   private final AtomicInteger notReadyTasks;
 
-  private final ElasticMemoryEvaluatorConfiguration emEvalConf;
-  private final ElasticMemory elasticMemory;
+  private final ElasticMemoryConfigurationImpl emConf;
+  private final ElasticMemory emService;
 
   @Inject
   public NSExampleDriver(final EvaluatorRequestor requestor,
                          final GroupCommDriver groupCommDriver,
                          final ReadyCodec readyCodec,
-                         final ElasticMemoryEvaluatorConfiguration emEvalConf,
+                         final ElasticMemoryConfigurationImpl emConf,
                          final ElasticMemory emService) throws InjectionException {
     this.readyCodec = readyCodec;
-    this.emEvalConf = emEvalConf;
-    this.elasticMemory = emService;
+    this.emConf = emConf;
+    this.emService = emService;
 
     // TODO: fix
     this.workerNum = 2;
@@ -143,8 +143,8 @@ public final class NSExampleDriver {
         // I will be a Compute Evaluator
         LOG.log(Level.INFO, "Submitting Cmp context to AllocatedEvaluator: {0}", allocatedEvaluator);
 
-        finalContextConf = Configurations.merge(partialContextConf, emEvalConf.getContextConfiguration());
-        finalServiceConf = Configurations.merge(partialServiceConf, emEvalConf.getServiceConfiguration());
+        finalContextConf = Configurations.merge(partialContextConf, emConf.getContextConfiguration());
+        finalServiceConf = Configurations.merge(partialServiceConf, emConf.getServiceConfiguration());
       }
 
       allocatedEvaluator.submitContextAndService(finalContextConf, finalServiceConf);
@@ -218,7 +218,7 @@ public final class NSExampleDriver {
       System.out.println(result);
       if (result && notReadyTasks.decrementAndGet() == 0) {
         System.out.println("READY!!");
-        elasticMemory.move("String", null, taskMessage.getContextId(), prevContextId);
+        emService.move("String", null, taskMessage.getContextId(), prevContextId);
       }
       prevContextId = taskMessage.getContextId();
       System.out.println();

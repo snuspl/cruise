@@ -1,6 +1,6 @@
 package edu.snu.reef.em.task;
 
-import edu.snu.reef.em.driver.ElasticMemoryMessageHandlerWrapper;
+import edu.snu.reef.em.driver.api.ElasticMemoryMessageHandlerWrapper;
 import edu.snu.reef.em.msg.ElasticMemoryDataMsgHandler;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.wake.EventHandler;

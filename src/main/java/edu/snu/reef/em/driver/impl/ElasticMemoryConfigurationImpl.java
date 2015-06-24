@@ -1,5 +1,6 @@
-package edu.snu.reef.em.driver;
+package edu.snu.reef.em.driver.impl;
 
+import edu.snu.reef.em.driver.api.ElasticMemoryConfiguration;
 import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
 import edu.snu.reef.em.ns.NSWrapperDriver;
 import edu.snu.reef.em.task.ElasticMemoryClient;
@@ -17,15 +18,16 @@ import org.apache.reef.tang.Tang;
 import javax.inject.Inject;
 
 @DriverSide
-public class ElasticMemoryEvaluatorConfiguration {
+public final class ElasticMemoryConfigurationImpl implements ElasticMemoryConfiguration {
 
-  final NSWrapperDriver nsWrapperDriver;
+  private final NSWrapperDriver nsWrapperDriver;
 
   @Inject
-  private ElasticMemoryEvaluatorConfiguration(final NSWrapperDriver nsWrapperDriver) {
+  private ElasticMemoryConfigurationImpl(final NSWrapperDriver nsWrapperDriver) {
     this.nsWrapperDriver = nsWrapperDriver;
   }
 
+  @Override
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(ContextStartHandlers.class, ElasticMemoryClient.class)
@@ -34,8 +36,8 @@ public class ElasticMemoryEvaluatorConfiguration {
         .build();
   }
 
+  @Override
   public Configuration getServiceConfiguration() {
-
     final Configuration nsWrapperConf =
         nsWrapperDriver.getConfiguration(ElasticMemoryMessageCodec.class,
                                          ElasticMemoryMessageHandlerWrapperImpl.class);
@@ -44,10 +46,10 @@ public class ElasticMemoryEvaluatorConfiguration {
         .set(ServiceConfiguration.SERVICES, ElasticMemoryStore.class)
         .build();
 
-    final Configuration bindConf = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration bindImplConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, ElasticMemoryStore.class)
         .build();
 
-    return Configurations.merge(nsWrapperConf, serviceConf, bindConf);
+    return Configurations.merge(nsWrapperConf, serviceConf, bindImplConf);
   }
 }
