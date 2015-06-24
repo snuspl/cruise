@@ -1,5 +1,7 @@
 package edu.snu.reef.em.driver;
 
+import edu.snu.reef.em.evaluator.api.MemoryStore;
+import edu.snu.reef.em.evaluator.impl.ElasticMemoryStore;
 import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
 import edu.snu.reef.em.ns.NSWrapperConfiguration;

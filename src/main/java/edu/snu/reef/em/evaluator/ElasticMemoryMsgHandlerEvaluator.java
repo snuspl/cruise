@@ -4,6 +4,7 @@ import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
 import edu.snu.reef.em.avro.CtrlMsg;
 import edu.snu.reef.em.avro.DataMsg;
 import edu.snu.reef.em.avro.UnitIdPair;
+import edu.snu.reef.em.evaluator.api.MemoryStore;
 import edu.snu.reef.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.reef.em.serialize.Serializer;
 import org.apache.reef.annotations.audience.EvaluatorSide;

@@ -1,4 +1,4 @@
-package edu.snu.reef.em.evaluator;
+package edu.snu.reef.em.evaluator.api;
 
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;

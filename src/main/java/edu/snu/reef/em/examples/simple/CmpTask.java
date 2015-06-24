@@ -16,7 +16,7 @@
 
 package edu.snu.reef.em.examples.simple;
 
-import edu.snu.reef.em.evaluator.MemoryStore;
+import edu.snu.reef.em.evaluator.api.MemoryStore;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 

@@ -27,7 +27,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-JOB='edu.snu.reef.em.examples.elastic.migration.NSExampleClient'
+JOB='edu.snu.reef.em.examples.simple.EMExampleClient'
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $JOB $*"
 echo $CMD
