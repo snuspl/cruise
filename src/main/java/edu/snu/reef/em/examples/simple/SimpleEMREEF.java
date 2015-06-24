@@ -21,22 +21,42 @@ import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
+import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
+import org.apache.reef.tang.*;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
 
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Client for EMExample
+ * Client code for SimpleEM
  */
 public final class SimpleEMREEF {
-
   private static final Logger LOG = Logger.getLogger(SimpleEMREEF.class.getName());
   private static final int TIMEOUT = 100000;
-  private static final int MAX_NUM_OF_EVALUATORS = 2;
+  private static final Tang TANG = Tang.Factory.getTang();
+
+  @NamedParameter(doc = "Whether or not to run on the local runtime", short_name = "local", default_value = "true")
+  public static final class Local implements Name<Boolean> {
+  }
+
+  /**
+   * Check onLocal option by parsing the command line
+   */
+  private static boolean parseCommandLine(final String[] args) throws InjectionException, IOException {
+    final JavaConfigurationBuilder cb = TANG.newConfigurationBuilder();
+    final CommandLine cl = new CommandLine(cb);
+    cl.registerShortNameOfClass(Local.class);
+    cl.processCommandLine(args);
+
+    final Injector injector = TANG.newInjector(cb.build());
+    return injector.getNamedInstance(Local.class);
+  }
 
   public static Configuration getDriverConfiguration() {
     Configuration driverConfiguration = DriverConfiguration.CONF
@@ -48,22 +68,24 @@ public final class SimpleEMREEF {
         .set(DriverConfiguration.ON_TASK_MESSAGE, SimpleEMDriver.TaskMessageHandler.class)
         .build();
 
+    // spawn the name server at the driver
     return Configurations.merge(driverConfiguration, NameServerConfiguration.CONF.build());
   }
 
-  public static LauncherStatus runNSExample(final Configuration runtimeConf, final int timeOut)
+  public static LauncherStatus runSimpleEM(final Configuration runtimeConf, final int timeOut, final boolean onLocal)
       throws InjectionException {
     final Configuration driverConf = getDriverConfiguration();
 
     return DriverLauncher.getLauncher(runtimeConf).run(driverConf, timeOut);
   }
 
-  public static void main(final String[] args) throws InjectionException{
-    final Configuration localRuntimeConfiguration = LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, MAX_NUM_OF_EVALUATORS)
-        .build();
-    final LauncherStatus status = runNSExample(localRuntimeConfiguration, TIMEOUT);
+  public static void main(final String[] args) throws InjectionException, IOException {
+    final boolean onLocal = parseCommandLine(args);
+    final Configuration runtimeConf = onLocal ?
+      LocalRuntimeConfiguration.CONF.build():
+      YarnClientConfiguration.CONF.build();
+
+    final LauncherStatus status = runSimpleEM(runtimeConf, TIMEOUT, onLocal);
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 }
-
