@@ -183,7 +183,6 @@ public final class NSExampleDriver {
             .set(TaskConfiguration.ON_SEND_MESSAGE, CmpTaskReady.class)
             .build();
         final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder(basicTaskConf);
-//        jcb.bindImplementation(MemoryStoreClient.class, ElasticMemoryServiceClient.class);
         for (int i = 0; i < cmpTaskNames.size(); i++) {
           if (slaveTaskIndex != i)
             jcb.bindSetEntry(WorkerTaskOptions.Destinations.class, cmpTaskNames.get(i));

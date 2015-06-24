@@ -8,13 +8,13 @@ import javax.inject.Inject;
 import java.util.*;
 
 @TaskSide
-public final class ElasticMemoryStoreClient implements MemoryStoreClient {
+public final class ElasticMemoryStore implements MemoryStore {
 
   private final Map<String, List> localDataMap;
   private final Map<String, List> elasticDataMap;
 
   @Inject
-  public ElasticMemoryStoreClient() {
+  public ElasticMemoryStore() {
     localDataMap = new HashMap<>();
     elasticDataMap = new HashMap<>();
   }

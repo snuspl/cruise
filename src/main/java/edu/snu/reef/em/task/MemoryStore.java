@@ -7,10 +7,10 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Task-side interface of MemoryStoreClient
+ * Task-side interface of MemoryStore
  */
 @TaskSide
-public interface MemoryStoreClient {
+public interface MemoryStore {
 
   /**
    * Register a data item that must not be moved to other evaluators

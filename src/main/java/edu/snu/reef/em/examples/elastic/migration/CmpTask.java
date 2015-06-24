@@ -16,7 +16,7 @@
 
 package edu.snu.reef.em.examples.elastic.migration;
 
-import edu.snu.reef.em.task.MemoryStoreClient;
+import edu.snu.reef.em.task.MemoryStore;
 import edu.snu.reef.em.examples.parameters.*;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
@@ -42,7 +42,7 @@ public final class CmpTask implements Task {
   private final Broadcast.Receiver<String> broadcastReceiver;
   private final Set<String> destinations;
 
-  private final MemoryStoreClient memoryStoreClient;
+  private final MemoryStore memoryStore;
 
   private final CmpTaskReady cmpTaskReady;
   private final HeartBeatTriggerManager heartBeatTriggerManager;
@@ -51,13 +51,13 @@ public final class CmpTask implements Task {
   public CmpTask(
       @Parameter(WorkerTaskOptions.Destinations.class) final Set<String> destinations,
       final GroupCommClient groupCommClient,
-      final MemoryStoreClient memoryStoreClient,
+      final MemoryStore memoryStore,
       final CmpTaskReady cmpTaskReady,
       final HeartBeatTriggerManager heartBeatTriggerManager) {
     this.communicationGroupClient = groupCommClient.getCommunicationGroup(CommGroupName.class);
     this.broadcastReceiver = communicationGroupClient.getBroadcastReceiver(DataBroadcast.class);
     this.destinations = destinations;
-    this.memoryStoreClient = memoryStoreClient;
+    this.memoryStore = memoryStore;
     this.cmpTaskReady = cmpTaskReady;
     this.heartBeatTriggerManager = heartBeatTriggerManager;
   }
@@ -69,8 +69,8 @@ public final class CmpTask implements Task {
     System.out.println();
 
     System.out.println("Store a string in EM");
-    memoryStoreClient.putMovable("String", destinations.toString() + " must not see this.");
-    System.out.println(memoryStoreClient.get("String"));
+    memoryStore.putMovable("String", destinations.toString() + " must not see this.");
+    System.out.println(memoryStore.get("String"));
     System.out.println();
 
     cmpTaskReady.setReady(true);
@@ -81,7 +81,7 @@ public final class CmpTask implements Task {
     System.out.println("Waked up!");
 
     System.out.println("New data is");
-    System.out.println(memoryStoreClient.get("String"));
+    System.out.println(memoryStore.get("String"));
 
     return null;
   }

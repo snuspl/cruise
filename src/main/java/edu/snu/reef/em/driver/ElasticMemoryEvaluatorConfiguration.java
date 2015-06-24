@@ -3,8 +3,8 @@ package edu.snu.reef.em.driver;
 import edu.snu.reef.em.msg.ElasticMemoryMessageCodec;
 import edu.snu.reef.em.ns.NSWrapperDriver;
 import edu.snu.reef.em.task.ElasticMemoryClient;
-import edu.snu.reef.em.task.ElasticMemoryStoreClient;
-import edu.snu.reef.em.task.MemoryStoreClient;
+import edu.snu.reef.em.task.ElasticMemoryStore;
+import edu.snu.reef.em.task.MemoryStore;
 import edu.snu.reef.em.task.NSWrapperToContext;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
@@ -41,11 +41,11 @@ public class ElasticMemoryEvaluatorConfiguration {
                                          ElasticMemoryMessageHandlerWrapperImpl.class);
 
     final Configuration serviceConf = ServiceConfiguration.CONF
-        .set(ServiceConfiguration.SERVICES, ElasticMemoryStoreClient.class)
+        .set(ServiceConfiguration.SERVICES, ElasticMemoryStore.class)
         .build();
 
     final Configuration bindConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MemoryStoreClient.class, ElasticMemoryStoreClient.class)
+        .bindImplementation(MemoryStore.class, ElasticMemoryStore.class)
         .build();
 
     return Configurations.merge(nsWrapperConf, serviceConf, bindConf);

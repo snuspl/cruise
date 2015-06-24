@@ -3,7 +3,7 @@ package edu.snu.reef.em.msg;
 import edu.snu.reef.em.avro.*;
 import edu.snu.reef.em.serializer.Serializer;
 import edu.snu.reef.em.task.ElasticMemoryMessageSender;
-import edu.snu.reef.em.task.MemoryStoreClient;
+import edu.snu.reef.em.task.MemoryStore;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.wake.EventHandler;
 
@@ -16,15 +16,15 @@ import java.util.logging.Logger;
 public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElasticMemoryMessage> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryDataMsgHandler.class.getName());
 
-  private final MemoryStoreClient memoryStoreClient;
+  private final MemoryStore memoryStore;
   private final Serializer serializer;
   private final ElasticMemoryMessageSender sender;
 
   @Inject
-  public ElasticMemoryDataMsgHandler(final MemoryStoreClient memoryStoreClient,
+  public ElasticMemoryDataMsgHandler(final MemoryStore memoryStore,
                                      final ElasticMemoryMessageSender sender,
                                      final Serializer serializer) {
-    this.memoryStoreClient = memoryStoreClient;
+    this.memoryStore = memoryStore;
     this.serializer = serializer;
     this.sender = sender;
   }
@@ -64,11 +64,11 @@ public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElast
       System.out.println(codec.decode(data));
       list.add(codec.decode(data));
     }
-    list.addAll(memoryStoreClient.get(dataMsg.getDataClassName().toString()));
+    list.addAll(memoryStore.get(dataMsg.getDataClassName().toString()));
     System.out.println("Original data is");
-    System.out.println(memoryStoreClient.get(dataMsg.getDataClassName().toString()));
+    System.out.println(memoryStore.get(dataMsg.getDataClassName().toString()));
 
-    memoryStoreClient.putMovable(dataMsg.getDataClassName().toString(), list);
+    memoryStore.putMovable(dataMsg.getDataClassName().toString(), list);
   }
 
   private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
@@ -78,8 +78,8 @@ public final class ElasticMemoryDataMsgHandler implements EventHandler<AvroElast
     final Codec codec = serializer.getCodec(key);
     System.out.println(codec);
 
-    final List list = memoryStoreClient.get(key);
-    memoryStoreClient.remove(key);
+    final List list = memoryStore.get(key);
+    memoryStore.remove(key);
     System.out.println(list);
     System.out.println();
 
