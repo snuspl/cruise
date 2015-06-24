@@ -40,9 +40,6 @@ public final class ElasticMemoryMsgHandlerEvaluator implements EventHandler<Avro
   public void onNext(final AvroElasticMemoryMessage msg) {
     LOG.entering(ElasticMemoryMsgHandlerEvaluator.class.getSimpleName(), "onNext", msg);
 
-    System.out.println("Message source: " + msg.getSrcId());
-    System.out.println("Message destination: " + msg.getDestId());
-    System.out.println("Message type: " + msg.getType());
     switch (msg.getType()) {
       case DataMsg:
         onDataMsg(msg);
@@ -66,12 +63,9 @@ public final class ElasticMemoryMsgHandlerEvaluator implements EventHandler<Avro
     final List list = new LinkedList();
     for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
       final byte[] data = unitIdPair.getUnit().array();
-      System.out.println(codec.decode(data));
       list.add(codec.decode(data));
     }
     list.addAll(memoryStore.get(dataMsg.getDataClassName().toString()));
-    System.out.println("Original data is");
-    System.out.println(memoryStore.get(dataMsg.getDataClassName().toString()));
 
     memoryStore.putMovable(dataMsg.getDataClassName().toString(), list);
   }
@@ -81,15 +75,13 @@ public final class ElasticMemoryMsgHandlerEvaluator implements EventHandler<Avro
 
     final String key = ctrlMsg.getDataClassName().toString();
     final Codec codec = serializer.getCodec(key);
-    System.out.println(codec);
 
     final List list = memoryStore.get(key);
     memoryStore.remove(key);
-    System.out.println(list);
-    System.out.println();
 
     final List<UnitIdPair> unitIdPairList = new LinkedList<>();
 
+    // TODO: Currently end meaningless values for ids. Must fix.
     for (int index = 0; index < list.size(); index++) {
       final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
           .setUnit(ByteBuffer.wrap(codec.encode(list.get(index))))
