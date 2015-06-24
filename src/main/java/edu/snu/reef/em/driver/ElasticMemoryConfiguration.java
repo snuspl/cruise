@@ -33,9 +33,9 @@ public final class ElasticMemoryConfiguration {
    */
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextStartHandlers.class, NSHandlerBind.ContextStartHandler.class)
+        .bindSetEntry(ContextStartHandlers.class, ElasticMemoryMsgHandlerBinder.ContextStartHandler.class)
         .bindSetEntry(ContextStartHandlers.class, NSWrapperContextRegister.RegisterContextHandler.class)
-        .bindSetEntry(ContextStopHandlers.class, NSHandlerBind.ContextStopHandler.class)
+        .bindSetEntry(ContextStopHandlers.class, ElasticMemoryMsgHandlerBinder.ContextStopHandler.class)
         .bindSetEntry(ContextStopHandlers.class, NSWrapperContextRegister.UnregisterContextHandler.class)
         .build();
   }

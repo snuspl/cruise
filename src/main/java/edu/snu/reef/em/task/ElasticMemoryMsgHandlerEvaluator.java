@@ -5,7 +5,7 @@ import edu.snu.reef.em.avro.CtrlMsg;
 import edu.snu.reef.em.avro.DataMsg;
 import edu.snu.reef.em.avro.UnitIdPair;
 import edu.snu.reef.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.reef.em.serializer.Serializer;
+import edu.snu.reef.em.serialize.Serializer;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.wake.EventHandler;

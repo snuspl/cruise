@@ -1,6 +1,7 @@
 package edu.snu.reef.em.task;
 
 import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.tang.annotations.Unit;
@@ -8,15 +9,20 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
+/**
+ * Adds ElasticMemoryMsgHandlerEvaluator to ElasticMemoryMsgBroadcaster so that
+ * ElasticMemoryMsgHandlerEvaluator can successfully receive messages.
+ */
+@EvaluatorSide
 @Unit
-public final class NSHandlerBind {
+public final class ElasticMemoryMsgHandlerBinder {
 
   private final ElasticMemoryMsgBroadcaster broadcaster;
   private final ElasticMemoryMsgHandlerEvaluator handlerEvaluator;
 
   @Inject
-  private NSHandlerBind(final ElasticMemoryMsgBroadcaster broadcaster,
-                        final ElasticMemoryMsgHandlerEvaluator handlerEvaluator) {
+  private ElasticMemoryMsgHandlerBinder(final ElasticMemoryMsgBroadcaster broadcaster,
+                                        final ElasticMemoryMsgHandlerEvaluator handlerEvaluator) {
     this.broadcaster = broadcaster;
     this.handlerEvaluator = handlerEvaluator;
   }

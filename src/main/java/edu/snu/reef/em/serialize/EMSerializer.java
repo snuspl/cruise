@@ -1,4 +1,4 @@
-package edu.snu.reef.em.serializer;
+package edu.snu.reef.em.serialize;
 
 import edu.snu.reef.em.examples.parameters.StringCodec;
 import org.apache.reef.io.serialization.Codec;
@@ -14,7 +14,7 @@ public class EMSerializer implements Serializer {
   private final Codec defaultCodec;
 
   @Inject
-  public EMSerializer() {
+  private EMSerializer() {
     defaultCodec = new SerializableCodec();
     codecMap.put("String", new StringCodec());
   }
