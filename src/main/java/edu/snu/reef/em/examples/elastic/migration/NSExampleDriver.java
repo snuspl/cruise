@@ -16,7 +16,7 @@
 
 package edu.snu.reef.em.examples.elastic.migration;
 
-import edu.snu.reef.em.driver.ElasticMemoryDriverConfiguration;
+import edu.snu.reef.em.driver.ElasticMemoryEvaluatorConfiguration;
 import edu.snu.reef.em.driver.ElasticMemoryService;
 import edu.snu.reef.em.examples.parameters.DataBroadcast;
 import edu.snu.reef.em.examples.parameters.CommGroupName;
@@ -67,17 +67,17 @@ public final class NSExampleDriver {
   private final ReadyCodec readyCodec;
   private final AtomicInteger notReadyTasks;
 
-  private final ElasticMemoryDriverConfiguration emDriverConf;
+  private final ElasticMemoryEvaluatorConfiguration emEvalConf;
   private final ElasticMemoryService emService;
 
   @Inject
   public NSExampleDriver(final EvaluatorRequestor requestor,
                          final GroupCommDriver groupCommDriver,
                          final ReadyCodec readyCodec,
-                         final ElasticMemoryDriverConfiguration emDriverConf,
+                         final ElasticMemoryEvaluatorConfiguration emEvalConf,
                          final ElasticMemoryService emService) throws InjectionException {
     this.readyCodec = readyCodec;
-    this.emDriverConf = emDriverConf;
+    this.emEvalConf = emEvalConf;
     this.emService = emService;
 
     // TODO: fix
@@ -143,8 +143,8 @@ public final class NSExampleDriver {
         // I will be a Compute Evaluator
         LOG.log(Level.INFO, "Submitting Cmp context to AllocatedEvaluator: {0}", allocatedEvaluator);
 
-        finalContextConf = Configurations.merge(partialContextConf, emDriverConf.getContextConfiguration());
-        finalServiceConf = Configurations.merge(partialServiceConf, emDriverConf.getServiceConfiguration());
+        finalContextConf = Configurations.merge(partialContextConf, emEvalConf.getContextConfiguration());
+        finalServiceConf = Configurations.merge(partialServiceConf, emEvalConf.getServiceConfiguration());
       }
 
       allocatedEvaluator.submitContextAndService(finalContextConf, finalServiceConf);

@@ -45,4 +45,6 @@ public class ElasticMemoryEvaluatorConfiguration {
 
     return Configurations.merge(nsWrapperConf, serviceConf, bindConf);
   }
+
+
 }
