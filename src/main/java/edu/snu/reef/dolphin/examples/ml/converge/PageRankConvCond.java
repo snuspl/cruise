@@ -29,5 +29,5 @@ public interface PageRankConvCond {
   /**
    * Check convergence conditions.
    */
-  public boolean checkConvergence(Map<Integer, Double> rank);
+  boolean checkConvergence(Map<Integer, Double> rank);
 }

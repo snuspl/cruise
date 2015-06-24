@@ -38,6 +38,10 @@ public final class PageRankConvEuclidean implements PageRankConvCond {
 
   @Override
   public final boolean checkConvergence(Map<Integer, Double> rank) {
+    if (rank.size() == 0) {
+      return false;
+    }
+
     if (oldRank == null) {
       oldRank = rank;
       return false;

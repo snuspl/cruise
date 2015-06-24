@@ -30,7 +30,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.reef.dolphin.examples.ml.algorithms.pagerank.PageRankREEF
+ALG=edu.snu.reef.dolphin.examples.ml.algorithms.graph.PageRankREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $ALG $*"
 echo $CMD
