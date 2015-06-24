@@ -209,7 +209,7 @@ public final class NSExampleDriver {
   }
 
   public final class TaskMessageHandler implements EventHandler<TaskMessage> {
-    private String prevTaskId = "DEFAULT";
+    private String prevContextId = "DEFAULT";
 
     @Override
     public void onNext(final TaskMessage taskMessage) {
@@ -219,9 +219,9 @@ public final class NSExampleDriver {
       System.out.println(result);
       if (result && notReadyTasks.decrementAndGet() == 0) {
         System.out.println("READY!!");
-        emService.move("String", null, taskMessage.getContextId(), prevTaskId);
+        emService.move("String", null, taskMessage.getContextId(), prevContextId);
       }
-      prevTaskId = taskMessage.getId();
+      prevContextId = taskMessage.getContextId();
       System.out.println();
     }
   }
