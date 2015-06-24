@@ -16,7 +16,7 @@ public final class ElasticMemoryMsgHandlerDriver implements EventHandler<AvroEla
   // needs to directly instantiate this class in order to use NSWrapper and thus
   // we keep this constructor `default`.
   @Inject
-  ElasticMemoryMsgHandlerDriver() {
+  public ElasticMemoryMsgHandlerDriver() {
   }
 
   @Override
