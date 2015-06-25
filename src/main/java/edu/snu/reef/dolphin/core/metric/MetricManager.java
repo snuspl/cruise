@@ -27,7 +27,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Class managing registered trackers
+ * Class managing registered trackers.
+ *
+ * This class is not thread-safe.
+ * Although this class uses synchronization methods,
+ * these are for synchronization between MetricManager
+ * and other threads triggering heart beats.
+ * This class assumes that its instance is used by one thread.
  */
 public final class MetricManager implements ContextMessageSource, AutoCloseable {
   private final static Logger LOG = Logger.getLogger(MetricManager.class.getName());

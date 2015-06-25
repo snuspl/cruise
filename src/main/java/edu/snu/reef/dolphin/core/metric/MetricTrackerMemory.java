@@ -26,7 +26,13 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Metric tracker for maximum memory usage and average memory usage
+ * Metric tracker for maximum memory usage and average memory usage.
+ *
+ * This class is not thread-safe.
+ * Although this class uses synchronization methods,
+ * these are for synchronization between MetricManager
+ * and other threads triggering heart beats.
+ * This class assumes that its instance is used by one thread.
  */
 public final class MetricTrackerMemory implements MetricTracker {
 
