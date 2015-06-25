@@ -16,7 +16,17 @@
     <shimoga.version>0.1-SNAPSHOT</shimoga.version>
     <hadoop.version>2.4.0</hadoop.version>
     <mahout.version>0.9</mahout.version>
+    <maven-checkstyle-plugin.version>2.15</maven-checkstyle-plugin.version>
+    <checkstyle.version>6.6</checkstyle.version>
   </properties>
+
+  <repositories>
+    <repository>
+      <id>in-project-repo</id>
+      <name>In Project Repository</name>
+      <url>file://${project.basedir}/lib/</url>
+    </repository>
+  </repositories>
 
   <dependencies>
     <dependency>
@@ -102,6 +112,18 @@
           <target>1.7</target>
           <showDeprecation>true</showDeprecation>
           <encoding>${project.build.sourceEncoding}</encoding>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${maven-checkstyle-plugin.version}</version>
+        <configuration>
+          <configLocation>src/main/resources/checkstyle.xml</configLocation>
+          <failOnViolation>false</failOnViolation>
+          <format>xml</format>
+          <format>html</format>
+          <outputFile>${project.build.directory}/test/checkstyle-errors.xml</outputFile>
         </configuration>
       </plugin>
       <plugin>

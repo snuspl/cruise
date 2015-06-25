@@ -72,14 +72,12 @@ public final class RegressionDataParser implements DataParser<List<Row>> {
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
 
       final String text = keyValue.second.toString().trim();
-      if (text.startsWith("#")) {
+      if (text.startsWith("#") || text.length() == 0) {
         continue;
       }
 
       final String[] split = text.split("\\s+");
-      if (split.length == 0) {
-        continue;
-      } else if (split.length != dimension+1) {
+      if (split.length != dimension + 1) {
         parseException = new ParseException("Parse failed: the number of features is not "+dimension);
         return;
       }
