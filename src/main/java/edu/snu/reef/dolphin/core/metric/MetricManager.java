@@ -31,7 +31,7 @@ import java.util.logging.Logger;
  *
  * This class is not thread-safe.
  * Although this class uses synchronization methods,
- * these are for synchronization between MetricManager
+ * these are for synchronization between the thread using MetricManager
  * and other threads triggering heart beats.
  * This class assumes that its instance is used by one thread.
  */

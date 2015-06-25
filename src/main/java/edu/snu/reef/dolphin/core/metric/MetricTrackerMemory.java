@@ -30,8 +30,8 @@ import java.util.TreeMap;
  *
  * This class is not thread-safe.
  * Although this class uses synchronization methods,
- * these are for synchronization between MetricManager
- * and other threads triggering heart beats.
+ * these are for synchronization between the thread using MetricTrackerMemory
+ * and the Daemon thread created in the constructor.
  * This class assumes that its instance is used by one thread.
  */
 public final class MetricTrackerMemory implements MetricTracker {
