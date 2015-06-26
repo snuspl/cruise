@@ -19,41 +19,41 @@ public final class LocalMemoryStore implements MemoryStore {
   }
 
   @Override
-  public <T> void putLocal(String key, T value) {
+  public <T> void putLocal(final String key, final T value) {
     List<Object> singleObjectList = new LinkedList<>();
     singleObjectList.add(value);
     localDataMap.put(key, singleObjectList);
   }
 
   @Override
-  public <T> void putLocal(String key, List<T> values) {
+  public <T> void putLocal(final String key, final List<T> values) {
     localDataMap.put(key, values);
   }
 
   @Override
-  public <T> void putMovable(String key, T value) {
+  public <T> void putMovable(final String key, final T value) {
     putLocal(key, value);
   }
 
   @Override
-  public <T> void putMovable(String key, List<T> values) {
+  public <T> void putMovable(final String key, final List<T> values) {
     putLocal(key, values);
   }
 
   @Override
   @SuppressWarnings("unchecked")
-  public <T> List<T> get(String key) {
+  public <T> List<T> get(final String key) {
     return (List<T>)localDataMap.get(key);
   }
 
   @Override
-  public Set<IntRange> getIds(String key) {
+  public Set<IntRange> getIds(final String key) {
     throw new NotImplementedException();
   }
 
   @Override
   @SuppressWarnings("unchecked")
-  public <T> List<T> remove(String key) {
+  public <T> List<T> remove(final String key) {
     return localDataMap.remove(key);
   }
 
