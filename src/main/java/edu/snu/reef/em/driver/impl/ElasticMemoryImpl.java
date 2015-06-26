@@ -1,26 +1,15 @@
 package edu.snu.reef.em.driver.impl;
 
-import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
 import edu.snu.reef.em.driver.api.ElasticMemory;
-import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
-import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
 import edu.snu.reef.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.reef.em.ns.NSWrapperParameters;
-import edu.snu.reef.em.ns.impl.NSWrapperImpl;
 import edu.snu.reef.em.ns.api.NSWrapper;
-import edu.snu.reef.em.msg.impl.ElasticMemoryMsgSenderImpl;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.parameters.DriverIdentifier;
-import org.apache.reef.io.network.TransportFactory;
-import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
-import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.IdentifierFactory;
-import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
 import java.util.Set;
@@ -32,32 +21,12 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
-                            final LocalAddressProvider localAddressProvider,
-                            final NameServer nameServer,
                             @Parameter(DriverIdentifier.class) final String driverId,
-                            final ElasticMemoryMsgCodec elasticMemoryMsgCodec,
-                            @Parameter(NSWrapperParameters.NetworkServiceTransportFactory.class) final TransportFactory transportFactory,
-                            final ExceptionHandler exceptionHandler,
-                            @Parameter(NSWrapperParameters.NetworkServiceIdentifierFactory.class) final IdentifierFactory ifac,
-                            final ElasticMemoryMsgBroadcaster broadcaster) {
+                            final ElasticMemoryMsgSender sender,
+                            final NSWrapper nsWrapper) {
     this.requestor = requestor;
-
-    // TODO: To receive a Tang injection of NSWrapper, Tang must know the
-    // NameServer's address and port beforehand. However, the client may not
-    // provide Tang with the information, and thus we currently use
-    // `new` to instantiate NSWrapper.
-    final NSWrapper<AvroElasticMemoryMessage> nsWrapper =
-        new NSWrapperImpl<>(ifac,
-                            elasticMemoryMsgCodec,
-                            broadcaster,
-                            exceptionHandler,
-                            0,
-                            localAddressProvider.getLocalAddress(),
-                            nameServer.getPort(),
-                            transportFactory);
+    this.sender = sender;
     nsWrapper.getNetworkService().registerId(nsWrapper.getNetworkService().getIdentifierFactory().getNewInstance(driverId));
-
-    this.sender = new ElasticMemoryMsgSenderImpl(nsWrapper);
   }
 
   @Override

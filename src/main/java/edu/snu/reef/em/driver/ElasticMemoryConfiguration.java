@@ -3,14 +3,14 @@ package edu.snu.reef.em.driver;
 import edu.snu.reef.em.evaluator.api.MemoryStore;
 import edu.snu.reef.em.evaluator.impl.ElasticMemoryStore;
 import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
-import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
 import edu.snu.reef.em.ns.NSWrapperConfiguration;
 import edu.snu.reef.em.ns.NSWrapperContextRegister;
-import edu.snu.reef.em.evaluator.*;
+import edu.snu.reef.em.ns.NSWrapperParameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
+import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -31,13 +31,23 @@ public final class ElasticMemoryConfiguration {
   }
 
   /**
+   * @return configuration that should be submitted with a DriverConfiguration
+   */
+  public static Configuration getDriverConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(NSWrapperParameters.NetworkServiceCodec.class, ElasticMemoryMsgCodec.class)
+        .bindNamedParameter(NSWrapperParameters.NetworkServiceHandler.class, ElasticMemoryMsgHandler.class)
+        .bindNamedParameter(NSWrapperParameters.NetworkServiceExceptionHandler.class, ExceptionHandler.class)
+        .bindNamedParameter(NSWrapperParameters.NetworkServicePort.class, "0")
+        .build();
+  }
+
+  /**
    * @return configuration that should be merged with a ContextConfiguration to form a context
    */
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextStartHandlers.class, ElasticMemoryMsgHandlerBinder.ContextStartHandler.class)
         .bindSetEntry(ContextStartHandlers.class, NSWrapperContextRegister.RegisterContextHandler.class)
-        .bindSetEntry(ContextStopHandlers.class, ElasticMemoryMsgHandlerBinder.ContextStopHandler.class)
         .bindSetEntry(ContextStopHandlers.class, NSWrapperContextRegister.UnregisterContextHandler.class)
         .build();
   }
@@ -48,7 +58,7 @@ public final class ElasticMemoryConfiguration {
   public Configuration getServiceConfiguration() {
     final Configuration nsWrapperConf =
         nsWrapperConfiguration.getConfiguration(ElasticMemoryMsgCodec.class,
-                                                ElasticMemoryMsgBroadcaster.class);
+                                                edu.snu.reef.em.evaluator.ElasticMemoryMsgHandler.class);
 
     final Configuration serviceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, ElasticMemoryStore.class)

@@ -23,15 +23,13 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private final NetworkService<AvroElasticMemoryMessage> networkService;
   private final IdentifierFactory identifierFactory;
 
-  // TODO: declared `public` because of ElasticMemoryImpl.
-  // Should be instantiated through Tang.
   @Inject
-  public ElasticMemoryMsgSenderImpl(final NSWrapper<AvroElasticMemoryMessage> nsWrapper) {
+  private ElasticMemoryMsgSenderImpl(final NSWrapper<AvroElasticMemoryMessage> nsWrapper) {
     this.networkService = nsWrapper.getNetworkService();
     this.identifierFactory = this.networkService.getIdentifierFactory();
   }
 
-  public void send(final String destId, final AvroElasticMemoryMessage msg) {
+  private void send(final String destId, final AvroElasticMemoryMessage msg) {
     LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[] { destId, msg });
 
     final Connection<AvroElasticMemoryMessage> conn = networkService.newConnection(identifierFactory.getNewInstance(destId));

@@ -25,7 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public final class SimpleEMTask implements Task {
+final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
   public static final String KEY = "INTEGER";
   private static final Integer SLEEP_MILLISECONDS = 10000;
@@ -35,7 +35,7 @@ public final class SimpleEMTask implements Task {
   private final HeartBeatTriggerManager heartBeatTriggerManager;
 
   @Inject
-  public SimpleEMTask(
+  private SimpleEMTask(
       final MemoryStore memoryStore,
       final SimpleEMTaskReady simpleEMTaskReady,
       final HeartBeatTriggerManager heartBeatTriggerManager) {

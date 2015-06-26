@@ -37,7 +37,7 @@
   "name": "AvroElasticMemoryMessage",
   "fields":
   [
-    {"name": "type", "type": {"type": "enum", "name": "Type", "symbols": ["CtrlMsg", "DataMsg", "IdRequest"]}},
+    {"name": "type", "type": {"type": "enum", "name": "Type", "symbols": ["CtrlMsg", "DataMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},

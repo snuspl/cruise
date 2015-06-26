@@ -17,7 +17,6 @@
 package edu.snu.reef.em.ns;
 
 import edu.snu.reef.em.ns.impl.NSWrapperImpl;
-import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
 import org.apache.reef.io.network.naming.NameServer;
@@ -36,7 +35,6 @@ import javax.inject.Inject;
  * This class must be instantiated, otherwise configuring the
  * NameServer's address and port statically would be impossible.
  */
-@DriverSide
 public final class NSWrapperConfiguration {
 
   private final String localNameServerAddr;

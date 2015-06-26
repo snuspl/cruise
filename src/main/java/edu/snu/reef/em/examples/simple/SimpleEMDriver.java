@@ -40,7 +40,7 @@ import java.util.logging.Logger;
  * Driver code for EMExample
  */
 @Unit
-public final class SimpleEMDriver {
+final class SimpleEMDriver {
   private static final Logger LOG = Logger.getLogger(SimpleEMDriver.class.getName());
   private static final String CONTEXT_ID_PREFIX = "Context-";
   private static final String TASK_ID_PREFIX = "Task-";
@@ -51,7 +51,7 @@ public final class SimpleEMDriver {
   private final ElasticMemory emService;
 
   @Inject
-  public SimpleEMDriver(final EvaluatorRequestor requestor,
+  private SimpleEMDriver(final EvaluatorRequestor requestor,
                         final ElasticMemoryConfiguration emConf,
                         final ElasticMemory emService) throws InjectionException {
     this.requestor = requestor;
@@ -62,7 +62,7 @@ public final class SimpleEMDriver {
   /**
    * Spawn two small containers.
    */
-  public final class DriverStartHandler implements EventHandler<StartTime> {
+  final class DriverStartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
       SimpleEMDriver.this.requestor.submit(EvaluatorRequest.newBuilder()
@@ -76,7 +76,7 @@ public final class SimpleEMDriver {
   /**
    * Configure allocated evaluators with EM configuration and give them id numbers.
    */
-  public final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+  final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     private final AtomicInteger activeEvaluatorCount = new AtomicInteger(0);
 
     @Override
@@ -98,7 +98,7 @@ public final class SimpleEMDriver {
   /**
    * Task-0 goes on Context-0, and Task-1 goes on CmpContext-1.
    */
-  public final class ActiveContextHandler implements EventHandler<ActiveContext> {
+  final class ActiveContextHandler implements EventHandler<ActiveContext> {
 
     @Override
     public void onNext(final ActiveContext activeContext) {
@@ -118,7 +118,7 @@ public final class SimpleEMDriver {
   /**
    * When both tasks are ready, make the faster one send all of its data to the slower one.
    */
-  public final class TaskMessageHandler implements EventHandler<TaskMessage> {
+  final class TaskMessageHandler implements EventHandler<TaskMessage> {
     private static final String DEFAULT_STRING = "DEFAULT";
     private AtomicReference<String> prevContextId = new AtomicReference<>(DEFAULT_STRING);
 

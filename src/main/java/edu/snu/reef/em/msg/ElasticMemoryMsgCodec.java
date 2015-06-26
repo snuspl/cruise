@@ -13,10 +13,8 @@ import javax.inject.Inject;
 public final class ElasticMemoryMsgCodec
     implements Codec<AvroElasticMemoryMessage> {
 
-  // TODO: declared `public` because of ElasticMemoryImpl.
-  // Should be instantiated through Tang.
   @Inject
-  public ElasticMemoryMsgCodec() {
+  private ElasticMemoryMsgCodec() {
   }
 
   @Override

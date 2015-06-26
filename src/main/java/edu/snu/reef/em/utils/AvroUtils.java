@@ -13,13 +13,16 @@ import java.io.IOException;
  */
 public final class AvroUtils {
 
+  /**
+   * Should not be instantiated
+   */
   private AvroUtils() {
   }
 
   /**
    * Serializes the given avro object to a byte[].
    */
-  public static <T> byte[] toBytes(T avroObject, Class<T> theClass) {
+  public static <T> byte[] toBytes(final T avroObject, final Class<T> theClass) {
     final DatumWriter<T> datumWriter = new SpecificDatumWriter<>(theClass);
     final byte[] theBytes;
     try (final ByteArrayOutputStream out = new ByteArrayOutputStream()) {

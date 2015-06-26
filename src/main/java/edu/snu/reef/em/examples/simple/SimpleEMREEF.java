@@ -16,6 +16,7 @@
 
 package edu.snu.reef.em.examples.simple;
 
+import edu.snu.reef.em.driver.ElasticMemoryConfiguration;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -36,13 +37,13 @@ import java.util.logging.Logger;
 /**
  * Client code for SimpleEM
  */
-public final class SimpleEMREEF {
+final class SimpleEMREEF {
   private static final Logger LOG = Logger.getLogger(SimpleEMREEF.class.getName());
   private static final int TIMEOUT = 100000;
   private static final Tang TANG = Tang.Factory.getTang();
 
   @NamedParameter(doc = "Whether or not to run on the local runtime", short_name = "local", default_value = "true")
-  public static final class Local implements Name<Boolean> {
+  public static final class OnLocal implements Name<Boolean> {
   }
 
   /**
@@ -51,15 +52,15 @@ public final class SimpleEMREEF {
   private static boolean parseOnLocalFromCommmandLine(final String[] args) throws InjectionException, IOException {
     final JavaConfigurationBuilder cb = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
-    cl.registerShortNameOfClass(Local.class);
+    cl.registerShortNameOfClass(OnLocal.class);
     cl.processCommandLine(args);
 
     final Injector injector = TANG.newInjector(cb.build());
-    return injector.getNamedInstance(Local.class);
+    return injector.getNamedInstance(OnLocal.class);
   }
 
   public static Configuration getDriverConfiguration() {
-    Configuration driverConfiguration = DriverConfiguration.CONF
+    final Configuration driverConfiguration = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(SimpleEMDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, "SimpleEMDriver")
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, SimpleEMDriver.EvaluatorAllocatedHandler.class)
@@ -68,8 +69,10 @@ public final class SimpleEMREEF {
         .set(DriverConfiguration.ON_TASK_MESSAGE, SimpleEMDriver.TaskMessageHandler.class)
         .build();
 
+    final Configuration emConfiguration = ElasticMemoryConfiguration.getDriverConfiguration();
+
     // spawn the name server at the driver
-    return Configurations.merge(driverConfiguration, NameServerConfiguration.CONF.build());
+    return Configurations.merge(driverConfiguration, emConfiguration, NameServerConfiguration.CONF.build());
   }
 
   public static LauncherStatus runSimpleEM(final Configuration runtimeConf, final int timeOut, final boolean onLocal)
