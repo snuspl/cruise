@@ -34,17 +34,6 @@
 {
   "namespace": "edu.snu.reef.em.avro",
   "type": "record",
-  "name": "IdRequest",
-  "fields":
-  [
-    {"name": "dataClassName", "type": "string"},
-    {"name": "unitCount", "type": "int"}
-  ]
-},
-
-{
-  "namespace": "edu.snu.reef.em.avro",
-  "type": "record",
   "name": "AvroElasticMemoryMessage",
   "fields":
   [
@@ -53,7 +42,6 @@
     {"name": "destId", "type" : "string"},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
-    {"name": "idRequest", "type": ["null", "IdRequest"], "default": null}
   ]
 }
 ]

@@ -42,8 +42,8 @@ import java.util.logging.Logger;
 @Unit
 public final class SimpleEMDriver {
   private static final Logger LOG = Logger.getLogger(SimpleEMDriver.class.getName());
-  private static final String CONTEXT_ID_PREFIX = "CmpContext-";
-  private static final String TASK_ID_PREFIX = "CmpTask-";
+  private static final String CONTEXT_ID_PREFIX = "Context-";
+  private static final String TASK_ID_PREFIX = "Task-";
 
   private final EvaluatorRequestor requestor;
 
@@ -96,7 +96,7 @@ public final class SimpleEMDriver {
   }
 
   /**
-   * CmpTask-0 goes on CmpContext-0, and CmpTask-1 goes on CmpContext-1.
+   * Task-0 goes on Context-0, and Task-1 goes on CmpContext-1.
    */
   public final class ActiveContextHandler implements EventHandler<ActiveContext> {
 
@@ -107,8 +107,8 @@ public final class SimpleEMDriver {
 
       final Configuration taskConf = TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, taskId)
-          .set(TaskConfiguration.TASK, CmpTask.class)
-          .set(TaskConfiguration.ON_SEND_MESSAGE, CmpTaskReady.class)
+          .set(TaskConfiguration.TASK, SimpleEMTask.class)
+          .set(TaskConfiguration.ON_SEND_MESSAGE, SimpleEMTaskReady.class)
           .build();
 
       activeContext.submitTask(taskConf);
@@ -129,7 +129,7 @@ public final class SimpleEMDriver {
       if (!prevContextId.compareAndSet(DEFAULT_STRING, taskMessage.getContextId())) {
         // second evaluator goes here
         LOG.info("Move data from " + taskMessage.getContextId() + " to " + prevContextId.get());
-        emService.move(CmpTask.KEY, null, taskMessage.getContextId(), prevContextId.get());
+        emService.move(SimpleEMTask.KEY, null, taskMessage.getContextId(), prevContextId.get());
       } else {
         // first evaluator goes this way
       }

@@ -25,22 +25,22 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
-public final class CmpTask implements Task {
-  private static final Logger LOG = Logger.getLogger(CmpTask.class.getName());
+public final class SimpleEMTask implements Task {
+  private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
   public static final String KEY = "INTEGER";
   private static final Integer SLEEP_MILLISECONDS = 10000;
 
   private final MemoryStore memoryStore;
-  private final CmpTaskReady cmpTaskReady;
+  private final SimpleEMTaskReady simpleEMTaskReady;
   private final HeartBeatTriggerManager heartBeatTriggerManager;
 
   @Inject
-  public CmpTask(
+  public SimpleEMTask(
       final MemoryStore memoryStore,
-      final CmpTaskReady cmpTaskReady,
+      final SimpleEMTaskReady simpleEMTaskReady,
       final HeartBeatTriggerManager heartBeatTriggerManager) {
     this.memoryStore = memoryStore;
-    this.cmpTaskReady = cmpTaskReady;
+    this.simpleEMTaskReady = simpleEMTaskReady;
     this.heartBeatTriggerManager = heartBeatTriggerManager;
 
     final List<Integer> list = new LinkedList<>();
@@ -50,14 +50,14 @@ public final class CmpTask implements Task {
     this.memoryStore.putMovable(KEY, list);
   }
 
-  public byte[] call(byte[] memento) throws InterruptedException {
-    LOG.info("CmpTask commencing...");
+  public byte[] call(final byte[] memento) throws InterruptedException {
+    LOG.info("SimpleEMTask commencing...");
 
     LOG.info("Before sleep, memory store contains: ");
     LOG.info(memoryStore.get(KEY).toString());
     // Should be [100, 200]
 
-    cmpTaskReady.setReady(true);
+    simpleEMTaskReady.setReady(true);
     heartBeatTriggerManager.triggerHeartBeat();
     Thread.sleep(SLEEP_MILLISECONDS);
 

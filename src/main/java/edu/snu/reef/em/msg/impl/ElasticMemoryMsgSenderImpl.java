@@ -1,9 +1,6 @@
 package edu.snu.reef.em.msg.impl;
 
-import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
-import edu.snu.reef.em.avro.DataMsg;
-import edu.snu.reef.em.avro.Type;
-import edu.snu.reef.em.avro.UnitIdPair;
+import edu.snu.reef.em.avro.*;
 import edu.snu.reef.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.reef.em.ns.api.NSWrapper;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -48,8 +45,32 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[] { destId, msg });
   }
 
+
+  @Override
+  public void sendCtrlMsg(final String destId, final String dataClassName, final String targetEvalId) {
+    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+        new Object[] { destId, dataClassName, targetEvalId });
+
+    final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
+        .setDataClassName(dataClassName)
+        .build();
+
+    send(destId,
+         AvroElasticMemoryMessage.newBuilder()
+                                 .setType(Type.CtrlMsg)
+                                 .setSrcId(destId)
+                                 .setDestId(targetEvalId)
+                                 .setCtrlMsg(ctrlMsg)
+                                 .build());
+
+    LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+        new Object[] { destId, dataClassName, targetEvalId});
+  }
+
+  @Override
   public void sendDataMsg(final String destId, final String dataClassName, final List<UnitIdPair> unitIdPairList) {
-    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg", new Object[] { destId, dataClassName });
+    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
+        new Object[] { destId, dataClassName });
 
     final DataMsg dataMsg = DataMsg.newBuilder()
         .setDataClassName(dataClassName)
@@ -64,6 +85,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
                                  .setDataMsg(dataMsg)
                                  .build());
 
-    LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg", new Object[] { destId, dataClassName });
+    LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
+        new Object[] { destId, dataClassName });
   }
 }

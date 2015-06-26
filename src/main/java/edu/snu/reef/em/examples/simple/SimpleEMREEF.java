@@ -48,7 +48,7 @@ public final class SimpleEMREEF {
   /**
    * Check onLocal option by parsing the command line
    */
-  private static boolean parseCommandLine(final String[] args) throws InjectionException, IOException {
+  private static boolean parseOnLocalFromCommmandLine(final String[] args) throws InjectionException, IOException {
     final JavaConfigurationBuilder cb = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
     cl.registerShortNameOfClass(Local.class);
@@ -80,7 +80,7 @@ public final class SimpleEMREEF {
   }
 
   public static void main(final String[] args) throws InjectionException, IOException {
-    final boolean onLocal = parseCommandLine(args);
+    final boolean onLocal = parseOnLocalFromCommmandLine(args);
     final Configuration runtimeConf = onLocal ?
       LocalRuntimeConfiguration.CONF.build():
       YarnClientConfiguration.CONF.build();

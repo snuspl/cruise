@@ -31,13 +31,11 @@ public final class LocalMemoryStore implements MemoryStore {
   }
 
   @Override
-  @Deprecated
   public <T> void putMovable(String key, T value) {
     putLocal(key, value);
   }
 
   @Override
-  @Deprecated
   public <T> void putMovable(String key, List<T> values) {
     putLocal(key, values);
   }
@@ -60,8 +58,7 @@ public final class LocalMemoryStore implements MemoryStore {
   }
 
   @Override
-  @Deprecated
   public boolean hasChanged() {
-    throw new UnsupportedOperationException();
+    throw new NotImplementedException();
   }
 }

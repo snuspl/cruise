@@ -10,21 +10,21 @@ import javax.inject.Inject;
  * If heartbeat is triggered when task is ready, send a meaningless TaskMessage.
  * If not, then send nothing (Option.empty()).
  */
-public final class CmpTaskReady implements TaskMessageSource {
+public final class SimpleEMTaskReady implements TaskMessageSource {
 
-  private Boolean ready;
+  private boolean ready;
 
   @Inject
-  private CmpTaskReady() {
+  private SimpleEMTaskReady() {
     this.ready = false;
   }
 
   @Override
   public Optional<TaskMessage> getMessage() {
-    Optional<TaskMessage> retVal;
+    final Optional<TaskMessage> retVal;
 
     if (ready) {
-      retVal = Optional.of(TaskMessage.from(CmpTaskReady.class.getSimpleName(), new byte[0]));
+      retVal = Optional.of(TaskMessage.from(SimpleEMTaskReady.class.getSimpleName(), new byte[0]));
       setReady(false);
     } else {
       retVal = Optional.empty();
@@ -33,7 +33,7 @@ public final class CmpTaskReady implements TaskMessageSource {
     return retVal;
   }
 
-  public void setReady(final Boolean ready) {
+  public void setReady(final boolean ready) {
     this.ready = ready;
   }
 }

@@ -8,6 +8,7 @@ import edu.snu.reef.em.driver.api.ElasticMemory;
 import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
 import edu.snu.reef.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.reef.em.ns.NSWrapperParameters;
 import edu.snu.reef.em.ns.impl.NSWrapperImpl;
 import edu.snu.reef.em.ns.api.NSWrapper;
 import edu.snu.reef.em.msg.impl.ElasticMemoryMsgSenderImpl;
@@ -17,11 +18,13 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.parameters.DriverIdentifier;
+import org.apache.reef.io.network.TransportFactory;
 import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
 import org.apache.reef.io.network.impl.MessagingTransportFactory;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
@@ -36,25 +39,29 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
                             final LocalAddressProvider localAddressProvider,
                             final NameServer nameServer,
-                            @Parameter(DriverIdentifier.class) final String driverId) {
+                            @Parameter(DriverIdentifier.class) final String driverId,
+                            final ElasticMemoryMsgCodec elasticMemoryMsgCodec,
+                            @Parameter(NSWrapperParameters.NetworkServiceTransportFactory.class) final TransportFactory transportFactory,
+                            final ExceptionHandler exceptionHandler,
+                            @Parameter(NSWrapperParameters.NetworkServiceIdentifierFactory.class) final IdentifierFactory ifac,
+                            final ElasticMemoryMsgBroadcaster broadcaster,
+                            final ElasticMemoryMsgHandlerDriver handlerDriver) {
     this.requestor = requestor;
-
-    final ElasticMemoryMsgBroadcaster broadcaster = new ElasticMemoryMsgBroadcaster();
-    broadcaster.addHandler(new ElasticMemoryMsgHandlerDriver());
+    broadcaster.addHandler(handlerDriver);
 
     // TODO: To receive a Tang injection of NSWrapper, Tang must know the
     // NameServer's address and port beforehand. However, the client may not
     // provide Tang with the information, and thus we currently use
     // `new` to instantiate NSWrapper.
     final NSWrapper<AvroElasticMemoryMessage> nsWrapper =
-        new NSWrapperImpl<>(new StringIdentifierFactory(),
-                        new ElasticMemoryMsgCodec(),
-                        broadcaster,
-                        new ExceptionHandler(),
-                        0,
-                        localAddressProvider.getLocalAddress(),
-                        nameServer.getPort(),
-                        new MessagingTransportFactory());
+        new NSWrapperImpl<>(ifac,
+                            elasticMemoryMsgCodec,
+                            broadcaster,
+                            exceptionHandler,
+                            0,
+                            localAddressProvider.getLocalAddress(),
+                            nameServer.getPort(),
+                            transportFactory);
     nsWrapper.getNetworkService().registerId(nsWrapper.getNetworkService().getIdentifierFactory().getNewInstance(driverId));
 
     this.sender = new ElasticMemoryMsgSenderImpl(nsWrapper);
@@ -83,7 +90,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   // TODO: @param rangeSet is currently not being used.
   @Override
-  public void move(String dataClassName, Set<IntRange> rangeSet, String srcEvalId, String destEvalId) {
+  public void move(final String dataClassName, final Set<IntRange> rangeSet, final String srcEvalId, final String destEvalId) {
     final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
         .setType(Type.CtrlMsg)
         .setSrcId(srcEvalId)
@@ -96,7 +103,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   // TODO: implement
   @Override
-  public void checkpoint(String evalId) {
+  public void checkpoint(final String evalId) {
     throw new NotImplementedException();
   }
 }

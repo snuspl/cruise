@@ -82,10 +82,10 @@ public final class ElasticMemoryMsgHandlerEvaluator implements EventHandler<Avro
 
     final List<UnitIdPair> unitIdPairList = new LinkedList<>();
 
-    // TODO: Currently end meaningless values for ids. Must fix.
-    for (int index = 0; index < list.size(); index++) {
+    // TODO: Currently send meaningless values for ids. Must fix.
+    for (final Object object : list) {
       final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-          .setUnit(ByteBuffer.wrap(codec.encode(list.get(index))))
+          .setUnit(ByteBuffer.wrap(codec.encode(object)))
           .setId(0)
           .build();
 
