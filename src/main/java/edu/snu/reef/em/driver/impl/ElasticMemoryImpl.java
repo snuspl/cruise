@@ -1,9 +1,6 @@
 package edu.snu.reef.em.driver.impl;
 
 import edu.snu.reef.em.avro.AvroElasticMemoryMessage;
-import edu.snu.reef.em.avro.CtrlMsg;
-import edu.snu.reef.em.avro.Type;
-import edu.snu.reef.em.driver.ElasticMemoryMsgHandlerDriver;
 import edu.snu.reef.em.driver.api.ElasticMemory;
 import edu.snu.reef.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.reef.em.msg.ElasticMemoryMsgBroadcaster;
@@ -20,9 +17,7 @@ import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.io.network.TransportFactory;
 import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
-import org.apache.reef.io.network.impl.MessagingTransportFactory;
 import org.apache.reef.io.network.naming.NameServer;
-import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
@@ -44,10 +39,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
                             @Parameter(NSWrapperParameters.NetworkServiceTransportFactory.class) final TransportFactory transportFactory,
                             final ExceptionHandler exceptionHandler,
                             @Parameter(NSWrapperParameters.NetworkServiceIdentifierFactory.class) final IdentifierFactory ifac,
-                            final ElasticMemoryMsgBroadcaster broadcaster,
-                            final ElasticMemoryMsgHandlerDriver handlerDriver) {
+                            final ElasticMemoryMsgBroadcaster broadcaster) {
     this.requestor = requestor;
-    broadcaster.addHandler(handlerDriver);
 
     // TODO: To receive a Tang injection of NSWrapper, Tang must know the
     // NameServer's address and port beforehand. However, the client may not
@@ -91,14 +84,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   // TODO: @param rangeSet is currently not being used.
   @Override
   public void move(final String dataClassName, final Set<IntRange> rangeSet, final String srcEvalId, final String destEvalId) {
-    final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.CtrlMsg)
-        .setSrcId(srcEvalId)
-        .setDestId(destEvalId)
-        .setCtrlMsg(CtrlMsg.newBuilder().setDataClassName(dataClassName).build())
-        .build();
-
-    sender.send(srcEvalId, msg);
+    sender.sendCtrlMsg(srcEvalId, dataClassName, destEvalId);
   }
 
   // TODO: implement

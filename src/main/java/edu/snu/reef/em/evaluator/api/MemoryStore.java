@@ -2,7 +2,6 @@ package edu.snu.reef.em.evaluator.api;
 
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.annotations.audience.TaskSide;
 
 import java.util.List;
 import java.util.Set;
