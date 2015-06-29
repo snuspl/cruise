@@ -40,7 +40,10 @@ public final class NSWrapperImpl<T> implements NSWrapper<T> {
   }
 
   /**
-   * Constructor used when a NameServer can be injected.
+   * Constructor used when NameServerAddr and NameServerPort are not set.
+   * Instead of explicitly setting parameters, this constructor receives a
+   * NameServer injection by Tang and uses the NameServer instance to figure
+   * out NameServerAddr and NameServerPort.
    * Usually, this constructor gets called at the driver.
    */
   @Inject

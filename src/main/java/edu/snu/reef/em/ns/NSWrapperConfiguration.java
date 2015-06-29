@@ -32,8 +32,6 @@ import javax.inject.Inject;
 
 /**
  * Configuration class for NSWrapper.
- * This class must be instantiated, otherwise configuring the
- * NameServer's address and port statically would be impossible.
  */
 public final class NSWrapperConfiguration {
 
@@ -47,11 +45,22 @@ public final class NSWrapperConfiguration {
     this.localNameServerPort = nameServer.getPort();
   }
 
+  /**
+   * Non-static method for NSWrapper configuration when only {@code codecClass} and
+   * {@code recvHandlerClass} can be specified. Uses default values for
+   * {@code exHandlerClass} and {@code networkServicePort}. Also asks Tang for
+   * a NameServer injection to resolve NameServerAddr and NameServerPort.
+   */
   public Configuration getConfiguration(final Class<? extends Codec<?>> codecClass,
                                         final Class<? extends EventHandler<?>> recvHandlerClass) {
     return getConfiguration(codecClass, recvHandlerClass, ExceptionHandler.class, 0);
   }
 
+  /**
+   * Non-static method for NSWrapper configuration when NameServerAddr and
+   * NameServerPort cannot be known beforehand. Uses a NameServer instance
+   * injected by Tang to compute NameServer-related parameters.
+   */
   public Configuration getConfiguration(final Class<? extends Codec<?>> codecClass,
                                         final Class<? extends EventHandler<?>> recvHandlerClass,
                                         final Class<? extends EventHandler<?>> exHandlerClass,
@@ -59,6 +68,10 @@ public final class NSWrapperConfiguration {
     return getConfiguration(codecClass, recvHandlerClass, exHandlerClass, networkServicePort, localNameServerAddr, localNameServerPort);
   }
 
+  /**
+   * Static method for NSWrapper configuration when all parameters can be
+   * specified by caller.
+   */
   public static Configuration getConfiguration(final Class<? extends Codec<?>> codecClass,
                                                final Class<? extends EventHandler<?>> recvHandlerClass,
                                                final Class<? extends EventHandler<?>> exHandlerClass,
