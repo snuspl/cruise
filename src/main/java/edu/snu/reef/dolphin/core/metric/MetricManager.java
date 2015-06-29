@@ -23,6 +23,7 @@ import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,7 +47,7 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
   /**
    * Currently tracked metrics (Id of a metric -> value)
    */
-  private final Map<String, Double> metrics = new HashMap<>();
+  private final AtomicReference<Map<String, Double>> metrics = new AtomicReference<>();
 
   /**
    * Codec for metrics
@@ -75,6 +76,7 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
                        final MetricCodec metricCodec) {
     this.heartBeatTriggerManager = heartBeatTriggerManager;
     this.metricCodec = metricCodec;
+    this.metrics.set(new HashMap<String, Double>());
   }
 
   /**
@@ -111,9 +113,7 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
     for (final MetricTracker metricTracker : metricTrackerList) {
       newMetrics.putAll(metricTracker.stop());
     }
-    synchronized (this) {
-      metrics.putAll(newMetrics);
-    }
+    metrics.set(newMetrics);
     heartBeatTriggerManager.triggerHeartBeat();
     isStarted = false;
   }
@@ -137,12 +137,7 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
   @Override
   public Optional<ContextMessage> getMessage() {
     LOG.log(Level.INFO, "Context Message Sent");
-
-    final Map<String, Double> newMetrics = new HashMap<String, Double>();
-    synchronized (this) {
-      newMetrics.putAll(metrics);
-      metrics.clear();
-    }
+    final Map<String, Double> newMetrics = metrics.getAndSet(new HashMap<String, Double>());
     if (newMetrics.isEmpty()) {
       return Optional.empty();
     } else {
