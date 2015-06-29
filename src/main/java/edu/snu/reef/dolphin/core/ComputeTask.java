@@ -20,17 +20,16 @@ import com.microsoft.reef.io.network.nggroup.api.task.CommunicationGroupClient;
 import com.microsoft.reef.io.network.nggroup.api.task.GroupCommClient;
 import edu.snu.reef.dolphin.core.metric.MetricManager;
 import edu.snu.reef.dolphin.core.metric.MetricTracker;
+import edu.snu.reef.dolphin.core.metric.MetricTrackers;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataScatterReceiver;
 import edu.snu.reef.dolphin.groupcomm.names.*;
-import edu.snu.reef.dolphin.core.metric.MetricTrackers;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
-import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
 import java.util.Set;
@@ -45,7 +44,6 @@ public final class ComputeTask implements Task {
   private final UserComputeTask userComputeTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
-  private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final MetricManager metricManager;
   private final Set<MetricTracker> metricTrackerSet;
 

@@ -103,15 +103,18 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
    * Stop registered metric trackers
    * Gathered measures are sent to the driver
    */
-  public synchronized void stop() throws MetricException {
+  public void stop() throws MetricException {
     if(!isStarted) {
       throw new MetricException("Metric tracking should be started first before being stopped");
     }
+    final Map<String, Double> newMetrics = new HashMap<>();
     for (final MetricTracker metricTracker : metricTrackerList) {
-      metrics.putAll(metricTracker.stop());
+      newMetrics.putAll(metricTracker.stop());
+    }
+    synchronized (this) {
+      metrics.putAll(newMetrics);
     }
     heartBeatTriggerManager.triggerHeartBeat();
-    metrics.clear();
     isStarted = false;
   }
 
@@ -132,14 +135,20 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
    * @return message
    */
   @Override
-  public synchronized Optional<ContextMessage> getMessage() {
+  public Optional<ContextMessage> getMessage() {
     LOG.log(Level.INFO, "Context Message Sent");
-    if (metrics.isEmpty()) {
+
+    final Map<String, Double> newMetrics = new HashMap<String, Double>();
+    synchronized (this) {
+      newMetrics.putAll(metrics);
+      metrics.clear();
+    }
+    if (newMetrics.isEmpty()) {
       return Optional.empty();
     } else {
       final Optional<ContextMessage> message = Optional.of(ContextMessage.from(
           MetricTrackerService.class.getName(),
-          metricCodec.encode(metrics)));
+          metricCodec.encode(newMetrics)));
       return message;
     }
   }

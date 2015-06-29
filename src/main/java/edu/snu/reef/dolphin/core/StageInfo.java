@@ -21,6 +21,7 @@ import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.util.Optional;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -127,7 +128,7 @@ public final class StageInfo {
     private Class<? extends Codec> gatherCodecClass = null;
     private Class<? extends Codec> reduceCodecClass = null;
     private Class<? extends Reduce.ReduceFunction> reduceFunctionClass = null;
-    private Set<Class<? extends MetricTracker>> metricTrackerSet = null;
+    private Set<Class<? extends MetricTracker>> metricTrackerSet = new HashSet<>();
 
     /**
      * @param userComputeTaskClass  user-defined compute task
@@ -165,10 +166,7 @@ public final class StageInfo {
     }
 
     public Builder addMetricTrackers(final Class<? extends MetricTracker>... metricTrackerClasses) {
-      metricTrackerSet = new HashSet<>();
-      for(final Class<? extends MetricTracker> metricTrackerClass : metricTrackerClasses) {
-        this.metricTrackerSet.add(metricTrackerClass);
-      }
+      this.metricTrackerSet.addAll(Arrays.asList(metricTrackerClasses));
       return this;
     }
 
