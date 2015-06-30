@@ -18,6 +18,9 @@ package edu.snu.reef.dolphin.core;
 import com.microsoft.reef.io.network.group.operators.Broadcast;
 import com.microsoft.reef.io.network.nggroup.api.task.CommunicationGroupClient;
 import com.microsoft.reef.io.network.nggroup.api.task.GroupCommClient;
+import edu.snu.reef.dolphin.core.metric.MetricManager;
+import edu.snu.reef.dolphin.core.metric.MetricTracker;
+import edu.snu.reef.dolphin.core.metric.MetricTrackers;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.reef.dolphin.groupcomm.interfaces.DataReduceSender;
@@ -26,40 +29,37 @@ import edu.snu.reef.dolphin.groupcomm.names.*;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
-import org.apache.reef.task.TaskMessage;
-import org.apache.reef.task.TaskMessageSource;
-import org.apache.reef.util.Optional;
-import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 
 import javax.inject.Inject;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class ComputeTask implements Task, TaskMessageSource {
+public final class ComputeTask implements Task {
   public final static String TASK_ID_PREFIX = "CmpTask";
   private final static Logger LOG = Logger.getLogger(ComputeTask.class.getName());
 
   private final String taskId;
   private final UserComputeTask userComputeTask;
   private final CommunicationGroupClient commGroup;
-  private final HeartBeatTriggerManager heartBeatTriggerManager;
   private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
-  private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
-  private long runTime = -1;
+  private final MetricManager metricManager;
+  private final Set<MetricTracker> metricTrackerSet;
 
   @Inject
   public ComputeTask(final GroupCommClient groupCommClient,
                      final UserComputeTask userComputeTask,
-                     @Parameter(TaskConfigurationOptions.Identifier.class) String taskId,
+                     @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                      @Parameter(CommunicationGroup.class) final String commGroupName,
-                     final HeartBeatTriggerManager heartBeatTriggerManager) throws ClassNotFoundException {
+                     final MetricManager metricManager,
+                     @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet) throws ClassNotFoundException {
     this.userComputeTask = userComputeTask;
     this.taskId = taskId;
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
-    this.heartBeatTriggerManager = heartBeatTriggerManager;
+    this.metricManager = metricManager;
+    this.metricTrackerSet = metricTrackerSet;
   }
 
   @Override
@@ -67,22 +67,24 @@ public final class ComputeTask implements Task, TaskMessageSource {
     LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
     userComputeTask.initialize();
-    int iteration=0;
-    while (!isTerminated()) {
-      receiveData(iteration);
-      final long runStart = System.currentTimeMillis();
-      userComputeTask.run(iteration);
-      runTime = System.currentTimeMillis() - runStart;
-      sendData(iteration);
-      heartBeatTriggerManager.triggerHeartBeat();
-      iteration++;
+    try (final MetricManager metricManager = this.metricManager) {
+      metricManager.registerTrackers(metricTrackerSet);
+      int iteration=0;
+      while (!isTerminated()) {
+        metricManager.start();
+        receiveData(iteration);
+        userComputeTask.run(iteration);
+        sendData(iteration);
+        metricManager.stop();
+        iteration++;
+      }
+      userComputeTask.cleanup();
     }
-    userComputeTask.cleanup();
 
     return null;
   }
 
-  private void receiveData(int iteration) throws Exception {
+  private void receiveData(final int iteration) throws Exception {
     if (userComputeTask.isBroadcastUsed()) {
       ((DataBroadcastReceiver)userComputeTask).receiveBroadcastData(iteration,
           commGroup.getBroadcastReceiver(DataBroadcast.class).receive());
@@ -93,7 +95,7 @@ public final class ComputeTask implements Task, TaskMessageSource {
     }
   }
 
-  private void sendData(int iteration) throws Exception {
+  private void sendData(final int iteration) throws Exception {
     if (userComputeTask.isGatherUsed()) {
       commGroup.getGatherSender(DataGather.class).send(
           ((DataGatherSender)userComputeTask).sendGatherData(iteration));
@@ -106,11 +108,5 @@ public final class ComputeTask implements Task, TaskMessageSource {
 
   private boolean isTerminated() throws Exception {
     return ctrlMessageBroadcast.receive() == CtrlMessage.TERMINATE;
-  }
-
-  @Override
-  public synchronized Optional<TaskMessage> getMessage() {
-    return Optional.of(TaskMessage.from(ComputeTask.class.getName(),
-        this.codecLong.encode(this.runTime)));
   }
 }

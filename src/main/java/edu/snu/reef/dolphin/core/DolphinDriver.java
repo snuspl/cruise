@@ -21,19 +21,24 @@ import com.microsoft.reef.io.network.nggroup.impl.config.BroadcastOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.GatherOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ReduceOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
+import edu.snu.reef.dolphin.core.metric.MetricCodec;
+import edu.snu.reef.dolphin.core.metric.MetricTracker;
+import edu.snu.reef.dolphin.core.metric.MetricTrackerService;
+import edu.snu.reef.dolphin.core.metric.MetricTrackers;
 import edu.snu.reef.dolphin.groupcomm.names.*;
 import edu.snu.reef.dolphin.parameters.EvaluatorNum;
 import edu.snu.reef.dolphin.parameters.OnLocal;
 import edu.snu.reef.dolphin.parameters.OutputDir;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.task.*;
+import org.apache.reef.driver.context.ContextMessage;
+import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.task.FailedTask;
+import org.apache.reef.driver.task.RunningTask;
+import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.serialization.SerializableCodec;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
-import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -109,6 +114,11 @@ public final class DolphinDriver {
    */
   private final Integer evalNum;
 
+  /**
+   * Codec for metrics
+   */
+  private final MetricCodec metricCodec;
+
   private final String outputDir;
   private final boolean onLocal;
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
@@ -126,6 +136,7 @@ public final class DolphinDriver {
    * @param dataLoadingService manager for Data Loading configurations
    * @param userJobInfo
    * @param userParameters
+   * @param metricCodec
    * @param outputDir
    * @param onLocal
    * @param evalNum
@@ -135,6 +146,7 @@ public final class DolphinDriver {
                         final DataLoadingService dataLoadingService,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
+                        final MetricCodec metricCodec,
                         @Parameter(OutputDir.class) final String outputDir,
                         @Parameter(OnLocal.class) final boolean onLocal,
                         @Parameter(EvaluatorNum.class) final Integer evalNum) {
@@ -145,6 +157,7 @@ public final class DolphinDriver {
     this.commGroupDriverList = new LinkedList<>();
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
+    this.metricCodec = metricCodec;
     this.outputDir = outputDir;
     this.onLocal = onLocal;
     this.evalNum = evalNum;
@@ -213,30 +226,33 @@ public final class DolphinDriver {
       if (!groupCommDriver.isConfigured(activeContext)) {
         Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
         Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
+        final Configuration outputServiceConf = OutputService.getServiceConfiguration(outputDir, onLocal);
+        final Configuration keyValueServiceStoreConf = KeyValueStoreService.getServiceConfiguration();
+        final Configuration metricTrackerServiceConf = MetricTrackerService.getServiceConfiguration();
+        final Configuration finalContextConf = MetricTrackerService.getContextConfiguration(groupCommContextConf);
         Configuration finalServiceConf;
 
         if (dataLoadingService.isComputeContext(activeContext)) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
           ctrlTaskContextId = getContextId(groupCommContextConf);
 
-          // Add the Key-Value Store service, the Output service, and the Group Communication service
-          final Configuration outputConf = OutputService.getServiceConfiguration(outputDir, onLocal);
-          final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
+          // Add the Key-Value Store service, the Output service,
+          // the Metric Tracker service, and the Group Communication service
           finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, outputConf, keyValueStoreConf);
+              userParameters.getServiceConf(), groupCommServiceConf, outputServiceConf,
+              keyValueServiceStoreConf, metricTrackerServiceConf);
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
           // Add the Data Parse service, the Key-Value Store service,
-          // the Output service, and the Group Communication service
+          // the Output service, the Metric Tracker service, and the Group Communication service
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
-          final Configuration keyValueStoreConf = KeyValueStoreService.getServiceConfiguration();
-          final Configuration outputConf = OutputService.getServiceConfiguration(outputDir, onLocal);
           finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, dataParseConf, outputConf, keyValueStoreConf);
+              userParameters.getServiceConf(), groupCommServiceConf, dataParseConf, outputServiceConf,
+              keyValueServiceStoreConf, metricTrackerServiceConf);
         }
 
-        activeContext.submitContextAndService(groupCommContextConf, finalServiceConf);
+        activeContext.submitContextAndService(finalContextConf, finalServiceConf);
       } else {
         submitTask(activeContext, 0);
       }
@@ -256,17 +272,21 @@ public final class DolphinDriver {
   }
 
   /**
-   * Receives metrics from compute tasks
+   * Receives metrics from context
    */
-  final class TaskMessageHandler implements EventHandler<TaskMessage> {
+  final class ContextMessageHandler implements EventHandler<ContextMessage> {
 
     @Override
-    public void onNext(final TaskMessage message) {
-      final long result = codecLong.decode(message.get());
-      final String msg = "Task message " + message.getId() + ": " + result;
+    public void onNext(final ContextMessage message) {
 
-      //TODO: use metric to run optimization plan
-      LOG.info(msg);
+      if(message.getMessageSourceID().equals(MetricTrackerService.class.getName())) {
+
+        LOG.info("Metrics are gathered from " + message.getId());
+        final Map<String, Double> map = metricCodec.decode(message.get());
+        for(Map.Entry<String, Double> entry : map.entrySet()) {
+          LOG.info("Metric Info: Source=" + message.getId() + " Key=" + entry.getKey() + " Value=" + entry.getValue());
+        }
+      }
     }
   }
 
@@ -314,24 +334,34 @@ public final class DolphinDriver {
    */
   final private void submitTask(ActiveContext activeContext, int stageSequence) {
     contextToStageSequence.put(activeContext.getId(), stageSequence);
-    StageInfo taskInfo = stageInfoList.get(stageSequence);
-    CommunicationGroupDriver commGroup = commGroupDriverList.get(stageSequence);
+    final StageInfo stageInfo = stageInfoList.get(stageSequence);
+    final CommunicationGroupDriver commGroup = commGroupDriverList.get(stageSequence);
     final Configuration partialTaskConf;
+
+    final JavaConfigurationBuilder dolphinTaskConfBuilder = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(CommunicationGroup.class, stageInfo.getCommGroupName().getName());
+
+    //Set metric trackers
+    if (stageInfo.getMetricTrackerClassSet() != null) {
+      for (final Class<? extends MetricTracker> metricTrackerClass
+          : stageInfo.getMetricTrackerClassSet()) {
+        dolphinTaskConfBuilder.bindSetEntry(MetricTrackers.class, metricTrackerClass);
+      }
+    }
 
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task
     // We can now place a Controller Task on top of the contexts.
     if (isCtrlTaskId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
+
+      dolphinTaskConfBuilder.bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass());
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(stageSequence))
               .set(TaskConfiguration.TASK, ControllerTask.class)
               .build(),
-          Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(UserControllerTask.class, taskInfo.getUserCtrlTaskClass())
-              .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
-              .build(),
+          dolphinTaskConfBuilder.build(),
           userParameters.getUserCtrlTaskConf());
 
       // Case 2: Evaluator configured with a Group Communication context has been given,
@@ -339,16 +369,14 @@ public final class DolphinDriver {
       // We can now place a Compute Task on top of the contexts.
     } else {
       LOG.log(Level.INFO, "Submit ComputeTask");
+
+      dolphinTaskConfBuilder.bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass());
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId.getAndIncrement()))
               .set(TaskConfiguration.TASK, ComputeTask.class)
-              .set(TaskConfiguration.ON_SEND_MESSAGE, ComputeTask.class)
               .build(),
-          Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(UserComputeTask.class, taskInfo.getUserCmpTaskClass())
-              .bindNamedParameter(CommunicationGroup.class, taskInfo.getCommGroupName().getName())
-              .build(),
+          dolphinTaskConfBuilder.build(),
           userParameters.getUserCmpTaskConf());
     }
 
