@@ -1,16 +1,18 @@
-package edu.snu.reef.em.driver;
+package edu.snu.reef.em.driver.api;
 
+import edu.snu.reef.em.driver.impl.ElasticMemoryImpl;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import java.util.List;
 import java.util.Set;
 
 /**
- * Driver-side interface of ElasticMemoryService
+ * Driver-side API of ElasticMemoryService
  */
 @DriverSide
-public interface ElasticMemoryService {
+@DefaultImplementation(ElasticMemoryImpl.class)
+public interface ElasticMemory {
 
   /**
    * Add new evaluators as specified
@@ -54,4 +56,3 @@ public interface ElasticMemoryService {
    */
   void checkpoint(String evalId);
 }
-

@@ -1,16 +1,16 @@
-package edu.snu.reef.em.task;
+package edu.snu.reef.em.evaluator.api;
 
 import org.apache.commons.lang.math.IntRange;
-import org.apache.reef.annotations.audience.TaskSide;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import java.util.List;
 import java.util.Set;
 
 /**
- * Task-side interface of MemoryStoreClient
+ * Evaluator-side interface of MemoryStore
  */
-@TaskSide
-public interface MemoryStoreClient {
+@EvaluatorSide
+public interface MemoryStore {
 
   /**
    * Register a data item that must not be moved to other evaluators
@@ -70,11 +70,10 @@ public interface MemoryStoreClient {
    *
    * @param key key string that represents a certain data type
    */
-  void remove(String key);
+  <T> List<T> remove(String key);
 
   /**
    * Query about the update status of this store
    */
   boolean hasChanged();
 }
-
