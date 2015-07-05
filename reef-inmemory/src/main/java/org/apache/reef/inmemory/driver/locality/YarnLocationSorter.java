@@ -63,7 +63,7 @@ public final class YarnLocationSorter implements LocationSorter {
       }
 
       locations.clear();
-      for (final List<NodeInfo> list : new List[]{ nodeLocal, rackLocal, offRack }) {
+      for (final List<NodeInfo> list : new List[] {nodeLocal, rackLocal, offRack}) {
         Collections.shuffle(list);
         locations.addAll(list);
       }

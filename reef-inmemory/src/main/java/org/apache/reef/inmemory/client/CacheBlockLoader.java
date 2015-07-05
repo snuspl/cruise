@@ -114,7 +114,7 @@ public final class CacheBlockLoader {
      *
      * If there are no more caches remaining to try, the progressManager throws an IOException.
      */
-    for ( ; ; ) {
+    for (;;) {
 
       final String cacheAddress = progressManager.getNextCache();
 

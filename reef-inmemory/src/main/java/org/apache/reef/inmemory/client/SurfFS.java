@@ -205,7 +205,7 @@ public final class SurfFS extends FileSystem {
         LOG.log(Level.WARNING, "Surf TException, trying baseFs...", e);
         return baseFs.getFileStatus(toAbsoluteBasePath(path));
       } else {
-        throw new IOException ("Failed to get File Status from Surf", e);
+        throw new IOException("Failed to get File Status from Surf", e);
       }
     } catch (URISyntaxException e) {
       throw new IOException(e);
