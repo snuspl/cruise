@@ -24,12 +24,12 @@ public final class InstrumentorImpl implements Instrumentor {
   private final String gangliaPrefix;
 
   @Inject
-  public InstrumentorImpl(final @Parameter(InstrumentationParameters.InstrumentationReporterPeriod.class) int reporterPeriod,
-                          final @Parameter(InstrumentationParameters.InstrumentationLogLevel.class) String reporterLogLevel,
-                          final @Parameter(GangliaParameters.Ganglia.class) boolean ganglia,
-                          final @Parameter(GangliaParameters.GangliaHost.class) String gangliaHost,
-                          final @Parameter(GangliaParameters.GangliaPort.class) int gangliaPort,
-                          final @Parameter(GangliaParameters.GangliaPrefix.class) String gangliaPrefix) {
+  public InstrumentorImpl(@Parameter(InstrumentationParameters.InstrumentationReporterPeriod.class) final int reporterPeriod,
+                          @Parameter(InstrumentationParameters.InstrumentationLogLevel.class) final String reporterLogLevel,
+                          @Parameter(GangliaParameters.Ganglia.class) final boolean ganglia,
+                          @Parameter(GangliaParameters.GangliaHost.class) final String gangliaHost,
+                          @Parameter(GangliaParameters.GangliaPort.class) final int gangliaPort,
+                          @Parameter(GangliaParameters.GangliaPrefix.class) final String gangliaPrefix) {
     this.reporterPeriod = reporterPeriod;
     this.reporterLogLevel = reporterLogLevel;
     this.ganglia = ganglia;

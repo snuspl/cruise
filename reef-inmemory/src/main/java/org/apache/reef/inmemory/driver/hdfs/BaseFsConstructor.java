@@ -18,7 +18,7 @@ public class BaseFsConstructor implements ExternalConstructor<FileSystem> {
   private final String dfsAddress;
 
   @Inject
-  public BaseFsConstructor(final @Parameter(DfsParameters.Address.class) String dfsAddress) {
+  public BaseFsConstructor(@Parameter(DfsParameters.Address.class) final String dfsAddress) {
     this.dfsAddress = dfsAddress;
   }
 

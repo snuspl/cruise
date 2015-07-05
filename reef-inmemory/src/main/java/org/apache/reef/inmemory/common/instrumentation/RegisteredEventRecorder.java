@@ -27,9 +27,9 @@ public final class RegisteredEventRecorder implements EventRecorder {
   @Inject
   public RegisteredEventRecorder(
           final MetricRegistry registry,
-          final @Parameter(InstrumentationParameters.InstrumentationReporterPeriod.class) int period,
-          final @Parameter(InstrumentationParameters.InstrumentationLogLevel.class) String logLevel,
-          final @Parameter(InstrumentationParameters.InstrumentationReporters.class) Set<ScheduledReporter> reporters) {
+          @Parameter(InstrumentationParameters.InstrumentationReporterPeriod.class) final int period,
+          @Parameter(InstrumentationParameters.InstrumentationLogLevel.class) final String logLevel,
+          @Parameter(InstrumentationParameters.InstrumentationReporters.class) final Set<ScheduledReporter> reporters) {
     this.registry = registry;
     Level level;
     try {

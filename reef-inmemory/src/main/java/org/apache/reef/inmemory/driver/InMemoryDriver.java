@@ -44,7 +44,7 @@ public final class InMemoryDriver {
   public InMemoryDriver(final SurfMetaServer metaService,
                         final CacheNodeManager cacheNodeManager,
                         final EStage<TaskMessage> taskMessageEStage,
-                        final @Parameter(MetaServerParameters.InitCacheServers.class) int initCacheServers) {
+                        @Parameter(MetaServerParameters.InitCacheServers.class) final int initCacheServers) {
     this.metaService = metaService;
     this.cacheNodeManager = cacheNodeManager;
     this.taskMessageEStage = taskMessageEStage;

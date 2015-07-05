@@ -10,15 +10,15 @@ import java.util.Set;
 public final class InstrumentationParameters {
 
   @NamedParameter(doc = "Reporters")
-  public final static class InstrumentationReporters implements Name<Set<ExternalConstructor<ScheduledReporter>>> {
+  public static final class InstrumentationReporters implements Name<Set<ExternalConstructor<ScheduledReporter>>> {
   }
 
   @NamedParameter(doc = "Reporting period in seconds", default_value = "60", short_name = "reporting_period")
-  public final static class InstrumentationReporterPeriod implements Name<Integer> {
+  public static final class InstrumentationReporterPeriod implements Name<Integer> {
   }
 
   @NamedParameter(doc = "Reporting LOG Level", default_value = "FINE", short_name = "reporting_log_level")
-  public final static class InstrumentationLogLevel implements Name<String> {
+  public static final class InstrumentationLogLevel implements Name<String> {
   }
 
 }

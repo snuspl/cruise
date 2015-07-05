@@ -7,7 +7,7 @@ import javax.inject.Inject;
 public class FileEntry implements Entry {
   private String name;
   private DirectoryEntry parent;
-  final private FileMeta fileMeta;
+  private final FileMeta fileMeta;
 
   @Inject
   public FileEntry(final String name,

@@ -57,9 +57,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
                         final WritingCacheSelectionPolicy writingCacheSelector,
                         final ReplicationPolicy replicationPolicy,
                         final LocationSorter locationSorter,
-                        final @Parameter(MetaServerParameters.Port.class) int port,
-                        final @Parameter(MetaServerParameters.Timeout.class) int timeout,
-                        final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
+                        @Parameter(MetaServerParameters.Port.class) final int port,
+                        @Parameter(MetaServerParameters.Timeout.class) final int timeout,
+                        @Parameter(MetaServerParameters.Threads.class) final int numThreads) {
     this.metaManager = metaManager;
     this.cacheNodeManager = cacheNodeManager;
     this.serviceRegistry = serviceRegistry;

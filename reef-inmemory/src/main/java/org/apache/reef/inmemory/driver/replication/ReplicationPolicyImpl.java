@@ -33,7 +33,7 @@ public final class ReplicationPolicyImpl implements ReplicationPolicy {
   }
 
   @Inject
-  public ReplicationPolicyImpl(final @Parameter(MetaServerParameters.ReplicationRulesJson.class) String rulesString) {
+  public ReplicationPolicyImpl(@Parameter(MetaServerParameters.ReplicationRulesJson.class) final String rulesString) {
     try {
       LOG.log(Level.FINE, "Applying rules: "+rulesString);
       rules = AvroReplicationSerializer.fromString(rulesString);
