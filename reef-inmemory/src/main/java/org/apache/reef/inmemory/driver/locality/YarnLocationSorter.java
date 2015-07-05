@@ -75,20 +75,12 @@ public final class YarnLocationSorter implements LocationSorter {
     final String locationHostname = HostAndPort.fromString(locationAddress).getHostText();
     LOG.log(Level.FINE, "isNodeLocal: {0}, {1}", new String[]{clientHostname, locationHostname});
 
-    if (clientHostname.equals(locationHostname)) {
-      return true;
-    } else {
-      return false;
-    }
+    return clientHostname.equals(locationHostname);
   }
 
   private boolean isRackLocal(final String clientRack, final String locationRack) {
     LOG.log(Level.FINE, "isRackLocal: {0}, {1}", new String[]{clientRack, locationRack});
 
-    if (clientRack.equals(locationRack)) {
-      return true;
-    } else {
-      return false;
-    }
+    return clientRack.equals(locationRack);
   }
 }
