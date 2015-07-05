@@ -70,18 +70,18 @@ public final class HdfsBlockInfo implements Serializable {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) { return true; }
+    if (o == null || getClass() != o.getClass()) { return false; }
 
     HdfsBlockInfo that = (HdfsBlockInfo) o;
 
-    if (!filePath.equals(that.filePath)) return false;
-    if (blockId != that.blockId) return false;
-    if (blockSize != that.blockSize) return false;
-    if (generationTimestamp != that.generationTimestamp) return false;
-    if (!poolId.equals(that.poolId)) return false;
-    if (!encodedToken.equals(that.encodedToken)) return false;
-    if (offset != that.offset) return false;
+    if (!filePath.equals(that.filePath)) { return false; }
+    if (blockId != that.blockId) { return false; }
+    if (blockSize != that.blockSize) { return false; }
+    if (generationTimestamp != that.generationTimestamp) { return false; }
+    if (!poolId.equals(that.poolId)) { return false; }
+    if (!encodedToken.equals(that.encodedToken)) { return false; }
+    if (offset != that.offset) { return false; }
     return true;
   }
 

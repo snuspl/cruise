@@ -97,15 +97,17 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     } catch (Exception e) {
       LOG.log(Level.SEVERE, "Exception while serving "+e);
     } finally {
-      if (this.server != null && this.server.isServing())
+      if (this.server != null && this.server.isServing()) {
         this.server.stop();
+      }
     }
   }
 
   @Override
   public void close() throws Exception {
-    if (this.server != null && this.server.isServing())
+    if (this.server != null && this.server.isServing()) {
       this.server.stop();
+    }
   }
 
   @Override

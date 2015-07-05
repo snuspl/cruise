@@ -84,8 +84,9 @@ public class HdfsBlockLoader implements BlockLoader {
     final Configuration conf = new HdfsConfiguration();
 
     // Allocate a Byte array of the Block size.
-    if(blockSize > Integer.MAX_VALUE)
+    if(blockSize > Integer.MAX_VALUE) {
       throw new UnsupportedOperationException("Currently we don't support large(>2GB) block");
+    }
 
     Iterator<HdfsDatanodeInfo> dnInfoIter = dnInfoList.iterator();
     do {
