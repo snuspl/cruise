@@ -156,7 +156,7 @@ public final class CLI {
     return confBuilder.build();
   }
 
-  public static void main(String args[])
+  public static void main(String[] args)
           throws TException, IOException, InjectionException {
     final Configuration config = parseCommandLine(args);
     boolean success = runCommand(config);

@@ -105,7 +105,7 @@ public final class SurfFSInputStream extends FSInputStream {
    * Read the entire buffer.
    */
   @Override
-  public synchronized int read(final byte buf[], int off, int len) throws IOException {
+  public synchronized int read(final byte[] buf, int off, int len) throws IOException {
     if (this.pos >= fileMeta.getFileSize()) {
       return -1;
     }
