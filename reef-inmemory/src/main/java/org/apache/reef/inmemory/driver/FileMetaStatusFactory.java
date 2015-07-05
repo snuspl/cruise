@@ -11,7 +11,6 @@ import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import javax.inject.Inject;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Paths;
 
 /**
  * Used to create an instance of FileMetaStatus from either Entry in Surf or FileStatus fetched from HDFS

@@ -1,10 +1,6 @@
 package org.apache.reef.inmemory.common;
 
 import org.apache.reef.inmemory.common.entity.BlockMeta;
-import org.apache.reef.inmemory.common.entity.NodeInfo;
-
-import java.io.IOException;
-import java.util.List;
 
 /**
  * Factory that creates Block metadata.

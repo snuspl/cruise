@@ -10,7 +10,6 @@ import org.apache.reef.inmemory.common.exceptions.BlockWritingException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 /**
  * Interface for InMemory Cache.
