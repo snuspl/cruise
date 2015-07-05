@@ -12,18 +12,18 @@ public interface CacheClientManager {
    * Client repeatedly try to connect when failure occurred.
    * @return The number of retries Client makes up to.
    */
-  public int getRetries();
+  int getRetries();
 
   /**
    * Client retries to the Cache node after this time interval.
    * @return The time interval to wait after failure.
    */
-  public int getRetriesInterval();
+  int getRetriesInterval();
 
   /**
    * @return The size of buffer Client uses.
    */
-  public int getBufferSize();
+  int getBufferSize();
 
   /**
    * Returns a client for the given address. The caller of this method must ensure that
@@ -31,5 +31,5 @@ public interface CacheClientManager {
    * @param address The address of Cache node.
    * @return The Client connected to the cache node.
    */
-  public SurfCacheService.Client get(String address) throws TTransportException;
+  SurfCacheService.Client get(String address) throws TTransportException;
 }

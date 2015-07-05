@@ -30,18 +30,18 @@ public interface CacheNodeManager {
   /**
    * Add the running task to be managed
    */
-  public boolean addRunningTask(RunningTask task);
+  boolean addRunningTask(RunningTask task);
 
   /**
    * Remove the task from the manager
    */
-  public void removeRunningTask(String taskId);
+  void removeRunningTask(String taskId);
 
   /**
    * Return a view of running Caches. The returned list
    * is a copy -- it does not change as caches get updated.
    */
-  public List<CacheNode> getCaches();
+  List<CacheNode> getCaches();
 
   /**
    * Get the cache running at the specified task
@@ -51,5 +51,5 @@ public interface CacheNodeManager {
   /**
    * Pass a cache status update to the cache manager
    */
-  public void handleHeartbeat(String taskId, CacheStatusMessage status);
+  void handleHeartbeat(String taskId, CacheStatusMessage status);
 }

@@ -15,7 +15,7 @@ public interface HdfsCacheSelectionPolicy {
    * For each block, return the CacheNodes to place replicas on.
    * Note, the CacheNodes list may be modified in place.
    */
-  public Map<LocatedBlock, List<CacheNode>> select(final List<LocatedBlock> blocks,
+  Map<LocatedBlock, List<CacheNode>> select(final List<LocatedBlock> blocks,
                                                    final List<CacheNode> nodes,
                                                    final int numReplicas);
 }

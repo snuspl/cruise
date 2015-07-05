@@ -1,11 +1,11 @@
 package org.apache.reef.inmemory.driver.metatree;
 
 public interface Entry {
-  public String getName();
+  String getName();
 
-  public DirectoryEntry getParent();
+  DirectoryEntry getParent();
 
-  public void rename(final String dstFileName, final DirectoryEntry dstParent);
+  void rename(final String dstFileName, final DirectoryEntry dstParent);
 
-  public boolean isDirectory();
+  boolean isDirectory();
 }

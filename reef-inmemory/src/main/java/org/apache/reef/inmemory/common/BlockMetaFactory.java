@@ -17,5 +17,5 @@ public interface BlockMetaFactory<FsMetadata> {
    * @param metadata FS-specific block metadata
    * @return Block information stored as a Thrift data structure
    */
-  public BlockMeta newBlockMeta(long fileId, FsMetadata metadata);
+  BlockMeta newBlockMeta(long fileId, FsMetadata metadata);
 }

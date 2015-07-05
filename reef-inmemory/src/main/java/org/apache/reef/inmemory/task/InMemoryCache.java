@@ -26,7 +26,7 @@ public interface InMemoryCache {
    * @throws BlockWritingException If the block is being written
    * @throws BlockNotFoundException If the block does not exist in the cache
    */
-  public byte[] get(BlockId blockId, int index)
+  byte[] get(BlockId blockId, int index)
           throws BlockLoadingException, BlockNotFoundException, BlockWritingException;
 
   /**
@@ -39,7 +39,7 @@ public interface InMemoryCache {
    * @throws BlockNotWritableException If the block does not support write
    * @throws IOException If a failure occurred writing the block
    */
-  public void write(BlockId blockId, long offset, ByteBuffer data, boolean isLastPacket)
+  void write(BlockId blockId, long offset, ByteBuffer data, boolean isLastPacket)
           throws BlockNotFoundException, BlockNotWritableException, IOException;
 
   /**
@@ -49,39 +49,39 @@ public interface InMemoryCache {
    * @param loader The block loader contains FS-specific information, as well as BlockId and pin information
    * @throws IOException If a failure occurred loading the block
    */
-  public void load(BlockLoader loader) throws IOException;
+  void load(BlockLoader loader) throws IOException;
 
   /**
    * Reserve space for a block and insert it into cache before writing data.
    * The state of this block is set as COPY_STARTED.
    */
-  public void prepareToWrite(BlockWriter blockWriter) throws IOException, BlockNotFoundException;
+  void prepareToWrite(BlockWriter blockWriter) throws IOException, BlockNotFoundException;
 
   /**
    * @return Length of buffer loading data from Base File Systems
    */
-  public int getLoadingBufferSize();
+  int getLoadingBufferSize();
 
   /**
    * Clears the cache
    */
-  public void clear();
+  void clear();
 
   /**
    * Retrieve information about the cache status
    * @return The status of Cache
    */
-  public CacheStatistics getStatistics();
+  CacheStatistics getStatistics();
 
   /**
    * Pull the cache updates. The returned updates are removed.
    * @return The latest updates from the cache Task
    */
-  public CacheUpdates pullUpdates();
+  CacheUpdates pullUpdates();
 
   /**
    * Remove blocks from the cache
    * @param blockId Block id to delete
    */
-  public void delete(BlockId blockId);
+  void delete(BlockId blockId);
 }
