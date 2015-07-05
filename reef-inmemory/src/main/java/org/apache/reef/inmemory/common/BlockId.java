@@ -46,8 +46,12 @@ public final class BlockId implements Serializable {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) { return true; }
-    if (o == null || getClass() != o.getClass()) { return false; }
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
 
     BlockId blockId = (BlockId) o;
     return offset == blockId.offset && fileId == blockId.fileId;

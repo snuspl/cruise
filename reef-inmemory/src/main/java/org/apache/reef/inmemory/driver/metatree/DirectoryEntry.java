@@ -43,7 +43,9 @@ public class DirectoryEntry implements Entry {
     return true;
   }
 
-  public List<Entry> getChildren() {return children;}
+  public List<Entry> getChildren() {
+    return children;
+  }
 
   public void addChild(final Entry entry) {
     children.add(entry);

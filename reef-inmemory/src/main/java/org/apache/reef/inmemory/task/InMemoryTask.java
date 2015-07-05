@@ -59,7 +59,9 @@ public class InMemoryTask implements Task, TaskMessageSource {
     while(true) {
       synchronized (this) {
         this.wait();
-        if(this.isDone) { break; }
+        if(this.isDone) {
+          break;
+        }
       }
     }
     return CODEC.encode(message);
