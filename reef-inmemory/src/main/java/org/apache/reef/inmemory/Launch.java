@@ -40,7 +40,7 @@ import java.util.logging.Logger;
 /**
  * Launcher for InMemory Application
  */
-public class Launch {
+public final class Launch {
   /**
    * Logger Object for System Log.
    */

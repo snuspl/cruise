@@ -63,7 +63,7 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
    * Store and compare the remaining memory. Used to keep the prioirity queue in descending order.
    * Ties are broken by taskId.
    */
-  private static class RemainingMemory implements Comparable<RemainingMemory> {
+  private static final class RemainingMemory implements Comparable<RemainingMemory> {
 
     private final CacheNode node;
     private final long max;
