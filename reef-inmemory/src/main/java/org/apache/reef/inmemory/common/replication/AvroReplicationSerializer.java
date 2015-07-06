@@ -42,4 +42,10 @@ public final class AvroReplicationSerializer {
     encoder.flush();
     out.flush();
   }
+
+  /**
+   * Empty private constructor to prohibit instantiation of utility class.
+   */
+  private AvroReplicationSerializer() {
+  }
 }

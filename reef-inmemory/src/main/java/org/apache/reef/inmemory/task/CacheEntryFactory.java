@@ -14,14 +14,14 @@ public class CacheEntryFactory {
   /**
    * Create a cache entry that loads data from BaseFS.
    */
-  public static CacheEntry createEntry(BlockLoader blockLoader) {
+  public CacheEntry createEntry(BlockLoader blockLoader) {
     return new LoadableCacheEntry(blockLoader);
   }
 
   /**
    * Create a cache entry that writes data from Client.
    */
-  public static CacheEntry createEntry(BlockWriter blockWriter) {
+  public CacheEntry createEntry(BlockWriter blockWriter) {
     return new WritableCacheEntry(blockWriter);
   }
 }

@@ -287,4 +287,10 @@ public class Launch {
     runInMemory(clConfig, fileConfig);
     LOG.log(Level.INFO, "Job Submitted");
   }
+
+  /**
+   * Empty private constructor to prohibit instantiation of utility class.
+   */
+  private Launch() {
+  }
 }

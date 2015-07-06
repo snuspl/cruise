@@ -162,4 +162,11 @@ public final class CLI {
     boolean success = runCommand(config);
     LOG.log(Level.INFO, success ? "Run command succeeded" : "Run command failed");
   }
+
+  /**
+   * Empty private constructor to prohibit instantiation of utility class.
+   */
+  private CLI() {
+  }
+
 }
