@@ -333,7 +333,7 @@
                     <artifactId>maven-checkstyle-plugin</artifactId>
                     <version>${maven-checkstyle-plugin.version}</version>
                     <configuration>
-                        <configLocation>src/main/checkstyle.xml</configLocation>
+                        <configLocation>src/main/resources/checkstyle.xml</configLocation>
                         <failOnViolation>true</failOnViolation>
                         <format>xml</format>
                         <format>html</format>
