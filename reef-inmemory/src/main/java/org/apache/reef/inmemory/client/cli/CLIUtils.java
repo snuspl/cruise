@@ -47,4 +47,10 @@ public final class CLIUtils {
     }
     return files;
   }
+
+  /**
+   * Empty private constructor to prohibit instantiation of utility class.
+   */
+  private CLIUtils() {
+  }
 }

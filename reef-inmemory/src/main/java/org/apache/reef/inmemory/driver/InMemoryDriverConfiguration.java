@@ -40,7 +40,7 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
   public static final RequiredParameter<String> DFS_TYPE = new RequiredParameter<>();
   public static final RequiredParameter<String> DFS_ADDRESS = new RequiredParameter<>();
 
-  public static final ConfigurationModule getConf(String dfsType) {
+  public static ConfigurationModule getConf(String dfsType) {
     if ("hdfs".equals(dfsType)) {
       return HDFS_CONF;
     } else {

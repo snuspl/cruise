@@ -57,9 +57,9 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
                         final WritingCacheSelectionPolicy writingCacheSelector,
                         final ReplicationPolicy replicationPolicy,
                         final LocationSorter locationSorter,
-                        final @Parameter(MetaServerParameters.Port.class) int port,
-                        final @Parameter(MetaServerParameters.Timeout.class) int timeout,
-                        final @Parameter(MetaServerParameters.Threads.class) int numThreads) {
+                        @Parameter(MetaServerParameters.Port.class) final int port,
+                        @Parameter(MetaServerParameters.Timeout.class) final int timeout,
+                        @Parameter(MetaServerParameters.Threads.class) final int numThreads) {
     this.metaManager = metaManager;
     this.cacheNodeManager = cacheNodeManager;
     this.serviceRegistry = serviceRegistry;
@@ -185,7 +185,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     final StringBuilder builder = new StringBuilder();
     final long currentTimestamp = System.currentTimeMillis();
     final List<CacheNode> caches = cacheNodeManager.getCaches();
-    builder.append("Number of caches: "+caches.size()+"\n");
+    builder.append("Number of caches: " + caches.size() + "\n");
     for (CacheNode cache : caches) {
       appendBasicStatus(builder, cache, currentTimestamp);
       appendStopCause(builder, cache);
@@ -289,15 +289,17 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     } catch (Exception e) {
       LOG.log(Level.SEVERE, "Exception occurred while running MetaServer", e);
     } finally {
-      if (this.server != null && this.server.isServing())
+      if (this.server != null && this.server.isServing()) {
         this.server.stop();
+      }
     }
   }
 
   @Override
   public void close() throws Exception {
-    if (this.server != null && this.server.isServing())
+    if (this.server != null && this.server.isServing()) {
       this.server.stop();
+    }
   }
 
   private void appendBasicStatus(final StringBuilder builder,

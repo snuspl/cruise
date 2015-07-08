@@ -40,7 +40,7 @@ public final class CacheUpdates implements Serializable {
     return additions;
   }
 
-  public final static class Failure implements Serializable {
+  public static final class Failure implements Serializable {
     private final BlockId blockId;
     private final Throwable throwable;
 
@@ -58,7 +58,7 @@ public final class CacheUpdates implements Serializable {
     }
   }
 
-  public final static class Addition implements Serializable {
+  public static final class Addition implements Serializable {
     private final BlockId blockId;
     private final long length; // For the last block, the amount of written data could be smaller than the block size
 

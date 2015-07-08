@@ -152,7 +152,7 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
   /**
    * Keep track of number of tries and bytes loaded at the previous measured time
    */
-  private static class Progress {
+  private static final class Progress {
     private long time;
     private long bytesLoaded;
 

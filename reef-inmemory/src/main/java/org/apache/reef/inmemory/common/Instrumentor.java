@@ -5,5 +5,5 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 
 @DefaultImplementation(InstrumentorImpl.class)
 public interface Instrumentor {
-  public Configuration getConfiguration();
+  Configuration getConfiguration();
 }

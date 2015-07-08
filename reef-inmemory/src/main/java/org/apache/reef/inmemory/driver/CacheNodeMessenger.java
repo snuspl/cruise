@@ -15,20 +15,20 @@ public interface CacheNodeMessenger<T> {
   /**
    * Remove blocks stored at the Cache
    */
-  public void clear(String taskId);
+  void clear(String taskId);
 
   /**
    * Remove blocks stored at all Caches
    */
-  public void clearAll();
+  void clearAll();
 
   /**
    * Send a block load request to the Cache
    */
-  public void addBlock(String taskId, T msg);
+  void addBlock(String taskId, T msg);
 
   /**
    * Send requests of removing blocks to the Caches
    */
-  public void deleteBlocks(Map<NodeInfo, List<BlockId>> nodeToBlocks);
+  void deleteBlocks(Map<NodeInfo, List<BlockId>> nodeToBlocks);
 }

@@ -22,7 +22,7 @@ public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder 
   public static final RequiredParameter<Integer> CACHESERVER_LOADING_THREADS = new RequiredParameter<>();
   public static final RequiredParameter<Double> CACHESERVER_HEAP_SLACK = new RequiredParameter<>();
 
-  public static final ConfigurationModule getConf(String dfsType) {
+  public static ConfigurationModule getConf(String dfsType) {
     if ("hdfs".equals(dfsType)) {
       return HDFS_CONF;
     } else {

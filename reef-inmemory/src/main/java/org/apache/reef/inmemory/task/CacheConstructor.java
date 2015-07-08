@@ -53,7 +53,7 @@ public final class CacheConstructor implements ExternalConstructor<Cache> {
 
   @Inject
   public CacheConstructor(final MemoryManager memoryManager,
-                          final @Parameter(CacheParameters.NumServerThreads.class) int numThreads) {
+                          @Parameter(CacheParameters.NumServerThreads.class) final int numThreads) {
     this.memoryManager = memoryManager;
     this.numThreads = numThreads;
   }

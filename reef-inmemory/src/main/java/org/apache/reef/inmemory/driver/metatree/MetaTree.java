@@ -37,7 +37,7 @@ public class MetaTree {
   private final DirectoryEntry ROOT;
   private final HashMap<Long, FileMeta> fileIdToFileMeta = new HashMap<>();
 
-  private final EventRecorder RECORD;// TODO: make use of this
+  private final EventRecorder RECORD; // TODO: make use of this
   private final BaseFsClient baseFsClient;
   private final AtomicLong atomicFileId;
   private final FileMetaStatusFactory fileMetaStatusFactory;

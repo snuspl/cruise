@@ -13,5 +13,5 @@ public interface BaseFsBlockInfoFactory<FsMetadata, FsBlockInfo> {
    * @return Base-FS specific block ID information
    * @throws IOException if the FsMetadata cannot be translated to FsBlockInfo
    */
-  public FsBlockInfo newBlockInfo(String filePath, FsMetadata metadata) throws IOException;
+  FsBlockInfo newBlockInfo(String filePath, FsMetadata metadata) throws IOException;
 }

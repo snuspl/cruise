@@ -156,10 +156,17 @@ public final class CLI {
     return confBuilder.build();
   }
 
-  public static void main(String args[])
+  public static void main(String[] args)
           throws TException, IOException, InjectionException {
     final Configuration config = parseCommandLine(args);
     boolean success = runCommand(config);
     LOG.log(Level.INFO, success ? "Run command succeeded" : "Run command failed");
   }
+
+  /**
+   * Empty private constructor to prohibit instantiation of utility class.
+   */
+  private CLI() {
+  }
+
 }

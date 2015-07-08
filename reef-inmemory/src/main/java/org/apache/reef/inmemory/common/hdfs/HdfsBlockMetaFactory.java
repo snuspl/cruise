@@ -1,14 +1,10 @@
 package org.apache.reef.inmemory.common.hdfs;
 
 import org.apache.hadoop.hdfs.protocol.LocatedBlock;
-import org.apache.reef.inmemory.common.BlockId;
 import org.apache.reef.inmemory.common.BlockMetaFactory;
 import org.apache.reef.inmemory.common.entity.BlockMeta;
-import org.apache.reef.inmemory.common.entity.NodeInfo;
 
 import javax.inject.Inject;
-import java.io.IOException;
-import java.util.List;
 
 public final class HdfsBlockMetaFactory implements BlockMetaFactory<LocatedBlock> {
 

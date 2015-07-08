@@ -7,34 +7,34 @@ public interface Event {
   /**
    * Save the current system time as the start time
    */
-  public Event start();
+  Event start();
 
   /**
    * Save the current system time as the stop time
    */
-  public Event stop();
+  Event stop();
 
   /**
    * Get the total duration of the event computed as (stop time - start time), in milliseconds
    * @return Duration in milliseconds
    */
-  public long getDuration();
+  long getDuration();
 
   /**
    * The Group, which is the unit for aggregation
    * @return Group
    */
-  public String getGroup();
+  String getGroup();
 
   /**
    * The Id, which differentiates events within the same aggregation Group
    * @return Id
    */
-  public String getId();
+  String getId();
 
   /**
    * A JSON representation of the Event. Should be used when logging the Event.
    * @return A Json String
    */
-  public String toJsonString();
+  String toJsonString();
 }

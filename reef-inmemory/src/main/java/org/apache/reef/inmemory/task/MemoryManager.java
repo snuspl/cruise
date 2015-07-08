@@ -38,7 +38,7 @@ public final class MemoryManager {
   @Inject
   public MemoryManager(final LRUEvictionManager lru,
                        final CacheStatistics statistics,
-                       final @Parameter(CacheParameters.HeapSlack.class) double slack) {
+                       @Parameter(CacheParameters.HeapSlack.class) final double slack) {
     this.lru = lru;
     this.statistics = statistics;
     this.updates = new CacheUpdates();

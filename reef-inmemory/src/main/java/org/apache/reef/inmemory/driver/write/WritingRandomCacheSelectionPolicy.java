@@ -23,7 +23,9 @@ public class WritingRandomCacheSelectionPolicy implements WritingCacheSelectionP
     final List<NodeInfo> chosenNodes = new ArrayList<>(numReplicas);
     int replicasAdded = 0;
     for (final CacheNode node : nodes) {
-      if (replicasAdded >= numReplicas) break;
+      if (replicasAdded >= numReplicas) {
+        break;
+      }
       chosenNodes.add(new NodeInfo(node.getAddress(), node.getRack()));
       replicasAdded++;
     }

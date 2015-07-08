@@ -45,10 +45,10 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   @Inject
   public SurfCacheServer(final InMemoryCache cache,
-                         final @Parameter(CacheParameters.Port.class) int port,
-                         final @Parameter(CacheParameters.Timeout.class) int timeout,
-                         final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
-                         final @Parameter(CacheParameters.LoadingBufferSize.class) int bufferSize,
+                         @Parameter(CacheParameters.Port.class) final int port,
+                         @Parameter(CacheParameters.Timeout.class) final int timeout,
+                         @Parameter(CacheParameters.NumServerThreads.class) final int numThreads,
+                         @Parameter(CacheParameters.LoadingBufferSize.class) final int bufferSize,
                          final EventRecorder recorder) {
     this.cache = cache;
     this.port = port;
@@ -97,15 +97,17 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     } catch (Exception e) {
       LOG.log(Level.SEVERE, "Exception while serving "+e);
     } finally {
-      if (this.server != null && this.server.isServing())
+      if (this.server != null && this.server.isServing()) {
         this.server.stop();
+      }
     }
   }
 
   @Override
   public void close() throws Exception {
-    if (this.server != null && this.server.isServing())
+    if (this.server != null && this.server.isServing()) {
       this.server.stop();
+    }
   }
 
   @Override

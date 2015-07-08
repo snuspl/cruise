@@ -18,7 +18,7 @@ public interface CacheEntry {
    * @throws BlockLoadingException
    * @throws BlockWritingException
    */
-  public byte[] getData(final int index) throws BlockLoadingException, BlockWritingException;
+  byte[] getData(final int index) throws BlockLoadingException, BlockWritingException;
 
   /**
    * Write data packet into this entry.
@@ -29,30 +29,30 @@ public interface CacheEntry {
    * @throws BlockNotWritableException If this block is not allowed to write data.
    * @throws IOException
    */
-  public long writeData(byte[] data, long offset, boolean isLastPacket) throws BlockNotWritableException, IOException;
+  long writeData(byte[] data, long offset, boolean isLastPacket) throws BlockNotWritableException, IOException;
 
   /**
    * @return BlockId assigned to this CacheEntry.
    */
-  public BlockId getBlockId();
+  BlockId getBlockId();
 
   /**
    * @return {@code true} if this block is pinned.
    */
-  public boolean isPinned();
+  boolean isPinned();
 
   /**
    * @return the size of this block.
    */
-  public long getBlockSize();
+  long getBlockSize();
 
   /**
    * Mark this entry is deleted by user's request, not by eviction.
    */
-  public void markAsDeleted();
+  void markAsDeleted();
 
   /**
    * @return {@code true} if this block is deleted manually.
    */
-  public boolean isDeletedManually();
+  boolean isDeletedManually();
 }

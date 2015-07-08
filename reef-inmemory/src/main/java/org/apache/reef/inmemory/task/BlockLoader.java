@@ -14,27 +14,27 @@ public interface BlockLoader {
    * This method will only be called once per BlockLoader.
    * @throws IOException
    */
-  public void loadBlock() throws IOException;
+  void loadBlock() throws IOException;
 
   /**
    * @return Block Identifier
    */
-  public BlockId getBlockId();
+  BlockId getBlockId();
 
   /**
    * @return Size of the block
    */
-  public long getBlockSize();
+  long getBlockSize();
 
   /**
    * @return Whether block is configured for pinning
    */
-  public boolean isPinned();
+  boolean isPinned();
 
   /**
    * @param index Index of the chunk to get
    * @return Part of the data loaded by BlockLoader
    * @throws BlockLoadingException If the chunk of index has not been loaded yet
    */
-  public byte[] getData(int index) throws BlockLoadingException;
+  byte[] getData(int index) throws BlockLoadingException;
 }

@@ -40,8 +40,8 @@ public final class InMemoryCacheImpl implements InMemoryCache {
                            final CacheAdmissionController cacheAdmissionController,
                            final LRUEvictionManager lru,
                            final EStage<BlockLoader> loadingStage,
-                           final @Parameter(CacheParameters.NumServerThreads.class) int numThreads,
-                           final @Parameter(CacheParameters.LoadingBufferSize.class) int loadingBufferSize,
+                           @Parameter(CacheParameters.NumServerThreads.class) final int numThreads,
+                           @Parameter(CacheParameters.LoadingBufferSize.class) final int loadingBufferSize,
                            final HeartBeatTriggerManager heartBeatTriggerManager,
                            final CacheEntryFactory cacheEntryFactory) {
     this.cache = cache;

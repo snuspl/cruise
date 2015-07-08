@@ -34,7 +34,7 @@ public final class SurfFSOutputStream extends OutputStream {
   private final long blockSize;
   private final String localAddress;
 
-  private byte localBuf[] = new byte[PACKET_SIZE];
+  private byte[] localBuf = new byte[PACKET_SIZE];
   private int localBufWriteCount = 0;
   private WriteableBlockMeta curWritableBlockMeta;
   private long curBlockOffset = 0;
@@ -65,7 +65,7 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   @Override
-  public void write(final byte b[], final int off, final int len) throws IOException {
+  public void write(final byte[] b, final int off, final int len) throws IOException {
     if ((off < 0) || (len < 0) || ((off + len) > b.length)) {
       throw new IndexOutOfBoundsException();
     }

@@ -18,7 +18,7 @@ public interface BaseFsClient {
    * @param blockSize maximum block size
    * @throws IOException if the operation failed in the BaseFs.
    */
-  public OutputStream create(String path, short replication, long blockSize) throws IOException;
+  OutputStream create(String path, short replication, long blockSize) throws IOException;
 
   /**
    * Request BaseFs to create a directory.
@@ -26,7 +26,7 @@ public interface BaseFsClient {
    * @return true if the directory is created successfully.
    * @throws IOException if the operation failed in the BaseFs.
    */
-  public boolean mkdirs(String path) throws IOException;
+  boolean mkdirs(String path) throws IOException;
 
   /**
    * Request BaseFs to delete a file. If the file is a directory,
@@ -35,7 +35,7 @@ public interface BaseFsClient {
    * @return true only if the file was removed from the Base Fs.
    * @throws IOException if the operation failed in the BaseFs.
    */
-  public boolean delete(String path) throws IOException;
+  boolean delete(String path) throws IOException;
 
   /**
    * Request BaseFs to check whether a file exists.
@@ -43,7 +43,7 @@ public interface BaseFsClient {
    * @return true if the file exists.
    * @throws IOException if the operation failed in the BaseFs.
    */
-  public boolean exists(String path) throws IOException;
+  boolean exists(String path) throws IOException;
 
   /**
    * Request BaseFs to rename a file.
@@ -52,7 +52,7 @@ public interface BaseFsClient {
    * @return true if the rename is successful.
    * @throws IOException if the operation failed in the BaseFs.
    */
-  public boolean rename(String src, String dst) throws IOException;
+  boolean rename(String src, String dst) throws IOException;
 
   /**
    * Get the status of file from BaseFs.
@@ -60,7 +60,7 @@ public interface BaseFsClient {
    * @return FileStatus of the path
    * @throws IOException if it failed to get the status from BaseFs or the file is not found.
    */
-  public FileMetaStatus getFileStatus(final String path) throws IOException;
+  FileMetaStatus getFileStatus(final String path) throws IOException;
 
   /**
    * List status of path from BaseFs.
@@ -68,5 +68,5 @@ public interface BaseFsClient {
    * @return list of FileMetaStatus
    * @throws IOException if it failed to get the status from BaseFs or the file is not found.
    */
-  public List<FileMetaStatus> listStatus(final String path) throws IOException;
+  List<FileMetaStatus> listStatus(final String path) throws IOException;
 }

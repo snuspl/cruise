@@ -52,7 +52,7 @@ public final class LogReporterConstructor implements ExternalConstructor<Schedul
   @Inject
   public LogReporterConstructor(
           final MetricRegistry registry,
-          final @Parameter(InstrumentationParameters.InstrumentationLogLevel.class) String logLevel) {
+          @Parameter(InstrumentationParameters.InstrumentationLogLevel.class) final String logLevel) {
 
     Level level;
     try {

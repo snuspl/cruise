@@ -18,25 +18,25 @@ public interface ReplicationPolicy {
    * When retrieving the factor, the Action should first be checked whether the factor should be set to broadcast
    * using isBroadcast(Action)
    */
-  public Action getReplicationAction(String path, FileMeta metadata);
+  Action getReplicationAction(String path, FileMeta metadata);
 
   /**
    * Returns whether the Action prescribes broadcast; if not, the factor should be used.
    */
-  public boolean isBroadcast(Action action);
+  boolean isBroadcast(Action action);
 
   /**
    * Get the currently set rules
    */
-  public Rules getRules();
+  Rules getRules();
 
   /**
    * Set the rules for this replication policy
    */
-  public void setRules(Rules rules);
+  void setRules(Rules rules);
 
   /**
    * Set the rules for this replication policy with a JSON String
   */
-  public void setRules(String rulesString) throws IOException;
+  void setRules(String rulesString) throws IOException;
 }

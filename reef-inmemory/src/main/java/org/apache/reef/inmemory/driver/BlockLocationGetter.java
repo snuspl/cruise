@@ -16,5 +16,5 @@ public interface BlockLocationGetter<FsPath, FsBlockLocations> {
    * @return Block locations of the file.
    * @throws IOException
    */
-  public FsBlockLocations getBlockLocations(FsPath path) throws IOException;
+  FsBlockLocations getBlockLocations(FsPath path) throws IOException;
 }

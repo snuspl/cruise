@@ -24,9 +24,9 @@ public final class GangliaReporterConstructor implements ExternalConstructor<Sch
   @Inject
   public GangliaReporterConstructor(
       final MetricRegistry registry,
-      final @Parameter(GangliaParameters.GangliaHost.class) String host,
-      final @Parameter(GangliaParameters.GangliaPort.class) int port,
-      final @Parameter(GangliaParameters.GangliaPrefix.class) String prefix) {
+      @Parameter(GangliaParameters.GangliaHost.class) final String host,
+      @Parameter(GangliaParameters.GangliaPort.class) final int port,
+      @Parameter(GangliaParameters.GangliaPrefix.class) final String prefix) {
 
     final GMetric ganglia;
     ScheduledReporter gReporter;

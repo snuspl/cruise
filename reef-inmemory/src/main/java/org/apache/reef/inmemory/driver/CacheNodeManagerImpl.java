@@ -49,12 +49,12 @@ public final class CacheNodeManagerImpl implements CacheNodeManager {
 
   @Inject
   public CacheNodeManagerImpl(final EvaluatorRequestor evaluatorRequestor,
-                              final @Parameter(DfsParameters.Type.class) String dfsType,
-                              final @Parameter(CacheParameters.Port.class) int cachePort,
-                              final @Parameter(CacheParameters.Memory.class) int cacheMemory,
-                              final @Parameter(CacheParameters.NumServerThreads.class) int cacheServerThreads,
-                              final @Parameter(CacheParameters.HeapSlack.class) double cacheHeapSlack,
-                              final @Parameter(StageConfiguration.NumberOfThreads.class) int cacheLoadingThreads,
+                              @Parameter(DfsParameters.Type.class) final String dfsType,
+                              @Parameter(CacheParameters.Port.class) final int cachePort,
+                              @Parameter(CacheParameters.Memory.class) final int cacheMemory,
+                              @Parameter(CacheParameters.NumServerThreads.class) final int cacheServerThreads,
+                              @Parameter(CacheParameters.HeapSlack.class) final double cacheHeapSlack,
+                              @Parameter(StageConfiguration.NumberOfThreads.class) final int cacheLoadingThreads,
                               final Instrumentor instrumentor) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.dfsType = dfsType;

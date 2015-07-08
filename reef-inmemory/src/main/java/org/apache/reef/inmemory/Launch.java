@@ -40,8 +40,7 @@ import java.util.logging.Logger;
 /**
  * Launcher for InMemory Application
  */
-public class Launch
-{
+public final class Launch {
   /**
    * Logger Object for System Log.
    */
@@ -287,5 +286,11 @@ public class Launch
     final Configuration fileConfig = parseConfigFile();
     runInMemory(clConfig, fileConfig);
     LOG.log(Level.INFO, "Job Submitted");
+  }
+
+  /**
+   * Empty private constructor to prohibit instantiation of utility class.
+   */
+  private Launch() {
   }
 }
