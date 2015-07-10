@@ -228,7 +228,7 @@ public final class SurfFS extends FileSystem {
   @Override
   public BlockLocation[] getFileBlockLocations(final FileStatus file, final long start, final long len) throws IOException {
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
-      new Object[]{file.getPath(), toAbsolutePathInString(file.getPath())});
+        new Object[]{file.getPath(), toAbsolutePathInString(file.getPath())});
     final List<BlockLocation> blockLocations = new LinkedList<>();
 
     try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {

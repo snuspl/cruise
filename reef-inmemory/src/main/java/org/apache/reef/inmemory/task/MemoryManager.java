@@ -188,38 +188,38 @@ public final class MemoryManager {
     final CacheEntryState originState = getState(blockId);
     final CacheEntryState targetState;
     switch(originState) {
-      case COPY_STARTED:
-        if (pin) {
-          // nothing
-        } else {
-          statistics.subtractCopyingBytes(blockSize);
-          statistics.addCacheBytes(blockSize);
-        }
-        targetState = CacheEntryState.COPY_SUCCEEDED;
-        setState(blockId, targetState);
-        notifyAll();
-        break;
-      case REMOVED_DURING_COPY:
-        if (pin) {
-          statistics.subtractPinnedBytes(blockSize);
-        } else {
-          statistics.subtractCopyingBytes(blockSize);
-        }
+    case COPY_STARTED:
+      if (pin) {
+        // nothing
+      } else {
+        statistics.subtractCopyingBytes(blockSize);
+        statistics.addCacheBytes(blockSize);
+      }
+      targetState = CacheEntryState.COPY_SUCCEEDED;
+      setState(blockId, targetState);
+      notifyAll();
+      break;
+    case REMOVED_DURING_COPY:
+      if (pin) {
+        statistics.subtractPinnedBytes(blockSize);
+      } else {
+        statistics.subtractCopyingBytes(blockSize);
+      }
 
-        if (manuallyDeletedBlocks.contains(blockId)) {
-          lru.remove(blockId);
-          manuallyDeletedBlocks.remove(blockId);
-        } else {
-          lru.evicted(blockSize);
-          statistics.addEvictedBytes(blockSize);
-          updates.addRemoval(blockId);
-        }
-        targetState = CacheEntryState.REMOVED;
-        setState(blockId, targetState);
-        notifyAll();
-        break;
-      default:
-        throw new RuntimeException(blockId+" unexpected state on copySuccess "+getState(blockId));
+      if (manuallyDeletedBlocks.contains(blockId)) {
+        lru.remove(blockId);
+        manuallyDeletedBlocks.remove(blockId);
+      } else {
+        lru.evicted(blockSize);
+        statistics.addEvictedBytes(blockSize);
+        updates.addRemoval(blockId);
+      }
+      targetState = CacheEntryState.REMOVED;
+      setState(blockId, targetState);
+      notifyAll();
+      break;
+    default:
+      throw new RuntimeException(blockId+" unexpected state on copySuccess "+getState(blockId));
     }
 
     LOG.log(Level.INFO, blockId + " statistics after copySuccess: " + statistics);
@@ -238,37 +238,37 @@ public final class MemoryManager {
 
     final CacheEntryState state = getState(blockId);
     switch(state) {
-      case COPY_STARTED:
-        if (pinned) {
-          statistics.subtractPinnedBytes(blockSize);
-        } else {
-          statistics.subtractCopyingBytes(blockSize);
-        }
-        updates.addFailure(blockId, throwable);
-        setState(blockId, CacheEntryState.COPY_FAILED);
-        notifyAll();
-        break;
-      case REMOVED_DURING_COPY:
-        if (pinned) {
-          statistics.subtractPinnedBytes(blockSize);
-        } else {
-          statistics.subtractCopyingBytes(blockSize);
-        }
+    case COPY_STARTED:
+      if (pinned) {
+        statistics.subtractPinnedBytes(blockSize);
+      } else {
+        statistics.subtractCopyingBytes(blockSize);
+      }
+      updates.addFailure(blockId, throwable);
+      setState(blockId, CacheEntryState.COPY_FAILED);
+      notifyAll();
+      break;
+    case REMOVED_DURING_COPY:
+      if (pinned) {
+        statistics.subtractPinnedBytes(blockSize);
+      } else {
+        statistics.subtractCopyingBytes(blockSize);
+      }
 
-        if (manuallyDeletedBlocks.contains(blockId)) {
-          lru.remove(blockId);
-          manuallyDeletedBlocks.remove(blockId);
-        } else {
-          lru.evicted(blockSize);
-          statistics.addEvictedBytes(blockSize);
-        }
+      if (manuallyDeletedBlocks.contains(blockId)) {
+        lru.remove(blockId);
+        manuallyDeletedBlocks.remove(blockId);
+      } else {
+        lru.evicted(blockSize);
+        statistics.addEvictedBytes(blockSize);
+      }
 
-        updates.addFailure(blockId, throwable);
-        setState(blockId, CacheEntryState.REMOVED);
-        notifyAll();
-        break;
-      default:
-        throw new RuntimeException(blockId+" unexpected state on copyFail "+getState(blockId));
+      updates.addFailure(blockId, throwable);
+      setState(blockId, CacheEntryState.REMOVED);
+      notifyAll();
+      break;
+    default:
+      throw new RuntimeException(blockId+" unexpected state on copyFail "+getState(blockId));
     }
 
     LOG.log(Level.INFO, blockId + " statistics after copyFail: " + statistics);
@@ -288,56 +288,56 @@ public final class MemoryManager {
 
     final CacheEntryState state = getState(blockId);
     switch(state) {
-      case INSERTED:
-        if (pinned) {
-          statistics.subtractPinnedBytes(blockSize);
-        }
+    case INSERTED:
+      if (pinned) {
+        statistics.subtractPinnedBytes(blockSize);
+      }
 
-        if (deletedManually) {
-          lru.remove(blockId);
-        } else {
-          lru.evicted(blockSize);
-          statistics.addEvictedBytes(blockSize);
-          updates.addRemoval(blockId);
-        }
-        setState(blockId, CacheEntryState.REMOVED);
-        break;
-      case COPY_STARTED:
-        if (deletedManually) {
-          manuallyDeletedBlocks.add(blockId);
-        }
-        // The statistics are updated once loading is done.
-        setState(blockId, CacheEntryState.REMOVED_DURING_COPY);
-        break;
-      case COPY_FAILED:
-        if (deletedManually) {
-          lru.remove(blockId);
-        } else {
-          lru.evicted(blockSize);
-          statistics.addEvictedBytes(blockSize);
-        }
-        // don't update as removed, already updated as failed
-        setState(blockId, CacheEntryState.REMOVED);
-        break;
-      case COPY_SUCCEEDED:
-        if (pinned) {
-          statistics.subtractPinnedBytes(blockSize);
-        } else {
-          statistics.subtractCacheBytes(blockSize);
-        }
+      if (deletedManually) {
+        lru.remove(blockId);
+      } else {
+        lru.evicted(blockSize);
+        statistics.addEvictedBytes(blockSize);
+        updates.addRemoval(blockId);
+      }
+      setState(blockId, CacheEntryState.REMOVED);
+      break;
+    case COPY_STARTED:
+      if (deletedManually) {
+        manuallyDeletedBlocks.add(blockId);
+      }
+      // The statistics are updated once loading is done.
+      setState(blockId, CacheEntryState.REMOVED_DURING_COPY);
+      break;
+    case COPY_FAILED:
+      if (deletedManually) {
+        lru.remove(blockId);
+      } else {
+        lru.evicted(blockSize);
+        statistics.addEvictedBytes(blockSize);
+      }
+      // don't update as removed, already updated as failed
+      setState(blockId, CacheEntryState.REMOVED);
+      break;
+    case COPY_SUCCEEDED:
+      if (pinned) {
+        statistics.subtractPinnedBytes(blockSize);
+      } else {
+        statistics.subtractCacheBytes(blockSize);
+      }
 
-        if (deletedManually) {
-          lru.remove(blockId);
-        } else {
-          lru.evicted(blockSize);
-          statistics.addEvictedBytes(blockSize);
-          updates.addRemoval(blockId);
-        }
-        setState(blockId, CacheEntryState.REMOVED);
-        notifyAll();
-        break;
-      default:
-        throw new RuntimeException(blockId+" unexpected state on remove: "+state);
+      if (deletedManually) {
+        lru.remove(blockId);
+      } else {
+        lru.evicted(blockSize);
+        statistics.addEvictedBytes(blockSize);
+        updates.addRemoval(blockId);
+      }
+      setState(blockId, CacheEntryState.REMOVED);
+      notifyAll();
+      break;
+    default:
+      throw new RuntimeException(blockId+" unexpected state on remove: "+state);
     }
 
     LOG.log(Level.INFO, blockId + " statistics after remove: " + statistics);

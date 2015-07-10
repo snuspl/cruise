@@ -86,7 +86,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
       final TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.bindPort, this.timeout);
 
       final SurfCacheService.Processor<SurfCacheService.Iface> processor =
-        new SurfCacheService.Processor<SurfCacheService.Iface>(this);
+          new SurfCacheService.Processor<SurfCacheService.Iface>(this);
 
       this.server = new THsHaServer(
         new THsHaServer.Args(serverTransport).processor(processor)

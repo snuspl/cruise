@@ -169,7 +169,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     try {
       final FileMeta meta = metaManager.getFileMeta(path);
       LOG.log(Level.INFO, "Compare the file size of {0} : Expected {1} / Actual {2}",
-        new Object[] {path, fileSize, meta.getFileSize()});
+          new Object[] {path, fileSize, meta.getFileSize()});
       return fileSize == meta.getFileSize();
     } catch (IOException e) {
       throw new FileNotFoundException(e.getMessage());
@@ -271,10 +271,10 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
 
       final TMultiplexedProcessor processor = new TMultiplexedProcessor();
       final SurfMetaService.Processor<SurfMetaService.Iface> metaProcessor =
-        new SurfMetaService.Processor<SurfMetaService.Iface>(this);
+          new SurfMetaService.Processor<SurfMetaService.Iface>(this);
       processor.registerProcessor(SurfMetaService.class.getName(), metaProcessor);
       final SurfManagementService.Processor<SurfManagementService.Iface> managementProcessor =
-        new SurfManagementService.Processor<SurfManagementService.Iface>(this);
+          new SurfManagementService.Processor<SurfManagementService.Iface>(this);
       processor.registerProcessor(SurfManagementService.class.getName(), managementProcessor);
 
       this.server = new THsHaServer(
