@@ -18,7 +18,7 @@ import java.util.logging.Logger;
 
 public final class FallbackFSInputStream extends FSInputStream {
 
-  private static Logger LOG = Logger.getLogger(FallbackFSInputStream.class.getName());
+  private static final Logger LOG = Logger.getLogger(FallbackFSInputStream.class.getName());
 
   // The original input stream is always kept, so it can be closed later
   private final FSInputStream originalIn;

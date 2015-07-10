@@ -56,7 +56,7 @@ public final class SurfFS extends FileSystem {
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
   // These cannot be final, because the empty constructor + initialize() are called externally
-  private EventRecorder RECORD;
+  private EventRecorder record;
   private FileSystem baseFs;
   private String localAddress;
   private String metaServerAddress;
@@ -81,39 +81,39 @@ public final class SurfFS extends FileSystem {
                    final EventRecorder recorder) {
     this.baseFs = baseFs;
     this.metaClientManager = metaClientManager;
-    this.RECORD = recorder;
+    this.record = recorder;
   }
 
   @Override
   public void initialize(final URI uri,
                          final Configuration conf) throws IOException {
-    RECORD = new BasicEventRecorder(
+    record = new BasicEventRecorder(
             conf.get(INSTRUMENTATION_CLIENT_LOG_LEVEL_KEY, INSTRUMENTATION_CLIENT_LOG_LEVEL_DEFAULT));
-    final Event initializeEvent = RECORD.event("client.initialize", uri.toString()).start();
+    final Event initializeEvent = record.event("client.initialize", uri.toString()).start();
 
     super.initialize(uri, conf);
     final String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
     this.uri = uri;
     this.baseFsUri = URI.create(baseFsAddress);
     this.baseFs = new DistributedFileSystem();
-    final Event initializeDfsEvent = RECORD.event("client.initialize.dfs", uri.toString()).start();
+    final Event initializeDfsEvent = record.event("client.initialize.dfs", uri.toString()).start();
     this.baseFs.initialize(this.baseFsUri, conf);
-    RECORD.record(initializeDfsEvent.stop());
+    record.record(initializeDfsEvent.stop());
     this.workingDir = toAbsoluteSurfPath(baseFs.getWorkingDirectory());
     this.setConf(conf);
 
     this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
 
-    final Event resolveAddressEvent = RECORD.event("client.resolve-address", baseFsUri.toString()).start();
+    final Event resolveAddressEvent = record.event("client.resolve-address", baseFsUri.toString()).start();
     this.metaServerAddress = getMetaserverResolver().getAddress();
     LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaServerAddress);
-    RECORD.record(resolveAddressEvent.stop());
+    record.record(resolveAddressEvent.stop());
 
     // TODO: Works on local and cluster. Will it work across all platforms? (NetUtils gives the wrong address.)
     this.localAddress = InetAddress.getLocalHost().getHostName();
 
     LOG.log(Level.INFO, "localAddress: {0}", localAddress);
-    RECORD.record(initializeEvent.stop());
+    record.record(initializeEvent.stop());
   }
 
   @Override
@@ -155,14 +155,14 @@ public final class SurfFS extends FileSystem {
   @Override
   public FSDataInputStream open(final Path path, final int bufferSize) throws IOException {
     final String pathStr = toAbsolutePathInString(path);
-    final Event openEvent = RECORD.event("client.open", pathStr).start();
+    final Event openEvent = record.event("client.open", pathStr).start();
     LOG.log(Level.INFO, "Open called on {0}, using {1}", new Object[]{path, pathStr});
 
     try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
       final FileMeta metadata = metaClientWrapper.getClient().getOrLoadFileMeta(pathStr, localAddress);
       final CacheClientManager cacheClientManager = getCacheClientManager();
       final SurfFSInputStream surfFSInputStream =
-          new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
+          new SurfFSInputStream(metadata, cacheClientManager, getConf(), record);
       if (isFallback) {
         return new FSDataInputStream(new FallbackFSInputStream(surfFSInputStream, path, baseFs));
       } else {
@@ -180,7 +180,7 @@ public final class SurfFS extends FileSystem {
     } catch (Exception e) {
       throw new IOException("Failed to close the Meta Client in open " + path, e);
     } finally {
-      RECORD.record(openEvent.stop());
+      record.record(openEvent.stop());
     }
   }
 
