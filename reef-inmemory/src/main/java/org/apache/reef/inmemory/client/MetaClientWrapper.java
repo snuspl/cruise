@@ -21,7 +21,9 @@ public class MetaClientWrapper implements AutoCloseable {
     final HostAndPort metaAddress = HostAndPort.fromString(address);
     transport = new TFramedTransport(new TSocket(metaAddress.getHostText(), metaAddress.getPort()));
     transport.open();
-    final TProtocol protocol = new TMultiplexedProtocol(new TCompactProtocol(transport), SurfMetaService.class.getName());
+    final TProtocol protocol = new TMultiplexedProtocol(
+        new TCompactProtocol(transport), SurfMetaService.class.getName()
+    );
     this.client = new SurfMetaService.Client(protocol);
   }
 

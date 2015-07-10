@@ -83,7 +83,8 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
    * <p/>
    * Other concurrent requests for the same file will block on this update.
    *
-   * @param fileMeta Updated in place, using a synchronized block. This should be the single point where FileMeta's are updated.
+   * @param fileMeta Updated in place, using a synchronized block.
+   *                 This should be the single point where FileMeta's are updated.
    * TODO: how bad is the deep copy for performance?
    * @return A deep copy of FileMeta, to prevent modifications until FileMeta is passed to the network.
    * @throws IOException
@@ -115,7 +116,8 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
 
       // 2. Get information from HDFS
       assert(blockLocationGetter instanceof HdfsBlockLocationGetter);
-      final List<LocatedBlock> locatedBlocks = ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(path));
+      final List<LocatedBlock> locatedBlocks =
+          ((HdfsBlockLocationGetter) blockLocationGetter).getBlockLocations(new Path(path));
 
       // 3. If the blocks are not resolved in the fileMeta, add them.
       if (fileMeta.getBlocksSize() == 0) {
@@ -233,7 +235,14 @@ public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable
     }
 
     if (removed) {
-      LOG.log(Level.INFO, blockMeta.toString()+" removed "+nodeAddress+", "+blockMeta.getLocationsSize()+" locations remaining.");
+      final StringBuilder sb = new StringBuilder()
+          .append(blockMeta.toString())
+          .append(" removed")
+          .append(nodeAddress)
+          .append(", ")
+          .append(blockMeta.getLocationsSize())
+          .append(" locations remaining");
+      LOG.log(Level.INFO, sb.toString());
       return blockMeta;
     } else {
       LOG.log(Level.INFO, "Did not remove "+nodeAddress);

@@ -251,7 +251,8 @@ public final class SurfFSOutputStream extends OutputStream {
           }
 
           final BlockMeta blockMeta = packet.writeableBlockMeta.getBlockMeta();
-          curCacheClient.writeData(blockMeta.getFileId(), blockMeta.getOffSet(), packet.blockInnerOffset, packet.buf, packet.isLastPacket);
+          curCacheClient.writeData(
+              blockMeta.getFileId(), blockMeta.getOffSet(), packet.blockInnerOffset, packet.buf, packet.isLastPacket);
         } catch (Exception e) {
           throw new RuntimeException(e);
         }

@@ -63,7 +63,8 @@ public class HdfsBlockLoader implements BlockLoader {
                          final EventRecorder recorder) {
     this.blockId = blockId;
     hdfsBlockInfo = blockInfo;
-    block = new ExtendedBlock(blockInfo.getPoolId(), blockInfo.getUniqueId(), blockInfo.getBlockSize(), blockInfo.getGenerationTimestamp());
+    block = new ExtendedBlock(blockInfo.getPoolId(), blockInfo.getUniqueId(),
+        blockInfo.getBlockSize(), blockInfo.getGenerationTimestamp());
     dnInfoList = infoList;
     blockSize = blockInfo.getBlockSize();
     data = new ArrayList<>();
@@ -92,8 +93,9 @@ public class HdfsBlockLoader implements BlockLoader {
     do {
       // Prepare the variables to be used - datanodeInfo, datanode, targetAddress, fileName.
       HdfsDatanodeInfo datanodeInfo = dnInfoIter.next();
-      DatanodeID datanode = new DatanodeID(datanodeInfo.getIpAddr(), datanodeInfo.getHostName(), datanodeInfo.getDatanodeUuid(),
-          datanodeInfo.getXferPort(), datanodeInfo.getInfoPort(), datanodeInfo.getInfoSecurePort(), datanodeInfo.getIpcPort());
+      DatanodeID datanode = new DatanodeID(datanodeInfo.getIpAddr(), datanodeInfo.getHostName(),
+          datanodeInfo.getDatanodeUuid(), datanodeInfo.getXferPort(), datanodeInfo.getInfoPort(),
+          datanodeInfo.getInfoSecurePort(), datanodeInfo.getIpcPort());
       InetSocketAddress targetAddress = NetUtils.createSocketAddr(datanode.getXferAddr());
       String fileName = targetAddress.toString() + ":" + block.getBlockId();
 
@@ -193,13 +195,15 @@ public class HdfsBlockLoader implements BlockLoader {
    * @return Token Identifier used to load the block
    * @throws TokenDecodeFailedException When failed to decode the token
    */
-  private Token<BlockTokenIdentifier> decodeBlockToken(HdfsBlockInfo hdfsBlockInfo, DatanodeID datanode) throws TokenDecodeFailedException {
+  private Token<BlockTokenIdentifier> decodeBlockToken(HdfsBlockInfo hdfsBlockInfo, DatanodeID datanode)
+      throws TokenDecodeFailedException {
     Token<BlockTokenIdentifier> blockToken;
     blockToken = new Token<>();
     try {
       blockToken.decodeFromUrlString(hdfsBlockInfo.getEncodedToken());
     } catch (IOException e) {
-      LOG.log(Level.WARNING, "Token decode error while loading block {0} from datanode at {1}. Retry with next datanode",
+      LOG.log(Level.WARNING,
+          "Token decode error while loading block {0} from datanode at {1}. Retry with next datanode",
           new String[]{Long.toString(hdfsBlockInfo.getUniqueId()), datanode.getXferAddr()});
       throw new TokenDecodeFailedException(e);
     }
@@ -216,8 +220,9 @@ public class HdfsBlockLoader implements BlockLoader {
    * @return BlockReader object to read data
    * @throws ConnectionFailedException When failed to to connect to Datanode
    */
-  private BlockReader getBlockReader(final Configuration conf, String fileName, Token<BlockTokenIdentifier> blockToken,
-                                     Socket socket, DatanodeID datanode) throws ConnectionFailedException {
+  private BlockReader getBlockReader(final Configuration conf, String fileName,
+                                     Token<BlockTokenIdentifier> blockToken, Socket socket, DatanodeID datanode)
+      throws ConnectionFailedException {
     /*
      * As BlockReaderFactory is changed to use setX style rather than using Constructor,
      * creating BlockReader has been more complex. RemotePeerFactory is responsible to connect
@@ -275,7 +280,8 @@ public class HdfsBlockLoader implements BlockLoader {
     try {
       return blockReader.readAll(buf, 0, buf.length);
     } catch (IOException e) {
-      LOG.log(Level.WARNING, "Data transfer error while loading block {0} from datanode at {1}. Retry with next datanode",
+      LOG.log(Level.WARNING,
+          "Data transfer error while loading block {0} from datanode at {1}. Retry with next datanode",
           new String[]{Long.toString(hdfsBlockInfo.getUniqueId()), datanode.getXferAddr()});
       throw new TransferFailedException(e);
     }

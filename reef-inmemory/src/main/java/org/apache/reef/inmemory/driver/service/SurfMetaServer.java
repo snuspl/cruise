@@ -34,7 +34,8 @@ import java.util.logging.Logger;
  * Implements thrift server operations, for both FileSystem client and task management CLI.
  * @see org.apache.reef.inmemory.client.cli.CLI
  */
-public final class SurfMetaServer implements SurfMetaService.Iface, SurfManagementService.Iface, Runnable, AutoCloseable {
+public final class SurfMetaServer implements SurfMetaService.Iface, SurfManagementService.Iface,
+    Runnable, AutoCloseable {
 
   private static final Logger LOG = Logger.getLogger(SurfMetaServer.class.getName());
 
@@ -76,7 +77,8 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
    * Return the fileMeta from MetaTree, loading it from HDFS if not exists.
    */
   @Override
-  public FileMeta getOrLoadFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {
+  public FileMeta getOrLoadFileMeta(final String path, final String clientHostname)
+      throws FileNotFoundException, TException {
     try {
       final FileMeta fileMeta = metaManager.getOrLoadFileMeta(path);
       return locationSorter.sortMeta(fileMeta, clientHostname);

@@ -152,7 +152,8 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   // TODO: replace this synchronous call with an asynchronous protocol for better performance
   @Override
-  public void writeData(final long fileId, final long blockOffset, final long innerOffset, final ByteBuffer buf, final boolean isLastPacket) throws TException {
+  public void writeData(final long fileId, final long blockOffset, final long innerOffset, final ByteBuffer buf,
+                        final boolean isLastPacket) throws TException {
     final BlockId blockId = new BlockId(fileId, blockOffset);
     try {
       cache.write(blockId, innerOffset, buf, isLastPacket);

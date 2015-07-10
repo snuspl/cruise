@@ -83,7 +83,8 @@ public final class MemoryManager {
    * Will wait for memory to free up if too much memory is being used for pin + copy.
    * Updates statistics.
    */
-  public synchronized List<BlockId> copyStart(final BlockId blockId, final long blockSize, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
+  public synchronized List<BlockId> copyStart(final BlockId blockId, final long blockSize, final boolean pin)
+      throws BlockNotFoundException, MemoryLimitException {
     LOG.log(Level.INFO, blockId+" statistics before copyStart: "+statistics);
 
     boolean canCopy = false;
@@ -141,7 +142,8 @@ public final class MemoryManager {
   /**
    * Call when copyStart failure.
    */
-  public synchronized void copyStartFail(final BlockId blockId, final long blockSize, final boolean pin, final Exception exception) {
+  public synchronized void copyStartFail(final BlockId blockId, final long blockSize, final boolean pin,
+                                         final Exception exception) {
     LOG.log(Level.INFO, blockId+" statistics before copyStartFail: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");
@@ -230,7 +232,8 @@ public final class MemoryManager {
    * Notifies threads waiting for memory to free up.
    * Updates statistics.
    */
-  public synchronized void copyFail(final BlockId blockId, final long blockSize, final boolean pinned, final Throwable throwable) {
+  public synchronized void copyFail(final BlockId blockId, final long blockSize, final boolean pinned,
+                                    final Throwable throwable) {
     LOG.log(Level.INFO, blockId+" statistics before copyFail: "+statistics);
     if (statistics.getCacheBytes() < 0) {
       throw new RuntimeException(blockId+" cached is less than zero");

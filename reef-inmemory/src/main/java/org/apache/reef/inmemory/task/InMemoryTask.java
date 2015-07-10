@@ -69,7 +69,8 @@ public class InMemoryTask implements Task, TaskMessageSource {
 
   @Override
   public Optional<TaskMessage> getMessage() {
-    final CacheStatusMessage message = new CacheStatusMessage(cache.getStatistics(), cache.pullUpdates(), dataServer.getBindPort());
+    final CacheStatusMessage message = new CacheStatusMessage(cache.getStatistics(),
+        cache.pullUpdates(), dataServer.getBindPort());
     return Optional.of(TaskMessage.from(this.toString(),
       STATUS_CODEC.encode(message)));
   }

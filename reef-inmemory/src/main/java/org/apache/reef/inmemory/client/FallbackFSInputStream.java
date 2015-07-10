@@ -114,7 +114,8 @@ public final class FallbackFSInputStream extends FSInputStream {
   /*** Override methods directly inherited from FSInputStream. ***/
 
   @Override
-  public synchronized int read(final long position, final byte[] buffer, final int offset, final int length) throws IOException {
+  public synchronized int read(final long position, final byte[] buffer, final int offset, final int length)
+      throws IOException {
     int numRead;
     try {
       numRead = in.read(position, buffer, offset, length);
@@ -129,7 +130,8 @@ public final class FallbackFSInputStream extends FSInputStream {
   }
 
   @Override
-  public void readFully(final long position, final byte[] buffer, final int offset, final int length) throws IOException {
+  public void readFully(final long position, final byte[] buffer, final int offset, final int length)
+      throws IOException {
     try {
       in.readFully(position, buffer, offset, length);
     } catch (final IOException e) {

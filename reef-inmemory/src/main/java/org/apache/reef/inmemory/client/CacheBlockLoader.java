@@ -78,10 +78,12 @@ public final class CacheBlockLoader {
    * @param position Get data from this position within the block
    * @param length Length of data to get. At most length bytes will be returned.
    * @param sequentialRead Whether this request is part of a sequential read. If so, local caching will be used.
-   * @return A ByteBuffer, to be read from position to limit. The number of bytes will be at most as the length parameter.
+   * @return A ByteBuffer, to be read from position to limit.
+   *        The number of bytes will be at most as the length parameter.
    * @throws IOException
    */
-  public synchronized ByteBuffer getData(final int position, final int length, final boolean sequentialRead) throws IOException {
+  public synchronized ByteBuffer getData(final int position, final int length, final boolean sequentialRead)
+      throws IOException {
     final int chunkPosition = position % cacheManager.getBufferSize();
     final int chunkStartPosition = position - chunkPosition;
 

@@ -33,7 +33,8 @@ import java.util.logging.Logger;
 public class MetaTree {
   private static final Logger LOG = Logger.getLogger(MetaTree.class.getName());
 
-  private final ReentrantReadWriteLock LOCK = new ReentrantReadWriteLock(true); // TODO: replace this with a more fine-grained LOCK
+  private final ReentrantReadWriteLock LOCK =
+      new ReentrantReadWriteLock(true); // TODO: replace this with a more fine-grained LOCK
   private final DirectoryEntry ROOT;
   private final HashMap<Long, FileMeta> fileIdToFileMeta = new HashMap<>();
 
@@ -331,7 +332,8 @@ public class MetaTree {
   /**
    * Add newly written blocks reported by CacheNodes.
    */
-  public void addNewWrittenBlockToFileMetaInTree(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
+  public void addNewWrittenBlockToFileMetaInTree(final BlockId blockId, final long nWritten,
+                                                 final CacheNode cacheNode) {
     final FileMeta fileMeta;
     LOCK.readLock().lock();
     try {
@@ -341,8 +343,11 @@ public class MetaTree {
     }
 
     if (fileMeta != null) {
-      final List<NodeInfo> nodeList = Arrays.asList(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
-      final BlockMeta blockMeta = new BlockMeta(blockId.getFileId(), blockId.getOffset(), fileMeta.getBlockSize(), nodeList); // TODO: check replication when we implement replicated write
+      final List<NodeInfo> nodeList =
+          Arrays.asList(new NodeInfo(cacheNode.getAddress(), cacheNode.getRack()));
+      final BlockMeta blockMeta =
+          new BlockMeta(blockId.getFileId(), blockId.getOffset(), fileMeta.getBlockSize(), nodeList);
+          // TODO: check replication when we implement replicated write
       synchronized (fileMeta) {
         fileMeta.setFileSize(fileMeta.getFileSize() + nWritten);
         fileMeta.addToBlocks(blockMeta);
@@ -406,7 +411,8 @@ public class MetaTree {
       if (entry.isDirectory()) {
         return (DirectoryEntry)entry;
       } else {
-        throw new IOException("Attempt to create a directory for a path for which a file already exists"); // TODO: replace this with a Surf-specific Thrift exception
+        throw new IOException("Attempt to create a directory for a path for which a file already exists");
+        // TODO: replace this with a Surf-specific Thrift exception
       }
     } else {
       return createDirectoryRecursively(path);
@@ -418,7 +424,8 @@ public class MetaTree {
    * Second, create a directory in the tree.
    */
   private DirectoryEntry createDirectoryRecursively(final String path) throws IOException {
-    final boolean baseSuccess = baseFsClient.mkdirs(path); // TODO: this can become a bottleneck as the caller of createDirectoryRecursively() holds onto writeLock
+    final boolean baseSuccess = baseFsClient.mkdirs(path);
+    // TODO: this can become a bottleneck as the caller of createDirectoryRecursively() holds onto writeLock
     if (baseSuccess) {
       final String[] entryNames = StringUtils.split(path, '/');
       DirectoryEntry curDirectory = ROOT;
@@ -428,11 +435,13 @@ public class MetaTree {
         for (final Entry child : curDirectory.getChildren()) {
           if (child.getName().equals(entryNames[indexForExisting])) {
             if (child.isDirectory()) {
-              curDirectory = (DirectoryEntry) child; // we assume that such directory exists in baseFS (only first-time consistency guarantee)
+              curDirectory = (DirectoryEntry) child;
+              // we assume that such directory exists in baseFS (only first-time consistency guarantee)
               childDirectoryFound = true;
               break;
             } else {
-              throw new IOException("There is a file with the same name as a subdirectory of the path"); // TODO: replace this with a Surf-specific Thrift exception
+              throw new IOException("There is a file with the same name as a subdirectory of the path");
+              // TODO: replace this with a Surf-specific Thrift exception
             }
           }
         }

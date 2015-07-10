@@ -21,7 +21,8 @@ public final class InstrumentationConfiguration extends ConfigurationModuleBuild
    * Scheduled reporters give periodic aggregate metrics to a sink, e.g., Ganglia, for cluster-wide visibility.
    * Note these are aggregates, done in addition to logging each event individually.
    */
-  public static final RequiredParameter<ExternalConstructor<ScheduledReporter>> REPORTER_CONSTRUCTORS = new RequiredParameter<>();
+  public static final RequiredParameter<ExternalConstructor<ScheduledReporter>> REPORTER_CONSTRUCTORS =
+      new RequiredParameter<>();
 
   /**
    * The period for reporting aggregate metrics.

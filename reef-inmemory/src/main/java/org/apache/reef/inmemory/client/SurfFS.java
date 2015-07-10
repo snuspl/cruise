@@ -161,7 +161,8 @@ public final class SurfFS extends FileSystem {
     try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
       final FileMeta metadata = metaClientWrapper.getClient().getOrLoadFileMeta(pathStr, localAddress);
       final CacheClientManager cacheClientManager = getCacheClientManager();
-      final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
+      final SurfFSInputStream surfFSInputStream =
+          new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
       if (isFallback) {
         return new FSDataInputStream(new FallbackFSInputStream(surfFSInputStream, path, baseFs));
       } else {
@@ -226,13 +227,16 @@ public final class SurfFS extends FileSystem {
    * @throws IOException
    */
   @Override
-  public BlockLocation[] getFileBlockLocations(final FileStatus file, final long start, final long len) throws IOException {
+  public BlockLocation[] getFileBlockLocations(final FileStatus file, final long start, final long len)
+      throws IOException {
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
         new Object[]{file.getPath(), toAbsolutePathInString(file.getPath())});
     final List<BlockLocation> blockLocations = new LinkedList<>();
 
     try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
-      final FileMeta metadata = metaClientWrapper.getClient().getOrLoadFileMeta(toAbsolutePathInString(file.getPath()), localAddress);
+      final FileMeta metadata = metaClientWrapper
+          .getClient()
+          .getOrLoadFileMeta(toAbsolutePathInString(file.getPath()), localAddress);
       long startRemaining = start;
       final Iterator<BlockMeta> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
@@ -309,8 +313,10 @@ public final class SurfFS extends FileSystem {
   }
 
   @Override
-  public FSDataOutputStream create(final Path path, final FsPermission permission, final boolean overwrite, final int bufferSize,
-                                   final short baseFsReplication, final long blockSize, final Progressable progress) throws IOException {
+  public FSDataOutputStream create(final Path path, final FsPermission permission, final boolean overwrite,
+                                   final int bufferSize, final short baseFsReplication, final long blockSize,
+                                   final Progressable progress)
+      throws IOException {
     // TODO: handle permission, overwrite, bufferSize, progress
     final String pathStr = toAbsolutePathInString(path);
     try {
@@ -318,7 +324,9 @@ public final class SurfFS extends FileSystem {
       final MetaClientWrapper metaClientWrapper = getMetaClientWrapper();
       final CacheClientManager cacheClientManager = getCacheClientManager();
       metaClientWrapper.getClient().create(pathStr, blockSize, baseFsReplication);
-      return new FSDataOutputStream(new SurfFSOutputStream(pathStr, metaClientWrapper, cacheClientManager, blockSize), new Statistics("surf"));
+      return new FSDataOutputStream(
+          new SurfFSOutputStream(pathStr, metaClientWrapper, cacheClientManager, blockSize), new Statistics("surf")
+      );
     } catch (TException e) {
       throw new IOException("Failed to create " + path, e);
     }
