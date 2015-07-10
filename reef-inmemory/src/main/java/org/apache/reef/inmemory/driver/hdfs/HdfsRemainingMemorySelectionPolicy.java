@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.logging.Logger;
 
 /**
- * Selects the CacheNodes with the most memory remaining
+ * Selects the CacheNodes with the most memory remaining.
  */
 public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelectionPolicy {
 
@@ -93,7 +93,7 @@ public final class HdfsRemainingMemorySelectionPolicy implements HdfsCacheSelect
     }
 
     /**
-     * Sort memory remaining in descending order
+     * Sort memory remaining in descending order.
      */
     @Override
     public int compareTo(RemainingMemory that) {

@@ -89,7 +89,7 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   /**
-   * Blocks until localBuf and packetQueue are emptied
+   * Blocks until localBuf and packetQueue are emptied.
    */
   @Override
   public void flush() throws IOException {
@@ -97,7 +97,7 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   /**
-   * After flush(), notify SurfMetaServer of file completion
+   * After flush(), notify SurfMetaServer of file completion.
    */
   @Override
   public void close() throws IOException {

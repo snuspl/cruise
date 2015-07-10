@@ -63,7 +63,7 @@ public final class FallbackFSInputStream extends FSInputStream {
     }
   }
 
-  /*** Override abstract methods ***/
+  /*** Override abstract methods. ***/
 
   @Override
   public synchronized void seek(final long pos) throws IOException {
@@ -111,7 +111,7 @@ public final class FallbackFSInputStream extends FSInputStream {
     return numRead;
   }
 
-  /*** Override methods directly inherited from FSInputStream ***/
+  /*** Override methods directly inherited from FSInputStream. ***/
 
   @Override
   public synchronized int read(final long position, final byte[] buffer, final int offset, final int length) throws IOException {
@@ -148,7 +148,7 @@ public final class FallbackFSInputStream extends FSInputStream {
     }
   }
 
-  /*** Override methods inherited from InputStream ***/
+  /*** Override methods inherited from InputStream. ***/
 
   @Override
   public synchronized int read(final byte[] b) throws IOException {
@@ -217,7 +217,7 @@ public final class FallbackFSInputStream extends FSInputStream {
     }
   }
 
-  /*** Mark/Reset is not supported by FallbackFSInputStream ***/
+  /*** Mark/Reset is not supported by FallbackFSInputStream. ***/
 
   @Override
   public synchronized void mark(final int readlimit) {

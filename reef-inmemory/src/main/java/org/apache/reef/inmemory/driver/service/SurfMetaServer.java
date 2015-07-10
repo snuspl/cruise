@@ -73,7 +73,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   }
 
   /**
-   * Return the fileMeta from MetaTree, loading it from HDFS if not exists
+   * Return the fileMeta from MetaTree, loading it from HDFS if not exists.
    */
   @Override
   public FileMeta getOrLoadFileMeta(final String path, final String clientHostname) throws FileNotFoundException, TException {

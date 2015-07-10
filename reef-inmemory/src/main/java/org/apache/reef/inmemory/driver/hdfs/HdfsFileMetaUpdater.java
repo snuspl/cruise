@@ -26,7 +26,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * 'Updates' a FileMeta in Surf by loading data from HDFS into Surf
+ * 'Updates' a FileMeta in Surf by loading data from HDFS into Surf.
  */
 public final class HdfsFileMetaUpdater implements FileMetaUpdater, AutoCloseable {
 

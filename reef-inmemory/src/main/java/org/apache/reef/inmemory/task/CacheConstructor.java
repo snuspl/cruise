@@ -36,7 +36,7 @@ public final class CacheConstructor implements ExternalConstructor<Cache> {
   private final int numThreads;
 
   /**
-   * Update statistics on cache removal
+   * Update statistics on cache removal.
    */
   private final RemovalListener<BlockId, CacheEntry> removalListener = new RemovalListener<BlockId, CacheEntry>() {
     @Override

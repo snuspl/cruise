@@ -56,7 +56,7 @@ public class MetaTree {
   //////// Read-Lock Methods: Operations that only query the tree
 
   /**
-   * Get the filemeta for the exact path (no directory allowed)
+   * Get the filemeta for the exact path (no directory allowed).
    *
    * @param path to the file
    * @return the FileMeta of the path in tree
@@ -97,7 +97,7 @@ public class MetaTree {
   }
 
   /**
-   * List FileMetaStatus at path
+   * List FileMetaStatus at path.
    * All same entries from BaseFS are overriden by those in Surf
    *
    * @param path to a directory or a file
@@ -158,7 +158,7 @@ public class MetaTree {
   //////// Write-Lock Methods: Operations that update the tree
 
   /**
-   * Get FileMeta from the tree or load it from Base if not exists
+   * Get FileMeta from the tree or load it from Base if not exists.
    */
   public FileMeta getOrLoadFileMeta(final String path) throws IOException {
     LOCK.readLock().lock();
@@ -200,8 +200,8 @@ public class MetaTree {
   }
 
   /**
-   * First, create a file in HDFS
-   * Second, create a file in the tree
+   * First, create a file in HDFS.
+   * Second, create a file in the tree.
    */
   public void createFile(final String path, final long blockSize, final short baseFsReplication) throws IOException {
     // To allow cache servers write data to the BaseFs, Surf closes the OutputStream right after the file is created.
@@ -224,7 +224,7 @@ public class MetaTree {
   }
 
   /**
-   * First, create a directory in HDFS
+   * First, create a directory in HDFS.
    * Second, create a directory in the tree
    */
   public boolean mkdirs(final String path) throws IOException {
@@ -238,7 +238,7 @@ public class MetaTree {
   }
 
   /**
-   * First, rename in HDFS
+   * First, rename in HDFS.
    * Second, rename in the tree
    */
   public boolean rename(final String src, final String dst) throws IOException {
@@ -282,8 +282,8 @@ public class MetaTree {
   }
 
   /**
-   * First, delete in HDFS
-   * Second, delete in the tree
+   * First, delete in HDFS.
+   * Second, delete in the tree.
    */
   public boolean remove(final String path, final boolean recursive) throws IOException {
     final boolean baseFsSuccess = baseFsClient.delete(path);
@@ -329,7 +329,7 @@ public class MetaTree {
   }
 
   /**
-   * Add newly written blocks reported by CacheNodes
+   * Add newly written blocks reported by CacheNodes.
    */
   public void addNewWrittenBlockToFileMetaInTree(final BlockId blockId, final long nWritten, final CacheNode cacheNode) {
     final FileMeta fileMeta;
@@ -414,8 +414,8 @@ public class MetaTree {
   }
 
   /**
-   * First, create a directory in HDFS
-   * Second, create a directory in the tree
+   * First, create a directory in HDFS.
+   * Second, create a directory in the tree.
    */
   private DirectoryEntry createDirectoryRecursively(final String path) throws IOException {
     final boolean baseSuccess = baseFsClient.mkdirs(path); // TODO: this can become a bottleneck as the caller of createDirectoryRecursively() holds onto writeLock
@@ -464,7 +464,7 @@ public class MetaTree {
   }
 
   /**
-   * For Debugging: getTreeString(ROOT)
+   * For Debugging: getTreeString(ROOT).
    */
   private String getTreeString(final Entry entry) {
     final StringBuilder stringBuilder = new StringBuilder();

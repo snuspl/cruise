@@ -26,17 +26,17 @@ public interface ReplicationPolicy {
   boolean isBroadcast(Action action);
 
   /**
-   * Get the currently set rules
+   * Get the currently set rules.
    */
   Rules getRules();
 
   /**
-   * Set the rules for this replication policy
+   * Set the rules for this replication policy.
    */
   void setRules(Rules rules);
 
   /**
-   * Set the rules for this replication policy with a JSON String
+   * Set the rules for this replication policy with a JSON String.
   */
   void setRules(String rulesString) throws IOException;
 }

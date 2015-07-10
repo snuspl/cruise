@@ -29,7 +29,7 @@ public interface InMemoryCache {
           throws BlockLoadingException, BlockNotFoundException, BlockWritingException;
 
   /**
-   * Write the data into the block specified by blockId
+   * Write the data into the block specified by blockId.
    * @param blockId Block identifier to write
    * @param offset Offset from the start of Block
    * @param data Data to write
@@ -62,12 +62,12 @@ public interface InMemoryCache {
   int getLoadingBufferSize();
 
   /**
-   * Clears the cache
+   * Clears the cache.
    */
   void clear();
 
   /**
-   * Retrieve information about the cache status
+   * Retrieve information about the cache status.
    * @return The status of Cache
    */
   CacheStatistics getStatistics();
@@ -79,7 +79,7 @@ public interface InMemoryCache {
   CacheUpdates pullUpdates();
 
   /**
-   * Remove blocks from the cache
+   * Remove blocks from the cache.
    * @param blockId Block id to delete
    */
   void delete(BlockId blockId);

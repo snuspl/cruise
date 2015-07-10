@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Implements HDFS-specific messaging
+ * Implements HDFS-specific messaging.
  */
 public final class HdfsCacheNodeMessenger implements CacheNodeMessenger<HdfsBlockMessage> {
 

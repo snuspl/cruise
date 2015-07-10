@@ -111,7 +111,7 @@ public final class SurfMetaManager {
   }
 
   /**
-   * Clear all cached FileMetas
+   * Clear all cached FileMetas.
    * @return number of FileMetas cleared
    */
   public long clear() {

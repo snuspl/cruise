@@ -4,7 +4,7 @@ import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.inmemory.common.CacheStatistics;
 
 /**
- * Encapsulates task node information
+ * Encapsulates task node information.
  */
 public class CacheNode {
   private final RunningTask task;
@@ -44,7 +44,7 @@ public class CacheNode {
   }
 
   /**
-   * Gets the Cache server's address
+   * Gets the Cache server's address.
    * This will return the node's address as defined by Wake, based on its network interfaces,
    * so it can be contacted remotely. This means that you will not see localhost/127.0.0.1
    * as the hostname even on local deployments.
@@ -77,21 +77,21 @@ public class CacheNode {
   }
 
   /**
-   * Return description of a (potential) reason that caused the Cache to stop (e.g. OutOfMemoryError)
+   * Return description of a (potential) reason that caused the Cache to stop. (e.g. OutOfMemoryError)
    */
   public String getStopCause() {
     return stopCause;
   }
 
   /**
-   * Set description of a (potential) reason that caused the Cache to stop (e.g. OutOfMemoryError)
+   * Set description of a (potential) reason that caused the Cache to stop. (e.g. OutOfMemoryError)
    */
   public void setStopCause(final String stopCause) {
     this.stopCause = stopCause;
   }
 
   /**
-   * Return the memory size of the allocated container
+   * Return the memory size of the allocated container.
    */
   public int getMemory() {
     return memory;

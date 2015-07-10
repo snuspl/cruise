@@ -20,7 +20,7 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
   private static final Logger LOG = Logger.getLogger(LoadProgressManagerImpl.class.getName());
 
   /**
-   * The epsilon below which a cache is considered to not make progress (in bytes per second)
+   * The epsilon below which a cache is considered to not make progress (in bytes per second).
    */
   public static final String LOAD_NO_PROGRESS_KEY = "surf.load.progress.no.bps";
   public static final long LOAD_NO_PROGRESS_DEFAULT = 1024;
@@ -33,19 +33,19 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
   public static final long LOAD_OK_PROGRESS_DEFAULT = 10 * 1024 * 1024;
 
   /**
-   * When no progress is made this number of times, the cache is no longer considered
+   * When no progress is made this number of times, the cache is no longer considered.
    */
   public static final String LOAD_MAX_NO_PROGRESS_KEY = "surf.load.progress.no.max";
   public static final int LOAD_MAX_NO_PROGRESS_DEFAULT = 2;
 
   /**
-   * When file is not found this number of times, the cache is no longer considered
+   * When file is not found this number of times, the cache is no longer considered.
    */
   public static final String LOAD_MAX_NOT_FOUND_KEY = "surf.load.notfound.max";
   public static final int LOAD_MAX_NOT_FOUND_DEFAULT = 2;
 
   /**
-   * When connection fails this number of times, the cache is no longer considered
+   * When connection fails this number of times, the cache is no longer considered.
    */
   public static final String LOAD_MAX_NOT_CONNECTED_KEY = "surf.load.notconnected.max";
   public static final int LOAD_MAX_NOT_CONNECTED_DEFAULT = 1;
@@ -150,7 +150,7 @@ public final class LoadProgressManagerImpl implements LoadProgressManager {
   }
 
   /**
-   * Keep track of number of tries and bytes loaded at the previous measured time
+   * Keep track of number of tries and bytes loaded at the previous measured time.
    */
   private static final class Progress {
     private long time;

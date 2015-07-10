@@ -6,7 +6,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Basic event recorder that logs events
+ * Basic event recorder that logs events.
  */
 public final class BasicEventRecorder implements EventRecorder {
   private static final Logger LOG = Logger.getLogger(BasicEventRecorder.class.getName());

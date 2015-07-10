@@ -30,7 +30,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * This class loads one block from DataNode
+ * This class loads one block from DataNode.
  */
 public class HdfsBlockLoader implements BlockLoader {
   private static final Logger LOG = Logger.getLogger(HdfsBlockLoader.class.getName());
@@ -53,7 +53,7 @@ public class HdfsBlockLoader implements BlockLoader {
   private int totalRead;
 
   /**
-   * Constructor of BlockLoader
+   * Constructor of BlockLoader.
    */
   public HdfsBlockLoader(final BlockId blockId,
                          final HdfsBlockInfo blockInfo,
@@ -145,7 +145,7 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * Return the block id which is assigned to this Loader
+   * Return the block id which is assigned to this Loader.
    * @return The Id of block
    */
   public BlockId getBlockId() {
@@ -153,7 +153,7 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * Return the size of block that is assigned to this loader
+   * Return the size of block that is assigned to this loader.
    * @return Size of the block
    */
   @Override
@@ -162,7 +162,7 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * Connect to Datanode
+   * Connect to Datanode.
    * @param conf Hadoop Configuration
    * @param targetAddress Socket address to connect to Datanode
    * @param datanode Datanode to connect to
@@ -207,7 +207,7 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * Retrieve a BlockReader (included in hadoop.hdfs package)
+   * Retrieve a BlockReader (included in hadoop.hdfs package).
    * @param conf Hadoop Configuration
    * @param fileName Filename which the block belongs to
    * @param blockToken Token Identifier used to load the block
@@ -265,7 +265,7 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * Read a chunk of block from Datanode
+   * Read a chunk of block from Datanode.
    * @param blockReader BlockReader to load the data (from hadoop package)
    * @param buf Byte buffer to load bytes
    * @param datanode Datanode to load the data from
@@ -304,7 +304,7 @@ public class HdfsBlockLoader implements BlockLoader {
   }
 
   /**
-   * Get data split from cache with an offset of {@code index * bufferSize}
+   * Get data split from cache with an offset of {@code index * bufferSize}.
    * @param index Index of the chunk to load
    * @return Cached byte array
    * @throws BlockLoadingException

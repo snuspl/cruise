@@ -8,7 +8,7 @@ import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.RequiredParameter;
 
 /**
- * A configuration module for setting up instrumentation
+ * A configuration module for setting up instrumentation.
  */
 public final class InstrumentationConfiguration extends ConfigurationModuleBuilder {
 

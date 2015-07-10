@@ -21,7 +21,7 @@ package org.apache.reef.inmemory.common.instrumentation;
  */
 public interface EventRecorder {
   /**
-   * Create an Event with the given Group and Id
+   * Create an Event with the given Group and Id.
    * @param group The Group, which is the unit for aggregation
    * @param id The Id, which differentiates events within the same aggregation Name
    * @return The created event

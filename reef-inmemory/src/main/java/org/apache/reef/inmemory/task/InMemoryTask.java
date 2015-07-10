@@ -75,7 +75,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
   }
 
   /**
-   * Starts the thread for fulfilling data requests from clients
+   * Starts the thread for fulfilling data requests from clients.
    */
   public final class StartHandler implements EventHandler<TaskStart> {
     @Override
@@ -95,7 +95,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
   }
 
   /**
-   * Delegates to the DriverMessageHandler for the Base FS
+   * Delegates to the DriverMessageHandler for the Base FS.
    */
   public final class DelegatingDriverMessageHandler implements EventHandler<DriverMessage> {
     @Override

@@ -38,7 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Launcher for InMemory Application
+ * Launcher for InMemory Application.
  */
 public final class Launch {
   /**
@@ -47,7 +47,7 @@ public final class Launch {
   private static final Logger LOG = Logger.getLogger(Launch.class.getName());
 
   /**
-   * The file is located at "./conf/config.json" as a JSON format
+   * The file is located at "./conf/config.json" as a JSON format.
    */
   private static final String CONFIG_FILE = "conf/config.json";
 
@@ -74,7 +74,7 @@ public final class Launch {
   }
 
   /**
-   * Parse the configuration file
+   * Parse the configuration file.
    * @return Configuration described in config file
    * @throws IOException If failed to parse the config file
    */
@@ -117,7 +117,7 @@ public final class Launch {
   }
 
   /**
-   * Choose which configuration to use for each Parameter
+   * Choose which configuration to use for each Parameter.
    * The arguments given from the command line overwrites the one from configuration file
    * @param clazz The Parameter class to set the value
    * @param clConfigInjector The injector of Command line configuration
@@ -130,7 +130,7 @@ public final class Launch {
   }
 
   /**
-   * Build Driver Configuration
+   * Build Driver Configuration.
    */
   private static Configuration getDriverConfiguration() {
     final Configuration driverConfig;
@@ -163,7 +163,7 @@ public final class Launch {
   }
 
   /**
-   * Build InMemory Configuration which is used in application
+   * Build InMemory Configuration which is used in application.
    */
   private static Configuration getInMemoryConfiguration(final Configuration clConf, final Configuration fileConf)
     throws InjectionException, BindException {
@@ -186,8 +186,8 @@ public final class Launch {
   }
 
   /**
-   * Build Runtime Configuration
-   * public for integration testing
+   * Build Runtime Configuration.
+   * public for integration testing.
    */
   public static Configuration getRuntimeConfiguration(final Configuration clConf, final Configuration fileConf)
     throws BindException, InjectionException {
@@ -226,7 +226,7 @@ public final class Launch {
   }
 
   /**
-   * Build cluster-specific configuration
+   * Build cluster-specific configuration.
    */
   private static Configuration getClusterConfiguration(final Configuration clConf, final Configuration fileConf)
     throws InjectionException, BindException {
@@ -256,7 +256,7 @@ public final class Launch {
   }
 
   /**
-   * Build launch configuration
+   * Build launch configuration.
    * public for integration testing
    */
   public static Configuration getLaunchConfiguration(final Configuration clConfig, final Configuration fileConfig) throws InjectionException {
@@ -269,7 +269,7 @@ public final class Launch {
   }
 
   /**
-   * Run InMemory Application
+   * Run InMemory Application.
    */
   public static void runInMemory(final Configuration clConfig, final Configuration fileConfig) throws InjectionException {
 

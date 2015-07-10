@@ -13,7 +13,7 @@ import org.apache.reef.wake.StageConfiguration;
 import org.apache.reef.wake.impl.ThreadPoolStage;
 
 /**
- * Builder that creates a Configuration Module to be used at each Task, according to base FS type
+ * Builder that creates a Configuration Module to be used at each Task, according to base FS type.
  */
 public final class InMemoryTaskConfiguration extends ConfigurationModuleBuilder {
 

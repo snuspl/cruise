@@ -13,22 +13,22 @@ import java.util.Map;
  */
 public interface CacheNodeMessenger<T> {
   /**
-   * Remove blocks stored at the Cache
+   * Remove blocks stored at the Cache.
    */
   void clear(String taskId);
 
   /**
-   * Remove blocks stored at all Caches
+   * Remove blocks stored at all Caches.
    */
   void clearAll();
 
   /**
-   * Send a block load request to the Cache
+   * Send a block load request to the Cache.
    */
   void addBlock(String taskId, T msg);
 
   /**
-   * Send requests of removing blocks to the Caches
+   * Send requests of removing blocks to the Caches.
    */
   void deleteBlocks(Map<NodeInfo, List<BlockId>> nodeToBlocks);
 }

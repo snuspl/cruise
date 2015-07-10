@@ -67,7 +67,7 @@ public final class CacheNodeManagerImpl implements CacheNodeManager {
   }
 
   /**
-   * Get a Task Configuration
+   * Get a Task Configuration.
    */
   protected static Configuration getTaskConfiguration(String uniqueId) throws BindException {
     return TaskConfiguration.CONF

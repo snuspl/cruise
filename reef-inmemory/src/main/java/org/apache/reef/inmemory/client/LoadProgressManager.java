@@ -15,33 +15,33 @@ import java.util.List;
 public interface LoadProgressManager {
 
   /**
-   * Initialize
+   * Initialize.
    * @param addresses List of caches that contain this block
    * @param conf Hadoop configuration
    */
   void initialize(List<NodeInfo> addresses, Configuration conf);
 
   /**
-   * Report block's loading progress
+   * Report block's loading progress.
    * @param address Address of the cache where block is loading
    * @param bytesLoaded Amount of block that has been loaded
    */
   void loadingProgress(String address, long bytesLoaded);
 
   /**
-   * Report block not found
+   * Report block not found.
    * @param address Address of the cache where block is loading
    */
   void notFound(String address);
 
   /**
-   * Report block not found
+   * Report block not found.
    * @param address Address of the cache where block is loading
    */
   void notConnected(String address);
 
   /**
-   * Return the cache that the next block load should be attempted on
+   * Return the cache that the next block load should be attempted on.
    * @return Address of the cache
    * @throws IOException No more cache candidates exist
    */

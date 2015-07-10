@@ -1,4 +1,4 @@
 /**
- * SURF : REEF In-memory Caching Service
+ * SURF : REEF In-memory Caching Service.
  */
 package org.apache.reef.inmemory;

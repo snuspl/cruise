@@ -3,14 +3,14 @@ package org.apache.reef.inmemory.common;
 import java.io.Serializable;
 
 /**
- * Task sends this message to report the status of Cache to Driver
+ * Task sends this message to report the status of Cache to Driver.
  */
 public final class CacheStatusMessage implements Serializable {
 
   private final CacheStatistics statistics;
   private final CacheUpdates updates;
   /**
-   * The port number which the cache is bound to
+   * The port number which the cache is bound to.
    */
   private final int bindPort;
 
@@ -37,7 +37,7 @@ public final class CacheStatusMessage implements Serializable {
   }
 
   /**
-   * Retrieves port the Cache bound to
+   * Retrieves port the Cache bound to.
    * @return Port number received with the message
    */
   public int getBindPort() {

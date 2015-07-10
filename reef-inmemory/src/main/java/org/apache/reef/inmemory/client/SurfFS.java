@@ -143,7 +143,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Loads data into Surf from HDFS: Yes
+   * Loads data into Surf from HDFS: Yes.
    * Consistency guarantee: Only for the first load (not responsible for changes in HDFS after)
    * Fallback: Yes (The returned FSDataInputStream also supports fallback)
    *
@@ -184,7 +184,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Loads data into Surf from HDFS: No
+   * Loads data into Surf from HDFS: No.
    * Consistency guarantee: If same metadata exists in both Surf and HDFS, Surf's overwrites HDFS's
    * Fallback: Yes
    *
@@ -215,7 +215,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Loads data into Surf from HDFS: Yes
+   * Loads data into Surf from HDFS: Yes.
    * Consistency guarantee: Only for the first load (not responsible for changes in HDFS after)
    * Fallback: Yes
    *
@@ -325,7 +325,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * This operation is not yet supported by Surf
+   * This operation is not yet supported by Surf.
    * Also, no fallback procedure is provided
    * @throws UnsupportedOperationException
    */
@@ -379,7 +379,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Instantiate and return a new CacheClientManager for thread-safety
+   * Instantiate and return a new CacheClientManager for thread-safety.
    */
   private CacheClientManager getCacheClientManager() {
     final Configuration conf = this.getConf();
@@ -452,7 +452,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Get the MetaserverResolver based on the provided uri
+   * Get the MetaserverResolver based on the provided uri.
    */
   public MetaserverResolver getMetaserverResolver() {
     final String address = uri.getAuthority();

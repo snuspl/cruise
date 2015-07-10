@@ -16,7 +16,7 @@ public class HdfsBlockInfoFactory implements BaseFsBlockInfoFactory<LocatedBlock
   }
 
   /**
-   * Create a new HdfsBlockInfo using information from LocatedBlock
+   * Create a new HdfsBlockInfo using information from LocatedBlock.
    * @param filePath Path of file, to be added to block ID
    * @param locatedBlock The block's metadata used in HDFS
    * @return The block information to access the block in HDFS

@@ -5,29 +5,29 @@ package org.apache.reef.inmemory.common.instrumentation;
  */
 public interface Event {
   /**
-   * Save the current system time as the start time
+   * Save the current system time as the start time.
    */
   Event start();
 
   /**
-   * Save the current system time as the stop time
+   * Save the current system time as the stop time.
    */
   Event stop();
 
   /**
-   * Get the total duration of the event computed as (stop time - start time), in milliseconds
+   * Get the total duration of the event computed as (stop time - start time), in milliseconds.
    * @return Duration in milliseconds
    */
   long getDuration();
 
   /**
-   * The Group, which is the unit for aggregation
+   * The Group, which is the unit for aggregation.
    * @return Group
    */
   String getGroup();
 
   /**
-   * The Id, which differentiates events within the same aggregation Group
+   * The Id, which differentiates events within the same aggregation Group.
    * @return Id
    */
   String getId();

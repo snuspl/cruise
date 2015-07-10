@@ -4,7 +4,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Parameters for setting up the per-Task Cache
+ * Parameters for setting up the per-Task Cache.
  */
 public final class CacheParameters {
   @NamedParameter(doc = "InMemory Cache port", short_name = "cache_port", default_value = "0") // 0: any port

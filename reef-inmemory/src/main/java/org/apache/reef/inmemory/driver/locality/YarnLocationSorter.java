@@ -20,7 +20,7 @@ public final class YarnLocationSorter implements LocationSorter {
   private static final Logger LOG = Logger.getLogger(YarnLocationSorter.class.getName());
 
   /**
-   * Location Sorter that makes use of Yarn's configured topology resolution
+   * Location Sorter that makes use of Yarn's configured topology resolution.
    * @param conf Yarn configuration with topology resolution
    */
   @Inject

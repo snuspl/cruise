@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Choose cache nodes to write by random
+ * Choose cache nodes to write by random.
  * TODO Consider the locality with regard to the clientAddress
  */
 public class WritingRandomCacheSelectionPolicy implements WritingCacheSelectionPolicy {
