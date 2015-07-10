@@ -38,7 +38,7 @@ public class MetaTree {
   private final DirectoryEntry root;
   private final HashMap<Long, FileMeta> fileIdToFileMeta = new HashMap<>();
 
-  private final EventRecorder record; // TODO: make use of this
+  private final EventRecorder recorder; // TODO: make use of this
   private final BaseFsClient baseFsClient;
   private final AtomicLong atomicFileId;
   private final FileMetaStatusFactory fileMetaStatusFactory;
@@ -48,7 +48,7 @@ public class MetaTree {
                   final EventRecorder recorder,
                   final FileMetaStatusFactory fileMetaStatusFactory) {
     this.root = new DirectoryEntry("/", null);
-    this.record = recorder;
+    this.recorder = recorder;
     this.baseFsClient = baseFsClient;
     this.atomicFileId = new AtomicLong(0);
     this.fileMetaStatusFactory = fileMetaStatusFactory;

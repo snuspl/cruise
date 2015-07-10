@@ -34,7 +34,7 @@ import java.util.logging.Logger;
  */
 public class HdfsBlockLoader implements BlockLoader {
   private static final Logger LOG = Logger.getLogger(HdfsBlockLoader.class.getName());
-  private final EventRecorder record;
+  private final EventRecorder recorder;
 
   // Some Fields are left null, because those types are not public.
   private static final int START_OFFSET = 0;
@@ -71,7 +71,7 @@ public class HdfsBlockLoader implements BlockLoader {
     totalRead = 0;
     this.pinned = pin;
     this.bufferSize = bufferSize;
-    this.record = recorder;
+    this.recorder = recorder;
   }
 
   /**
@@ -80,7 +80,7 @@ public class HdfsBlockLoader implements BlockLoader {
    */
   @Override
   public void loadBlock() throws IOException {
-    final Event loadBlockEvent = record.event("task.load-block", Long.toString(hdfsBlockInfo.getUniqueId())).start();
+    final Event loadBlockEvent = recorder.event("task.load-block", Long.toString(hdfsBlockInfo.getUniqueId())).start();
 
     final Configuration conf = new HdfsConfiguration();
 
@@ -143,7 +143,7 @@ public class HdfsBlockLoader implements BlockLoader {
       break;
 
     } while (dnInfoIter.hasNext());
-    record.record(loadBlockEvent.stop());
+    recorder.record(loadBlockEvent.stop());
   }
 
   /**
