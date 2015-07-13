@@ -127,8 +127,8 @@ public final class Launch {
    * @return The instance for given Parameter
    * @throws InjectionException If failed to get instance
    */
-  private static <T> T chooseNamedInstance(Class<? extends Name<T>> clazz, Injector clConfigInjector,
-                                           Injector fileConfigInjector) throws InjectionException {
+  private static <T> T chooseNamedInstance(final Class<? extends Name<T>> clazz, final Injector clConfigInjector,
+                                           final Injector fileConfigInjector) throws InjectionException {
     return clConfigInjector.isParameterSet(clazz) ? clConfigInjector.getNamedInstance(clazz) :
         fileConfigInjector.getNamedInstance(clazz);
   }
