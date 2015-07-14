@@ -195,7 +195,7 @@ public class HdfsBlockLoader implements BlockLoader {
    * @return Token Identifier used to load the block
    * @throws TokenDecodeFailedException When failed to decode the token
    */
-  private Token<BlockTokenIdentifier> decodeBlockToken(HdfsBlockInfo hdfsBlockInfo, DatanodeID datanode)
+  private Token<BlockTokenIdentifier> decodeBlockToken(final HdfsBlockInfo hdfsBlockInfo, final DatanodeID datanode)
       throws TokenDecodeFailedException {
     Token<BlockTokenIdentifier> blockToken;
     blockToken = new Token<>();

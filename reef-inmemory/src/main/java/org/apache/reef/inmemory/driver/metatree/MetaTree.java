@@ -33,8 +33,8 @@ import java.util.logging.Logger;
 public class MetaTree {
   private static final Logger LOG = Logger.getLogger(MetaTree.class.getName());
 
-  private final ReentrantReadWriteLock lock =
-      new ReentrantReadWriteLock(true); // TODO: replace this with a more fine-grained lock
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
+  // TODO: replace this with a more fine-grained lock
   private final DirectoryEntry root;
   private final HashMap<Long, FileMeta> fileIdToFileMeta = new HashMap<>();
 
