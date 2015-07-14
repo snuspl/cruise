@@ -31,12 +31,12 @@ public final class LogReporterConstructor implements ExternalConstructor<Schedul
    */
   private class LoggerOutputStream extends ByteArrayOutputStream {
 
-    private Logger LOG;
+    private Logger log;
     private Level level;
 
     public LoggerOutputStream(final Logger log, final Level level) {
       super();
-      this.LOG = log;
+      this.log = log;
       this.level = level;
     }
 
@@ -45,7 +45,7 @@ public final class LogReporterConstructor implements ExternalConstructor<Schedul
       final String report = toString();
       reset();
 
-      LOG.log(level, report);
+      log.log(level, report);
     }
   }
 

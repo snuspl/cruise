@@ -30,7 +30,7 @@ import java.util.logging.Logger;
  */
 public final class CacheConstructor implements ExternalConstructor<Cache> {
 
-  private Logger LOG = Logger.getLogger(CacheConstructor.class.getName());
+  private static final Logger LOG = Logger.getLogger(CacheConstructor.class.getName());
 
   private MemoryManager memoryManager;
   private final int numThreads;

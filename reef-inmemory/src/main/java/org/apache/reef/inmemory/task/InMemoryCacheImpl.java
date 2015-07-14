@@ -22,7 +22,7 @@ import java.util.logging.Logger;
  * Implementation of Cache class using Google Cache interface. 
  */
 public final class InMemoryCacheImpl implements InMemoryCache {
-  private final Logger LOG = Logger.getLogger(InMemoryCacheImpl.class.getName());
+  private static final Logger LOG = Logger.getLogger(InMemoryCacheImpl.class.getName());
 
   private final MemoryManager memoryManager;
   private final LRUEvictionManager lru;

@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  */
 public final class CacheBlockLoader {
   private static final Logger LOG = Logger.getLogger(CacheBlockLoader.class.getName());
-  private final EventRecorder RECORD;
+  private final EventRecorder recorder;
 
   private static final long NOT_CACHED = -1;
 
@@ -47,7 +47,7 @@ public final class CacheBlockLoader {
     this.cacheManager = cacheManager;
     this.progressManager = progressManager;
     this.progressManager.initialize(block.getLocations(), conf);
-    this.RECORD = recorder;
+    this.recorder = recorder;
   }
 
   /**
@@ -123,7 +123,7 @@ public final class CacheBlockLoader {
       try {
         final SurfCacheService.Client client = getClient(cacheAddress);
         synchronized(client) {
-          final Event dataTransferEvent = RECORD.event("client.data-transfer",
+          final Event dataTransferEvent = recorder.event("client.data-transfer",
                   block.toString() + ":" + chunkStartPosition).start();
           LOG.log(Level.INFO, "Start data transfer from block {0}, with chunkStartPosition {1}",
                   new String[]{block.toString(), Integer.toString(chunkStartPosition)});
@@ -141,7 +141,7 @@ public final class CacheBlockLoader {
 
           LOG.log(Level.INFO, "Done data transfer from block {0}, with chunkStartPosition {1}",
                   new String[]{block.toString(), Integer.toString(chunkStartPosition)});
-          RECORD.record(dataTransferEvent.stop());
+          recorder.record(dataTransferEvent.stop());
           return dataBuffer;
         }
       } catch (BlockLoadingException e) {
