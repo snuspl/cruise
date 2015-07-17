@@ -69,7 +69,7 @@ public class PageRankCmpTask extends UserComputeTask
 
   /**
    * Load a split subgraph and set the initial rank for each node
-   * @throws edu.snu.cay.dolphin.core.ParseException
+   * @throws ParseException
    */
   @Override
   public void initialize() throws ParseException {
