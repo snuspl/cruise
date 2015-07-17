@@ -9,6 +9,13 @@
   <name>Elastic Memory</name>
   <version>0.1-SNAPSHOT</version>
 
+	<parent>
+		<groupId>edu.snu.reef</groupId>
+		<artifactId>cay</artifactId>
+    <version>0.1-SNAPSHOT</version>
+		<relativePath>../</relativePath>
+	</parent>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <reef.version>0.11.0-incubating</reef.version>

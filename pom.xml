@@ -60,6 +60,7 @@ under the License.
 
     <modules>
         <module>dolphin</module>
+        <module>elastic-memory</module>
     </modules>
 
 </project>
