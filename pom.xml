@@ -21,13 +21,12 @@ under the License.
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
-    <groupId>edu.snu.reef</groupId>
+    <groupId>edu.snu.cay</groupId>
     <version>0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>CAY</name>
     <artifactId>cay</artifactId>
     <description>Unified big data analytics stack on REEF.</description>
-    <url>http://reef.incubator.apache.org</url>
 
     <parent>
         <groupId>org.apache</groupId>
