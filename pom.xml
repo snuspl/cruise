@@ -1,161 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
 
-  <groupId>edu.snu.reef</groupId>
-  <artifactId>dolphin</artifactId>
-  <name>Dolphin</name>
-  <version>0.1-SNAPSHOT</version>
-  <packaging>jar</packaging>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>edu.snu.reef</groupId>
+    <version>0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>CAY</name>
+    <artifactId>cay</artifactId>
+    <description>Unified big data analytics stack on REEF.</description>
+    <url>http://reef.incubator.apache.org</url>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <reef.version>0.11.0-incubating</reef.version>
-    <shimoga.version>0.1-SNAPSHOT</shimoga.version>
-    <hadoop.version>2.4.0</hadoop.version>
-    <mahout.version>0.9</mahout.version>
-    <maven-checkstyle-plugin.version>2.15</maven-checkstyle-plugin.version>
-    <checkstyle.version>6.6</checkstyle.version>
-  </properties>
+    <parent>
+        <groupId>org.apache</groupId>
+        <artifactId>apache</artifactId>
+        <version>16</version>
+    </parent>
 
-  <repositories>
-    <repository>
-      <id>in-project-repo</id>
-      <name>In Project Repository</name>
-      <url>file://${project.basedir}/lib/</url>
-    </repository>
-  </repositories>
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>reef-common</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>reef-io</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>reef-runtime-local</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>reef-runtime-yarn</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>reef-poison</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>tang</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>wake</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.microsoft.reef</groupId>
-      <artifactId>shimoga</artifactId>
-      <version>${shimoga.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.11</version>
-      <scope>test</scope>
-    </dependency>
-    <!-- HADOOP -->
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-common</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-mapreduce-client-core</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <!-- End of HADOOP -->
-    <dependency>
-      <groupId>org.apache.mahout</groupId>
-      <artifactId>mahout-math</artifactId>
-      <version>${mahout.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>2.5.0</version>
-    </dependency>
-  </dependencies>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <hadoop.version>2.4.0</hadoop.version>
+        <avro.version>1.7.7</avro.version>
+        <jetty.version>6.1.26</jetty.version>
+        <jackson.version>1.9.13</jackson.version>
+        <protobuf.version>2.5.0</protobuf.version>
+        <maven-checkstyle-plugin.version>2.15</maven-checkstyle-plugin.version>
+        <checkstyle.version>6.6</checkstyle.version>
+    </properties>
 
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
-        <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
-          <showDeprecation>true</showDeprecation>
-          <encoding>${project.build.sourceEncoding}</encoding>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>${maven-checkstyle-plugin.version}</version>
-        <configuration>
-          <configLocation>src/main/resources/checkstyle.xml</configLocation>
-          <failOnViolation>false</failOnViolation>
-          <format>xml</format>
-          <format>html</format>
-          <outputFile>${project.build.directory}/test/checkstyle-errors.xml</outputFile>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <outputFile>
-            ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
-          </outputFile>
-          <filters>
-            <filter>
-              <artifact>*:*</artifact>
-              <excludes>
-                <exclude>META-INF/*</exclude>
-                <exclude>LICENSE</exclude>
-                <exclude>yarn-default.xml</exclude>
-                <exclude>yarn-version-info.properties</exclude>
-                <exclude>core-default.xml</exclude>
-              </excludes>
-            </filter>
-          </filters>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
+		<prerequisites>
+        <maven>3.0</maven>
+    </prerequisites>
+
+    <modules>
+        <module>dolphin</module>
+    </modules>
+
 </project>
