@@ -81,9 +81,8 @@ final class SimpleEMDriver {
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      final int evalCount = activeEvaluatorCount.getAndIncrement();
       final Configuration partialContextConf = ContextConfiguration.CONF
-          .set(ContextConfiguration.IDENTIFIER, CONTEXT_ID_PREFIX + evalCount)
+          .set(ContextConfiguration.IDENTIFIER, CONTEXT_ID_PREFIX + activeEvaluatorCount.getAndIncrement())
           .build();
 
       final Configuration contextConf = Configurations.merge(
@@ -92,7 +91,7 @@ final class SimpleEMDriver {
       final Configuration serviceConf = emConf.getServiceConfiguration();
 
       allocatedEvaluator.submitContextAndService(contextConf, serviceConf);
-      LOG.info((evalCount + 1) + " evaluators active!");
+      LOG.info(activeEvaluatorCount.get() + " evaluators active!");
     }
   }
 
@@ -126,8 +125,6 @@ final class SimpleEMDriver {
     @Override
     public void onNext(final TaskMessage taskMessage) {
       LOG.info("Received task message from " + taskMessage.getContextId());
-
-      final String ctxId = prevContextId.getAndSet(taskMessage.getContextId());
 
       if (!prevContextId.compareAndSet(DEFAULT_STRING, taskMessage.getContextId())) {
         // second evaluator goes here
