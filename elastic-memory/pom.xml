@@ -9,12 +9,12 @@
   <name>Elastic Memory</name>
   <version>0.1-SNAPSHOT</version>
 
-	<parent>
-		<groupId>edu.snu.cay</groupId>
-		<artifactId>cay</artifactId>
+  <parent>
+    <groupId>edu.snu.cay</groupId>
+    <artifactId>cay</artifactId>
     <version>0.1-SNAPSHOT</version>
-		<relativePath>../</relativePath>
-	</parent>
+    <relativePath>../</relativePath>
+  </parent>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
