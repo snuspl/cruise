@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
+import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import org.apache.reef.driver.context.ActiveContext;
@@ -101,6 +102,11 @@ public final class DolphinDriver {
   private final SchedulabilityAnalyzer schedulabilityAnalyzer;
 
   /**
+   * Manager of the configuration of Elastic Memory service.
+   */
+  private final ElasticMemoryConfiguration emConf;
+
+  /**
    * Job to execute.
    */
   private final UserJobInfo userJobInfo;
@@ -141,6 +147,7 @@ public final class DolphinDriver {
    * @param dataLoadingService manager for Data Loading configurations
    * @param outputService
    * @param schedulabilityAnalyzer
+   * @param emConf manager for Elastic Memory configurations
    * @param userJobInfo
    * @param userParameters
    * @param metricCodec
@@ -150,6 +157,7 @@ public final class DolphinDriver {
                         final DataLoadingService dataLoadingService,
                         final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
+                        final ElasticMemoryConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
                         final MetricCodec metricCodec) {
@@ -157,6 +165,7 @@ public final class DolphinDriver {
     this.dataLoadingService = dataLoadingService;
     this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
+    this.emConf = emConf;
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
     this.commGroupDriverList = new LinkedList<>();
@@ -236,9 +245,13 @@ public final class DolphinDriver {
         final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
         final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
         final Configuration outputServiceConf = outputService.getServiceConfiguration();
-        final Configuration keyValueServiceStoreConf = KeyValueStoreService.getServiceConfiguration();
         final Configuration metricTrackerServiceConf = MetricsCollectionService.getServiceConfiguration();
-        final Configuration finalContextConf = MetricsCollectionService.getContextConfiguration(groupCommContextConf);
+        final Configuration emContextConf = emConf.getContextConfiguration();
+        final Configuration emServiceConf = emConf.getServiceConfiguration();
+        // TODO remove the KVService
+        final Configuration keyValueServiceStoreConf = KeyValueStoreService.getServiceConfiguration();
+        final Configuration finalContextConf = MetricsCollectionService.getContextConfiguration(
+                Configurations.merge(groupCommContextConf, emContextConf));
         final Configuration finalServiceConf;
 
         if (dataLoadingService.isComputeContext(activeContext)) {
@@ -248,8 +261,8 @@ public final class DolphinDriver {
           // Add the Key-Value Store service, the Output service,
           // the Metrics Collection service, and the Group Communication service
           finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, outputServiceConf,
-              keyValueServiceStoreConf, metricTrackerServiceConf);
+              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
+              keyValueServiceStoreConf, outputServiceConf);
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
@@ -257,7 +270,7 @@ public final class DolphinDriver {
           // the Output service, the Metrics Collection service, and the Group Communication service
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
           finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, dataParseConf, outputServiceConf,
+              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, dataParseConf, outputServiceConf,
               keyValueServiceStoreConf, metricTrackerServiceConf);
         }
 
