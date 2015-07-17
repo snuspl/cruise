@@ -4,13 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>edu.snu.reef</groupId>
+  <groupId>edu.snu.cay</groupId>
   <artifactId>elastic-memory</artifactId>
   <name>Elastic Memory</name>
   <version>0.1-SNAPSHOT</version>
 
 	<parent>
-		<groupId>edu.snu.reef</groupId>
+		<groupId>edu.snu.cay</groupId>
 		<artifactId>cay</artifactId>
     <version>0.1-SNAPSHOT</version>
 		<relativePath>../</relativePath>
