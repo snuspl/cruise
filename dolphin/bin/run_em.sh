@@ -29,7 +29,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-EM=edu.snu.reef.dolphin.examples.ml.algorithms.clustering.em.EMREEF
+EM=edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em.EMREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $EM $*"
 echo $CMD
