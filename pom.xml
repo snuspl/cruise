@@ -18,49 +18,48 @@ specific language governing permissions and limitations
 under the License.
 -->
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>edu.snu.reef</groupId>
-    <version>0.1-SNAPSHOT</version>
-    <packaging>pom</packaging>
-    <name>CAY</name>
-    <artifactId>cay</artifactId>
-    <description>Unified big data analytics stack on REEF.</description>
-    <url>http://reef.incubator.apache.org</url>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>edu.snu.cay</groupId>
+  <version>0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>CAY</name>
+  <artifactId>cay</artifactId>
+  <description>Unified big data analytics stack on REEF.</description>
 
-    <parent>
-        <groupId>org.apache</groupId>
-        <artifactId>apache</artifactId>
-        <version>16</version>
-    </parent>
+  <parent>
+    <groupId>org.apache</groupId>
+    <artifactId>apache</artifactId>
+    <version>16</version>
+  </parent>
 
-    <licenses>
-        <license>
-            <name>The Apache Software License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <hadoop.version>2.4.0</hadoop.version>
-        <avro.version>1.7.7</avro.version>
-        <jetty.version>6.1.26</jetty.version>
-        <jackson.version>1.9.13</jackson.version>
-        <protobuf.version>2.5.0</protobuf.version>
-        <maven-checkstyle-plugin.version>2.15</maven-checkstyle-plugin.version>
-        <checkstyle.version>6.6</checkstyle.version>
-    </properties>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <hadoop.version>2.4.0</hadoop.version>
+    <avro.version>1.7.7</avro.version>
+    <jetty.version>6.1.26</jetty.version>
+    <jackson.version>1.9.13</jackson.version>
+    <protobuf.version>2.5.0</protobuf.version>
+    <maven-checkstyle-plugin.version>2.15</maven-checkstyle-plugin.version>
+    <checkstyle.version>6.6</checkstyle.version>
+  </properties>
 
-		<prerequisites>
-        <maven>3.0</maven>
-    </prerequisites>
+  <prerequisites>
+    <maven>3.0</maven>
+  </prerequisites>
 
-    <modules>
-        <module>dolphin</module>
-        <module>elastic-memory</module>
-    </modules>
+  <modules>
+    <module>dolphin</module>
+    <module>elastic-memory</module>
+  </modules>
 
 </project>
