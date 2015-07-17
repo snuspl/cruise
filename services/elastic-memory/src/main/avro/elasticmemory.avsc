@@ -1,6 +1,6 @@
 [
 {
-  "namespace": "edu.snu.cay.em.avro",
+  "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
   "name": "UnitIdPair",
   "fields":
@@ -11,7 +11,7 @@
 },
 
 {
-  "namespace": "edu.snu.cay.em.avro",
+  "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
   "name": "CtrlMsg",
   "fields":
@@ -21,7 +21,7 @@
 },
 
 {
-  "namespace": "edu.snu.cay.em.avro",
+  "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
   "name": "DataMsg",
   "fields":
@@ -32,7 +32,7 @@
 },
 
 {
-  "namespace": "edu.snu.cay.em.avro",
+  "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
   "name": "AvroElasticMemoryMessage",
   "fields":
