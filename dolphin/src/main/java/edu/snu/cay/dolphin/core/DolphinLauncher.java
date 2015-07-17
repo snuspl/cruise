@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.core;
 
 import com.microsoft.reef.io.network.nggroup.impl.driver.GroupCommService;
+import edu.snu.cay.em.driver.ElasticMemoryConfiguration;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -64,7 +65,7 @@ public final class DolphinLauncher {
 
   private final LauncherStatus run() throws InjectionException {
     return DriverLauncher.getLauncher(getRuntimeConfiguration())
-        .run(getDriverConfWithDataLoad(), dolphinParameters.getTimeout());
+        .run(getDriverConfiguration(), dolphinParameters.getTimeout());
   }
 
   private final Configuration getRuntimeConfiguration() {
@@ -81,7 +82,7 @@ public final class DolphinLauncher {
         .build();
   }
 
-  private final Configuration getDriverConfWithDataLoad() {
+  private final Configuration getDriverConfiguration() {
     final ConfigurationModule driverConfiguration = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
@@ -108,6 +109,7 @@ public final class DolphinLauncher {
 
     return Configurations.merge(driverConfWithDataLoad,
         GroupCommService.getConfiguration(),
+        ElasticMemoryConfiguration.getDriverConfiguration(),
         dolphinParameters.getDriverConf());
   }
 
