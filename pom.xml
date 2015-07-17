@@ -59,7 +59,7 @@ under the License.
 
   <modules>
     <module>dolphin</module>
-    <module>elastic-memory</module>
+    <module>services/elastic-memory</module>
   </modules>
 
 </project>
