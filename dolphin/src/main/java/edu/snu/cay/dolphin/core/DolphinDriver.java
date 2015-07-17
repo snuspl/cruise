@@ -29,6 +29,7 @@ import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricTrackerService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.parameters.OnLocal;
+import edu.snu.cay.em.driver.ElasticMemoryConfiguration;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
 import org.apache.reef.driver.task.CompletedTask;
@@ -89,6 +90,11 @@ public final class DolphinDriver {
   private final DataLoadingService dataLoadingService;
 
   /**
+   * Manager of the configuration of Elastic Memory service.
+   */
+  private final ElasticMemoryConfiguration emConf;
+
+  /**
    * Job to execute
    */
   private final UserJobInfo userJobInfo;
@@ -134,6 +140,7 @@ public final class DolphinDriver {
    *
    * @param groupCommDriver manager for Group Communication configurations
    * @param dataLoadingService manager for Data Loading configurations
+   * @param emConf manager for Elastic Memory configurations
    * @param userJobInfo
    * @param userParameters
    * @param metricCodec
@@ -144,6 +151,7 @@ public final class DolphinDriver {
   @Inject
   private DolphinDriver(final GroupCommDriver groupCommDriver,
                         final DataLoadingService dataLoadingService,
+                        final ElasticMemoryConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
                         final MetricCodec metricCodec,
@@ -152,6 +160,7 @@ public final class DolphinDriver {
                         @Parameter(EvaluatorNum.class) final Integer evalNum) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
+    this.emConf = emConf;
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
     this.commGroupDriverList = new LinkedList<>();
@@ -224,13 +233,17 @@ public final class DolphinDriver {
       // the Data Loading API is currently constructed to add its own context before
       // allowing any other ones.
       if (!groupCommDriver.isConfigured(activeContext)) {
-        Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
-        Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
+        final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
+        final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
+        final Configuration emContextConf = emConf.getContextConfiguration();
+        final Configuration emServiceConf = emConf.getServiceConfiguration();
         final Configuration outputServiceConf = OutputService.getServiceConfiguration(outputDir, onLocal);
+        // TODO remove the KVService
         final Configuration keyValueServiceStoreConf = KeyValueStoreService.getServiceConfiguration();
         final Configuration metricTrackerServiceConf = MetricTrackerService.getServiceConfiguration();
-        final Configuration finalContextConf = MetricTrackerService.getContextConfiguration(groupCommContextConf);
-        Configuration finalServiceConf;
+        final Configuration finalContextConf = MetricTrackerService.getContextConfiguration(
+                Configurations.merge(groupCommContextConf, emContextConf));
+        final Configuration finalServiceConf;
 
         if (dataLoadingService.isComputeContext(activeContext)) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
@@ -239,8 +252,8 @@ public final class DolphinDriver {
           // Add the Key-Value Store service, the Output service,
           // the Metric Tracker service, and the Group Communication service
           finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, outputServiceConf,
-              keyValueServiceStoreConf, metricTrackerServiceConf);
+              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
+              keyValueServiceStoreConf, outputServiceConf);
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
@@ -248,7 +261,7 @@ public final class DolphinDriver {
           // the Output service, the Metric Tracker service, and the Group Communication service
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
           finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, dataParseConf, outputServiceConf,
+              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, dataParseConf, outputServiceConf,
               keyValueServiceStoreConf, metricTrackerServiceConf);
         }
 
