@@ -18,7 +18,7 @@ specific language governing permissions and limitations
 under the License.
 -->
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>edu.snu.cay</groupId>
@@ -28,38 +28,318 @@ under the License.
     <artifactId>cay</artifactId>
     <description>Unified big data analytics stack on REEF.</description>
 
-    <parent>
-        <groupId>org.apache</groupId>
-        <artifactId>apache</artifactId>
-        <version>16</version>
-    </parent>
+  <parent>
+  <groupId>org.apache</groupId>
+  <artifactId>apache</artifactId>
+  <version>16</version>
+  </parent>
 
-    <licenses>
-        <license>
-            <name>The Apache Software License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
+  <licenses>
+  <license>
+    <name>The Apache Software License, Version 2.0</name>
+    <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    <distribution>repo</distribution>
+  </license>
+  </licenses>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <hadoop.version>2.4.0</hadoop.version>
-        <avro.version>1.7.7</avro.version>
-        <jetty.version>6.1.26</jetty.version>
-        <jackson.version>1.9.13</jackson.version>
-        <protobuf.version>2.5.0</protobuf.version>
-        <maven-checkstyle-plugin.version>2.15</maven-checkstyle-plugin.version>
-        <checkstyle.version>6.6</checkstyle.version>
-    </properties>
+  <properties>
+  <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  <hadoop.version>2.4.0</hadoop.version>
+  <avro.version>1.7.7</avro.version>
+  <jetty.version>6.1.26</jetty.version>
+  <jackson.version>1.9.13</jackson.version>
+  <protobuf.version>2.5.0</protobuf.version>
+  <maven-checkstyle-plugin.version>2.15</maven-checkstyle-plugin.version>
+  <checkstyle.version>6.6</checkstyle.version>
+  </properties>
 
-		<prerequisites>
-        <maven>3.0</maven>
-    </prerequisites>
+  <prerequisites>
+  <maven>3.0</maven>
+  </prerequisites>
 
-    <modules>
-        <module>dolphin</module>
-        <module>elastic-memory</module>
-    </modules>
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.1</version>
+          <configuration>
+            <source>1.7</source>
+            <target>1.7</target>
+            <showDeprecation>true</showDeprecation>
+            <encoding>${project.build.sourceEncoding}</encoding>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>2.17</version>
+          <configuration>
+            <systemProperties>
+              <property>
+                <name>org.apache.reef.runtime.local.folder</name>
+                <value>${project.build.directory}</value>
+              </property>
+            </systemProperties>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-site-plugin</artifactId>
+          <version>3.4</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>2.8.2</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-install-plugin</artifactId>
+          <version>2.5.2</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-clean-plugin</artifactId>
+          <version>2.5</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-antrun-plugin</artifactId>
+          <version>1.7</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>build-helper-maven-plugin</artifactId>
+          <version>1.9.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-resources-plugin</artifactId>
+          <version>2.6</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>2.10.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>2.4.1</version>
+        </plugin>
+        <plugin>
+          <!-- Create the property $buildNumber holding the current Git revision -->
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>buildnumber-maven-plugin</artifactId>
+          <version>1.3</version>
+          <executions>
+            <execution>
+              <phase>validate</phase>
+              <goals>
+                <goal>create</goal>
+              </goals>
+            </execution>
+          </executions>
+          <configuration>
+            <doCheck>false</doCheck>
+            <doUpdate>false</doUpdate>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>1.3.2</version>
+        </plugin>
+        <plugin>
+          <!-- Add the default metadata to any JAR created -->
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>2.5</version>
+          <configuration>
+            <archive>
+              <manifest>
+                <!--<Implementation-Title>${project.name}</Implementation-Title>-->
+                <!--<Implementation-Version>${project.version} ${buildNumber}</Implementation-Version>-->
+                <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+
+              </manifest>
+            </archive>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>com.mycila.maven-license-plugin</groupId>
+          <artifactId>maven-license-plugin</artifactId>
+          <version>1.9.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>2.3</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.avro</groupId>
+          <artifactId>avro-maven-plugin</artifactId>
+          <version>${avro.version}</version>
+          <executions>
+            <execution>
+              <phase>generate-sources</phase>
+              <goals>
+                <goal>schema</goal>
+              </goals>
+              <configuration>
+                <sourceDirectory>${project.basedir}/src/main/avro/</sourceDirectory>
+                <outputDirectory>${project.basedir}/target/generated-sources/avro/</outputDirectory>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-dependency-plugin</artifactId>
+          <version>2.9</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.rat</groupId>
+          <artifactId>apache-rat-plugin</artifactId>
+          <version>0.11</version>
+          <configuration>
+            <excludes>
+              <exclude>.gitattributes</exclude>
+              <exclude>.gitignore</exclude>
+              <exclude>.git/**</exclude>
+              <!-- Intellij idea project files -->
+              <exclude>lang/java/.idea/**</exclude>
+              <exclude>**/*.iml</exclude>
+              <exclude>**/target/**</exclude>
+              <!-- ReadMe files -->
+              <exclude>**/README.*</exclude>
+              <exclude>**/*.md</exclude>
+              <!-- The below are sometimes created during tests -->
+              <exclude>REEF_LOCAL_RUNTIME/**</exclude>
+              <!-- The Visual Studio and Nuget build files -->
+              <exclude>**/*.sln*</exclude>
+              <exclude>**/*.vcxproj*</exclude>
+              <exclude>**/*.csproj*</exclude>
+              <exclude>**/*.opensdf*</exclude>
+              <exclude>**/*.sdf*</exclude>
+              <exclude>**/*.snk</exclude>
+              <!-- The below are auto generated during the .Net build -->
+              <exclude>**/bin/**</exclude>
+              <exclude>**/obj/**</exclude>
+              <exclude>**/Release/**</exclude>
+              <exclude>**/Debug/**</exclude>
+              <exclude>**/TestResults/**</exclude>
+              <exclude>**/x64/**</exclude>
+
+              <!-- NuGet dependencies downloaded as part of the build -->
+              <exclude>**/packages/**</exclude>
+              <!-- The below are auto generated files for serialization -->
+              <exclude>Org.Apache.REEF.Common/Protobuf/ReefProtocol/*</exclude>
+              <exclude>Org.Apache.REEF.Common/Avro/*</exclude>
+              <!-- The below are binary data files used in tests -->
+              <exclude>Org.Apache.REEF.Tests/ConfigFiles/evaluator.conf</exclude>
+              <exclude>Org.Apache.REEF.Tang.Tests/evaluator.conf</exclude>
+              <exclude>Org.Apache.REEF.Tang.Tests/simpleConstructorJavaProto.bin</exclude>
+            </excludes>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <version>${maven-checkstyle-plugin.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>com.puppycrawl.tools</groupId>
+              <artifactId>checkstyle</artifactId>
+              <version>${checkstyle.version}</version>
+            </dependency>
+          </dependencies>
+          <configuration>
+            <configLocation>lang/java/reef-common/src/main/resources/checkstyle.xml</configLocation>
+            <failOnViolation>true</failOnViolation>
+            <format>xml</format>
+            <format>html</format>
+            <outputFile>${project.build.directory}/test/checkstyle-errors.xml</outputFile>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>1.7</source>
+          <target>1.7</target>
+          <showDeprecation>true</showDeprecation>
+          <encoding>${project.build.sourceEncoding}</encoding>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.mycila.maven-license-plugin</groupId>
+        <artifactId>maven-license-plugin</artifactId>
+        <configuration>
+          <header>LICENSE_HEADER.txt</header>
+          <strictCheck>true</strictCheck>
+          <excludes>
+            <exclude>LICENSE.txt</exclude>
+            <exclude>NOTICES.txt</exclude>
+            <exclude>README.*</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <configuration>
+          <encoding>${project.build.sourceEncoding}</encoding>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <show>public</show>
+          <linksource>true</linksource>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.rat</groupId>
+        <artifactId>apache-rat-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>validate</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${maven-checkstyle-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>validate</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>check</goal>
+              <goal>checkstyle</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+
+  <modules>
+  	<module>dolphin</module>
+  	<module>elastic-memory</module>
+  </modules>
 
 </project>
