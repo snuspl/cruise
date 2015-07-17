@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -68,7 +69,7 @@ public final class DolphinLauncher {
 
   private LauncherStatus run() throws InjectionException {
     return DriverLauncher.getLauncher(getRuntimeConfiguration())
-        .run(getDriverConfWithDataLoad(), dolphinParameters.getTimeout());
+        .run(getDriverConfiguration(), dolphinParameters.getTimeout());
   }
 
   private Configuration getRuntimeConfiguration() {
@@ -85,7 +86,7 @@ public final class DolphinLauncher {
         .build();
   }
 
-  private Configuration getDriverConfWithDataLoad() {
+  private final Configuration getDriverConfiguration() {
     final ConfigurationModule driverConfiguration = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
@@ -124,6 +125,7 @@ public final class DolphinLauncher {
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         GroupCommService.getConfiguration(),
+        ElasticMemoryConfiguration.getDriverConfiguration(),
         dolphinParameters.getDriverConf());
   }
 
