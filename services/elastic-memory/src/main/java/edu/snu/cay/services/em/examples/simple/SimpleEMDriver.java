@@ -18,6 +18,10 @@ package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.trace.HTraceParameters;
+import org.apache.htrace.Sampler;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceScope;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -49,14 +53,17 @@ final class SimpleEMDriver {
 
   private final ElasticMemoryConfiguration emConf;
   private final ElasticMemory emService;
+  private final HTraceParameters traceParameters;
 
   @Inject
   private SimpleEMDriver(final EvaluatorRequestor requestor,
-                        final ElasticMemoryConfiguration emConf,
-                        final ElasticMemory emService) throws InjectionException {
+                         final ElasticMemoryConfiguration emConf,
+                         final ElasticMemory emService,
+                         final HTraceParameters traceParameters) throws InjectionException {
     this.requestor = requestor;
     this.emConf = emConf;
     this.emService = emService;
+    this.traceParameters = traceParameters;
   }
 
   /**
@@ -88,9 +95,11 @@ final class SimpleEMDriver {
       final Configuration contextConf = Configurations.merge(
           partialContextConf, emConf.getContextConfiguration());
 
-      final Configuration serviceConf = emConf.getServiceConfiguration();
+      final Configuration emServiceConf = emConf.getServiceConfiguration();
 
-      allocatedEvaluator.submitContextAndService(contextConf, serviceConf);
+      final Configuration traceConf = traceParameters.getConfiguration();
+
+      allocatedEvaluator.submitContextAndService(contextConf, Configurations.merge(emServiceConf, traceConf));
       LOG.info(activeEvaluatorCount.get() + " evaluators active!");
     }
   }
@@ -129,7 +138,13 @@ final class SimpleEMDriver {
       if (!prevContextId.compareAndSet(DEFAULT_STRING, taskMessage.getContextId())) {
         // second evaluator goes here
         LOG.info("Move data from " + taskMessage.getContextId() + " to " + prevContextId.get());
-        emService.move(SimpleEMTask.KEY, null, taskMessage.getContextId(), prevContextId.get());
+
+        final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS);
+        try {
+          emService.move(SimpleEMTask.KEY, null, taskMessage.getContextId(), prevContextId.get());
+        } finally {
+          moveTraceScope.close();
+        }
       } else {
         // first evaluator goes this way
       }

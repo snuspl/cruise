@@ -1,0 +1,17 @@
+[
+/**
+ * TraceInfo for Dapper-style tracing (e.g., using HTrace).
+ * Passing this information via a message allows causal relationships
+ * to be formed between time spans in different processes.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.trace",
+  "type": "record",
+  "name": "AvroTraceInfo",
+  "fields":
+  [
+    {"name": "traceId", "type": "long"},
+    {"name": "spanId", "type": "long"}
+  ]
+}
+]

@@ -17,6 +17,7 @@
 package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -47,16 +48,33 @@ final class SimpleEMREEF {
   }
 
   /**
-   * Check onLocal option by parsing the command line
+   * Setup (register short names) and parse the command line, returning an Injector
    */
-  private static boolean parseOnLocalFromCommmandLine(final String[] args) throws InjectionException, IOException {
+  private static Injector parseCommandLine(final String[] args) throws InjectionException, IOException {
     final JavaConfigurationBuilder cb = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
+
     cl.registerShortNameOfClass(OnLocal.class);
+
+    HTraceParameters.registerShortNames(cl);
+
     cl.processCommandLine(args);
 
-    final Injector injector = TANG.newInjector(cb.build());
+    return TANG.newInjector(cb.build());
+  }
+
+  /**
+   * Get onLocal from the parsed command line Injector
+   */
+  private static boolean getOnLocal(final Injector injector) throws InjectionException {
     return injector.getNamedInstance(OnLocal.class);
+  }
+
+  /**
+   * Get HTraceParameters from the parsed command line Injector
+   */
+  private static HTraceParameters getTraceParameters(final Injector injector) throws InjectionException {
+    return injector.getInstance(HTraceParameters.class);
   }
 
   public static Configuration getDriverConfiguration() {
@@ -75,20 +93,25 @@ final class SimpleEMREEF {
     return Configurations.merge(driverConfiguration, emConfiguration, NameServerConfiguration.CONF.build());
   }
 
-  public static LauncherStatus runSimpleEM(final Configuration runtimeConf, final int timeOut, final boolean onLocal)
+  public static LauncherStatus runSimpleEM(final Configuration runtimeConf, final Configuration traceConf,
+                                           final int timeOut)
       throws InjectionException {
     final Configuration driverConf = getDriverConfiguration();
 
-    return DriverLauncher.getLauncher(runtimeConf).run(driverConf, timeOut);
+    return DriverLauncher.getLauncher(runtimeConf).run(Configurations.merge(driverConf, traceConf), timeOut);
   }
 
   public static void main(final String[] args) throws InjectionException, IOException {
-    final boolean onLocal = parseOnLocalFromCommmandLine(args);
+    final Injector injector = parseCommandLine(args);
+    final boolean onLocal = getOnLocal(injector);
     final Configuration runtimeConf = onLocal ?
       LocalRuntimeConfiguration.CONF.build():
       YarnClientConfiguration.CONF.build();
 
-    final LauncherStatus status = runSimpleEM(runtimeConf, TIMEOUT, onLocal);
+    final HTraceParameters traceParameters = getTraceParameters(injector);
+    final Configuration traceConf = traceParameters.getConfiguration();
+
+    final LauncherStatus status = runSimpleEM(runtimeConf, traceConf, TIMEOUT);
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 }

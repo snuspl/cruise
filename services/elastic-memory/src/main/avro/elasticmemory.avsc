@@ -40,6 +40,7 @@
     {"name": "type", "type": {"type": "enum", "name": "Type", "symbols": ["CtrlMsg", "DataMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
+    {"name": "traceInfo", "type": ["null", "edu.snu.cay.services.em.trace.AvroTraceInfo"], "default": null},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null}
   ]

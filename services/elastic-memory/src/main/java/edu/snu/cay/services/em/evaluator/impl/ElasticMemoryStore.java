@@ -1,6 +1,7 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -15,7 +16,8 @@ public final class ElasticMemoryStore implements MemoryStore {
   private final Map<String, List> elasticDataMap;
 
   @Inject
-  public ElasticMemoryStore() {
+  public ElasticMemoryStore(final HTrace hTrace) {
+    hTrace.initialize();
     localDataMap = new HashMap<>();
     elasticDataMap = new HashMap<>();
   }
