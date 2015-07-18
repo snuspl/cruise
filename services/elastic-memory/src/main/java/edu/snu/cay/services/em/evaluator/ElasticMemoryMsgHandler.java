@@ -6,8 +6,12 @@ import edu.snu.cay.services.em.avro.DataMsg;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
+import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceInfo;
+import org.apache.htrace.TraceScope;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.io.serialization.Codec;
@@ -28,6 +32,9 @@ import java.util.logging.Logger;
 @EvaluatorSide
 public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
+
+  private static final String ON_DATA_MSG = "onDataMsg";
+  private static final String ON_CTRL_MSG = "onCtrlMsg";
 
   private final MemoryStore memoryStore;
   private final Serializer serializer;
@@ -67,17 +74,24 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    * Puts the data message contents into own memory store.
    */
   private void onDataMsg(final AvroElasticMemoryMessage msg) {
-    final DataMsg dataMsg = msg.getDataMsg();
+    final TraceScope onDataMsgScope = Trace.startSpan(ON_DATA_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()));
+    try {
 
-    final Codec codec = serializer.getCodec(dataMsg.getDataClassName().toString());
-    final List list = new LinkedList();
-    for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
-      final byte[] data = unitIdPair.getUnit().array();
-      list.add(codec.decode(data));
+      final DataMsg dataMsg = msg.getDataMsg();
+
+      final Codec codec = serializer.getCodec(dataMsg.getDataClassName().toString());
+      final List list = new LinkedList();
+      for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
+        final byte[] data = unitIdPair.getUnit().array();
+        list.add(codec.decode(data));
+      }
+      list.addAll(memoryStore.get(dataMsg.getDataClassName().toString()));
+
+      memoryStore.putMovable(dataMsg.getDataClassName().toString(), list);
+
+    } finally {
+      onDataMsgScope.close();
     }
-    list.addAll(memoryStore.get(dataMsg.getDataClassName().toString()));
-
-    memoryStore.putMovable(dataMsg.getDataClassName().toString(), list);
   }
 
   /**
@@ -85,26 +99,34 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    * send the data message to the correct evaluator.
    */
   private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
-    final CtrlMsg ctrlMsg = msg.getCtrlMsg();
+    final TraceScope onCtrlMsgScope = Trace.startSpan(ON_CTRL_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()));
+    try {
 
-    final String key = ctrlMsg.getDataClassName().toString();
-    final Codec codec = serializer.getCodec(key);
+      final CtrlMsg ctrlMsg = msg.getCtrlMsg();
 
-    final List list = memoryStore.get(key);
-    memoryStore.remove(key);
+      final String key = ctrlMsg.getDataClassName().toString();
+      final Codec codec = serializer.getCodec(key);
 
-    final List<UnitIdPair> unitIdPairList = new LinkedList<>();
+      final List list = memoryStore.get(key);
+      memoryStore.remove(key);
 
-    // TODO: Currently send meaningless values for ids. Must fix.
-    for (final Object object : list) {
-      final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-          .setUnit(ByteBuffer.wrap(codec.encode(object)))
-          .setId(0)
-          .build();
+      final List<UnitIdPair> unitIdPairList = new LinkedList<>();
 
-      unitIdPairList.add(unitIdPair);
+      // TODO: Currently send meaningless values for ids. Must fix.
+      for (final Object object : list) {
+        final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+            .setUnit(ByteBuffer.wrap(codec.encode(object)))
+            .setId(0)
+            .build();
+
+        unitIdPairList.add(unitIdPair);
+      }
+
+      sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList,
+          TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
+
+    } finally {
+      onCtrlMsgScope.close();
     }
-
-    sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList);
   }
 }

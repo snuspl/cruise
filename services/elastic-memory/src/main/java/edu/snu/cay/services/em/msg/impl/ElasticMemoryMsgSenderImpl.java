@@ -3,6 +3,10 @@ package edu.snu.cay.services.em.msg.impl;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.api.NSWrapper;
+import edu.snu.cay.services.em.trace.HTraceUtils;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceInfo;
+import org.apache.htrace.TraceScope;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.impl.NetworkService;
@@ -19,6 +23,9 @@ import java.util.logging.Logger;
  */
 public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgSenderImpl.class.getName());
+
+  private static final String SEND_CTRL_MSG = "sendCtrlMsg";
+  private static final String SEND_DATA_MSG = "sendDataMsg";
 
   private final NetworkService<AvroElasticMemoryMessage> networkService;
   private final IdentifierFactory identifierFactory;
@@ -45,45 +52,63 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
 
   @Override
-  public void sendCtrlMsg(final String destId, final String dataClassName, final String targetEvalId) {
-    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
-        new Object[] { destId, dataClassName, targetEvalId });
+  public void sendCtrlMsg(final String destId, final String dataClassName, final String targetEvalId,
+                          final TraceInfo parentTraceInfo) {
+    final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo);
+    try {
 
-    final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
-        .setDataClassName(dataClassName)
-        .build();
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+          new Object[]{destId, dataClassName, targetEvalId});
 
-    send(destId,
-         AvroElasticMemoryMessage.newBuilder()
-                                 .setType(Type.CtrlMsg)
-                                 .setSrcId(destId)
-                                 .setDestId(targetEvalId)
-                                 .setCtrlMsg(ctrlMsg)
-                                 .build());
+      final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
+          .setDataClassName(dataClassName)
+          .build();
 
-    LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
-        new Object[] { destId, dataClassName, targetEvalId});
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.CtrlMsg)
+              .setSrcId(destId)
+              .setDestId(targetEvalId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setCtrlMsg(ctrlMsg)
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+          new Object[]{destId, dataClassName, targetEvalId});
+
+    } finally {
+      sendCtrlMsgScope.close();
+    }
   }
 
   @Override
-  public void sendDataMsg(final String destId, final String dataClassName, final List<UnitIdPair> unitIdPairList) {
-    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
-        new Object[] { destId, dataClassName });
+  public void sendDataMsg(final String destId, final String dataClassName, final List<UnitIdPair> unitIdPairList,
+                          final TraceInfo parentTraceInfo) {
+    final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo);
+    try {
 
-    final DataMsg dataMsg = DataMsg.newBuilder()
-        .setDataClassName(dataClassName)
-        .setUnits(unitIdPairList)
-        .build();
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
+          new Object[]{destId, dataClassName});
 
-    send(destId,
-         AvroElasticMemoryMessage.newBuilder()
-                                 .setType(Type.DataMsg)
-                                 .setSrcId(networkService.getMyId().toString())
-                                 .setDestId(destId)
-                                 .setDataMsg(dataMsg)
-                                 .build());
+      final DataMsg dataMsg = DataMsg.newBuilder()
+          .setDataClassName(dataClassName)
+          .setUnits(unitIdPairList)
+          .build();
 
-    LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
-        new Object[] { destId, dataClassName });
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.DataMsg)
+              .setSrcId(networkService.getMyId().toString())
+              .setDestId(destId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setDataMsg(dataMsg)
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
+          new Object[]{destId, dataClassName});
+
+    } finally {
+      sendDataMsgScope.close();
+    }
   }
 }
