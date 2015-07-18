@@ -238,8 +238,6 @@ public final class DolphinDriver {
         final Configuration emContextConf = emConf.getContextConfiguration();
         final Configuration emServiceConf = emConf.getServiceConfiguration();
         final Configuration outputServiceConf = OutputService.getServiceConfiguration(outputDir, onLocal);
-        // TODO remove the KVService
-        final Configuration keyValueServiceStoreConf = KeyValueStoreService.getServiceConfiguration();
         final Configuration metricTrackerServiceConf = MetricTrackerService.getServiceConfiguration();
         final Configuration finalContextConf = MetricTrackerService.getContextConfiguration(
                 Configurations.merge(groupCommContextConf, emContextConf));
@@ -249,20 +247,20 @@ public final class DolphinDriver {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
           ctrlTaskContextId = getContextId(groupCommContextConf);
 
-          // Add the Key-Value Store service, the Output service,
+          // Add the Elastic Memory service, the Output service,
           // the Metric Tracker service, and the Group Communication service
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
-              keyValueServiceStoreConf, outputServiceConf);
+              outputServiceConf);
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
-          // Add the Data Parse service, the Key-Value Store service,
+          // Add the Data Parse service, the Elastic Memory service,
           // the Output service, the Metric Tracker service, and the Group Communication service
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, dataParseConf, outputServiceConf,
-              keyValueServiceStoreConf, metricTrackerServiceConf);
+              metricTrackerServiceConf);
         }
 
         activeContext.submitContextAndService(finalContextConf, finalServiceConf);
