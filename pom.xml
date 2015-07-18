@@ -60,6 +60,7 @@ under the License.
   <modules>
     <module>dolphin</module>
     <module>services/elastic-memory</module>
+    <module>services/shuffle</module>
   </modules>
 
 </project>
