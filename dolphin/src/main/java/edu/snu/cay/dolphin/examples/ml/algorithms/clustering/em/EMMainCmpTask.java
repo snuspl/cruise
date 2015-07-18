@@ -23,6 +23,7 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.ClusterSummary;
 import edu.snu.cay.dolphin.examples.ml.parameters.IsCovarianceShared;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
@@ -33,10 +34,7 @@ import java.util.*;
 public final class EMMainCmpTask extends UserComputeTask
     implements DataBroadcastReceiver<List<ClusterSummary>>, DataReduceSender<Map<Integer, ClusterStats>> {
 
-  /**
-   * Points read from input data to work on.
-   */
-  private List<Vector> points = null;
+  private static final String KEY_POINTS = "points";
 
   /**
    * Summaries of each cluster.
@@ -52,25 +50,36 @@ public final class EMMainCmpTask extends UserComputeTask
    * whether covariance matrices are diagonal or not.
    */
   private final boolean isCovarianceDiagonal;
+
   private final DataParser<List<Vector>> dataParser;
 
   /**
-   * Constructs a single Compute Task for the EM algorithm.
-   * This class is instantiated by TANG.
+   * Memory storage to put/get the data.
+   */
+  private final MemoryStore memoryStore;
+
+  /**
+   * This class is instantiated by TANG
+   * Constructs a single Compute Task for the EM algorithm
    * @param dataParser
+   * @param memoryStore Memory storage to put/get the data
    * @param isCovarianceDiagonal  whether covariance matrices are diagonal or not
    */
   @Inject
   public EMMainCmpTask(
       final DataParser<List<Vector>> dataParser,
+      final MemoryStore memoryStore,
       @Parameter(IsCovarianceShared.class) final boolean isCovarianceDiagonal) {
     this.dataParser = dataParser;
+    this.memoryStore = memoryStore;
     this.isCovarianceDiagonal = isCovarianceDiagonal;
   }
 
   @Override
   public void initialize() throws ParseException {
-    points = dataParser.get();
+    // Points read from input data to work on
+    final List<Vector> points = dataParser.get();
+    memoryStore.putMovable(KEY_POINTS, points);
   }
 
   @Override
@@ -79,6 +88,7 @@ public final class EMMainCmpTask extends UserComputeTask
     final int numClusters = clusterSummaries.size();
 
     // Compute the partial statistics of each cluster
+    final List<Vector> points = memoryStore.get(KEY_POINTS);
     for (final Vector vector : points) {
       final int dimension = vector.size();
       Matrix outProd = null;
