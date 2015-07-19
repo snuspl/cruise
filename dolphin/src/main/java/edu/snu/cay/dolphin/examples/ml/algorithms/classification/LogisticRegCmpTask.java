@@ -35,6 +35,10 @@ import java.util.List;
 
 public class LogisticRegCmpTask extends UserComputeTask
     implements DataReduceSender<LogisticRegSummary>, DataBroadcastReceiver<LinearModel> {
+
+  /**
+   * Key used in Elastic Memory to put/get the data
+   */
   private static final String KEY_ROWS = "rows";
 
   private double stepSize;

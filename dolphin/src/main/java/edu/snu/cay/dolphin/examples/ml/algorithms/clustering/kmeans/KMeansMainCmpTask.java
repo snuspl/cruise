@@ -34,6 +34,9 @@ import java.util.Map;
 public final class KMeansMainCmpTask extends UserComputeTask
     implements DataBroadcastReceiver<List<Vector>>, DataReduceSender<Map<Integer, VectorSum>> {
 
+  /**
+   * Key used in Elastic Memory to put/get the data
+   */
   private static final String KEY_POINTS = "points";
 
   /**
