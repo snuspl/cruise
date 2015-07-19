@@ -1,7 +1,7 @@
 package edu.snu.cay.services.em.driver.api;
 
 import edu.snu.cay.services.em.driver.impl.ElasticMemoryImpl;
-import org.apache.commons.lang.math.IntRange;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -47,7 +47,7 @@ public interface ElasticMemory {
    * @param srcEvalId identifier of the source evaluator
    * @param destEvalId identifier of the destination evaluator
    */
-  void move(String dataClassName, Set<IntRange> rangeSet, String srcEvalId, String destEvalId);
+  void move(String dataClassName, Set<LongRange> rangeSet, String srcEvalId, String destEvalId);
 
   /**
    * Persist the state of an evaluator into stable storage

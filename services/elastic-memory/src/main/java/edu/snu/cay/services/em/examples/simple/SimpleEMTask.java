@@ -17,6 +17,9 @@
 package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.PartitionRegister;
+import org.apache.reef.driver.task.TaskConfigurationOptions;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 
@@ -29,6 +32,7 @@ final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
   public static final String KEY = "INTEGER";
   private static final Integer SLEEP_MILLISECONDS = 10000;
+  private static final int ID_BASE = 100;
 
   private final MemoryStore memoryStore;
   private final SimpleEMTaskReady simpleEMTaskReady;
@@ -38,16 +42,20 @@ final class SimpleEMTask implements Task {
   private SimpleEMTask(
       final MemoryStore memoryStore,
       final SimpleEMTaskReady simpleEMTaskReady,
-      final HeartBeatTriggerManager heartBeatTriggerManager) {
+      final HeartBeatTriggerManager heartBeatTriggerManager,
+      final PartitionRegister partitionRegister,
+      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId) {
     this.memoryStore = memoryStore;
     this.simpleEMTaskReady = simpleEMTaskReady;
     this.heartBeatTriggerManager = heartBeatTriggerManager;
 
-    final List<Integer> list = new LinkedList<>();
-    list.add(100);
-    list.add(200);
+    final int myIdBase = Integer.valueOf(taskId.substring(SimpleEMDriver.TASK_ID_PREFIX.length())) * ID_BASE;
+    partitionRegister.registerPartition(KEY, myIdBase, myIdBase + ID_BASE - 1);
 
-    this.memoryStore.putMovable(KEY, list);
+    for (int index = 0; index < 10; index++) {
+      final int item = myIdBase + index * 10;
+      this.memoryStore.putMovable(KEY, (long)item, item);
+    }
   }
 
   public byte[] call(final byte[] memento) throws InterruptedException {
@@ -55,7 +63,10 @@ final class SimpleEMTask implements Task {
 
     LOG.info("Before sleep, memory store contains: ");
     LOG.info(memoryStore.get(KEY).toString());
-    // Should be [100, 200]
+    // Should be either
+    // [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+    // or
+    // [100, 110, 120, 130, 140, 150, 160, 170, 180, 190]
 
     simpleEMTaskReady.setReady(true);
     heartBeatTriggerManager.triggerHeartBeat();
@@ -63,8 +74,8 @@ final class SimpleEMTask implements Task {
 
     LOG.info("After sleep, memory store contains: ");
     LOG.info(memoryStore.get(KEY).toString());
-    // Fast evaluator should be [100, 200, 100, 200]
-    // Slow evaluator should be []
+    // Fast evaluator should have more than before
+    // Slow evaluator should have less than before
 
     return null;
   }

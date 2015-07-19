@@ -8,12 +8,14 @@ import edu.snu.cay.services.em.ns.NSWrapperParameters;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
@@ -24,10 +26,13 @@ import javax.inject.Inject;
 public final class ElasticMemoryConfiguration {
 
   private final NSWrapperConfiguration nsWrapperConfiguration;
+  private final String driverId;
 
   @Inject
-  private ElasticMemoryConfiguration(final NSWrapperConfiguration nsWrapperConfiguration) {
+  private ElasticMemoryConfiguration(final NSWrapperConfiguration nsWrapperConfiguration,
+                                     @Parameter(DriverIdentifier.class) final String driverId) {
     this.nsWrapperConfiguration = nsWrapperConfiguration;
+    this.driverId = driverId;
   }
 
   /**
@@ -78,10 +83,11 @@ public final class ElasticMemoryConfiguration {
         .set(ServiceConfiguration.SERVICES, ElasticMemoryStore.class)
         .build();
 
-    final Configuration bindImplConf = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, ElasticMemoryStore.class)
+        .bindNamedParameter(DriverIdentifier.class, driverId)
         .build();
 
-    return Configurations.merge(nsWrapperConf, serviceConf, bindImplConf);
+    return Configurations.merge(nsWrapperConf, serviceConf, otherConf);
   }
 }

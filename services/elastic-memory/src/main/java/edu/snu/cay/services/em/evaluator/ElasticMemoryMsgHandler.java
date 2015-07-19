@@ -1,9 +1,6 @@
 package edu.snu.cay.services.em.evaluator;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.CtrlMsg;
-import edu.snu.cay.services.em.avro.DataMsg;
-import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.services.em.trace.HTraceUtils;
@@ -14,6 +11,7 @@ import org.apache.htrace.TraceInfo;
 import org.apache.htrace.TraceScope;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
@@ -79,15 +77,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       final DataMsg dataMsg = msg.getDataMsg();
 
+      final String dataClassName = dataMsg.getDataClassName().toString();
       final Codec codec = serializer.getCodec(dataMsg.getDataClassName().toString());
-      final List list = new LinkedList();
       for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
         final byte[] data = unitIdPair.getUnit().array();
-        list.add(codec.decode(data));
+        final long id = unitIdPair.getId();
+        memoryStore.putMovable(dataClassName, id, codec.decode(data));
       }
-      list.addAll(memoryStore.get(dataMsg.getDataClassName().toString()));
-
-      memoryStore.putMovable(dataMsg.getDataClassName().toString(), list);
 
     } finally {
       onDataMsgScope.close();
@@ -107,16 +103,17 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final String key = ctrlMsg.getDataClassName().toString();
       final Codec codec = serializer.getCodec(key);
 
-      final List list = memoryStore.get(key);
-      memoryStore.remove(key);
+      final List<Pair<Long, Object>> idObjectList = new LinkedList<>();
+      for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
+        idObjectList.addAll(memoryStore.remove(key, avroLongRange.getMin(), avroLongRange.getMax()));
+      }
 
       final List<UnitIdPair> unitIdPairList = new LinkedList<>();
 
-      // TODO: Currently send meaningless values for ids. Must fix.
-      for (final Object object : list) {
+      for (final Pair<Long, Object> objectId : idObjectList) {
         final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-            .setUnit(ByteBuffer.wrap(codec.encode(object)))
-            .setId(0)
+            .setUnit(ByteBuffer.wrap(codec.encode(objectId.second)))
+            .setId(objectId.first)
             .build();
 
         unitIdPairList.add(unitIdPair);

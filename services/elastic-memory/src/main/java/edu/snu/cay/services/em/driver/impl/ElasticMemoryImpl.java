@@ -6,7 +6,7 @@ import edu.snu.cay.services.em.ns.api.NSWrapper;
 import edu.snu.cay.services.em.trace.HTrace;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.math.IntRange;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.htrace.Sampler;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceInfo;
@@ -60,13 +60,12 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     throw new NotImplementedException();
   }
 
-  // TODO: @param rangeSet is currently not being used.
   @Override
-  public void move(final String dataClassName, final Set<IntRange> rangeSet, final String srcEvalId, final String destEvalId) {
+  public void move(final String dataClassName, final Set<LongRange> idRangeSet, final String srcEvalId, final String destEvalId) {
     final TraceScope traceScope = Trace.startSpan(MOVE);
     try {
 
-      sender.sendCtrlMsg(srcEvalId, dataClassName, destEvalId, TraceInfo.fromSpan(traceScope.getSpan()));
+      sender.sendCtrlMsg(srcEvalId, dataClassName, destEvalId, idRangeSet, TraceInfo.fromSpan(traceScope.getSpan()));
 
     } finally {
       traceScope.close();

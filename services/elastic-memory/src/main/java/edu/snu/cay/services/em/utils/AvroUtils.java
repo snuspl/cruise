@@ -1,8 +1,10 @@
 package edu.snu.cay.services.em.utils;
 
+import edu.snu.cay.services.em.avro.AvroLongRange;
 import org.apache.avro.io.*;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
+import org.apache.commons.lang.math.LongRange;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -45,5 +47,12 @@ public final class AvroUtils {
     } catch (final IOException e) {
       throw new RuntimeException("Failed to deserialize an avro object", e);
     }
+  }
+
+  public static AvroLongRange convertLongRange(final LongRange longRange) {
+    return AvroLongRange.newBuilder()
+        .setMin(longRange.getMinimumLong())
+        .setMax(longRange.getMaximumLong())
+        .build();
   }
 }

@@ -2,11 +2,13 @@ package edu.snu.cay.services.em.msg.api;
 
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.htrace.TraceInfo;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Interface for sending AvroElasticMemoryMessages to the driver and evaluators.
@@ -23,6 +25,7 @@ public interface ElasticMemoryMsgSender {
   void sendCtrlMsg(final String destId,
                    final String dataClassName,
                    final String targetEvalId,
+                   final Set<LongRange> idRangeSet,
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
@@ -34,4 +37,9 @@ public interface ElasticMemoryMsgSender {
                    final String dataClassName,
                    final List<UnitIdPair> unitIdPairList,
                    @Nullable final TraceInfo parentTraceInfo);
+
+  void sendRegisMsg(final String dataClassName,
+                    final long unitStartId,
+                    final long unitEndId,
+                    @Nullable final TraceInfo parentTraceInfo);
 }
