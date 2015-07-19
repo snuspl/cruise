@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.PageRankSummary;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -36,24 +37,21 @@ import java.util.Map;
  */
 public class PageRankCmpTask extends UserComputeTask
     implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer, Double>> {
+  private static final String KEY_RANK = "rank";
 
   /**
    * Adjacency list data parser.
    */
   private final DataParser<Map<Integer, List<Integer>>> dataParser;
 
+  private final MemoryStore memoryStore;
   /**
    * Subgraph consists a node and its outgoing neighbor set.
    */
   private Map<Integer, List<Integer>> subgraphs;
 
   /**
-   * Map of current rank.
-   */
-  private Map<Integer, Double> rank;
-
-  /**
-   * Map of contributed increment to outgoing neighbor nodes.
+   * Map of contributed increment to outgoing neighbor nodes
    */
   private final Map<Integer, Double> increment = new HashMap<>();
 
@@ -63,8 +61,10 @@ public class PageRankCmpTask extends UserComputeTask
    * @param dataParser
    */
   @Inject
-  public PageRankCmpTask(final DataParser<Map<Integer, List<Integer>>> dataParser) {
+  public PageRankCmpTask(final DataParser<Map<Integer, List<Integer>>> dataParser,
+                         final MemoryStore memoryStore) {
     this.dataParser = dataParser;
+    this.memoryStore = memoryStore;
   }
 
   /**
@@ -74,10 +74,12 @@ public class PageRankCmpTask extends UserComputeTask
   @Override
   public void initialize() throws ParseException {
     subgraphs = dataParser.get();
-    rank = new HashMap<>();
+    // Map of current rank
+    final Map<Integer, Double> rank = new HashMap<>();
     for (final Integer key : subgraphs.keySet()) {
       rank.put(key, 1.0d);
     }
+    memoryStore.putMovable(KEY_RANK, rank);
   }
 
   @Override
@@ -98,6 +100,7 @@ public class PageRankCmpTask extends UserComputeTask
 
       // The rank of node is distributed evenly to its outbound neighbor nodes.
       // Compute a contribution per each node
+      final Map<Integer, Double> rank = (Map<Integer, Double>) memoryStore.get(KEY_RANK).get(0);
       final double contribution = rank.get(nodeId) * 1.0d / outList.size();
       // Add the contribution to each node
       for (final Integer adjNode : outList) {
@@ -121,7 +124,7 @@ public class PageRankCmpTask extends UserComputeTask
     if (iteration < 1) {
       return;
     }
-    this.rank = rankData;
+    memoryStore.putMovable(KEY_RANK, rankData);
   }
 
   /**
