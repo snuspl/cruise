@@ -37,6 +37,10 @@ import java.util.Map;
  */
 public class PageRankCmpTask extends UserComputeTask
     implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer, Double>> {
+
+  /**
+   * Key used in Elastic Memory to put/get the data
+   */
   private static final String KEY_RANK = "rank";
 
   /**

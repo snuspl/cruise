@@ -34,6 +34,9 @@ import java.util.*;
 public final class EMMainCmpTask extends UserComputeTask
     implements DataBroadcastReceiver<List<ClusterSummary>>, DataReduceSender<Map<Integer, ClusterStats>> {
 
+  /**
+   * Key used in Elastic Memory to put/get the data
+   */
   private static final String KEY_POINTS = "points";
 
   /**
