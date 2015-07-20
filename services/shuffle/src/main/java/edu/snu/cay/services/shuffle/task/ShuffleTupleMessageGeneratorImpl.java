@@ -27,22 +27,22 @@ import java.util.List;
 import java.util.Map;
 
 /**
- *
+ * Default implementation for ShuffleTupleMessageGenerator
  */
 final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessageGenerator<K, V> {
 
-  private final ShuffleClient shuffleClient;
+  private final ShuffleGroupClient shuffleGroupClient;
   private final String shuffleGroupName;
   private final ShuffleDescription<K, V> shuffleDescription;
   private final ShuffleStrategy<K> shuffleStrategy;
 
   @Inject
-  public ShuffleTupleMessageGeneratorImpl(
-      final ShuffleClient shuffleClient,
+  private ShuffleTupleMessageGeneratorImpl(
+      final ShuffleGroupClient shuffleGroupClient,
       final ShuffleDescription<K, V> shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy) {
-    this.shuffleClient = shuffleClient;
-    this.shuffleGroupName = shuffleClient.getShuffleGroupDescription().getShuffleGroupName();
+    this.shuffleGroupClient = shuffleGroupClient;
+    this.shuffleGroupName = shuffleGroupClient.getShuffleGroupDescription().getShuffleGroupName();
     this.shuffleDescription = shuffleDescription;
     this.shuffleStrategy = shuffleStrategy;
   }
@@ -111,7 +111,7 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
   }
 
   private List<String> getReceiverIdList() {
-    return shuffleClient.getShuffleGroupDescription().getReceiverIdList(shuffleDescription.getShuffleName());
+    return shuffleGroupClient.getShuffleGroupDescription().getReceiverIdList(shuffleDescription.getShuffleName());
   }
 
   private ShuffleTupleMessage<K, V> createShuffleTupleMessage(final List<Tuple<K, V>> data) {

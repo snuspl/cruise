@@ -20,17 +20,29 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.remote.Codec;
 
 /**
- *
+ * Description about a shuffle in shuffle group
  */
 @DefaultImplementation(ShuffleDescriptionImpl.class)
 public interface ShuffleDescription<K, V> {
 
+  /**
+   * @return the name of the shuffle
+   */
   String getShuffleName();
 
+  /**
+   * @return the strategy class of the shuffle
+   */
   Class<? extends ShuffleStrategy> getShuffleStrategyClass();
 
+  /**
+   * @return the codec class for key type
+   */
   Class<? extends Codec<K>> getKeyCodecClass();
 
+  /**
+   * @return the codec class for value type
+   */
   Class<? extends Codec<V>> getValueCodecClass();
 
 }

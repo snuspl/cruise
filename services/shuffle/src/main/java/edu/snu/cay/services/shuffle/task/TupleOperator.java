@@ -16,16 +16,31 @@
 package edu.snu.cay.services.shuffle.task;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
+import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 
 import java.util.List;
 
 /**
- *
+ * Tuple operator for a specific shuffle.
  */
 public interface TupleOperator<K, V> {
 
+  /**
+   * @return shuffle description
+   */
   ShuffleDescription<K, V> getShuffleDescription();
 
+  /**
+   * @return the ShuffleStrategy instance for the operator
+   */
+  ShuffleStrategy<K> getShuffleStrategy();
+
+  /**
+   * Return selected receiver id list among the receiver list of the shuffle using the ShuffleStrategy
+   *
+   * @param key a key instance to select corresponding receivers
+   * @return selected receiver id list
+   */
   List<String> getSelectedReceiverIdList(K key);
 
 }

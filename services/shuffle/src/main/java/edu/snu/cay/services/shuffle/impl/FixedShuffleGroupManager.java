@@ -17,9 +17,9 @@ package edu.snu.cay.services.shuffle.impl;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
-import edu.snu.cay.services.shuffle.driver.ShuffleManager;
+import edu.snu.cay.services.shuffle.driver.ShuffleGroupManager;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
-import edu.snu.cay.services.shuffle.task.ShuffleClient;
+import edu.snu.cay.services.shuffle.task.ShuffleGroupClient;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
@@ -29,15 +29,15 @@ import javax.inject.Inject;
 import java.util.List;
 
 /**
- *
+ * Simple implementation of ShuffleGroupManager. The initial shuffle group description never be changed.
  */
-public final class BasicShuffleManager implements ShuffleManager {
+public final class FixedShuffleGroupManager implements ShuffleGroupManager {
 
   private final ShuffleGroupDescription initialShuffleGroupDescription;
   private final ConfigurationSerializer confSerializer;
 
   @Inject
-  public BasicShuffleManager(
+  private FixedShuffleGroupManager(
       final ShuffleGroupDescription initialShuffleGroupDescription,
       final ConfigurationSerializer confSerializer) {
     this.initialShuffleGroupDescription = initialShuffleGroupDescription;
@@ -102,8 +102,12 @@ public final class BasicShuffleManager implements ShuffleManager {
   }
 
   @Override
-  public Class<? extends ShuffleClient> getClientClass() {
-    return BasicShuffleClient.class;
+  public Class<? extends ShuffleGroupClient> getClientClass() {
+    return FixedShuffleGroupClient.class;
   }
 
+  @Override
+  public ShuffleGroupDescription getShuffleGroupDescription() {
+    return initialShuffleGroupDescription;
+  }
 }

@@ -16,7 +16,7 @@
 package edu.snu.cay.services.shuffle.example.simple;
 
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import edu.snu.cay.services.shuffle.task.ShuffleClient;
+import edu.snu.cay.services.shuffle.task.ShuffleGroupClient;
 import edu.snu.cay.services.shuffle.task.ShuffleService;
 import edu.snu.cay.services.shuffle.task.TupleReceiver;
 import edu.snu.cay.services.shuffle.task.TupleSender;
@@ -37,13 +37,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
+ * Task for simple message exchanging example
  */
 public final class MessageExchangeTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(MessageExchangeTask.class.getName());
 
-  private final ShuffleClient shuffleClient;
+  private final ShuffleGroupClient shuffleGroupClient;
   private final TupleSender<Integer, Integer> tupleSender;
   private final TupleReceiver<Integer, Integer> tupleReceiver;
 
@@ -52,21 +52,21 @@ public final class MessageExchangeTask implements Task {
 
   private final AtomicInteger counter;
 
-  private final List<String> arrivedMessageSenderIdList;
+  private final List<String> messageSentSenderIdList;
 
   @Inject
   private MessageExchangeTask(
       final ShuffleService shuffleService) {
-    this.shuffleClient = shuffleService.getClient(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME);
-    this.tupleSender = shuffleClient.getSender(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
+    this.shuffleGroupClient = shuffleService.getClient(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME);
+    this.tupleSender = shuffleGroupClient.getSender(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     tupleSender.registerTupleLinkListener(new TupleLinkListener());
-    this.tupleReceiver = shuffleClient.getReceiver(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
+    this.tupleReceiver = shuffleGroupClient.getReceiver(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     tupleReceiver.registerTupleMessageHandler(new TupleMessageHandler());
-    this.receiverList = shuffleClient.getShuffleGroupDescription()
+    this.receiverList = shuffleGroupClient.getShuffleGroupDescription()
         .getReceiverIdList(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     this.taskNumber = receiverList.size();
     this.counter = new AtomicInteger(taskNumber);
-    this.arrivedMessageSenderIdList = Collections.synchronizedList(new ArrayList<String>());
+    this.messageSentSenderIdList = Collections.synchronizedList(new ArrayList<String>());
   }
 
   @Override
@@ -119,17 +119,6 @@ public final class MessageExchangeTask implements Task {
 
     @Override
     public void onNext(final Message<ShuffleTupleMessage<Integer, Integer>> message) {
-      if (arrivedMessageSenderIdList.contains(message.getSrcId().toString())) {
-        throw new RuntimeException("Only one message from one node is allowed.");
-      } else {
-        if (counter.decrementAndGet() == 0) {
-          LOG.log(Level.INFO, "{0} messages are arrived. The task will be notified and closed.", taskNumber);
-          synchronized (counter) {
-            counter.notifyAll();
-          }
-        }
-      }
-
       for (final ShuffleTupleMessage<Integer, Integer> tupleMessage : message.getData()) {
         if (tupleMessage.size() == 0) {
           LOG.log(Level.INFO, "An empty shuffle message is arrived from {0}.", message.getSrcId());
@@ -137,8 +126,20 @@ public final class MessageExchangeTask implements Task {
           LOG.log(Level.INFO, "A shuffle message with size {0} is arrived from {1}.",
               new Object[]{tupleMessage.size(), message.getSrcId()});
         }
+
         for (int i = 0; i < tupleMessage.size(); i++) {
           LOG.log(Level.INFO, tupleMessage.get(i).toString());
+        }
+      }
+
+      if (messageSentSenderIdList.contains(message.getSrcId().toString())) {
+        throw new RuntimeException("Only one message from one node is allowed.");
+      } else {
+        if (counter.decrementAndGet() == 0) {
+          LOG.log(Level.INFO, "{0} messages are arrived. The task will be notified and closed.", taskNumber);
+          synchronized (counter) {
+            counter.notifyAll();
+          }
         }
       }
     }

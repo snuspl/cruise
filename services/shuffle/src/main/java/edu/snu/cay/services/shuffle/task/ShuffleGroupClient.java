@@ -18,13 +18,36 @@ package edu.snu.cay.services.shuffle.task;
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
 
 /**
- *
+ * The task side interface communicating with corresponding ShuffleGroupManager in driver
+ * to control the shuffle group. The users can obtain tuple senders and receivers for
+ * specific shuffle
  */
-public interface ShuffleClient {
+public interface ShuffleGroupClient {
 
+  /**
+   * Return the TupleReceiver for the shuffle. It throws RuntimeException if
+   * the task is not a receiver for the shuffle.
+   *
+   * @param shuffleName the name of shuffle
+   * @param <K> key type
+   * @param <V> value type
+   * @return tuple receiver
+   */
   <K, V> TupleReceiver<K, V> getReceiver(String shuffleName);
 
+  /**
+   * Return the TupleSender for the shuffle. It throws RuntimeException if
+   * the task is not a sender for the shuffle.
+   *
+   * @param shuffleName the name of shuffle
+   * @param <K> key type
+   * @param <V> value type
+   * @return tuple sender
+   */
   <K, V> TupleSender<K, V> getSender(String shuffleName);
 
+  /**
+   * @return description about shuffle group handled by the shuffle group client
+   */
   ShuffleGroupDescription getShuffleGroupDescription();
 }

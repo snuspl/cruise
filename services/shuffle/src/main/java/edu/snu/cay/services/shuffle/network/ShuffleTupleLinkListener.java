@@ -26,7 +26,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
+ * Globally registered link listener for ShuffleTupleMessage. It routes exception or success callback to
+ * respective link lister registered with shuffle group and shuffle name.
  */
 public class ShuffleTupleLinkListener implements LinkListener<Message<ShuffleTupleMessage>> {
 

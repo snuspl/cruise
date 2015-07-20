@@ -35,7 +35,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
+ * Simple message exchanging example using shuffle service.
  *
+ * n tasks exchange tuples using key grouping. Cause all of tuples from one task to another task are chunked
+ * into one network message, each task is blocking until exactly n messages are arrived from n tasks including itself
+ * (task sends at least an empty network message to wake the other tasks)
  */
 public final class MessageExchangeREEF {
 
@@ -84,7 +88,7 @@ public final class MessageExchangeREEF {
   }
 
   /**
-   *
+   * Empty private constructor to prohibit instantiation of utility class.
    */
   private MessageExchangeREEF() {
   }

@@ -27,7 +27,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- *
+ * Globally registered codec for ShuffleTupleMessage. It uses tuple codecs registered with corresponding
+ * shuffle group name and shuffle name to encode, decode ShuffleTupleMessage.
  */
 public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTupleMessage> {
 

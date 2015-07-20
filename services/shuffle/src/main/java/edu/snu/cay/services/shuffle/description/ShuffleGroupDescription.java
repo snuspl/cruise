@@ -20,19 +20,40 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import java.util.List;
 
 /**
- *
+ * Description about a shuffle group which has not only shuffle descriptions,
+ * but the sender and receiver task ids of the corresponding shuffle descriptions.
  */
 @DefaultImplementation(ShuffleGroupDescriptionImpl.class)
 public interface ShuffleGroupDescription {
 
+  /**
+   * @return the name of shuffle group
+   */
   String getShuffleGroupName();
 
+  /**
+   * Return the name of shuffle names in shuffle group
+   *
+   * @return list of shuffle names
+   */
   List<String> getShuffleNameList();
 
   ShuffleDescription getShuffleDescription(String shuffleName);
 
+  /**
+   * Return list of sender task ids of shuffle named shuffleName in shuffle group
+   *
+   * @param shuffleName the name of shuffle
+   * @return list of sender task ids
+   */
   List<String> getSenderIdList(String shuffleName);
 
+  /**
+   * Return list of receiver task ids of shuffle named shuffleName in shuffle group
+   *
+   * @param shuffleName the name of shuffle
+   * @return list of sender task ids
+   */
   List<String> getReceiverIdList(String shuffleName);
 
 }

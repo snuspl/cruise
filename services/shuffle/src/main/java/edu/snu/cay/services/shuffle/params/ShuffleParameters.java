@@ -22,12 +22,12 @@ import org.apache.reef.wake.remote.Codec;
 import java.util.Set;
 
 /**
- *
+ * Parameters for shuffle service
  */
 public final class ShuffleParameters {
 
   /**
-   *
+   * Empty private constructor to prohibit instantiation of utility class
    */
   private ShuffleParameters() {
   }

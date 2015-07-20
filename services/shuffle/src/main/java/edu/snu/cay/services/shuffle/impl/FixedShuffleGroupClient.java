@@ -16,7 +16,7 @@
 package edu.snu.cay.services.shuffle.impl;
 
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
-import edu.snu.cay.services.shuffle.task.ShuffleClient;
+import edu.snu.cay.services.shuffle.task.ShuffleGroupClient;
 import edu.snu.cay.services.shuffle.task.TupleOperatorFactory;
 import edu.snu.cay.services.shuffle.task.TupleReceiver;
 import edu.snu.cay.services.shuffle.task.TupleSender;
@@ -24,14 +24,15 @@ import edu.snu.cay.services.shuffle.task.TupleSender;
 import javax.inject.Inject;
 
 /**
- *
+ * Simple implementation of ShuffleGroupClient. The initial shuffle group description never be changed.
  */
-public final class BasicShuffleClient implements ShuffleClient {
+public final class FixedShuffleGroupClient implements ShuffleGroupClient {
 
   private final ShuffleGroupDescription initialShuffleGroupDescription;
   private final TupleOperatorFactory operatorFactory;
+
   @Inject
-  public BasicShuffleClient(
+  private FixedShuffleGroupClient(
       final ShuffleGroupDescription initialShuffleGroupDescription,
       final TupleOperatorFactory operatorFactory) {
     this.initialShuffleGroupDescription = initialShuffleGroupDescription;

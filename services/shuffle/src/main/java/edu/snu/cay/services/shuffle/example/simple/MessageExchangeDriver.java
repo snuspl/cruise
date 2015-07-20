@@ -18,7 +18,7 @@ package edu.snu.cay.services.shuffle.example.simple;
 import edu.snu.cay.services.shuffle.description.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
-import edu.snu.cay.services.shuffle.impl.BasicShuffleManager;
+import edu.snu.cay.services.shuffle.impl.FixedShuffleGroupManager;
 import edu.snu.cay.services.shuffle.strategy.KeyShuffleStrategy;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -47,7 +47,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- *
+ * REEF driver for simple message exchanging example
  */
 @DriverSide
 @Unit
@@ -80,10 +80,10 @@ public final class MessageExchangeDriver {
     this.shuffleDriver = shuffleDriver;
     this.localAddressProvider = localAddressProvider;
     this.nameServer = nameServer;
-    createShuffleGroup();
+    registerShuffleGroup();
   }
 
-  private void createShuffleGroup() {
+  private void registerShuffleGroup() {
     shuffleDriver.registerManager(
         ShuffleGroupDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME)
             .addShuffle(taskIds, taskIds, ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
@@ -91,7 +91,7 @@ public final class MessageExchangeDriver {
                 .setValueCodec(IntegerCodec.class)
                 .setShuffleStrategy(KeyShuffleStrategy.class)
                 .build())
-        .build(), BasicShuffleManager.class
+        .build(), FixedShuffleGroupManager.class
     );
   }
 

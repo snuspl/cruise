@@ -25,7 +25,8 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- *
+ * Default implementation of ShuffleGroupDescription,
+ * it can be instantiated using Builder and Tang injector
  */
 public final class ShuffleGroupDescriptionImpl implements ShuffleGroupDescription {
 
@@ -36,7 +37,7 @@ public final class ShuffleGroupDescriptionImpl implements ShuffleGroupDescriptio
   private final List<String> shuffleNameList;
 
   @Inject
-  public ShuffleGroupDescriptionImpl(
+  private ShuffleGroupDescriptionImpl(
       @Parameter(ShuffleParameters.SerializedShuffleGroupName.class) final String shuffleGroupName,
       @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet,
       final ConfigurationSerializer confSerializer) {

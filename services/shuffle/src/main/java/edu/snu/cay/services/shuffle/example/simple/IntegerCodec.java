@@ -20,7 +20,7 @@ import org.apache.reef.wake.remote.Codec;
 import javax.inject.Inject;
 
 /**
- *
+ * Simple integer codec
  */
 public class IntegerCodec implements Codec<Integer> {
 
@@ -29,12 +29,12 @@ public class IntegerCodec implements Codec<Integer> {
   }
 
   @Override
-  public Integer decode(byte[] buf) {
+  public Integer decode(final byte[] buf) {
     return Integer.decode(new String(buf));
   }
 
   @Override
-  public byte[] encode(Integer obj) {
+  public byte[] encode(final Integer obj) {
     return Integer.toString(obj).getBytes();
   }
 }

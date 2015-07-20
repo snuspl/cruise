@@ -26,27 +26,27 @@ import javax.inject.Inject;
 import java.util.List;
 
 /**
- *
+ * Base implementation for TupleReceiver
  */
 public final class BaseTupleReceiver<K, V> implements TupleReceiver<K, V> {
 
   private final String shuffleGroupName;
   private final String shuffleName;
-  private final ShuffleClient shuffleClient;
+  private final ShuffleGroupClient shuffleGroupClient;
   private final ShuffleDescription<K, V> shuffleDescription;
   private final ShuffleStrategy<K> shuffleStrategy;
   private final ShuffleTupleMessageHandler globalTupleMessageHandler;
 
   @Inject
-  public BaseTupleReceiver(
-      final ShuffleClient shuffleClient,
+  private BaseTupleReceiver(
+      final ShuffleGroupClient shuffleGroupClient,
       final ShuffleDescription<K, V> shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy,
       final ShuffleTupleMessageHandler globalTupleMessageHandler) {
-    this.shuffleGroupName = shuffleClient.getShuffleGroupDescription().getShuffleGroupName();
+    this.shuffleGroupName = shuffleGroupClient.getShuffleGroupDescription().getShuffleGroupName();
     this.shuffleName = shuffleDescription.getShuffleName();
     this.shuffleDescription = shuffleDescription;
-    this.shuffleClient = shuffleClient;
+    this.shuffleGroupClient = shuffleGroupClient;
     this.shuffleStrategy = shuffleStrategy;
     this.globalTupleMessageHandler = globalTupleMessageHandler;
   }
@@ -62,8 +62,13 @@ public final class BaseTupleReceiver<K, V> implements TupleReceiver<K, V> {
   }
 
   @Override
+  public ShuffleStrategy<K> getShuffleStrategy() {
+    return shuffleStrategy;
+  }
+
+  @Override
   public List<String> getSelectedReceiverIdList(K key) {
     return shuffleStrategy.selectReceivers(key,
-        shuffleClient.getShuffleGroupDescription().getReceiverIdList(shuffleDescription.getShuffleName()));
+        shuffleGroupClient.getShuffleGroupDescription().getReceiverIdList(shuffleDescription.getShuffleName()));
   }
 }

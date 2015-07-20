@@ -27,14 +27,24 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Default implementation of ShuffleService
+ */
 final class ShuffleServiceImpl implements ShuffleService {
 
   private final Injector rootInjector;
   private final ConfigurationSerializer confSerializer;
-  private final Map<String, ShuffleClient> clientMap;
+  private final Map<String, ShuffleGroupClient> clientMap;
 
+  /**
+   * Construct a ShuffleServiceImpl
+
+   * @param rootInjector the root injector which injecting the instance of ShuffleServiceImpl
+   * @param serializedClientSet serialized configuration set for ShuffleGroupClient
+   * @param confSerializer Tang configuration serializer
+   */
   @Inject
-  public ShuffleServiceImpl(
+  private ShuffleServiceImpl(
       final Injector rootInjector,
       @Parameter(ShuffleParameters.SerializedClientSet.class) final Set<String> serializedClientSet,
       final ConfigurationSerializer confSerializer) {
@@ -55,7 +65,7 @@ final class ShuffleServiceImpl implements ShuffleService {
     try {
       final Configuration clientConfig = confSerializer.fromString(serializedClient);
       final Injector injector = rootInjector.forkInjector(clientConfig);
-      final ShuffleClient client = injector.getInstance(ShuffleClient.class);
+      final ShuffleGroupClient client = injector.getInstance(ShuffleGroupClient.class);
       final ShuffleGroupDescription description = client.getShuffleGroupDescription();
       clientMap.put(description.getShuffleGroupName(), client);
     } catch (final Exception exception) {
@@ -65,7 +75,7 @@ final class ShuffleServiceImpl implements ShuffleService {
   }
 
   @Override
-  public ShuffleClient getClient(final String shuffleGroupName) {
+  public ShuffleGroupClient getClient(final String shuffleGroupName) {
     return clientMap.get(shuffleGroupName);
   }
 }

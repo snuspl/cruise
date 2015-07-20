@@ -20,7 +20,7 @@ import org.apache.reef.io.Tuple;
 import java.util.List;
 
 /**
- *
+ * Shuffle Tuple message which is transferred by NetworkConnectionService
  */
 public final class ShuffleTupleMessage<K, V> {
 
@@ -28,23 +28,39 @@ public final class ShuffleTupleMessage<K, V> {
   private final String shuffleName;
   private final List<Tuple<K, V>> tuples;
 
+  /**
+   * Construct a shuffle message tuple
+   *
+   * @param shuffleGroupName the name of shuffle group
+   * @param shuffleName the name of shuffle
+   * @param tupleList a tuple list
+   */
   public ShuffleTupleMessage(
       final String shuffleGroupName,
       final String shuffleName,
-      final List<Tuple<K, V>> tuples) {
+      final List<Tuple<K, V>> tupleList) {
     this.shuffleGroupName = shuffleGroupName;
     this.shuffleName = shuffleName;
-    this.tuples = tuples;
+    this.tuples = tupleList;
   }
 
+  /**
+   * @return shuffle group name
+   */
   public String getShuffleGroupName() {
     return shuffleGroupName;
   }
 
+  /**
+   * @return shuffle name
+   */
   public String getShuffleName() {
     return shuffleName;
   }
 
+  /**
+   * @return the size of tuples included in the tuple message
+   */
   public int size() {
     if (tuples == null) {
       return 0;
@@ -53,6 +69,12 @@ public final class ShuffleTupleMessage<K, V> {
     return tuples.size();
   }
 
+  /**
+   * Return a tuple at the specified index
+   *
+   * @param index an index of tuple
+   * @return tuple at index
+   */
   public Tuple<K, V> get(final int index) {
     return tuples.get(index);
   }

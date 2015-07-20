@@ -31,7 +31,7 @@ import org.apache.reef.wake.IdentifierFactory;
 import javax.inject.Inject;
 
 /**
- *
+ * ContextStartHandler which registers connection factory for ShuffleTupleMessage
  */
 public final class ShuffleContextStartHandler implements EventHandler<ContextStart> {
 
@@ -42,7 +42,7 @@ public final class ShuffleContextStartHandler implements EventHandler<ContextSta
   private final ShuffleTupleLinkListener tupleLinkListener;
 
   @Inject
-  public ShuffleContextStartHandler(
+  private ShuffleContextStartHandler(
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
       final NetworkConnectionService networkConnectionService,
       final ShuffleTupleMessageCodec tupleCodec,

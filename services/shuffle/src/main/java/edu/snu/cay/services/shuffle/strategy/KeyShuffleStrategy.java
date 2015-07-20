@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- *
+ * Grouping by key shuffle strategy
  */
 public final class KeyShuffleStrategy<K> implements ShuffleStrategy<K> {
 
@@ -28,12 +28,16 @@ public final class KeyShuffleStrategy<K> implements ShuffleStrategy<K> {
   public KeyShuffleStrategy() {
   }
 
+  /**
+   * Select one receiver based on key hash function
+   *
+   * @param key
+   * @param receiverIdList
+   * @return selected receiver id list
+   */
   @Override
   public List<String> selectReceivers(final K key, final List<String> receiverIdList) {
-    int index = key.hashCode() % receiverIdList.size();
-    if (index < 0) {
-      index += receiverIdList.size();
-    }
+    final int index = (key.hashCode() & Integer.MAX_VALUE) % receiverIdList.size();
     final List<String> list =  new ArrayList<>();
     list.add(receiverIdList.get(index));
     return list;

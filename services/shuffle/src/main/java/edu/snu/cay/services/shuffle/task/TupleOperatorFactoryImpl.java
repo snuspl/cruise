@@ -32,23 +32,23 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- *
+ * Default implementation of TupleOperatorFactory
  */
 public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
 
   private final String nodeId;
   private final ShuffleTupleMessageCodec globalTupleCodec;
-  private final InjectionFuture<ShuffleClient> client;
+  private final InjectionFuture<ShuffleGroupClient> client;
   private final Injector injector;
 
   private Map<String, TupleSender> senderMap;
   private Map<String, TupleReceiver> receiverMap;
 
   @Inject
-  public TupleOperatorFactoryImpl(
+  private TupleOperatorFactoryImpl(
       @Parameter(TaskConfigurationOptions.Identifier.class) final String nodeId,
       final ShuffleTupleMessageCodec globalTupleCodec,
-      final InjectionFuture<ShuffleClient> client,
+      final InjectionFuture<ShuffleGroupClient> client,
       final Injector injector) {
     this.nodeId = nodeId;
     this.globalTupleCodec = globalTupleCodec;
@@ -88,7 +88,7 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
           .build();
 
       final Injector forkedInjector = injector.forkInjector(receiverConfiguration);
-      forkedInjector.bindVolatileInstance(ShuffleClient.class, client.get());
+      forkedInjector.bindVolatileInstance(ShuffleGroupClient.class, client.get());
       forkedInjector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
 
       try {
@@ -117,7 +117,7 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
           .build();
 
       final Injector forkedInjector = injector.forkInjector(senderConfiguration);
-      forkedInjector.bindVolatileInstance(ShuffleClient.class, client.get());
+      forkedInjector.bindVolatileInstance(ShuffleGroupClient.class, client.get());
       forkedInjector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
 
       try {

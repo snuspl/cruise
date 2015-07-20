@@ -23,7 +23,8 @@ import org.apache.reef.wake.remote.Codec;
 import javax.inject.Inject;
 
 /**
- *
+ * Default implementation of ShuffleDescription,
+ * it can be instantiated using Builder and Tang injector.
  */
 public final class ShuffleDescriptionImpl<K, V> implements ShuffleDescription<K, V> {
 

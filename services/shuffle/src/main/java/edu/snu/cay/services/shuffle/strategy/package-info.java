@@ -15,6 +15,6 @@
  */
 
 /**
- *
+ * Shuffling strategy for each shuffle
  */
 package edu.snu.cay.services.shuffle.strategy;

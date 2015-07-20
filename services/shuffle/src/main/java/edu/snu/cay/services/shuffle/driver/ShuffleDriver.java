@@ -20,16 +20,47 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- *
+ * Main Driver side shuffle controller. The shuffle group is registered through this class and users
+ * can determine what implementation of shuffle group manager should handle the shuffle group.
  */
 @DefaultImplementation(ShuffleDriverImpl.class)
 public interface ShuffleDriver {
 
-  <K extends ShuffleManager> K registerManager(ShuffleGroupDescription shuffleGroupDescription, Class<K> managerClass);
+  /**
+   * Register shuffle group which will be handled by the ShuffleGroupManager with managerClass type.
+   * The ShuffleGroupManager class should have an injectable constructor since the manager is
+   * instantiated by Tang injector.
+   *
+   * @param shuffleGroupDescription the shuffle group description will be handled by registered shuffle group manager
+   * @param managerClass class extending ShuffleGroupManager
+   * @param <K> type of ShuffleGroupManager
+   * @return the manager handles registered shuffle group
+   */
+  <K extends ShuffleGroupManager> K registerManager(
+      ShuffleGroupDescription shuffleGroupDescription, Class<K> managerClass);
 
-  <K extends ShuffleManager> K getManager(String shuffleName);
+  /**
+   * Get ShuffleGroupManager managing shuffle group named shuffleGroupName
+   *
+   * @param shuffleGroupName the name of shuffle group
+   * @param <K> type of ShuffleManager
+   * @return the manager which handles shuffle group named shuffleGroupName
+   */
+  <K extends ShuffleGroupManager> K getManager(String shuffleGroupName);
 
+  /**
+   * Return context configuration for shuffle service in task
+   *
+   * @return context configuration
+   */
   Configuration getContextConfiguration();
 
+  /**
+   * Return task configuration contains all information about shuffle groups where the task is included.
+   * The returned configuration is used to instantiating ShuffleGroupClients in the task.
+   *
+   * @param taskId task identifier
+   * @return task configuration for taskId
+   */
   Configuration getTaskConfiguration(String taskId);
 }

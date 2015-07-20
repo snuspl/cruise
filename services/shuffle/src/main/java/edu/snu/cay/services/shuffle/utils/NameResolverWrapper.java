@@ -31,7 +31,8 @@ import javax.inject.Inject;
 import java.net.InetSocketAddress;
 
 /**
- *
+ * NameResolverWrapper for NetworkConnectionService in driver.
+ * This class will be removed after REEF-474 is resolved.
  */
 public final class NameResolverWrapper implements NameResolver {
 

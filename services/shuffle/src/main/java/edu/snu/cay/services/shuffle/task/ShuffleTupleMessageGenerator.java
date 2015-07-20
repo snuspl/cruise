@@ -22,16 +22,46 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import java.util.List;
 
 /**
- *
+ * MessageGenerator to make ShuffleTupleMessages from list of tuples. It uses ShuffleStrategy to select
+ * proper receivers for the shuffle and merge them to one ShuffleTupleMessage.
  */
 @DefaultImplementation(ShuffleTupleMessageGeneratorImpl.class)
 public interface ShuffleTupleMessageGenerator<K, V> {
 
+  /**
+   * Create a shuffle tuple message with a tuple for the shuffle
+   *
+   * @param tuple a tuple
+   * @return a ShuffleTupleMessage
+   */
   ShuffleTupleMessage<K, V> createTupleMessage(Tuple<K, V> tuple);
 
+  /**
+   * Create a shuffle tuple message with a tuple list for the shuffle
+   *
+   * @param tupleList a tuple list
+   * @return a ShuffleTupleMessage
+   */
   ShuffleTupleMessage<K, V> createTupleMessage(List<Tuple<K, V>> tupleList);
 
+  /**
+   * Create list of Tuple[String, ShuffleTupleMessage] with a tuple. The key part represents
+   * the receiver task id and the value is a chunked ShuffleTupleMessage including all tuples
+   * to the task. The tuples are classified by the ShuffleStrategy in the shuffle description.
+   *
+   * @param tuple a tuple
+   * @return the list of [task identifier, ShuffleTupleMessage] tuple
+   */
   List<Tuple<String, ShuffleTupleMessage<K, V>>> createClassifiedTupleMessageList(Tuple<K, V> tuple);
 
+  /**
+   * Create list of Tuple[String, ShuffleTupleMessage] with a tuple list. The key part represents
+   * the receiver task id and the value is a chunked ShuffleTupleMessage including all tuples
+   * to the task. The tuples are classified by the ShuffleStrategy in the shuffle description.
+   *
+   * @param tupleList a tuple list
+   * @return the list of [task identifier, ShuffleTupleMessage] tuple
+   */
   List<Tuple<String, ShuffleTupleMessage<K, V>>> createClassifiedTupleMessageList(List<Tuple<K, V>> tupleList);
+
 }

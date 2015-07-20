@@ -23,7 +23,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- *
+ * Globally registered event handler for ShuffleTupleMessage. It routes messages to
+ * respective event handler registered with shuffle group and shuffle name.
  */
 public class ShuffleTupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage>> {
 

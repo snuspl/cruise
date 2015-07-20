@@ -15,6 +15,6 @@
  */
 
 /**
- *
+ * Utility classes for shuffle service
  */
 package edu.snu.cay.services.shuffle.utils;

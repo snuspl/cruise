@@ -21,11 +21,17 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
 /**
- *
+ * Receiving tuple operator. Users should register event handler for ShuffleTupleMessage to
+ * receive tuples from other tasks to the shuffle of this receiver.
  */
 @DefaultImplementation(BaseTupleReceiver.class)
 public interface TupleReceiver<K, V> extends TupleOperator<K, V> {
 
+  /**
+   * Register a message handler takes the tuples arriving in the shuffle of the receiver.
+   *
+   * @param messageHandler event handler for ShuffleTupleMessage
+   */
   void registerTupleMessageHandler(EventHandler<Message<ShuffleTupleMessage<K, V>>> messageHandler);
 
 }

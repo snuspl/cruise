@@ -15,6 +15,6 @@
  */
 
 /**
- *
+ * Shuffle parameters
  */
 package edu.snu.cay.services.shuffle.params;

@@ -15,6 +15,6 @@
  */
 
 /**
- *
+ * Task side shuffle components.
  */
 package edu.snu.cay.services.shuffle.task;

@@ -18,10 +18,19 @@ package edu.snu.cay.services.shuffle.strategy;
 import java.util.List;
 
 /**
+ * ShuffleStrategy for selecting receivers based on key information
  *
+ * @param <K> key type
  */
 public interface ShuffleStrategy<K> {
 
+  /**
+   * Select receivers in receiverIdList using key.
+   *
+   * @param key a key instance to select corresponding receivers
+   * @param receiverIdList
+   * @return selected receiver id list
+   */
   List<String> selectReceivers(K key, List<String> receiverIdList);
 
 }
