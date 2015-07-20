@@ -1,0 +1,114 @@
+package edu.snu.cay.services.em.msg.impl;
+
+import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.ns.api.NSWrapper;
+import edu.snu.cay.services.em.trace.HTraceUtils;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceInfo;
+import org.apache.htrace.TraceScope;
+import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.io.network.Connection;
+import org.apache.reef.io.network.impl.NetworkService;
+import org.apache.reef.wake.IdentifierFactory;
+
+import javax.inject.Inject;
+import java.util.List;
+import java.util.logging.Logger;
+
+
+/**
+ * Sender class that uses a NetworkService instance provided by NSWrapper to
+ * send AvroElasticMemoryMessages to the driver and evaluators.
+ */
+public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender {
+  private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgSenderImpl.class.getName());
+
+  private static final String SEND_CTRL_MSG = "sendCtrlMsg";
+  private static final String SEND_DATA_MSG = "sendDataMsg";
+
+  private final NetworkService<AvroElasticMemoryMessage> networkService;
+  private final IdentifierFactory identifierFactory;
+
+  @Inject
+  private ElasticMemoryMsgSenderImpl(final NSWrapper<AvroElasticMemoryMessage> nsWrapper) {
+    this.networkService = nsWrapper.getNetworkService();
+    this.identifierFactory = this.networkService.getIdentifierFactory();
+  }
+
+  private void send(final String destId, final AvroElasticMemoryMessage msg) {
+    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[] { destId, msg });
+
+    final Connection<AvroElasticMemoryMessage> conn = networkService.newConnection(identifierFactory.getNewInstance(destId));
+    try {
+      conn.open();
+      conn.write(msg);
+    } catch (final NetworkException ex) {
+      throw new RuntimeException("NetworkException", ex);
+    }
+
+    LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[] { destId, msg });
+  }
+
+
+  @Override
+  public void sendCtrlMsg(final String destId, final String dataClassName, final String targetEvalId,
+                          final TraceInfo parentTraceInfo) {
+    final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo);
+    try {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+          new Object[]{destId, dataClassName, targetEvalId});
+
+      final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
+          .setDataClassName(dataClassName)
+          .build();
+
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.CtrlMsg)
+              .setSrcId(destId)
+              .setDestId(targetEvalId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setCtrlMsg(ctrlMsg)
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+          new Object[]{destId, dataClassName, targetEvalId});
+
+    } finally {
+      sendCtrlMsgScope.close();
+    }
+  }
+
+  @Override
+  public void sendDataMsg(final String destId, final String dataClassName, final List<UnitIdPair> unitIdPairList,
+                          final TraceInfo parentTraceInfo) {
+    final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo);
+    try {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
+          new Object[]{destId, dataClassName});
+
+      final DataMsg dataMsg = DataMsg.newBuilder()
+          .setDataClassName(dataClassName)
+          .setUnits(unitIdPairList)
+          .build();
+
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.DataMsg)
+              .setSrcId(networkService.getMyId().toString())
+              .setDestId(destId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setDataMsg(dataMsg)
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
+          new Object[]{destId, dataClassName});
+
+    } finally {
+      sendDataMsgScope.close();
+    }
+  }
+}
