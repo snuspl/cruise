@@ -16,9 +16,9 @@
 package edu.snu.cay.dolphin.core.metric;
 
 import javax.inject.Inject;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * Metric tracker for intervals, which are generated from start() to stop().
@@ -33,32 +33,54 @@ import java.util.concurrent.ConcurrentMap;
 public class MetricTrackerInterval implements MetricTracker {
 
   /**
+   * Key to get/set the interval of sending data in the ComputeTask.
+   */
+  public static final String KEY_METRIC_TASK_SEND_DATA = "METRIC_TASK_SEND_DATA";
+
+  /**
+   * Key to get/set the interval of computation in the ComputeTask.
+   */
+   public static final String KEY_METRIC_TASK_COMPUTE = "METRIC_TASK_COMPUTE";
+
+  /**
+   * Key to get/set the interval of receiving data in the ComputeTask.
+   */
+  public static final String KEY_METRIC_TASK_RECEIVE_DATA = "METRIC_TASK_RECEIVE_DATA";
+
+  /**
    * The moments when startInterval() are called.
+   * This should be thread-safe because multiple threads can access it simultaneously.
    */
   private final Map<String, Double> beginTimes = new ConcurrentHashMap<>();
 
   /**
    * The intervals that endInterval() are called.
+   * This should be thread-safe because multiple threads can access it simultaneously.
    */
   private final Map<String, Double> intervals = new ConcurrentHashMap<>();
 
   @Inject
-  public MetricTrackerInterval() {
+  private MetricTrackerInterval() {
   }
 
   @Override
   public void start() {
-    beginTimes.clear();
-    intervals.clear();
   }
 
   @Override
   public Map<String, Double> stop() {
-    return intervals;
+    final Map<String, Double> result = new HashMap<>();
+    result.putAll(intervals);
+
+    beginTimes.clear();
+    intervals.clear();
+
+    return result;
   }
 
   @Override
   public void close() throws Exception {
+    // Do nothing.
   }
 
   /**
