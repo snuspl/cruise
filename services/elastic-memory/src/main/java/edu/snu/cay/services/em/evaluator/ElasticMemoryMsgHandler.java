@@ -76,9 +76,10 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     try {
 
       final DataMsg dataMsg = msg.getDataMsg();
-
       final String dataClassName = dataMsg.getDataClassName().toString();
       final Codec codec = serializer.getCodec(dataMsg.getDataClassName().toString());
+
+      // extract data items from the message and store them in my memory store
       for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
         final byte[] data = unitIdPair.getUnit().array();
         final long id = unitIdPair.getId();
@@ -99,17 +100,19 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     try {
 
       final CtrlMsg ctrlMsg = msg.getCtrlMsg();
-
       final String key = ctrlMsg.getDataClassName().toString();
       final Codec codec = serializer.getCodec(key);
 
+      // extract all data items from my memory store that correspond to
+      // the control message's id specification
       final List<Pair<Long, Object>> idObjectList = new LinkedList<>();
       for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
         idObjectList.addAll(memoryStore.remove(key, avroLongRange.getMin(), avroLongRange.getMax()));
       }
 
+      // pack the extracted items into a single list for message transmission
+      // the identifiers for each item are included with the item itself as an UnitIdPar
       final List<UnitIdPair> unitIdPairList = new LinkedList<>();
-
       for (final Pair<Long, Object> objectId : idObjectList) {
         final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
             .setUnit(ByteBuffer.wrap(codec.encode(objectId.second)))
