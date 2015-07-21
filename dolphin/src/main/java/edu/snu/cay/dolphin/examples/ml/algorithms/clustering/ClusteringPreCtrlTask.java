@@ -31,9 +31,6 @@ import java.util.logging.Logger;
 public final class ClusteringPreCtrlTask extends UserControllerTask
     implements DataGatherReceiver<List<Vector>> {
 
-  /**
-   * Key used in Elastic Memory to put/get the data
-   */
   private static final Logger LOG = Logger.getLogger(ClusteringPreCtrlTask.class.getName());
 
   /**
