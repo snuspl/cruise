@@ -95,7 +95,8 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   }
 
   /**
-   * Receive initial centroids from the preprocess task
+   * Receive the initial centroids from the preprocess task.
+   * {@link edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask}
    */
   @Override
   public void initialize() {
