@@ -18,6 +18,8 @@ package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
+import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import edu.snu.cay.services.em.trace.HTraceParameters;
 import org.apache.htrace.Sampler;
 import org.apache.htrace.Trace;
@@ -30,6 +32,7 @@ import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.driver.task.TaskMessage;
 import org.apache.reef.tang.*;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
@@ -54,16 +57,22 @@ final class SimpleEMDriver {
   private final ElasticMemoryConfiguration emConf;
   private final ElasticMemory emService;
   private final HTraceParameters traceParameters;
+  private final int iterations;
+  private final long periodMillis;
 
   @Inject
   private SimpleEMDriver(final EvaluatorRequestor requestor,
                          final ElasticMemoryConfiguration emConf,
                          final ElasticMemory emService,
-                         final HTraceParameters traceParameters) throws InjectionException {
+                         final HTraceParameters traceParameters,
+                         @Parameter(Iterations.class) final int iterations,
+                         @Parameter(PeriodMillis.class) final long periodMillis) throws InjectionException {
     this.requestor = requestor;
     this.emConf = emConf;
     this.emService = emService;
     this.traceParameters = traceParameters;
+    this.iterations = iterations;
+    this.periodMillis = periodMillis;
   }
 
   /**
@@ -101,7 +110,13 @@ final class SimpleEMDriver {
 
       final Configuration traceConf = traceParameters.getConfiguration();
 
-      allocatedEvaluator.submitContextAndService(contextConf, Configurations.merge(emServiceConf, traceConf));
+      final Configuration exampleConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(Iterations.class, Integer.toString(iterations))
+          .bindNamedParameter(PeriodMillis.class, Long.toString(periodMillis))
+          .build();
+
+      allocatedEvaluator.submitContextAndService(contextConf,
+          Configurations.merge(emServiceConf, traceConf, exampleConf));
       LOG.info((evalCount + 1) + " evaluators active!");
     }
   }
@@ -139,16 +154,38 @@ final class SimpleEMDriver {
 
       if (!prevContextId.compareAndSet(DEFAULT_STRING, taskMessage.getContextId())) {
         // second evaluator goes here
-        LOG.info("Move data from " + taskMessage.getContextId() + " to " + prevContextId.get());
+        runMoves(taskMessage.getContextId(), prevContextId.get());
+      } else {
+        // first evaluator goes this way
+      }
+    }
 
+    private void runMoves(final String firstContextId, final String secondContextId) {
+      String srcContextId = firstContextId;
+      String dstContextId = secondContextId;
+
+      for (int i = 0; i < iterations; i++) {
+        LOG.info("Move data from " + srcContextId + " to " + dstContextId);
         final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS);
         try {
-          emService.move(SimpleEMTask.KEY, null, taskMessage.getContextId(), prevContextId.get());
+          emService.move(SimpleEMTask.KEY, null, srcContextId, dstContextId);
         } finally {
           moveTraceScope.close();
         }
-      } else {
-        // first evaluator goes this way
+
+        // Swap
+        final String tmpContextId = srcContextId;
+        srcContextId = dstContextId;
+        dstContextId = tmpContextId;
+
+        // Sleep except on final iteration
+        if (i != (iterations - 1)) {
+          try {
+            Thread.sleep(periodMillis);
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+        }
       }
     }
   }

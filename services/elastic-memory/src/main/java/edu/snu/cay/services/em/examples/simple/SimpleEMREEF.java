@@ -17,6 +17,8 @@
 package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
+import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import edu.snu.cay.services.em.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -55,11 +57,11 @@ final class SimpleEMREEF {
     final CommandLine cl = new CommandLine(cb);
 
     cl.registerShortNameOfClass(OnLocal.class);
-
     HTraceParameters.registerShortNames(cl);
+    cl.registerShortNameOfClass(Iterations.class);
+    cl.registerShortNameOfClass(PeriodMillis.class);
 
     cl.processCommandLine(args);
-
     return TANG.newInjector(cb.build());
   }
 
@@ -75,6 +77,20 @@ final class SimpleEMREEF {
    */
   private static HTraceParameters getTraceParameters(final Injector injector) throws InjectionException {
     return injector.getInstance(HTraceParameters.class);
+  }
+
+  /**
+   * Get iterations from the parsed command line Injector
+   */
+  private static int getIterations(final Injector injector) throws InjectionException {
+    return injector.getNamedInstance(Iterations.class);
+  }
+
+  /**
+   * Get periodMillis from the parsed command line Injector
+   */
+  private static long getPeriodMillis(final Injector injector) throws InjectionException {
+    return injector.getNamedInstance(PeriodMillis.class);
   }
 
   public static Configuration getDriverConfiguration() {
@@ -93,12 +109,12 @@ final class SimpleEMREEF {
     return Configurations.merge(driverConfiguration, emConfiguration, NameServerConfiguration.CONF.build());
   }
 
-  public static LauncherStatus runSimpleEM(final Configuration runtimeConf, final Configuration traceConf,
+  public static LauncherStatus runSimpleEM(final Configuration runtimeConf, final Configuration jobConf,
                                            final int timeOut)
       throws InjectionException {
     final Configuration driverConf = getDriverConfiguration();
 
-    return DriverLauncher.getLauncher(runtimeConf).run(Configurations.merge(driverConf, traceConf), timeOut);
+    return DriverLauncher.getLauncher(runtimeConf).run(Configurations.merge(driverConf, jobConf), timeOut);
   }
 
   public static void main(final String[] args) throws InjectionException, IOException {
@@ -111,7 +127,12 @@ final class SimpleEMREEF {
     final HTraceParameters traceParameters = getTraceParameters(injector);
     final Configuration traceConf = traceParameters.getConfiguration();
 
-    final LauncherStatus status = runSimpleEM(runtimeConf, traceConf, TIMEOUT);
+    final Configuration exampleConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(Iterations.class, Integer.toString(getIterations(injector)))
+        .bindNamedParameter(PeriodMillis.class, Long.toString(getPeriodMillis(injector)))
+        .build();
+
+    final LauncherStatus status = runSimpleEM(runtimeConf, Configurations.merge(traceConf, exampleConf), TIMEOUT);
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 }

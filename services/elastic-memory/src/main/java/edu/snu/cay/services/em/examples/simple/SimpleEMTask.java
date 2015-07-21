@@ -17,6 +17,9 @@
 package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
+import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 
@@ -28,20 +31,25 @@ import java.util.logging.Logger;
 final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
   public static final String KEY = "INTEGER";
-  private static final Integer SLEEP_MILLISECONDS = 10000;
 
   private final MemoryStore memoryStore;
   private final SimpleEMTaskReady simpleEMTaskReady;
   private final HeartBeatTriggerManager heartBeatTriggerManager;
+  private final int iterations;
+  private final long periodMillis;
 
   @Inject
   private SimpleEMTask(
       final MemoryStore memoryStore,
       final SimpleEMTaskReady simpleEMTaskReady,
-      final HeartBeatTriggerManager heartBeatTriggerManager) {
+      final HeartBeatTriggerManager heartBeatTriggerManager,
+      @Parameter(Iterations.class) final int iterations,
+      @Parameter(PeriodMillis.class) final long periodMillis) {
     this.memoryStore = memoryStore;
     this.simpleEMTaskReady = simpleEMTaskReady;
     this.heartBeatTriggerManager = heartBeatTriggerManager;
+    this.iterations = iterations;
+    this.periodMillis = periodMillis;
 
     final List<Integer> list = new LinkedList<>();
     list.add(100);
@@ -59,12 +67,16 @@ final class SimpleEMTask implements Task {
 
     simpleEMTaskReady.setReady(true);
     heartBeatTriggerManager.triggerHeartBeat();
-    Thread.sleep(SLEEP_MILLISECONDS);
+
+    // Sleep one more period, to give the Driver time to finish
+    final long sleepMillis = (iterations + 1) * periodMillis;
+    LOG.info("Sleep for: " + sleepMillis);
+    Thread.sleep(sleepMillis);
 
     LOG.info("After sleep, memory store contains: ");
     LOG.info(memoryStore.get(KEY).toString());
-    // Fast evaluator should be [100, 200, 100, 200]
-    // Slow evaluator should be []
+    // Evaluator that receives on the last iteration should be [100, 200, 100, 200]
+    // Evaluator that sends on the last iteration should be []
 
     return null;
   }
