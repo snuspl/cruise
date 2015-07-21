@@ -19,7 +19,8 @@ import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
 import edu.snu.cay.services.shuffle.driver.ShuffleGroupManager;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
-import edu.snu.cay.services.shuffle.task.ShuffleGroupClient;
+import edu.snu.cay.services.shuffle.task.ShuffleGroup;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
@@ -29,8 +30,13 @@ import javax.inject.Inject;
 import java.util.List;
 
 /**
- * Simple implementation of ShuffleGroupManager. The initial shuffle group description never be changed.
+ * Simple implementation of ShuffleGroupManager.
+ *
+ * The initial shuffle group description can never be changed. Users cannot add or remove more
+ * tasks to shuffles and cannot change the key, value codes and shuffling strategy of certain shuffle
+ * after the manager is created.
  */
+@DriverSide
 public final class FixedShuffleGroupManager implements ShuffleGroupManager {
 
   private final ShuffleGroupDescription initialShuffleGroupDescription;
@@ -45,17 +51,17 @@ public final class FixedShuffleGroupManager implements ShuffleGroupManager {
   }
 
   @Override
-  public Configuration getClientConfigurationForTask(final String taskId) {
+  public Configuration getShuffleGroupConfigurationForTask(final String taskId) {
     final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
-    confBuilder.bindNamedParameter(ShuffleParameters.SerializedShuffleGroupName.class,
+    confBuilder.bindNamedParameter(ShuffleParameters.ShuffleGroupName.class,
         initialShuffleGroupDescription.getShuffleGroupName());
 
     boolean isTaskIncludedSomeShuffle = false;
 
     for (final String shuffleName : initialShuffleGroupDescription.getShuffleNameList()) {
       final ShuffleDescription shuffleDescription = initialShuffleGroupDescription.getShuffleDescription(shuffleName);
-      final List<String> senderIdList = initialShuffleGroupDescription.getSenderIdList(shuffleName);
-      final List<String> receiverIdList = initialShuffleGroupDescription.getReceiverIdList(shuffleName);
+      final List<String> senderIdList = shuffleDescription.getSenderIdList();
+      final List<String> receiverIdList = shuffleDescription.getReceiverIdList();
       if (senderIdList.contains(taskId) || receiverIdList.contains(taskId)) {
         isTaskIncludedSomeShuffle = true;
         bindShuffleDescription(confBuilder, shuffleDescription);
@@ -90,11 +96,11 @@ public final class FixedShuffleGroupManager implements ShuffleGroupManager {
     confBuilder.bindNamedParameter(
         ShuffleParameters.ShuffleValueCodecClassName.class, shuffleDescription.getValueCodecClass().getName());
 
-    for (final String senderId : initialShuffleGroupDescription.getSenderIdList(shuffleName)) {
+    for (final String senderId : shuffleDescription.getSenderIdList()) {
       confBuilder.bindSetEntry(ShuffleParameters.ShuffleSenderIdSet.class, senderId);
     }
 
-    for (final String receiverId : initialShuffleGroupDescription.getReceiverIdList(shuffleName)) {
+    for (final String receiverId : shuffleDescription.getReceiverIdList()) {
       confBuilder.bindSetEntry(ShuffleParameters.ShuffleReceiverIdSet.class, receiverId);
     }
 
@@ -102,8 +108,8 @@ public final class FixedShuffleGroupManager implements ShuffleGroupManager {
   }
 
   @Override
-  public Class<? extends ShuffleGroupClient> getClientClass() {
-    return FixedShuffleGroupClient.class;
+  public Class<? extends ShuffleGroup> getShuffleGroupClass() {
+    return FixedShuffleGroup.class;
   }
 
   @Override

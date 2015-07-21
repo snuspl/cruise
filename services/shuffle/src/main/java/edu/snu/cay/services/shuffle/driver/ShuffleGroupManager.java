@@ -16,33 +16,34 @@
 package edu.snu.cay.services.shuffle.driver;
 
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
-import edu.snu.cay.services.shuffle.task.ShuffleGroupClient;
+import edu.snu.cay.services.shuffle.task.ShuffleGroup;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
 
 /**
- * Manage a shuffle group with corresponding ShuffleGroupClients in tasks
+ * Manage a shuffle group with corresponding ShuffleGroups in tasks.
  */
+@DriverSide
 public interface ShuffleGroupManager {
 
   /**
-   * Return configuration for ShuffleClient in task named taskId.
-   * It returns null if the shuffle group managed by ShuffleManager
-   * does not have some shuffles contain taskId as sender or receiver
+   * Return configuration for ShuffleGroup of task named taskId.
+   * It returns null if the taskId is not included in any shuffles.
    *
    * @param taskId task identifier
-   * @return client configuration for task
+   * @return shuffle group configuration for task
    */
-  Configuration getClientConfigurationForTask(String taskId);
+  Configuration getShuffleGroupConfigurationForTask(String taskId);
 
   /**
-   * Return ShuffleClient class communicating with ShuffleManager to control shuffle group
+   * Return ShuffleGroup class that is communicating with ShuffleGroupManager
    *
-   * @return class of ShuffleClient
+   * @return class of ShuffleGroup
    */
-  Class<? extends ShuffleGroupClient> getClientClass();
+  Class<? extends ShuffleGroup> getShuffleGroupClass();
 
   /**
-   * @return description about shuffle group handled by the shuffle group manager
+   * @return description about shuffle group handled by the ShuffleGroupManager
    */
   ShuffleGroupDescription getShuffleGroupDescription();
 }

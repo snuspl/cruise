@@ -21,29 +21,41 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 /**
- * Default implementation of ShuffleDescription,
- * it can be instantiated using Builder and Tang injector.
+ * Default implementation of ShuffleDescription, it can be instantiated using Builder or Tang injector.
  */
-public final class ShuffleDescriptionImpl<K, V> implements ShuffleDescription<K, V> {
+public final class ShuffleDescriptionImpl implements ShuffleDescription {
 
   private final String shuffleName;
+  private final List<String> senderIdList;
+  private final List<String> receiverIdList;
   private final Class<? extends ShuffleStrategy> shuffleStrategyClass;
-  private final Class<? extends Codec<K>> keyCodecClass;
-  private final Class<? extends Codec<V>> valueCodecClass;
+  private final Class<? extends Codec> keyCodecClass;
+  private final Class<? extends Codec> valueCodecClass;
 
   @Inject
   private ShuffleDescriptionImpl(
       @Parameter(ShuffleParameters.ShuffleName.class) final String shuffleName,
+      @Parameter(ShuffleParameters.ShuffleSenderIdSet.class) final Set<String> senderIdSet,
+      @Parameter(ShuffleParameters.ShuffleReceiverIdSet.class) final Set<String> receiverIdSet,
       @Parameter(ShuffleParameters.ShuffleStrategyClassName.class) final String shuffleStrategyClassName,
       @Parameter(ShuffleParameters.ShuffleKeyCodecClassName.class) final String keyCodecClassName,
       @Parameter(ShuffleParameters.ShuffleValueCodecClassName.class) final String valueCodecClassName) {
     this.shuffleName = shuffleName;
+    this.senderIdList = new ArrayList<>(senderIdSet);
+    this.receiverIdList = new ArrayList<>(receiverIdSet);
+    Collections.sort(senderIdList);
+    Collections.sort(receiverIdList);
+
     try {
       shuffleStrategyClass = (Class<? extends ShuffleStrategy>) Class.forName(shuffleStrategyClassName);
-      keyCodecClass = (Class<? extends Codec<K>>) Class.forName(keyCodecClassName);
-      valueCodecClass = (Class<? extends Codec<V>>) Class.forName(valueCodecClassName);
+      keyCodecClass = (Class<? extends Codec>) Class.forName(keyCodecClassName);
+      valueCodecClass = (Class<? extends Codec>) Class.forName(valueCodecClassName);
     } catch (final ClassNotFoundException exception) {
       throw new RuntimeException("ClassNotFoundException occurred in constructor of ShuffleDescriptionImpl", exception);
     }
@@ -51,10 +63,16 @@ public final class ShuffleDescriptionImpl<K, V> implements ShuffleDescription<K,
 
   private ShuffleDescriptionImpl(
       final String shuffleName,
+      final List<String> senderIdList,
+      final List<String> receiverIdList,
       final Class<? extends ShuffleStrategy> shuffleStrategyClass,
-      final Class<? extends Codec<K>> keyCodecClass,
-      final Class<? extends Codec<V>> valueCodecClass) {
+      final Class<? extends Codec> keyCodecClass,
+      final Class<? extends Codec> valueCodecClass) {
     this.shuffleName = shuffleName;
+    this.senderIdList = senderIdList;
+    this.receiverIdList = receiverIdList;
+    Collections.sort(senderIdList);
+    Collections.sort(receiverIdList);
     this.shuffleStrategyClass = shuffleStrategyClass;
     this.keyCodecClass = keyCodecClass;
     this.valueCodecClass = valueCodecClass;
@@ -71,13 +89,23 @@ public final class ShuffleDescriptionImpl<K, V> implements ShuffleDescription<K,
   }
 
   @Override
-  public Class<? extends Codec<K>> getKeyCodecClass() {
+  public Class<? extends Codec> getKeyCodecClass() {
     return keyCodecClass;
   }
 
   @Override
-  public Class<? extends Codec<V>> getValueCodecClass() {
+  public Class<? extends Codec> getValueCodecClass() {
     return valueCodecClass;
+  }
+
+  @Override
+  public List<String> getSenderIdList() {
+    return senderIdList;
+  }
+
+  @Override
+  public List<String> getReceiverIdList() {
+    return receiverIdList;
   }
 
   public static Builder newBuilder(final String shuffleName) {
@@ -89,13 +117,20 @@ public final class ShuffleDescriptionImpl<K, V> implements ShuffleDescription<K,
     private Class<? extends ShuffleStrategy> shuffleStrategyClass;
     private Class<? extends Codec> keyCodecClass;
     private Class<? extends Codec> valueCodecClass;
+    private List<String> senderIdList;
+    private List<String> receiverIdList;
 
     private Builder(final String shuffleName) {
       this.shuffleName = shuffleName;
     }
 
-    public Builder setShuffleStrategy(final Class<? extends ShuffleStrategy> shuffleStrategyClass) {
-      this.shuffleStrategyClass = shuffleStrategyClass;
+    public Builder setSenderIdList(final List<String> senderIdList) {
+      this.senderIdList = senderIdList;
+      return this;
+    }
+
+    public Builder setReceiverIdList(final List<String> receiverIdList) {
+      this.receiverIdList = receiverIdList;
       return this;
     }
 
@@ -109,6 +144,11 @@ public final class ShuffleDescriptionImpl<K, V> implements ShuffleDescription<K,
       return this;
     }
 
+    public Builder setShuffleStrategy(final Class<? extends ShuffleStrategy> shuffleStrategyClass) {
+      this.shuffleStrategyClass = shuffleStrategyClass;
+      return this;
+    }
+
     public ShuffleDescription build() {
       if (shuffleStrategyClass == null) {
         throw new RuntimeException("You should set strategy class");
@@ -119,7 +159,7 @@ public final class ShuffleDescriptionImpl<K, V> implements ShuffleDescription<K,
       }
 
       return new ShuffleDescriptionImpl(
-          shuffleName, shuffleStrategyClass, keyCodecClass, valueCodecClass);
+          shuffleName, senderIdList, receiverIdList, shuffleStrategyClass, keyCodecClass, valueCodecClass);
     }
   }
 }

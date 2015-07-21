@@ -25,66 +25,49 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * Default implementation of ShuffleGroupDescription,
- * it can be instantiated using Builder and Tang injector
+ * Default implementation of ShuffleGroupDescription, it can be instantiated using Builder or Tang injector.
  */
 public final class ShuffleGroupDescriptionImpl implements ShuffleGroupDescription {
 
   private final String shuffleGroupName;
-  private final Map<String, List<String>> senderIdListMap;
-  private final Map<String, List<String>> receiverIdListMap;
   private final Map<String, ShuffleDescription> shuffleDescriptionMap;
   private final List<String> shuffleNameList;
 
   @Inject
   private ShuffleGroupDescriptionImpl(
-      @Parameter(ShuffleParameters.SerializedShuffleGroupName.class) final String shuffleGroupName,
+      @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
       @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet,
       final ConfigurationSerializer confSerializer) {
     this.shuffleGroupName = shuffleGroupName;
-    this.senderIdListMap = new HashMap<>();
-    this.receiverIdListMap = new HashMap<>();
     this.shuffleDescriptionMap = new HashMap<>();
     this.shuffleNameList = new ArrayList<>();
     for (final String serializedShuffle : serializedShuffleSet) {
       deserializeShuffle(serializedShuffle, confSerializer);
     }
+
+    Collections.sort(shuffleNameList);
   }
 
   private void deserializeShuffle(final String serializedShuffle, final ConfigurationSerializer confSerializer) {
     try {
       final Injector injector = Tang.Factory.getTang().newInjector(confSerializer.fromString(serializedShuffle));
       final ShuffleDescription description = injector.getInstance(ShuffleDescription.class);
-      final Set<String> senderIdSet = injector.getNamedInstance(ShuffleParameters.ShuffleSenderIdSet.class);
-      final Set<String> receiverIdSet = injector.getNamedInstance(ShuffleParameters.ShuffleReceiverIdSet.class);
-
       final String shuffleName = description.getShuffleName();
       shuffleDescriptionMap.put(shuffleName, description);
       shuffleNameList.add(shuffleName);
-      senderIdListMap.put(shuffleName, getSortedListFromSet(senderIdSet));
-      receiverIdListMap.put(shuffleName, getSortedListFromSet(receiverIdSet));
     } catch (final Exception exception) {
       throw new RuntimeException("An Exception occurred while deserializing shuffle " + serializedShuffle, exception);
     }
   }
 
-  private List<String> getSortedListFromSet(final Set<String> set) {
-    final List<String> list = new ArrayList<>(set);
-    Collections.sort(list);
-    return list;
-  }
-
   private ShuffleGroupDescriptionImpl(
       final String shuffleGroupName,
-      final Map<String, List<String>> senderIdListMap,
-      final Map<String, List<String>> receiverIdListMap,
       final Map<String, ShuffleDescription> shuffleDescriptionMap,
       final List<String> shuffleNameList) {
     this.shuffleGroupName = shuffleGroupName;
-    this.senderIdListMap = senderIdListMap;
-    this.receiverIdListMap = receiverIdListMap;
     this.shuffleDescriptionMap = shuffleDescriptionMap;
     this.shuffleNameList = shuffleNameList;
+    Collections.sort(shuffleNameList);
   }
 
   @Override
@@ -102,16 +85,6 @@ public final class ShuffleGroupDescriptionImpl implements ShuffleGroupDescriptio
     return shuffleDescriptionMap.get(shuffleName);
   }
 
-  @Override
-  public List<String> getSenderIdList(final String shuffleName) {
-    return senderIdListMap.get(shuffleName);
-  }
-
-  @Override
-  public List<String> getReceiverIdList(final String shuffleName) {
-    return receiverIdListMap.get(shuffleName);
-  }
-
   public static Builder newBuilder(final String shuffleGroupName) {
     return new Builder(shuffleGroupName);
   }
@@ -119,39 +92,28 @@ public final class ShuffleGroupDescriptionImpl implements ShuffleGroupDescriptio
   public static final class Builder {
 
     private final String shuffleGroupName;
-    private final Map<String, List<String>> senderIdListMap;
-    private final Map<String, List<String>> receiverIdListMap;
     private final Map<String, ShuffleDescription> shuffleDescriptionMap;
     private final List<String> shuffleNameList;
 
     private Builder(final String shuffleGroupName) {
       this.shuffleGroupName = shuffleGroupName;
-      this.senderIdListMap = new HashMap<>();
-      this.receiverIdListMap = new HashMap<>();
       this.shuffleDescriptionMap = new HashMap<>();
       this.shuffleNameList = new ArrayList<>();
     }
 
-    public Builder addShuffle(
-        final List<String> senderIdList,
-        final List<String> receiverIdList,
-        final ShuffleDescription shuffleDescription) {
+    public Builder addShuffle(final ShuffleDescription shuffleDescription) {
       if (shuffleDescriptionMap.containsKey(shuffleDescription.getShuffleName())) {
         throw new RuntimeException(shuffleDescription.getShuffleName() + " was already added.");
       }
 
       shuffleDescriptionMap.put(shuffleDescription.getShuffleName(), shuffleDescription);
       shuffleNameList.add(shuffleDescription.getShuffleName());
-      senderIdListMap.put(shuffleDescription.getShuffleName(), senderIdList);
-      receiverIdListMap.put(shuffleDescription.getShuffleName(), receiverIdList);
       return this;
     }
 
     public ShuffleGroupDescriptionImpl build() {
       return new ShuffleGroupDescriptionImpl(
           shuffleGroupName,
-          senderIdListMap,
-          receiverIdListMap,
           shuffleDescriptionMap,
           shuffleNameList
       );

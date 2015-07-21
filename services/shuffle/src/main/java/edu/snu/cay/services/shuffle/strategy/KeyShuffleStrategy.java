@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Grouping by key shuffle strategy
+ * Hash based key grouping shuffle strategy.
  */
 public final class KeyShuffleStrategy<K> implements ShuffleStrategy<K> {
 

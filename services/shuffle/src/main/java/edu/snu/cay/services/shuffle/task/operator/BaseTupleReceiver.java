@@ -13,40 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageHandler;
+import edu.snu.cay.services.shuffle.network.GlobalTupleMessageHandler;
+import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.List;
 
 /**
- * Base implementation for TupleReceiver
+ * Base implementation for TupleReceiver.
  */
 public final class BaseTupleReceiver<K, V> implements TupleReceiver<K, V> {
 
   private final String shuffleGroupName;
   private final String shuffleName;
-  private final ShuffleGroupClient shuffleGroupClient;
-  private final ShuffleDescription<K, V> shuffleDescription;
+  private final ShuffleDescription shuffleDescription;
   private final ShuffleStrategy<K> shuffleStrategy;
-  private final ShuffleTupleMessageHandler globalTupleMessageHandler;
+  private final GlobalTupleMessageHandler globalTupleMessageHandler;
 
   @Inject
   private BaseTupleReceiver(
-      final ShuffleGroupClient shuffleGroupClient,
-      final ShuffleDescription<K, V> shuffleDescription,
+      @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
+      final ShuffleDescription shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy,
-      final ShuffleTupleMessageHandler globalTupleMessageHandler) {
-    this.shuffleGroupName = shuffleGroupClient.getShuffleGroupDescription().getShuffleGroupName();
+      final GlobalTupleMessageHandler globalTupleMessageHandler) {
+    this.shuffleGroupName = shuffleGroupName;
     this.shuffleName = shuffleDescription.getShuffleName();
     this.shuffleDescription = shuffleDescription;
-    this.shuffleGroupClient = shuffleGroupClient;
     this.shuffleStrategy = shuffleStrategy;
     this.globalTupleMessageHandler = globalTupleMessageHandler;
   }
@@ -57,7 +57,7 @@ public final class BaseTupleReceiver<K, V> implements TupleReceiver<K, V> {
   }
 
   @Override
-  public ShuffleDescription<K, V> getShuffleDescription() {
+  public ShuffleDescription getShuffleDescription() {
     return shuffleDescription;
   }
 
@@ -67,8 +67,7 @@ public final class BaseTupleReceiver<K, V> implements TupleReceiver<K, V> {
   }
 
   @Override
-  public List<String> getSelectedReceiverIdList(K key) {
-    return shuffleStrategy.selectReceivers(key,
-        shuffleGroupClient.getShuffleGroupDescription().getReceiverIdList(shuffleDescription.getShuffleName()));
+  public List<String> getSelectedReceiverIdList(final K key) {
+    return shuffleStrategy.selectReceivers(key, shuffleDescription.getReceiverIdList());
   }
 }

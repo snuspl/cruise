@@ -15,6 +15,6 @@
  */
 
 /**
- * Meta data of shuffle
+ * Descriptions of shuffles and shuffle groups.
  */
 package edu.snu.cay.services.shuffle.description;

@@ -22,7 +22,7 @@ import org.apache.reef.wake.remote.Codec;
 import java.util.Set;
 
 /**
- * Parameters for shuffle service
+ * Parameters for shuffle service.
  */
 public final class ShuffleParameters {
 
@@ -67,14 +67,14 @@ public final class ShuffleParameters {
   }
 
   @NamedParameter
+  public static final class ShuffleGroupName implements Name<String> {
+  }
+
+  @NamedParameter
   public static final class SerializedShuffleSet implements Name<Set<String>> {
   }
 
   @NamedParameter
-  public static final class SerializedShuffleGroupName implements Name<String> {
-  }
-
-  @NamedParameter
-  public static final class SerializedClientSet implements Name<Set<String>> {
+  public static final class SerializedShuffleGroupSet implements Name<Set<String>> {
   }
 }

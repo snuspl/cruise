@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import org.apache.reef.io.network.Message;
@@ -21,14 +21,16 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
 /**
- * Receiving tuple operator. Users should register event handler for ShuffleTupleMessage to
- * receive tuples from other tasks to the shuffle of this receiver.
+ * Interface for receivers used in ShuffleGroup.
+ *
+ * Users should register event handler for ShuffleTupleMessage to receive
+ * tuples from other tasks.
  */
 @DefaultImplementation(BaseTupleReceiver.class)
 public interface TupleReceiver<K, V> extends TupleOperator<K, V> {
 
   /**
-   * Register a message handler takes the tuples arriving in the shuffle of the receiver.
+   * Register a message handler that receives tuples arriving at this receiver
    *
    * @param messageHandler event handler for ShuffleTupleMessage
    */

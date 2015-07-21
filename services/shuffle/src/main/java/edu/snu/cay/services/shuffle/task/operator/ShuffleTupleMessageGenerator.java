@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import org.apache.reef.io.Tuple;
@@ -22,14 +22,14 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import java.util.List;
 
 /**
- * MessageGenerator to make ShuffleTupleMessages from list of tuples. It uses ShuffleStrategy to select
- * proper receivers for the shuffle and merge them to one ShuffleTupleMessage.
+ * MessageGenerator to make ShuffleTupleMessages from list of tuples.
+ * It selects receivers using ShuffleStrategy of the shuffle and merge tuples to one ShuffleTupleMessage.
  */
 @DefaultImplementation(ShuffleTupleMessageGeneratorImpl.class)
 public interface ShuffleTupleMessageGenerator<K, V> {
 
   /**
-   * Create a shuffle tuple message with a tuple for the shuffle
+   * Create a shuffle tuple message with a tuple
    *
    * @param tuple a tuple
    * @return a ShuffleTupleMessage
@@ -37,7 +37,7 @@ public interface ShuffleTupleMessageGenerator<K, V> {
   ShuffleTupleMessage<K, V> createTupleMessage(Tuple<K, V> tuple);
 
   /**
-   * Create a shuffle tuple message with a tuple list for the shuffle
+   * Create a shuffle tuple message with a tuple list
    *
    * @param tupleList a tuple list
    * @return a ShuffleTupleMessage
@@ -45,22 +45,24 @@ public interface ShuffleTupleMessageGenerator<K, V> {
   ShuffleTupleMessage<K, V> createTupleMessage(List<Tuple<K, V>> tupleList);
 
   /**
-   * Create list of Tuple[String, ShuffleTupleMessage] with a tuple. The key part represents
-   * the receiver task id and the value is a chunked ShuffleTupleMessage including all tuples
-   * to the task. The tuples are classified by the ShuffleStrategy in the shuffle description.
+   * Create list of (String, ShuffleTupleMessage) pairs with a tuple. The key of the
+   * returned tuple is the receiver task id and the value is a merged ShuffleTupleMessage
+   * including all tuples to the same task. The tuples are classified by the ShuffleStrategy
+   * of the shuffle.
    *
    * @param tuple a tuple
-   * @return the list of [task identifier, ShuffleTupleMessage] tuple
+   * @return the list of (task identifier, ShuffleTupleMessage) tuples
    */
   List<Tuple<String, ShuffleTupleMessage<K, V>>> createClassifiedTupleMessageList(Tuple<K, V> tuple);
 
   /**
-   * Create list of Tuple[String, ShuffleTupleMessage] with a tuple list. The key part represents
-   * the receiver task id and the value is a chunked ShuffleTupleMessage including all tuples
-   * to the task. The tuples are classified by the ShuffleStrategy in the shuffle description.
+   * Create list of (String, ShuffleTupleMessage) pairs with a tuple list. The key of the
+   * returned tuple is the receiver task id and the value is a merged ShuffleTupleMessage
+   * including all tuples to the same task. The tuples are classified by the ShuffleStrategy
+   * of the shuffle.
    *
    * @param tupleList a tuple list
-   * @return the list of [task identifier, ShuffleTupleMessage] tuple
+   * @return the list of (task identifier, ShuffleTupleMessage) tuples
    */
   List<Tuple<String, ShuffleTupleMessage<K, V>>> createClassifiedTupleMessageList(List<Tuple<K, V>> tupleList);
 

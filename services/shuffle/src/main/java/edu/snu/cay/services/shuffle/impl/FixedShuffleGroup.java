@@ -16,23 +16,29 @@
 package edu.snu.cay.services.shuffle.impl;
 
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
-import edu.snu.cay.services.shuffle.task.ShuffleGroupClient;
-import edu.snu.cay.services.shuffle.task.TupleOperatorFactory;
-import edu.snu.cay.services.shuffle.task.TupleReceiver;
-import edu.snu.cay.services.shuffle.task.TupleSender;
+import edu.snu.cay.services.shuffle.task.ShuffleGroup;
+import edu.snu.cay.services.shuffle.task.operator.TupleOperatorFactory;
+import edu.snu.cay.services.shuffle.task.operator.TupleReceiver;
+import edu.snu.cay.services.shuffle.task.operator.TupleSender;
+import org.apache.reef.annotations.audience.TaskSide;
 
 import javax.inject.Inject;
 
 /**
- * Simple implementation of ShuffleGroupClient. The initial shuffle group description never be changed.
+ * Simple implementation of ShuffleGroup.
+ *
+ * The initial shuffle group description can never be changed. Users cannot add or remove more
+ * tasks to shuffles and cannot change the key, value codecs and shuffling strategy of certain shuffle
+ * after the shuffle group is created.
  */
-public final class FixedShuffleGroupClient implements ShuffleGroupClient {
+@TaskSide
+public final class FixedShuffleGroup implements ShuffleGroup {
 
   private final ShuffleGroupDescription initialShuffleGroupDescription;
   private final TupleOperatorFactory operatorFactory;
 
   @Inject
-  private FixedShuffleGroupClient(
+  private FixedShuffleGroup(
       final ShuffleGroupDescription initialShuffleGroupDescription,
       final TupleOperatorFactory operatorFactory) {
     this.initialShuffleGroupDescription = initialShuffleGroupDescription;

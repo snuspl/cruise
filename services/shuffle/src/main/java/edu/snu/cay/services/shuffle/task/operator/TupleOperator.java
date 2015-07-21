@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
@@ -28,15 +28,15 @@ public interface TupleOperator<K, V> {
   /**
    * @return shuffle description
    */
-  ShuffleDescription<K, V> getShuffleDescription();
+  ShuffleDescription getShuffleDescription();
 
   /**
-   * @return the ShuffleStrategy instance for the operator
+   * @return ShuffleStrategy instance for the operator
    */
   ShuffleStrategy<K> getShuffleStrategy();
 
   /**
-   * Return selected receiver id list among the receiver list of the shuffle using the ShuffleStrategy
+   * Return selected receiver id list using the ShuffleStrategy among the receiver list
    *
    * @param key a key instance to select corresponding receivers
    * @return selected receiver id list

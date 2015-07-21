@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
-import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageCodec;
+import edu.snu.cay.services.shuffle.network.GlobalTupleMessageCodec;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
+import edu.snu.cay.services.shuffle.task.TupleCodec;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.tang.*;
@@ -32,13 +32,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Default implementation of TupleOperatorFactory
+ * Default implementation of TupleOperatorFactory.
  */
 public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
 
-  private final String nodeId;
-  private final ShuffleTupleMessageCodec globalTupleCodec;
-  private final InjectionFuture<ShuffleGroupClient> client;
+  private final String currentTaskId;
+  private final String shuffleGroupName;
+  private final GlobalTupleMessageCodec globalTupleCodec;
   private final Injector injector;
 
   private Map<String, TupleSender> senderMap;
@@ -46,13 +46,13 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
 
   @Inject
   private TupleOperatorFactoryImpl(
-      @Parameter(TaskConfigurationOptions.Identifier.class) final String nodeId,
-      final ShuffleTupleMessageCodec globalTupleCodec,
-      final InjectionFuture<ShuffleGroupClient> client,
+      @Parameter(TaskConfigurationOptions.Identifier.class) final String currentTaskId,
+      @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
+      final GlobalTupleMessageCodec globalTupleCodec,
       final Injector injector) {
-    this.nodeId = nodeId;
+    this.currentTaskId = currentTaskId;
+    this.shuffleGroupName = shuffleGroupName;
     this.globalTupleCodec = globalTupleCodec;
-    this.client = client;
     this.injector = injector;
     this.senderMap = new ConcurrentHashMap<>();
     this.receiverMap = new ConcurrentHashMap<>();
@@ -66,8 +66,7 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
         .build();
     try {
       final Codec<Tuple> tupleCodec = Tang.Factory.getTang().newInjector(tupleCodecConf).getInstance(TupleCodec.class);
-      globalTupleCodec.registerTupleCodec(client.get().getShuffleGroupDescription().getShuffleGroupName(),
-          shuffleDescription.getShuffleName(), tupleCodec);
+      globalTupleCodec.registerTupleCodec(shuffleGroupName, shuffleDescription.getShuffleName(), tupleCodec);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -76,20 +75,12 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
   @Override
   public <K, V> TupleReceiver<K, V> newTupleReceiver(final ShuffleDescription shuffleDescription) {
     final String shuffleName = shuffleDescription.getShuffleName();
-
     if (!receiverMap.containsKey(shuffleName)) {
-      final ShuffleGroupDescription description = client.get().getShuffleGroupDescription();
-      if (!description.getReceiverIdList(shuffleName).contains(nodeId)) {
-        throw new RuntimeException(shuffleName + " does not have " + nodeId + " as a receiver.");
+      if (!shuffleDescription.getReceiverIdList().contains(currentTaskId)) {
+        throw new RuntimeException(shuffleName + " does not have " + currentTaskId + " as a receiver.");
       }
 
-      final Configuration receiverConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(ShuffleStrategy.class, shuffleDescription.getShuffleStrategyClass())
-          .build();
-
-      final Injector forkedInjector = injector.forkInjector(receiverConfiguration);
-      forkedInjector.bindVolatileInstance(ShuffleGroupClient.class, client.get());
-      forkedInjector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
+      final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
 
       try {
         receiverMap.put(shuffleName, forkedInjector.getInstance(TupleReceiver.class));
@@ -105,20 +96,12 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
   @Override
   public <K, V> TupleSender<K, V> newTupleSender(final ShuffleDescription shuffleDescription) {
     final String shuffleName = shuffleDescription.getShuffleName();
-
     if (!senderMap.containsKey(shuffleName)) {
-      final ShuffleGroupDescription description = client.get().getShuffleGroupDescription();
-      if (!description.getSenderIdList(shuffleName).contains(nodeId)) {
-        throw new RuntimeException(shuffleName + " does not have " + nodeId + " as a sender.");
+      if (!shuffleDescription.getSenderIdList().contains(currentTaskId)) {
+        throw new RuntimeException(shuffleName + " does not have " + currentTaskId + " as a sender.");
       }
 
-      final Configuration senderConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(ShuffleStrategy.class, shuffleDescription.getShuffleStrategyClass())
-          .build();
-
-      final Injector forkedInjector = injector.forkInjector(senderConfiguration);
-      forkedInjector.bindVolatileInstance(ShuffleGroupClient.class, client.get());
-      forkedInjector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
+      final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
 
       try {
         senderMap.put(shuffleName, forkedInjector.getInstance(TupleSender.class));
@@ -130,5 +113,17 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
     }
 
     return senderMap.get(shuffleName);
+  }
+
+  private Injector getForkedInjectorWithParameters(final ShuffleDescription shuffleDescription) {
+    final Injector forkedInjector = injector.forkInjector(getBaseOperatorConfiguration(shuffleDescription));
+    forkedInjector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
+    return forkedInjector;
+  }
+
+  private Configuration getBaseOperatorConfiguration(final ShuffleDescription shuffleDescription) {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(ShuffleStrategy.class, shuffleDescription.getShuffleStrategyClass())
+        .build();
   }
 }

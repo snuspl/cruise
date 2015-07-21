@@ -13,21 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Factory for creating tuple sender and receiver
+ * Factory for creating tuple senders and receivers.
  */
 @DefaultImplementation(TupleOperatorFactoryImpl.class)
 public interface TupleOperatorFactory {
 
   /**
-   * Create a tuple receiver for specified shuffle description and register tuple codec for the operator.
+   * Create a tuple receiver for the specified shuffle description and register a tuple codec for the operator.
    * It returns cached tuple receiver if the tuple receiver was already created and throws runtime exception
-   * if the task is not a receiver for the shuffle.
+   * if the task is not a receiver of the shuffle.
    *
    * @param shuffleDescription shuffle description
    * @param <K> key type
@@ -37,9 +37,9 @@ public interface TupleOperatorFactory {
   <K, V> TupleReceiver<K, V> newTupleReceiver(ShuffleDescription shuffleDescription);
 
   /**
-   * Create a tuple sender for specified shuffle description and register tuple codec for the operator.
+   * Create a tuple sender for specified shuffle description and register a tuple codec for the operator.
    * It returns cached tuple sender if the tuple sender was already created and throws runtime exception
-   * if the task is not a sender for the shuffle.
+   * if the task is not a sender of the shuffle.
    *
    * @param shuffleDescription shuffle description
    * @param <K> key type

@@ -15,6 +15,6 @@
  */
 
 /**
- * Simple message exchanging example
+ * Simple message exchanging example.
  */
 package edu.snu.cay.services.shuffle.example.simple;

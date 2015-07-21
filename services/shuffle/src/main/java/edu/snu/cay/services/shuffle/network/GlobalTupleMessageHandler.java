@@ -24,14 +24,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Globally registered event handler for ShuffleTupleMessage. It routes messages to
- * respective event handler registered with shuffle group and shuffle name.
+ * respective event handler registered with shuffle group name and shuffle name.
  */
-public class ShuffleTupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage>> {
+public class GlobalTupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage>> {
 
   private final Map<String, Map<String, EventHandler>> eventHandlerMap;
 
   @Inject
-  public ShuffleTupleMessageHandler() {
+  public GlobalTupleMessageHandler() {
     eventHandlerMap = new ConcurrentHashMap<>();
   }
 

@@ -16,19 +16,23 @@
 package edu.snu.cay.services.shuffle.task;
 
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
+import edu.snu.cay.services.shuffle.task.operator.TupleReceiver;
+import edu.snu.cay.services.shuffle.task.operator.TupleSender;
+import org.apache.reef.annotations.audience.TaskSide;
 
 /**
- * The task side interface communicating with corresponding ShuffleGroupManager in driver
+ * Task side interface to communicate with corresponding ShuffleGroupManager in driver
  * to control the shuffle group. The users can obtain tuple senders and receivers for
- * specific shuffle
+ * the specific shuffle.
  */
-public interface ShuffleGroupClient {
+@TaskSide
+public interface ShuffleGroup {
 
   /**
-   * Return the TupleReceiver for the shuffle. It throws RuntimeException if
-   * the task is not a receiver for the shuffle.
+   * Return the TupleReceiver for the shuffle. It throws RuntimeException if the
+   * current task is not a receiver for the shuffle.
    *
-   * @param shuffleName the name of shuffle
+   * @param shuffleName name of the shuffle
    * @param <K> key type
    * @param <V> value type
    * @return tuple receiver
@@ -36,10 +40,10 @@ public interface ShuffleGroupClient {
   <K, V> TupleReceiver<K, V> getReceiver(String shuffleName);
 
   /**
-   * Return the TupleSender for the shuffle. It throws RuntimeException if
-   * the task is not a sender for the shuffle.
+   * Return the TupleSender for the shuffle. It throws RuntimeException if the
+   * current task is not a sender for the shuffle.
    *
-   * @param shuffleName the name of shuffle
+   * @param shuffleName name of the shuffle
    * @param <K> key type
    * @param <V> value type
    * @return tuple sender
@@ -47,7 +51,11 @@ public interface ShuffleGroupClient {
   <K, V> TupleSender<K, V> getSender(String shuffleName);
 
   /**
-   * @return description about shuffle group handled by the shuffle group client
+   * Return the shuffle group description with shuffle descriptions that
+   * include the current task
+   *
+   *
+   * @return the shuffle group description
    */
   ShuffleGroupDescription getShuffleGroupDescription();
 }

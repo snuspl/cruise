@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.io.Tuple;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -27,22 +29,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Default implementation for ShuffleTupleMessageGenerator
+ * Default implementation for ShuffleTupleMessageGenerator.
  */
 final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessageGenerator<K, V> {
 
-  private final ShuffleGroupClient shuffleGroupClient;
   private final String shuffleGroupName;
-  private final ShuffleDescription<K, V> shuffleDescription;
+  private final ShuffleDescription shuffleDescription;
   private final ShuffleStrategy<K> shuffleStrategy;
 
   @Inject
   private ShuffleTupleMessageGeneratorImpl(
-      final ShuffleGroupClient shuffleGroupClient,
-      final ShuffleDescription<K, V> shuffleDescription,
+      @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
+      final ShuffleDescription shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy) {
-    this.shuffleGroupClient = shuffleGroupClient;
-    this.shuffleGroupName = shuffleGroupClient.getShuffleGroupDescription().getShuffleGroupName();
+    this.shuffleGroupName = shuffleGroupName;
     this.shuffleDescription = shuffleDescription;
     this.shuffleStrategy = shuffleStrategy;
   }
@@ -55,7 +55,7 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
 
   private List<Tuple<String, ShuffleTupleMessage<K, V>>> serializeTupleWithData(
       final K key, final List<Tuple<K, V>> data) {
-    final List<String> nodeIdList = shuffleStrategy.selectReceivers(key, getReceiverIdList());
+    final List<String> nodeIdList = shuffleStrategy.selectReceivers(key, shuffleDescription.getReceiverIdList());
     final List<Tuple<String, ShuffleTupleMessage<K, V>>> messageList = new ArrayList<>(nodeIdList.size());
     for (final String nodeId : nodeIdList) {
       messageList.add(new Tuple<>(
@@ -72,7 +72,8 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
       final List<Tuple<K, V>> tupleList) {
     final Map<String, List<Tuple>> serializedTupleDataMap = new HashMap<>();
     for (final Tuple<K, V> tuple : tupleList) {
-      for (final String nodeId : shuffleStrategy.selectReceivers(tuple.getKey(), getReceiverIdList())) {
+      final List<String> receiverIdList = shuffleDescription.getReceiverIdList();
+      for (final String nodeId : shuffleStrategy.selectReceivers(tuple.getKey(), receiverIdList)) {
         if (!serializedTupleDataMap.containsKey(nodeId)) {
           serializedTupleDataMap.put(nodeId, new ArrayList<Tuple>());
         }
@@ -108,10 +109,6 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
   @Override
   public ShuffleTupleMessage<K, V> createTupleMessage(final List<Tuple<K, V>> tupleList) {
     return createShuffleTupleMessage(tupleList);
-  }
-
-  private List<String> getReceiverIdList() {
-    return shuffleGroupClient.getShuffleGroupDescription().getReceiverIdList(shuffleDescription.getShuffleName());
   }
 
   private ShuffleTupleMessage<K, V> createShuffleTupleMessage(final List<Tuple<K, V>> data) {

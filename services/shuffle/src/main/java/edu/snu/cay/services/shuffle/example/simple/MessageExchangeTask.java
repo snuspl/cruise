@@ -16,10 +16,10 @@
 package edu.snu.cay.services.shuffle.example.simple;
 
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import edu.snu.cay.services.shuffle.task.ShuffleGroupClient;
-import edu.snu.cay.services.shuffle.task.ShuffleService;
-import edu.snu.cay.services.shuffle.task.TupleReceiver;
-import edu.snu.cay.services.shuffle.task.TupleSender;
+import edu.snu.cay.services.shuffle.task.ShuffleGroup;
+import edu.snu.cay.services.shuffle.task.ShuffleGroupProvider;
+import edu.snu.cay.services.shuffle.task.operator.TupleReceiver;
+import edu.snu.cay.services.shuffle.task.operator.TupleSender;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.task.Task;
@@ -37,33 +37,33 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Task for simple message exchanging example
+ * Task for simple message exchanging example.
  */
 public final class MessageExchangeTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(MessageExchangeTask.class.getName());
 
-  private final ShuffleGroupClient shuffleGroupClient;
   private final TupleSender<Integer, Integer> tupleSender;
-  private final TupleReceiver<Integer, Integer> tupleReceiver;
-
   private final List<String> receiverList;
   private final int taskNumber;
-
   private final AtomicInteger counter;
-
   private final List<String> messageSentSenderIdList;
 
   @Inject
   private MessageExchangeTask(
-      final ShuffleService shuffleService) {
-    this.shuffleGroupClient = shuffleService.getClient(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME);
-    this.tupleSender = shuffleGroupClient.getSender(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
+      final ShuffleGroupProvider shuffleGroupProvider) {
+    final ShuffleGroup shuffleGroup = shuffleGroupProvider
+        .getShuffleGroup(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME);
+
+    this.tupleSender = shuffleGroup.getSender(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     tupleSender.registerTupleLinkListener(new TupleLinkListener());
-    this.tupleReceiver = shuffleGroupClient.getReceiver(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
+
+    final TupleReceiver<Integer, Integer> tupleReceiver = shuffleGroup
+        .getReceiver(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     tupleReceiver.registerTupleMessageHandler(new TupleMessageHandler());
-    this.receiverList = shuffleGroupClient.getShuffleGroupDescription()
-        .getReceiverIdList(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
+
+    this.receiverList = shuffleGroup.getShuffleGroupDescription()
+        .getShuffleDescription(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME).getReceiverIdList();
     this.taskNumber = receiverList.size();
     this.counter = new AtomicInteger(taskNumber);
     this.messageSentSenderIdList = Collections.synchronizedList(new ArrayList<String>());
@@ -71,8 +71,8 @@ public final class MessageExchangeTask implements Task {
 
   @Override
   public byte[] call(byte[] memento) throws Exception {
-    // TODO: Currently MessageExchangeTasks are sleep 3 seconds to wait the other tasks start. I will add
-    // synchronization logic for all tasks in same shuffle via another pull request.
+    // TODO: Currently MessageExchangeTasks sleep 3 seconds to wait the other tasks start.
+    // Synchronization logic for all tasks in same shuffle will be included via another pull request.
     Thread.sleep(3000);
     final List<String> messageSentIdList = tupleSender.sendTuple(generateRandomTuples());
     for (final String receiver : receiverList) {
@@ -133,7 +133,7 @@ public final class MessageExchangeTask implements Task {
       }
 
       if (messageSentSenderIdList.contains(message.getSrcId().toString())) {
-        throw new RuntimeException("Only one message from one node is allowed.");
+        throw new RuntimeException("Only one message from one task is allowed.");
       } else {
         if (counter.decrementAndGet() == 0) {
           LOG.log(Level.INFO, "{0} messages are arrived. The task will be notified and closed.", taskNumber);

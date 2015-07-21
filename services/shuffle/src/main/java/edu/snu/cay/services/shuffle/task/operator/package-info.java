@@ -15,6 +15,6 @@
  */
 
 /**
- * Shuffle Service.
+ * Shuffle tuple operators.
  */
-package edu.snu.cay.services.shuffle;
+package edu.snu.cay.services.shuffle.task.operator;

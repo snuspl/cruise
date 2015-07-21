@@ -15,6 +15,6 @@
  */
 
 /**
- * Example applications using shuffle service
+ * Example applications using shuffle service.
  */
 package edu.snu.cay.services.shuffle.example;

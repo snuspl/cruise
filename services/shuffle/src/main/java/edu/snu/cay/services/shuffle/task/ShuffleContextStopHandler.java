@@ -27,7 +27,7 @@ import org.apache.reef.wake.IdentifierFactory;
 import javax.inject.Inject;
 
 /**
- * ContextStopHandler which un-registers connection factory for ShuffleTupleMessage
+ * ContextStopHandler which un-registers connection factory for ShuffleTupleMessage.
  */
 public final class ShuffleContextStopHandler implements EventHandler<ContextStop> {
 

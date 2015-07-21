@@ -17,7 +17,7 @@ package edu.snu.cay.services.shuffle.driver;
 
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
-import edu.snu.cay.services.shuffle.task.ShuffleGroupClient;
+import edu.snu.cay.services.shuffle.task.ShuffleGroup;
 import edu.snu.cay.services.shuffle.task.ShuffleContextStartHandler;
 import edu.snu.cay.services.shuffle.task.ShuffleContextStopHandler;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
@@ -33,23 +33,18 @@ import javax.inject.Inject;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-/**
- * Default implementation of ShuffleDriver
- */
-final class ShuffleDriverImpl implements ShuffleDriver {
+final class DefaultShuffleDriverImpl implements ShuffleDriver {
 
   private final Injector rootInjector;
   private final ConfigurationSerializer confSerializer;
   private final ConcurrentMap<String, ShuffleGroupManager> managerMap;
 
   /**
-   * Construct a ShuffleDriverImpl
-   *
-   * @param rootInjector the root injector which injecting the instance of ShuffleDriverImpl
+   * @param rootInjector the root injector to inject current instance of DefaultShuffleDriverImpl
    * @param confSerializer Tang configuration serializer
    */
   @Inject
-  private ShuffleDriverImpl(
+  private DefaultShuffleDriverImpl(
       final Injector rootInjector,
       final ConfigurationSerializer confSerializer) {
     this.rootInjector = rootInjector;
@@ -92,13 +87,13 @@ final class ShuffleDriverImpl implements ShuffleDriver {
   public Configuration getTaskConfiguration(final String taskId) {
     final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
     for (final ShuffleGroupManager manager : managerMap.values()) {
-      final Configuration clientConf = manager.getClientConfigurationForTask(taskId);
+      final Configuration shuffleGroupConf = manager.getShuffleGroupConfigurationForTask(taskId);
 
-      if (clientConf != null) {
-        final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder(clientConf)
-            .bindImplementation(ShuffleGroupClient.class, manager.getClientClass())
+      if (shuffleGroupConf != null) {
+        final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder(shuffleGroupConf)
+            .bindImplementation(ShuffleGroup.class, manager.getShuffleGroupClass())
             .build();
-        confBuilder.bindSetEntry(ShuffleParameters.SerializedClientSet.class, confSerializer.toString(conf));
+        confBuilder.bindSetEntry(ShuffleParameters.SerializedShuffleGroupSet.class, confSerializer.toString(conf));
       }
     }
     return confBuilder.build();

@@ -30,12 +30,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * Globally registered codec for ShuffleTupleMessage. It uses tuple codecs registered with corresponding
  * shuffle group name and shuffle name to encode, decode ShuffleTupleMessage.
  */
-public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTupleMessage> {
+public final class GlobalTupleMessageCodec implements StreamingCodec<ShuffleTupleMessage> {
 
   private Map<String, Map<String, Codec<Tuple>>> tupleCodecMap;
 
   @Inject
-  public ShuffleTupleMessageCodec() {
+  public GlobalTupleMessageCodec() {
     tupleCodecMap = new ConcurrentHashMap<>();
   }
 

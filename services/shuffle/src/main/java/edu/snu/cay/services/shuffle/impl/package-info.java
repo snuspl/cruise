@@ -15,6 +15,6 @@
  */
 
 /**
- * Implementations of ShuffleManager and ShuffleClient pairs
+ * Implementations of ShuffleGroups and ShuffleGroupManagers.
  */
 package edu.snu.cay.services.shuffle.impl;

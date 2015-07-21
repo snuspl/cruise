@@ -37,9 +37,10 @@ import java.util.logging.Logger;
 /**
  * Simple message exchanging example using shuffle service.
  *
- * n tasks exchange tuples using key grouping. Cause all of tuples from one task to another task are chunked
- * into one network message, each task is blocking until exactly n messages are arrived from n tasks including itself
- * (task sends at least an empty network message to wake the other tasks)
+ * n tasks exchange tuples using the key grouping strategy. Because all tuples that are sent from one task to
+ * another task are chunked into one network message, each task is blocked until exactly n messages arrive from
+ * n tasks including itself.
+ * (Tasks send at least an empty network message to wake the other tasks)
  */
 public final class MessageExchangeREEF {
 
@@ -77,13 +78,14 @@ public final class MessageExchangeREEF {
     final CommandLine commandLine = new CommandLine();
     commandLine.registerShortNameOfClass(Local.class);
     final Injector injector = Tang.Factory.getTang().newInjector(
-        commandLine.parseToConfiguration(args, Local.class, MessageExchangeREEF.TaskNumber.class));
+        commandLine.parseToConfiguration(args, Local.class, TaskNumber.class, Timeout.class));
 
     final boolean isLocal = injector.getNamedInstance(Local.class);
-    final int taskNumber = injector.getNamedInstance(MessageExchangeREEF.TaskNumber.class);
+    final int taskNumber = injector.getNamedInstance(TaskNumber.class);
+    final long jobTimeout = injector.getNamedInstance(Timeout.class);
 
     final LauncherStatus state = DriverLauncher.getLauncher(getRuntimeConfiguration(isLocal))
-        .run(getDriverConfiguration(taskNumber), 100000);
+        .run(getDriverConfiguration(taskNumber), jobTimeout);
     LOG.log(Level.INFO, "REEF job completed: {0}", state);
   }
 
@@ -99,5 +101,9 @@ public final class MessageExchangeREEF {
 
   @NamedParameter(short_name = "task_num", default_value = "5")
   public static final class TaskNumber implements Name<Integer> {
+  }
+
+  @NamedParameter(short_name = "timeout", default_value = "30000")
+  public static final class Timeout implements Name<Long> {
   }
 }

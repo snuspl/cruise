@@ -27,16 +27,16 @@ import java.util.logging.Logger;
 
 /**
  * Globally registered link listener for ShuffleTupleMessage. It routes exception or success callback to
- * respective link lister registered with shuffle group and shuffle name.
+ * respective link lister registered with shuffle group name and shuffle name.
  */
-public class ShuffleTupleLinkListener implements LinkListener<Message<ShuffleTupleMessage>> {
+public class GlobalTupleLinkListener implements LinkListener<Message<ShuffleTupleMessage>> {
 
-  private static final Logger LOG = Logger.getLogger(ShuffleTupleLinkListener.class.getName());
+  private static final Logger LOG = Logger.getLogger(GlobalTupleLinkListener.class.getName());
 
   private final Map<String, Map<String, LinkListener>> linkListenerMap;
 
   @Inject
-  public ShuffleTupleLinkListener() {
+  public GlobalTupleLinkListener() {
     this.linkListenerMap = new ConcurrentHashMap<>();
   }
 

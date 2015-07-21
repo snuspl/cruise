@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleLinkListener;
+import edu.snu.cay.services.shuffle.network.GlobalTupleLinkListener;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
@@ -36,38 +36,36 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Base implementation for TupleSender
+ * Base implementation for TupleSender.
  */
 public final class BaseTupleSender<K, V> implements TupleSender<K, V> {
 
   private final String shuffleGroupName;
   private final String shuffleName;
-  private final ShuffleGroupClient shuffleGroupClient;
-  private final ShuffleTupleLinkListener globalTupleLinkListener;
+  private final ShuffleDescription shuffleDescription;
+  private final ShuffleStrategy<K> shuffleStrategy;
+  private final GlobalTupleLinkListener globalTupleLinkListener;
   private final ConnectionFactory<ShuffleTupleMessage> tupleMessageConnectionFactory;
   private final IdentifierFactory idFactory;
-  private final ShuffleDescription<K, V> shuffleDescription;
-  private final ShuffleStrategy<K> shuffleStrategy;
   private final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator;
 
   @Inject
   private BaseTupleSender(
-      final ShuffleGroupClient shuffleGroupClient,
-      final ShuffleTupleLinkListener globalTupleLinkListener,
+      @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
+      final ShuffleDescription shuffleDescription,
+      final ShuffleStrategy<K> shuffleStrategy,
+      final GlobalTupleLinkListener globalTupleLinkListener,
       final NetworkConnectionService networkConnectionService,
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
-      final ShuffleDescription<K, V> shuffleDescription,
-      final ShuffleStrategy<K> shuffleStrategy,
       final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator) {
-    this.shuffleGroupName = shuffleGroupClient.getShuffleGroupDescription().getShuffleGroupName();
+    this.shuffleGroupName = shuffleGroupName;
     this.shuffleName = shuffleDescription.getShuffleName();
-    this.shuffleGroupClient = shuffleGroupClient;
+    this.shuffleDescription = shuffleDescription;
+    this.shuffleStrategy = shuffleStrategy;
     this.globalTupleLinkListener = globalTupleLinkListener;
     this.tupleMessageConnectionFactory = networkConnectionService
         .getConnectionFactory(idFactory.getNewInstance(ShuffleParameters.NETWORK_CONNECTION_SERVICE_ID));
     this.idFactory = idFactory;
-    this.shuffleDescription = shuffleDescription;
-    this.shuffleStrategy = shuffleStrategy;
     this.tupleMessageGenerator = tupleMessageGenerator;
   }
 
@@ -82,16 +80,16 @@ public final class BaseTupleSender<K, V> implements TupleSender<K, V> {
   }
 
   @Override
-  public void sendTupleTo(final String destTaskId, final Tuple<K, V> tuple) {
+  public void sendTupleTo(final String taskId, final Tuple<K, V> tuple) {
     final List<Tuple<String, ShuffleTupleMessage<K, V>>> shuffleMessageTupleList = new ArrayList<>(1);
-    shuffleMessageTupleList.add(new Tuple<>(destTaskId, tupleMessageGenerator.createTupleMessage(tuple)));
+    shuffleMessageTupleList.add(new Tuple<>(taskId, tupleMessageGenerator.createTupleMessage(tuple)));
     sendShuffleMessageTupleList(shuffleMessageTupleList);
   }
 
   @Override
-  public void sendTupleTo(final String destTaskId, final List<Tuple<K, V>> tupleList) {
+  public void sendTupleTo(final String taskId, final List<Tuple<K, V>> tupleList) {
     final List<Tuple<String, ShuffleTupleMessage<K, V>>> shuffleMessageTupleList = new ArrayList<>(1);
-    shuffleMessageTupleList.add(new Tuple<>(destTaskId, tupleMessageGenerator.createTupleMessage(tupleList)));
+    shuffleMessageTupleList.add(new Tuple<>(taskId, tupleMessageGenerator.createTupleMessage(tupleList)));
     sendShuffleMessageTupleList(shuffleMessageTupleList);
   }
 
@@ -123,7 +121,7 @@ public final class BaseTupleSender<K, V> implements TupleSender<K, V> {
   }
 
   @Override
-  public ShuffleDescription<K, V> getShuffleDescription() {
+  public ShuffleDescription getShuffleDescription() {
     return shuffleDescription;
   }
 
@@ -134,7 +132,6 @@ public final class BaseTupleSender<K, V> implements TupleSender<K, V> {
 
   @Override
   public List<String> getSelectedReceiverIdList(final K key) {
-    return shuffleStrategy.selectReceivers(key,
-        shuffleGroupClient.getShuffleGroupDescription().getReceiverIdList(shuffleName));
+    return shuffleStrategy.selectReceivers(key, shuffleDescription.getReceiverIdList());
   }
 }

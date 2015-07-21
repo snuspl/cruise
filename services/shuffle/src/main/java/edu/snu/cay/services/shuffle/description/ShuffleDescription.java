@@ -19,30 +19,43 @@ import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.remote.Codec;
 
+import java.util.List;
+
 /**
- * Description about a shuffle in shuffle group
+ * Description of a shuffle containing key, value, shuffle strategy classes
+ * and sender, receiver task identifiers.
  */
 @DefaultImplementation(ShuffleDescriptionImpl.class)
-public interface ShuffleDescription<K, V> {
+public interface ShuffleDescription {
 
   /**
-   * @return the name of the shuffle
+   * @return name of the shuffle
    */
   String getShuffleName();
 
   /**
-   * @return the strategy class of the shuffle
+   * @return strategy class of the shuffle
    */
   Class<? extends ShuffleStrategy> getShuffleStrategyClass();
 
   /**
-   * @return the codec class for key type
+   * @return codec class for tuple keys
    */
-  Class<? extends Codec<K>> getKeyCodecClass();
+  Class<? extends Codec> getKeyCodecClass();
 
   /**
-   * @return the codec class for value type
+   * @return codec class for tuple values
    */
-  Class<? extends Codec<V>> getValueCodecClass();
+  Class<? extends Codec> getValueCodecClass();
+
+  /**
+   * @return list of sender task identifiers
+   */
+  List<String> getSenderIdList();
+
+  /**
+   * @return list of sender task identifiers
+   */
+  List<String> getReceiverIdList();
 
 }

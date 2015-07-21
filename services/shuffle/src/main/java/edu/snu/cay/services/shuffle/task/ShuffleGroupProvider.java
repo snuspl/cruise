@@ -15,21 +15,23 @@
  */
 package edu.snu.cay.services.shuffle.task;
 
+import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Main task side shuffle controller. The ShuffleClients in the ShuffleService are automatically
- * injected if the task configuration was merged with task configuration from ShuffleDriver.
+ * Task-side interface for providing ShuffleGroup.
+ *
+ * ShuffleGroups in the provider are automatically injected if the task configuration
+ * was merged with proper configuration from ShuffleDriver.
  */
-@DefaultImplementation(ShuffleServiceImpl.class)
-public interface ShuffleService {
+@TaskSide
+@DefaultImplementation(DefaultShuffleGroupProviderImpl.class)
+public interface ShuffleGroupProvider {
 
   /**
-   * Return the shuffle group client handles shuffle group named shuffleGroupName
-   *
-   * @param shuffleGroupName
-   * @return shuffle group client
+   * @param shuffleGroupName name of the shuffle group
+   * @return the shuffle group named shuffleGroupName
    */
-  ShuffleGroupClient getClient(String shuffleGroupName);
+  ShuffleGroup getShuffleGroup(String shuffleGroupName);
 
 }

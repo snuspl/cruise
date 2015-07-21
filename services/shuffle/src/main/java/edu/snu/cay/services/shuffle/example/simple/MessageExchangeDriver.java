@@ -47,7 +47,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * REEF driver for simple message exchanging example
+ * REEF driver for simple message exchanging example.
  */
 @DriverSide
 @Unit
@@ -86,7 +86,9 @@ public final class MessageExchangeDriver {
   private void registerShuffleGroup() {
     shuffleDriver.registerManager(
         ShuffleGroupDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME)
-            .addShuffle(taskIds, taskIds, ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
+            .addShuffle(ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
+                .setSenderIdList(taskIds)
+                .setReceiverIdList(taskIds)
                 .setKeyCodec(IntegerCodec.class)
                 .setValueCodec(IntegerCodec.class)
                 .setShuffleStrategy(KeyShuffleStrategy.class)
@@ -132,7 +134,6 @@ public final class MessageExchangeDriver {
 
     return Configurations.merge(partialTaskConf, shuffleDriver.getTaskConfiguration(taskId));
   }
-
 
   public final class AllocatedHandler implements EventHandler<AllocatedEvaluator> {
 
