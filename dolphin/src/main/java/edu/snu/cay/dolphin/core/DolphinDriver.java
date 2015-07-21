@@ -21,13 +21,10 @@ import com.microsoft.reef.io.network.nggroup.impl.config.BroadcastOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.GatherOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ReduceOperatorSpec;
 import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
+import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.groupcomm.names.*;
 import edu.snu.cay.dolphin.parameters.EvaluatorNum;
 import edu.snu.cay.dolphin.parameters.OutputDir;
-import edu.snu.cay.dolphin.core.metric.MetricCodec;
-import edu.snu.cay.dolphin.core.metric.MetricTracker;
-import edu.snu.cay.dolphin.core.metric.MetricTrackerService;
-import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.parameters.OnLocal;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
@@ -343,6 +340,8 @@ public final class DolphinDriver {
 
     //Set metric trackers
     if (stageInfo.getMetricTrackerClassSet() != null) {
+      // MetricTrackerInterval can be used without users' configuration.
+      dolphinTaskConfBuilder.bindSetEntry(MetricTrackers.class, MetricTrackerInterval.class);
       for (final Class<? extends MetricTracker> metricTrackerClass
           : stageInfo.getMetricTrackerClassSet()) {
         dolphinTaskConfBuilder.bindSetEntry(MetricTrackers.class, metricTrackerClass);

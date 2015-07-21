@@ -18,9 +18,7 @@ package edu.snu.cay.dolphin.core;
 import com.microsoft.reef.io.network.group.operators.Broadcast;
 import com.microsoft.reef.io.network.nggroup.api.task.CommunicationGroupClient;
 import com.microsoft.reef.io.network.nggroup.api.task.GroupCommClient;
-import edu.snu.cay.dolphin.core.metric.MetricManager;
-import edu.snu.cay.dolphin.core.metric.MetricTracker;
-import edu.snu.cay.dolphin.core.metric.MetricTrackers;
+import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
@@ -46,6 +44,7 @@ public final class ComputeTask implements Task {
   private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
   private final MetricManager metricManager;
   private final Set<MetricTracker> metricTrackerSet;
+  private final MetricTrackerInterval metricTrackerInterval;
 
   @Inject
   public ComputeTask(final GroupCommClient groupCommClient,
@@ -53,13 +52,15 @@ public final class ComputeTask implements Task {
                      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                      @Parameter(CommunicationGroup.class) final String commGroupName,
                      final MetricManager metricManager,
-                     @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet) throws ClassNotFoundException {
+                     @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
+                     final MetricTrackerInterval metricTrackerInterval) throws ClassNotFoundException {
     this.userComputeTask = userComputeTask;
     this.taskId = taskId;
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
     this.metricManager = metricManager;
     this.metricTrackerSet = metricTrackerSet;
+    this.metricTrackerInterval = metricTrackerInterval;
   }
 
   @Override
@@ -73,7 +74,7 @@ public final class ComputeTask implements Task {
       while (!isTerminated()) {
         metricManager.start();
         receiveData(iteration);
-        userComputeTask.run(iteration);
+        runUserComputeTask(iteration);
         sendData(iteration);
         metricManager.stop();
         iteration++;
@@ -84,7 +85,14 @@ public final class ComputeTask implements Task {
     return null;
   }
 
+  private void runUserComputeTask(final int iteration) throws Exception {
+    metricTrackerInterval.beginInterval(MetricTrackerInterval.KEY_METRIC_TASK_COMPUTE);
+    userComputeTask.run(iteration);
+    metricTrackerInterval.endInterval(MetricTrackerInterval.KEY_METRIC_TASK_COMPUTE);
+  }
+
   private void receiveData(final int iteration) throws Exception {
+    metricTrackerInterval.beginInterval(MetricTrackerInterval.KEY_METRIC_TASK_RECEIVE_DATA);
     if (userComputeTask.isBroadcastUsed()) {
       ((DataBroadcastReceiver)userComputeTask).receiveBroadcastData(iteration,
           commGroup.getBroadcastReceiver(DataBroadcast.class).receive());
@@ -93,9 +101,11 @@ public final class ComputeTask implements Task {
       ((DataScatterReceiver)userComputeTask).receiveScatterData(iteration,
           commGroup.getScatterReceiver(DataScatter.class).receive());
     }
+    metricTrackerInterval.endInterval(MetricTrackerInterval.KEY_METRIC_TASK_RECEIVE_DATA);
   }
 
   private void sendData(final int iteration) throws Exception {
+    metricTrackerInterval.beginInterval(MetricTrackerInterval.KEY_METRIC_TASK_SEND_DATA);
     if (userComputeTask.isGatherUsed()) {
       commGroup.getGatherSender(DataGather.class).send(
           ((DataGatherSender)userComputeTask).sendGatherData(iteration));
@@ -104,6 +114,7 @@ public final class ComputeTask implements Task {
       commGroup.getReduceSender(DataReduce.class).send(
           ((DataReduceSender)userComputeTask).sendReduceData(iteration));
     }
+    metricTrackerInterval.endInterval(MetricTrackerInterval.KEY_METRIC_TASK_SEND_DATA);
   }
 
   private boolean isTerminated() throws Exception {
