@@ -72,7 +72,7 @@
       <version>${reef.version}</version>
     </dependency>
     <dependency>
-      <groupId>edu.snu.cay</groupId>
+      <groupId>edu.snu.cay.services</groupId>
       <artifactId>elastic-memory</artifactId>
       <version>${elastic-memory.version}</version>
     </dependency>
