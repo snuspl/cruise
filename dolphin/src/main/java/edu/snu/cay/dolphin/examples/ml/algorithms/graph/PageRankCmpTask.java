@@ -83,6 +83,7 @@ public class PageRankCmpTask extends UserComputeTask
     for (final Integer key : subgraphs.keySet()) {
       rank.put(key, 1.0d);
     }
+    // TODO Revisit once #38 is merged: put each entry as a separate unit.
     memoryStore.putMovable(KEY_RANK, rank);
   }
 
@@ -104,6 +105,7 @@ public class PageRankCmpTask extends UserComputeTask
 
       // The rank of node is distributed evenly to its outbound neighbor nodes.
       // Compute a contribution per each node
+      // TODO Revisit once #38 is merged: get() will return the set of entries.
       final Map<Integer, Double> rank = (Map<Integer, Double>) memoryStore.get(KEY_RANK).get(0);
       final double contribution = rank.get(nodeId) * 1.0d / outList.size();
       // Add the contribution to each node
@@ -128,6 +130,7 @@ public class PageRankCmpTask extends UserComputeTask
     if (iteration < 1) {
       return;
     }
+    // TODO Revisit once #38 is merged: put each entry as a separate unit.
     memoryStore.putMovable(KEY_RANK, rank);
   }
 
