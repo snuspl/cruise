@@ -28,9 +28,9 @@ import javax.inject.Inject;
 import java.util.List;
 
 /**
- * Base implementation for TupleReceiver.
+ * Base implementation for ShuffleReceiver.
  */
-public final class BaseTupleReceiver<K, V> implements TupleReceiver<K, V> {
+public final class BaseShuffleReceiver<K, V> implements ShuffleReceiver<K, V> {
 
   private final String shuffleGroupName;
   private final String shuffleName;
@@ -39,7 +39,7 @@ public final class BaseTupleReceiver<K, V> implements TupleReceiver<K, V> {
   private final GlobalTupleMessageHandler globalTupleMessageHandler;
 
   @Inject
-  private BaseTupleReceiver(
+  private BaseShuffleReceiver(
       @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
       final ShuffleDescription shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy,

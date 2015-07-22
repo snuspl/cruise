@@ -32,8 +32,8 @@ import java.util.List;
 /**
  * Simple implementation of ShuffleGroupManager.
  *
- * The initial shuffle group description can never be changed. Users cannot add or remove more
- * tasks to shuffles and cannot change the key, value codes and shuffling strategy of certain shuffle
+ * The initial shuffle group description can never be changed. Users cannot add or remove more tasks
+ * to shuffles and cannot change the key, value codecs and shuffling strategy of the certain shuffle
  * after the manager is created.
  */
 @DriverSide

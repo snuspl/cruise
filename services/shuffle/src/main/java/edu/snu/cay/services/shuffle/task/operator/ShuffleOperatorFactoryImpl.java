@@ -34,18 +34,18 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Default implementation of TupleOperatorFactory.
  */
-public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
+public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
 
   private final String currentTaskId;
   private final String shuffleGroupName;
   private final GlobalTupleMessageCodec globalTupleCodec;
   private final Injector injector;
 
-  private Map<String, TupleSender> senderMap;
-  private Map<String, TupleReceiver> receiverMap;
+  private Map<String, ShuffleSender> senderMap;
+  private Map<String, ShuffleReceiver> receiverMap;
 
   @Inject
-  private TupleOperatorFactoryImpl(
+  private ShuffleOperatorFactoryImpl(
       @Parameter(TaskConfigurationOptions.Identifier.class) final String currentTaskId,
       @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
       final GlobalTupleMessageCodec globalTupleCodec,
@@ -73,7 +73,7 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
   }
 
   @Override
-  public <K, V> TupleReceiver<K, V> newTupleReceiver(final ShuffleDescription shuffleDescription) {
+  public <K, V> ShuffleReceiver<K, V> newShuffleReceiver(final ShuffleDescription shuffleDescription) {
     final String shuffleName = shuffleDescription.getShuffleName();
     if (!receiverMap.containsKey(shuffleName)) {
       if (!shuffleDescription.getReceiverIdList().contains(currentTaskId)) {
@@ -83,7 +83,7 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
       final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
 
       try {
-        receiverMap.put(shuffleName, forkedInjector.getInstance(TupleReceiver.class));
+        receiverMap.put(shuffleName, forkedInjector.getInstance(ShuffleReceiver.class));
         addTupleCodec(shuffleDescription);
       } catch (final InjectionException e) {
         throw new RuntimeException("An Exception occurred while injecting receiver with " + shuffleDescription, e);
@@ -94,7 +94,7 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
   }
 
   @Override
-  public <K, V> TupleSender<K, V> newTupleSender(final ShuffleDescription shuffleDescription) {
+  public <K, V> ShuffleSender<K, V> newShuffleSender(final ShuffleDescription shuffleDescription) {
     final String shuffleName = shuffleDescription.getShuffleName();
     if (!senderMap.containsKey(shuffleName)) {
       if (!shuffleDescription.getSenderIdList().contains(currentTaskId)) {
@@ -104,7 +104,7 @@ public class TupleOperatorFactoryImpl implements TupleOperatorFactory {
       final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
 
       try {
-        senderMap.put(shuffleName, forkedInjector.getInstance(TupleSender.class));
+        senderMap.put(shuffleName, forkedInjector.getInstance(ShuffleSender.class));
         addTupleCodec(shuffleDescription);
       } catch (final InjectionException e) {
         throw new RuntimeException("An InjectionException occurred while injecting sender with " +

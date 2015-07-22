@@ -16,44 +16,45 @@
 package edu.snu.cay.services.shuffle.task;
 
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
-import edu.snu.cay.services.shuffle.task.operator.TupleReceiver;
-import edu.snu.cay.services.shuffle.task.operator.TupleSender;
+import edu.snu.cay.services.shuffle.task.operator.ShuffleReceiver;
+import edu.snu.cay.services.shuffle.task.operator.ShuffleSender;
 import org.apache.reef.annotations.audience.TaskSide;
 
 /**
  * Task side interface to communicate with corresponding ShuffleGroupManager in driver
- * to control the shuffle group. The users can obtain tuple senders and receivers for
+ * to control the shuffle group. The users can obtain shuffle senders and receivers for
  * the specific shuffle.
  */
 @TaskSide
 public interface ShuffleGroup {
 
   /**
-   * Return the TupleReceiver for the shuffle. It throws RuntimeException if the
-   * current task is not a receiver for the shuffle.
+   * Return the ShuffleReceiver for the shuffle named shuffleName.
+   *
+   * It throws RuntimeException if the current task is not a receiver for the shuffle.
    *
    * @param shuffleName name of the shuffle
    * @param <K> key type
    * @param <V> value type
-   * @return tuple receiver
+   * @return shuffle receiver
    */
-  <K, V> TupleReceiver<K, V> getReceiver(String shuffleName);
+  <K, V> ShuffleReceiver<K, V> getReceiver(String shuffleName);
 
   /**
-   * Return the TupleSender for the shuffle. It throws RuntimeException if the
-   * current task is not a sender for the shuffle.
+   * Return the ShuffleSender for the shuffle named shuffleName.
+   *
+   * It throws RuntimeException if the current task is not a sender for the shuffle.
    *
    * @param shuffleName name of the shuffle
    * @param <K> key type
    * @param <V> value type
-   * @return tuple sender
+   * @return shuffle sender
    */
-  <K, V> TupleSender<K, V> getSender(String shuffleName);
+  <K, V> ShuffleSender<K, V> getSender(String shuffleName);
 
   /**
    * Return the shuffle group description with shuffle descriptions that
    * include the current task
-   *
    *
    * @return the shuffle group description
    */

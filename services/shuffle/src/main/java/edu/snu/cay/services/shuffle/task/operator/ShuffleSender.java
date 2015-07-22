@@ -26,11 +26,11 @@ import java.util.List;
 /**
  * Interface for senders used in ShuffleGroup.
  *
- * Users can register link listener for ShuffleTupleMessage to track track whether the message
+ * Users can register link listener for ShuffleTupleMessage to track whether the message
  * sent from this operator has been executed successfully.
  */
-@DefaultImplementation(BaseTupleSender.class)
-public interface TupleSender<K, V> extends TupleOperator<K, V> {
+@DefaultImplementation(BaseShuffleSender.class)
+public interface ShuffleSender<K, V> extends ShuffleOperator<K, V> {
 
   /**
    * Send a tuple to selected receivers using ShuffleStrategy of the shuffle
@@ -52,7 +52,7 @@ public interface TupleSender<K, V> extends TupleOperator<K, V> {
   List<String> sendTuple(List<Tuple<K, V>> tupleList);
 
   /**
-   * Send a tuple to specific task
+   * Send a tuple to the specific task
    *
    * @param taskId task id
    * @param tuple a tuple
@@ -60,7 +60,7 @@ public interface TupleSender<K, V> extends TupleOperator<K, V> {
   void sendTupleTo(String taskId, Tuple<K, V> tuple);
 
   /**
-   * Send a tuple list to specific task. Note that this method does not use ShuffleStrategy to select
+   * Send a tuple list to the specific task. Note that this method does not use ShuffleStrategy to select
    * receivers and send all of tuples in tuple list to the task.
    *
    * @param taskId task id

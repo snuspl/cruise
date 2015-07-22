@@ -21,9 +21,9 @@ import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import java.util.List;
 
 /**
- * Tuple operator for a specific shuffle.
+ * Operator for the specific shuffle.
  */
-public interface TupleOperator<K, V> {
+public interface ShuffleOperator<K, V> {
 
   /**
    * @return shuffle description

@@ -26,8 +26,8 @@ import org.apache.reef.wake.EventHandler;
  * Users should register event handler for ShuffleTupleMessage to receive
  * tuples from other tasks.
  */
-@DefaultImplementation(BaseTupleReceiver.class)
-public interface TupleReceiver<K, V> extends TupleOperator<K, V> {
+@DefaultImplementation(BaseShuffleReceiver.class)
+public interface ShuffleReceiver<K, V> extends ShuffleOperator<K, V> {
 
   /**
    * Register a message handler that receives tuples arriving at this receiver

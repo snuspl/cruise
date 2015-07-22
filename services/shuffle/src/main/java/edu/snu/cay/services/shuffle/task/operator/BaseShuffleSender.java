@@ -36,9 +36,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Base implementation for TupleSender.
+ * Base implementation for ShuffleSender.
  */
-public final class BaseTupleSender<K, V> implements TupleSender<K, V> {
+public final class BaseShuffleSender<K, V> implements ShuffleSender<K, V> {
 
   private final String shuffleGroupName;
   private final String shuffleName;
@@ -50,7 +50,7 @@ public final class BaseTupleSender<K, V> implements TupleSender<K, V> {
   private final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator;
 
   @Inject
-  private BaseTupleSender(
+  private BaseShuffleSender(
       @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
       final ShuffleDescription shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy,

@@ -29,10 +29,10 @@ public final class KeyShuffleStrategy<K> implements ShuffleStrategy<K> {
   }
 
   /**
-   * Select one receiver based on key hash function
+   * Select one receiver based on hash function of the key
    *
-   * @param key
-   * @param receiverIdList
+   * @param key key instance to select corresponding receivers
+   * @param receiverIdList receiver id list of the shuffle
    * @return selected receiver id list
    */
   @Override

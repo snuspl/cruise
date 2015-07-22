@@ -25,10 +25,10 @@ import java.util.List;
 public interface ShuffleStrategy<K> {
 
   /**
-   * Select receivers in receiverIdList using key.
+   * Select receivers in receiverIdList using the key.
    *
-   * @param key a key instance to select corresponding receivers
-   * @param receiverIdList
+   * @param key key instance to select corresponding receivers
+   * @param receiverIdList receiver id list of the shuffle
    * @return selected receiver id list
    */
   List<String> selectReceivers(K key, List<String> receiverIdList);

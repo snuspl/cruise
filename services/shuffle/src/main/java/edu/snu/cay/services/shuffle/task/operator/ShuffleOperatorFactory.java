@@ -21,31 +21,31 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 /**
  * Factory for creating tuple senders and receivers.
  */
-@DefaultImplementation(TupleOperatorFactoryImpl.class)
-public interface TupleOperatorFactory {
+@DefaultImplementation(ShuffleOperatorFactoryImpl.class)
+public interface ShuffleOperatorFactory {
 
   /**
-   * Create a tuple receiver for the specified shuffle description and register a tuple codec for the operator.
-   * It returns cached tuple receiver if the tuple receiver was already created and throws runtime exception
+   * Create a shuffle receiver for the specified shuffle description and register a tuple codec for the operator.
+   * It returns the cached receiver if the receiver was already created and throws runtime exception
    * if the task is not a receiver of the shuffle.
    *
    * @param shuffleDescription shuffle description
    * @param <K> key type
    * @param <V> value type
-   * @return created or cached tuple receiver
+   * @return created or cached shuffle receiver
    */
-  <K, V> TupleReceiver<K, V> newTupleReceiver(ShuffleDescription shuffleDescription);
+  <K, V> ShuffleReceiver<K, V> newShuffleReceiver(ShuffleDescription shuffleDescription);
 
   /**
-   * Create a tuple sender for specified shuffle description and register a tuple codec for the operator.
-   * It returns cached tuple sender if the tuple sender was already created and throws runtime exception
+   * Create a shuffle sender for the specified shuffle description and register a tuple codec for the operator.
+   * It returns the cached sender if the sender was already created and throws runtime exception
    * if the task is not a sender of the shuffle.
    *
    * @param shuffleDescription shuffle description
    * @param <K> key type
    * @param <V> value type
-   * @return created or cached tuple sender
+   * @return created or cached shuffle sender
    */
-  <K, V> TupleSender<K, V> newTupleSender(ShuffleDescription shuffleDescription);
+  <K, V> ShuffleSender<K, V> newShuffleSender(ShuffleDescription shuffleDescription);
 
 }

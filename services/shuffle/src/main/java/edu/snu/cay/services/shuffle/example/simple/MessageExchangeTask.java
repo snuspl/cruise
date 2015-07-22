@@ -18,8 +18,8 @@ package edu.snu.cay.services.shuffle.example.simple;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import edu.snu.cay.services.shuffle.task.ShuffleGroup;
 import edu.snu.cay.services.shuffle.task.ShuffleGroupProvider;
-import edu.snu.cay.services.shuffle.task.operator.TupleReceiver;
-import edu.snu.cay.services.shuffle.task.operator.TupleSender;
+import edu.snu.cay.services.shuffle.task.operator.ShuffleReceiver;
+import edu.snu.cay.services.shuffle.task.operator.ShuffleSender;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.task.Task;
@@ -43,7 +43,7 @@ public final class MessageExchangeTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(MessageExchangeTask.class.getName());
 
-  private final TupleSender<Integer, Integer> tupleSender;
+  private final ShuffleSender<Integer, Integer> shuffleSender;
   private final List<String> receiverList;
   private final int taskNumber;
   private final AtomicInteger counter;
@@ -55,12 +55,12 @@ public final class MessageExchangeTask implements Task {
     final ShuffleGroup shuffleGroup = shuffleGroupProvider
         .getShuffleGroup(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME);
 
-    this.tupleSender = shuffleGroup.getSender(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
-    tupleSender.registerTupleLinkListener(new TupleLinkListener());
+    this.shuffleSender = shuffleGroup.getSender(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
+    shuffleSender.registerTupleLinkListener(new TupleLinkListener());
 
-    final TupleReceiver<Integer, Integer> tupleReceiver = shuffleGroup
+    final ShuffleReceiver<Integer, Integer> shuffleReceiver = shuffleGroup
         .getReceiver(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
-    tupleReceiver.registerTupleMessageHandler(new TupleMessageHandler());
+    shuffleReceiver.registerTupleMessageHandler(new TupleMessageHandler());
 
     this.receiverList = shuffleGroup.getShuffleGroupDescription()
         .getShuffleDescription(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME).getReceiverIdList();
@@ -74,10 +74,10 @@ public final class MessageExchangeTask implements Task {
     // TODO: Currently MessageExchangeTasks sleep 3 seconds to wait the other tasks start.
     // Synchronization logic for all tasks in same shuffle will be included via another pull request.
     Thread.sleep(3000);
-    final List<String> messageSentIdList = tupleSender.sendTuple(generateRandomTuples());
+    final List<String> messageSentIdList = shuffleSender.sendTuple(generateRandomTuples());
     for (final String receiver : receiverList) {
       if (!messageSentIdList.contains(receiver)) {
-        tupleSender.sendTupleTo(receiver, new ArrayList<Tuple<Integer, Integer>>());
+        shuffleSender.sendTupleTo(receiver, new ArrayList<Tuple<Integer, Integer>>());
       }
     }
 
