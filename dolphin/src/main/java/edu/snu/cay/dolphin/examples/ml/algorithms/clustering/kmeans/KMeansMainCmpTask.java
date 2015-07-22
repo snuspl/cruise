@@ -22,7 +22,7 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.VectorDistanceMeasure;
-import edu.snu.cay.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
 
 import javax.inject.Inject;

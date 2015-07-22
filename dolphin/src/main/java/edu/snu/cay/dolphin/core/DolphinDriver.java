@@ -29,7 +29,7 @@ import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricTrackerService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.parameters.OnLocal;
-import edu.snu.cay.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
 import org.apache.reef.driver.task.CompletedTask;

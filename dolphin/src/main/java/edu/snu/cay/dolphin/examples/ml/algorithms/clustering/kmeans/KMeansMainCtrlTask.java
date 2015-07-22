@@ -23,7 +23,7 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.converge.ClusteringConvCond;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
-import edu.snu.cay.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 

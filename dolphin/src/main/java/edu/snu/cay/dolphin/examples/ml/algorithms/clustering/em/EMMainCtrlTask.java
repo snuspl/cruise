@@ -25,7 +25,7 @@ import edu.snu.cay.dolphin.examples.ml.data.ClusterStats;
 import edu.snu.cay.dolphin.examples.ml.data.ClusterSummary;
 import edu.snu.cay.dolphin.examples.ml.parameters.IsCovarianceShared;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
-import edu.snu.cay.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.DiagonalMatrix;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;

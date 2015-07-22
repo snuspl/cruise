@@ -21,7 +21,7 @@ import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.PageRankSummary;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
-import edu.snu.cay.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 
 import javax.inject.Inject;
 import java.util.HashMap;

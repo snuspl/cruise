@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.core;
 
 import com.microsoft.reef.io.network.nggroup.impl.driver.GroupCommService;
-import edu.snu.cay.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;

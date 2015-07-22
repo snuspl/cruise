@@ -23,7 +23,7 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.ClusterSummary;
 import edu.snu.cay.dolphin.examples.ml.parameters.IsCovarianceShared;
-import edu.snu.cay.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
