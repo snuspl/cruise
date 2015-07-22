@@ -16,8 +16,8 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
 import edu.snu.cay.dolphin.core.OutputStreamProvider;
+import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask;
 import edu.snu.cay.dolphin.examples.ml.data.VectorSum;
-import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.core.UserControllerTask;
@@ -100,7 +100,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    */
   @Override
   public void initialize() {
-    centroids = memoryStore.get(Centroids.class.getName());
+    centroids = memoryStore.get(ClusteringPreCtrlTask.KEY_CENTROIDS);
   }
 
   @Override

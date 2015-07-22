@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 
 import edu.snu.cay.dolphin.core.UserControllerTask;
-import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
 import edu.snu.cay.em.evaluator.api.MemoryStore;
@@ -32,6 +31,11 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
     implements DataGatherReceiver<List<Vector>> {
 
   private static final Logger LOG = Logger.getLogger(ClusteringPreCtrlTask.class.getName());
+
+  /**
+   * Key used in Elastic Memory to put/get the centroids.
+   */
+  public static final String KEY_CENTROIDS = "centroids";
 
   /**
    * Number of clusters
@@ -67,7 +71,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
      * Pass the initial centroids to the main process.
      * Since CtrlTask is the only one to own the data, putMovable is not needed.
      */
-    memoryStore.putLocal(Centroids.class.getName(), initialCentroids);
+    memoryStore.putLocal(KEY_CENTROIDS, initialCentroids);
   }
 
   @Override
