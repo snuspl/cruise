@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em;
 
-import edu.snu.cay.dolphin.examples.ml.key.Centroids;
+import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.core.UserControllerTask;
@@ -119,7 +119,7 @@ public final class EMMainCtrlTask extends UserControllerTask
   public void initialize() {
 
     // Load the initial centroids from the previous stage
-    centroids = memoryStore.get(Centroids.class.getName());
+    centroids = memoryStore.get(ClusteringPreCtrlTask.KEY_CENTROIDS);
 
     // Initialize cluster summaries
     final int numClusters = centroids.size();
