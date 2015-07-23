@@ -22,7 +22,7 @@ import java.util.TreeMap;
 /**
  * Metric tracker for wall-clock time
  */
-public final class MetricTrackerTime implements MetricTracker {
+public final class TimeMetricTracker implements MetricTracker {
 
   /**
    * key for the Wall-clock time measure
@@ -40,7 +40,7 @@ public final class MetricTrackerTime implements MetricTracker {
    * Constructor for the wall-clock time tracker
    */
   @Inject
-  public MetricTrackerTime() {
+  public TimeMetricTracker() {
   }
 
   @Override

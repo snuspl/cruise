@@ -24,7 +24,7 @@ import java.util.TreeMap;
 /**
  * Metric tracker for the number of garbage collections and the elapsed time for garbage collections
  */
-public final class MetricTrackerGC implements MetricTracker {
+public final class GCMetricTracker implements MetricTracker {
 
   /**
    * key for the GC count measure (the number of garbage collection)
@@ -52,7 +52,7 @@ public final class MetricTrackerGC implements MetricTracker {
    * Constructor for the Garbage Collector tracker
    */
   @Inject
-  public MetricTrackerGC() {
+  public GCMetricTracker() {
   }
 
   @Override
