@@ -44,7 +44,7 @@ public final class ComputeTask implements Task {
   private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
   private final MetricTrackerManager metricTrackerManager;
   private final Set<MetricTracker> metricTrackerSet;
-  private final MetricTrackerInterval metricTrackerInterval;
+  private final UserMetricTracker userMetricTracker;
 
   @Inject
   public ComputeTask(final GroupCommClient groupCommClient,
@@ -53,14 +53,14 @@ public final class ComputeTask implements Task {
                      @Parameter(CommunicationGroup.class) final String commGroupName,
                      final MetricTrackerManager metricTrackerManager,
                      @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
-                     final MetricTrackerInterval metricTrackerInterval) throws ClassNotFoundException {
+                     final UserMetricTracker userMetricTracker) throws ClassNotFoundException {
     this.userComputeTask = userComputeTask;
     this.taskId = taskId;
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
     this.metricTrackerManager = metricTrackerManager;
     this.metricTrackerSet = metricTrackerSet;
-    this.metricTrackerInterval = metricTrackerInterval;
+    this.userMetricTracker = userMetricTracker;
   }
 
   @Override
@@ -86,13 +86,13 @@ public final class ComputeTask implements Task {
   }
 
   private void runUserComputeTask(final int iteration) throws Exception {
-    metricTrackerInterval.beginInterval(MetricTrackerInterval.KEY_METRIC_TASK_COMPUTE);
+    userMetricTracker.beginInterval(UserMetricTracker.KEY_METRIC_TASK_COMPUTE);
     userComputeTask.run(iteration);
-    metricTrackerInterval.endInterval(MetricTrackerInterval.KEY_METRIC_TASK_COMPUTE);
+    userMetricTracker.endInterval(UserMetricTracker.KEY_METRIC_TASK_COMPUTE);
   }
 
   private void receiveData(final int iteration) throws Exception {
-    metricTrackerInterval.beginInterval(MetricTrackerInterval.KEY_METRIC_TASK_RECEIVE_DATA);
+    userMetricTracker.beginInterval(UserMetricTracker.KEY_METRIC_TASK_RECEIVE_DATA);
     if (userComputeTask.isBroadcastUsed()) {
       ((DataBroadcastReceiver)userComputeTask).receiveBroadcastData(iteration,
           commGroup.getBroadcastReceiver(DataBroadcast.class).receive());
@@ -101,11 +101,11 @@ public final class ComputeTask implements Task {
       ((DataScatterReceiver)userComputeTask).receiveScatterData(iteration,
           commGroup.getScatterReceiver(DataScatter.class).receive());
     }
-    metricTrackerInterval.endInterval(MetricTrackerInterval.KEY_METRIC_TASK_RECEIVE_DATA);
+    userMetricTracker.endInterval(UserMetricTracker.KEY_METRIC_TASK_RECEIVE_DATA);
   }
 
   private void sendData(final int iteration) throws Exception {
-    metricTrackerInterval.beginInterval(MetricTrackerInterval.KEY_METRIC_TASK_SEND_DATA);
+    userMetricTracker.beginInterval(UserMetricTracker.KEY_METRIC_TASK_SEND_DATA);
     if (userComputeTask.isGatherUsed()) {
       commGroup.getGatherSender(DataGather.class).send(
           ((DataGatherSender)userComputeTask).sendGatherData(iteration));
@@ -114,7 +114,7 @@ public final class ComputeTask implements Task {
       commGroup.getReduceSender(DataReduce.class).send(
           ((DataReduceSender)userComputeTask).sendReduceData(iteration));
     }
-    metricTrackerInterval.endInterval(MetricTrackerInterval.KEY_METRIC_TASK_SEND_DATA);
+    userMetricTracker.endInterval(UserMetricTracker.KEY_METRIC_TASK_SEND_DATA);
   }
 
   private boolean isTerminated() throws Exception {

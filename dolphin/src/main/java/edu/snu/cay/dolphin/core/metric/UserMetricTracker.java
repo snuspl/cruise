@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * TODO Fix this class
  * Metric tracker for intervals, which are generated from start() to stop().
  * The beginning and end of each interval are specified via beginInterval(key)
  * and endInterval(key).
@@ -31,7 +32,7 @@ import java.util.Map;
  *
  * Note the intervals that do not call endInterval() are ignored.
  */
-public class MetricTrackerInterval implements MetricTracker {
+public class UserMetricTracker implements MetricTracker {
 
   /**
    * Key to get/set the interval of sending data in the ComputeTask.
@@ -64,7 +65,7 @@ public class MetricTrackerInterval implements MetricTracker {
   private boolean isStarted = false;
 
   @Inject
-  private MetricTrackerInterval() {
+  private UserMetricTracker() {
   }
 
   @Override
