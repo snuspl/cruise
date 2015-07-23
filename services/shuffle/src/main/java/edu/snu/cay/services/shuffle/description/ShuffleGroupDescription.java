@@ -20,7 +20,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import java.util.List;
 
 /**
- * Description of a shuffle group that contains shuffle descriptions.
+ * Description of a shuffle group that contains several shuffle descriptions.
  */
 @DefaultImplementation(ShuffleGroupDescriptionImpl.class)
 public interface ShuffleGroupDescription {

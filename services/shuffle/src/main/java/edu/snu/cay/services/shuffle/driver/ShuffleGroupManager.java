@@ -19,6 +19,7 @@ import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
 import edu.snu.cay.services.shuffle.task.ShuffleGroup;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.util.Optional;
 
 /**
  * Manage a shuffle group with corresponding ShuffleGroups in tasks.
@@ -28,12 +29,12 @@ public interface ShuffleGroupManager {
 
   /**
    * Return configuration for ShuffleGroup of task named taskId.
-   * It returns null if the taskId is not included in any shuffles.
+   * It returns Optional.empty if the taskId is not included in any shuffles.
    *
    * @param taskId task identifier
-   * @return shuffle group configuration for task
+   * @return optional shuffle group configuration for task
    */
-  Configuration getShuffleGroupConfigurationForTask(String taskId);
+  Optional<Configuration> getShuffleGroupConfigurationForTask(String taskId);
 
   /**
    * Return ShuffleGroup class that is communicating with ShuffleGroupManager

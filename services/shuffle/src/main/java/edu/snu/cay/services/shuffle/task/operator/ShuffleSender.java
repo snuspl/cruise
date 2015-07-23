@@ -69,7 +69,7 @@ public interface ShuffleSender<K, V> extends ShuffleOperator<K, V> {
   void sendTupleTo(String taskId, List<Tuple<K, V>> tupleList);
 
   /**
-   * Register a link listener to listen to whether the messages successfully sent through this sender
+   * Register a link listener to listen to whether the messages successfully sent through this sender.
    *
    * @param linkListener link listener for ShuffleTupleMessage
    */

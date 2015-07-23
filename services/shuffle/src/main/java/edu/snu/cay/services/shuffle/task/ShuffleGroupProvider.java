@@ -25,7 +25,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * was merged with proper configuration from ShuffleDriver.
  */
 @TaskSide
-@DefaultImplementation(DefaultShuffleGroupProviderImpl.class)
+@DefaultImplementation(ShuffleGroupProviderImpl.class)
 public interface ShuffleGroupProvider {
 
   /**

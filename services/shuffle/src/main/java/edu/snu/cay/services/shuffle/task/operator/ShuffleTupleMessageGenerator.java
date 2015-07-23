@@ -53,7 +53,7 @@ public interface ShuffleTupleMessageGenerator<K, V> {
    * @param tuple a tuple
    * @return the list of (task identifier, ShuffleTupleMessage) tuples
    */
-  List<Tuple<String, ShuffleTupleMessage<K, V>>> createClassifiedTupleMessageList(Tuple<K, V> tuple);
+  List<Tuple<String, ShuffleTupleMessage<K, V>>> createTupleMessageAndReceiverList(Tuple<K, V> tuple);
 
   /**
    * Create list of (String, ShuffleTupleMessage) pairs with a tuple list. The key of the
@@ -64,6 +64,6 @@ public interface ShuffleTupleMessageGenerator<K, V> {
    * @param tupleList a tuple list
    * @return the list of (task identifier, ShuffleTupleMessage) tuples
    */
-  List<Tuple<String, ShuffleTupleMessage<K, V>>> createClassifiedTupleMessageList(List<Tuple<K, V>> tupleList);
+  List<Tuple<String, ShuffleTupleMessage<K, V>>> createTupleMessageAndReceiverList(List<Tuple<K, V>> tupleList);
 
 }

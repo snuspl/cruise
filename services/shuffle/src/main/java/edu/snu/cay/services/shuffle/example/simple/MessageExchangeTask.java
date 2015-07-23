@@ -24,15 +24,13 @@ import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.task.Task;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,8 +44,8 @@ public final class MessageExchangeTask implements Task {
   private final ShuffleSender<Integer, Integer> shuffleSender;
   private final List<String> receiverList;
   private final int taskNumber;
-  private final AtomicInteger counter;
-  private final List<String> messageSentSenderIdList;
+  private final Set<Identifier> receivedIdSet;
+  private final CountDownLatch countDownLatch;
 
   @Inject
   private MessageExchangeTask(
@@ -65,8 +63,9 @@ public final class MessageExchangeTask implements Task {
     this.receiverList = shuffleGroup.getShuffleGroupDescription()
         .getShuffleDescription(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME).getReceiverIdList();
     this.taskNumber = receiverList.size();
-    this.counter = new AtomicInteger(taskNumber);
-    this.messageSentSenderIdList = Collections.synchronizedList(new ArrayList<String>());
+    this.countDownLatch = new CountDownLatch(taskNumber);
+    this.receivedIdSet = new HashSet<>();
+    Collections.synchronizedSet(this.receivedIdSet);
   }
 
   @Override
@@ -81,22 +80,26 @@ public final class MessageExchangeTask implements Task {
       }
     }
 
-    synchronized (counter) {
-      while (counter.get() != 0) {
-        counter.wait();
-      }
-    }
-
+    countDownLatch.await();
+    LOG.log(Level.INFO, "{0} messages are arrived. The task will be closed.", taskNumber);
     return null;
   }
 
   private List<Tuple<Integer, Integer>> generateRandomTuples() {
     final Random rand = new Random();
     final List<Tuple<Integer, Integer>> randomTupleList = new ArrayList<>();
-    for (int i = 0; i < taskNumber * 3 / 5; i++) {
+    for (int i = 0; i < getTupleNumber(); i++) {
       randomTupleList.add(new Tuple<>(rand.nextInt(), rand.nextInt()));
     }
     return randomTupleList;
+  }
+
+  /**
+   * The number of tuples is set to be less than the actual number of task number to test the case where
+   * the current task sends an empty message to some tasks since there is no tuple to send to those tasks.
+   */
+  private int getTupleNumber() {
+    return taskNumber * 3 / 5;
   }
 
   private final class TupleLinkListener implements LinkListener<Message<ShuffleTupleMessage<Integer, Integer>>> {
@@ -132,15 +135,11 @@ public final class MessageExchangeTask implements Task {
         }
       }
 
-      if (messageSentSenderIdList.contains(message.getSrcId().toString())) {
+      if (receivedIdSet.contains(message.getSrcId())) {
         throw new RuntimeException("Only one message from one task is allowed.");
       } else {
-        if (counter.decrementAndGet() == 0) {
-          LOG.log(Level.INFO, "{0} messages are arrived. The task will be notified and closed.", taskNumber);
-          synchronized (counter) {
-            counter.notifyAll();
-          }
-        }
+        receivedIdSet.add(message.getSrcId());
+        countDownLatch.countDown();
       }
     }
   }

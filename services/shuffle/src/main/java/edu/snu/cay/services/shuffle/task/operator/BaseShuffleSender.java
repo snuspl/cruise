@@ -71,12 +71,12 @@ public final class BaseShuffleSender<K, V> implements ShuffleSender<K, V> {
 
   @Override
   public List<String> sendTuple(final Tuple<K, V> tuple) {
-    return sendShuffleMessageTupleList(tupleMessageGenerator.createClassifiedTupleMessageList(tuple));
+    return sendShuffleMessageTupleList(tupleMessageGenerator.createTupleMessageAndReceiverList(tuple));
   }
 
   @Override
   public List<String> sendTuple(final List<Tuple<K, V>> tupleList) {
-    return sendShuffleMessageTupleList(tupleMessageGenerator.createClassifiedTupleMessageList(tupleList));
+    return sendShuffleMessageTupleList(tupleMessageGenerator.createTupleMessageAndReceiverList(tupleList));
   }
 
   @Override

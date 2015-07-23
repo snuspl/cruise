@@ -23,7 +23,7 @@ import org.apache.reef.wake.EventHandler;
 /**
  * Interface for receivers used in ShuffleGroup.
  *
- * Users should register event handler for ShuffleTupleMessage to receive
+ * Users have to register event handler for ShuffleTupleMessage to receive
  * tuples from other tasks.
  */
 @DefaultImplementation(BaseShuffleReceiver.class)

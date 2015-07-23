@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.impl;
+package edu.snu.cay.services.shuffle.task;
 
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
-import edu.snu.cay.services.shuffle.task.ShuffleGroup;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleOperatorFactory;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleSender;
@@ -34,29 +33,29 @@ import javax.inject.Inject;
 @TaskSide
 public final class FixedShuffleGroup implements ShuffleGroup {
 
-  private final ShuffleGroupDescription initialShuffleGroupDescription;
+  private final ShuffleGroupDescription shuffleGroupDescription;
   private final ShuffleOperatorFactory operatorFactory;
 
   @Inject
   private FixedShuffleGroup(
-      final ShuffleGroupDescription initialShuffleGroupDescription,
+      final ShuffleGroupDescription shuffleGroupDescription,
       final ShuffleOperatorFactory operatorFactory) {
-    this.initialShuffleGroupDescription = initialShuffleGroupDescription;
+    this.shuffleGroupDescription = shuffleGroupDescription;
     this.operatorFactory = operatorFactory;
   }
 
   @Override
   public <K, V> ShuffleReceiver<K, V> getReceiver(final String shuffleName) {
-    return operatorFactory.newShuffleReceiver(initialShuffleGroupDescription.getShuffleDescription(shuffleName));
+    return operatorFactory.newShuffleReceiver(shuffleGroupDescription.getShuffleDescription(shuffleName));
   }
 
   @Override
   public <K, V> ShuffleSender<K, V> getSender(final String shuffleName) {
-    return operatorFactory.newShuffleSender(initialShuffleGroupDescription.getShuffleDescription(shuffleName));
+    return operatorFactory.newShuffleSender(shuffleGroupDescription.getShuffleDescription(shuffleName));
   }
 
   @Override
   public ShuffleGroupDescription getShuffleGroupDescription() {
-    return initialShuffleGroupDescription;
+    return shuffleGroupDescription;
   }
 }

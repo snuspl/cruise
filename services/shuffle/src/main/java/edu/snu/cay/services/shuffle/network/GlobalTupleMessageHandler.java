@@ -23,8 +23,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Globally registered event handler for ShuffleTupleMessage. It routes messages to
- * respective event handler registered with shuffle group name and shuffle name.
+ * Globally registered event handler for ShuffleTupleMessage.
+ *
+ * It routes messages to respective event handler registered with shuffle group name and shuffle name.
+ * If there is no registered link listener for some ShuffleTupleMessage, the NullPointerException
+ * will be thrown.
  */
 public class GlobalTupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage>> {
 

@@ -54,7 +54,8 @@ public final class TupleCodec<K, V> implements StreamingCodec<Tuple<K, V>> {
   public byte[] encode(final Tuple<K, V> tuple) {
     final byte[] keyData = keyCodec.encode(tuple.getKey());
     final byte[] valueData = valueCodec.encode(tuple.getValue());
-    final ByteBuffer buffer = ByteBuffer.allocate(8 + keyData.length + valueData.length);
+    final ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE / Byte.SIZE + keyData.length +
+        Integer.SIZE / Byte.SIZE + valueData.length);
     buffer.putInt(keyData.length);
     buffer.put(keyData);
     buffer.putInt(valueData.length);
@@ -103,8 +104,8 @@ public final class TupleCodec<K, V> implements StreamingCodec<Tuple<K, V>> {
       if (keyCodec instanceof StreamingCodec) {
         key = ((StreamingCodec<K>) keyCodec).decodeFromStream(stream);
       } else {
-        final int keyDatLength = stream.readInt();
-        final byte[] keyData = new byte[keyDatLength];
+        final int keyDataLength = stream.readInt();
+        final byte[] keyData = new byte[keyDataLength];
         stream.readFully(keyData);
         key = keyCodec.decode(keyData);
       }
@@ -113,8 +114,8 @@ public final class TupleCodec<K, V> implements StreamingCodec<Tuple<K, V>> {
       if (valueCodec instanceof StreamingCodec) {
         value = ((StreamingCodec<V>) valueCodec).decodeFromStream(stream);
       } else {
-        final int valueDatLength = stream.readInt();
-        final byte[] valueData = new byte[valueDatLength];
+        final int valueDataLength = stream.readInt();
+        final byte[] valueData = new byte[valueDataLength];
         stream.readFully(valueData);
         value = valueCodec.decode(valueData);
       }

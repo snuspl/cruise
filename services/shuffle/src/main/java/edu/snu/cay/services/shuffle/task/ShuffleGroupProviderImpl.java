@@ -17,17 +17,20 @@ package edu.snu.cay.services.shuffle.task;
 
 import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
+import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 
 import javax.inject.Inject;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class DefaultShuffleGroupProviderImpl implements ShuffleGroupProvider {
+@TaskSide
+final class ShuffleGroupProviderImpl implements ShuffleGroupProvider {
 
   private final Injector rootInjector;
   private final ConfigurationSerializer confSerializer;
@@ -39,14 +42,14 @@ final class DefaultShuffleGroupProviderImpl implements ShuffleGroupProvider {
    * @param confSerializer Tang configuration serializer
    */
   @Inject
-  private DefaultShuffleGroupProviderImpl(
+  private ShuffleGroupProviderImpl(
       final Injector rootInjector,
       @Parameter(ShuffleParameters.SerializedShuffleGroupSet.class) final Set<String> serializedShuffleGroupSet,
       final ConfigurationSerializer confSerializer) {
 
     this.rootInjector = rootInjector;
     this.confSerializer = confSerializer;
-    this.shuffleGroupMap = new ConcurrentHashMap<>();
+    this.shuffleGroupMap = new HashMap<>();
     deserializeShuffleGroupSet(serializedShuffleGroupSet);
   }
 

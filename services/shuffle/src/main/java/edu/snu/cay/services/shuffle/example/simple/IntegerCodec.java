@@ -20,7 +20,7 @@ import org.apache.reef.wake.remote.Codec;
 import javax.inject.Inject;
 
 /**
- * Simple integer codec
+ * Simple integer codec.
  */
 public class IntegerCodec implements Codec<Integer> {
 

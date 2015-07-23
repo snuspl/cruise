@@ -48,7 +48,7 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
   }
 
   @Override
-  public List<Tuple<String, ShuffleTupleMessage<K, V>>> createClassifiedTupleMessageList(final Tuple<K, V> tuple) {
+  public List<Tuple<String, ShuffleTupleMessage<K, V>>> createTupleMessageAndReceiverList(final Tuple<K, V> tuple) {
 
     return serializeTupleWithData(tuple.getKey(), createSingleList(tuple));
   }
@@ -68,7 +68,7 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
   }
 
   @Override
-  public List<Tuple<String, ShuffleTupleMessage<K, V>>> createClassifiedTupleMessageList(
+  public List<Tuple<String, ShuffleTupleMessage<K, V>>> createTupleMessageAndReceiverList(
       final List<Tuple<K, V>> tupleList) {
     final Map<String, List<Tuple>> serializedTupleDataMap = new HashMap<>();
     for (final Tuple<K, V> tuple : tupleList) {

@@ -26,7 +26,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * through this class.
  */
 @DriverSide
-@DefaultImplementation(DefaultShuffleDriverImpl.class)
+@DefaultImplementation(ShuffleDriverImpl.class)
 public interface ShuffleDriver {
 
   /**
@@ -39,12 +39,6 @@ public interface ShuffleDriver {
    */
   <K extends ShuffleGroupManager> K registerManager(
       ShuffleGroupDescription shuffleGroupDescription, Class<K> managerClass);
-
-  /**
-   * @param shuffleGroupName name of the shuffle group
-   * @return the manager which handles the shuffle group named shuffleGroupName
-   */
-  <K extends ShuffleGroupManager> K getManager(String shuffleGroupName);
 
   /**
    * @return context configuration for shuffle service components in tasks

@@ -28,26 +28,23 @@ import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
+import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-final class DefaultShuffleDriverImpl implements ShuffleDriver {
+final class ShuffleDriverImpl implements ShuffleDriver {
 
-  private final Injector rootInjector;
   private final ConfigurationSerializer confSerializer;
   private final ConcurrentMap<String, ShuffleGroupManager> managerMap;
 
   /**
-   * @param rootInjector the root injector to inject current instance of DefaultShuffleDriverImpl
    * @param confSerializer Tang configuration serializer
    */
   @Inject
-  private DefaultShuffleDriverImpl(
-      final Injector rootInjector,
+  private ShuffleDriverImpl(
       final ConfigurationSerializer confSerializer) {
-    this.rootInjector = rootInjector;
     this.confSerializer = confSerializer;
     this.managerMap = new ConcurrentHashMap<>();
   }
@@ -59,20 +56,15 @@ final class DefaultShuffleDriverImpl implements ShuffleDriver {
       throw new RuntimeException(shuffleGroupDescription.getShuffleGroupName()
           + " was already registered in ShuffleDriver");
     }
-    final Injector forkedInjector = rootInjector.forkInjector();
-    forkedInjector.bindVolatileInstance(ShuffleGroupDescription.class, shuffleGroupDescription);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(ShuffleGroupDescription.class, shuffleGroupDescription);
     try {
-      final K manager = forkedInjector.getInstance(managerClass);
+      final K manager = injector.getInstance(managerClass);
       managerMap.put(shuffleGroupDescription.getShuffleGroupName(), manager);
       return manager;
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  @Override
-  public <K extends ShuffleGroupManager> K getManager(final String shuffleGroupName) {
-    return (K) managerMap.get(shuffleGroupName);
   }
 
   @Override
@@ -87,10 +79,10 @@ final class DefaultShuffleDriverImpl implements ShuffleDriver {
   public Configuration getTaskConfiguration(final String taskId) {
     final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
     for (final ShuffleGroupManager manager : managerMap.values()) {
-      final Configuration shuffleGroupConf = manager.getShuffleGroupConfigurationForTask(taskId);
+      final Optional<Configuration> shuffleGroupConf = manager.getShuffleGroupConfigurationForTask(taskId);
 
-      if (shuffleGroupConf != null) {
-        final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder(shuffleGroupConf)
+      if (shuffleGroupConf.isPresent()) {
+        final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder(shuffleGroupConf.get())
             .bindImplementation(ShuffleGroup.class, manager.getShuffleGroupClass())
             .build();
         confBuilder.bindSetEntry(ShuffleParameters.SerializedShuffleGroupSet.class, confSerializer.toString(conf));
