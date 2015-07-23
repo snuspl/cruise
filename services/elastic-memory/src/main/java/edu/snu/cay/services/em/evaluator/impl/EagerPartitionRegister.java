@@ -20,9 +20,7 @@ public final class EagerPartitionRegister implements PartitionRegister {
   private final ElasticMemoryMsgSender sender;
 
   @Inject
-  private EagerPartitionRegister(final ElasticMemoryMsgSender sender,
-                                 final HTrace htrace) {
-    htrace.initialize();
+  private EagerPartitionRegister(final ElasticMemoryMsgSender sender) {
     this.sender = sender;
   }
 
