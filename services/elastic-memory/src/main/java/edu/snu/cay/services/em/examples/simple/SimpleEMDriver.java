@@ -94,8 +94,10 @@ final class SimpleEMDriver {
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+      final int evalCount = activeEvaluatorCount.getAndIncrement();
+
       final Configuration partialContextConf = ContextConfiguration.CONF
-          .set(ContextConfiguration.IDENTIFIER, CONTEXT_ID_PREFIX + activeEvaluatorCount.getAndIncrement())
+          .set(ContextConfiguration.IDENTIFIER, CONTEXT_ID_PREFIX + evalCount)
           .build();
 
       final Configuration contextConf = Configurations.merge(
@@ -106,7 +108,7 @@ final class SimpleEMDriver {
       final Configuration traceConf = traceParameters.getConfiguration();
 
       allocatedEvaluator.submitContextAndService(contextConf, Configurations.merge(emServiceConf, traceConf));
-      LOG.info(activeEvaluatorCount.get() + " evaluators active!");
+      LOG.info((evalCount + 1) + " evaluators active!");
     }
   }
 
