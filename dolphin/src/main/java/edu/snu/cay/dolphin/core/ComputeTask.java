@@ -60,7 +60,7 @@ public final class ComputeTask implements Task {
   private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
   private final MetricTrackerManager metricTrackerManager;
   private final Set<MetricTracker> metricTrackerSet;
-  private final CustomMetricTracker customMetricTracker;
+  private final InsertableMetricTracker insertableMetricTracker;
 
   @Inject
   public ComputeTask(final GroupCommClient groupCommClient,
@@ -69,14 +69,14 @@ public final class ComputeTask implements Task {
                      @Parameter(CommunicationGroup.class) final String commGroupName,
                      final MetricTrackerManager metricTrackerManager,
                      @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
-                     final CustomMetricTracker customMetricTracker) throws ClassNotFoundException {
+                     final InsertableMetricTracker insertableMetricTracker) throws ClassNotFoundException {
     this.userComputeTask = userComputeTask;
     this.taskId = taskId;
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
     this.metricTrackerManager = metricTrackerManager;
     this.metricTrackerSet = metricTrackerSet;
-    this.customMetricTracker = customMetricTracker;
+    this.insertableMetricTracker = insertableMetricTracker;
   }
 
   @Override
@@ -102,13 +102,13 @@ public final class ComputeTask implements Task {
   }
 
   private void runUserComputeTask(final int iteration) throws Exception {
-    customMetricTracker.setMetric(KEY_METRIC_COMPUTE_START, System.currentTimeMillis());
+    insertableMetricTracker.put(KEY_METRIC_COMPUTE_START, System.currentTimeMillis());
     userComputeTask.run(iteration);
-    customMetricTracker.setMetric(KEY_METRIC_COMPUTE_END, System.currentTimeMillis());
+    insertableMetricTracker.put(KEY_METRIC_COMPUTE_END, System.currentTimeMillis());
   }
 
   private void receiveData(final int iteration) throws Exception {
-    customMetricTracker.setMetric(KEY_METRIC_RECEIVE_DATA_START, System.currentTimeMillis());
+    insertableMetricTracker.put(KEY_METRIC_RECEIVE_DATA_START, System.currentTimeMillis());
     if (userComputeTask.isBroadcastUsed()) {
       ((DataBroadcastReceiver)userComputeTask).receiveBroadcastData(iteration,
           commGroup.getBroadcastReceiver(DataBroadcast.class).receive());
@@ -117,11 +117,11 @@ public final class ComputeTask implements Task {
       ((DataScatterReceiver)userComputeTask).receiveScatterData(iteration,
           commGroup.getScatterReceiver(DataScatter.class).receive());
     }
-    customMetricTracker.setMetric(KEY_METRIC_RECEIVE_DATA_END, System.currentTimeMillis());
+    insertableMetricTracker.put(KEY_METRIC_RECEIVE_DATA_END, System.currentTimeMillis());
   }
 
   private void sendData(final int iteration) throws Exception {
-    customMetricTracker.setMetric(KEY_METRIC_SEND_DATA_START, System.currentTimeMillis());
+    insertableMetricTracker.put(KEY_METRIC_SEND_DATA_START, System.currentTimeMillis());
     if (userComputeTask.isGatherUsed()) {
       commGroup.getGatherSender(DataGather.class).send(
           ((DataGatherSender)userComputeTask).sendGatherData(iteration));
@@ -130,7 +130,7 @@ public final class ComputeTask implements Task {
       commGroup.getReduceSender(DataReduce.class).send(
           ((DataReduceSender)userComputeTask).sendReduceData(iteration));
     }
-    customMetricTracker.setMetric(KEY_METRIC_SEND_DATA_END, System.currentTimeMillis());
+    insertableMetricTracker.put(KEY_METRIC_SEND_DATA_END, System.currentTimeMillis());
   }
 
   private boolean isTerminated() throws Exception {

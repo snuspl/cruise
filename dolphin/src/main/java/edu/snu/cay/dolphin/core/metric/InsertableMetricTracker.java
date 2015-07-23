@@ -20,12 +20,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Metric tracker for custom values.
- * Each metric is identified with the key, which is given from setMetric(key, value).
+ * Metric tracker that accepts metrics via put(key, value).
+ * Each metric is identified with the key.
  *
  * This class is thread-safe because multiple threads can access it simultaneously.
  */
-public class CustomMetricTracker implements MetricTracker {
+public class InsertableMetricTracker implements MetricTracker {
 
   /**
    * The metrics identified by key
@@ -38,7 +38,7 @@ public class CustomMetricTracker implements MetricTracker {
   private boolean isStarted = false;
 
   @Inject
-  private CustomMetricTracker() {
+  private InsertableMetricTracker() {
   }
 
   @Override
@@ -63,11 +63,11 @@ public class CustomMetricTracker implements MetricTracker {
   }
 
   /**
-   * Set the metric with the given key and value
+   * Insert a metric with given key and value
    * @param key identifier to distinguish the metric
    * @throws MetricException if the metricTracker is not between start() and stop(),
    */
-  public synchronized void setMetric(final String key, final double metric) throws MetricException {
+  public synchronized void put(final String key, final double metric) throws MetricException {
     if (!isStarted) {
       throw new MetricException("MetricTracker is not started");
     }
