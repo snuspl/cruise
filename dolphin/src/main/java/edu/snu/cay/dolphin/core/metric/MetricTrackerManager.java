@@ -32,12 +32,12 @@ import java.util.logging.Logger;
  *
  * This class is not thread-safe.
  * Although this class uses synchronization methods,
- * these are for synchronization between the thread using MetricManager
+ * these are for synchronization between the thread using MetricTrackerManager
  * and other threads triggering heart beats.
  * This class assumes that its instance is used by one thread.
  */
-public final class MetricManager implements ContextMessageSource, AutoCloseable {
-  private final static Logger LOG = Logger.getLogger(MetricManager.class.getName());
+public final class MetricTrackerManager implements ContextMessageSource, AutoCloseable {
+  private final static Logger LOG = Logger.getLogger(MetricTrackerManager.class.getName());
 
   /**
    * Set of registered trackers
@@ -72,8 +72,8 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
    * @param metricCodec codec for metrics
    */
   @Inject
-  public MetricManager(final HeartBeatTriggerManager heartBeatTriggerManager,
-                       final MetricCodec metricCodec) {
+  public MetricTrackerManager(final HeartBeatTriggerManager heartBeatTriggerManager,
+                              final MetricCodec metricCodec) {
     this.heartBeatTriggerManager = heartBeatTriggerManager;
     this.metricCodec = metricCodec;
     this.metrics.set(new HashMap<String, Double>());

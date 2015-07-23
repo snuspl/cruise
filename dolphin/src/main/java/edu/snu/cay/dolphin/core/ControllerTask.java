@@ -20,7 +20,7 @@ import com.microsoft.reef.io.network.nggroup.api.task.CommunicationGroupClient;
 import com.microsoft.reef.io.network.nggroup.api.task.GroupCommClient;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterSender;
 import edu.snu.cay.dolphin.groupcomm.names.*;
-import edu.snu.cay.dolphin.core.metric.MetricManager;
+import edu.snu.cay.dolphin.core.metric.MetricTrackerManager;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
@@ -44,7 +44,7 @@ public final class ControllerTask implements Task {
   private final UserControllerTask userControllerTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
-  private final MetricManager metricManager;
+  private final MetricTrackerManager metricTrackerManager;
   private final Set<MetricTracker> metricTrackerSet;
 
   @Inject
@@ -52,13 +52,13 @@ public final class ControllerTask implements Task {
                         final UserControllerTask userControllerTask,
                         @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                         @Parameter(CommunicationGroup.class) final String commGroupName,
-                        final MetricManager metricManager,
+                        final MetricTrackerManager metricTrackerManager,
                         @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet) throws ClassNotFoundException {
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.userControllerTask = userControllerTask;
     this.taskId = taskId;
     this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
-    this.metricManager = metricManager;
+    this.metricTrackerManager = metricTrackerManager;
     this.metricTrackerSet = metricTrackerSet;
   }
 
@@ -67,16 +67,16 @@ public final class ControllerTask implements Task {
     LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
     userControllerTask.initialize();
-    try (final MetricManager metricManager = this.metricManager;) {
-      metricManager.registerTrackers(metricTrackerSet);
+    try (final MetricTrackerManager metricTrackerManager = this.metricTrackerManager;) {
+      metricTrackerManager.registerTrackers(metricTrackerSet);
       int iteration = 0;
       while(!userControllerTask.isTerminated(iteration)) {
-        metricManager.start();
+        metricTrackerManager.start();
         ctrlMessageBroadcast.send(CtrlMessage.RUN);
         sendData(iteration);
         receiveData(iteration);
         userControllerTask.run(iteration);
-        metricManager.stop();
+        metricTrackerManager.stop();
         updateTopology();
         iteration++;
       }

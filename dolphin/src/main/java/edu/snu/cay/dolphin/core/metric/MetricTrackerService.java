@@ -42,7 +42,7 @@ public final class MetricTrackerService {
    */
   public static Configuration getServiceConfiguration() {
     return ServiceConfiguration.CONF
-        .set(ServiceConfiguration.SERVICES, MetricManager.class)
+        .set(ServiceConfiguration.SERVICES, MetricTrackerManager.class)
         .build();
   }
 
@@ -53,7 +53,7 @@ public final class MetricTrackerService {
   public static Configuration getContextConfiguration() {
     return ContextConfiguration.CONF
         .set(ContextConfiguration.IDENTIFIER, MetricTrackerService.class.getName())
-        .set(ContextConfiguration.ON_SEND_MESSAGE, MetricManager.class)
+        .set(ContextConfiguration.ON_SEND_MESSAGE, MetricTrackerManager.class)
         .build();
   }
 
@@ -64,7 +64,7 @@ public final class MetricTrackerService {
    */
   public static Configuration getContextConfiguration(final Configuration previousConfiguration) {
     Configuration contextConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextMessageSources.class, MetricManager.class)
+        .bindSetEntry(ContextMessageSources.class, MetricTrackerManager.class)
         .build();
 
     return Configurations.merge(contextConf, previousConfiguration);
