@@ -45,6 +45,7 @@ public final class ShuffleGroupDescriptionImpl implements ShuffleGroupDescriptio
       deserializeShuffle(serializedShuffle, confSerializer);
     }
 
+    // Set does not guarantee that the order of elements is preserved, we should at least sort the receiver ids.
     Collections.sort(shuffleNameList);
   }
 

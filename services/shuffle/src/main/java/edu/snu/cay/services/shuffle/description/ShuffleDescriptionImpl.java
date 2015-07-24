@@ -49,6 +49,7 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
     this.shuffleName = shuffleName;
     this.senderIdList = new ArrayList<>(senderIdSet);
     this.receiverIdList = new ArrayList<>(receiverIdSet);
+    // Set does not guarantee that the order of elements is preserved, we should at least sort the receiver ids.
     Collections.sort(senderIdList);
     Collections.sort(receiverIdList);
 
