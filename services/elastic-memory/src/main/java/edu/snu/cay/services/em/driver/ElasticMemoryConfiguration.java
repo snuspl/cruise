@@ -1,11 +1,11 @@
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.evaluator.impl.ElasticMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.NSWrapperConfiguration;
 import edu.snu.cay.services.em.ns.NSWrapperContextRegister;
 import edu.snu.cay.services.em.ns.NSWrapperParameters;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.driver.parameters.DriverIdentifier;
@@ -80,11 +80,11 @@ public final class ElasticMemoryConfiguration {
                                                 edu.snu.cay.services.em.evaluator.ElasticMemoryMsgHandler.class);
 
     final Configuration serviceConf = ServiceConfiguration.CONF
-        .set(ServiceConfiguration.SERVICES, ElasticMemoryStore.class)
+        .set(ServiceConfiguration.SERVICES, MemoryStoreImpl.class)
         .build();
 
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MemoryStore.class, ElasticMemoryStore.class)
+        .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .build();
 

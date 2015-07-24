@@ -24,8 +24,6 @@ import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.logging.Logger;
 
 final class SimpleEMTask implements Task {
@@ -54,7 +52,7 @@ final class SimpleEMTask implements Task {
 
     for (int index = 0; index < 10; index++) {
       final int item = myIdBase + index * 10;
-      this.memoryStore.putMovable(KEY, (long)item, item);
+      this.memoryStore.getElasticStore().put(KEY, (long) item, item);
     }
   }
 
@@ -62,7 +60,7 @@ final class SimpleEMTask implements Task {
     LOG.info("SimpleEMTask commencing...");
 
     LOG.info("Before sleep, memory store contains: ");
-    LOG.info(memoryStore.get(KEY).toString());
+    LOG.info(memoryStore.getElasticStore().getAll(KEY).toString());
     // Should be either
     // [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
     // or
@@ -73,7 +71,7 @@ final class SimpleEMTask implements Task {
     Thread.sleep(SLEEP_MILLISECONDS);
 
     LOG.info("After sleep, memory store contains: ");
-    LOG.info(memoryStore.get(KEY).toString());
+    LOG.info(memoryStore.getElasticStore().getAll(KEY).toString());
     // Fast evaluator should have more than before
     // Slow evaluator should have less than before
 

@@ -1,11 +1,11 @@
 package edu.snu.cay.services.em.evaluator;
 
 import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceInfo;
 import org.apache.htrace.TraceScope;
@@ -18,8 +18,7 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -83,7 +82,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
         final byte[] data = unitIdPair.getUnit().array();
         final long id = unitIdPair.getId();
-        memoryStore.putMovable(dataClassName, id, codec.decode(data));
+        memoryStore.getElasticStore().put(dataClassName, id, codec.decode(data));
       }
 
     } finally {
@@ -105,21 +104,27 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       // extract all data items from my memory store that correspond to
       // the control message's id specification
-      final List<Pair<Long, Object>> idObjectList = new LinkedList<>();
+      final Set<Map<Long, Object>> idObjectMapSet = new HashSet<>();
+      int numObject = 0;
       for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
-        idObjectList.addAll(memoryStore.remove(key, avroLongRange.getMin(), avroLongRange.getMax()));
+        final Map<Long, Object> idObjectMap =
+            memoryStore.getElasticStore().removeRange(key, avroLongRange.getMin(), avroLongRange.getMax());
+        numObject += idObjectMap.size();
+        idObjectMapSet.add(idObjectMap);
       }
 
       // pack the extracted items into a single list for message transmission
-      // the identifiers for each item are included with the item itself as an UnitIdPar
-      final List<UnitIdPair> unitIdPairList = new LinkedList<>();
-      for (final Pair<Long, Object> objectId : idObjectList) {
-        final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-            .setUnit(ByteBuffer.wrap(codec.encode(objectId.second)))
-            .setId(objectId.first)
-            .build();
+      // the identifiers for each item are included with the item itself as an UnitIdPair
+      final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
+      for (final Map<Long, Object> idObjectMap : idObjectMapSet) {
+        for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
+          final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+              .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
+              .setId(idObject.getKey())
+              .build();
 
-        unitIdPairList.add(unitIdPair);
+          unitIdPairList.add(unitIdPair);
+        }
       }
 
       sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList,

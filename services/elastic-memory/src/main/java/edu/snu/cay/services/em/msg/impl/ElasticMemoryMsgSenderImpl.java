@@ -153,7 +153,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setRegisMsg(regisMsg)
               .build());
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRegisMsg",
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRegisMsg",
           new Object[]{dataClassName, unitStartId, unitEndId});
 
     } finally {
