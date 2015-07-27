@@ -47,7 +47,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 /**
- * Driver code for EMExample
+ * Driver code for EMExample.
+ * Two evaluators take turns moving half of their movable data to the other.
+ * The number of iterations, and the period to wait between moves are configurable.
  */
 @Unit
 final class SimpleEMDriver {
@@ -67,7 +69,10 @@ final class SimpleEMDriver {
   private SimpleEMDriver(final EvaluatorRequestor requestor,
                          final ElasticMemoryConfiguration emConf,
                          final ElasticMemory emService,
-                         final HTraceParameters traceParameters) throws InjectionException {
+                         final PartitionManager partitionManager,
+                         final HTraceParameters traceParameters,
+                         @Parameter(Iterations.class) final int iterations,
+                         @Parameter(PeriodMillis.class) final long periodMillis) throws InjectionException {
     this.requestor = requestor;
     this.emConf = emConf;
     this.emService = emService;
@@ -156,43 +161,40 @@ final class SimpleEMDriver {
 
       if (!prevContextId.compareAndSet(DEFAULT_STRING, taskMessage.getContextId())) {
         // slow evaluator goes through here
-
-          final Set<LongRange> oldIdRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.KEY);
-          final Set<LongRange> sendIdRangeSet = new HashSet<>();
-
-          for (final LongRange idRange : oldIdRangeSet) {
-            final long midId = (idRange.getMaximumLong() + idRange.getMinimumLong()) / 2;
-            final LongRange lowIdRange = new LongRange(idRange.getMinimumLong(), midId);
-            final LongRange highIdRange = new LongRange(midId + 1, idRange.getMaximumLong());
-            partitionManager.remove(srcId, SimpleEMTask.KEY, idRange);
-            partitionManager.registerPartition(srcId, SimpleEMTask.KEY, lowIdRange);
-            partitionManager.registerPartition(destId, SimpleEMTask.KEY, highIdRange);
-            sendIdRangeSet.add(highIdRange);
-          }
-
-        runMoves(sendIdRangeSet, taskMessage.getContextId(), prevContextId.get());
+        final String slowId = taskMessage.getContextId();
+        final String fastId = prevContextId.get();
+        runMoves(slowId, fastId);
       } else {
-        // first evaluator goes this way
+        // fast evaluator goes this way
       }
     }
 
-    private void runMoves(final Set<LongRange> range, final String firstContextId, final String secondContextId) {
-      String srcContextId = firstContextId;
-      String dstContextId = secondContextId;
+    private void runMoves(final String firstContextId, final String secondContextId) {
+
+      String srcId = firstContextId;
+      String destId = secondContextId;
 
       for (int i = 0; i < iterations; i++) {
-        LOG.info("Move data from " + srcContextId + " to " + dstContextId);
+
+        final long numToMove = getNumUnits(partitionManager.getRangeSet(srcId, SimpleEMTask.KEY)) / 2;
+        LOG.info("Move data of size " + numToMove + " from " + srcId + " to " + destId);
+
+        final Set<LongRange> ranges = getRangeSetToMove(srcId, destId, numToMove);
+        for (final LongRange range : ranges) {
+          LOG.info("- " + range + ", size: " + (range.getMaximumLong() - range.getMinimumLong() + 1));
+        }
+
         final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS);
         try {
-          emService.move(SimpleEMTask.KEY, range, taskMessage.getContextId(), prevContextId.get());
+          emService.move(SimpleEMTask.KEY, ranges, srcId, destId);
         } finally {
           moveTraceScope.close();
         }
 
         // Swap
-        final String tmpContextId = srcContextId;
-        srcContextId = dstContextId;
-        dstContextId = tmpContextId;
+        final String tmpContextId = srcId;
+        srcId = destId;
+        destId = tmpContextId;
 
         // Sleep except on final iteration
         if (i != (iterations - 1)) {
@@ -202,6 +204,57 @@ final class SimpleEMDriver {
             throw new RuntimeException(e);
           }
         }
+      }
+    }
+
+    private long getNumUnits(final Set<LongRange> rangeSet) {
+      long numUnits = 0;
+      for (final LongRange idRange : rangeSet) {
+        numUnits += (idRange.getMaximumLong() - idRange.getMinimumLong() + 1);
+      }
+      return numUnits;
+    }
+
+    /**
+     * Get RangeSet to move, in the process setting registering the partitions via the partitionManager.
+     */
+    private Set<LongRange> getRangeSetToMove(final String srcId, final String destId, final long totalToMove) {
+      final TraceScope getRangeTraceScope = Trace.startSpan("getRangeSetToMove", Sampler.ALWAYS);
+      try {
+
+        final Set<LongRange> currentRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.KEY);
+        final Set<LongRange> rangeSetToMove = new HashSet<>();
+
+        long remaining = totalToMove;
+
+        for (final LongRange idRange : currentRangeSet) {
+          final long length = idRange.getMaximumLong() - idRange.getMinimumLong() + 1;
+          final long numToMove = remaining > length ? length : remaining;
+          remaining -= numToMove;
+
+          if (numToMove == length) { // Move the whole range
+            partitionManager.remove(srcId, SimpleEMTask.KEY, idRange);
+            partitionManager.registerPartition(destId, SimpleEMTask.KEY, idRange);
+            rangeSetToMove.add(idRange);
+          } else { // Split the range and move it
+            partitionManager.remove(srcId, SimpleEMTask.KEY, idRange);
+            final long lastIdToKeep = idRange.getMaximumLong() - numToMove;
+            final LongRange rangeToKeep = new LongRange(idRange.getMinimumLong(), lastIdToKeep);
+            final LongRange rangeToMove = new LongRange(lastIdToKeep + 1, idRange.getMaximumLong());
+            partitionManager.registerPartition(srcId, SimpleEMTask.KEY, rangeToKeep);
+            partitionManager.registerPartition(destId, SimpleEMTask.KEY, rangeToMove);
+            rangeSetToMove.add(rangeToMove);
+          }
+
+          if (remaining == 0) {
+            break;
+          }
+        }
+
+        return rangeSetToMove;
+
+      } finally {
+        getRangeTraceScope.close();
       }
     }
   }
