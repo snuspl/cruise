@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2015 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.evaluator.api.SubMemoryStore;
@@ -10,10 +25,28 @@ import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * A {@code SubMemoryStore} implementation based on {@code TreeMap}s inside a single {@code HashMap}.
+ * All data of one data type is stored in a {@code TreeMap}, ordered by data ids.
+ * These {@code TreeMap}s are then maintained as values of one big {@code HashMap}, which uses the data types as keys.
+ * A {@code ReentrantReadWriteLock} is used for synchronization between {@code get}, {@code put},
+ * and {@code remove} operations.
+ */
 @EvaluatorSide
 public final class SubMemoryStoreImpl implements SubMemoryStore {
 
+  /**
+   * This map uses data types, represented as strings, for keys and inner {@code TreeMaps} for values.
+   * Each inner {@code TreeMap} serves as a collection of data of the same data type.
+   * {@code TreeMap}s are used for guaranteeing log(n) read and write operations, especially
+   * {@code getRange()} and {@code removeRange()} which are ranged queries based on the ids.
+   */
   private final Map<String, TreeMap<Long, Object>> dataMap;
+
+  /**
+   * Used for synchronization between operations.
+   * {@code get} uses the read lock, while {@code put} and {@code remove} use the write lock.
+   */
   private final ReadWriteLock readWriteLock;
 
   @Inject

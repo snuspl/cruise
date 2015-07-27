@@ -15,23 +15,23 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
+import edu.snu.cay.services.em.evaluator.impl.EagerPartitionTracker;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Evaluator-side interface of MemoryStore, which provides two SubMemoryStores: local and elastic.
+ * Interface for evaluators to notify the driver that they will use a certain partition.
  */
+@DefaultImplementation(EagerPartitionTracker.class)
 @EvaluatorSide
-public interface MemoryStore {
+public interface PartitionTracker {
 
   /**
-   * Returns a {@code SubMemoryStore} which stores local data that
-   * should not be moved to other evaluators.
+   * Send a partition register request to the driver.
+   *
+   * @param key string that represents a certain data type
+   * @param startId minimum value of the id range of the partition to register
+   * @param endId maximum value of the id range of the partition to register
    */
-  SubMemoryStore getLocalStore();
-
-  /**
-   * Returns a {@code SubMemoryStore} which stores movable data that
-   * may be migrated around evaluators for job optimization.
-   */
-  SubMemoryStore getElasticStore();
+  void registerPartition(String key, long startId, long endId);
 }

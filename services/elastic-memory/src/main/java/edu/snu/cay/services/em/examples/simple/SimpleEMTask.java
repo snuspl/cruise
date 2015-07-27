@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.PartitionRegister;
+import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.HeartBeatTriggerManager;
@@ -41,14 +40,14 @@ final class SimpleEMTask implements Task {
       final MemoryStore memoryStore,
       final SimpleEMTaskReady simpleEMTaskReady,
       final HeartBeatTriggerManager heartBeatTriggerManager,
-      final PartitionRegister partitionRegister,
+      final PartitionTracker partitionTracker,
       @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId) {
     this.memoryStore = memoryStore;
     this.simpleEMTaskReady = simpleEMTaskReady;
     this.heartBeatTriggerManager = heartBeatTriggerManager;
 
     final int myIdBase = Integer.valueOf(taskId.substring(SimpleEMDriver.TASK_ID_PREFIX.length())) * ID_BASE;
-    partitionRegister.registerPartition(KEY, myIdBase, myIdBase + ID_BASE - 1);
+    partitionTracker.registerPartition(KEY, myIdBase, myIdBase + ID_BASE - 1);
 
     for (int index = 0; index < 10; index++) {
       final int item = myIdBase + index * 10;
