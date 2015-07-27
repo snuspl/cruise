@@ -67,7 +67,7 @@ public final class MetricTrackerManager implements ContextMessageSource, AutoClo
   /**
    * This class is instantiated by TANG
    *
-   * Constructor for the metric manager, which accepts Heartbeat Trigger Manager as a parameter
+   * Constructor for the MetricTrackerManager, which accepts Heartbeat Trigger Manager as a parameter
    * @param heartBeatTriggerManager manager for sending heartbeat to the driver
    * @param metricCodec codec for metrics
    */
