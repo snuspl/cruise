@@ -422,18 +422,28 @@ public final class SubMemoryStoreTest {
 
         } else if (getMethod == 1) {
           final int startId = random.nextInt(totalNumberOfObjects);
-          final int endId = random.nextInt(totalNumberOfObjects - startId ) + startId;
+          final int endId = random.nextInt(totalNumberOfObjects - startId) + startId;
+
+          final Map<Long, Object> subMap = subMemoryStore.getRange(DATA_TYPE, startId, endId);
+          if (subMap == null) {
+            continue;
+          }
 
           // We make sure this thread actually iterates over the returned map, so that
           // we can check if other threads writing on the backing map affect this thread.
-          for (final Map.Entry entry : subMemoryStore.getRange(DATA_TYPE, startId, endId).entrySet()) {
+          for (final Map.Entry entry : subMap.entrySet()) {
             entry.getKey();
           }
 
         } else {
+          final Map<Long, Object> allMap = subMemoryStore.getAll(DATA_TYPE);
+          if (allMap == null) {
+            continue;
+          }
+
           // We make sure this thread actually iterates over the returned map, so that
           // we can check if other threads writing on the backing map affect this thread.
-          for (final Map.Entry entry : subMemoryStore.getAll(DATA_TYPE).entrySet()) {
+          for (final Map.Entry entry : allMap.entrySet()) {
             entry.getKey();
           }
         }
