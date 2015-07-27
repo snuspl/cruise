@@ -110,10 +110,4 @@ public interface SubMemoryStore {
    * @return map of data ids and the corresponding data items
    */
   <T> Map<Long, T> removeRange(String dataType, long startId, long endId);
-
-
-  /**
-   * Query about the update status of this store
-   */
-  boolean hasChanged();
 }

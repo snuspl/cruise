@@ -82,8 +82,9 @@ public final class SubMemoryStoreImpl implements SubMemoryStore {
       if (!dataMap.containsKey(dataType)) {
         dataMap.put(dataType, new TreeMap<Long, Object>());
       }
+      final Map<Long, Object> innerMap = dataMap.get(dataType);
       for (int index = 0; index < ids.size(); index++) {
-        dataMap.get(dataType).put(ids.get(index), values.get(index));
+        innerMap.put(ids.get(index), values.get(index));
       }
 
     } finally {
@@ -194,10 +195,5 @@ public final class SubMemoryStoreImpl implements SubMemoryStore {
     } finally {
       readWriteLock.writeLock().unlock();
     }
-  }
-
-  @Override
-  public boolean hasChanged() {
-    throw new NotImplementedException();
   }
 }
