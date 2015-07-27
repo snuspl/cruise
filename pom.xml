@@ -73,7 +73,10 @@ under the License.
           <version>0.11</version>
           <configuration>
             <excludes>
+              <!-- Markdown files such as README.md -->
               <exclude>**/*.md</exclude>
+              <!-- REEF files that the CI server generates -->
+              <exclude>reef/**</exclude>
             </excludes>
           </configuration>
           <dependencies>
