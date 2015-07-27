@@ -16,9 +16,8 @@
 package edu.snu.cay.services.shuffle.example.simple;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescriptionImpl;
-import edu.snu.cay.services.shuffle.description.ShuffleGroupDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
-import edu.snu.cay.services.shuffle.driver.FixedShuffleGroupManager;
+import edu.snu.cay.services.shuffle.driver.StaticShuffleManager;
 import edu.snu.cay.services.shuffle.strategy.KeyShuffleStrategy;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -53,7 +52,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Unit
 public final class MessageExchangeDriver {
 
-  public static final String MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME = "MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME";
   public static final String MESSAGE_EXCHANGE_SHUFFLE_NAME = "MESSAGE_EXCHANGE_SHUFFLE_NAME";
   public static final String TASK_PREFIX = "TASK";
 
@@ -84,18 +82,15 @@ public final class MessageExchangeDriver {
   }
 
   private void registerShuffleGroup() {
-    shuffleDriver.registerManager(
-        ShuffleGroupDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME)
-            .addShuffle(ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
-                .setSenderIdList(taskIds)
-                .setReceiverIdList(taskIds)
-                .setKeyCodec(IntegerCodec.class)
-                .setValueCodec(IntegerCodec.class)
-                .setShuffleStrategy(KeyShuffleStrategy.class)
-                .build())
-            .build()
-        ,
-        FixedShuffleGroupManager.class
+    shuffleDriver.registerShuffle(
+        ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
+            .setSenderIdList(taskIds)
+            .setReceiverIdList(taskIds)
+            .setKeyCodec(IntegerCodec.class)
+            .setValueCodec(IntegerCodec.class)
+            .setShuffleStrategy(KeyShuffleStrategy.class)
+            .build(),
+        StaticShuffleManager.class
     );
   }
 

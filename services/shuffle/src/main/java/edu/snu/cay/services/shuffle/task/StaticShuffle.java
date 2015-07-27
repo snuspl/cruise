@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.task;
 
-import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
+import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleOperatorFactory;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleSender;
@@ -24,38 +24,37 @@ import org.apache.reef.annotations.audience.TaskSide;
 import javax.inject.Inject;
 
 /**
- * Simple implementation of ShuffleGroup.
+ * Simple implementation of Shuffle.
  *
- * The initial shuffle group description can never be changed. Users cannot add or remove more tasks
- * to shuffles and cannot change the key, value codecs and shuffling strategy of the certain shuffle
- * after the shuffle group is created.
+ * The initial shuffle description can never be changed. Users cannot add or remove more tasks
+ * to the shuffle and cannot change the key, value codecs and shuffling strategy after the Shuffle is created.
  */
 @TaskSide
-public final class FixedShuffleGroup implements ShuffleGroup {
+public final class StaticShuffle implements Shuffle {
 
-  private final ShuffleGroupDescription shuffleGroupDescription;
+  private final ShuffleDescription shuffleDescription;
   private final ShuffleOperatorFactory operatorFactory;
 
   @Inject
-  private FixedShuffleGroup(
-      final ShuffleGroupDescription shuffleGroupDescription,
+  private StaticShuffle(
+      final ShuffleDescription shuffleGroupDescription,
       final ShuffleOperatorFactory operatorFactory) {
-    this.shuffleGroupDescription = shuffleGroupDescription;
+    this.shuffleDescription = shuffleGroupDescription;
     this.operatorFactory = operatorFactory;
   }
 
   @Override
-  public <K, V> ShuffleReceiver<K, V> getReceiver(final String shuffleName) {
-    return operatorFactory.newShuffleReceiver(shuffleGroupDescription.getShuffleDescription(shuffleName));
+  public <K, V> ShuffleReceiver<K, V> getReceiver() {
+    return operatorFactory.newShuffleReceiver();
   }
 
   @Override
-  public <K, V> ShuffleSender<K, V> getSender(final String shuffleName) {
-    return operatorFactory.newShuffleSender(shuffleGroupDescription.getShuffleDescription(shuffleName));
+  public <K, V> ShuffleSender<K, V> getSender() {
+    return operatorFactory.newShuffleSender();
   }
 
   @Override
-  public ShuffleGroupDescription getShuffleGroupDescription() {
-    return shuffleGroupDescription;
+  public ShuffleDescription getShuffleDescription() {
+    return shuffleDescription;
   }
 }

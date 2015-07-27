@@ -15,37 +15,30 @@
  */
 package edu.snu.cay.services.shuffle.task.operator;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Factory for creating tuple senders and receivers.
+ * Factory for creating tuple operators.
  */
 @DefaultImplementation(ShuffleOperatorFactoryImpl.class)
 public interface ShuffleOperatorFactory {
 
   /**
-   * Create a shuffle receiver for the specified shuffle description and register a tuple codec for the operator.
+   * Create a shuffle receiver and register a tuple codec.
    * It returns the cached receiver if the receiver was already created and throws runtime exception
    * if the task is not a receiver of the shuffle.
    *
-   * @param shuffleDescription shuffle description
-   * @param <K> key type
-   * @param <V> value type
    * @return created or cached shuffle receiver
    */
-  <K, V> ShuffleReceiver<K, V> newShuffleReceiver(ShuffleDescription shuffleDescription);
+  <K, V> ShuffleReceiver<K, V> newShuffleReceiver();
 
   /**
-   * Create a shuffle sender for the specified shuffle description and register a tuple codec for the operator.
+   * Create a shuffle sender and register a tuple codec.
    * It returns the cached sender if the sender was already created and throws runtime exception
    * if the task is not a sender of the shuffle.
    *
-   * @param shuffleDescription shuffle description
-   * @param <K> key type
-   * @param <V> value type
    * @return created or cached shuffle sender
    */
-  <K, V> ShuffleSender<K, V> newShuffleSender(ShuffleDescription shuffleDescription);
+  <K, V> ShuffleSender<K, V> newShuffleSender();
 
 }

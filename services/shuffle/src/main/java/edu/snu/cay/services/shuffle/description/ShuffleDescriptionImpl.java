@@ -27,7 +27,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Default implementation of ShuffleDescription, it can be instantiated using Builder or Tang injector.
+ * Default implementation of ShuffleDescription, it can be instantiated using
+ * Builder or Tang injector. Builder is used in driver when a user register
+ * a shuffle description with corresponding shuffle manager class.
+ * Tang injector is used in task when the serialized shuffle description for the task
+ * are deserialized by Tang injection.
  */
 public final class ShuffleDescriptionImpl implements ShuffleDescription {
 

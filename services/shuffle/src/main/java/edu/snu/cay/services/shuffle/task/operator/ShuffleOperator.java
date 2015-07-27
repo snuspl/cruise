@@ -15,20 +15,14 @@
  */
 package edu.snu.cay.services.shuffle.task.operator;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 
 import java.util.List;
 
 /**
- * Operator for the specific shuffle.
+ * Operator for the shuffle.
  */
 public interface ShuffleOperator<K, V> {
-
-  /**
-   * @return shuffle description
-   */
-  ShuffleDescription getShuffleDescription();
 
   /**
    * @return ShuffleStrategy instance for the operator

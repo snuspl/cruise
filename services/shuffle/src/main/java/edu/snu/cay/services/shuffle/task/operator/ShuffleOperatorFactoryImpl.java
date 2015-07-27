@@ -16,7 +16,7 @@
 package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
-import edu.snu.cay.services.shuffle.network.GlobalTupleMessageCodec;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageCodec;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import edu.snu.cay.services.shuffle.task.TupleCodec;
@@ -28,8 +28,6 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Default implementation of TupleOperatorFactory.
@@ -37,45 +35,43 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
 
   private final String currentTaskId;
-  private final String shuffleGroupName;
-  private final GlobalTupleMessageCodec globalTupleCodec;
+  private final ShuffleDescription shuffleDescription;
+  private final ShuffleTupleMessageCodec shuffleTupleCodec;
   private final Injector injector;
 
-  private Map<String, ShuffleSender> senderMap;
-  private Map<String, ShuffleReceiver> receiverMap;
+  private ShuffleSender shuffleSender;
+  private ShuffleReceiver shuffleReceiver;
 
   @Inject
   private ShuffleOperatorFactoryImpl(
       @Parameter(TaskConfigurationOptions.Identifier.class) final String currentTaskId,
-      @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
-      final GlobalTupleMessageCodec globalTupleCodec,
+      final ShuffleDescription shuffleDescription,
+      final ShuffleTupleMessageCodec shuffleTupleCodec,
       final Injector injector) {
     this.currentTaskId = currentTaskId;
-    this.shuffleGroupName = shuffleGroupName;
-    this.globalTupleCodec = globalTupleCodec;
+    this.shuffleDescription = shuffleDescription;
+    this.shuffleTupleCodec = shuffleTupleCodec;
     this.injector = injector;
-    this.senderMap = new ConcurrentHashMap<>();
-    this.receiverMap = new ConcurrentHashMap<>();
   }
 
   private void addTupleCodec(final ShuffleDescription shuffleDescription) {
     final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
     final Configuration tupleCodecConf = confBuilder
-        .bindNamedParameter(ShuffleParameters.ShuffleKeyCodec.class, shuffleDescription.getKeyCodecClass())
-        .bindNamedParameter(ShuffleParameters.ShuffleValueCodec.class, shuffleDescription.getValueCodecClass())
+        .bindNamedParameter(ShuffleParameters.TupleKeyCodec.class, shuffleDescription.getKeyCodecClass())
+        .bindNamedParameter(ShuffleParameters.TupleValueCodec.class, shuffleDescription.getValueCodecClass())
         .build();
     try {
       final Codec<Tuple> tupleCodec = Tang.Factory.getTang().newInjector(tupleCodecConf).getInstance(TupleCodec.class);
-      globalTupleCodec.registerTupleCodec(shuffleGroupName, shuffleDescription.getShuffleName(), tupleCodec);
+      shuffleTupleCodec.registerTupleCodec(shuffleDescription.getShuffleName(), tupleCodec);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
   }
 
   @Override
-  public <K, V> ShuffleReceiver<K, V> newShuffleReceiver(final ShuffleDescription shuffleDescription) {
+  public <K, V> ShuffleReceiver<K, V> newShuffleReceiver() {
     final String shuffleName = shuffleDescription.getShuffleName();
-    if (!receiverMap.containsKey(shuffleName)) {
+    if (shuffleReceiver == null) {
       if (!shuffleDescription.getReceiverIdList().contains(currentTaskId)) {
         throw new RuntimeException(shuffleName + " does not have " + currentTaskId + " as a receiver.");
       }
@@ -83,20 +79,20 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
       final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
 
       try {
-        receiverMap.put(shuffleName, forkedInjector.getInstance(ShuffleReceiver.class));
+        shuffleReceiver = forkedInjector.getInstance(ShuffleReceiver.class);
         addTupleCodec(shuffleDescription);
       } catch (final InjectionException e) {
         throw new RuntimeException("An Exception occurred while injecting receiver with " + shuffleDescription, e);
       }
     }
 
-    return receiverMap.get(shuffleName);
+    return shuffleReceiver;
   }
 
   @Override
-  public <K, V> ShuffleSender<K, V> newShuffleSender(final ShuffleDescription shuffleDescription) {
+  public <K, V> ShuffleSender<K, V> newShuffleSender() {
     final String shuffleName = shuffleDescription.getShuffleName();
-    if (!senderMap.containsKey(shuffleName)) {
+    if (shuffleSender == null) {
       if (!shuffleDescription.getSenderIdList().contains(currentTaskId)) {
         throw new RuntimeException(shuffleName + " does not have " + currentTaskId + " as a sender.");
       }
@@ -104,7 +100,7 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
       final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
 
       try {
-        senderMap.put(shuffleName, forkedInjector.getInstance(ShuffleSender.class));
+        shuffleSender = forkedInjector.getInstance(ShuffleSender.class);
         addTupleCodec(shuffleDescription);
       } catch (final InjectionException e) {
         throw new RuntimeException("An InjectionException occurred while injecting sender with " +
@@ -112,7 +108,7 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
       }
     }
 
-    return senderMap.get(shuffleName);
+    return shuffleSender;
   }
 
   private Injector getForkedInjectorWithParameters(final ShuffleDescription shuffleDescription) {

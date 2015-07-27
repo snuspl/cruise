@@ -33,16 +33,13 @@ import java.util.Map;
  */
 final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessageGenerator<K, V> {
 
-  private final String shuffleGroupName;
   private final ShuffleDescription shuffleDescription;
   private final ShuffleStrategy<K> shuffleStrategy;
 
   @Inject
   private ShuffleTupleMessageGeneratorImpl(
-      @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
       final ShuffleDescription shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy) {
-    this.shuffleGroupName = shuffleGroupName;
     this.shuffleDescription = shuffleDescription;
     this.shuffleStrategy = shuffleStrategy;
   }
@@ -112,6 +109,6 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
   }
 
   private ShuffleTupleMessage<K, V> createShuffleTupleMessage(final List<Tuple<K, V>> data) {
-    return new ShuffleTupleMessage<>(shuffleGroupName, shuffleDescription.getShuffleName(), data);
+    return new ShuffleTupleMessage<>(shuffleDescription.getShuffleName(), data);
   }
 }

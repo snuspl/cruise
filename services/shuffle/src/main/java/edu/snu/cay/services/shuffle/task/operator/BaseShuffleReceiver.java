@@ -17,11 +17,9 @@ package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import edu.snu.cay.services.shuffle.network.GlobalTupleMessageHandler;
-import edu.snu.cay.services.shuffle.params.ShuffleParameters;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageHandler;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -32,33 +30,25 @@ import java.util.List;
  */
 public final class BaseShuffleReceiver<K, V> implements ShuffleReceiver<K, V> {
 
-  private final String shuffleGroupName;
   private final String shuffleName;
   private final ShuffleDescription shuffleDescription;
   private final ShuffleStrategy<K> shuffleStrategy;
-  private final GlobalTupleMessageHandler globalTupleMessageHandler;
+  private final ShuffleTupleMessageHandler shuffleTupleMessageHandler;
 
   @Inject
   private BaseShuffleReceiver(
-      @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
       final ShuffleDescription shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy,
-      final GlobalTupleMessageHandler globalTupleMessageHandler) {
-    this.shuffleGroupName = shuffleGroupName;
+      final ShuffleTupleMessageHandler shuffleTupleMessageHandler) {
     this.shuffleName = shuffleDescription.getShuffleName();
     this.shuffleDescription = shuffleDescription;
     this.shuffleStrategy = shuffleStrategy;
-    this.globalTupleMessageHandler = globalTupleMessageHandler;
+    this.shuffleTupleMessageHandler = shuffleTupleMessageHandler;
   }
 
   @Override
   public void registerTupleMessageHandler(final EventHandler<Message<ShuffleTupleMessage<K, V>>> messageHandler) {
-    globalTupleMessageHandler.registerMessageHandler(shuffleGroupName, shuffleName, messageHandler);
-  }
-
-  @Override
-  public ShuffleDescription getShuffleDescription() {
-    return shuffleDescription;
+    shuffleTupleMessageHandler.registerMessageHandler(shuffleName, messageHandler);
   }
 
   @Override

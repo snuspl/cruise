@@ -15,48 +15,38 @@
  */
 package edu.snu.cay.services.shuffle.task;
 
-import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
+import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleSender;
 import org.apache.reef.annotations.audience.TaskSide;
 
 /**
- * Task side interface to communicate with corresponding ShuffleGroupManager in driver
- * to control the shuffle group. The users can obtain shuffle senders and receivers for
- * the specific shuffle.
+ * Task side interface which communicates with corresponding ShuffleManager in driver,
+ * and also provides shuffle operators to users.
  */
 @TaskSide
-public interface ShuffleGroup {
+public interface Shuffle {
 
   /**
-   * Return the ShuffleReceiver for the shuffle named shuffleName.
+   * Return the ShuffleReceiver for the shuffle.
    *
    * It throws RuntimeException if the current task is not a receiver for the shuffle.
    *
-   * @param shuffleName name of the shuffle
-   * @param <K> key type
-   * @param <V> value type
    * @return shuffle receiver
    */
-  <K, V> ShuffleReceiver<K, V> getReceiver(String shuffleName);
+  <K, V> ShuffleReceiver<K, V> getReceiver();
 
   /**
    * Return the ShuffleSender for the shuffle named shuffleName.
    *
    * It throws RuntimeException if the current task is not a sender for the shuffle.
    *
-   * @param shuffleName name of the shuffle
-   * @param <K> key type
-   * @param <V> value type
    * @return shuffle sender
    */
-  <K, V> ShuffleSender<K, V> getSender(String shuffleName);
+  <K, V> ShuffleSender<K, V> getSender();
 
   /**
-   * Return the shuffle group description with shuffle descriptions that
-   * include the current task
-   *
-   * @return the shuffle group description
+   * @return the shuffle description
    */
-  ShuffleGroupDescription getShuffleGroupDescription();
+  ShuffleDescription getShuffleDescription();
 }

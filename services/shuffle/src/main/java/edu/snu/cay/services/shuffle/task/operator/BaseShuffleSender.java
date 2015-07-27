@@ -16,7 +16,7 @@
 package edu.snu.cay.services.shuffle.task.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
-import edu.snu.cay.services.shuffle.network.GlobalTupleLinkListener;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleLinkListener;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
@@ -40,29 +40,26 @@ import java.util.List;
  */
 public final class BaseShuffleSender<K, V> implements ShuffleSender<K, V> {
 
-  private final String shuffleGroupName;
   private final String shuffleName;
   private final ShuffleDescription shuffleDescription;
   private final ShuffleStrategy<K> shuffleStrategy;
-  private final GlobalTupleLinkListener globalTupleLinkListener;
+  private final ShuffleTupleLinkListener shuffleTupleLinkListener;
   private final ConnectionFactory<ShuffleTupleMessage> tupleMessageConnectionFactory;
   private final IdentifierFactory idFactory;
   private final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator;
 
   @Inject
   private BaseShuffleSender(
-      @Parameter(ShuffleParameters.ShuffleGroupName.class) final String shuffleGroupName,
       final ShuffleDescription shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy,
-      final GlobalTupleLinkListener globalTupleLinkListener,
+      final ShuffleTupleLinkListener shuffleTupleLinkListener,
       final NetworkConnectionService networkConnectionService,
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
       final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator) {
-    this.shuffleGroupName = shuffleGroupName;
     this.shuffleName = shuffleDescription.getShuffleName();
     this.shuffleDescription = shuffleDescription;
     this.shuffleStrategy = shuffleStrategy;
-    this.globalTupleLinkListener = globalTupleLinkListener;
+    this.shuffleTupleLinkListener = shuffleTupleLinkListener;
     this.tupleMessageConnectionFactory = networkConnectionService
         .getConnectionFactory(idFactory.getNewInstance(ShuffleParameters.NETWORK_CONNECTION_SERVICE_ID));
     this.idFactory = idFactory;
@@ -95,7 +92,7 @@ public final class BaseShuffleSender<K, V> implements ShuffleSender<K, V> {
 
   @Override
   public void registerTupleLinkListener(final LinkListener<Message<ShuffleTupleMessage<K, V>>> linkListener) {
-    globalTupleLinkListener.registerLinkListener(shuffleGroupName, shuffleName, linkListener);
+    shuffleTupleLinkListener.registerLinkListener(shuffleName, linkListener);
   }
 
   private List<String> sendShuffleMessageTupleList(
@@ -118,11 +115,6 @@ public final class BaseShuffleSender<K, V> implements ShuffleSender<K, V> {
     } catch (final NetworkException exception) {
       throw new RuntimeException(exception);
     }
-  }
-
-  @Override
-  public ShuffleDescription getShuffleDescription() {
-    return shuffleDescription;
   }
 
   @Override

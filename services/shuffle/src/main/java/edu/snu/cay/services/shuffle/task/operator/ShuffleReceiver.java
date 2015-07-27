@@ -21,7 +21,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
 /**
- * Interface for receivers used in ShuffleGroup.
+ * Interface for a receiver used in a Shuffle.
  *
  * Users have to register event handler for ShuffleTupleMessage to receive
  * tuples from other tasks.

@@ -32,6 +32,10 @@ import java.net.InetSocketAddress;
 
 /**
  * NameResolverWrapper for NetworkConnectionService in driver.
+ * There is no way to bind current local address as NameResolver's name server address
+ * and current port number of name server as NameResolver's name server port.
+ * The wrapper manually create name client which has the parameters with local values.
+ *
  * This class will be removed after REEF-474 is resolved.
  */
 public final class NameResolverWrapper implements NameResolver {

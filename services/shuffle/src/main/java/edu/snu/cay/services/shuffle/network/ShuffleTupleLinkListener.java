@@ -26,42 +26,39 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Globally registered link listener for ShuffleTupleMessage.
+ * Link listener for ShuffleTupleMessage.
  *
- * It routes exception or success callback to respective link lister registered with shuffle group name
- * and shuffle name. If there is no registered link listener for some ShuffleTupleMessage, the log message
+ * It routes exception or success callback to respective link lister registered with shuffle name.
+ * If there is no registered link listener for some ShuffleTupleMessage, the log message
  * will be printed.
  */
-public class GlobalTupleLinkListener implements LinkListener<Message<ShuffleTupleMessage>> {
+public class ShuffleTupleLinkListener implements LinkListener<Message<ShuffleTupleMessage>> {
 
-  private static final Logger LOG = Logger.getLogger(GlobalTupleLinkListener.class.getName());
+  private static final Logger LOG = Logger.getLogger(ShuffleTupleLinkListener.class.getName());
 
-  private final Map<String, Map<String, LinkListener>> linkListenerMap;
+  private final Map<String, LinkListener> linkListenerMap;
 
   @Inject
-  public GlobalTupleLinkListener() {
+  private ShuffleTupleLinkListener() {
     this.linkListenerMap = new ConcurrentHashMap<>();
   }
 
-  public <K, V> void registerLinkListener(final String shuffleGroupName, final String shuffleName,
+  public <K, V> void registerLinkListener(final String shuffleName,
                             final LinkListener<Message<ShuffleTupleMessage<K, V>>> linkListener) {
-    if (!linkListenerMap.containsKey(shuffleGroupName)) {
-      linkListenerMap.put(shuffleGroupName, new ConcurrentHashMap<String, LinkListener>());
+    if (!linkListenerMap.containsKey(shuffleName)) {
+      linkListenerMap.put(shuffleName, linkListener);
     }
-
-    linkListenerMap.get(shuffleGroupName).put(shuffleName, linkListener);
   }
 
   @Override
   public void onSuccess(final Message<ShuffleTupleMessage> message) {
     final ShuffleTupleMessage tupleMessage = message.getData().iterator().next();
-    final LinkListener<Message<ShuffleTupleMessage>> linkListener = linkListenerMap
-        .get(tupleMessage.getShuffleGroupName()).get(tupleMessage.getShuffleName());
+    final LinkListener<Message<ShuffleTupleMessage>> linkListener = linkListenerMap.get(tupleMessage.getShuffleName());
     if (linkListener != null) {
       linkListener.onSuccess(message);
     } else {
-      LOG.log(Level.INFO, "There is no registered link listener for {0}:{1}. An message was successfully sent {2}.",
-          new Object[]{tupleMessage.getShuffleGroupName(), tupleMessage.getShuffleName(), message});
+      LOG.log(Level.INFO, "There is no registered link listener for {0}. An message was successfully sent {1}.",
+          new Object[]{tupleMessage.getShuffleName(), message});
     }
   }
 
@@ -69,13 +66,12 @@ public class GlobalTupleLinkListener implements LinkListener<Message<ShuffleTupl
   public void onException(
       final Throwable cause, final SocketAddress remoteAddress, final Message<ShuffleTupleMessage> message) {
     final ShuffleTupleMessage tupleMessage = message.getData().iterator().next();
-    final LinkListener<Message<ShuffleTupleMessage>> linkListener = linkListenerMap
-        .get(tupleMessage.getShuffleGroupName()).get(tupleMessage.getShuffleName());
+    final LinkListener<Message<ShuffleTupleMessage>> linkListener = linkListenerMap.get(tupleMessage.getShuffleName());
     if (linkListener != null) {
       linkListener.onException(cause, remoteAddress, message);
     } else {
-      LOG.log(Level.INFO, "There is no registered link listener for {0}:{1}. An exception occurred while sending {2}.",
-          new Object[]{tupleMessage.getShuffleGroupName(), tupleMessage.getShuffleName(), message});
+      LOG.log(Level.INFO, "There is no registered link listener for {0}. An exception occurred while sending {1}.",
+          new Object[]{tupleMessage.getShuffleName(), message});
     }
   }
 }

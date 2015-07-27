@@ -16,8 +16,8 @@
 package edu.snu.cay.services.shuffle.example.simple;
 
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import edu.snu.cay.services.shuffle.task.ShuffleGroup;
-import edu.snu.cay.services.shuffle.task.ShuffleGroupProvider;
+import edu.snu.cay.services.shuffle.task.Shuffle;
+import edu.snu.cay.services.shuffle.task.ShuffleProvider;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.task.operator.ShuffleSender;
 import org.apache.reef.io.Tuple;
@@ -49,19 +49,18 @@ public final class MessageExchangeTask implements Task {
 
   @Inject
   private MessageExchangeTask(
-      final ShuffleGroupProvider shuffleGroupProvider) {
-    final ShuffleGroup shuffleGroup = shuffleGroupProvider
-        .getShuffleGroup(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_GROUP_NAME);
+      final ShuffleProvider shuffleProvider) {
+    final Shuffle shuffle = shuffleProvider
+        .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
 
-    this.shuffleSender = shuffleGroup.getSender(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
+    this.shuffleSender = shuffle.getSender();
     shuffleSender.registerTupleLinkListener(new TupleLinkListener());
 
-    final ShuffleReceiver<Integer, Integer> shuffleReceiver = shuffleGroup
-        .getReceiver(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
+    final ShuffleReceiver<Integer, Integer> shuffleReceiver = shuffle
+        .getReceiver();
     shuffleReceiver.registerTupleMessageHandler(new TupleMessageHandler());
 
-    this.receiverList = shuffleGroup.getShuffleGroupDescription()
-        .getShuffleDescription(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME).getReceiverIdList();
+    this.receiverList = shuffle.getShuffleDescription().getReceiverIdList();
     this.taskNumber = receiverList.size();
     this.countDownLatch = new CountDownLatch(taskNumber);
     this.receivedIdSet = new HashSet<>();

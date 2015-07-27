@@ -34,47 +34,39 @@ public final class ShuffleParameters {
 
   public static final String NETWORK_CONNECTION_SERVICE_ID = "SHUFFLE_NETWORK_CONNECTION_IDENTIFIER";
 
-  @NamedParameter
-  public static final class ShuffleKeyCodec implements Name<Codec> {
+  @NamedParameter(doc = "the key codec for TupleCodec")
+  public static final class TupleKeyCodec implements Name<Codec> {
   }
 
-  @NamedParameter
-  public static final class ShuffleValueCodec implements Name<Codec> {
+  @NamedParameter(doc = "the value codec for TupleCodec")
+  public static final class TupleValueCodec implements Name<Codec> {
   }
 
-  @NamedParameter
+  @NamedParameter(doc = "name of the serialized shuffle description")
   public static final class ShuffleName implements Name<String> {
   }
 
-  @NamedParameter
+  @NamedParameter(doc = "set of receiver identifiers of the shuffle description")
   public final class ShuffleReceiverIdSet implements Name<Set<String>> {
   }
 
-  @NamedParameter
+  @NamedParameter(doc = "set of sender identifiers of the shuffle description")
   public final class ShuffleSenderIdSet implements Name<Set<String>> {
   }
 
-  @NamedParameter
+  @NamedParameter(doc = "name of the ShuffleStrategy class of the shuffle description")
   public final class ShuffleStrategyClassName implements Name<String> {
   }
 
-  @NamedParameter
+  @NamedParameter(doc = "name of the key codec class of the shuffle description")
   public static final class ShuffleKeyCodecClassName implements Name<String> {
   }
 
-  @NamedParameter
+  @NamedParameter(doc = "name of the value codec class of the shuffle description")
   public final class ShuffleValueCodecClassName implements Name<String> {
   }
 
-  @NamedParameter
-  public static final class ShuffleGroupName implements Name<String> {
-  }
-
-  @NamedParameter
+  @NamedParameter(doc = "set of serialized shuffle description")
   public static final class SerializedShuffleSet implements Name<Set<String>> {
-  }
-
-  @NamedParameter
-  public static final class SerializedShuffleGroupSet implements Name<Set<String>> {
   }
 }

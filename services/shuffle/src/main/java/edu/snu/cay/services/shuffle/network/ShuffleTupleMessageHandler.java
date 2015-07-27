@@ -23,33 +23,31 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Globally registered event handler for ShuffleTupleMessage.
+ * Event handler for ShuffleTupleMessage.
  *
- * It routes messages to respective event handler registered with shuffle group name and shuffle name.
- * If there is no registered link listener for some ShuffleTupleMessage, the NullPointerException
+ * It routes messages to respective event handler registered with shuffle name.
+ * If there is no registered event handler for some ShuffleTupleMessage, the NullPointerException
  * will be thrown.
  */
-public class GlobalTupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage>> {
+public class ShuffleTupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage>> {
 
-  private final Map<String, Map<String, EventHandler>> eventHandlerMap;
+  private final Map<String, EventHandler> eventHandlerMap;
 
   @Inject
-  public GlobalTupleMessageHandler() {
+  private ShuffleTupleMessageHandler() {
     eventHandlerMap = new ConcurrentHashMap<>();
   }
 
-  public <K, V> void registerMessageHandler(String shuffleName, String groupingName,
-                              EventHandler<Message<ShuffleTupleMessage<K, V>>> eventHandler) {
+  public <K, V> void registerMessageHandler(final String shuffleName,
+                                            final EventHandler<Message<ShuffleTupleMessage<K, V>>> eventHandler) {
     if (!eventHandlerMap.containsKey(shuffleName)) {
-      eventHandlerMap.put(shuffleName, new ConcurrentHashMap<String, EventHandler>());
+      eventHandlerMap.put(shuffleName, eventHandler);
     }
-
-    eventHandlerMap.get(shuffleName).put(groupingName, eventHandler);
   }
 
   @Override
   public void onNext(final Message<ShuffleTupleMessage> message) {
     final ShuffleTupleMessage tupleMessage = message.getData().iterator().next();
-    eventHandlerMap.get(tupleMessage.getShuffleGroupName()).get(tupleMessage.getShuffleName()).onNext(message);
+    eventHandlerMap.get(tupleMessage.getShuffleName()).onNext(message);
   }
 }

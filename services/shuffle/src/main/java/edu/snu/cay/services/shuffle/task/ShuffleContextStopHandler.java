@@ -38,7 +38,6 @@ public final class ShuffleContextStopHandler implements EventHandler<ContextStop
   private ShuffleContextStopHandler(
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
       final NetworkConnectionService networkConnectionService) {
-
     this.networkConnectionService = networkConnectionService;
     this.tupleMessageConnectionId = idFactory.getNewInstance(ShuffleParameters.NETWORK_CONNECTION_SERVICE_ID);
   }

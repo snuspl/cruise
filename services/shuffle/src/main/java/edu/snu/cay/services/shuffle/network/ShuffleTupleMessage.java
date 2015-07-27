@@ -24,28 +24,20 @@ import java.util.List;
  */
 public final class ShuffleTupleMessage<K, V> {
 
-  private final String shuffleGroupName;
   private final String shuffleName;
   private final List<Tuple<K, V>> tupleList;
 
   /**
    * Construct a shuffle message tuple
    *
-   * @param shuffleGroupName the name of shuffle group
    * @param shuffleName the name of shuffle
    * @param tupleList a tuple list
    */
   public ShuffleTupleMessage(
-      final String shuffleGroupName,
       final String shuffleName,
       final List<Tuple<K, V>> tupleList) {
-    this.shuffleGroupName = shuffleGroupName;
     this.shuffleName = shuffleName;
     this.tupleList = tupleList;
-  }
-
-  public String getShuffleGroupName() {
-    return shuffleGroupName;
   }
 
   public String getShuffleName() {

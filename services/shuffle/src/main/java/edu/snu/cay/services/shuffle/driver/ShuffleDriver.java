@@ -15,30 +15,29 @@
  */
 package edu.snu.cay.services.shuffle.driver;
 
-import edu.snu.cay.services.shuffle.description.ShuffleGroupDescription;
+import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
  * Driver-side shuffle controller.
- * Shuffle groups and the corresponding group manager classes are registered
- * through this class.
+ * A ShuffleDescription and a ShuffleManager class who will handle the shuffle are
+ * registered through this class.
  */
 @DriverSide
 @DefaultImplementation(ShuffleDriverImpl.class)
 public interface ShuffleDriver {
 
   /**
-   * Register a shuffle group which will be handled by a ShuffleGroupManager of managerClass type.
-   * The ShuffleGroupManager class should have an injectable constructor for Tang injection.
+   * Register a shuffle which will be handled by a ShuffleManager of managerClass type.
    *
-   * @param shuffleGroupDescription shuffle group description
-   * @param managerClass class of the ShuffleGroupManager
+   * @param shuffleDescription shuffle description
+   * @param managerClass class of the ShuffleManager
    * @return the registered manager
    */
-  <K extends ShuffleGroupManager> K registerManager(
-      ShuffleGroupDescription shuffleGroupDescription, Class<K> managerClass);
+  <K extends ShuffleManager> K registerShuffle(
+      ShuffleDescription shuffleDescription, Class<K> managerClass);
 
   /**
    * @return context configuration for shuffle service components in tasks
@@ -46,8 +45,8 @@ public interface ShuffleDriver {
   Configuration getContextConfiguration();
 
   /**
-   * Return task configuration contains all information about shuffle groups where the task is included.
-   * The returned configuration is used to instantiating ShuffleGroups in the task.
+   * Return task configuration contains all information about shuffles where the task is included.
+   * The returned configuration is used to instantiating Shuffles in the tasks.
    *
    * @param taskId task identifier
    * @return task configuration for taskId

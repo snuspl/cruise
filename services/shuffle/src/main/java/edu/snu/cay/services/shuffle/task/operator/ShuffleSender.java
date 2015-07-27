@@ -24,10 +24,10 @@ import org.apache.reef.wake.remote.transport.LinkListener;
 import java.util.List;
 
 /**
- * Interface for senders used in ShuffleGroup.
+ * Interface for a sender used in a Shuffle.
  *
  * Users can register link listener for ShuffleTupleMessage to track whether the message
- * sent from this operator has been executed successfully.
+ * sent from this operator has been transferred successfully.
  */
 @DefaultImplementation(BaseShuffleSender.class)
 public interface ShuffleSender<K, V> extends ShuffleOperator<K, V> {
@@ -61,7 +61,7 @@ public interface ShuffleSender<K, V> extends ShuffleOperator<K, V> {
 
   /**
    * Send a tuple list to the specific task. Note that this method does not use ShuffleStrategy to select
-   * receivers and send all of tuples in tuple list to the task.
+   * receivers and send all of tuples in tuple list to the same task.
    *
    * @param taskId task id
    * @param tupleList a tuple list

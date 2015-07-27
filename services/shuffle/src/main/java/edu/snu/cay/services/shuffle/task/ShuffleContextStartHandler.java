@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.shuffle.task;
 
-import edu.snu.cay.services.shuffle.network.GlobalTupleLinkListener;
-import edu.snu.cay.services.shuffle.network.GlobalTupleMessageCodec;
-import edu.snu.cay.services.shuffle.network.GlobalTupleMessageHandler;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleLinkListener;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageCodec;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageHandler;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -37,17 +37,17 @@ public final class ShuffleContextStartHandler implements EventHandler<ContextSta
 
   private final NetworkConnectionService networkConnectionService;
   private final Identifier tupleMessageConnectionId;
-  private final GlobalTupleMessageCodec tupleCodec;
-  private final GlobalTupleMessageHandler tupleHandler;
-  private final GlobalTupleLinkListener tupleLinkListener;
+  private final ShuffleTupleMessageCodec tupleCodec;
+  private final ShuffleTupleMessageHandler tupleHandler;
+  private final ShuffleTupleLinkListener tupleLinkListener;
 
   @Inject
   private ShuffleContextStartHandler(
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
       final NetworkConnectionService networkConnectionService,
-      final GlobalTupleMessageCodec tupleCodec,
-      final GlobalTupleMessageHandler tupleHandler,
-      final GlobalTupleLinkListener tupleLinkListener) {
+      final ShuffleTupleMessageCodec tupleCodec,
+      final ShuffleTupleMessageHandler tupleHandler,
+      final ShuffleTupleLinkListener tupleLinkListener) {
     this.networkConnectionService = networkConnectionService;
     this.tupleMessageConnectionId = idFactory.getNewInstance(ShuffleParameters.NETWORK_CONNECTION_SERVICE_ID);
     this.tupleCodec = tupleCodec;
