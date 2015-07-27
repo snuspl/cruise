@@ -13,25 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.api;
+package edu.snu.cay.services.em;
 
-import org.apache.reef.annotations.audience.EvaluatorSide;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-/**
- * Evaluator-side interface of MemoryStore, which provides two SubMemoryStores: local and elastic.
- */
-@EvaluatorSide
-public interface MemoryStore {
+public final class TestUtils {
 
   /**
-   * Returns a {@code SubMemoryStore} which stores local data that
-   * should not be moved to other evaluators.
+   * Use a thread pool to concurrently execute threads.
+   * Note that this method does NOT wait for the termination of all threads before returning.
    */
-  SubMemoryStore getLocalStore();
-
-  /**
-   * Returns a {@code SubMemoryStore} which stores movable data that
-   * may be migrated around evaluators for job optimization.
-   */
-  SubMemoryStore getElasticStore();
+  public static void runConcurrently(final Runnable[] threads) throws InterruptedException {
+    final ExecutorService pool = Executors.newFixedThreadPool(threads.length);
+    for (final Runnable thread : threads) {
+      pool.submit(thread);
+    }
+    pool.shutdown();
+  }
 }

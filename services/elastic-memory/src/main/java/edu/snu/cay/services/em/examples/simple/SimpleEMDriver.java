@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package edu.snu.cay.services.em.examples.simple;
 
+import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.trace.HTraceParameters;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.htrace.Sampler;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceScope;
@@ -36,6 +37,8 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
@@ -47,22 +50,24 @@ import java.util.logging.Logger;
 final class SimpleEMDriver {
   private static final Logger LOG = Logger.getLogger(SimpleEMDriver.class.getName());
   private static final String CONTEXT_ID_PREFIX = "Context-";
-  private static final String TASK_ID_PREFIX = "Task-";
+  public static final String TASK_ID_PREFIX = "Task-";
 
   private final EvaluatorRequestor requestor;
-
   private final ElasticMemoryConfiguration emConf;
   private final ElasticMemory emService;
+  private final PartitionManager partitionManager;
   private final HTraceParameters traceParameters;
 
   @Inject
   private SimpleEMDriver(final EvaluatorRequestor requestor,
                          final ElasticMemoryConfiguration emConf,
                          final ElasticMemory emService,
+                         final PartitionManager partitionManager,
                          final HTraceParameters traceParameters) throws InjectionException {
     this.requestor = requestor;
     this.emConf = emConf;
     this.emService = emService;
+    this.partitionManager = partitionManager;
     this.traceParameters = traceParameters;
   }
 
@@ -138,15 +143,31 @@ final class SimpleEMDriver {
       LOG.info("Received task message from " + taskMessage.getContextId());
 
       if (!prevContextId.compareAndSet(DEFAULT_STRING, taskMessage.getContextId())) {
-        // second evaluator goes here
-        LOG.info("Move data from " + taskMessage.getContextId() + " to " + prevContextId.get());
+        // slow evaluator goes through here
+        final String srcId = taskMessage.getContextId();
+        final String destId = prevContextId.get();
+        LOG.info("Move data from " + srcId + " to " + destId);
 
         final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS);
         try {
-          emService.move(SimpleEMTask.KEY, null, taskMessage.getContextId(), prevContextId.get());
+          final Set<LongRange> oldIdRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.KEY);
+          final Set<LongRange> sendIdRangeSet = new HashSet<>();
+
+          for (final LongRange idRange : oldIdRangeSet) {
+            final long midId = (idRange.getMaximumLong() + idRange.getMinimumLong()) / 2;
+            final LongRange lowIdRange = new LongRange(idRange.getMinimumLong(), midId);
+            final LongRange highIdRange = new LongRange(midId + 1, idRange.getMaximumLong());
+            partitionManager.remove(srcId, SimpleEMTask.KEY, idRange);
+            partitionManager.registerPartition(srcId, SimpleEMTask.KEY, lowIdRange);
+            partitionManager.registerPartition(destId, SimpleEMTask.KEY, highIdRange);
+            sendIdRangeSet.add(highIdRange);
+          }
+
+          emService.move(SimpleEMTask.KEY, sendIdRangeSet, taskMessage.getContextId(), prevContextId.get());
         } finally {
           moveTraceScope.close();
         }
+
       } else {
         // first evaluator goes this way
       }

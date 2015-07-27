@@ -1,27 +1,39 @@
+/*
+ * Copyright (C) 2015 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.snu.cay.services.em.evaluator;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.CtrlMsg;
-import edu.snu.cay.services.em.avro.DataMsg;
-import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceInfo;
 import org.apache.htrace.TraceScope;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -78,16 +90,15 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     try {
 
       final DataMsg dataMsg = msg.getDataMsg();
-
+      final String dataClassName = dataMsg.getDataClassName().toString();
       final Codec codec = serializer.getCodec(dataMsg.getDataClassName().toString());
-      final List list = new LinkedList();
+
+      // extract data items from the message and store them in my memory store
       for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
         final byte[] data = unitIdPair.getUnit().array();
-        list.add(codec.decode(data));
+        final long id = unitIdPair.getId();
+        memoryStore.getElasticStore().put(dataClassName, id, codec.decode(data));
       }
-      list.addAll(memoryStore.get(dataMsg.getDataClassName().toString()));
-
-      memoryStore.putMovable(dataMsg.getDataClassName().toString(), list);
 
     } finally {
       onDataMsgScope.close();
@@ -103,23 +114,32 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     try {
 
       final CtrlMsg ctrlMsg = msg.getCtrlMsg();
-
       final String key = ctrlMsg.getDataClassName().toString();
       final Codec codec = serializer.getCodec(key);
 
-      final List list = memoryStore.get(key);
-      memoryStore.remove(key);
+      // extract all data items from my memory store that correspond to
+      // the control message's id specification
+      final Set<Map<Long, Object>> idObjectMapSet = new HashSet<>();
+      int numObject = 0;
+      for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
+        final Map<Long, Object> idObjectMap =
+            memoryStore.getElasticStore().removeRange(key, avroLongRange.getMin(), avroLongRange.getMax());
+        numObject += idObjectMap.size();
+        idObjectMapSet.add(idObjectMap);
+      }
 
-      final List<UnitIdPair> unitIdPairList = new LinkedList<>();
+      // pack the extracted items into a single list for message transmission
+      // the identifiers for each item are included with the item itself as an UnitIdPair
+      final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
+      for (final Map<Long, Object> idObjectMap : idObjectMapSet) {
+        for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
+          final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+              .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
+              .setId(idObject.getKey())
+              .build();
 
-      // TODO: Currently send meaningless values for ids. Must fix.
-      for (final Object object : list) {
-        final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-            .setUnit(ByteBuffer.wrap(codec.encode(object)))
-            .setId(0)
-            .build();
-
-        unitIdPairList.add(unitIdPair);
+          unitIdPairList.add(unitIdPair);
+        }
       }
 
       sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList,
