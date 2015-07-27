@@ -1,4 +1,22 @@
+/*
+ * Copyright (C) 2015 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 [
+/**
+ * A pair of a single data item and its identifier.
+ */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
@@ -6,20 +24,46 @@
   "fields":
   [
     {"name": "unit", "type": "bytes"},
-    {"name": "id", "type": "int"}
+    {"name": "id", "type": "long"}
   ]
 },
 
+/**
+ * Avro version of {@link org.apache.commons.lang.math.LongRange}.
+ * Represents a range of longs using the min and max values.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "AvroLongRange",
+  "fields":
+  [
+    {"name": "min", "type": "long"},
+    {"name": "max", "type": "long"}
+  ]
+},
+
+/**
+ * Control message that is sent from the driver to evaluators.
+ * The message contains the data type to send, as well as an array of
+ * {@code AvroLongRange}s that show which identifiers to send.
+ */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
   "name": "CtrlMsg",
   "fields":
   [
-    {"name": "dataClassName", "type": "string"}
+    {"name": "dataClassName", "type": "string"},
+    {"name": "idRange", "type": {"type": "array", "items": "AvroLongRange"}}
   ]
 },
 
+/**
+ * Data message that evaluators send to one another.
+ * Actual data is all packed in these messages during data migration,
+ * including its data type and identifiers.
+ */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
@@ -31,18 +75,39 @@
   ]
 },
 
+/**
+ * A record type for evaluators to report a partition addition to the driver.
+ * The data type of the partition and its identifier range must be encoded in the message.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RegisMsg",
+  "fields":
+  [
+    {"name": "dataClassName", "type": "string"},
+    {"name": "idRange", "type": "AvroLongRange"}
+  ]
+},
+
+/**
+ * The message protocol used by Network Service for Elastic Memory.
+ * CtrlMsg, DataMsg, etc. are all included as nullable fields, and
+ * an enum type indicates which field is not null.
+ */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
   "name": "AvroElasticMemoryMessage",
   "fields":
   [
-    {"name": "type", "type": {"type": "enum", "name": "Type", "symbols": ["CtrlMsg", "DataMsg"]}},
+    {"name": "type", "type": {"type": "enum", "name": "Type", "symbols": ["CtrlMsg", "DataMsg", "RegisMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.services.em.trace.AvroTraceInfo"], "default": null},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
-    {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null}
+    {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
+    {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null}
   ]
 }
 ]
