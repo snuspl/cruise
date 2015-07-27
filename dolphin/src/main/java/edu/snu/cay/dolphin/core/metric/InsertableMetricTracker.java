@@ -33,7 +33,7 @@ public class InsertableMetricTracker implements MetricTracker {
   private final Map<String, Double> metrics = new HashMap<>();
 
   /**
-   * Indicates that the intervals are ready to record.
+   * Indicates that the metrics are ready to record.
    */
   private boolean isStarted = false;
 
