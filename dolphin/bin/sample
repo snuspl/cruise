@@ -1,3 +1,17 @@
+# Copyright (C) 2015 Seoul National University
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 9.725720805017028 8.836225670904302 8.783642664161844
 10.469045621231 9.697968403776377 -9.514122258282002
 11.876154194561966 -8.077599554197107 9.84774913960382
