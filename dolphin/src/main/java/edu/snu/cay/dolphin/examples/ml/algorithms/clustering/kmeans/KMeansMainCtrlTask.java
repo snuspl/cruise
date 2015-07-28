@@ -15,15 +15,15 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
-import edu.snu.cay.dolphin.core.KeyValueStore;
 import edu.snu.cay.dolphin.core.OutputStreamProvider;
+import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask;
 import edu.snu.cay.dolphin.examples.ml.data.VectorSum;
-import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.converge.ClusteringConvCond;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -64,7 +64,12 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    * Will be updated for each iteration
    */
   private List<Vector> centroids = new ArrayList<>();
-  private final KeyValueStore keyValueStore;
+
+  /**
+   * Memory storage to put/get the data.
+   */
+  private final MemoryStore memoryStore;
+
   private final OutputStreamProvider outputStreamProvider;
 
   /**
@@ -73,28 +78,29 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    * Constructs the Controller Task for k-means
    *
    * @param clusteringConvergenceCondition conditions for checking convergence of algorithm
-   * @param keyValueStore
+   * @param memoryStore Memory storage to put/get the data
    * @param outputStreamProvider
    * @param maxIterations maximum number of iterations allowed before job stops
    */
   @Inject
   public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
-                            final KeyValueStore keyValueStore,
+                            final MemoryStore memoryStore,
                             final OutputStreamProvider outputStreamProvider,
                             @Parameter(MaxIterations.class) final int maxIterations) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;
+    this.memoryStore = memoryStore;
     this.outputStreamProvider = outputStreamProvider;
-    this.keyValueStore = keyValueStore;
     this.maxIterations = maxIterations;
   }
 
   /**
-   * Receive initial centroids from the preprocess task
+   * Receive the initial centroids from the preprocess task.
+   * {@link edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask}
    */
   @Override
   public void initialize() {
-    centroids = keyValueStore.get(Centroids.class);
+    centroids = memoryStore.get(ClusteringPreCtrlTask.KEY_CENTROIDS);
   }
 
   @Override

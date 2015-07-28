@@ -15,16 +15,14 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 
-import edu.snu.cay.dolphin.core.KeyValueStore;
 import edu.snu.cay.dolphin.core.UserControllerTask;
-import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -35,27 +33,30 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   private static final Logger LOG = Logger.getLogger(ClusteringPreCtrlTask.class.getName());
 
   /**
+   * Key used in Elastic Memory to put/get the centroids.
+   */
+  public static final String KEY_CENTROIDS = "centroids";
+
+  /**
    * Number of clusters
    */
   private final int numberOfClusters;
 
   /**
-   * List of cluster centroids to distribute to Compute Tasks
-   * Will be updated for each iteration
-   */
-  private final List<Vector> centroids = new ArrayList<Vector>();
-
-  /**
    * Initial centroids passed from Compute Tasks
    */
   private List<Vector> initialCentroids = null;
-  private final KeyValueStore keyValueStore;
+
+  /**
+   * Memory storage to put/get the data.
+   */
+  private final MemoryStore memoryStore;
 
   @Inject
   public ClusteringPreCtrlTask(
-      final KeyValueStore keyValueStore,
+      final MemoryStore memoryStore,
       @Parameter(NumberOfClusters.class) final int numberOfClusters) {
-    this.keyValueStore = keyValueStore;
+    this.memoryStore = memoryStore;
     this.numberOfClusters = numberOfClusters;
   }
 
@@ -66,9 +67,11 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
 
   @Override
   public void cleanup() {
-
-    // pass initial centroids to the main process
-    keyValueStore.put(Centroids.class, initialCentroids);
+    /*
+     * Pass the initial centroids to the main process.
+     * Since CtrlTask is the only one to own the data, putMovable is not needed.
+     */
+    memoryStore.putLocal(KEY_CENTROIDS, initialCentroids);
   }
 
   @Override

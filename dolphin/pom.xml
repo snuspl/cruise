@@ -19,6 +19,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <reef.version>0.11.0-incubating</reef.version>
+    <elastic-memory.version>0.1-SNAPSHOT</elastic-memory.version>
     <shimoga.version>0.1-SNAPSHOT</shimoga.version>
     <hadoop.version>2.4.0</hadoop.version>
     <mahout.version>0.9</mahout.version>
@@ -69,6 +70,11 @@
       <groupId>org.apache.reef</groupId>
       <artifactId>wake</artifactId>
       <version>${reef.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>edu.snu.cay.services</groupId>
+      <artifactId>elastic-memory</artifactId>
+      <version>${elastic-memory.version}</version>
     </dependency>
     <dependency>
       <groupId>com.microsoft.reef</groupId>

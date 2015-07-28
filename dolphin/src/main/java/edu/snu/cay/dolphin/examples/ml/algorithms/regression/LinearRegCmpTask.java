@@ -26,6 +26,7 @@ import edu.snu.cay.dolphin.examples.ml.parameters.StepSize;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -34,11 +35,17 @@ import java.util.List;
 
 public class LinearRegCmpTask extends UserComputeTask
     implements DataReduceSender<LinearRegSummary>, DataBroadcastReceiver<LinearModel> {
+
+  /**
+   * Key used in Elastic Memory to put/get the data
+   */
+  private static final String KEY_ROWS = "rows";
+
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
   private DataParser<List<Row>> dataParser;
-  private List<Row> rows;
+  private MemoryStore memoryStore;
   private LinearModel model;
   private double lossSum = 0;
 
@@ -46,16 +53,19 @@ public class LinearRegCmpTask extends UserComputeTask
   public LinearRegCmpTask(@Parameter(StepSize.class) final double stepSize,
                           final Loss loss,
                           final Regularization regularization,
-                          DataParser<List<Row>> dataParser) {
+                          final DataParser<List<Row>> dataParser,
+                          final MemoryStore memoryStore) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
     this.dataParser = dataParser;
+    this.memoryStore = memoryStore;
   }
 
   @Override
   public void initialize() throws ParseException {
-    rows = dataParser.get();
+    final List<Row> rows = dataParser.get();
+    memoryStore.putMovable(KEY_ROWS, rows);
   }
 
   @Override
@@ -63,6 +73,7 @@ public class LinearRegCmpTask extends UserComputeTask
 
     // measure loss
     lossSum = 0;
+    final List<Row> rows = memoryStore.get(KEY_ROWS);
     for (final Row row : rows) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());

@@ -15,9 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em;
 
-import edu.snu.cay.dolphin.core.KeyValueStore;
 import edu.snu.cay.dolphin.core.OutputStreamProvider;
-import edu.snu.cay.dolphin.examples.ml.key.Centroids;
+import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.core.UserControllerTask;
@@ -26,6 +25,7 @@ import edu.snu.cay.dolphin.examples.ml.data.ClusterStats;
 import edu.snu.cay.dolphin.examples.ml.data.ClusterSummary;
 import edu.snu.cay.dolphin.examples.ml.parameters.IsCovarianceShared;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.DiagonalMatrix;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
@@ -79,7 +79,12 @@ public final class EMMainCtrlTask extends UserControllerTask
    * Whether to share a covariance matrix among clusters or not
    */
   private final boolean isCovarianceShared;
-  private final KeyValueStore keyValueStore;
+
+  /**
+   * Memory storage to put/get the data.
+   */
+  private final MemoryStore memoryStore;
+
   private final OutputStreamProvider outputStreamProvider;
 
   /**
@@ -88,33 +93,34 @@ public final class EMMainCtrlTask extends UserControllerTask
    * Constructs the Controller Task for EM
    *
    * @param clusteringConvergenceCondition  conditions for checking convergence of algorithm
-   * @param keyValueStore
+   * @param memoryStore Memory storage to put/get the data
    * @param outputStreamProvider
    * @param maxIterations maximum number of iterations allowed before job stops
    * @param isCovarianceShared    whether clusters share one covariance matrix or not
    */
   @Inject
   public EMMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
-                        final KeyValueStore keyValueStore,
+                        final MemoryStore memoryStore,
                         final OutputStreamProvider outputStreamProvider,
                         @Parameter(MaxIterations.class) final int maxIterations,
                         @Parameter(IsCovarianceShared.class) final boolean isCovarianceShared) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;
-    this.keyValueStore = keyValueStore;
+    this.memoryStore = memoryStore;
     this.outputStreamProvider = outputStreamProvider;
     this.maxIterations = maxIterations;
     this.isCovarianceShared = isCovarianceShared;
   }
 
   /**
-   * Receive initial centroids from the preprocess task
+   * Receive the initial centroids from the preprocess task.
+   * {@link edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask}
    */
   @Override
   public void initialize() {
 
     // Load the initial centroids from the previous stage
-    centroids = keyValueStore.get(Centroids.class);
+    centroids = memoryStore.get(ClusteringPreCtrlTask.KEY_CENTROIDS);
 
     // Initialize cluster summaries
     final int numClusters = centroids.size();
