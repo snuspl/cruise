@@ -176,17 +176,19 @@ final class SimpleEMDriver {
 
       for (int i = 0; i < iterations; i++) {
 
-        final long numToMove = getNumUnits(partitionManager.getRangeSet(srcId, SimpleEMTask.KEY)) / 2;
-        LOG.info("Move data of size " + numToMove + " from " + srcId + " to " + destId);
+        final Set<LongRange> srcRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.KEY);
 
-        final Set<LongRange> ranges = getRangeSetToMove(srcId, destId, numToMove);
-        for (final LongRange range : ranges) {
+        final long numToMove = getNumUnits(srcRangeSet) / 2;
+        LOG.info("Move partitions of total size " + numToMove + " from " + srcId + " to " + destId);
+
+        final Set<LongRange> rangeSetToMove = getRangeSetToMove(srcId, destId, srcRangeSet, numToMove);
+        for (final LongRange range : rangeSetToMove) {
           LOG.info("- " + range + ", size: " + (range.getMaximumLong() - range.getMinimumLong() + 1));
         }
 
         final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS);
         try {
-          emService.move(SimpleEMTask.KEY, ranges, srcId, destId);
+          emService.move(SimpleEMTask.KEY, rangeSetToMove, srcId, destId);
         } finally {
           moveTraceScope.close();
         }
@@ -216,15 +218,19 @@ final class SimpleEMDriver {
     }
 
     /**
-     * Get RangeSet to move, in the process setting registering the partitions via the partitionManager.
+     * Get RangeSet to move, and in the process splitting and registering
+     * the partitions across src and dest via the partitionManager.
+     *
+     * For example, to move partitions of total size 2 from a src with a single partition [1, 3],
+     * this method will unregister [1, 3] then split up and register [3, 3] at src and [1, 2] at dst.
+     * It will return the set with [1, 2].
      */
-    private Set<LongRange> getRangeSetToMove(final String srcId, final String destId, final long totalToMove) {
+    private Set<LongRange> getRangeSetToMove(final String srcId, final String destId,
+                                             final Set<LongRange> currentRangeSet, final long totalToMove) {
       final TraceScope getRangeTraceScope = Trace.startSpan("getRangeSetToMove", Sampler.ALWAYS);
       try {
 
-        final Set<LongRange> currentRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.KEY);
         final Set<LongRange> rangeSetToMove = new HashSet<>();
-
         long remaining = totalToMove;
 
         for (final LongRange idRange : currentRangeSet) {
@@ -249,6 +255,11 @@ final class SimpleEMDriver {
           if (remaining == 0) {
             break;
           }
+        }
+
+        if (remaining > 0) {
+          LOG.warning("Tried to move partitions of total size " + totalToMove +
+              ", but only found " + (totalToMove - remaining) + " partitions to move");
         }
 
         return rangeSetToMove;
