@@ -72,6 +72,17 @@
               <exclude>**/*.md</exclude>
               <!-- REEF files that the CI server generates -->
               <exclude>reef/**</exclude>
+              <!-- Git files -->
+              <exclude>.gitattributes</exclude>
+              <exclude>.gitignore</exclude>
+              <exclude>.git/**</exclude>
+              <!-- Intellij idea project files -->
+              <exclude>**/.idea/**</exclude>
+              <exclude>**/*.iml</exclude>
+              <!-- Maven build files -->
+              <exclude>**/target/**</exclude>
+              <!-- REEF run files -->
+              <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
             </excludes>
           </configuration>
           <dependencies>
