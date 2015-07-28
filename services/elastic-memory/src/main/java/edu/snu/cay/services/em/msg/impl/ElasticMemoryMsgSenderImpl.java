@@ -15,9 +15,15 @@
  */
 package edu.snu.cay.services.em.msg.impl;
 
-import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.AvroLongRange;
+import edu.snu.cay.services.em.avro.CtrlMsg;
+import edu.snu.cay.services.em.avro.DataMsg;
+import edu.snu.cay.services.em.avro.RegisMsg;
+import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.cay.services.em.ns.api.NSWrapper;
+import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.AvroUtils;
 import org.apache.commons.lang.math.LongRange;
@@ -27,7 +33,7 @@ import org.apache.htrace.TraceScope;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
-import org.apache.reef.io.network.impl.NetworkService;
+import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
 
@@ -49,22 +55,25 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private static final String SEND_DATA_MSG = "sendDataMsg";
   private static final String SEND_REGIS_MSG = "sendRegisMsg";
 
-  private final NetworkService<AvroElasticMemoryMessage> networkService;
+  private final ConnectionFactory connectionFactory;
   private final IdentifierFactory identifierFactory;
+
   private final String driverId;
 
   @Inject
-  private ElasticMemoryMsgSenderImpl(final NSWrapper<AvroElasticMemoryMessage> nsWrapper,
-                                     @Parameter(DriverIdentifier.class) final String driverId) {
-    this.networkService = nsWrapper.getNetworkService();
-    this.identifierFactory = this.networkService.getIdentifierFactory();
+  private ElasticMemoryMsgSenderImpl(final EMNetworkSetup emNetworkSetup,
+                                     final IdentifierFactory identifierFactory,
+                                     @Parameter(DriverIdentifier.class) final String driverId) throws NetworkException {
+    this.identifierFactory = identifierFactory;
+    this.connectionFactory = emNetworkSetup.getConnectionFactory();
+
     this.driverId = driverId;
   }
 
   private void send(final String destId, final AvroElasticMemoryMessage msg) {
-    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[] { destId, msg });
+    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
 
-    final Connection<AvroElasticMemoryMessage> conn = networkService.newConnection(identifierFactory.getNewInstance(destId));
+    final Connection conn = connectionFactory.newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();
       conn.write(msg);
@@ -129,7 +138,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.DataMsg)
-              .setSrcId(networkService.getMyId().toString())
+              // TODO: want to do something like: networkConnectionService.getMyId().toString()
+              .setSrcId("UNDEFINED")
               .setDestId(destId)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
               .setDataMsg(dataMsg)
@@ -163,7 +173,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.RegisMsg)
-              .setSrcId(networkService.getMyId().toString())
+              // TODO: want to do something like: networkConnectionService.getMyId().toString()
+              .setSrcId("UNDEFINED")
               .setDestId(driverId)
               .setRegisMsg(regisMsg)
               .build());

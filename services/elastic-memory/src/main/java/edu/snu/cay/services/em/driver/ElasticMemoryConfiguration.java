@@ -18,19 +18,24 @@ package edu.snu.cay.services.em.driver;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
-import edu.snu.cay.services.em.ns.NSWrapperConfiguration;
-import edu.snu.cay.services.em.ns.NSWrapperContextRegister;
-import edu.snu.cay.services.em.ns.NSWrapperParameters;
+import edu.snu.cay.services.em.ns.EMNetworkContextRegister;
+import edu.snu.cay.services.em.ns.parameters.EMCodec;
+import edu.snu.cay.services.em.ns.parameters.EMMessageHandler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
-import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
+import org.apache.reef.io.network.naming.NameServer;
+import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
+import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
 
@@ -40,13 +45,16 @@ import javax.inject.Inject;
 @DriverSide
 public final class ElasticMemoryConfiguration {
 
-  private final NSWrapperConfiguration nsWrapperConfiguration;
+  private final NameServer nameServer;
+  private final LocalAddressProvider localAddressProvider;
   private final String driverId;
 
   @Inject
-  private ElasticMemoryConfiguration(final NSWrapperConfiguration nsWrapperConfiguration,
+  private ElasticMemoryConfiguration(final NameServer nameServer,
+                                     final LocalAddressProvider localAddressProvider,
                                      @Parameter(DriverIdentifier.class) final String driverId) {
-    this.nsWrapperConfiguration = nsWrapperConfiguration;
+    this.nameServer = nameServer;
+    this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
   }
 
@@ -60,12 +68,7 @@ public final class ElasticMemoryConfiguration {
    * @return configuration that should be submitted with a DriverConfiguration
    */
   public static Configuration getDriverConfiguration() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(NSWrapperParameters.NetworkServiceCodec.class, ElasticMemoryMsgCodec.class)
-        .bindNamedParameter(NSWrapperParameters.NetworkServiceHandler.class, ElasticMemoryMsgHandler.class)
-        .bindNamedParameter(NSWrapperParameters.NetworkServiceExceptionHandler.class, ExceptionHandler.class)
-        .bindNamedParameter(NSWrapperParameters.NetworkServicePort.class, "0")
-        .build();
+    return getNetworkConfiguration();
   }
 
   /**
@@ -78,8 +81,8 @@ public final class ElasticMemoryConfiguration {
    */
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextStartHandlers.class, NSWrapperContextRegister.RegisterContextHandler.class)
-        .bindSetEntry(ContextStopHandlers.class, NSWrapperContextRegister.UnregisterContextHandler.class)
+        .bindSetEntry(ContextStartHandlers.class, EMNetworkContextRegister.RegisterContextHandler.class)
+        .bindSetEntry(ContextStopHandlers.class, EMNetworkContextRegister.UnregisterContextHandler.class)
         .build();
   }
 
@@ -90,9 +93,12 @@ public final class ElasticMemoryConfiguration {
    * @return service configuration that should be passed along with a ContextConfiguration
    */
   public Configuration getServiceConfiguration() {
-    final Configuration nsWrapperConf =
-        nsWrapperConfiguration.getConfiguration(ElasticMemoryMsgCodec.class,
-                                                edu.snu.cay.services.em.evaluator.ElasticMemoryMsgHandler.class);
+    final Configuration networkConf = getNetworkConfiguration();
+
+    final Configuration nameClientConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
+        .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
+        .build();
 
     final Configuration serviceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, MemoryStoreImpl.class)
@@ -103,6 +109,14 @@ public final class ElasticMemoryConfiguration {
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .build();
 
-    return Configurations.merge(nsWrapperConf, serviceConf, otherConf);
+    return Configurations.merge(networkConf, nameClientConf, serviceConf, otherConf);
+  }
+
+  private static Configuration getNetworkConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(EMCodec.class, ElasticMemoryMsgCodec.class)
+        .bindNamedParameter(EMMessageHandler.class, ElasticMemoryMsgHandler.class)
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+        .build();
   }
 }

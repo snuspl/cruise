@@ -17,12 +17,9 @@ package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.cay.services.em.ns.api.NSWrapper;
 import edu.snu.cay.services.em.trace.HTrace;
-
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
-import org.apache.htrace.Sampler;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceInfo;
 import org.apache.htrace.TraceScope;
@@ -30,7 +27,9 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.parameters.DriverIdentifier;
+import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.util.Set;
@@ -46,12 +45,13 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
                             @Parameter(DriverIdentifier.class) final String driverId,
                             final ElasticMemoryMsgSender sender,
-                            final NSWrapper nsWrapper,
+                            final NetworkConnectionService networkConnectionService,
+                            final IdentifierFactory identifierFactory,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.requestor = requestor;
     this.sender = sender;
-    nsWrapper.getNetworkService().registerId(nsWrapper.getNetworkService().getIdentifierFactory().getNewInstance(driverId));
+    networkConnectionService.registerId(identifierFactory.getNewInstance(driverId));
   }
 
   @Override

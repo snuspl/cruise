@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
@@ -90,7 +91,8 @@ final class SimpleEMREEF {
     final Configuration emConfiguration = ElasticMemoryConfiguration.getDriverConfiguration();
 
     // spawn the name server at the driver
-    return Configurations.merge(driverConfiguration, emConfiguration, NameServerConfiguration.CONF.build());
+    return Configurations.merge(driverConfiguration, emConfiguration,
+        NameServerConfiguration.CONF.build(), LocalNameResolverConfiguration.CONF.build());
   }
 
   public static LauncherStatus runSimpleEM(final Configuration runtimeConf, final Configuration traceConf,
