@@ -148,8 +148,8 @@ final class SimpleEMDriver {
         final String destId = prevContextId.get();
         LOG.info("Move data from " + srcId + " to " + destId);
 
-        final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS);
-        try {
+        try (final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS)) {
+
           final Set<LongRange> oldIdRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.KEY);
           final Set<LongRange> sendIdRangeSet = new HashSet<>();
 
@@ -164,10 +164,7 @@ final class SimpleEMDriver {
           }
 
           emService.move(SimpleEMTask.KEY, sendIdRangeSet, taskMessage.getContextId(), prevContextId.get());
-        } finally {
-          moveTraceScope.close();
         }
-
       } else {
         // first evaluator goes this way
       }
