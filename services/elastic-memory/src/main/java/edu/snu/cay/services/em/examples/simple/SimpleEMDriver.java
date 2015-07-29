@@ -18,6 +18,8 @@ package edu.snu.cay.services.em.examples.simple;
 import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
+import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import edu.snu.cay.services.em.trace.HTraceParameters;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.htrace.Sampler;
@@ -31,6 +33,7 @@ import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.driver.task.TaskMessage;
 import org.apache.reef.tang.*;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
@@ -44,7 +47,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 /**
- * Driver code for EMExample
+ * Driver code for EMExample.
+ * Two evaluators take turns moving half of their movable data to the other.
+ * The number of iterations, and the period to wait between moves are configurable.
  */
 @Unit
 final class SimpleEMDriver {
@@ -57,18 +62,24 @@ final class SimpleEMDriver {
   private final ElasticMemory emService;
   private final PartitionManager partitionManager;
   private final HTraceParameters traceParameters;
+  private final int iterations;
+  private final long periodMillis;
 
   @Inject
   private SimpleEMDriver(final EvaluatorRequestor requestor,
                          final ElasticMemoryConfiguration emConf,
                          final ElasticMemory emService,
                          final PartitionManager partitionManager,
-                         final HTraceParameters traceParameters) throws InjectionException {
+                         final HTraceParameters traceParameters,
+                         @Parameter(Iterations.class) final int iterations,
+                         @Parameter(PeriodMillis.class) final long periodMillis) throws InjectionException {
     this.requestor = requestor;
     this.emConf = emConf;
     this.emService = emService;
     this.partitionManager = partitionManager;
     this.traceParameters = traceParameters;
+    this.iterations = iterations;
+    this.periodMillis = periodMillis;
   }
 
   /**
@@ -106,7 +117,13 @@ final class SimpleEMDriver {
 
       final Configuration traceConf = traceParameters.getConfiguration();
 
-      allocatedEvaluator.submitContextAndService(contextConf, Configurations.merge(emServiceConf, traceConf));
+      final Configuration exampleConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(Iterations.class, Integer.toString(iterations))
+          .bindNamedParameter(PeriodMillis.class, Long.toString(periodMillis))
+          .build();
+
+      allocatedEvaluator.submitContextAndService(contextConf,
+          Configurations.merge(emServiceConf, traceConf, exampleConf));
       LOG.info((evalCount + 1) + " evaluators active!");
     }
   }
@@ -144,29 +161,108 @@ final class SimpleEMDriver {
 
       if (!prevContextId.compareAndSet(DEFAULT_STRING, taskMessage.getContextId())) {
         // slow evaluator goes through here
-        final String srcId = taskMessage.getContextId();
-        final String destId = prevContextId.get();
-        LOG.info("Move data from " + srcId + " to " + destId);
+        final String slowId = taskMessage.getContextId();
+        final String fastId = prevContextId.get();
+        runMoves(slowId, fastId);
+      } else {
+        // fast evaluator goes this way
+      }
+    }
 
-        try (final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS)) {
+    private void runMoves(final String firstContextId, final String secondContextId) {
 
-          final Set<LongRange> oldIdRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.KEY);
-          final Set<LongRange> sendIdRangeSet = new HashSet<>();
+      String srcId = firstContextId;
+      String destId = secondContextId;
 
-          for (final LongRange idRange : oldIdRangeSet) {
-            final long midId = (idRange.getMaximumLong() + idRange.getMinimumLong()) / 2;
-            final LongRange lowIdRange = new LongRange(idRange.getMinimumLong(), midId);
-            final LongRange highIdRange = new LongRange(midId + 1, idRange.getMaximumLong());
+      for (int i = 0; i < iterations; i++) {
+
+        final Set<LongRange> srcRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.KEY);
+
+        final long numToMove = getNumUnits(srcRangeSet) / 2;
+        LOG.info("Move partitions of total size " + numToMove + " from " + srcId + " to " + destId);
+
+        final Set<LongRange> rangeSetToMove = getRangeSetToMove(srcId, destId, srcRangeSet, numToMove);
+        for (final LongRange range : rangeSetToMove) {
+          LOG.info("- " + range + ", size: " + (range.getMaximumLong() - range.getMinimumLong() + 1));
+        }
+
+        final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS);
+        try {
+          emService.move(SimpleEMTask.KEY, rangeSetToMove, srcId, destId);
+        } finally {
+          moveTraceScope.close();
+        }
+
+        // Swap
+        final String tmpContextId = srcId;
+        srcId = destId;
+        destId = tmpContextId;
+
+        // Sleep except on final iteration
+        if (i != (iterations - 1)) {
+          try {
+            Thread.sleep(periodMillis);
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      }
+    }
+
+    private long getNumUnits(final Set<LongRange> rangeSet) {
+      long numUnits = 0;
+      for (final LongRange idRange : rangeSet) {
+        numUnits += (idRange.getMaximumLong() - idRange.getMinimumLong() + 1);
+      }
+      return numUnits;
+    }
+
+    /**
+     * Get RangeSet to move, and in the process splitting and registering
+     * the partitions across src and dest via the partitionManager.
+     *
+     * For example, to move partitions of total size 2 from a src with a single partition [1, 3],
+     * this method will unregister [1, 3] then split up and register [3, 3] at src and [1, 2] at dst.
+     * It will return the set with [1, 2].
+     */
+    private Set<LongRange> getRangeSetToMove(final String srcId, final String destId,
+                                             final Set<LongRange> currentRangeSet, final long totalToMove) {
+      try (final TraceScope getRangeTraceScope = Trace.startSpan("getRangeSetToMove", Sampler.ALWAYS)) {
+
+        final Set<LongRange> rangeSetToMove = new HashSet<>();
+        long remaining = totalToMove;
+
+        for (final LongRange idRange : currentRangeSet) {
+          final long length = idRange.getMaximumLong() - idRange.getMinimumLong() + 1;
+          final long numToMove = remaining > length ? length : remaining;
+          remaining -= numToMove;
+
+          if (numToMove == length) { // Move the whole range
             partitionManager.remove(srcId, SimpleEMTask.KEY, idRange);
-            partitionManager.registerPartition(srcId, SimpleEMTask.KEY, lowIdRange);
-            partitionManager.registerPartition(destId, SimpleEMTask.KEY, highIdRange);
-            sendIdRangeSet.add(highIdRange);
+            partitionManager.registerPartition(destId, SimpleEMTask.KEY, idRange);
+            rangeSetToMove.add(idRange);
+          } else { // Split the range and move it
+            partitionManager.remove(srcId, SimpleEMTask.KEY, idRange);
+            final long lastIdToKeep = idRange.getMaximumLong() - numToMove;
+            final LongRange rangeToKeep = new LongRange(idRange.getMinimumLong(), lastIdToKeep);
+            final LongRange rangeToMove = new LongRange(lastIdToKeep + 1, idRange.getMaximumLong());
+            partitionManager.registerPartition(srcId, SimpleEMTask.KEY, rangeToKeep);
+            partitionManager.registerPartition(destId, SimpleEMTask.KEY, rangeToMove);
+            rangeSetToMove.add(rangeToMove);
           }
 
-          emService.move(SimpleEMTask.KEY, sendIdRangeSet, taskMessage.getContextId(), prevContextId.get());
+          if (remaining == 0) {
+            break;
+          }
         }
-      } else {
-        // first evaluator goes this way
+
+        if (remaining > 0) {
+          LOG.warning("Tried to move partitions of total size " + totalToMove +
+              ", but only found " + (totalToMove - remaining) + " partitions to move");
+        }
+
+        return rangeSetToMove;
+
       }
     }
   }
