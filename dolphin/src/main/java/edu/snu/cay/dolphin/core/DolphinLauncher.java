@@ -48,7 +48,7 @@ public final class DolphinLauncher {
     this.dolphinParameters = dolphinParameters;
   }
 
-  public final static void run(Configuration dolphinConfig) {
+  public final static void run(final Configuration dolphinConfig) {
     LauncherStatus status;
     try {
       status = Tang.Factory.getTang()

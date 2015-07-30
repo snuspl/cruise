@@ -99,12 +99,42 @@
             </dependency>
           </dependencies>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <version>${maven-checkstyle-plugin.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>com.puppycrawl.tools</groupId>
+              <artifactId>checkstyle</artifactId>
+              <version>${checkstyle.version}</version>
+            </dependency>
+          </dependencies>
+          <configuration>
+            <configLocation>checkstyle.xml</configLocation>
+            <outputFile>${project.build.directory}/checkstyle-errors.xml</outputFile>
+            <includeTestSourceDirectory>true</includeTestSourceDirectory>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>validate</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
         <executions>
           <execution>
             <id>validate</id>

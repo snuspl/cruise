@@ -37,7 +37,7 @@ public final class PageRankConvEuclidean implements PageRankConvCond {
   }
 
   @Override
-  public final boolean checkConvergence(Map<Integer, Double> rank) {
+  public final boolean checkConvergence(final Map<Integer, Double> rank) {
     if (rank.size() == 0) {
       return false;
     }
@@ -48,7 +48,7 @@ public final class PageRankConvEuclidean implements PageRankConvCond {
     }
 
     boolean hasConverged = true;
-    for (Integer key : oldRank.keySet()) {
+    for (final Integer key : oldRank.keySet()) {
       if (Math.abs(oldRank.get(key) - rank.get(key)) > convergenceThreshold) {
         hasConverged = false;
         break;

@@ -199,7 +199,7 @@ final class SimpleEMDriver {
         if (i != (iterations - 1)) {
           try {
             Thread.sleep(periodMillis);
-          } catch (InterruptedException e) {
+          } catch (final InterruptedException e) {
             throw new RuntimeException(e);
           }
         }

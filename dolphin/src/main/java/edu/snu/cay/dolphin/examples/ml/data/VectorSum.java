@@ -56,29 +56,29 @@ public final class VectorSum implements Serializable {
     this(vectorSum.sum, vectorSum.count, true);
   }
 
-  public final void add(VectorSum vectorSum) {
+  public final void add(final VectorSum vectorSum) {
     this.sum = this.sum.plus(vectorSum.sum);
     this.count += vectorSum.count;
   }
 
-  public final void add(Vector vector) {
+  public final void add(final Vector vector) {
     this.sum = this.sum.plus(vector);
     this.count++;
   }
 
-  public final void addSums(Iterable<VectorSum> vectorSums) {
+  public final void addSums(final Iterable<VectorSum> vectorSums) {
     for (final VectorSum vectorSum : vectorSums) {
       this.add(vectorSum);
     }
   }
 
-  public final void addVectors(Iterable<Vector> vectors) {
+  public final void addVectors(final Iterable<Vector> vectors) {
     for (final Vector vector : vectors) {
       this.add(vector);
     }
   }
 
-  public final static VectorSum addAllSums(Iterable<VectorSum> vectorSums) {
+  public final static VectorSum addAllSums(final Iterable<VectorSum> vectorSums) {
     VectorSum totalVectorSum = null;
     for (final VectorSum vectorSum : vectorSums) {
       if (totalVectorSum == null) {
@@ -90,7 +90,7 @@ public final class VectorSum implements Serializable {
     return totalVectorSum;
   }
 
-  public final static VectorSum addAllVectors(Iterable<Vector> vectors) {
+  public final static VectorSum addAllVectors(final Iterable<Vector> vectors) {
     VectorSum vectorSum = null;
     for (final Vector vector : vectors) {
       if (vectorSum == null) {

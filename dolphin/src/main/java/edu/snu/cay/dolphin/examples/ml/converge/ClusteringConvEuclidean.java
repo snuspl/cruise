@@ -42,7 +42,7 @@ public final class ClusteringConvEuclidean implements ClusteringConvCond {
   }
 
   @Override
-  public final boolean checkConvergence(Iterable<Vector> centroids) {
+  public final boolean checkConvergence(final Iterable<Vector> centroids) {
     if (oldCentroids == null) {
       oldCentroids = new ArrayList<>();
 
@@ -57,7 +57,7 @@ public final class ClusteringConvEuclidean implements ClusteringConvCond {
     boolean hasConverged = true;
     int clusterID = 0;
     for (final Vector centroid : centroids) {
-      Vector oldCentroid = oldCentroids.get(clusterID);
+      final Vector oldCentroid = oldCentroids.get(clusterID);
 
       if (hasConverged
           && distance(centroid, oldCentroid) > convergenceThreshold) {
@@ -71,7 +71,7 @@ public final class ClusteringConvEuclidean implements ClusteringConvCond {
     return hasConverged;
   }
 
-  public final double distance(Vector v1, Vector v2) {
+  public final double distance(final Vector v1, final Vector v2) {
     return euclideanDistance.distance(v1, v2);
   }
 }

@@ -47,7 +47,7 @@ public class LogisticRegCmpTask extends UserComputeTask
   public LogisticRegCmpTask(@Parameter(StepSize.class) final double stepSize,
                             final Loss loss,
                             final Regularization regularization,
-                            DataParser<List<Row>> dataParser) {
+                            final DataParser<List<Row>> dataParser) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
@@ -60,7 +60,7 @@ public class LogisticRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public final void run(int iteration) {
+  public final void run(final int iteration) {
 
     // measure accuracy
     posNum = 0;
@@ -85,12 +85,12 @@ public class LogisticRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public final void receiveBroadcastData(int iteration, LinearModel model) {
+  public final void receiveBroadcastData(final int iteration, final LinearModel model) {
     this.model = model;
   }
 
   @Override
-  public LogisticRegSummary sendReduceData(int iteration) {
+  public LogisticRegSummary sendReduceData(final int iteration) {
     return new LogisticRegSummary(this.model, 1, posNum, negNum);
   }
 }

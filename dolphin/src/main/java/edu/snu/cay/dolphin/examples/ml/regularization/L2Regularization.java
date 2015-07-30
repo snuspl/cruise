@@ -29,7 +29,7 @@ public final class L2Regularization implements Regularization {
   private double lambda;
 
   @Inject
-  public L2Regularization(@Parameter(Lambda.class) double lambda) {
+  public L2Regularization(@Parameter(Lambda.class) final double lambda) {
     this.lambda = lambda;
   }
 

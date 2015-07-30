@@ -31,7 +31,7 @@ public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
   }
 
   @Override
-  public byte[] encode(LogisticRegSummary summary) {
+  public byte[] encode(final LogisticRegSummary summary) {
     final LinearModel model = summary.getModel();
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE //count
         + Integer.SIZE // posNum
@@ -58,10 +58,10 @@ public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
   @Override
   public LogisticRegSummary decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-    LinearModel model;
-    int count;
-    int posNum;
-    int negNum;
+    final LinearModel model;
+    final int count;
+    final int posNum;
+    final int negNum;
 
     try (final DataInputStream dais = new DataInputStream(bais)) {
       count = dais.readInt();

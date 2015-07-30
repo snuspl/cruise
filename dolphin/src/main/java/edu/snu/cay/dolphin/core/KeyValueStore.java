@@ -30,12 +30,12 @@ public final class KeyValueStore {
     hashMap = new HashMap<>();
   }
 
-  public <T> void put(Class<? extends Key<T>> key, T value) {
+  public <T> void put(final Class<? extends Key<T>> key, final T value) {
     hashMap.put(key, value);
   }
 
   @SuppressWarnings("unchecked")
-  public <T> T get(Class<? extends Key<T>> key) {
+  public <T> T get(final Class<? extends Key<T>> key) {
     return (T) hashMap.get(key);
   }
 }

@@ -127,7 +127,7 @@ public final class EMMainCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void run(int iteration) {
+  public void run(final int iteration) {
 
     // Compute the shared covariance matrix if necessary
     Matrix covarianceMatrix = null;
@@ -168,18 +168,18 @@ public final class EMMainCtrlTask extends UserControllerTask
   }
 
   @Override
-  public boolean isTerminated(int iteration) {
+  public boolean isTerminated(final int iteration) {
     return clusteringConvergenceCondition.checkConvergence(centroids)
         || (iteration >= maxIterations);
   }
 
   @Override
-  public void receiveReduceData(int iteration, Map<Integer, ClusterStats> data) {
+  public void receiveReduceData(final int iteration, final Map<Integer, ClusterStats> data) {
     clusterStatsMap = data;
   }
 
   @Override
-  public List<ClusterSummary> sendBroadcastData(int iteration) {
+  public List<ClusterSummary> sendBroadcastData(final int iteration) {
     return clusterSummaries;
   }
 
