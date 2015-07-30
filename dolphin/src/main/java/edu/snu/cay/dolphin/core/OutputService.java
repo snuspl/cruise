@@ -74,7 +74,7 @@ public final class OutputService {
 
   private final class ContextStopHandler implements EventHandler<ContextStop> {
     @Override
-    public void onNext(final  ContextStop contextStop) {
+    public void onNext(final ContextStop contextStop) {
       LOG.log(Level.INFO, "Context stopped, close the OutputStreamProvider.");
       try {
         outputStreamProvider.close();

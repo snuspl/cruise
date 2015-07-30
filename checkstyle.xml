@@ -57,14 +57,17 @@
   <module name="NewlineAtEndOfFile"/>
 
   <module name="TreeWalker">
-    <!-- Checks that local variables and method parameters that never have their values changed are declared final. -->
+    <!-- Checks that local variables that never have their values changed are declared final. -->
     <!-- See http://checkstyle.sourceforge.net/config_coding.html#FinalLocalVariable -->
     <!-- This check fails to detect all violations. -->
     <!-- IntelliJ inspections were used to identify and fix undetected violations. -->
     <module name="FinalLocalVariable">
-      <property name="tokens" value="VARIABLE_DEF, PARAMETER_DEF"/>
       <property name="validateEnhancedForLoopVariable" value="true"/>
     </module>
+
+    <!-- Check that parameters for methods, constructors, and catch blocks are final. -->
+    <!-- See http://checkstyle.sourceforge.net/config_misc.html#FinalParameters -->
+    <module name="FinalParameters"/>
   </module>
 
 </module>
