@@ -186,11 +186,8 @@ final class SimpleEMDriver {
           LOG.info("- " + range + ", size: " + (range.getMaximumLong() - range.getMinimumLong() + 1));
         }
 
-        final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS);
-        try {
+        try (final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS)) {
           emService.move(SimpleEMTask.KEY, rangeSetToMove, srcId, destId);
-        } finally {
-          moveTraceScope.close();
         }
 
         // Swap
@@ -227,8 +224,7 @@ final class SimpleEMDriver {
      */
     private Set<LongRange> getRangeSetToMove(final String srcId, final String destId,
                                              final Set<LongRange> currentRangeSet, final long totalToMove) {
-      final TraceScope getRangeTraceScope = Trace.startSpan("getRangeSetToMove", Sampler.ALWAYS);
-      try {
+      try (final TraceScope getRangeTraceScope = Trace.startSpan("getRangeSetToMove", Sampler.ALWAYS)) {
 
         final Set<LongRange> rangeSetToMove = new HashSet<>();
         long remaining = totalToMove;
@@ -264,8 +260,6 @@ final class SimpleEMDriver {
 
         return rangeSetToMove;
 
-      } finally {
-        getRangeTraceScope.close();
       }
     }
   }
