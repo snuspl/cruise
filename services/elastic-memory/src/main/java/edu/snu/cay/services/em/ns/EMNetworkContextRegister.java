@@ -16,12 +16,16 @@ import javax.inject.Inject;
 @Unit
 public final class EMNetworkContextRegister {
 
-  private NetworkConnectionService networkConnectionService;
-  private IdentifierFactory identifierFactory;
+  // TODO: no need for this if networkConnectionService.getMyId() is available
+  private final EMNetworkSetup emNetworkSetup;
+  private final NetworkConnectionService networkConnectionService;
+  private final IdentifierFactory identifierFactory;
 
   @Inject
-  private EMNetworkContextRegister(final NetworkConnectionService networkConnectionService,
+  private EMNetworkContextRegister(final EMNetworkSetup emNetworkSetup,
+                                   final NetworkConnectionService networkConnectionService,
                                    final IdentifierFactory identifierFactory) {
+    this.emNetworkSetup = emNetworkSetup;
     this.networkConnectionService = networkConnectionService;
     this.identifierFactory = identifierFactory;
   }
@@ -30,6 +34,7 @@ public final class EMNetworkContextRegister {
     @Override
     public void onNext(final ContextStart contextStart) {
       networkConnectionService.registerId(identifierFactory.getNewInstance(contextStart.getId()));
+      emNetworkSetup.setMyId(identifierFactory.getNewInstance(contextStart.getId()));
     }
   }
 
@@ -37,6 +42,7 @@ public final class EMNetworkContextRegister {
     @Override
     public void onNext(final ContextStop contextStop) {
       networkConnectionService.unregisterId(identifierFactory.getNewInstance(contextStop.getId()));
+      emNetworkSetup.setMyId(identifierFactory.getNewInstance(contextStop.getId()));
     }
   }
 }

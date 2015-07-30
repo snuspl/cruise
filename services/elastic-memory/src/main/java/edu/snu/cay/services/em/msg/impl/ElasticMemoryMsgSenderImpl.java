@@ -55,6 +55,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private static final String SEND_DATA_MSG = "sendDataMsg";
   private static final String SEND_REGIS_MSG = "sendRegisMsg";
 
+  private final EMNetworkSetup emNetworkSetup;
   private final ConnectionFactory connectionFactory;
   private final IdentifierFactory identifierFactory;
 
@@ -64,6 +65,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private ElasticMemoryMsgSenderImpl(final EMNetworkSetup emNetworkSetup,
                                      final IdentifierFactory identifierFactory,
                                      @Parameter(DriverIdentifier.class) final String driverId) throws NetworkException {
+    this.emNetworkSetup = emNetworkSetup;
     this.identifierFactory = identifierFactory;
     this.connectionFactory = emNetworkSetup.getConnectionFactory();
 
@@ -138,8 +140,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.DataMsg)
-              // TODO: want to do something like: networkConnectionService.getMyId().toString()
-              .setSrcId("UNDEFINED")
+              // TODO: want to instead do: networkConnectionService.getMyId().toString()
+              .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(destId)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
               .setDataMsg(dataMsg)
@@ -173,8 +175,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.RegisMsg)
-              // TODO: want to do something like: networkConnectionService.getMyId().toString()
-              .setSrcId("UNDEFINED")
+              // TODO: want to instead do: networkConnectionService.getMyId().toString()
+              .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(driverId)
               .setRegisMsg(regisMsg)
               .build());

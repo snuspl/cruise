@@ -19,6 +19,8 @@ import javax.inject.Inject;
 
 public final class EMNetworkSetup {
   private final ConnectionFactory connectionFactory;
+  // TODO: no need for this if networkConnectionService.getMyId() is available
+  private Identifier myId;
 
   @Inject
   private EMNetworkSetup(
@@ -36,5 +38,15 @@ public final class EMNetworkSetup {
 
   public ConnectionFactory getConnectionFactory() {
     return connectionFactory;
+  }
+
+  // TODO: no need for this if networkConnectionService.getMyId() is available
+  public void setMyId(final Identifier myId) {
+    this.myId = myId;
+  }
+
+  // TODO: no need for this if networkConnectionService.getMyId() is available
+  public Identifier getMyId() {
+    return myId;
   }
 }

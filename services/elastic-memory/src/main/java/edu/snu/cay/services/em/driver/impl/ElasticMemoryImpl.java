@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.services.em.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
@@ -45,6 +46,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
                             @Parameter(DriverIdentifier.class) final String driverId,
                             final ElasticMemoryMsgSender sender,
+                            // TODO: no need for this if networkConnectionService.getMyId() is available
+                            final EMNetworkSetup emNetworkSetup,
                             final NetworkConnectionService networkConnectionService,
                             final IdentifierFactory identifierFactory,
                             final HTrace hTrace) {
@@ -52,6 +55,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     this.requestor = requestor;
     this.sender = sender;
     networkConnectionService.registerId(identifierFactory.getNewInstance(driverId));
+    // TODO: no need for this if networkConnectionService.getMyId() is available
+    emNetworkSetup.setMyId(identifierFactory.getNewInstance(driverId));
   }
 
   @Override
