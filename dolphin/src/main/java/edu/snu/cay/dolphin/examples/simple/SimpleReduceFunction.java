@@ -25,7 +25,7 @@ public class SimpleReduceFunction implements Reduce.ReduceFunction<Integer> {
   }
 
   @Override
-  public final Integer apply(Iterable<Integer> dataList) {
+  public final Integer apply(final Iterable<Integer> dataList) {
     Integer sum = 0;
     for (final Integer data : dataList) {
       sum += data;

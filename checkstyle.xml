@@ -48,11 +48,11 @@
 -->
 
 <module name="Checker">
-  <!-- Checks that each Java package has a Javadoc file, package-info.java, used for commenting.     -->
+  <!-- Checks that each Java package has a Javadoc file, package-info.java, used for commenting. -->
   <!-- See http://checkstyle.sourceforge.net/config_javadoc.html#JavadocPackage -->
   <module name="JavadocPackage"/>
 
-  <!-- Checks whether files end with a new line.                        -->
+  <!-- Checks whether files end with a new line. -->
   <!-- See http://checkstyle.sourceforge.net/config_misc.html#NewlineAtEndOfFile -->
   <module name="NewlineAtEndOfFile"/>
 
@@ -94,9 +94,6 @@
     <!-- Checks for Naming Conventions.                  -->
     <!-- See http://checkstyle.sf.net/config_naming.html -->
     <module name="ConstantName">
-      <property name="severity" value="warning"/>
-    </module>
-    <module name="LocalFinalVariableName">
       <property name="severity" value="warning"/>
     </module>
     <module name="LocalVariableName">
@@ -257,8 +254,14 @@
     <module name="SimplifyBooleanReturn">
       <property name="severity" value="warning"/>
     </module>
-    <module name="FinalParameters">
-      <property name="severity" value="warning"/>
+
+    <!-- Checks that local variables and method parameters that never have their values changed are declared final. -->
+    <!-- See http://checkstyle.sourceforge.net/config_coding.html#FinalLocalVariable -->
+    <!-- This check fails to detect all violations. -->
+    <!-- IntelliJ inspections were used to identify and fix undetected violations. -->
+    <module name="FinalLocalVariable">
+      <property name="tokens" value="VARIABLE_DEF, PARAMETER_DEF"/>
+      <property name="validateEnhancedForLoopVariable" value="true"/>
     </module>
 
     <!-- Checks for class design                         -->

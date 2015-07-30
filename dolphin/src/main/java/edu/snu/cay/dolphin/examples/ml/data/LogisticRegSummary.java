@@ -21,14 +21,14 @@ public class LogisticRegSummary {
   private int posNum;
   private int negNum;
 
-  public LogisticRegSummary(LinearModel model, int count, int posNum, int negNum) {
+  public LogisticRegSummary(final LinearModel model, final int count, final int posNum, final int negNum) {
     this.model = model;
     this.count = count;
     this.posNum = posNum;
     this.negNum = negNum;
   }
 
-  public void plus(LogisticRegSummary summary) {
+  public void plus(final LogisticRegSummary summary) {
     this.model.setParameters(this.model.getParameters().plus(summary.getModel().getParameters()));
     this.count += summary.count;
     this.posNum += summary.posNum;

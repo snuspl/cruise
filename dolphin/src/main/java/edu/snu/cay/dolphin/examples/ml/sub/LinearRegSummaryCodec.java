@@ -31,7 +31,7 @@ public class LinearRegSummaryCodec implements Codec<LinearRegSummary> {
   }
 
   @Override
-  public byte[] encode(LinearRegSummary sgdSummary) {
+  public byte[] encode(final LinearRegSummary sgdSummary) {
     final LinearModel model = sgdSummary.getModel();
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE // count
         + Double.SIZE // loss
@@ -57,9 +57,9 @@ public class LinearRegSummaryCodec implements Codec<LinearRegSummary> {
   @Override
   public LinearRegSummary decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-    LinearModel model;
-    int count;
-    double loss;
+    final LinearModel model;
+    final int count;
+    final double loss;
 
     try (final DataInputStream dais = new DataInputStream(bais)) {
       count = dais.readInt();

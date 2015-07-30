@@ -98,7 +98,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void run(int iteration) {
+  public void run(final int iteration) {
     for (final Integer clusterID : pointSum.keySet()) {
       final VectorSum vectorSum = pointSum.get(clusterID);
       final Vector newCentroid = vectorSum.computeVectorMean();
@@ -111,18 +111,18 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   }
 
   @Override
-  public boolean isTerminated(int iteration) {
+  public boolean isTerminated(final int iteration) {
     return clusteringConvergenceCondition.checkConvergence(centroids)
         || (iteration >= maxIterations);
   }
 
   @Override
-  public List<Vector> sendBroadcastData(int iteration) {
+  public List<Vector> sendBroadcastData(final int iteration) {
     return centroids;
   }
 
   @Override
-  public void receiveReduceData(int iteration, Map<Integer, VectorSum> pointSum) {
+  public void receiveReduceData(final int iteration, final Map<Integer, VectorSum> pointSum) {
     this.pointSum = pointSum;
   }
 

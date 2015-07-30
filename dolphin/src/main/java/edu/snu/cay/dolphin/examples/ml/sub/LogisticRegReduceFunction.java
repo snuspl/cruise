@@ -27,7 +27,7 @@ public class LogisticRegReduceFunction implements Reduce.ReduceFunction<Logistic
   }
 
   @Override
-  public final LogisticRegSummary apply(Iterable<LogisticRegSummary> summaryList) {
+  public final LogisticRegSummary apply(final Iterable<LogisticRegSummary> summaryList) {
     LogisticRegSummary reducedSummary = null;
     for (final LogisticRegSummary summary : summaryList) {
       if (reducedSummary==null) {

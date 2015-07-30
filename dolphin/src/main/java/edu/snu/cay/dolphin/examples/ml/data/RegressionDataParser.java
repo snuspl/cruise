@@ -82,7 +82,7 @@ public final class RegressionDataParser implements DataParser<List<Row>> {
         return;
       }
 
-      double output;
+      final double output;
       final Vector feature = new DenseVector(split.length);
       try {
         output = Double.valueOf(split[dimension]);

@@ -24,7 +24,7 @@ import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 
 public class PageRankREEF {
-  public final static void main(String[] args) throws Exception {
+  public final static void main(final String[] args) throws Exception {
     DolphinLauncher.run(
         Configurations.merge(
             DolphinConfiguration.CONF(args, PageRankParameters.getCommandLine()),

@@ -34,7 +34,7 @@ public final class MapOfIntVSumReduceFunction implements Reduce.ReduceFunction<M
   }
 
   @Override
-  public Map<Integer, VectorSum> apply(Iterable<Map<Integer, VectorSum>> elements) {
+  public Map<Integer, VectorSum> apply(final Iterable<Map<Integer, VectorSum>> elements) {
     final Map<Integer, VectorSum> resultMap = new HashMap<>();
     for (final Map<Integer, VectorSum> map : elements) {
       for (final Integer integer : map.keySet()) {

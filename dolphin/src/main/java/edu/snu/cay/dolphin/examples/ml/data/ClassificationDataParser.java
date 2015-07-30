@@ -84,7 +84,7 @@ public final class ClassificationDataParser implements DataParser<List<Row>> {
         return;
       }
 
-      int output;
+      final int output;
       final Vector feature = new DenseVector(split.length);
       try {
         output = Integer.valueOf(split[dimension]);

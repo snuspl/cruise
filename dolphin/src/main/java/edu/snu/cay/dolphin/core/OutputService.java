@@ -45,7 +45,7 @@ public final class OutputService {
   private final OutputStreamProvider outputStreamProvider;
 
   @Inject
-  private OutputService(OutputStreamProvider outputStreamProvider) {
+  private OutputService(final OutputStreamProvider outputStreamProvider) {
     this.outputStreamProvider = outputStreamProvider;
   }
 
@@ -56,10 +56,10 @@ public final class OutputService {
    * @return
    */
   public static Configuration getServiceConfiguration(final String outputDir, final boolean onLocal) {
-    Class<? extends OutputStreamProvider> outputStreamProviderClass
+    final Class<? extends OutputStreamProvider> outputStreamProviderClass
         = onLocal ? OutputStreamProviderLocal.class : OutputStreamProviderHDFS.class;
 
-    Configuration partialServiceConf = ServiceConfiguration.CONF
+    final Configuration partialServiceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, outputStreamProviderClass)
         .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
         .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
@@ -74,11 +74,11 @@ public final class OutputService {
 
   private final class ContextStopHandler implements EventHandler<ContextStop> {
     @Override
-    public void onNext(ContextStop contextStop) {
+    public void onNext(final  ContextStop contextStop) {
       LOG.log(Level.INFO, "Context stopped, close the OutputStreamProvider.");
       try {
         outputStreamProvider.close();
-      } catch (IOException e) {
+      } catch (final IOException e) {
         throw new RuntimeException(e);
       }
     }
@@ -86,7 +86,7 @@ public final class OutputService {
 
   private final class TaskStartHandler implements EventHandler<TaskStart> {
     @Override
-    public void onNext(TaskStart taskStart) {
+    public void onNext(final TaskStart taskStart) {
       LOG.log(Level.INFO, String.format("Task %s started, create the OutputStreamProvider.", taskStart.getId()));
       outputStreamProvider.setTaskId(taskStart.getId());
     }

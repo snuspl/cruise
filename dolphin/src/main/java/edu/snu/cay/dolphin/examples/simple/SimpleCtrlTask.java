@@ -30,22 +30,22 @@ public final class SimpleCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void run(int iteration) {
+  public void run(final int iteration) {
     System.out.println(String.format("Number of Tasks Printing Message: %d", count));
   }
 
   @Override
-  public boolean isTerminated(int iteration) {
+  public boolean isTerminated(final int iteration) {
     return iteration >= 10;
   }
 
   @Override
-  public String sendBroadcastData(int iteration) {
+  public String sendBroadcastData(final int iteration) {
     return String.format("Hello, REEF!: %d", iteration);
   }
 
   @Override
-  public void receiveReduceData(int iteration, Integer data) {
+  public void receiveReduceData(final int iteration, final Integer data) {
     this.count = data;
   }
 }

@@ -19,7 +19,7 @@ package edu.snu.cay.dolphin.core;
  * Exception used by DataParser.
  */
 public final class ParseException extends Exception {
-  public ParseException(String msg) {
+  public ParseException(final String msg) {
     super(msg);
   }
 }

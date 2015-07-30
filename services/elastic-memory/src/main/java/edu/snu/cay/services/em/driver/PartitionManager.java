@@ -33,7 +33,7 @@ public final class PartitionManager {
 
   private Comparator<LongRange> longRangeComparator = new Comparator<LongRange>() {
     @Override
-    public int compare(LongRange o1, LongRange o2) {
+    public int compare(final LongRange o1, final LongRange o2) {
       return (int) (o1.getMinimumLong() - o2.getMinimumLong());
     }
   };

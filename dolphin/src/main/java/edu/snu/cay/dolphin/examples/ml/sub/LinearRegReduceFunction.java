@@ -27,7 +27,7 @@ public class LinearRegReduceFunction implements Reduce.ReduceFunction<LinearRegS
   }
 
   @Override
-  public final LinearRegSummary apply(Iterable<LinearRegSummary> summaryList) {
+  public final LinearRegSummary apply(final Iterable<LinearRegSummary> summaryList) {
     LinearRegSummary reducedSummary = null;
     for (final LinearRegSummary summary : summaryList) {
       if (reducedSummary==null) {

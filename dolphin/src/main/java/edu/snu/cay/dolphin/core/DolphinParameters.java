@@ -61,7 +61,7 @@ public final class DolphinParameters {
    * @return
    */
   public final Configuration getDriverConf() {
-    Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(EvaluatorNum.class, String.valueOf(evalNum))
         .bindNamedParameter(OutputDir.class, processOutputDir(outputDir, onLocal))
         .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))

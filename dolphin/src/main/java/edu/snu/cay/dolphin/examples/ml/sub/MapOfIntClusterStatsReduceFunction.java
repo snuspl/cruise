@@ -34,7 +34,7 @@ public final class MapOfIntClusterStatsReduceFunction implements Reduce.ReduceFu
   }
 
   @Override
-  public Map<Integer, ClusterStats> apply(Iterable<Map<Integer, ClusterStats>> elements) {
+  public Map<Integer, ClusterStats> apply(final Iterable<Map<Integer, ClusterStats>> elements) {
     final Map<Integer, ClusterStats> resultMap = new HashMap<>();
     for (final Map<Integer, ClusterStats> map : elements) {
       for (final Integer id : map.keySet()) {

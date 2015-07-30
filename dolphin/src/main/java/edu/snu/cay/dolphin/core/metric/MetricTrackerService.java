@@ -63,7 +63,7 @@ public final class MetricTrackerService {
    * @return context configuration to which a context message source is added
    */
   public static Configuration getContextConfiguration(final Configuration previousConfiguration) {
-    Configuration contextConf = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration contextConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(ContextMessageSources.class, MetricManager.class)
         .build();
 
