@@ -50,9 +50,7 @@
 <module name="Checker">
   <!-- Checks that each Java package has a Javadoc file, package-info.java, used for commenting.     -->
   <!-- See http://checkstyle.sourceforge.net/config_javadoc.html#JavadocPackage -->
-  <module name="JavadocPackage">
-    <property name="severity" value="warning"/>
-  </module>
+  <module name="JavadocPackage"/>
 
   <!-- Checks whether files end with a new line.                        -->
   <!-- See http://checkstyle.sourceforge.net/config_misc.html#NewlineAtEndOfFile -->
