@@ -58,7 +58,7 @@ public class InsertableMetricTracker implements MetricTracker {
   }
 
   @Override
-  public void close() throws Exception {
+  public synchronized void close() throws Exception {
     // Do nothing.
   }
 
