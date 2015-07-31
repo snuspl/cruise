@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +19,7 @@ package edu.snu.cay.dolphin.core;
  * Exception used by DataParser.
  */
 public final class ParseException extends Exception {
-  public ParseException(String msg) {
+  public ParseException(final String msg) {
     super(msg);
   }
 }

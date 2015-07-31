@@ -82,13 +82,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Override
   public void move(final String dataClassName, final Set<LongRange> idRangeSet, final String srcEvalId, final String destEvalId) {
-    final TraceScope traceScope = Trace.startSpan(MOVE);
-    try {
-
+    try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
       sender.sendCtrlMsg(srcEvalId, dataClassName, destEvalId, idRangeSet, TraceInfo.fromSpan(traceScope.getSpan()));
-
-    } finally {
-      traceScope.close();
     }
   }
 

@@ -90,8 +90,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   @Override
   public void sendCtrlMsg(final String destId, final String dataClassName, final String targetEvalId,
                           final Set<LongRange> idRangeSet, final TraceInfo parentTraceInfo) {
-    final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo);
-    try {
+    try (final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
           new Object[]{destId, dataClassName, targetEvalId, idRangeSet});
@@ -117,17 +116,13 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
           new Object[]{destId, dataClassName, targetEvalId});
-
-    } finally {
-      sendCtrlMsgScope.close();
     }
   }
 
   @Override
   public void sendDataMsg(final String destId, final String dataClassName, final List<UnitIdPair> unitIdPairList,
                           final TraceInfo parentTraceInfo) {
-    final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo);
-    try {
+    try (final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
           new Object[]{destId, dataClassName});
@@ -149,17 +144,13 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
           new Object[]{destId, dataClassName});
-
-    } finally {
-      sendDataMsgScope.close();
     }
   }
 
   @Override
   public void sendRegisMsg(final String dataClassName, final long unitStartId, final long unitEndId,
                            final TraceInfo parentTraceInfo) {
-    final TraceScope sendRegisMsgScope = Trace.startSpan(SEND_REGIS_MSG, parentTraceInfo);
-    try {
+    try (final TraceScope sendRegisMsgScope = Trace.startSpan(SEND_REGIS_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRegisMsg",
           new Object[]{dataClassName, unitStartId, unitEndId});
@@ -183,9 +174,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRegisMsg",
           new Object[]{dataClassName, unitStartId, unitEndId});
-
-    } finally {
-      sendRegisMsgScope.close();
     }
   }
 }

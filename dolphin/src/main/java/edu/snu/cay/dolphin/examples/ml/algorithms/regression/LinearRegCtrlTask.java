@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,23 +55,23 @@ public class LinearRegCtrlTask extends UserControllerTask
   }
   
   @Override
-  public final void run(int iteration) {
+  public final void run(final int iteration) {
     LOG.log(Level.INFO, "{0}-th iteration loss sum: {1}, new model: {2}",
         new Object[] { iteration, lossSum, model });
   }
   
   @Override
-  public final LinearModel sendBroadcastData(int iteration) {
+  public final LinearModel sendBroadcastData(final int iteration) {
     return model;
   }
   
   @Override
-  public final boolean isTerminated(int iteration) {
+  public final boolean isTerminated(final int iteration) {
     return convergeCondition.checkConvergence(model) || iteration >= maxIter;
   }
 
   @Override
-  public void receiveReduceData(int iteration, LinearRegSummary sgdSummary) {
+  public void receiveReduceData(final int iteration, final LinearRegSummary sgdSummary) {
     this.lossSum = sgdSummary.getLoss();
     this.model = new LinearModel(sgdSummary.getModel().getParameters()
         .times(1.0 / sgdSummary.getCount()));

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,7 @@ public final class OutputStreamProviderHDFS implements OutputStreamProvider {
   }
 
   @Override
-  public DataOutputStream create(String name) throws IOException {
+  public DataOutputStream create(final String name) throws IOException {
     final String directoryPath = outputPath + Path.SEPARATOR + name;
     if (!fs.exists(new Path(directoryPath))) {
       fs.mkdirs(new Path(directoryPath));
@@ -67,7 +67,7 @@ public final class OutputStreamProviderHDFS implements OutputStreamProvider {
   }
 
   @Override
-  public void setTaskId(String taskId) {
+  public void setTaskId(final String taskId) {
     this.taskId = taskId;
   }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@ public final class L2Regularization implements Regularization {
   private double lambda;
 
   @Inject
-  public L2Regularization(@Parameter(Lambda.class) double lambda) {
+  public L2Regularization(@Parameter(Lambda.class) final double lambda) {
     this.lambda = lambda;
   }
 

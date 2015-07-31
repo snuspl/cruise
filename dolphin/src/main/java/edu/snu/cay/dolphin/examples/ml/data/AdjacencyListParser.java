@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,7 +69,7 @@ public final class AdjacencyListParser implements DataParser<Map<Integer, List<I
       final String[] split = text.split("\\s+");
       final List<Integer> outdegree = new ArrayList<>(split.length - 1);
       try {
-        int nodeId = Integer.valueOf(split[0]);
+        final int nodeId = Integer.valueOf(split[0]);
         for (int i = 1; i < split.length; i++) {
           outdegree.add(Integer.valueOf(split[i]));
         }

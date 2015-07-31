@@ -86,8 +86,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    * Puts the data message contents into own memory store.
    */
   private void onDataMsg(final AvroElasticMemoryMessage msg) {
-    final TraceScope onDataMsgScope = Trace.startSpan(ON_DATA_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()));
-    try {
+    try (final TraceScope onDataMsgScope = Trace.startSpan(ON_DATA_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final DataMsg dataMsg = msg.getDataMsg();
       final String dataClassName = dataMsg.getDataClassName().toString();
@@ -99,9 +98,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
         final long id = unitIdPair.getId();
         memoryStore.getElasticStore().put(dataClassName, id, codec.decode(data));
       }
-
-    } finally {
-      onDataMsgScope.close();
     }
   }
 
@@ -110,8 +106,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    * send the data message to the correct evaluator.
    */
   private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
-    final TraceScope onCtrlMsgScope = Trace.startSpan(ON_CTRL_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()));
-    try {
+    try (final TraceScope onCtrlMsgScope = Trace.startSpan(ON_CTRL_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final CtrlMsg ctrlMsg = msg.getCtrlMsg();
       final String key = ctrlMsg.getDataClassName().toString();
@@ -144,9 +139,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList,
           TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
-
-    } finally {
-      onCtrlMsgScope.close();
     }
   }
 }

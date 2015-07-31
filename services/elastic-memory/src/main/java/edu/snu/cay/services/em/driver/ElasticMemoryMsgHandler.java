@@ -65,17 +65,13 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
   }
 
   private void onRegisMsg(final AvroElasticMemoryMessage msg) {
-    final TraceScope onRegisMsgScope = Trace.startSpan(ON_REGIS_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()));
-    try {
+    try (final TraceScope onRegisMsgScope = Trace.startSpan(ON_REGIS_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final RegisMsg regisMsg = msg.getRegisMsg();
 
       // register a partition for the evaluator as specified in the message
       partitionManager.registerPartition(msg.getSrcId().toString(),
           regisMsg.getDataClassName().toString(), regisMsg.getIdRange().getMin(), regisMsg.getIdRange().getMax());
-
-    } finally {
-      onRegisMsgScope.close();
     }
   }
 }

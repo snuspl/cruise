@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
     final int mapSize = map.size();
     int dimension = 0;
     if (mapSize > 0) {
-      for (ClusterStats entry: map.values()) {
+      for (final ClusterStats entry: map.values()) {
         dimension = entry.pointSum.size();
         break;
       }
@@ -60,7 +60,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
       daos.writeInt(dimension);
       for (final Integer id : map.keySet()) {
         daos.writeInt(id);
-        ClusterStats clusterSummary = map.get(id);
+        final ClusterStats clusterSummary = map.get(id);
         daos.writeDouble(clusterSummary.probSum);
         for (int j = 0; j < clusterSummary.pointSum.size(); j++) {
           daos.writeDouble(clusterSummary.pointSum.get(j));
