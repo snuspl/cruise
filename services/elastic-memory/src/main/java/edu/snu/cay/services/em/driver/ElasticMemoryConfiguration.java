@@ -32,6 +32,7 @@ import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
@@ -68,7 +69,9 @@ public final class ElasticMemoryConfiguration {
    * @return configuration that should be submitted with a DriverConfiguration
    */
   public static Configuration getDriverConfiguration() {
-    return getNetworkConfiguration();
+    return getNetworkConfigurationBuilder()
+        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.ElasticMemoryMsgHandler.class)
+        .build();
   }
 
   /**
@@ -93,7 +96,9 @@ public final class ElasticMemoryConfiguration {
    * @return service configuration that should be passed along with a ContextConfiguration
    */
   public Configuration getServiceConfiguration() {
-    final Configuration networkConf = getNetworkConfiguration();
+    final Configuration networkConf = getNetworkConfigurationBuilder()
+        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.evaluator.ElasticMemoryMsgHandler.class)
+        .build();
 
     final Configuration nameClientConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
@@ -112,11 +117,9 @@ public final class ElasticMemoryConfiguration {
     return Configurations.merge(networkConf, nameClientConf, serviceConf, otherConf);
   }
 
-  private static Configuration getNetworkConfiguration() {
+  private static JavaConfigurationBuilder getNetworkConfigurationBuilder() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(EMCodec.class, ElasticMemoryMsgCodec.class)
-        .bindNamedParameter(EMMessageHandler.class, ElasticMemoryMsgHandler.class)
-        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-        .build();
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class);
   }
 }
