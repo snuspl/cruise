@@ -21,9 +21,10 @@ import java.util.Map;
 
 /**
  * Metric tracker that accepts metrics via put(key, value).
- * Each metric is identified with the key.
+ * Metrics begin to be collected from start() and cleared on stop().
+ * So users should make sure to use unique keys between start() and stop().
  *
- * This class is thread-safe because multiple threads can access it simultaneously.
+ * This class is thread-safe, so multiple threads can access it simultaneously.
  */
 public class InsertableMetricTracker implements MetricTracker {
 
