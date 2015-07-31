@@ -38,22 +38,6 @@ public final class ComputeTask implements Task {
   public final static String TASK_ID_PREFIX = "CmpTask";
   private final static Logger LOG = Logger.getLogger(ComputeTask.class.getName());
 
-  /**
-   * Keys to get/set the custom metrics in the ComputeTask.
-   */
-  public static final String KEY_METRIC_SEND_DATA_START =
-          "METRIC_COMPUTE_TASK_SEND_DATA_START";
-  public static final String KEY_METRIC_SEND_DATA_END =
-          "METRIC_COMPUTE_TASK_SEND_DATA_END";
-  public static final String KEY_METRIC_USER_COMPUTE_TASK_START =
-          "METRIC_COMPUTE_TASK_USER_COMPUTE_TASK_START";
-  public static final String KEY_METRIC_USER_COMPUTE_TASK_END =
-          "METRIC_COMPUTE_TASK_USER_COMPUTE_TASK_END";
-  public static final String KEY_METRIC_RECEIVE_DATA_START =
-          "METRIC_COMPUTE_TASK_RECEIVE_DATA_START";
-  public static final String KEY_METRIC_RECEIVE_DATA_END =
-          "METRIC_COMPUTE_TASK_RECEIVE_DATA_END";
-
   private final String taskId;
   private final UserComputeTask userComputeTask;
   private final CommunicationGroupClient commGroup;
@@ -102,13 +86,13 @@ public final class ComputeTask implements Task {
   }
 
   private void runUserComputeTask(final int iteration) throws Exception {
-    insertableMetricTracker.put(KEY_METRIC_USER_COMPUTE_TASK_START, System.currentTimeMillis());
+    insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START, System.currentTimeMillis());
     userComputeTask.run(iteration);
-    insertableMetricTracker.put(KEY_METRIC_USER_COMPUTE_TASK_END, System.currentTimeMillis());
+    insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END, System.currentTimeMillis());
   }
 
   private void receiveData(final int iteration) throws Exception {
-    insertableMetricTracker.put(KEY_METRIC_RECEIVE_DATA_START, System.currentTimeMillis());
+    insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_RECEIVE_DATA_START, System.currentTimeMillis());
     if (userComputeTask.isBroadcastUsed()) {
       ((DataBroadcastReceiver)userComputeTask).receiveBroadcastData(iteration,
           commGroup.getBroadcastReceiver(DataBroadcast.class).receive());
@@ -117,11 +101,11 @@ public final class ComputeTask implements Task {
       ((DataScatterReceiver)userComputeTask).receiveScatterData(iteration,
           commGroup.getScatterReceiver(DataScatter.class).receive());
     }
-    insertableMetricTracker.put(KEY_METRIC_RECEIVE_DATA_END, System.currentTimeMillis());
+    insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_RECEIVE_DATA_END, System.currentTimeMillis());
   }
 
   private void sendData(final int iteration) throws Exception {
-    insertableMetricTracker.put(KEY_METRIC_SEND_DATA_START, System.currentTimeMillis());
+    insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_SEND_DATA_START, System.currentTimeMillis());
     if (userComputeTask.isGatherUsed()) {
       commGroup.getGatherSender(DataGather.class).send(
           ((DataGatherSender)userComputeTask).sendGatherData(iteration));
@@ -130,7 +114,7 @@ public final class ComputeTask implements Task {
       commGroup.getReduceSender(DataReduce.class).send(
           ((DataReduceSender)userComputeTask).sendReduceData(iteration));
     }
-    insertableMetricTracker.put(KEY_METRIC_SEND_DATA_END, System.currentTimeMillis());
+    insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_SEND_DATA_END, System.currentTimeMillis());
   }
 
   private boolean isTerminated() throws Exception {
