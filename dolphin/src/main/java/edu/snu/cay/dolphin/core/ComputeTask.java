@@ -45,10 +45,10 @@ public final class ComputeTask implements Task {
           "METRIC_COMPUTE_TASK_SEND_DATA_START";
   public static final String KEY_METRIC_SEND_DATA_END =
           "METRIC_COMPUTE_TASK_SEND_DATA_END";
-  public static final String KEY_METRIC_COMPUTE_START =
-          "METRIC_COMPUTE_TASK_COMPUTE_START";
-  public static final String KEY_METRIC_COMPUTE_END =
-          "METRIC_COMPUTE_TASK_COMPUTE_END";
+  public static final String KEY_METRIC_USER_COMPUTE_TASK_START =
+          "METRIC_COMPUTE_TASK_USER_COMPUTE_TASK_START";
+  public static final String KEY_METRIC_USER_COMPUTE_TASK_END =
+          "METRIC_COMPUTE_TASK_USER_COMPUTE_TASK_END";
   public static final String KEY_METRIC_RECEIVE_DATA_START =
           "METRIC_COMPUTE_TASK_RECEIVE_DATA_START";
   public static final String KEY_METRIC_RECEIVE_DATA_END =
@@ -102,9 +102,9 @@ public final class ComputeTask implements Task {
   }
 
   private void runUserComputeTask(final int iteration) throws Exception {
-    insertableMetricTracker.put(KEY_METRIC_COMPUTE_START, System.currentTimeMillis());
+    insertableMetricTracker.put(KEY_METRIC_USER_COMPUTE_TASK_START, System.currentTimeMillis());
     userComputeTask.run(iteration);
-    insertableMetricTracker.put(KEY_METRIC_COMPUTE_END, System.currentTimeMillis());
+    insertableMetricTracker.put(KEY_METRIC_USER_COMPUTE_TASK_END, System.currentTimeMillis());
   }
 
   private void receiveData(final int iteration) throws Exception {
