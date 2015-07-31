@@ -20,7 +20,7 @@ package edu.snu.cay.services.shuffle.utils;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
-import edu.snu.cay.services.shuffle.task.Shuffle;
+import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
@@ -69,20 +69,23 @@ public class ShuffleDescriptionSerializer {
   /**
    * Return serialized Configuration with certain Shuffle type.
    * It returns Optional.empty if the shuffleDescription does not have
-   * the taskId as a sender or a receiver.
+   * the evaluatorId as a sender or a receiver.
    *
    * @param shuffleClass a type of Shuffle
    * @param shuffleDescription a shuffle description to serialize
-   * @param taskId a task identifier
+   * @param evaluatorId an identifier of a node
    * @return serialized configuration
    */
   public Optional<Configuration> serialize(
-      final Class<? extends Shuffle> shuffleClass, final ShuffleDescription shuffleDescription, final String taskId) {
-    if (!shuffleDescription.getSenderIdList().contains(taskId) &&
-        !shuffleDescription.getReceiverIdList().contains(taskId)) {
+      final Class<? extends Shuffle> shuffleClass,
+      final ShuffleDescription shuffleDescription,
+      final String evaluatorId) {
+    if (!shuffleDescription.getSenderIdList().contains(evaluatorId) &&
+        !shuffleDescription.getReceiverIdList().contains(evaluatorId)) {
       return Optional.empty();
     }
 
     return Optional.of(serialize(shuffleClass, shuffleDescription));
   }
+
 }

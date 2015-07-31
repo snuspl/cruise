@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.shuffle.example.simple;
 
+import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
+import edu.snu.cay.services.shuffle.driver.StaticShuffleManager;
 import edu.snu.cay.services.shuffle.utils.NameResolverWrapper;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -37,8 +39,8 @@ import java.util.logging.Logger;
 /**
  * Simple message exchanging example using shuffle service.
  *
- * n tasks exchange tuples using the key grouping strategy. Because all tuples that are sent from one task to
- * another task are chunked into one network message, each task is blocked until exactly n messages arrive from
+ * n tasks exchange tuples using the key grouping strategy. Because all tuples that are sent from one evaluator to
+ * another evaluator are chunked into one network message, each evaluator is blocked until exactly n messages arrive from
  * n tasks including itself.
  * (Tasks send at least an empty network message to wake the other tasks)
  */
@@ -71,7 +73,11 @@ public final class MessageExchangeREEF {
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, MessageExchangeDriver.AllocatedHandler.class)
         .build();
 
-    return Configurations.merge(taskNumberConf, driverConf);
+    final Configuration shuffleConf = ShuffleDriverConfiguration.CONF
+        .set(ShuffleDriverConfiguration.SHUFFLE_MANAGER_CLASS_NAME, StaticShuffleManager.class.getName())
+        .build();
+
+    return Configurations.merge(taskNumberConf, driverConf, shuffleConf);
   }
 
   public static void main(final String[] args) throws Exception {

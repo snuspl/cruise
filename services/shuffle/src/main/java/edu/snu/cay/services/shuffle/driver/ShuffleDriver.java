@@ -22,34 +22,32 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
  * Driver-side shuffle controller.
- * A ShuffleDescription and a ShuffleManager class who will handle the shuffle are
- * registered through this class.
+ * Users can register a ShuffleDescription and retrieve context,
+ * task configurations for shuffle components in evaluators through this class.
  */
 @DriverSide
 @DefaultImplementation(ShuffleDriverImpl.class)
 public interface ShuffleDriver {
 
   /**
-   * Register a shuffle which will be handled by a ShuffleManager of managerClass type.
+   * Register a shuffle which will be handled by a ShuffleManager.
    *
-   * @param shuffleDescription shuffle description
-   * @param managerClass class of the ShuffleManager
-   * @return the registered manager
+   * @param shuffleDescription a shuffle description
+   * @return the ShuffleManager which will handle the registered shuffle.
    */
-  <K extends ShuffleManager> K registerShuffle(
-      ShuffleDescription shuffleDescription, Class<K> managerClass);
+  <K extends ShuffleManager> K registerShuffle(ShuffleDescription shuffleDescription);
 
   /**
-   * @return context configuration for shuffle service components in tasks
+   * @return context configuration for shuffle service components in evaluators
    */
   Configuration getContextConfiguration();
 
   /**
-   * Return task configuration contains all information about shuffles where the task is included.
+   * Return task configuration contains all information about shuffles where the taskId is included.
    * The returned configuration is used to instantiating Shuffles in the tasks.
    *
    * @param taskId task identifier
-   * @return task configuration for taskId
+   * @return evaluator configuration for taskId
    */
   Configuration getTaskConfiguration(String taskId);
 }

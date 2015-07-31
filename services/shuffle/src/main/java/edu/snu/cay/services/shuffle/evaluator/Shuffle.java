@@ -13,24 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.evaluator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
-import edu.snu.cay.services.shuffle.task.operator.ShuffleReceiver;
-import edu.snu.cay.services.shuffle.task.operator.ShuffleSender;
-import org.apache.reef.annotations.audience.TaskSide;
+import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
+import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 
 /**
- * Task side interface which communicates with corresponding ShuffleManager in driver,
+ * Evaluator side interface which communicates with corresponding ShuffleManager in driver,
  * and also provides shuffle operators to users.
  */
-@TaskSide
 public interface Shuffle {
 
   /**
    * Return the ShuffleReceiver for the shuffle.
    *
-   * It throws RuntimeException if the current task is not a receiver for the shuffle.
+   * It throws RuntimeException if the current evaluator is not a receiver for the shuffle.
    *
    * @return shuffle receiver
    */
@@ -39,7 +37,7 @@ public interface Shuffle {
   /**
    * Return the ShuffleSender for the shuffle named shuffleName.
    *
-   * It throws RuntimeException if the current task is not a sender for the shuffle.
+   * It throws RuntimeException if the current evaluator is not a sender for the shuffle.
    *
    * @return shuffle sender
    */

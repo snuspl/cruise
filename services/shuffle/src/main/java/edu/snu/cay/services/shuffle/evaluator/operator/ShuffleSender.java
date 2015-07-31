@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task.operator;
+package edu.snu.cay.services.shuffle.evaluator.operator;
 
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import org.apache.reef.io.Tuple;
@@ -43,7 +43,7 @@ public interface ShuffleSender<K, V> extends ShuffleOperator<K, V> {
   /**
    * Send a tupleList to selected receivers using ShuffleStrategy of the shuffle.
    *
-   * Each tuple in the tupleList can be sent to many receivers, so the tuples to the same task are
+   * Each tuple in the tupleList can be sent to many receivers, so the tuples to the same evaluator are
    * chunked into one ShuffleTupleMessage.
    *
    * @param tupleList a tuple list
@@ -52,21 +52,21 @@ public interface ShuffleSender<K, V> extends ShuffleOperator<K, V> {
   List<String> sendTuple(List<Tuple<K, V>> tupleList);
 
   /**
-   * Send a tuple to the specific task
+   * Send a tuple to the specific receiver
    *
-   * @param taskId task id
+   * @param receiverId a receiver id
    * @param tuple a tuple
    */
-  void sendTupleTo(String taskId, Tuple<K, V> tuple);
+  void sendTupleTo(String receiverId, Tuple<K, V> tuple);
 
   /**
-   * Send a tuple list to the specific task. Note that this method does not use ShuffleStrategy to select
-   * receivers and send all of tuples in tuple list to the same task.
+   * Send a tuple list to the specific receiver. Note that this method does not use ShuffleStrategy to select
+   * receivers and send all of tuples in tuple list to the same receiver.
    *
-   * @param taskId task id
+   * @param receiverId a receiver id
    * @param tupleList a tuple list
    */
-  void sendTupleTo(String taskId, List<Tuple<K, V>> tupleList);
+  void sendTupleTo(String receiverId, List<Tuple<K, V>> tupleList);
 
   /**
    * Register a link listener to listen to whether the messages successfully sent through this sender.

@@ -16,10 +16,10 @@
 package edu.snu.cay.services.shuffle.example.simple;
 
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import edu.snu.cay.services.shuffle.task.Shuffle;
-import edu.snu.cay.services.shuffle.task.ShuffleProvider;
-import edu.snu.cay.services.shuffle.task.operator.ShuffleReceiver;
-import edu.snu.cay.services.shuffle.task.operator.ShuffleSender;
+import edu.snu.cay.services.shuffle.evaluator.Shuffle;
+import edu.snu.cay.services.shuffle.evaluator.ShuffleProvider;
+import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
+import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.task.Task;
@@ -80,7 +80,7 @@ public final class MessageExchangeTask implements Task {
     }
 
     countDownLatch.await();
-    LOG.log(Level.INFO, "{0} messages are arrived. The task will be closed.", taskNumber);
+    LOG.log(Level.INFO, "{0} messages are arrived. The evaluator will be closed.", taskNumber);
     return null;
   }
 
@@ -94,8 +94,8 @@ public final class MessageExchangeTask implements Task {
   }
 
   /**
-   * The number of tuples is set to be less than the actual number of task number to test the case where
-   * the current task sends an empty message to some tasks since there is no tuple to send to those tasks.
+   * The number of tuples is set to be less than the actual number of evaluator number to test the case where
+   * the current evaluator sends an empty message to some tasks since there is no tuple to send to those tasks.
    */
   private int getTupleNumber() {
     return taskNumber * 3 / 5;
@@ -135,7 +135,7 @@ public final class MessageExchangeTask implements Task {
       }
 
       if (receivedIdSet.contains(message.getSrcId())) {
-        throw new RuntimeException("Only one message from one task is allowed.");
+        throw new RuntimeException("Only one message from one evaluator is allowed.");
       } else {
         receivedIdSet.add(message.getSrcId());
         countDownLatch.countDown();

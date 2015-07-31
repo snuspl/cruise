@@ -13,8 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.services.shuffle.evaluator.operator;
+
+import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
+
+import java.util.List;
 
 /**
- * Task side shuffle components.
+ * Operator for the shuffle.
  */
-package edu.snu.cay.services.shuffle.task;
+public interface ShuffleOperator<K, V> {
+
+  /**
+   * @return ShuffleStrategy instance for the operator
+   */
+  ShuffleStrategy<K> getShuffleStrategy();
+
+  /**
+   * Return selected receiver id list using the ShuffleStrategy among the receiver list
+   *
+   * @param key a key instance to select corresponding receivers
+   * @return selected receiver id list
+   */
+  List<String> getSelectedReceiverIdList(K key);
+
+}

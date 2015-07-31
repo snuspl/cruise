@@ -15,6 +15,6 @@
  */
 
 /**
- * Shuffle operators.
+ * Evaluator side shuffle components.
  */
-package edu.snu.cay.services.shuffle.task.operator;
+package edu.snu.cay.services.shuffle.evaluator;

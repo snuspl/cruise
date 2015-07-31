@@ -17,7 +17,6 @@ package edu.snu.cay.services.shuffle.example.simple;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
-import edu.snu.cay.services.shuffle.driver.StaticShuffleManager;
 import edu.snu.cay.services.shuffle.strategy.KeyShuffleStrategy;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -78,10 +77,10 @@ public final class MessageExchangeDriver {
     this.shuffleDriver = shuffleDriver;
     this.localAddressProvider = localAddressProvider;
     this.nameServer = nameServer;
-    registerShuffleGroup();
+    registerShuffle();
   }
 
-  private void registerShuffleGroup() {
+  private void registerShuffle() {
     shuffleDriver.registerShuffle(
         ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
             .setSenderIdList(taskIds)
@@ -89,8 +88,7 @@ public final class MessageExchangeDriver {
             .setKeyCodec(IntegerCodec.class)
             .setValueCodec(IntegerCodec.class)
             .setShuffleStrategy(KeyShuffleStrategy.class)
-            .build(),
-        StaticShuffleManager.class
+            .build()
     );
   }
 

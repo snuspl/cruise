@@ -16,7 +16,7 @@
 package edu.snu.cay.services.shuffle.driver;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
-import edu.snu.cay.services.shuffle.task.StaticShuffle;
+import edu.snu.cay.services.shuffle.evaluator.StaticShuffle;
 import edu.snu.cay.services.shuffle.utils.ShuffleDescriptionSerializer;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
@@ -45,8 +45,8 @@ public final class StaticShuffleManager implements ShuffleManager {
   }
 
   @Override
-  public Optional<Configuration> getShuffleConfigurationForTask(final String taskId) {
-    return descriptionSerializer.serialize(StaticShuffle.class, shuffleDescription, taskId);
+  public Optional<Configuration> getShuffleConfiguration(final String evaluatorId) {
+    return descriptionSerializer.serialize(StaticShuffle.class, shuffleDescription, evaluatorId);
   }
 
   @Override

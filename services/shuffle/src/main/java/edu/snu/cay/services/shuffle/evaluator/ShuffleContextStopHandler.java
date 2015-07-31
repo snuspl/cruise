@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.evaluator;
 
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.evaluator.context.events.ContextStop;

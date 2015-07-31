@@ -21,19 +21,19 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.util.Optional;
 
 /**
- * Driver-side interface which communicates with corresponding Shuffle instances in tasks.
+ * Driver-side interface which communicates with corresponding Shuffle instances in evaluators.
  */
 @DriverSide
 public interface ShuffleManager {
 
   /**
-   * Return a configuration of the shuffle description for the task named taskId.
-   * It returns Optional.empty if the taskId is not included in any shuffles.
+   * Return a configuration of the shuffle description for the evaluator named evaluatorId.
+   * It returns Optional.empty if the evaluatorId is not included in any shuffles.
    *
-   * @param taskId task identifier
-   * @return optional shuffle group configuration for task
+   * @param evaluatorId the id of the evaluator
+   * @return optional shuffle configuration for the node
    */
-  Optional<Configuration> getShuffleConfigurationForTask(String taskId);
+  Optional<Configuration> getShuffleConfiguration(String evaluatorId);
 
   /**
    * @return a shuffle description handled by the ShuffleManager

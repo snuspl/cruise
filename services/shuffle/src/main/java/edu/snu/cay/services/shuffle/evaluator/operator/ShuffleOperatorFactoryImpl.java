@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task.operator;
+package edu.snu.cay.services.shuffle.evaluator.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageCodec;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
-import edu.snu.cay.services.shuffle.task.TupleCodec;
+import edu.snu.cay.services.shuffle.evaluator.TupleCodec;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.tang.*;
@@ -34,6 +34,8 @@ import javax.inject.Inject;
  */
 public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
 
+  // TODO: currently the identifier for the evaluator is same as the task identifier.
+  // It have to be changed for the case Shuffles are injected in context configuration.
   private final String currentTaskId;
   private final ShuffleDescription shuffleDescription;
   private final ShuffleTupleMessageCodec shuffleTupleCodec;

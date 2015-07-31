@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task.operator;
+package edu.snu.cay.services.shuffle.evaluator.operator;
 
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -26,7 +26,7 @@ public interface ShuffleOperatorFactory {
   /**
    * Create a shuffle receiver and register a tuple codec.
    * It returns the cached receiver if the receiver was already created and throws runtime exception
-   * if the task is not a receiver of the shuffle.
+   * if the evaluator is not a receiver of the shuffle.
    *
    * @return created or cached shuffle receiver
    */
@@ -35,7 +35,7 @@ public interface ShuffleOperatorFactory {
   /**
    * Create a shuffle sender and register a tuple codec.
    * It returns the cached sender if the sender was already created and throws runtime exception
-   * if the task is not a sender of the shuffle.
+   * if the evaluator is not a sender of the shuffle.
    *
    * @return created or cached shuffle sender
    */

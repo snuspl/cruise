@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task.operator;
+package edu.snu.cay.services.shuffle.evaluator.operator;
 
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import org.apache.reef.io.Tuple;
@@ -46,23 +46,23 @@ public interface ShuffleTupleMessageGenerator<K, V> {
 
   /**
    * Create list of (String, ShuffleTupleMessage) pairs with a tuple. The key of the
-   * returned tuple is the receiver task id and the value is a merged ShuffleTupleMessage
-   * including all tuples to the same task. The tuples are classified by the ShuffleStrategy
+   * returned tuple is the receiver evaluator id and the value is a merged ShuffleTupleMessage
+   * including all tuples to the same evaluator. The tuples are classified by the ShuffleStrategy
    * of the shuffle.
    *
    * @param tuple a tuple
-   * @return the list of (task identifier, ShuffleTupleMessage) tuples
+   * @return the list of (evaluator identifier, ShuffleTupleMessage) tuples
    */
   List<Tuple<String, ShuffleTupleMessage<K, V>>> createTupleMessageAndReceiverList(Tuple<K, V> tuple);
 
   /**
    * Create list of (String, ShuffleTupleMessage) pairs with a tuple list. The key of the
-   * returned tuple is the receiver task id and the value is a merged ShuffleTupleMessage
-   * including all tuples to the same task. The tuples are classified by the ShuffleStrategy
+   * returned tuple is the receiver evaluator id and the value is a merged ShuffleTupleMessage
+   * including all tuples to the same evaluator. The tuples are classified by the ShuffleStrategy
    * of the shuffle.
    *
    * @param tupleList a tuple list
-   * @return the list of (task identifier, ShuffleTupleMessage) tuples
+   * @return the list of (evaluator identifier, ShuffleTupleMessage) tuples
    */
   List<Tuple<String, ShuffleTupleMessage<K, V>>> createTupleMessageAndReceiverList(List<Tuple<K, V>> tupleList);
 

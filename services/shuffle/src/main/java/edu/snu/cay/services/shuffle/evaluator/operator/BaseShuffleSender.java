@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.task.operator;
+package edu.snu.cay.services.shuffle.evaluator.operator;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleLinkListener;
@@ -77,16 +77,16 @@ public final class BaseShuffleSender<K, V> implements ShuffleSender<K, V> {
   }
 
   @Override
-  public void sendTupleTo(final String taskId, final Tuple<K, V> tuple) {
+  public void sendTupleTo(final String receiverId, final Tuple<K, V> tuple) {
     final List<Tuple<String, ShuffleTupleMessage<K, V>>> shuffleMessageTupleList = new ArrayList<>(1);
-    shuffleMessageTupleList.add(new Tuple<>(taskId, tupleMessageGenerator.createTupleMessage(tuple)));
+    shuffleMessageTupleList.add(new Tuple<>(receiverId, tupleMessageGenerator.createTupleMessage(tuple)));
     sendShuffleMessageTupleList(shuffleMessageTupleList);
   }
 
   @Override
-  public void sendTupleTo(final String taskId, final List<Tuple<K, V>> tupleList) {
+  public void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList) {
     final List<Tuple<String, ShuffleTupleMessage<K, V>>> shuffleMessageTupleList = new ArrayList<>(1);
-    shuffleMessageTupleList.add(new Tuple<>(taskId, tupleMessageGenerator.createTupleMessage(tupleList)));
+    shuffleMessageTupleList.add(new Tuple<>(receiverId, tupleMessageGenerator.createTupleMessage(tupleList)));
     sendShuffleMessageTupleList(shuffleMessageTupleList);
   }
 

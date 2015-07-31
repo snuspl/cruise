@@ -16,24 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.cay.services.shuffle.task;
+package edu.snu.cay.services.shuffle.driver;
 
-import org.apache.reef.annotations.audience.TaskSide;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import edu.snu.cay.services.shuffle.params.ShuffleManagerClassName;
+import org.apache.reef.tang.formats.ConfigurationModule;
+import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
+import org.apache.reef.tang.formats.RequiredParameter;
 
 /**
- * Task-side interface for providing Shuffles.
- *
- * Shuffles in the provider are automatically injected if the task configuration
- * was merged with proper configuration from ShuffleDriver.
+ * Driver-side configuration module for Shuffle Service.
  */
-@TaskSide
-@DefaultImplementation(ShuffleProviderImpl.class)
-public interface ShuffleProvider {
+public final class ShuffleDriverConfiguration extends ConfigurationModuleBuilder {
 
   /**
-   * @param shuffleName name of the shuffle
-   * @return the Shuffle instance named shuffleName
+   * The name of shuffle manager class.
    */
-  Shuffle getShuffle(String shuffleName);
+  public static final RequiredParameter<String> SHUFFLE_MANAGER_CLASS_NAME = new RequiredParameter<>();
+
+  public static final ConfigurationModule CONF = new ShuffleDriverConfiguration()
+      .bindNamedParameter(ShuffleManagerClassName.class, SHUFFLE_MANAGER_CLASS_NAME)
+      .build();
 }

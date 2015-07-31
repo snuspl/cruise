@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * Description of a shuffle containing key, value, shuffle strategy classes
- * and sender, receiver task identifiers.
+ * and sender, receiver identifiers.
  */
 @DefaultImplementation(ShuffleDescriptionImpl.class)
 public interface ShuffleDescription {
@@ -49,12 +49,12 @@ public interface ShuffleDescription {
   Class<? extends Codec> getValueCodecClass();
 
   /**
-   * @return list of sender task identifiers
+   * @return list of sender identifiers
    */
   List<String> getSenderIdList();
 
   /**
-   * @return list of sender task identifiers
+   * @return list of receiver identifiers
    */
   List<String> getReceiverIdList();
 

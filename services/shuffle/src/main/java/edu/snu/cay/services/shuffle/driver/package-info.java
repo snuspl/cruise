@@ -15,6 +15,6 @@
  */
 
 /**
- * Driver side shuffle components.
+ * Driver-side shuffle components.
  */
 package edu.snu.cay.services.shuffle.driver;
