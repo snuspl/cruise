@@ -32,5 +32,4 @@ public interface MetricTracker extends AutoCloseable {
    * @return key and value of metrics
    */
   Map<String, Double> stop();
-
 }
