@@ -30,7 +30,7 @@ import java.util.TreeMap;
  *
  * This class is not thread-safe.
  * Although this class uses synchronization methods,
- * these are for synchronization between the thread using MetricTrackerMemory
+ * these are for synchronization between the thread using MemoryMetricTracker
  * and the Daemon thread created in the constructor.
  * This class assumes that its instance is used by one thread.
  */
