@@ -16,11 +16,16 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 
 import edu.snu.cay.dolphin.core.StageInfo;
+import edu.snu.cay.dolphin.core.metric.GCMetricTracker;
+import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
+import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.sub.VectorListCodec;
 
 public class ClusteringPreStageBuilder {
   public static StageInfo build() {
     return StageInfo.newBuilder(ClusteringPreCmpTask.class, ClusteringPreCtrlTask.class, ClusteringPreCommGroup.class)
-        .setGather(VectorListCodec.class).build();
+        .setGather(VectorListCodec.class)
+        .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
+        .build();
   }
 }
