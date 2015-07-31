@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.regression;
 
 import edu.snu.cay.dolphin.core.StageInfo;
+import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
 import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.data.RegressionDataParser;
 import edu.snu.cay.dolphin.examples.ml.parameters.CommunicationGroup;
@@ -44,7 +45,7 @@ public final class LinearRegJobInfo implements UserJobInfo {
         StageInfo.newBuilder(LinearRegCmpTask.class, LinearRegCtrlTask.class, CommunicationGroup.class)
             .setBroadcast(LinearModelCodec.class)
             .setReduce(LinearRegSummaryCodec.class, LinearRegReduceFunction.class)
-            .addMetricTrackers(TimeMetricTracker.class, GCMetricTracker.class)
+            .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
             .build());
 
     return stageInfoList;

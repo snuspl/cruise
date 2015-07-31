@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em;
 
+import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
 import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.StageInfo;
@@ -48,7 +49,7 @@ public final class EMJobInfo implements UserJobInfo {
         StageInfo.newBuilder(EMMainCmpTask.class, EMMainCtrlTask.class, EMMainCommGroup.class)
             .setBroadcast(ClusterSummaryListCodec.class)
             .setReduce(MapOfIntClusterStatsCodec.class, MapOfIntClusterStatsReduceFunction.class)
-            .addMetricTrackers(TimeMetricTracker.class, GCMetricTracker.class)
+            .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
             .build());
 
     return stageInfoList;

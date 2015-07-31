@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.StageInfo;
 import edu.snu.cay.dolphin.core.UserJobInfo;
 import edu.snu.cay.dolphin.core.metric.GCMetricTracker;
+import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
 import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreStageBuilder;
 import edu.snu.cay.dolphin.examples.ml.sub.MapOfIntVSumCodec;
@@ -48,7 +49,7 @@ public final class KMeansJobInfo implements UserJobInfo {
         StageInfo.newBuilder(KMeansMainCmpTask.class, KMeansMainCtrlTask.class, KMeansMainCommGroup.class)
             .setBroadcast(CentroidListCodec.class)
             .setReduce(MapOfIntVSumCodec.class, MapOfIntVSumReduceFunction.class)
-            .addMetricTrackers(TimeMetricTracker.class, GCMetricTracker.class)
+            .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
             .build());
 
     return stageInfoList;

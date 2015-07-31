@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
+import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
 import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.data.ClassificationDataParser;
 import edu.snu.cay.dolphin.examples.ml.parameters.CommunicationGroup;
@@ -44,7 +45,7 @@ public final class LogisticRegJobInfo implements UserJobInfo {
         StageInfo.newBuilder(LogisticRegCmpTask.class, LogisticRegCtrlTask.class, CommunicationGroup.class)
             .setBroadcast(LinearModelCodec.class)
             .setReduce(LogisticRegSummaryCodec.class, LogisticRegReduceFunction.class)
-            .addMetricTrackers(TimeMetricTracker.class, GCMetricTracker.class)
+            .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
             .build());
 
     return stageInfoList;

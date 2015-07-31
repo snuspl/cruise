@@ -340,8 +340,6 @@ public final class DolphinDriver {
 
     //Set metric trackers
     if (stageInfo.getMetricTrackerClassSet() != null) {
-      // MetricTrackerInterval can be used without users' configuration.
-      dolphinTaskConfBuilder.bindSetEntry(MetricTrackers.class, InsertableMetricTracker.class);
       for (final Class<? extends MetricTracker> metricTrackerClass
           : stageInfo.getMetricTrackerClassSet()) {
         dolphinTaskConfBuilder.bindSetEntry(MetricTrackers.class, metricTrackerClass);

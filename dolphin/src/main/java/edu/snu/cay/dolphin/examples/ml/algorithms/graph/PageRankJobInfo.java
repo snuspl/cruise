@@ -15,6 +15,9 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.graph;
 
+import edu.snu.cay.dolphin.core.metric.GCMetricTracker;
+import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
+import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.parameters.CommunicationGroup;
 import edu.snu.cay.dolphin.examples.ml.sub.PageRankSummaryCodec;
 import edu.snu.cay.dolphin.core.DataParser;
@@ -42,6 +45,7 @@ public final class PageRankJobInfo implements UserJobInfo {
         StageInfo.newBuilder(PageRankCmpTask.class, PageRankCtrlTask.class, CommunicationGroup.class)
             .setBroadcast(PageRankCodec.class)
             .setReduce(PageRankSummaryCodec.class, PageRankReduceFunction.class)
+            .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
             .build());
 
     return stageInfoList;
