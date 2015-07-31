@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@ public class PageRankReduceFunction implements Reduce.ReduceFunction<PageRankSum
   }
 
   @Override
-  public final PageRankSummary apply(Iterable<PageRankSummary> summaryList) {
+  public final PageRankSummary apply(final Iterable<PageRankSummary> summaryList) {
     PageRankSummary reducedSummary = null;
     for (final PageRankSummary summary : summaryList) {
       if (reducedSummary == null) {

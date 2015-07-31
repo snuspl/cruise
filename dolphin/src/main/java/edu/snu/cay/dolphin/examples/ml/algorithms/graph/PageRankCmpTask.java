@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,7 +81,7 @@ public class PageRankCmpTask extends UserComputeTask
   }
 
   @Override
-  public final void run(int iteration) {
+  public final void run(final int iteration) {
     increment.clear();
     for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
       final Integer nodeId = entry.getKey();
@@ -117,7 +117,7 @@ public class PageRankCmpTask extends UserComputeTask
    * @param rank
    */
   @Override
-  public final void receiveBroadcastData(int iteration, Map<Integer, Double> rank) {
+  public final void receiveBroadcastData(final int iteration, final Map<Integer, Double> rank) {
     if (iteration < 1) {
       return;
     }
@@ -130,7 +130,7 @@ public class PageRankCmpTask extends UserComputeTask
    * @return
    */
   @Override
-  public PageRankSummary sendReduceData(int iteration) {
+  public PageRankSummary sendReduceData(final int iteration) {
     return new PageRankSummary(this.increment);
   }
 }

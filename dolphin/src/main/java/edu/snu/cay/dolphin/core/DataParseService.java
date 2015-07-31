@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,12 +51,12 @@ public final class DataParseService {
    * @param dataParser parse function to exploit
    */
   @Inject
-  private DataParseService(DataParser dataParser) {
+  private DataParseService(final DataParser dataParser) {
     this.dataParser = dataParser;
   }
 
-  public static Configuration getServiceConfiguration(Class<? extends DataParser> dataParseClass) {
-    Configuration partialServiceConf = ServiceConfiguration.CONF
+  public static Configuration getServiceConfiguration(final Class<? extends DataParser> dataParseClass) {
+    final Configuration partialServiceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, dataParseClass)
         .set(ServiceConfiguration.ON_CONTEXT_STARTED, ContextStartHandler.class)
         .build();
@@ -68,7 +68,7 @@ public final class DataParseService {
 
   private final class ContextStartHandler implements EventHandler<ContextStart> {
     @Override
-    public void onNext(ContextStart contextStart) {
+    public void onNext(final ContextStart contextStart) {
       LOG.log(Level.INFO, "Context started, asking parser to parse.");
       dataParser.parse();
     }

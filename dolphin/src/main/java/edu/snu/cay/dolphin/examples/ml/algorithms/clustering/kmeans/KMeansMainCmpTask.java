@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +75,7 @@ public final class KMeansMainCmpTask extends UserComputeTask
   }
 
   @Override
-  public void run(int iteration) {
+  public void run(final int iteration) {
 
     // Compute the nearest cluster centroid for each point
     pointSum = new HashMap<>();
@@ -83,7 +83,7 @@ public final class KMeansMainCmpTask extends UserComputeTask
       double nearestClusterDist = Double.MAX_VALUE;
       int nearestClusterId = -1;
       int clusterId = 0;
-      for (Vector centroid : centroids) {
+      for (final Vector centroid : centroids) {
         final double distance = distanceMeasure.distance(centroid, vector);
         if (nearestClusterDist > distance) {
           nearestClusterDist = distance;
@@ -102,12 +102,12 @@ public final class KMeansMainCmpTask extends UserComputeTask
   }
 
   @Override
-  public void receiveBroadcastData(int iteration, List<Vector> centroids) {
+  public void receiveBroadcastData(final int iteration, final List<Vector> centroids) {
     this.centroids = centroids;
   }
 
   @Override
-  public Map<Integer, VectorSum> sendReduceData(int iteration) {
+  public Map<Integer, VectorSum> sendReduceData(final int iteration) {
     return pointSum;
   }
 }

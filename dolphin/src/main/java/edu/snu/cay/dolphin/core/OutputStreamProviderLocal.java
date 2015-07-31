@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,12 +40,12 @@ public final class OutputStreamProviderLocal implements OutputStreamProvider {
 
   @Inject
   private OutputStreamProviderLocal(
-      @Parameter(OutputService.OutputPath.class) String outputPath) {
+      @Parameter(OutputService.OutputPath.class) final String outputPath) {
     this.outputPath = outputPath;
   }
 
   @Override
-  public DataOutputStream create(String name) throws IOException {
+  public DataOutputStream create(final String name) throws IOException {
     final String directoryPath = outputPath + File.separator + name;
     final File directory = new File(directoryPath);
 
@@ -64,7 +64,7 @@ public final class OutputStreamProviderLocal implements OutputStreamProvider {
   }
 
   @Override
-  public void setTaskId(String taskId) {
+  public void setTaskId(final String taskId) {
     this.taskId = taskId;
   }
 }

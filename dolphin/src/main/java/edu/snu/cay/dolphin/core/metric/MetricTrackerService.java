@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,7 +63,7 @@ public final class MetricTrackerService {
    * @return context configuration to which a context message source is added
    */
   public static Configuration getContextConfiguration(final Configuration previousConfiguration) {
-    Configuration contextConf = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration contextConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(ContextMessageSources.class, MetricTrackerManager.class)
         .build();
 
