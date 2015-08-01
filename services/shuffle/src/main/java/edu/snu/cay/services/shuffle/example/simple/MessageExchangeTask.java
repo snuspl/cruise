@@ -119,11 +119,18 @@ public final class MessageExchangeTask implements Task {
 
   private final class TupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage<Integer, Integer>>> {
 
+    /**
+     * It throws a RuntimeException if more than one message arrives from the same evaluator
+     * since only one message from one evaluator is allowed.
+     * The waiting task thread will be notified when all expected messages arrives.
+     *
+     * @param message a message from other nodes
+     */
     @Override
     public void onNext(final Message<ShuffleTupleMessage<Integer, Integer>> message) {
       for (final ShuffleTupleMessage<Integer, Integer> tupleMessage : message.getData()) {
         if (tupleMessage.size() == 0) {
-          LOG.log(Level.INFO, "An empty shuffle message is arrived from {0}.", message.getSrcId());
+          LOG.log(Level.INFO, "An empty shuffle message arrived from {0}.", message.getSrcId());
         } else {
           LOG.log(Level.INFO, "A shuffle message with size {0} is arrived from {1}.",
               new Object[]{tupleMessage.size(), message.getSrcId()});

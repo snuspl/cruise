@@ -25,7 +25,7 @@ import java.util.List;
 public final class KeyShuffleStrategy<K> implements ShuffleStrategy<K> {
 
   @Inject
-  public KeyShuffleStrategy() {
+  private KeyShuffleStrategy() {
   }
 
   /**

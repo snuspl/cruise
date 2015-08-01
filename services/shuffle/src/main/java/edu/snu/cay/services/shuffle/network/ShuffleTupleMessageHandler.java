@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Event handler for ShuffleTupleMessage.
  *
  * It routes messages to respective event handler registered with shuffle name.
- * If there is no registered event handler for some ShuffleTupleMessage, the NullPointerException
+ * If there is no registered event handler for some shuffle, the NullPointerException
  * will be thrown.
  */
 public class ShuffleTupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage>> {

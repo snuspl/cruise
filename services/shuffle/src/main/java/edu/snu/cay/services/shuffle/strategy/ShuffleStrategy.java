@@ -18,7 +18,7 @@ package edu.snu.cay.services.shuffle.strategy;
 import java.util.List;
 
 /**
- * Shuffling strategy for selecting receivers based on key information.
+ * Shuffling strategy for selecting receivers based on a key instance.
  *
  * @param <K> key type
  */

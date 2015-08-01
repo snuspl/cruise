@@ -15,6 +15,23 @@
  */
 
 /**
- * Shuffle Service.
+ * Shuffle Service on REEF.
+ *
+ * Shuffle is a data movement abstraction where senders (mappers) transfer key/value
+ * tuples to receivers (reducers) that are selected by a specific shuffling strategy.
+ *
+ * Shuffles can be registered to edu.snu.cay.services.shuffle.ShuffleDriver in the driver with
+ * a ShuffleDescription that contains basic structure of shuffles containing sender ids, receiver
+ * ids, key/value  codec and shuffling strategy class.
+ *
+ * A serialized shuffle description for a certain identifier is serialized and transferred from driver
+ * to evaluator using Tang injector
+ *
+ * The edu.snu.cay.services.shuffle.ShuffleManager in the driver controls shuffle components, such as
+ * edu.snu.cay.services.shuffle.ShuffleOperator and edu.snu.cay.services.shuffle.Shuffle.
+ * Users can get ShuffleOperator in evaluator-side code and send/receive tuples through the operators.
+ *
+ * Currently the Shuffle Service only supports base push-based Shuffling.
+ * We will add more types of shuffle implementations atop of the push primitive.
  */
 package edu.snu.cay.services.shuffle;

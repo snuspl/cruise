@@ -20,7 +20,7 @@ import org.apache.reef.io.Tuple;
 import java.util.List;
 
 /**
- * Shuffle Tuple message which is transferred by NetworkConnectionService.
+ * Shuffle Tuple message containing tuples and the shuffle name.
  */
 public final class ShuffleTupleMessage<K, V> {
 

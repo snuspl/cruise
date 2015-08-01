@@ -16,7 +16,6 @@
 package edu.snu.cay.services.shuffle.driver;
 
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
-import edu.snu.cay.services.shuffle.params.ShuffleManagerClassName;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleContextStartHandler;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleContextStopHandler;
@@ -46,7 +45,7 @@ final class ShuffleDriverImpl implements ShuffleDriver {
    */
   @Inject
   private ShuffleDriverImpl(
-      @Parameter(ShuffleManagerClassName.class) String shuffleManagerClassName,
+      @Parameter(ShuffleParameters.ShuffleManagerClassName.class) String shuffleManagerClassName,
       final ConfigurationSerializer confSerializer) {
     try {
       this.shuffleManagerClass = (Class<? extends ShuffleManager>) Class.forName(shuffleManagerClassName);

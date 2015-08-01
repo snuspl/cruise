@@ -15,6 +15,6 @@
  */
 
 /**
- * Descriptions about shuffles.
+ * Descriptions of shuffles.
  */
 package edu.snu.cay.services.shuffle.description;

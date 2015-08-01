@@ -15,6 +15,6 @@
  */
 
 /**
- * NetworkConnectionService components for shuffle service.
+ * Shuffle service components for using NetworkConnectionService.
  */
 package edu.snu.cay.services.shuffle.network;

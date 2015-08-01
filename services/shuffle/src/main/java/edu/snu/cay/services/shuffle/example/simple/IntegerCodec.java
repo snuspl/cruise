@@ -25,7 +25,7 @@ import javax.inject.Inject;
 public class IntegerCodec implements Codec<Integer> {
 
   @Inject
-  public IntegerCodec() {
+  private IntegerCodec() {
   }
 
   @Override

@@ -16,5 +16,7 @@
 
 /**
  * Shuffling strategy for each shuffle.
+ *
+ * The strategy decides where the tuple should be sent based on a key instance.
  */
 package edu.snu.cay.services.shuffle.strategy;

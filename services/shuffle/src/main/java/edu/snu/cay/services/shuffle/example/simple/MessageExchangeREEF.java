@@ -17,10 +17,10 @@ package edu.snu.cay.services.shuffle.example.simple;
 
 import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
 import edu.snu.cay.services.shuffle.driver.StaticShuffleManager;
-import edu.snu.cay.services.shuffle.utils.NameResolverWrapper;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.io.network.naming.LocalNameResolverImpl;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
@@ -46,11 +46,14 @@ import java.util.logging.Logger;
  */
 public final class MessageExchangeREEF {
 
-  public static final Logger LOG = Logger.getLogger(MessageExchangeREEF.class.getName());
+  private static final Logger LOG = Logger.getLogger(MessageExchangeREEF.class.getName());
 
-  public static final int MAX_NUMBER_OF_EVALUATORS = 15;
+  /**
+   * The upper limit on the number of Evaluators that the local resourcemanager will hand out concurrently.
+   */
+  private static final int MAX_NUMBER_OF_EVALUATORS = 15;
 
-  public static Configuration getRuntimeConfiguration(final boolean isLocal) {
+  private static Configuration getRuntimeConfiguration(final boolean isLocal) {
     if (isLocal) {
       return LocalRuntimeConfiguration.CONF
           .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, MAX_NUMBER_OF_EVALUATORS)
@@ -60,10 +63,10 @@ public final class MessageExchangeREEF {
     }
   }
 
-  public static Configuration getDriverConfiguration(final int taskNumber) {
+  private static Configuration getDriverConfiguration(final int taskNumber) {
     final Configuration taskNumberConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(MessageExchangeREEF.TaskNumber.class, taskNumber + "")
-        .bindImplementation(NameResolver.class, NameResolverWrapper.class)
+        .bindImplementation(NameResolver.class, LocalNameResolverImpl.class)
         .build();
 
     final Configuration driverConf = DriverConfiguration.CONF
@@ -80,6 +83,12 @@ public final class MessageExchangeREEF {
     return Configurations.merge(taskNumberConf, driverConf, shuffleConf);
   }
 
+  /**
+   * Start MessageExchangeREEF job.
+   *
+   * @param args command line parameters.
+   * @throws Exception an unexpected exception
+   */
   public static void main(final String[] args) throws Exception {
     final CommandLine commandLine = new CommandLine();
     commandLine.registerShortNameOfClass(Local.class);
@@ -101,14 +110,23 @@ public final class MessageExchangeREEF {
   private MessageExchangeREEF() {
   }
 
+  /**
+   * Command line parameter = true to run locally, or false to run on YARN.
+   */
   @NamedParameter(short_name = "local", default_value = "true")
   public static final class Local implements Name<Boolean> {
   }
 
+  /**
+   * The running tasks number it the example.
+   */
   @NamedParameter(short_name = "task_num", default_value = "5")
   public static final class TaskNumber implements Name<Integer> {
   }
 
+  /**
+   * Number of milliseconds to wait for the job to complete.
+   */
   @NamedParameter(short_name = "timeout", default_value = "30000")
   public static final class Timeout implements Name<Long> {
   }

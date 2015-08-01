@@ -24,7 +24,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 public interface ShuffleOperatorFactory {
 
   /**
-   * Create a shuffle receiver and register a tuple codec.
+   * Create a shuffle receiver and register a tuple codec for the receiver.
    * It returns the cached receiver if the receiver was already created and throws runtime exception
    * if the evaluator is not a receiver of the shuffle.
    *
@@ -33,7 +33,7 @@ public interface ShuffleOperatorFactory {
   <K, V> ShuffleReceiver<K, V> newShuffleReceiver();
 
   /**
-   * Create a shuffle sender and register a tuple codec.
+   * Create a shuffle sender and register a tuple codec for the sender.
    * It returns the cached sender if the sender was already created and throws runtime exception
    * if the evaluator is not a sender of the shuffle.
    *

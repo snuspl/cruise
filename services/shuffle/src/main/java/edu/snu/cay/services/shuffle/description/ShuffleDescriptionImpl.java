@@ -113,10 +113,17 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
     return receiverIdList;
   }
 
+  /**
+   * @param shuffleName the name of shuffle
+   * @return a builder for a ShuffleDescriptionImpl
+   */
   public static Builder newBuilder(final String shuffleName) {
     return new Builder(shuffleName);
   }
 
+  /**
+   * Builder to construct a ShuffleDescriptionImpl instance.
+   */
   public static final class Builder {
     private final String shuffleName;
     private Class<? extends ShuffleStrategy> shuffleStrategyClass;
@@ -129,31 +136,57 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
       this.shuffleName = shuffleName;
     }
 
+    /**
+     * @param senderIdList a sender id list
+     * @return the builder itself
+     */
     public Builder setSenderIdList(final List<String> senderIdList) {
       this.senderIdList = senderIdList;
       return this;
     }
 
+    /**
+     * @param receiverIdList a receiver id list
+     * @return the builder itself
+     */
     public Builder setReceiverIdList(final List<String> receiverIdList) {
       this.receiverIdList = receiverIdList;
       return this;
     }
 
+    /**
+     * @param keyCodecClass a key codec class
+     * @return the builder itself
+     */
     public Builder setKeyCodec(final Class<? extends Codec> keyCodecClass) {
       this.keyCodecClass = keyCodecClass;
       return this;
     }
 
+    /**
+     * @param valueCodecClass a value codec class
+     * @return the builder itself
+     */
     public Builder setValueCodec(final Class<? extends Codec> valueCodecClass) {
       this.valueCodecClass = valueCodecClass;
       return this;
     }
 
+    /**
+     * @param shuffleStrategyClass a shuffle strategy class
+     * @return the builder itself
+     */
     public Builder setShuffleStrategy(final Class<? extends ShuffleStrategy> shuffleStrategyClass) {
       this.shuffleStrategyClass = shuffleStrategyClass;
       return this;
     }
 
+    /**
+     * Build a ShuffleDescriptionImpl instance using set parameters.
+     * It throws a RuntimeException if some parameters are omitted.
+     *
+     * @return a ShuffleDescriptionImpl instance that is created by the builder
+     */
     public ShuffleDescription build() {
       if (shuffleStrategyClass == null) {
         throw new RuntimeException("You should set strategy class");

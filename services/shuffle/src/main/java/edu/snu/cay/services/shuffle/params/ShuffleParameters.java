@@ -34,6 +34,10 @@ public final class ShuffleParameters {
 
   public static final String NETWORK_CONNECTION_SERVICE_ID = "SHUFFLE_NETWORK_CONNECTION_IDENTIFIER";
 
+  @NamedParameter(doc = "the name of the ShuffleMnager class")
+  public static final class ShuffleManagerClassName implements Name<String> {
+  }
+
   @NamedParameter(doc = "the key codec for TupleCodec")
   public static final class TupleKeyCodec implements Name<Codec> {
   }

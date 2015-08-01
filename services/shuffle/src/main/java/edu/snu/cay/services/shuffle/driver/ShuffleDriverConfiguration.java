@@ -18,13 +18,13 @@
  */
 package edu.snu.cay.services.shuffle.driver;
 
-import edu.snu.cay.services.shuffle.params.ShuffleManagerClassName;
+import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.RequiredParameter;
 
 /**
- * Driver-side configuration module for Shuffle Service.
+ * Configuration module for driver-side shuffle components.
  */
 public final class ShuffleDriverConfiguration extends ConfigurationModuleBuilder {
 
@@ -34,6 +34,6 @@ public final class ShuffleDriverConfiguration extends ConfigurationModuleBuilder
   public static final RequiredParameter<String> SHUFFLE_MANAGER_CLASS_NAME = new RequiredParameter<>();
 
   public static final ConfigurationModule CONF = new ShuffleDriverConfiguration()
-      .bindNamedParameter(ShuffleManagerClassName.class, SHUFFLE_MANAGER_CLASS_NAME)
+      .bindNamedParameter(ShuffleParameters.ShuffleManagerClassName.class, SHUFFLE_MANAGER_CLASS_NAME)
       .build();
 }
