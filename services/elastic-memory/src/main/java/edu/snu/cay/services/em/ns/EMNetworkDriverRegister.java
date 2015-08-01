@@ -15,43 +15,39 @@
  */
 package edu.snu.cay.services.em.ns;
 
-import org.apache.reef.evaluator.context.events.ContextStart;
-import org.apache.reef.evaluator.context.events.ContextStop;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.io.network.NetworkConnectionService;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 
 /**
- * Register and unregister context ids to and from a NetworkConnectionService
- * when contexts spawn/terminate, respectively.
+ * Register a driver id to a NetworkConnectionService when driver starts.
  */
 @Unit
-public final class EMNetworkContextRegister {
+public final class EMNetworkDriverRegister {
 
   private final NetworkConnectionService networkConnectionService;
   private final IdentifierFactory identifierFactory;
+  private final String driverId;
 
   @Inject
-  private EMNetworkContextRegister(final NetworkConnectionService networkConnectionService,
-                                   final IdentifierFactory identifierFactory) {
+  private EMNetworkDriverRegister(final NetworkConnectionService networkConnectionService,
+                                  final IdentifierFactory identifierFactory,
+                                  @Parameter(DriverIdentifier.class) final String driverId) {
     this.networkConnectionService = networkConnectionService;
     this.identifierFactory = identifierFactory;
+    this.driverId = driverId;
   }
 
-  public final class RegisterContextHandler implements EventHandler<ContextStart> {
+  public final class RegisterDriverHandler implements EventHandler<StartTime> {
     @Override
-    public void onNext(final ContextStart contextStart) {
-      networkConnectionService.registerId(identifierFactory.getNewInstance(contextStart.getId()));
-    }
-  }
-
-  public final class UnregisterContextHandler implements EventHandler<ContextStop> {
-    @Override
-    public void onNext(final ContextStop contextStop) {
-      networkConnectionService.unregisterId(identifierFactory.getNewInstance(contextStop.getId()));
+    public void onNext(final StartTime value) {
+      networkConnectionService.registerId(identifierFactory.getNewInstance(driverId));
     }
   }
 }

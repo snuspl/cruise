@@ -17,7 +17,6 @@ package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.services.em.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
@@ -27,10 +26,6 @@ import org.apache.htrace.TraceScope;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
-import org.apache.reef.driver.parameters.DriverIdentifier;
-import org.apache.reef.io.network.NetworkConnectionService;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.util.Set;
@@ -44,19 +39,11 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
-                            @Parameter(DriverIdentifier.class) final String driverId,
                             final ElasticMemoryMsgSender sender,
-                            // TODO: no need for this if networkConnectionService.getMyId() is available
-                            final EMNetworkSetup emNetworkSetup,
-                            final NetworkConnectionService networkConnectionService,
-                            final IdentifierFactory identifierFactory,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.requestor = requestor;
     this.sender = sender;
-    networkConnectionService.registerId(identifierFactory.getNewInstance(driverId));
-    // TODO: no need for this if networkConnectionService.getMyId() is available
-    emNetworkSetup.setMyId(identifierFactory.getNewInstance(driverId));
   }
 
   @Override

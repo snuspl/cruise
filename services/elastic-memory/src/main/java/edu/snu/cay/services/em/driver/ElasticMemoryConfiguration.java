@@ -19,11 +19,13 @@ import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.EMNetworkContextRegister;
+import edu.snu.cay.services.em.ns.EMNetworkDriverRegister;
 import edu.snu.cay.services.em.ns.parameters.EMCodec;
 import edu.snu.cay.services.em.ns.parameters.EMMessageHandler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.driver.parameters.DriverIdentifier;
+import org.apache.reef.driver.parameters.DriverStartHandler;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.io.network.naming.NameServer;
@@ -70,6 +72,7 @@ public final class ElasticMemoryConfiguration {
    */
   public static Configuration getDriverConfiguration() {
     return getNetworkConfigurationBuilder()
+        .bindSetEntry(DriverStartHandler.class, EMNetworkDriverRegister.RegisterDriverHandler.class)
         .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.ElasticMemoryMsgHandler.class)
         .build();
   }

@@ -19,7 +19,6 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.ns.parameters.EMCodec;
 import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
 import edu.snu.cay.services.em.ns.parameters.EMMessageHandler;
-import edu.snu.cay.services.em.ns.parameters.NameServerAddr;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.Message;
@@ -33,9 +32,9 @@ import org.apache.reef.wake.remote.Codec;
 import javax.inject.Inject;
 
 public final class EMNetworkSetup {
-  private final ConnectionFactory connectionFactory;
-  // TODO: no need for this if networkConnectionService.getMyId() is available
-  private Identifier myId;
+  private final NetworkConnectionService networkConnectionService;
+  private final IdentifierFactory identifierFactory;
+  private final Identifier connectionFactoryIdentifier;
 
   @Inject
   private EMNetworkSetup(
@@ -45,23 +44,18 @@ public final class EMNetworkSetup {
       @Parameter(EMCodec.class) final Codec<AvroElasticMemoryMessage> codec,
       @Parameter(EMMessageHandler.class) final EventHandler<Message<AvroElasticMemoryMessage>> handler
   ) throws NetworkException {
+    this.networkConnectionService = networkConnectionService;
+    this.identifierFactory = identifierFactory;
 
-    final Identifier identifier = identifierFactory.getNewInstance(idString);
-    networkConnectionService.registerConnectionFactory(identifier, codec, handler, null);
-    this.connectionFactory = networkConnectionService.getConnectionFactory(identifier);
+    this.connectionFactoryIdentifier = this.identifierFactory.getNewInstance(idString);
+    this.networkConnectionService.registerConnectionFactory(this.connectionFactoryIdentifier, codec, handler, null);
   }
 
   public ConnectionFactory getConnectionFactory() {
-    return connectionFactory;
+    return networkConnectionService.getConnectionFactory(connectionFactoryIdentifier);
   }
 
-  // TODO: no need for this if networkConnectionService.getMyId() is available
-  public void setMyId(final Identifier myId) {
-    this.myId = myId;
-  }
-
-  // TODO: no need for this if networkConnectionService.getMyId() is available
   public Identifier getMyId() {
-    return myId;
+    return networkConnectionService.getNetworkConnectionServiceId();
   }
 }
