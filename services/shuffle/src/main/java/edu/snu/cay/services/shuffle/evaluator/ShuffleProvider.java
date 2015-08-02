@@ -18,6 +18,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
@@ -26,6 +27,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * Shuffles in the provider are automatically injected if the evaluator's configuration
  * was merged with proper configuration from ShuffleDriver.
  */
+@EvaluatorSide
 @DefaultImplementation(ShuffleProviderImpl.class)
 public interface ShuffleProvider {
 

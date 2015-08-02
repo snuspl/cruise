@@ -18,11 +18,13 @@ package edu.snu.cay.services.shuffle.evaluator;
 import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 
 /**
  * Evaluator side interface which communicates with corresponding ShuffleManager in driver,
  * and also provides shuffle operators to users.
  */
+@EvaluatorSide
 public interface Shuffle {
 
   /**

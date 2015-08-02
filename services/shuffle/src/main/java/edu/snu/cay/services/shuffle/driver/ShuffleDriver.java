@@ -43,11 +43,11 @@ public interface ShuffleDriver {
   Configuration getContextConfiguration();
 
   /**
-   * Return task configuration contains all information about shuffles where the taskId is included.
+   * Return task configuration contains all information about shuffles where the evaluatorId is included.
    * The returned configuration is used to instantiating Shuffles in the tasks.
    *
-   * @param taskId task identifier
-   * @return evaluator configuration for taskId
+   * @param evaluatorId evaluator identifier
+   * @return evaluator configuration for evaluatorId
    */
-  Configuration getTaskConfiguration(String taskId);
+  Configuration getTaskConfiguration(String evaluatorId);
 }

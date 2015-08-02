@@ -19,6 +19,7 @@ import edu.snu.cay.services.shuffle.description.ShuffleDescription;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorFactory;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;
 
@@ -28,6 +29,7 @@ import javax.inject.Inject;
  * The initial shuffle description can never be changed. Users cannot add or remove more tasks
  * to the shuffle and cannot change the key, value codecs and shuffling strategy after the Shuffle is created.
  */
+@EvaluatorSide
 public final class StaticShuffle implements Shuffle {
 
   private final ShuffleDescription shuffleDescription;
