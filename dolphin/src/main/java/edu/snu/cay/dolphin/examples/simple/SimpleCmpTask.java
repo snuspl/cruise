@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,20 +31,20 @@ public final class SimpleCmpTask extends UserComputeTask
   }
 
   @Override
-  public void run(int iteration) {
+  public void run(final int iteration) {
     System.out.println(message);
     count++;
 
   }
 
   @Override
-  public void receiveBroadcastData(int iteration, String data) {
+  public void receiveBroadcastData(final int iteration, final String data) {
     message = data;
     count = 0;
   }
 
   @Override
-  public Integer sendReduceData(int iteration) {
+  public Integer sendReduceData(final int iteration) {
     return count;
   }
 

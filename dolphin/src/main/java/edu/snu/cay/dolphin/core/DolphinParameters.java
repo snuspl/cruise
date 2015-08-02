@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,7 @@ public final class DolphinParameters {
    * @return
    */
   public final Configuration getDriverConf() {
-    Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
+    final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(EvaluatorNum.class, String.valueOf(evalNum))
         .bindNamedParameter(OutputDir.class, processOutputDir(outputDir, onLocal))
         .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))

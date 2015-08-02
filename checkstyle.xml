@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Puppy Crawl//DTD Check Configuration 1.2//EN"
+    "http://www.puppycrawl.com/dtds/configuration_1_2.dtd">
+
+<!--
+  Copyright (C) 2015 Seoul National University
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!--
+
+  This configuration is based on the one for Hadoop that is based on the
+  sun_checks.xml file that is bundled with Checkstyle and includes checks
+  for:
+
+    - the Java Language Specification at
+      http://java.sun.com/docs/books/jls/second_edition/html/index.html
+
+    - the Sun Code Conventions at http://java.sun.com/docs/codeconv/
+
+    - the Javadoc guidelines at
+      http://java.sun.com/j2se/javadoc/writingdoccomments/index.html
+
+    - the JDK Api documentation http://java.sun.com/j2se/docs/api/index.html
+
+    - some best practices
+
+  Checkstyle is very configurable. Be sure to read the documentation at
+  http://checkstyle.sf.net (or in your downloaded distribution).
+
+  Most Checks are configurable, be sure to consult the documentation.
+
+  To completely disable a check, just comment it out or delete it from the file.
+
+  Finally, it is worth reading the documentation.
+
+-->
+
+<module name="Checker">
+  <!-- Checks that each Java package has a Javadoc file, package-info.java, used for commenting. -->
+  <!-- See http://checkstyle.sourceforge.net/config_javadoc.html#JavadocPackage -->
+  <module name="JavadocPackage"/>
+
+  <!-- Checks whether files end with a new line. -->
+  <!-- See http://checkstyle.sourceforge.net/config_misc.html#NewlineAtEndOfFile -->
+  <module name="NewlineAtEndOfFile"/>
+
+  <module name="TreeWalker">
+    <!-- Checks that local variables that never have their values changed are declared final. -->
+    <!-- See http://checkstyle.sourceforge.net/config_coding.html#FinalLocalVariable -->
+    <!-- This check fails to detect all violations. -->
+    <!-- IntelliJ inspections were used to identify and fix undetected violations. -->
+    <module name="FinalLocalVariable">
+      <property name="validateEnhancedForLoopVariable" value="true"/>
+    </module>
+
+    <!-- Check that parameters for methods, constructors, and catch blocks are final. -->
+    <!-- See http://checkstyle.sourceforge.net/config_misc.html#FinalParameters -->
+    <module name="FinalParameters"/>
+  </module>
+
+</module>

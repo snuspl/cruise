@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,11 +24,11 @@ import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import java.io.IOException;
 
 public final class DolphinConfiguration extends ConfigurationModuleBuilder {
-  public final static Configuration CONF(String[] args) throws IOException {
+  public final static Configuration CONF(final String[] args) throws IOException {
     return CONF(args, new CommandLine());
   }
 
-  public final static Configuration CONF(String[] args, CommandLine cl) throws IOException {
+  public final static Configuration CONF(final String[] args, final CommandLine cl) throws IOException {
     cl.registerShortNameOfClass(EvaluatorSize.class);
     cl.registerShortNameOfClass(OnLocal.class);
     cl.registerShortNameOfClass(EvaluatorNum.class);

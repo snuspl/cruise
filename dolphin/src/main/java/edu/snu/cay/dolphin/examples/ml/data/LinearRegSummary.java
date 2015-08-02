@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,13 +20,13 @@ public class LinearRegSummary {
   private int count = 0;
   private double loss = 0;
 
-  public LinearRegSummary(LinearModel model, int count, double loss) {
+  public LinearRegSummary(final LinearModel model, final int count, final double loss) {
     this.model = model;
     this.count = count;
     this.loss = loss;
   }
 
-  public void plus(LinearRegSummary summary) {
+  public void plus(final LinearRegSummary summary) {
     this.model.setParameters(this.model.getParameters().plus(summary.getModel().getParameters()));
     this.count += summary.count;
     this.loss += summary.loss;

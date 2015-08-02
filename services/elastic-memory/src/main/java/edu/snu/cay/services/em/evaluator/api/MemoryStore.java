@@ -1,79 +1,37 @@
+/*
+ * Copyright (C) 2015 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.snu.cay.services.em.evaluator.api;
 
-import org.apache.commons.lang.math.IntRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
-import java.util.List;
-import java.util.Set;
-
 /**
- * Evaluator-side interface of MemoryStore
+ * Evaluator-side interface of MemoryStore, which provides two SubMemoryStores: local and elastic.
  */
 @EvaluatorSide
 public interface MemoryStore {
 
   /**
-   * Register a data item that must not be moved to other evaluators
-   *
-   * @param key key string that represents a certain data type
-   * @param value data item to register
-   * @param <T> the actual data type
+   * Returns a {@code SubMemoryStore} which stores local data that
+   * should not be moved to other evaluators.
    */
-  <T> void putLocal(String key, T value);
+  SubMemoryStore getLocalStore();
 
   /**
-   * Register data items that must not be moved to other evaluators
-   *
-   * @param key key string that represents a certain data type
-   * @param values list of data items to register
-   * @param <T> the actual data type
+   * Returns a {@code SubMemoryStore} which stores movable data that
+   * may be migrated around evaluators for job optimization.
    */
-  <T> void putLocal(String key, List<T> values);
-
-  /**
-   * Register a data item that can be migrated around evaluators for job optimization
-   *
-   * @param key key string that represents a certain data type
-   * @param value data item to register
-   * @param <T> the actual data type
-   */
- <T> void putMovable(String key, T value);
-
-  /**
-   * Register data items that can be migrated around evaluators for job optimization
-   *
-   * @param key key string that represents a certain data type
-   * @param values list of data items to register
-   * @param <T> the actual data type
-   */
-  <T> void putMovable(String key, List<T> values);
-
-  /**
-   * Fetch data of a certain key from this store
-   *
-   * @param key key string that represents a certain data type
-   * @param <T> the actual data type
-   * @return data corresponding to the input key
-   */
-  <T> List<T> get(String key);
-
-  /**
-   * Fetch the global integer ids of data associated with a certain key
-   *
-   * @param key key string that represents a certain data type
-   * @return integer ids of data corresponding to the input key
-   */
-  Set<IntRange> getIds(String key);
-
-  /**
-   * Completely remove data associated with a certain key from this store
-   *
-   * @param key key string that represents a certain data type
-   */
-  <T> List<T> remove(String key);
-
-  /**
-   * Query about the update status of this store
-   */
-  boolean hasChanged();
+  SubMemoryStore getElasticStore();
 }
