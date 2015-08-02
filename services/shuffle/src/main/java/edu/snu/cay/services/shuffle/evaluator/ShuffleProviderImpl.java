@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -40,7 +40,7 @@ class ShuffleProviderImpl implements ShuffleProvider {
   private ShuffleProviderImpl(
       final Injector rootInjector,
       final ConfigurationSerializer confSerializer,
-      @Parameter(ShuffleParameters.SerializedShuffleSet.class) Set<String> serializedShuffleSet) {
+      @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet) {
     this.rootInjector = rootInjector;
     this.confSerializer = confSerializer;
     this.shuffleMap = new HashMap<>();

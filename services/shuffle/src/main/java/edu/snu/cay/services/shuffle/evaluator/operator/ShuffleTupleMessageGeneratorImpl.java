@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,7 +78,7 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
 
     final List<Tuple<String, ShuffleTupleMessage<K, V>>>
         serializedTupleList = new ArrayList<>(serializedTupleDataMap.size());
-    for (Map.Entry<String, List<Tuple>> entry : serializedTupleDataMap.entrySet()) {
+    for (final Map.Entry<String, List<Tuple>> entry : serializedTupleDataMap.entrySet()) {
       final List<Tuple<K, V>> data = new ArrayList<>(entry.getValue().size());
       for (final Tuple tuple : entry.getValue()) {
         data.add(tuple);

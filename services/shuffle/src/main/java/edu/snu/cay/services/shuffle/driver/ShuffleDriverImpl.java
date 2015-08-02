@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +45,7 @@ final class ShuffleDriverImpl implements ShuffleDriver {
    */
   @Inject
   private ShuffleDriverImpl(
-      @Parameter(ShuffleParameters.ShuffleManagerClassName.class) String shuffleManagerClassName,
+      @Parameter(ShuffleParameters.ShuffleManagerClassName.class) final String shuffleManagerClassName,
       final ConfigurationSerializer confSerializer) {
     try {
       this.shuffleManagerClass = (Class<? extends ShuffleManager>) Class.forName(shuffleManagerClassName);

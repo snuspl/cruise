@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,9 +35,9 @@ public final class StaticShuffle implements Shuffle {
 
   @Inject
   private StaticShuffle(
-      final ShuffleDescription shuffleGroupDescription,
+      final ShuffleDescription shuffleDescription,
       final ShuffleOperatorFactory operatorFactory) {
-    this.shuffleDescription = shuffleGroupDescription;
+    this.shuffleDescription = shuffleDescription;
     this.operatorFactory = operatorFactory;
   }
 

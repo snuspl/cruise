@@ -36,7 +36,7 @@ import org.apache.reef.util.EnvironmentUtils;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
+/*
  * Simple message exchanging example using shuffle service.
  *
  * n tasks exchange tuples using the key grouping strategy. Because all tuples that are sent from one evaluator to

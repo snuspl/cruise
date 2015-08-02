@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,7 +68,7 @@ public final class MessageExchangeTask implements Task {
   }
 
   @Override
-  public byte[] call(byte[] memento) throws Exception {
+  public byte[] call(final byte[] memento) throws Exception {
     // TODO: Currently MessageExchangeTasks sleep 3 seconds to wait the other tasks start.
     // Synchronization logic for all tasks in same shuffle will be included via another pull request.
     Thread.sleep(3000);
