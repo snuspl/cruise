@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +70,7 @@ public class LogisticRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public final void run(int iteration) {
+  public final void run(final int iteration) {
 
     // measure accuracy
     posNum = 0;
@@ -96,12 +96,12 @@ public class LogisticRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public final void receiveBroadcastData(int iteration, LinearModel model) {
+  public final void receiveBroadcastData(final int iteration, final LinearModel model) {
     this.model = model;
   }
 
   @Override
-  public LogisticRegSummary sendReduceData(int iteration) {
+  public LogisticRegSummary sendReduceData(final int iteration) {
     return new LogisticRegSummary(this.model, 1, posNum, negNum);
   }
 }

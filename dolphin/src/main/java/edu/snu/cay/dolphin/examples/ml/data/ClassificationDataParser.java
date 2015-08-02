@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,7 +84,7 @@ public final class ClassificationDataParser implements DataParser<List<Row>> {
         return;
       }
 
-      int output;
+      final int output;
       final Vector feature = new DenseVector(split.length);
       try {
         output = Integer.valueOf(split[dimension]);

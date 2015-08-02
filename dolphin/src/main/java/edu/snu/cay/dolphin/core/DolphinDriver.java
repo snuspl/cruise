@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -178,8 +178,8 @@ public final class DolphinDriver {
    */
   private void initializeCommDriver(){
     int sequence = 0;
-    for (StageInfo stageInfo : stageInfoList) {
-      CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
+    for (final StageInfo stageInfo : stageInfoList) {
+      final CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
           stageInfo.getCommGroupName(), evalNum + 1);
       commGroup.addBroadcast(CtrlMsgBroadcast.class,
           BroadcastOperatorSpec.newBuilder()
@@ -294,7 +294,7 @@ public final class DolphinDriver {
 
         LOG.info("Metrics are gathered from " + message.getId());
         final Map<String, Double> map = metricCodec.decode(message.get());
-        for(Map.Entry<String, Double> entry : map.entrySet()) {
+        for(final Map.Entry<String, Double> entry : map.entrySet()) {
           LOG.info("Metric Info: Source=" + message.getId() + " Key=" + entry.getKey() + " Value=" + entry.getValue());
         }
       }
@@ -304,7 +304,7 @@ public final class DolphinDriver {
   final class TaskRunningHandler implements EventHandler<RunningTask> {
 
     @Override
-    public void onNext(RunningTask runningTask) {
+    public void onNext(final RunningTask runningTask) {
       LOG.info(runningTask.getId() + " has started.");
     }
   }
@@ -315,12 +315,12 @@ public final class DolphinDriver {
   final class TaskCompletedHandler implements EventHandler<CompletedTask> {
 
     @Override
-    public void onNext(CompletedTask completedTask) {
+    public void onNext(final CompletedTask completedTask) {
       LOG.info(completedTask.getId() + " has completed.");
 
-      ActiveContext activeContext = completedTask.getActiveContext();
-      String contextId = activeContext.getId();
-      int nextSequence = contextToStageSequence.get(contextId)+1;
+      final ActiveContext activeContext = completedTask.getActiveContext();
+      final String contextId = activeContext.getId();
+      final int nextSequence = contextToStageSequence.get(contextId)+1;
       if (nextSequence >= stageInfoList.size()) {
         completedTask.getActiveContext().close();
         return;
@@ -333,7 +333,7 @@ public final class DolphinDriver {
   final class TaskFailedHandler implements EventHandler<FailedTask> {
 
     @Override
-    public void onNext(FailedTask failedTask) {
+    public void onNext(final FailedTask failedTask) {
       LOG.info(failedTask.getId() + " has failed.");
     }
   }
@@ -343,7 +343,7 @@ public final class DolphinDriver {
    * @param activeContext
    * @param stageSequence
    */
-  final private void submitTask(ActiveContext activeContext, int stageSequence) {
+  final private void submitTask(final ActiveContext activeContext, final int stageSequence) {
     contextToStageSequence.put(activeContext.getId(), stageSequence);
     final StageInfo stageInfo = stageInfoList.get(stageSequence);
     final CommunicationGroupDriver commGroup = commGroupDriverList.get(stageSequence);
@@ -397,7 +397,7 @@ public final class DolphinDriver {
     activeContext.submitTask(finalTaskConf);
   }
 
-  final private boolean isCtrlTaskId(String id){
+  final private boolean isCtrlTaskId(final String id){
     if (ctrlTaskContextId==null) {
       return false;
     } else {
@@ -405,15 +405,11 @@ public final class DolphinDriver {
     }
   }
 
-  final private String getCtrlTaskId(int sequence) {
+  final private String getCtrlTaskId(final int sequence) {
     return ControllerTask.TASK_ID_PREFIX + "-" + sequence;
   }
 
-  final private String getCmpTaskId(int sequence) {
+  final private String getCmpTaskId(final int sequence) {
     return ComputeTask.TASK_ID_PREFIX + "-" + sequence;
   }
-
-
-
-
 }

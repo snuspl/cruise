@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ public class KeyValueStoreService {
   private static Logger LOG = Logger.getLogger(KeyValueStoreService.class.getName());
 
   public static Configuration getServiceConfiguration() {
-    Configuration partialServiceConf = ServiceConfiguration.CONF
+    final Configuration partialServiceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, KeyValueStore.class)
         .build();
 

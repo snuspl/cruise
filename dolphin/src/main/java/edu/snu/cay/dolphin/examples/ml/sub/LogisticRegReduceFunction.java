@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@ public class LogisticRegReduceFunction implements Reduce.ReduceFunction<Logistic
   }
 
   @Override
-  public final LogisticRegSummary apply(Iterable<LogisticRegSummary> summaryList) {
+  public final LogisticRegSummary apply(final Iterable<LogisticRegSummary> summaryList) {
     LogisticRegSummary reducedSummary = null;
     for (final LogisticRegSummary summary : summaryList) {
       if (reducedSummary==null) {

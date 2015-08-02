@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ public final class ClusterSummary {
   private final Vector centroid;
   private final Matrix covariance;
 
-  public ClusterSummary(double prior, Vector centroid, Matrix covariance) {
+  public ClusterSummary(final double prior, final Vector centroid, final Matrix covariance) {
     this.prior = prior;
     this.centroid = centroid;
     this.covariance = covariance;

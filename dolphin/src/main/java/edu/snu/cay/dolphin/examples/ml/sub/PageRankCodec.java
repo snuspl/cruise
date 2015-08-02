@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,7 @@ public final class PageRankCodec implements Codec<Map<Integer, Double>> {
       Integer.SIZE + (Integer.SIZE + Double.SIZE) * size);
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(size);
-      for (Map.Entry<Integer, Double> entry : map.entrySet()) {
+      for (final Map.Entry<Integer, Double> entry : map.entrySet()) {
         daos.writeInt(entry.getKey());
         daos.writeDouble(entry.getValue());
       }
@@ -59,8 +59,8 @@ public final class PageRankCodec implements Codec<Map<Integer, Double>> {
       final int size = dais.readInt();
 
       for (int i = 0; i < size; i++) {
-        int nodeId = dais.readInt();
-        double nodeRank = dais.readDouble();
+        final int nodeId = dais.readInt();
+        final double nodeRank = dais.readDouble();
         map.put(nodeId, nodeRank);
       }
     } catch (final IOException e) {

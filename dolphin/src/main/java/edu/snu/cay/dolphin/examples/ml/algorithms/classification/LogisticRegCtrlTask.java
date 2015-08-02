@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,23 +55,23 @@ public class LogisticRegCtrlTask extends UserControllerTask
   }
   
   @Override
-  public final void run(int iteration) {
+  public final void run(final int iteration) {
     LOG.log(Level.INFO, "{0}-th iteration accuracy: {1}%, new model: {2}",
         new Object[] { iteration, accuracy * 100, model });
   }
   
   @Override
-  public final LinearModel sendBroadcastData(int iteration) {
+  public final LinearModel sendBroadcastData(final int iteration) {
     return model;
   }
   
   @Override
-  public final boolean isTerminated(int iteration) {
+  public final boolean isTerminated(final int iteration) {
     return convergeCondition.checkConvergence(model) || iteration >= maxIter;
   }
 
   @Override
-  public void receiveReduceData(int iteration, LogisticRegSummary summary) {
+  public void receiveReduceData(final int iteration, final LogisticRegSummary summary) {
     this.accuracy = ((double) summary.getPosNum()) / (summary.getPosNum() + summary.getNegNum());
     this.model = new LinearModel(summary.getModel().getParameters()
         .times(1.0 / summary.getCount()));

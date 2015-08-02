@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,7 +69,7 @@ public class LinearRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public final void run(int iteration) {
+  public final void run(final int iteration) {
 
     // measure loss
     lossSum = 0;
@@ -90,12 +90,12 @@ public class LinearRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public final void receiveBroadcastData(int iteration, LinearModel model) {
+  public final void receiveBroadcastData(final int iteration, final LinearModel model) {
     this.model = model;
   }
 
   @Override
-  public LinearRegSummary sendReduceData(int iteration) {
+  public LinearRegSummary sendReduceData(final int iteration) {
     return new LinearRegSummary(this.model, 1, this.lossSum);
   }
 }

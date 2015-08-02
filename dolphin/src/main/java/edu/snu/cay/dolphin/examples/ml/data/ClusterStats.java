@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,7 +77,7 @@ public final class ClusterStats implements Serializable {
    * Add the given statistics to the current statistics
    * @param clusterStats
    */
-  public final void add(ClusterStats clusterStats) {
+  public final void add(final ClusterStats clusterStats) {
     this.outProdSum = this.outProdSum.plus(clusterStats.outProdSum);
     this.pointSum = this.pointSum.plus(clusterStats.pointSum);
     this.probSum += clusterStats.probSum;
@@ -106,8 +106,8 @@ public final class ClusterStats implements Serializable {
     final Iterator<MatrixSlice> sliceIterator=outProdSum.iterator();
     while (sliceIterator.hasNext()) {
       final MatrixSlice slice=sliceIterator.next();
-      int row = slice.index();
-      for (Vector.Element e : slice.nonZeroes()) {
+      final int row = slice.index();
+      for (final Vector.Element e : slice.nonZeroes()) {
         final int col=e.index();
         final double squaredSum = e.get();
         covariance.set(row, col, squaredSum/probSum - mean.get(row) * mean.get(col));

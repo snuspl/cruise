@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@ public final class DolphinLauncher {
     this.dolphinParameters = dolphinParameters;
   }
 
-  public final static void run(Configuration dolphinConfig) {
+  public final static void run(final Configuration dolphinConfig) {
     LauncherStatus status;
     try {
       status = Tang.Factory.getTang()

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,7 @@ public class LinearModelConvEuclidean implements  LinearModelConvCond {
   }
 
   @Override
-  public final boolean checkConvergence(LinearModel model) {
+  public final boolean checkConvergence(final LinearModel model) {
     if (oldModel == null) {
       oldModel = new LinearModel(model.getParameters().clone());
       return false;
@@ -51,7 +51,7 @@ public class LinearModelConvEuclidean implements  LinearModelConvCond {
     }
   }
 
-  public final double distance(Vector v1, Vector v2) {
+  public final double distance(final Vector v1, final Vector v2) {
     return euclideanDistance.distance(v1, v2);
   }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@ import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 
 public class KMeansREEF {
-  public final static void main(String[] args) throws Exception {
+  public final static void main(final String[] args) throws Exception {
     DolphinLauncher.run(
         Configurations.merge(
             DolphinConfiguration.CONF(args, KMeansParameters.getCommandLine()),

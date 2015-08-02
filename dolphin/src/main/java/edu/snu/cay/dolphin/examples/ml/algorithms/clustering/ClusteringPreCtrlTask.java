@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void run(int iteration) {
+  public void run(final int iteration) {
     //do nothing
   }
 
@@ -75,18 +75,18 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   }
 
   @Override
-  public boolean isTerminated(int iteration) {
+  public boolean isTerminated(final int iteration) {
     return iteration > 0;
 
   }
 
   @Override
-  public void receiveGatherData(int iteration, List<List<Vector>> initialCentroids) {
+  public void receiveGatherData(final int iteration, final List<List<Vector>> initialCentroids) {
     final List<Vector> points = new LinkedList<>();
 
     // Flatten the given list of lists
-    for(List<Vector> list : initialCentroids) {
-      for(Vector vector: list){
+    for(final List<Vector> list : initialCentroids) {
+      for(final Vector vector: list){
         points.add(vector);
       }
     }

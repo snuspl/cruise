@@ -1,19 +1,36 @@
+/*
+ * Copyright (C) 2015 Seoul National University
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.evaluator.impl.ElasticMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.NSWrapperConfiguration;
 import edu.snu.cay.services.em.ns.NSWrapperContextRegister;
 import edu.snu.cay.services.em.ns.NSWrapperParameters;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.io.network.group.impl.driver.ExceptionHandler;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
@@ -24,10 +41,13 @@ import javax.inject.Inject;
 public final class ElasticMemoryConfiguration {
 
   private final NSWrapperConfiguration nsWrapperConfiguration;
+  private final String driverId;
 
   @Inject
-  private ElasticMemoryConfiguration(final NSWrapperConfiguration nsWrapperConfiguration) {
+  private ElasticMemoryConfiguration(final NSWrapperConfiguration nsWrapperConfiguration,
+                                     @Parameter(DriverIdentifier.class) final String driverId) {
     this.nsWrapperConfiguration = nsWrapperConfiguration;
+    this.driverId = driverId;
   }
 
   /**
@@ -75,13 +95,14 @@ public final class ElasticMemoryConfiguration {
                                                 edu.snu.cay.services.em.evaluator.ElasticMemoryMsgHandler.class);
 
     final Configuration serviceConf = ServiceConfiguration.CONF
-        .set(ServiceConfiguration.SERVICES, ElasticMemoryStore.class)
+        .set(ServiceConfiguration.SERVICES, MemoryStoreImpl.class)
         .build();
 
-    final Configuration bindImplConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MemoryStore.class, ElasticMemoryStore.class)
+    final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindNamedParameter(DriverIdentifier.class, driverId)
         .build();
 
-    return Configurations.merge(nsWrapperConf, serviceConf, bindImplConf);
+    return Configurations.merge(nsWrapperConf, serviceConf, otherConf);
   }
 }

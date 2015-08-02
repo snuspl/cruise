@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ public class LinearModelCodec implements Codec<LinearModel> {
   }
 
   @Override
-  public byte[] encode(LinearModel model) {
+  public byte[] encode(final LinearModel model) {
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE +
         Double.SIZE * model.getParameters().size());
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
@@ -47,7 +47,7 @@ public class LinearModelCodec implements Codec<LinearModel> {
   @Override
   public LinearModel decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-    LinearModel model;
+    final LinearModel model;
     try (final DataInputStream dais = new DataInputStream(bais)) {
       final int vecSize = dais.readInt();
       final Vector v = new DenseVector(vecSize);

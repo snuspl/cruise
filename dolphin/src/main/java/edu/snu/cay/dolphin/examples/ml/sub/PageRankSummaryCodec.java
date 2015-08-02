@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,7 @@ public class PageRankSummaryCodec implements Codec<PageRankSummary> {
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(model.size());
 
-      for (Map.Entry<Integer, Double> entry : model.entrySet()) {
+      for (final Map.Entry<Integer, Double> entry : model.entrySet()) {
         daos.writeInt(entry.getKey());
         daos.writeDouble(entry.getValue());
       }

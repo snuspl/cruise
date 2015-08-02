@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,25 +92,25 @@ public class PageRankCtrlTask extends UserControllerTask
   }
 
   @Override
-  public final void run(int iteration) {
+  public final void run(final int iteration) {
     LOG.log(Level.INFO, "{0}-th iteration", new Object[] { iteration });
   }
 
   @Override
-  public final Map<Integer, Double> sendBroadcastData(int iteration) {
+  public final Map<Integer, Double> sendBroadcastData(final int iteration) {
     return rank;
   }
 
   @Override
-  public final boolean isTerminated(int iteration) {
+  public final boolean isTerminated(final int iteration) {
     return pageRankConvergenceCondition.checkConvergence(rank)
         || iteration >= maxIter;
   }
 
   @Override
-  public void receiveReduceData(int iteration, PageRankSummary increment) {
+  public void receiveReduceData(final int iteration, final PageRankSummary increment) {
     rank = increment.getModel();
-    for (Integer key : rank.keySet()) {
+    for (final Integer key : rank.keySet()) {
       rank.put(key, (1 - dampingFactor) + dampingFactor * rank.get(key));
     }
   }
@@ -120,7 +120,7 @@ public class PageRankCtrlTask extends UserControllerTask
     //output the ranks
     try (final DataOutputStream rankStream = outputStreamProvider.create("rank")) {
       rankStream.writeBytes(String.format("node_id,rank%n"));
-      for (Map.Entry<Integer, Double> entry : rank.entrySet()) {
+      for (final Map.Entry<Integer, Double> entry : rank.entrySet()) {
         rankStream.writeBytes(String.format("%d,%f%n", entry.getKey(), entry.getValue()));
       }
     } catch (final IOException e) {
