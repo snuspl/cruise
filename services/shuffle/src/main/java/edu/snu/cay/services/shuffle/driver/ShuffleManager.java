@@ -27,13 +27,13 @@ import org.apache.reef.util.Optional;
 public interface ShuffleManager {
 
   /**
-   * Return a configuration of the shuffle description for the evaluator named evaluatorId.
-   * It returns Optional.empty if the evaluatorId is not included in any shuffles.
+   * Return a configuration of the shuffle description for endPointId.
+   * It returns Optional.empty if the endPointId is not included in any shuffles.
    *
-   * @param evaluatorId the id of the evaluator
-   * @return optional shuffle configuration for the node
+   * @param endPointId end point id
+   * @return optional shuffle configuration
    */
-  Optional<Configuration> getShuffleConfiguration(String evaluatorId);
+  Optional<Configuration> getShuffleConfiguration(String endPointId);
 
   /**
    * @return a shuffle description handled by the ShuffleManager

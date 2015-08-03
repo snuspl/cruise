@@ -44,11 +44,18 @@ public final class StaticShuffleManager implements ShuffleManager {
     this.descriptionSerializer = descriptionSerializer;
   }
 
+  /**
+   * @param endPointId end point id
+   * @return Serialized shuffle description for the endPointId
+   */
   @Override
-  public Optional<Configuration> getShuffleConfiguration(final String evaluatorId) {
-    return descriptionSerializer.serialize(StaticShuffle.class, shuffleDescription, evaluatorId);
+  public Optional<Configuration> getShuffleConfiguration(final String endPointId) {
+    return descriptionSerializer.serialize(StaticShuffle.class, shuffleDescription, endPointId);
   }
 
+  /**
+   * @return the initial shuffle description
+   */
   @Override
   public ShuffleDescription getShuffleDescription() {
     return shuffleDescription;

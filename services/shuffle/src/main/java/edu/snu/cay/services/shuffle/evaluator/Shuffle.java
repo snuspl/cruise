@@ -30,7 +30,7 @@ public interface Shuffle {
   /**
    * Return the ShuffleReceiver for the shuffle.
    *
-   * It throws RuntimeException if the current evaluator is not a receiver for the shuffle.
+   * It throws RuntimeException if the current end point is not a receiver for the shuffle.
    *
    * @return shuffle receiver
    */
@@ -39,7 +39,7 @@ public interface Shuffle {
   /**
    * Return the ShuffleSender for the shuffle named shuffleName.
    *
-   * It throws RuntimeException if the current evaluator is not a sender for the shuffle.
+   * It throws RuntimeException if the current end point is not a sender for the shuffle.
    *
    * @return shuffle sender
    */

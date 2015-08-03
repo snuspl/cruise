@@ -80,7 +80,7 @@ public final class MessageExchangeTask implements Task {
     }
 
     countDownLatch.await();
-    LOG.log(Level.INFO, "{0} messages are arrived. The evaluator will be closed.", taskNumber);
+    LOG.log(Level.INFO, "{0} messages are arrived. The task will be closed.", taskNumber);
     return null;
   }
 
@@ -94,8 +94,8 @@ public final class MessageExchangeTask implements Task {
   }
 
   /**
-   * The number of tuples is set to be less than the actual number of evaluator number to test the case where
-   * the current evaluator sends an empty message to some tasks since there is no tuple to send to those tasks.
+   * The number of tuples is set to be less than the actual number of tasks in order to test the case where
+   * the current task sends an empty message to some tasks.
    */
   private int getTupleNumber() {
     return taskNumber * 3 / 5;
@@ -120,8 +120,8 @@ public final class MessageExchangeTask implements Task {
   private final class TupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage<Integer, Integer>>> {
 
     /**
-     * It throws a RuntimeException if more than one message arrives from the same evaluator
-     * since only one message from one evaluator is allowed.
+     * It throws a RuntimeException if more than one message arrives from the same task
+     * since only one message from one task is allowed.
      * The waiting task thread will be notified when all expected messages arrives.
      *
      * @param message a message from other nodes
@@ -142,7 +142,7 @@ public final class MessageExchangeTask implements Task {
       }
 
       if (receivedIdSet.contains(message.getSrcId())) {
-        throw new RuntimeException("Only one message from one evaluator is allowed.");
+        throw new RuntimeException("Only one message from one task is allowed.");
       } else {
         receivedIdSet.add(message.getSrcId());
         countDownLatch.countDown();

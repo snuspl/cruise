@@ -22,8 +22,11 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
  * Driver-side shuffle controller.
- * Users can register a ShuffleDescription and retrieve context,
- * task configurations for shuffle components in evaluators through this class.
+ * Users can register a ShuffleDescription and retrieve context, task configurations for shuffle components
+ * in evaluators through this class.
+ *
+ * The evaluator-side components can be injected in task or context as a service.
+ * // TODO Add more explanation about how both cases are different when the functionality is included.
  */
 @DriverSide
 @DefaultImplementation(ShuffleDriverImpl.class)
@@ -43,11 +46,11 @@ public interface ShuffleDriver {
   Configuration getContextConfiguration();
 
   /**
-   * Return task configuration contains all information about shuffles where the evaluatorId is included.
+   * Return task configuration contains all information about shuffles where the endPointId is included.
    * The returned configuration is used to instantiating Shuffles in the tasks.
    *
-   * @param evaluatorId evaluator identifier
-   * @return evaluator configuration for evaluatorId
+   * @param endPointId end point identifier
+   * @return task configuration for endPointId
    */
-  Configuration getTaskConfiguration(String evaluatorId);
+  Configuration getTaskConfiguration(String endPointId);
 }

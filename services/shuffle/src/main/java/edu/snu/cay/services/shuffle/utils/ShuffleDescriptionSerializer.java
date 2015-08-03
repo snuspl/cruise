@@ -29,7 +29,7 @@ import org.apache.reef.util.Optional;
 import javax.inject.Inject;
 
 /**
- * This serializes ShuffleDescriptions to Configurations with certain type of Shuffle.
+ * This serializes ShuffleDescriptions to Tang Configurations along with certain type of Shuffle.
  */
 public class ShuffleDescriptionSerializer {
 
@@ -69,23 +69,22 @@ public class ShuffleDescriptionSerializer {
   /**
    * Return serialized Configuration with certain Shuffle type.
    * It returns Optional.empty if the shuffleDescription does not have
-   * the evaluatorId as a sender or a receiver.
+   * the endPointId as a sender or a receiver.
    *
    * @param shuffleClass a type of Shuffle
    * @param shuffleDescription a shuffle description to serialize
-   * @param evaluatorId an identifier of a node
+   * @param endPointId an end point identifier
    * @return serialized configuration
    */
   public Optional<Configuration> serialize(
       final Class<? extends Shuffle> shuffleClass,
       final ShuffleDescription shuffleDescription,
-      final String evaluatorId) {
-    if (!shuffleDescription.getSenderIdList().contains(evaluatorId) &&
-        !shuffleDescription.getReceiverIdList().contains(evaluatorId)) {
+      final String endPointId) {
+    if (!shuffleDescription.getSenderIdList().contains(endPointId) &&
+        !shuffleDescription.getReceiverIdList().contains(endPointId)) {
       return Optional.empty();
     }
 
     return Optional.of(serialize(shuffleClass, shuffleDescription));
   }
-
 }

@@ -24,7 +24,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 /**
  * Evaluator-side interface for providing Shuffles.
  *
- * Shuffles in the provider are automatically injected if the evaluator's configuration
+ * Shuffles in the provider are automatically injected if the end point's configuration
  * was merged with proper configuration from ShuffleDriver.
  */
 @EvaluatorSide

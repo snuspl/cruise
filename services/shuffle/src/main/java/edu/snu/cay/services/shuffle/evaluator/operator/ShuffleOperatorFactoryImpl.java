@@ -34,7 +34,7 @@ import javax.inject.Inject;
  */
 public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
 
-  // TODO: currently the identifier for the evaluator is same as the task identifier.
+  // TODO: currently the identifier of the end point is same as the task identifier.
   // It have to be changed for the case Shuffles are injected in context configuration.
   private final String currentTaskId;
   private final ShuffleDescription shuffleDescription;

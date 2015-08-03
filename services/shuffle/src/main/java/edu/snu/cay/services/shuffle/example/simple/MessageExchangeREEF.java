@@ -39,10 +39,10 @@ import java.util.logging.Logger;
 /*
  * Simple message exchanging example using shuffle service.
  *
- * n tasks exchange tuples using the key grouping strategy. Because all tuples that are sent from one evaluator to
- * another evaluator are chunked into one network message, each evaluator is blocked until exactly n messages arrive from
+ * n tasks exchange tuples using the key grouping strategy. Because all tuples that are sent from one task to
+ * another task are chunked into one network message, each task is blocked until exactly n messages arrive from
  * n tasks including itself.
- * (Tasks send at least an empty network message to wake the other tasks)
+ * (Tasks send at least an empty network message to wake up the other tasks)
  */
 public final class MessageExchangeREEF {
 

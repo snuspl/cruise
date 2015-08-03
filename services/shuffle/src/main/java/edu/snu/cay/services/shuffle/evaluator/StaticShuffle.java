@@ -43,16 +43,25 @@ public final class StaticShuffle implements Shuffle {
     this.operatorFactory = operatorFactory;
   }
 
+  /**
+   * @return the ShuffleReceiver of the Shuffle
+   */
   @Override
   public <K, V> ShuffleReceiver<K, V> getReceiver() {
     return operatorFactory.newShuffleReceiver();
   }
 
+  /**
+   * @return the ShuffleSender of the Shuffle
+   */
   @Override
   public <K, V> ShuffleSender<K, V> getSender() {
     return operatorFactory.newShuffleSender();
   }
 
+  /**
+   * @return the initial shuffle description
+   */
   @Override
   public ShuffleDescription getShuffleDescription() {
     return shuffleDescription;

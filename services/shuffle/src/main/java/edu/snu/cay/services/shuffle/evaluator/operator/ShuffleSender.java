@@ -43,7 +43,7 @@ public interface ShuffleSender<K, V> extends ShuffleOperator<K, V> {
   /**
    * Send a tupleList to selected receivers using ShuffleStrategy of the shuffle.
    *
-   * Each tuple in the tupleList can be sent to many receivers, so the tuples to the same evaluator are
+   * Each tuple in the tupleList can be sent to many receivers, so the tuples to the same end point are
    * chunked into one ShuffleTupleMessage.
    *
    * @param tupleList a tuple list

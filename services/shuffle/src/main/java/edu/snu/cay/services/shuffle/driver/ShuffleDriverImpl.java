@@ -82,13 +82,13 @@ final class ShuffleDriverImpl implements ShuffleDriver {
   }
 
   @Override
-  public Configuration getTaskConfiguration(final String evaluatorId) {
+  public Configuration getTaskConfiguration(final String endPointId) {
     final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
     for (final ShuffleManager manager : managerMap.values()) {
-      final Optional<Configuration> shuffleConf = manager.getShuffleConfiguration(evaluatorId);
+      final Optional<Configuration> shuffleConf = manager.getShuffleConfiguration(endPointId);
 
       if (shuffleConf.isPresent()) {
-        // The shuffle manager has the taskId as a sender or a receiver.
+        // The shuffle manager has the endPointId as a sender or a receiver.
         confBuilder.bindSetEntry(
             ShuffleParameters.SerializedShuffleSet.class, confSerializer.toString(shuffleConf.get()));
       }

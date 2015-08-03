@@ -26,7 +26,7 @@ public interface ShuffleOperatorFactory {
   /**
    * Create a shuffle receiver and register a tuple codec for the receiver.
    * It returns the cached receiver if the receiver was already created and throws runtime exception
-   * if the evaluator is not a receiver of the shuffle.
+   * if the end point is not a receiver of the shuffle.
    *
    * @return created or cached shuffle receiver
    */
@@ -35,7 +35,7 @@ public interface ShuffleOperatorFactory {
   /**
    * Create a shuffle sender and register a tuple codec for the sender.
    * It returns the cached sender if the sender was already created and throws runtime exception
-   * if the evaluator is not a sender of the shuffle.
+   * if the end point is not a sender of the shuffle.
    *
    * @return created or cached shuffle sender
    */
