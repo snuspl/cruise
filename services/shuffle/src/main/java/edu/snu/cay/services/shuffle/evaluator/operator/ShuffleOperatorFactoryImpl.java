@@ -36,7 +36,7 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
 
   // TODO: currently the identifier of the end point is same as the task identifier.
   // It have to be changed for the case Shuffles are injected in context configuration.
-  private final String currentTaskId;
+  private final String endPointId;
   private final ShuffleDescription shuffleDescription;
   private final ShuffleTupleMessageCodec shuffleTupleCodec;
   private final Injector injector;
@@ -46,11 +46,11 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
 
   @Inject
   private ShuffleOperatorFactoryImpl(
-      @Parameter(TaskConfigurationOptions.Identifier.class) final String currentTaskId,
+      @Parameter(TaskConfigurationOptions.Identifier.class) final String endPointId,
       final ShuffleDescription shuffleDescription,
       final ShuffleTupleMessageCodec shuffleTupleCodec,
       final Injector injector) {
-    this.currentTaskId = currentTaskId;
+    this.endPointId = endPointId;
     this.shuffleDescription = shuffleDescription;
     this.shuffleTupleCodec = shuffleTupleCodec;
     this.injector = injector;
@@ -74,8 +74,8 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
   public <K, V> ShuffleReceiver<K, V> newShuffleReceiver() {
     final String shuffleName = shuffleDescription.getShuffleName();
     if (shuffleReceiver == null) {
-      if (!shuffleDescription.getReceiverIdList().contains(currentTaskId)) {
-        throw new RuntimeException(shuffleName + " does not have " + currentTaskId + " as a receiver.");
+      if (!shuffleDescription.getReceiverIdList().contains(endPointId)) {
+        throw new RuntimeException(shuffleName + " does not have " + endPointId + " as a receiver.");
       }
 
       final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
@@ -95,8 +95,8 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
   public <K, V> ShuffleSender<K, V> newShuffleSender() {
     final String shuffleName = shuffleDescription.getShuffleName();
     if (shuffleSender == null) {
-      if (!shuffleDescription.getSenderIdList().contains(currentTaskId)) {
-        throw new RuntimeException(shuffleName + " does not have " + currentTaskId + " as a sender.");
+      if (!shuffleDescription.getSenderIdList().contains(endPointId)) {
+        throw new RuntimeException(shuffleName + " does not have " + endPointId + " as a sender.");
       }
 
       final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
