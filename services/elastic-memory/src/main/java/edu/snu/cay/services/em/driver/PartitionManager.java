@@ -63,12 +63,12 @@ public final class PartitionManager {
 
   public synchronized Set<LongRange> getRangeSet(final String evalId, final String key) {
     if (!mapIdKeyRange.containsKey(evalId)) {
-      return null;
+      return new TreeSet<>();
     }
 
     final Map<String, TreeSet<LongRange>> mapKeyRange = mapIdKeyRange.get(evalId);
     if (!mapKeyRange.containsKey(key)) {
-      return null;
+      return new TreeSet<>();
     }
 
     return new TreeSet<>(mapKeyRange.get(key));
