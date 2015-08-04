@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes that are related to the Metric Tracker Service of Dolphin.
+ * Classes that are related to the Metrics Collection Service of Dolphin.
  */
 package edu.snu.cay.dolphin.core.metric;

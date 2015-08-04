@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.core;
 import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterSender;
 import edu.snu.cay.dolphin.groupcomm.names.*;
-import edu.snu.cay.dolphin.core.metric.MetricTrackerManager;
+import edu.snu.cay.dolphin.core.metric.MetricsCollector;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
@@ -45,7 +45,7 @@ public final class ControllerTask implements Task {
   private final UserControllerTask userControllerTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
-  private final MetricTrackerManager metricTrackerManager;
+  private final MetricsCollector metricsCollector;
   private final Set<MetricTracker> metricTrackerSet;
   private final InsertableMetricTracker insertableMetricTracker;
 
@@ -54,14 +54,14 @@ public final class ControllerTask implements Task {
                         final UserControllerTask userControllerTask,
                         @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                         @Parameter(CommunicationGroup.class) final String commGroupName,
-                        final MetricTrackerManager metricTrackerManager,
+                        final MetricsCollector metricsCollector,
                         @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
                         final InsertableMetricTracker insertableMetricTracker) throws ClassNotFoundException {
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.userControllerTask = userControllerTask;
     this.taskId = taskId;
     this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
-    this.metricTrackerManager = metricTrackerManager;
+    this.metricsCollector = metricsCollector;
     this.metricTrackerSet = metricTrackerSet;
     this.insertableMetricTracker = insertableMetricTracker;
   }
@@ -71,16 +71,16 @@ public final class ControllerTask implements Task {
     LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
     userControllerTask.initialize();
-    try (final MetricTrackerManager metricTrackerManager = this.metricTrackerManager;) {
-      metricTrackerManager.registerTrackers(metricTrackerSet);
+    try (final MetricsCollector metricsCollector = this.metricsCollector;) {
+      metricsCollector.registerTrackers(metricTrackerSet);
       int iteration = 0;
       while(!userControllerTask.isTerminated(iteration)) {
-        metricTrackerManager.start();
+        metricsCollector.start();
         ctrlMessageBroadcast.send(CtrlMessage.RUN);
         sendData(iteration);
         receiveData(iteration);
         runUserControllerTask(iteration);
-        metricTrackerManager.stop();
+        metricsCollector.stop();
         updateTopology();
         iteration++;
       }
@@ -114,7 +114,7 @@ public final class ControllerTask implements Task {
     }
     if (userControllerTask.isScatterUsed()) {
       commGroup.getScatterSender(DataScatter.class).send(
-              ((DataScatterSender) userControllerTask).sendScatterData(iteration));
+          ((DataScatterSender) userControllerTask).sendScatterData(iteration));
     }
     insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_END, System.currentTimeMillis());
   }

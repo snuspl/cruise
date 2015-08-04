@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
-import edu.snu.cay.dolphin.core.metric.MetricTrackerManager;
+import edu.snu.cay.dolphin.core.metric.MetricsCollector;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
@@ -45,7 +45,7 @@ public final class ComputeTask implements Task {
   private final UserComputeTask userComputeTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
-  private final MetricTrackerManager metricTrackerManager;
+  private final MetricsCollector metricsCollector;
   private final Set<MetricTracker> metricTrackerSet;
   private final InsertableMetricTracker insertableMetricTracker;
 
@@ -54,14 +54,14 @@ public final class ComputeTask implements Task {
                      final UserComputeTask userComputeTask,
                      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                      @Parameter(CommunicationGroup.class) final String commGroupName,
-                     final MetricTrackerManager metricTrackerManager,
+                     final MetricsCollector metricsCollector,
                      @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
                      final InsertableMetricTracker insertableMetricTracker) throws ClassNotFoundException {
     this.userComputeTask = userComputeTask;
     this.taskId = taskId;
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
-    this.metricTrackerManager = metricTrackerManager;
+    this.metricsCollector = metricsCollector;
     this.metricTrackerSet = metricTrackerSet;
     this.insertableMetricTracker = insertableMetricTracker;
   }
@@ -71,15 +71,15 @@ public final class ComputeTask implements Task {
     LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
     userComputeTask.initialize();
-    try (final MetricTrackerManager metricTrackerManager = this.metricTrackerManager) {
-      metricTrackerManager.registerTrackers(metricTrackerSet);
+    try (final MetricsCollector metricsCollector = this.metricsCollector) {
+      metricsCollector.registerTrackers(metricTrackerSet);
       int iteration=0;
       while (!isTerminated()) {
-        metricTrackerManager.start();
+        metricsCollector.start();
         receiveData(iteration);
         runUserComputeTask(iteration);
         sendData(iteration);
-        metricTrackerManager.stop();
+        metricsCollector.stop();
         iteration++;
       }
       userComputeTask.cleanup();
