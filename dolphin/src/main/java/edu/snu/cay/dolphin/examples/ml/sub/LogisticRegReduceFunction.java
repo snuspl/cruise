@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
-import com.microsoft.reef.io.network.group.operators.Reduce;
 import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;
+import org.apache.reef.io.network.group.api.operators.Reduce;
 
 import javax.inject.Inject;
 

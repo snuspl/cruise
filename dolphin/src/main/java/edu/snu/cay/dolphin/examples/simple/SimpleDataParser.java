@@ -50,7 +50,7 @@ public class SimpleDataParser implements DataParser<List<String>> {
   public final void parse() {
     final List<String> texts = new LinkedList<>();
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
-      texts.add(keyValue.second.toString());
+      texts.add(keyValue.getSecond().toString());
     }
     result = texts;
   }

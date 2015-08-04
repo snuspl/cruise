@@ -33,19 +33,11 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <reef.version>0.11.0-incubating</reef.version>
+    <reef.version>0.12.0-incubating-SNAPSHOT</reef.version>
     <shimoga.version>0.1-SNAPSHOT</shimoga.version>
     <hadoop.version>2.4.0</hadoop.version>
     <mahout.version>0.9</mahout.version>
   </properties>
-
-  <repositories>
-    <repository>
-      <id>in-project-repo</id>
-      <name>In Project Repository</name>
-      <url>file://${project.basedir}/lib/</url>
-    </repository>
-  </repositories>
 
   <dependencies>
     <dependency>
@@ -82,11 +74,6 @@
       <groupId>org.apache.reef</groupId>
       <artifactId>wake</artifactId>
       <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.microsoft.reef</groupId>
-      <artifactId>shimoga</artifactId>
-      <version>${shimoga.version}</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>

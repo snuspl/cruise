@@ -15,12 +15,6 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import com.microsoft.reef.io.network.nggroup.api.driver.CommunicationGroupDriver;
-import com.microsoft.reef.io.network.nggroup.api.driver.GroupCommDriver;
-import com.microsoft.reef.io.network.nggroup.impl.config.BroadcastOperatorSpec;
-import com.microsoft.reef.io.network.nggroup.impl.config.GatherOperatorSpec;
-import com.microsoft.reef.io.network.nggroup.impl.config.ReduceOperatorSpec;
-import com.microsoft.reef.io.network.nggroup.impl.config.ScatterOperatorSpec;
 import edu.snu.cay.dolphin.groupcomm.names.*;
 import edu.snu.cay.dolphin.parameters.EvaluatorNum;
 import edu.snu.cay.dolphin.parameters.OutputDir;
@@ -37,6 +31,12 @@ import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
+import org.apache.reef.io.network.group.api.driver.CommunicationGroupDriver;
+import org.apache.reef.io.network.group.api.driver.GroupCommDriver;
+import org.apache.reef.io.network.group.impl.config.BroadcastOperatorSpec;
+import org.apache.reef.io.network.group.impl.config.GatherOperatorSpec;
+import org.apache.reef.io.network.group.impl.config.ReduceOperatorSpec;
+import org.apache.reef.io.network.group.impl.config.ScatterOperatorSpec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Parameter;

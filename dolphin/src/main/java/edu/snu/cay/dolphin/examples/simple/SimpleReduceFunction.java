@@ -15,7 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.simple;
 
-import com.microsoft.reef.io.network.group.operators.Reduce;
+import org.apache.reef.io.network.group.api.operators.Reduce;
+
 import javax.inject.Inject;
 
 public class SimpleReduceFunction implements Reduce.ReduceFunction<Integer> {
