@@ -24,7 +24,7 @@ import java.util.Map;
  * Metrics begin to be collected from start() and cleared on stop().
  * So users should make sure to use unique keys between start() and stop().
  *
- * This class is thread-safe, so multiple threads can access it simultaneously.
+ * This class is thread-safe, so multiple threads can call put() simultaneously.
  */
 public class InsertableMetricTracker implements MetricTracker {
 
