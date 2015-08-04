@@ -61,7 +61,7 @@ public final class AdjacencyListParser implements DataParser<Map<Integer, List<I
     final Map<Integer, List<Integer>> subgraphs = new HashMap<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
-      final String text = keyValue.second.toString().trim();
+      final String text = keyValue.getSecond().toString().trim();
       if (text.startsWith("#") || 0 == text.length()) {
         continue;
       }

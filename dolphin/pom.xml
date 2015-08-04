@@ -38,14 +38,6 @@
     <mahout.version>0.9</mahout.version>
   </properties>
 
-  <repositories>
-    <repository>
-      <id>in-project-repo</id>
-      <name>In Project Repository</name>
-      <url>file://${project.basedir}/lib/</url>
-    </repository>
-  </repositories>
-
   <dependencies>
     <dependency>
       <groupId>org.apache.reef</groupId>
@@ -81,11 +73,6 @@
       <groupId>org.apache.reef</groupId>
       <artifactId>wake</artifactId>
       <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.microsoft.reef</groupId>
-      <artifactId>shimoga</artifactId>
-      <version>${shimoga.version}</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
