@@ -29,16 +29,16 @@ import javax.inject.Inject;
  * Register a driver id to a NetworkConnectionService when driver starts.
  */
 @Unit
-public final class EMNetworkDriverRegister {
+public final class NetworkDriverRegister {
 
   private final NetworkConnectionService networkConnectionService;
   private final IdentifierFactory identifierFactory;
   private final String driverId;
 
   @Inject
-  private EMNetworkDriverRegister(final NetworkConnectionService networkConnectionService,
-                                  final IdentifierFactory identifierFactory,
-                                  @Parameter(DriverIdentifier.class) final String driverId) {
+  private NetworkDriverRegister(final NetworkConnectionService networkConnectionService,
+                                final IdentifierFactory identifierFactory,
+                                @Parameter(DriverIdentifier.class) final String driverId) {
     this.networkConnectionService = networkConnectionService;
     this.identifierFactory = identifierFactory;
     this.driverId = driverId;

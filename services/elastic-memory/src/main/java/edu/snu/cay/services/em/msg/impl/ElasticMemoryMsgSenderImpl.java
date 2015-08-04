@@ -44,7 +44,7 @@ import java.util.logging.Logger;
 
 
 /**
- * Sender class that uses a NetworkService instance provided by NSWrapper to
+ * Sender class that uses NetworkConnectionService to
  * send AvroElasticMemoryMessages to the driver and evaluators.
  */
 public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender {
@@ -72,7 +72,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private void send(final String destId, final AvroElasticMemoryMessage msg) {
     LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
 
-    final Connection conn = emNetworkSetup.getConnectionFactory()
+    final Connection<AvroElasticMemoryMessage> conn = emNetworkSetup.getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();

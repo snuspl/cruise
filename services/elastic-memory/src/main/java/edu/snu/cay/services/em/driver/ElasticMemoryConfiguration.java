@@ -18,8 +18,8 @@ package edu.snu.cay.services.em.driver;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
-import edu.snu.cay.services.em.ns.EMNetworkContextRegister;
-import edu.snu.cay.services.em.ns.EMNetworkDriverRegister;
+import edu.snu.cay.services.em.ns.NetworkContextRegister;
+import edu.snu.cay.services.em.ns.NetworkDriverRegister;
 import edu.snu.cay.services.em.ns.parameters.EMCodec;
 import edu.snu.cay.services.em.ns.parameters.EMMessageHandler;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -63,38 +63,33 @@ public final class ElasticMemoryConfiguration {
 
   /**
    * Configuration for REEF driver when using Elastic Memory.
-   * Binds named parameters for NSWrapper, excluding NameServer-related and default ones.
-   * The NameServer will be instantiated at the driver by Tang, and thus NameServer
-   * parameters (namely address and port) will be set at runtime by receiving
-   * a NameServer injection from Tang.
+   * Binds NetworkConnectionService registration handlers and ElasticMemoryMsg codec/handler.
    *
    * @return configuration that should be submitted with a DriverConfiguration
    */
   public static Configuration getDriverConfiguration() {
     return getNetworkConfigurationBuilder()
-        .bindSetEntry(DriverStartHandler.class, EMNetworkDriverRegister.RegisterDriverHandler.class)
+        .bindSetEntry(DriverStartHandler.class, NetworkDriverRegister.RegisterDriverHandler.class)
         .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.ElasticMemoryMsgHandler.class)
         .build();
   }
 
   /**
    * Configuration for REEF context with Elastic Memory.
-   * Elastic Memory requires contexts that communicate through NSWrapper.
-   * This configuration binds handlers that register contexts to / unregister
-   * contexts from NSWrapper.
+   * Binds NetworkConnectionService registration handlers.
    *
    * @return configuration that should be merged with a ContextConfiguration to form a context
    */
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextStartHandlers.class, EMNetworkContextRegister.RegisterContextHandler.class)
-        .bindSetEntry(ContextStopHandlers.class, EMNetworkContextRegister.UnregisterContextHandler.class)
+        .bindSetEntry(ContextStartHandlers.class, NetworkContextRegister.RegisterContextHandler.class)
+        .bindSetEntry(ContextStopHandlers.class, NetworkContextRegister.UnregisterContextHandler.class)
         .build();
   }
 
   /**
    * Configuration for REEF service with Elastic Memory.
-   * Sets up NSWrapper and ElasticMemoryStore, both required for Elastic Memory.
+   * Sets up ElasticMemoryMsg codec/handler and ElasticMemoryStore, both required for Elastic Memory.
    *
    * @return service configuration that should be passed along with a ContextConfiguration
    */

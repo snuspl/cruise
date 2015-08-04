@@ -29,14 +29,14 @@ import javax.inject.Inject;
  * when contexts spawn/terminate, respectively.
  */
 @Unit
-public final class EMNetworkContextRegister {
+public final class NetworkContextRegister {
 
   private final NetworkConnectionService networkConnectionService;
   private final IdentifierFactory identifierFactory;
 
   @Inject
-  private EMNetworkContextRegister(final NetworkConnectionService networkConnectionService,
-                                   final IdentifierFactory identifierFactory) {
+  private NetworkContextRegister(final NetworkConnectionService networkConnectionService,
+                                 final IdentifierFactory identifierFactory) {
     this.networkConnectionService = networkConnectionService;
     this.identifierFactory = identifierFactory;
   }
