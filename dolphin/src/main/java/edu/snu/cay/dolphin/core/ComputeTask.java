@@ -15,16 +15,14 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
-import edu.snu.cay.dolphin.core.metric.MetricsCollector;
-import edu.snu.cay.dolphin.core.metric.MetricTracker;
-import edu.snu.cay.dolphin.core.metric.MetricTrackers;
+import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterReceiver;
 import edu.snu.cay.dolphin.groupcomm.names.*;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
 import org.apache.reef.io.network.group.api.task.CommunicationGroupClient;
 import org.apache.reef.io.network.group.api.task.GroupCommClient;
@@ -88,13 +86,13 @@ public final class ComputeTask implements Task {
     return null;
   }
 
-  private void runUserComputeTask(final int iteration) throws Exception {
+  private void runUserComputeTask(final int iteration) throws MetricException {
     insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START, System.currentTimeMillis());
     userComputeTask.run(iteration);
     insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END, System.currentTimeMillis());
   }
 
-  private void receiveData(final int iteration) throws Exception {
+  private void receiveData(final int iteration) throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_RECEIVE_DATA_START, System.currentTimeMillis());
     if (userComputeTask.isBroadcastUsed()) {
       ((DataBroadcastReceiver)userComputeTask).receiveBroadcastData(iteration,
@@ -107,7 +105,7 @@ public final class ComputeTask implements Task {
     insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_RECEIVE_DATA_END, System.currentTimeMillis());
   }
 
-  private void sendData(final int iteration) throws Exception {
+  private void sendData(final int iteration) throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(DolphinMetricKeys.COMPUTE_TASK_SEND_DATA_START, System.currentTimeMillis());
     if (userComputeTask.isGatherUsed()) {
       commGroup.getGatherSender(DataGather.class).send(

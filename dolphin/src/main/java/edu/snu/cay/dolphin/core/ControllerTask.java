@@ -15,16 +15,14 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
+import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterSender;
 import edu.snu.cay.dolphin.groupcomm.names.*;
-import edu.snu.cay.dolphin.core.metric.MetricsCollector;
-import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
-import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
 import org.apache.reef.io.network.group.api.task.CommunicationGroupClient;
 import org.apache.reef.io.network.group.api.task.GroupCommClient;
@@ -100,13 +98,13 @@ public final class ControllerTask implements Task {
     }
   }
 
-  private void runUserControllerTask(final int iteration) throws Exception {
+  private void runUserControllerTask(final int iteration) throws MetricException {
     insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_USER_CONTROLLER_TASK_START, System.currentTimeMillis());
     userControllerTask.run(iteration);
     insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_USER_CONTROLLER_TASK_END, System.currentTimeMillis());
   }
 
-  private final void sendData(final int iteration) throws Exception {
+  private final void sendData(final int iteration) throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isBroadcastUsed()) {
       commGroup.getBroadcastSender(DataBroadcast.class).send(
@@ -119,7 +117,7 @@ public final class ControllerTask implements Task {
     insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_END, System.currentTimeMillis());
   }
 
-  private final void receiveData(final int iteration) throws Exception {
+  private final void receiveData(final int iteration) throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isGatherUsed()) {
       ((DataGatherReceiver)userControllerTask).receiveGatherData(iteration,
