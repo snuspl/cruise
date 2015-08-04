@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import com.microsoft.reef.io.network.nggroup.impl.driver.GroupCommService;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.io.data.loading.api.DataLoadingRequestBuilder;
+import org.apache.reef.io.network.group.impl.driver.GroupCommService;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.Configuration;

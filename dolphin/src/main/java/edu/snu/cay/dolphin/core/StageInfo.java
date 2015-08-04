@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import com.microsoft.reef.io.network.group.operators.Reduce;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
+import org.apache.reef.io.network.group.api.operators.Reduce;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.util.Optional;

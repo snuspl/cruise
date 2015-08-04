@@ -71,7 +71,7 @@ public final class RegressionDataParser implements DataParser<List<Row>> {
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
 
-      final String text = keyValue.second.toString().trim();
+      final String text = keyValue.getSecond().toString().trim();
       if (text.startsWith("#") || text.length() == 0) {
         continue;
       }
