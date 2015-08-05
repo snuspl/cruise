@@ -279,11 +279,11 @@ public final class DolphinDriver {
     @Override
     public void onNext(final ContextMessage message) {
 
-      if(message.getMessageSourceID().equals(MetricsCollectionService.class.getName())) {
+      if (message.getMessageSourceID().equals(MetricsCollectionService.class.getName())) {
 
         LOG.info("Metrics are gathered from " + message.getId());
         final Map<String, Double> map = metricCodec.decode(message.get());
-        for(final Map.Entry<String, Double> entry : map.entrySet()) {
+        for (final Map.Entry<String, Double> entry : map.entrySet()) {
           LOG.info("Metric Info: Source=" + message.getId() + " Key=" + entry.getKey() + " Value=" + entry.getValue());
         }
       }
