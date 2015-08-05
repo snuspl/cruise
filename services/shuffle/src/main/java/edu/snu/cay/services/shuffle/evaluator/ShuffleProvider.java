@@ -35,5 +35,5 @@ public interface ShuffleProvider {
    * @param shuffleName name of the shuffle
    * @return the Shuffle instance named shuffleName
    */
-  Shuffle getShuffle(String shuffleName);
+  <K, V> Shuffle<K, V> getShuffle(String shuffleName);
 }

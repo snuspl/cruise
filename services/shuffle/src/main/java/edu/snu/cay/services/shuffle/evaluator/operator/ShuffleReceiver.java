@@ -15,25 +15,12 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import org.apache.reef.io.network.Message;
+import edu.snu.cay.services.shuffle.evaluator.operator.impl.BaseShuffleReceiverImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
-import org.apache.reef.wake.EventHandler;
 
 /**
  * Interface for a receiver used in a Shuffle.
- *
- * Users have to register event handler for ShuffleTupleMessage to receive
- * tuples from senders.
  */
-@DefaultImplementation(BaseShuffleReceiver.class)
+@DefaultImplementation(BaseShuffleReceiverImpl.class)
 public interface ShuffleReceiver<K, V> extends ShuffleOperator<K, V> {
-
-  /**
-   * Register a message handler that receives tuples arriving at this receiver
-   *
-   * @param messageHandler event handler for ShuffleTupleMessage
-   */
-  void registerTupleMessageHandler(EventHandler<Message<ShuffleTupleMessage<K, V>>> messageHandler);
-
 }

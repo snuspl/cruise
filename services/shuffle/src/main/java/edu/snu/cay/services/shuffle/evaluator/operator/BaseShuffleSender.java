@@ -1,129 +1,82 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescription;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleLinkListener;
+import edu.snu.cay.services.shuffle.evaluator.operator.impl.BaseShuffleSenderImpl;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import edu.snu.cay.services.shuffle.params.ShuffleParameters;
-import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
-import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.Tuple;
-import org.apache.reef.io.network.Connection;
-import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.io.network.NetworkConnectionService;
-import org.apache.reef.io.network.naming.NameServerParameters;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.remote.transport.LinkListener;
 
-import javax.inject.Inject;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Base implementation for ShuffleSender.
+ * Shuffle sender that has base operation to send tuples.
+ *
+ * Users can register link listener for ShuffleTupleMessage to track whether the message
+ * sent from this operator has been transferred successfully.
  */
-public final class BaseShuffleSender<K, V> implements ShuffleSender<K, V> {
+@DefaultImplementation(BaseShuffleSenderImpl.class)
+public interface BaseShuffleSender<K, V> extends ShuffleSender<K, V> {
 
-  private final String shuffleName;
-  private final ShuffleDescription shuffleDescription;
-  private final ShuffleStrategy<K> shuffleStrategy;
-  private final ShuffleTupleLinkListener shuffleTupleLinkListener;
-  private final ConnectionFactory<ShuffleTupleMessage> tupleMessageConnectionFactory;
-  private final IdentifierFactory idFactory;
-  private final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator;
+  /**
+   * Send a tuple to selected receivers using ShuffleStrategy of the shuffle
+   *
+   * @param tuple a tuple
+   * @return the selected receiver id list
+   */
+  List<String> sendTuple(Tuple<K, V> tuple);
 
-  @Inject
-  private BaseShuffleSender(
-      final ShuffleDescription shuffleDescription,
-      final ShuffleStrategy<K> shuffleStrategy,
-      final ShuffleTupleLinkListener shuffleTupleLinkListener,
-      final NetworkConnectionService networkConnectionService,
-      @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
-      final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator) {
-    this.shuffleName = shuffleDescription.getShuffleName();
-    this.shuffleDescription = shuffleDescription;
-    this.shuffleStrategy = shuffleStrategy;
-    this.shuffleTupleLinkListener = shuffleTupleLinkListener;
-    this.tupleMessageConnectionFactory = networkConnectionService
-        .getConnectionFactory(idFactory.getNewInstance(ShuffleParameters.NETWORK_CONNECTION_SERVICE_ID));
-    this.idFactory = idFactory;
-    this.tupleMessageGenerator = tupleMessageGenerator;
-  }
+  /**
+   * Send a tupleList to selected receivers using ShuffleStrategy of the shuffle.
+   *
+   * Each tuple in the tupleList can be sent to many receivers, so the tuples to the same end point are
+   * chunked into one ShuffleTupleMessage.
+   *
+   * @param tupleList a tuple list
+   * @return the selected receiver id list
+   */
+  List<String> sendTuple(List<Tuple<K, V>> tupleList);
 
-  @Override
-  public List<String> sendTuple(final Tuple<K, V> tuple) {
-    return sendShuffleMessageTupleList(tupleMessageGenerator.createTupleMessageAndReceiverList(tuple));
-  }
+  /**
+   * Send a tuple to the specific receiver
+   *
+   * @param receiverId a receiver id
+   * @param tuple a tuple
+   */
+  void sendTupleTo(String receiverId, Tuple<K, V> tuple);
 
-  @Override
-  public List<String> sendTuple(final List<Tuple<K, V>> tupleList) {
-    return sendShuffleMessageTupleList(tupleMessageGenerator.createTupleMessageAndReceiverList(tupleList));
-  }
+  /**
+   * Send a tuple list to the specific receiver. Note that this method does not use ShuffleStrategy to select
+   * receivers and send all of tuples in tuple list to the same receiver.
+   *
+   * @param receiverId a receiver id
+   * @param tupleList a tuple list
+   */
+  void sendTupleTo(String receiverId, List<Tuple<K, V>> tupleList);
 
-  @Override
-  public void sendTupleTo(final String receiverId, final Tuple<K, V> tuple) {
-    final List<Tuple<String, ShuffleTupleMessage<K, V>>> shuffleMessageTupleList = new ArrayList<>(1);
-    shuffleMessageTupleList.add(new Tuple<>(receiverId, tupleMessageGenerator.createTupleMessage(tuple)));
-    sendShuffleMessageTupleList(shuffleMessageTupleList);
-  }
+  /**
+   * Register a link listener to listen to whether the messages successfully sent through this sender.
+   *
+   * @param linkListener link listener for ShuffleTupleMessage
+   */
+  void registerTupleLinkListener(LinkListener<Message<ShuffleTupleMessage<K, V>>> linkListener);
 
-  @Override
-  public void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList) {
-    final List<Tuple<String, ShuffleTupleMessage<K, V>>> shuffleMessageTupleList = new ArrayList<>(1);
-    shuffleMessageTupleList.add(new Tuple<>(receiverId, tupleMessageGenerator.createTupleMessage(tupleList)));
-    sendShuffleMessageTupleList(shuffleMessageTupleList);
-  }
-
-  @Override
-  public void registerTupleLinkListener(final LinkListener<Message<ShuffleTupleMessage<K, V>>> linkListener) {
-    shuffleTupleLinkListener.registerLinkListener(shuffleName, linkListener);
-  }
-
-  private List<String> sendShuffleMessageTupleList(
-      final List<Tuple<String, ShuffleTupleMessage<K, V>>> messageTupleList) {
-    final List<String> receiverList = new ArrayList<>(messageTupleList.size());
-    for (final Tuple<String, ShuffleTupleMessage<K, V>> shuffleMessageTuple : messageTupleList) {
-      sendShuffleMessageTuple(shuffleMessageTuple);
-      receiverList.add(shuffleMessageTuple.getKey());
-    }
-
-    return receiverList;
-  }
-
-  private void sendShuffleMessageTuple(final Tuple<String, ShuffleTupleMessage<K, V>> messageTuple) {
-    try {
-      final Connection<ShuffleTupleMessage> connection = tupleMessageConnectionFactory
-          .newConnection(idFactory.getNewInstance(messageTuple.getKey()));
-      connection.open();
-      connection.write(messageTuple.getValue());
-    } catch (final NetworkException exception) {
-      throw new RuntimeException(exception);
-    }
-  }
-
-  @Override
-  public ShuffleStrategy<K> getShuffleStrategy() {
-    return shuffleStrategy;
-  }
-
-  @Override
-  public List<String> getSelectedReceiverIdList(final K key) {
-    return shuffleStrategy.selectReceivers(key, shuffleDescription.getReceiverIdList());
-  }
 }

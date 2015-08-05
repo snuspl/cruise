@@ -32,7 +32,7 @@ import javax.inject.Inject;
 /**
  * Default implementation of ShuffleOperatorFactory.
  */
-public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
+public class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K, V> {
 
   // TODO: currently the identifier of the end point is same as the task identifier.
   // It have to be changed for the case Shuffles are injected in context configuration.
@@ -71,7 +71,7 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
   }
 
   @Override
-  public <K, V> ShuffleReceiver<K, V> newShuffleReceiver() {
+  public <T extends ShuffleReceiver<K, V>> T newShuffleReceiver() {
     final String shuffleName = shuffleDescription.getShuffleName();
     if (shuffleReceiver == null) {
       if (!shuffleDescription.getReceiverIdList().contains(endPointId)) {
@@ -88,11 +88,11 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
       }
     }
 
-    return shuffleReceiver;
+    return (T)shuffleReceiver;
   }
 
   @Override
-  public <K, V> ShuffleSender<K, V> newShuffleSender() {
+  public <T extends ShuffleSender<K, V>> T newShuffleSender() {
     final String shuffleName = shuffleDescription.getShuffleName();
     if (shuffleSender == null) {
       if (!shuffleDescription.getSenderIdList().contains(endPointId)) {
@@ -110,7 +110,7 @@ public class ShuffleOperatorFactoryImpl implements ShuffleOperatorFactory {
       }
     }
 
-    return shuffleSender;
+    return (T)shuffleSender;
   }
 
   private Injector getForkedInjectorWithParameters(final ShuffleDescription shuffleDescription) {

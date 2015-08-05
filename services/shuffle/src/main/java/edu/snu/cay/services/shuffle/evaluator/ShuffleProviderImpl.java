@@ -62,7 +62,7 @@ class ShuffleProviderImpl implements ShuffleProvider {
   }
 
   @Override
-  public Shuffle getShuffle(final String shuffleName) {
+  public <K, V> Shuffle<K, V>  getShuffle(final String shuffleName) {
     return shuffleMap.get(shuffleName);
   }
 }
