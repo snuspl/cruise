@@ -32,7 +32,7 @@ import javax.inject.Inject;
 /**
  * Default implementation of ShuffleOperatorFactory.
  */
-public class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K, V> {
+final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K, V> {
 
   // TODO: currently the identifier of the end point is same as the task identifier.
   // It have to be changed for the case Shuffles are injected in context configuration.

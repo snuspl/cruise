@@ -32,7 +32,7 @@ import java.util.logging.Logger;
  * If there is no registered link listener for some ShuffleTupleMessage, the log message
  * will be printed.
  */
-public class ShuffleTupleLinkListener implements LinkListener<Message<ShuffleTupleMessage>> {
+public final class ShuffleTupleLinkListener implements LinkListener<Message<ShuffleTupleMessage>> {
 
   private static final Logger LOG = Logger.getLogger(ShuffleTupleLinkListener.class.getName());
 

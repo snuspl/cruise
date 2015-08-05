@@ -31,7 +31,7 @@ import javax.inject.Inject;
 /**
  * This serializes ShuffleDescriptions to Tang Configurations along with certain type of Shuffle.
  */
-public class ShuffleDescriptionSerializer {
+public final class ShuffleDescriptionSerializer {
 
   @Inject
   private ShuffleDescriptionSerializer() {

@@ -29,7 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-class ShuffleProviderImpl implements ShuffleProvider {
+final class ShuffleProviderImpl implements ShuffleProvider {
 
   private final Injector rootInjector;
   private ConfigurationSerializer confSerializer;

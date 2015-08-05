@@ -22,7 +22,7 @@ import javax.inject.Inject;
 /**
  * Simple integer codec.
  */
-public class IntegerCodec implements Codec<Integer> {
+public final class IntegerCodec implements Codec<Integer> {
 
   @Inject
   private IntegerCodec() {

@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * If there is no registered event handler for some shuffle, the NullPointerException
  * will be thrown.
  */
-public class ShuffleTupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage>> {
+public final class ShuffleTupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage>> {
 
   private final Map<String, EventHandler> eventHandlerMap;
 
