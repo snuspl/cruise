@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Codec for ShuffleTupleMessage.
- * It uses tuple codecs registered with corresponding shuffle name to encode, decode ShuffleTupleMessage.
+ * It uses tuple codecs registered with corresponding shuffle name to encode and decode ShuffleTupleMessage.
  */
 public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTupleMessage> {
 
@@ -53,7 +53,7 @@ public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTup
       }
       return baos.toByteArray();
     } catch (final IOException e) {
-      throw new RuntimeException("An IOException occurred in encode method of ShuffleMessageCodec", e);
+      throw new RuntimeException("An IOException occurred while encoding ShuffleTupleMessage", e);
     }
   }
 
@@ -64,7 +64,7 @@ public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTup
         return decodeFromStream(dais);
       }
     } catch (final IOException e) {
-      throw new RuntimeException("An IOException occurred in decode method of ShuffleMessageCodec", e);
+      throw new RuntimeException("An IOException occurred while decoding ShuffleTupleMessage", e);
     }
   }
 
@@ -83,9 +83,9 @@ public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTup
       final Codec<Tuple> tupleCodec = tupleCodecMap.get(msg.getShuffleName());
       for (int i = 0; i < messageLength; i++) {
         if (tupleCodec instanceof StreamingCodec) {
-          ((StreamingCodec<Tuple>)tupleCodec).encodeToStream(msg.get(i), stream);
+          ((StreamingCodec<Tuple>)tupleCodec).encodeToStream((Tuple)msg.get(i), stream);
         } else {
-          final byte[] serializedTuple = tupleCodec.encode(msg.get(i));
+          final byte[] serializedTuple = tupleCodec.encode((Tuple)msg.get(i));
           stream.writeInt(serializedTuple.length);
           stream.write(serializedTuple);
         }
@@ -116,6 +116,7 @@ public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTup
           final int length = stream.readInt();
           final byte[] serializedTuple = new byte[length];
           stream.readFully(serializedTuple);
+          tupleList.add(tupleCodec.decode(serializedTuple));
         }
       }
 

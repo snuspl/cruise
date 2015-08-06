@@ -15,22 +15,14 @@
  */
 package edu.snu.cay.services.shuffle.network;
 
-import org.apache.reef.io.Tuple;
-
-import java.util.List;
+import javax.inject.Inject;
 
 /**
- * Shuffle tuple message containing tuple list and the shuffle name.
+ * Event handler for ShuffleControlMessage.
  */
-public final class ShuffleTupleMessage<K, V> extends ShuffleMessage<Tuple<K, V>> {
+public final class ShuffleControlMessageHandler extends ShuffleMessageHandler<ShuffleControlMessage> {
 
-  /**
-   * Construct a shuffle tuple message
-   *
-   * @param shuffleName the name of shuffle
-   * @param tupleList a tuple list
-   */
-  public ShuffleTupleMessage(final String shuffleName, final List<Tuple<K, V>> tupleList) {
-    super(shuffleName, tupleList);
+  @Inject
+  private ShuffleControlMessageHandler() {
   }
 }
