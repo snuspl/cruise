@@ -15,49 +15,26 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescription;
+import edu.snu.cay.services.shuffle.evaluator.operator.impl.BaseShuffleReceiverImpl;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageHandler;
-import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
-import javax.inject.Inject;
-import java.util.List;
-
 /**
- * Base implementation for ShuffleReceiver.
+ * Shuffle receiver that has base operation to receive tuples.
+ *
+ * Users have to register event handler for ShuffleTupleMessage to receive
+ * tuples from senders.
  */
-public final class BaseShuffleReceiver<K, V> implements ShuffleReceiver<K, V> {
+@DefaultImplementation(BaseShuffleReceiverImpl.class)
+public interface BaseShuffleReceiver<K, V> extends ShuffleReceiver<K, V> {
 
-  private final String shuffleName;
-  private final ShuffleDescription shuffleDescription;
-  private final ShuffleStrategy<K> shuffleStrategy;
-  private final ShuffleTupleMessageHandler shuffleTupleMessageHandler;
+  /**
+   * Register a message handler that receives tuples arriving at this receiver
+   *
+   * @param messageHandler event handler for ShuffleTupleMessage
+   */
+  void registerTupleMessageHandler(EventHandler<Message<ShuffleTupleMessage<K, V>>> messageHandler);
 
-  @Inject
-  private BaseShuffleReceiver(
-      final ShuffleDescription shuffleDescription,
-      final ShuffleStrategy<K> shuffleStrategy,
-      final ShuffleTupleMessageHandler shuffleTupleMessageHandler) {
-    this.shuffleName = shuffleDescription.getShuffleName();
-    this.shuffleDescription = shuffleDescription;
-    this.shuffleStrategy = shuffleStrategy;
-    this.shuffleTupleMessageHandler = shuffleTupleMessageHandler;
-  }
-
-  @Override
-  public void registerTupleMessageHandler(final EventHandler<Message<ShuffleTupleMessage<K, V>>> messageHandler) {
-    shuffleTupleMessageHandler.registerMessageHandler(shuffleName, messageHandler);
-  }
-
-  @Override
-  public ShuffleStrategy<K> getShuffleStrategy() {
-    return shuffleStrategy;
-  }
-
-  @Override
-  public List<String> getSelectedReceiverIdList(final K key) {
-    return shuffleStrategy.selectReceivers(key, shuffleDescription.getReceiverIdList());
-  }
 }

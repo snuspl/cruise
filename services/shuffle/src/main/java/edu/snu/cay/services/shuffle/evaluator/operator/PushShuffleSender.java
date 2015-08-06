@@ -13,24 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator;
+package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import org.apache.reef.annotations.audience.EvaluatorSide;
+import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleSenderImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Evaluator-side interface for providing Shuffles.
- *
- * Shuffles in the provider are automatically injected if the end point's configuration
- * was merged with proper configuration from ShuffleDriver.
+ * Push-based shuffle sender.
  */
-@EvaluatorSide
-@DefaultImplementation(ShuffleProviderImpl.class)
-public interface ShuffleProvider {
+@DefaultImplementation(PushShuffleSenderImpl.class)
+public interface PushShuffleSender<K, V> extends ShuffleSender<K, V> {
 
-  /**
-   * @param shuffleName name of the shuffle
-   * @return the Shuffle instance named shuffleName
-   */
-  <K, V> Shuffle<K, V> getShuffle(String shuffleName);
+  void complete();
+
+  void waitForReceivers();
+
+  void completeAndWaitForReceivers();
 }

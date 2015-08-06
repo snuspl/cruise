@@ -13,14 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator.operator;
-
-import edu.snu.cay.services.shuffle.evaluator.operator.impl.BaseShuffleReceiverImpl;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Interface for a receiver used in a Shuffle.
+ * Implementations of ShuffleOperator.
  */
-@DefaultImplementation(BaseShuffleReceiverImpl.class)
-public interface ShuffleReceiver<K, V> extends ShuffleOperator<K, V> {
-}
+package edu.snu.cay.services.shuffle.evaluator.operator.impl;

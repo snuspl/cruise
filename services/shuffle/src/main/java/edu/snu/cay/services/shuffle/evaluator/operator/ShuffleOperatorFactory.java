@@ -21,7 +21,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * Factory for creating tuple operators.
  */
 @DefaultImplementation(ShuffleOperatorFactoryImpl.class)
-public interface ShuffleOperatorFactory {
+public interface ShuffleOperatorFactory<K, V> {
 
   /**
    * Create a shuffle receiver and register a tuple codec for the receiver.
@@ -30,7 +30,7 @@ public interface ShuffleOperatorFactory {
    *
    * @return created or cached shuffle receiver
    */
-  <K, V> ShuffleReceiver<K, V> newShuffleReceiver();
+  <T extends ShuffleReceiver<K, V>> T newShuffleReceiver();
 
   /**
    * Create a shuffle sender and register a tuple codec for the sender.
@@ -39,6 +39,6 @@ public interface ShuffleOperatorFactory {
    *
    * @return created or cached shuffle sender
    */
-  <K, V> ShuffleSender<K, V> newShuffleSender();
+  <T extends ShuffleSender<K, V>> T  newShuffleSender();
 
 }

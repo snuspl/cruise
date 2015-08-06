@@ -15,64 +15,12 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import org.apache.reef.io.Tuple;
-import org.apache.reef.io.network.Message;
+import edu.snu.cay.services.shuffle.evaluator.operator.impl.BaseShuffleSenderImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
-import org.apache.reef.wake.remote.transport.LinkListener;
-
-import java.util.List;
 
 /**
  * Interface for a sender used in a Shuffle.
- *
- * Users can register link listener for ShuffleTupleMessage to track whether the message
- * sent from this operator has been transferred successfully.
  */
-@DefaultImplementation(BaseShuffleSender.class)
+@DefaultImplementation(BaseShuffleSenderImpl.class)
 public interface ShuffleSender<K, V> extends ShuffleOperator<K, V> {
-
-  /**
-   * Send a tuple to selected receivers using ShuffleStrategy of the shuffle
-   *
-   * @param tuple a tuple
-   * @return the selected receiver id list
-   */
-  List<String> sendTuple(Tuple<K, V> tuple);
-
-  /**
-   * Send a tupleList to selected receivers using ShuffleStrategy of the shuffle.
-   *
-   * Each tuple in the tupleList can be sent to many receivers, so the tuples to the same end point are
-   * chunked into one ShuffleTupleMessage.
-   *
-   * @param tupleList a tuple list
-   * @return the selected receiver id list
-   */
-  List<String> sendTuple(List<Tuple<K, V>> tupleList);
-
-  /**
-   * Send a tuple to the specific receiver
-   *
-   * @param receiverId a receiver id
-   * @param tuple a tuple
-   */
-  void sendTupleTo(String receiverId, Tuple<K, V> tuple);
-
-  /**
-   * Send a tuple list to the specific receiver. Note that this method does not use ShuffleStrategy to select
-   * receivers and send all of tuples in tuple list to the same receiver.
-   *
-   * @param receiverId a receiver id
-   * @param tupleList a tuple list
-   */
-  void sendTupleTo(String receiverId, List<Tuple<K, V>> tupleList);
-
-  /**
-   * Register a link listener to listen to whether the messages successfully sent through this sender.
-   *
-   * @param linkListener link listener for ShuffleTupleMessage
-   */
-  void registerTupleLinkListener(LinkListener<Message<ShuffleTupleMessage<K, V>>> linkListener);
-
 }

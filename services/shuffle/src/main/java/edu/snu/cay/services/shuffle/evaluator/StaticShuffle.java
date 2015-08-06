@@ -30,15 +30,15 @@ import javax.inject.Inject;
  * to the shuffle and cannot change the key, value codecs and shuffling strategy after the Shuffle is created.
  */
 @EvaluatorSide
-public final class StaticShuffle implements Shuffle {
+public final class StaticShuffle<K, V> implements Shuffle<K, V> {
 
   private final ShuffleDescription shuffleDescription;
-  private final ShuffleOperatorFactory operatorFactory;
+  private final ShuffleOperatorFactory<K, V> operatorFactory;
 
   @Inject
   private StaticShuffle(
       final ShuffleDescription shuffleDescription,
-      final ShuffleOperatorFactory operatorFactory) {
+      final ShuffleOperatorFactory<K, V> operatorFactory) {
     this.shuffleDescription = shuffleDescription;
     this.operatorFactory = operatorFactory;
   }
@@ -47,7 +47,7 @@ public final class StaticShuffle implements Shuffle {
    * @return the ShuffleReceiver of the Shuffle
    */
   @Override
-  public <K, V> ShuffleReceiver<K, V> getReceiver() {
+  public <T extends ShuffleReceiver<K, V>> T getReceiver() {
     return operatorFactory.newShuffleReceiver();
   }
 
@@ -55,7 +55,7 @@ public final class StaticShuffle implements Shuffle {
    * @return the ShuffleSender of the Shuffle
    */
   @Override
-  public <K, V> ShuffleSender<K, V> getSender() {
+  public <T extends ShuffleSender<K, V>> T getSender() {
     return operatorFactory.newShuffleSender();
   }
 

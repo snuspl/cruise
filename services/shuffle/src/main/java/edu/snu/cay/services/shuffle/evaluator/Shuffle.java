@@ -25,7 +25,7 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
  * and also provides shuffle operators to users.
  */
 @EvaluatorSide
-public interface Shuffle {
+public interface Shuffle<K, V> {
 
   /**
    * Return the ShuffleReceiver for the shuffle.
@@ -34,7 +34,7 @@ public interface Shuffle {
    *
    * @return shuffle receiver
    */
-  <K, V> ShuffleReceiver<K, V> getReceiver();
+  <T extends ShuffleReceiver<K, V>> T getReceiver();
 
   /**
    * Return the ShuffleSender for the shuffle named shuffleName.
@@ -43,7 +43,7 @@ public interface Shuffle {
    *
    * @return shuffle sender
    */
-  <K, V> ShuffleSender<K, V> getSender();
+  <T extends ShuffleSender<K, V>> T getSender();
 
   /**
    * @return the shuffle description
