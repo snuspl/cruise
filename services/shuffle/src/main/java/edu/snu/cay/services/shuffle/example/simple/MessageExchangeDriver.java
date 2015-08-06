@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.example.simple;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescriptionImpl;
+import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
 import edu.snu.cay.services.shuffle.strategy.KeyShuffleStrategy;
 import org.apache.reef.annotations.audience.DriverSide;

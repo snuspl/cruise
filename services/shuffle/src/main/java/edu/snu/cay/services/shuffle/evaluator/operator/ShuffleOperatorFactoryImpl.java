@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescription;
+import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageCodec;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;

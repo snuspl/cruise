@@ -15,6 +15,6 @@
  */
 
 /**
- * Descriptions of shuffles.
+ * Common interfaces that are used in both driver and evaluator side.
  */
-package edu.snu.cay.services.shuffle.description;
+package edu.snu.cay.services.shuffle.common;

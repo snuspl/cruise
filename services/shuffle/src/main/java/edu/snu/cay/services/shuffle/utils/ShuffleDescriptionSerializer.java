@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.utils;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescription;
+import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import org.apache.reef.tang.Configuration;

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescription;
+import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import org.apache.reef.annotations.audience.EvaluatorSide;
