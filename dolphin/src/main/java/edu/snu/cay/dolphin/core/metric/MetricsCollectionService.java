@@ -37,7 +37,7 @@ public final class MetricsCollectionService {
   }
 
   /**
-   * Return the service configuration for the Metrics Collection Service
+   * Return the service configuration for the Metrics Collection Service.
    * @return service configuration for the Metrics Collection Service
    */
   public static Configuration getServiceConfiguration() {
@@ -47,7 +47,7 @@ public final class MetricsCollectionService {
   }
 
   /**
-   * Return the context configuration for the Metrics Collection Service
+   * Return the context configuration for the Metrics Collection Service.
    * @return context configuration for the Metrics Collection Service
    */
   public static Configuration getContextConfiguration() {
@@ -58,7 +58,7 @@ public final class MetricsCollectionService {
   }
 
   /**
-   * Add a context message source to the pre-existed context configuration
+   * Add a context message source to the pre-existed context configuration.
    * @param previousConfiguration pre-existed context configuration
    * @return context configuration to which a context message source is added
    */

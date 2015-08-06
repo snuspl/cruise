@@ -22,8 +22,8 @@ import java.util.Formatter;
 import java.util.Locale;
 
 /**
- * This class represents a summary of the cluster
- * The summary includes (1) prior probability, (2) the centroid, and (3) the covariance matrix
+ * This class represents a summary of the cluster.
+ * The summary includes (1) prior probability, (2) the centroid, and (3) the covariance matrix.
  */
 public final class ClusterSummary {
   private final double prior;
@@ -36,15 +36,15 @@ public final class ClusterSummary {
     this.covariance = covariance;
   }
 
-  public final double getPrior() {
+  public double getPrior() {
     return prior;
   }
 
-  public final Vector getCentroid() {
+  public Vector getCentroid() {
     return centroid;
   }
 
-  public final Matrix getCovariance() {
+  public Matrix getCovariance() {
     return covariance;
   }
 

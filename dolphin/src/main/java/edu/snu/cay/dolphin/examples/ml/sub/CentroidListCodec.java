@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Codec for encoding and decoding a Centroid List
+ * Codec for encoding and decoding a Centroid List.
  */
 public final class CentroidListCodec implements Codec<List<Vector>> {
 
@@ -34,7 +34,7 @@ public final class CentroidListCodec implements Codec<List<Vector>> {
   }
 
   @Override
-  public final byte[] encode(final List<Vector> list) {
+  public byte[] encode(final List<Vector> list) {
 
     /* This codec does not assume consistent centroid vector sizes(dimensions).
      * Therefore to specify the initial data size,
@@ -66,7 +66,7 @@ public final class CentroidListCodec implements Codec<List<Vector>> {
   }
 
   @Override
-  public final List<Vector> decode(final byte[] data) {
+  public List<Vector> decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final List<Vector> list = new ArrayList<>();
     int numClusters = 0;

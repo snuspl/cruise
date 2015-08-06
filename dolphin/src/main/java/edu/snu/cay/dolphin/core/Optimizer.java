@@ -16,5 +16,5 @@
 package edu.snu.cay.dolphin.core;
 
 public interface Optimizer {
-  public OptimizeScheme optimize();
+  OptimizeScheme optimize();
 }

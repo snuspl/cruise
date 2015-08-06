@@ -30,7 +30,7 @@ public interface ShuffleOperator<K, V> {
   ShuffleStrategy<K> getShuffleStrategy();
 
   /**
-   * Return selected receiver id list using the ShuffleStrategy among the receiver list
+   * Return selected receiver id list using the ShuffleStrategy among the receiver list.
    *
    * @param key a key instance to select corresponding receivers
    * @return selected receiver id list

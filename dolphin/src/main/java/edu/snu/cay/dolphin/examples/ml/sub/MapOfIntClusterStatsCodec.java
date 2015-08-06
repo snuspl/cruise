@@ -28,23 +28,23 @@ import java.util.Map;
 
 
 /**
- * Codec for encoding and decoding a map of Integer vs. clusterStats
+ * Codec for encoding and decoding a map of Integer vs. clusterStats.
  */
 public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, ClusterStats>> {
-  private final boolean DiagonalCovariance;
+  private final boolean diagonalCovariance;
 
   @Inject
-  public MapOfIntClusterStatsCodec(@Parameter(IsCovarianceDiagonal.class) final boolean DiagonalCovariance) {
-    this.DiagonalCovariance = DiagonalCovariance;
+  public MapOfIntClusterStatsCodec(@Parameter(IsCovarianceDiagonal.class) final boolean diagonalCovariance) {
+    this.diagonalCovariance = diagonalCovariance;
   }
 
   @Override
-  public final byte[] encode(final Map<Integer, ClusterStats> map) {
+  public byte[] encode(final Map<Integer, ClusterStats> map) {
     final int mapSize = map.size();
     int dimension = 0;
     if (mapSize > 0) {
       for (final ClusterStats entry: map.values()) {
-        dimension = entry.pointSum.size();
+        dimension = entry.getPointSum().size();
         break;
       }
     }
@@ -53,7 +53,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
         + Integer.SIZE * mapSize// for cluster id
         + Double.SIZE * mapSize // for probability sum
         + Double.SIZE * dimension * mapSize// for point sum
-        + Double.SIZE * (DiagonalCovariance? dimension : dimension*dimension) * mapSize); // for outer product sum
+        + Double.SIZE * (diagonalCovariance ? dimension : dimension*dimension) * mapSize); // for outer product sum
 
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(map.size());
@@ -61,18 +61,18 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
       for (final Integer id : map.keySet()) {
         daos.writeInt(id);
         final ClusterStats clusterSummary = map.get(id);
-        daos.writeDouble(clusterSummary.probSum);
-        for (int j = 0; j < clusterSummary.pointSum.size(); j++) {
-          daos.writeDouble(clusterSummary.pointSum.get(j));
+        daos.writeDouble(clusterSummary.getProbSum());
+        for (int j = 0; j < clusterSummary.getPointSum().size(); j++) {
+          daos.writeDouble(clusterSummary.getPointSum().get(j));
         }
-        if (DiagonalCovariance) {
+        if (diagonalCovariance) {
           for (int i=0; i<dimension; i++) {
-            daos.writeDouble(clusterSummary.outProdSum.get(i, i));
+            daos.writeDouble(clusterSummary.getOutProdSum().get(i, i));
           }
         } else {
           for (int i=0; i<dimension; i++) {
             for (int j=0; j<dimension; j++) {
-              daos.writeDouble(clusterSummary.outProdSum.get(i, j));
+              daos.writeDouble(clusterSummary.getOutProdSum().get(i, j));
             }
           }
         }
@@ -85,7 +85,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
   }
 
   @Override
-  public final Map<Integer, ClusterStats> decode(final byte[] data) {
+  public Map<Integer, ClusterStats> decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final Map<Integer, ClusterStats> resultMap = new HashMap<>();
 
@@ -100,7 +100,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
           pointSum.set(j, dais.readDouble());
         }
         Matrix outProdSum = null;
-        if (DiagonalCovariance) {
+        if (diagonalCovariance) {
           outProdSum = new SparseMatrix(dimension, dimension);
           for (int j=0; j<dimension; j++) {
             outProdSum.set(j, j, dais.readDouble());

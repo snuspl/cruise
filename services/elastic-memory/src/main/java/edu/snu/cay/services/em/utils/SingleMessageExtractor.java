@@ -20,7 +20,7 @@ import org.apache.reef.io.network.Message;
 public final class SingleMessageExtractor {
 
   /**
-   * Should not be instantiated
+   * Should not be instantiated.
    */
   private SingleMessageExtractor() {
   }

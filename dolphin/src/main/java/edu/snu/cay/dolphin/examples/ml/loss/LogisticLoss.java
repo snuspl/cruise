@@ -29,12 +29,12 @@ public final class LogisticLoss implements Loss {
   }
 
   @Override
-  public final double loss(final double predict, final double output) {
+  public double loss(final double predict, final double output) {
     return Math.log(1 + Math.exp(-predict * output));
   }
 
   @Override
-  public final Vector gradient(final Vector feature, final double predict, final double output){
+  public Vector gradient(final Vector feature, final double predict, final double output){
 
     // http://lingpipe-blog.com/2012/02/16/howprevent-overflow-underflow-logistic-regression/
     final double exponent = -predict * output;

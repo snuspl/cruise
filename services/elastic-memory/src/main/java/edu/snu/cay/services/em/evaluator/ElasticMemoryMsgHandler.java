@@ -26,7 +26,6 @@ import org.apache.htrace.TraceInfo;
 import org.apache.htrace.TraceScope;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
@@ -67,16 +66,16 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-      case DataMsg:
-        onDataMsg(innerMsg);
-        break;
+    case DataMsg:
+      onDataMsg(innerMsg);
+      break;
 
-      case CtrlMsg:
-        onCtrlMsg(innerMsg);
-        break;
+    case CtrlMsg:
+      onCtrlMsg(innerMsg);
+      break;
 
-      default:
-        throw new RuntimeException("Unexpected message: " + msg);
+    default:
+      throw new RuntimeException("Unexpected message: " + msg);
     }
 
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);

@@ -23,11 +23,17 @@ import edu.snu.cay.dolphin.parameters.JobIdentifier;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 
-public class KMeansREEF {
-  public final static void main(final String[] args) throws Exception {
+public final class KMeansREEF {
+  /**
+   * Should not be instantiated.
+   */
+  private KMeansREEF() {
+  }
+
+  public static void main(final String[] args) throws Exception {
     DolphinLauncher.run(
         Configurations.merge(
-            DolphinConfiguration.CONF(args, KMeansParameters.getCommandLine()),
+            DolphinConfiguration.getConfiguration(args, KMeansParameters.getCommandLine()),
             Tang.Factory.getTang().newConfigurationBuilder()
                 .bindNamedParameter(JobIdentifier.class, "K-means Clustering")
                 .bindImplementation(UserJobInfo.class, KMeansJobInfo.class)

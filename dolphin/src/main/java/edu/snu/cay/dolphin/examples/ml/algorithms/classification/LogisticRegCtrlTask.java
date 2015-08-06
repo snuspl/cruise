@@ -35,7 +35,7 @@ import java.util.logging.Logger;
 
 public class LogisticRegCtrlTask extends UserControllerTask
     implements DataReduceReceiver<LogisticRegSummary>, DataBroadcastSender<LinearModel> {
-  private final static Logger LOG = Logger.getLogger(LogisticRegCtrlTask.class.getName());
+  private static final Logger LOG = Logger.getLogger(LogisticRegCtrlTask.class.getName());
 
   private final LinearModelConvCond convergeCondition;
   private final int maxIter;
@@ -57,7 +57,7 @@ public class LogisticRegCtrlTask extends UserControllerTask
   @Override
   public final void run(final int iteration) {
     LOG.log(Level.INFO, "{0}-th iteration accuracy: {1}%, new model: {2}",
-        new Object[] { iteration, accuracy * 100, model });
+        new Object[]{iteration, accuracy * 100, model});
   }
   
   @Override

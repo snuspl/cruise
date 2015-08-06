@@ -20,7 +20,7 @@ import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Regularization factor to be used with the regularize function
+ * Regularization factor to be used with the regularize function.
  */
 @DefaultImplementation(L2Regularization.class)
 public interface Regularization {
@@ -29,14 +29,14 @@ public interface Regularization {
    * @param model model to perform computation on
    * @return value of regularization term for a certain model
    */
-  public double regularize(final Model model);
+  double regularize(final Model model);
 
   /**
    * calculate the gradient of the regularization term for a certain model,
-   * to use with gradient descent
+   * to use with gradient descent.
    *
    * @param model model to perform computation on
    * @return value of the gradient of the regularization term for a certain model
    */
-  public Vector gradient(final Model model);
+  Vector gradient(final Model model);
 }

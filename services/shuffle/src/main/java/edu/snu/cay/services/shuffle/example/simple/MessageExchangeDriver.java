@@ -85,9 +85,9 @@ public final class MessageExchangeDriver {
         ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
             .setSenderIdList(taskIds)
             .setReceiverIdList(taskIds)
-            .setKeyCodec(IntegerCodec.class)
-            .setValueCodec(IntegerCodec.class)
-            .setShuffleStrategy(KeyShuffleStrategy.class)
+            .setKeyCodecClass(IntegerCodec.class)
+            .setValueCodecClass(IntegerCodec.class)
+            .setShuffleStrategyClass(KeyShuffleStrategy.class)
             .build()
     );
   }

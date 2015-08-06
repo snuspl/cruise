@@ -28,5 +28,5 @@ public interface LinearModelConvCond {
   /**
    * Check convergence conditions.
    */
-  public boolean checkConvergence(LinearModel model);
+  boolean checkConvergence(LinearModel model);
 }

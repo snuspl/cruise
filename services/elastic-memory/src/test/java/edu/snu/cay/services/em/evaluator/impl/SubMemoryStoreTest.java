@@ -60,7 +60,8 @@ public final class SubMemoryStoreTest {
 
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
-      threads[index] = new PutThread(countDownLatch, subMemoryStore, index, numThreads, putsPerThread, 1, IndexParity.ALL_INDEX);
+      threads[index] = new PutThread(
+          countDownLatch, subMemoryStore, index, numThreads, putsPerThread, 1, IndexParity.ALL_INDEX);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -90,7 +91,8 @@ public final class SubMemoryStoreTest {
 
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
-      threads[index] = new RemoveThread(countDownLatch, subMemoryStore, index, numThreads, removesPerThread, 1, IndexParity.ALL_INDEX);
+      threads[index] = new RemoveThread(
+          countDownLatch, subMemoryStore, index, numThreads, removesPerThread, 1, IndexParity.ALL_INDEX);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -136,10 +138,10 @@ public final class SubMemoryStoreTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadPerOperation; index++) {
-      threads[2 * index] = new PutThread(countDownLatch, subMemoryStore,
-          index, numThreadPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.EVEN_INDEX);
-      threads[2 * index + 1] = new RemoveThread(countDownLatch, subMemoryStore,
-          index, numThreadPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.ODD_INDEX);
+      threads[2 * index] = new PutThread(countDownLatch, subMemoryStore, index,
+          numThreadPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.EVEN_INDEX);
+      threads[2 * index + 1] = new RemoveThread(countDownLatch, subMemoryStore, index,
+          numThreadPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.ODD_INDEX);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -274,10 +276,10 @@ public final class SubMemoryStoreTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[3 * index] = new PutThread(countDownLatch, subMemoryStore,
-          index, numThreadsPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.EVEN_INDEX);
-      threads[3 * index + 1] = new RemoveThread(countDownLatch, subMemoryStore,
-          index, numThreadsPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.ODD_INDEX);
+      threads[3 * index] = new PutThread(countDownLatch, subMemoryStore, index,
+          numThreadsPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.EVEN_INDEX);
+      threads[3 * index + 1] = new RemoveThread(countDownLatch, subMemoryStore, index,
+          numThreadsPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.ODD_INDEX);
       threads[3 * index + 2] = new GetThread(countDownLatch, subMemoryStore, getsPerThread, totalNumberOfObjects);
     }
     TestUtils.runConcurrently(threads);

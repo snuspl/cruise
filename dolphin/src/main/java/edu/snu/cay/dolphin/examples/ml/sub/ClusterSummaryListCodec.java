@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Codec for encoding and decoding a Cluster Summary List
+ * Codec for encoding and decoding a Cluster Summary List.
  */
 public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>> {
   private final boolean isDiagonalCovariance;
@@ -38,7 +38,7 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
   }
 
   @Override
-  public final byte[] encode(final List<ClusterSummary> list) {
+  public byte[] encode(final List<ClusterSummary> list) {
 
     final int numClusters = list.size();
     int dimension = 0;
@@ -82,7 +82,7 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
   }
 
   @Override
-  public final List<ClusterSummary> decode(final byte[] data) {
+  public List<ClusterSummary> decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final List<ClusterSummary> resultList = new ArrayList<>();
 

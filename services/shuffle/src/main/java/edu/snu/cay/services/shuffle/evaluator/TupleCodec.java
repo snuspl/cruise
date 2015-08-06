@@ -37,7 +37,7 @@ public final class TupleCodec<K, V> implements StreamingCodec<Tuple<K, V>> {
   private final Codec<V> valueCodec;
 
   /**
-   * Constructs Tuple codec using key and value codecs
+   * Constructs Tuple codec using key and value codecs.
    *
    * @param keyCodec key codec
    * @param valueCodec value codec

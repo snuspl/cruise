@@ -34,30 +34,30 @@ public final class KMeansMainCmpTask extends UserComputeTask
     implements DataBroadcastReceiver<List<Vector>>, DataReduceSender<Map<Integer, VectorSum>> {
 
   /**
-   * Points read from input data to work on
+   * Points read from input data to work on.
    */
   private List<Vector> points = null;
 
   /**
-   * Centroids of clusters
+   * Centroids of clusters.
    */
   private List<Vector> centroids = new ArrayList<>();
 
   /**
-   * Vector sum of the points assigned to each cluster
+   * Vector sum of the points assigned to each cluster.
    */
   private Map<Integer, VectorSum> pointSum = new HashMap<>();
 
   /**
-   * Definition of 'distance between points' for this job
+   * Definition of 'distance between points' for this job.
    * Default measure is Euclidean distance
    */
   private final VectorDistanceMeasure distanceMeasure;
   private final DataParser<List<Vector>> dataParser;
 
   /**
-   * This class is instantiated by TANG
-   * Constructs a single Compute Task for k-means
+   * Constructs a single Compute Task for k-means.
+   * This class is instantiated by TANG.
    * @param dataParser
    * @param distanceMeasure distance measure to use to compute distances between points
    */
@@ -102,8 +102,8 @@ public final class KMeansMainCmpTask extends UserComputeTask
   }
 
   @Override
-  public void receiveBroadcastData(final int iteration, final List<Vector> centroids) {
-    this.centroids = centroids;
+  public void receiveBroadcastData(final int iteration, final List<Vector> centroidsData) {
+    this.centroids = centroidsData;
   }
 
   @Override

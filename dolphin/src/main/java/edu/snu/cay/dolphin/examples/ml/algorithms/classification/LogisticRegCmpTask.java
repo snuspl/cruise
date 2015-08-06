@@ -85,8 +85,8 @@ public class LogisticRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public final void receiveBroadcastData(final int iteration, final LinearModel model) {
-    this.model = model;
+  public final void receiveBroadcastData(final int iteration, final LinearModel modelData) {
+    this.model = modelData;
   }
 
   @Override

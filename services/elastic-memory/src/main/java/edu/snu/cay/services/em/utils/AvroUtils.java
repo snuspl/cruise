@@ -31,7 +31,7 @@ import java.io.IOException;
 public final class AvroUtils {
 
   /**
-   * Should not be instantiated
+   * Should not be instantiated.
    */
   private AvroUtils() {
   }

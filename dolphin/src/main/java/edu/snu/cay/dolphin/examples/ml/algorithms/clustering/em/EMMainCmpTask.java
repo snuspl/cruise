@@ -34,29 +34,29 @@ public final class EMMainCmpTask extends UserComputeTask
     implements DataBroadcastReceiver<List<ClusterSummary>>, DataReduceSender<Map<Integer, ClusterStats>> {
 
   /**
-   * Points read from input data to work on
+   * Points read from input data to work on.
    */
   private List<Vector> points = null;
 
   /**
-   * Summaries of each cluster
+   * Summaries of each cluster.
    */
   private List<ClusterSummary> clusterSummaries = new ArrayList<>();
 
   /**
-   * Partial statistics of eah cluster
+   * Partial statistics of eah cluster.
    */
   private Map<Integer, ClusterStats> clusterToStats = new HashMap<>();
 
   /**
-   * whether covariance matrices are diagonal or not
+   * whether covariance matrices are diagonal or not.
    */
   private final boolean isCovarianceDiagonal;
   private final DataParser<List<Vector>> dataParser;
 
   /**
-   * This class is instantiated by TANG
-   * Constructs a single Compute Task for the EM algorithm
+   * Constructs a single Compute Task for the EM algorithm.
+   * This class is instantiated by TANG.
    * @param dataParser
    * @param isCovarianceDiagonal  whether covariance matrices are diagonal or not
    */
@@ -130,19 +130,19 @@ public final class EMMainCmpTask extends UserComputeTask
   }
 
   /**
-   * Compute the inverse of a given matrix
+   * Compute the inverse of a given matrix.
    */
-  private final Matrix inverse(final Matrix matrix) {
+  private Matrix inverse(final Matrix matrix) {
     final int dimension = matrix.rowSize();
     final QRDecomposition qr = new QRDecomposition(matrix);
     return qr.solve(DiagonalMatrix.identity(dimension));
   }
 
   /**
-   * Return a new matrix containing the product of each value of the recipient and the argument
-   * This method exploits sparsity of the matrix, that is, considers only non-zero entries
+   * Return a new matrix containing the product of each value of the recipient and the argument.
+   * This method exploits sparsity of the matrix, that is, considers only non-zero entries.
    */
-  private final Matrix times (final Matrix matrix, final double scala) {
+  private Matrix times(final Matrix matrix, final double scala) {
     final Matrix result = matrix.clone();
     final Iterator<MatrixSlice> sliceIterator=matrix.iterator();
     while (sliceIterator.hasNext()) {

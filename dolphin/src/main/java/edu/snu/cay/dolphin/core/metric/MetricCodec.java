@@ -21,7 +21,7 @@ import org.apache.reef.wake.remote.Codec;
 import java.util.Map;
 
 /**
- * Interface of codecs for metrics
+ * Interface of codecs for metrics.
  */
 @DefaultImplementation(DefaultMetricCodecImpl.class)
 public interface MetricCodec extends Codec<Map<String, Double>> {

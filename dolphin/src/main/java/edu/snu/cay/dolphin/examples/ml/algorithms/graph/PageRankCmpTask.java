@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * PageRank algorithm compute class
+ * PageRank algorithm compute class.
  *
  * Reference
  * - http://en.wikipedia.org/wiki/PageRank
@@ -38,28 +38,28 @@ public class PageRankCmpTask extends UserComputeTask
     implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer, Double>> {
 
   /**
-   * Adjacency list data parser
+   * Adjacency list data parser.
    */
   private final DataParser<Map<Integer, List<Integer>>> dataParser;
 
   /**
-   * Subgraph consists a node and its outgoing neighbor set
+   * Subgraph consists a node and its outgoing neighbor set.
    */
   private Map<Integer, List<Integer>> subgraphs;
 
   /**
-   * Map of current rank
+   * Map of current rank.
    */
   private Map<Integer, Double> rank;
 
   /**
-   * Map of contributed increment to outgoing neighbor nodes
+   * Map of contributed increment to outgoing neighbor nodes.
    */
   private final Map<Integer, Double> increment = new HashMap<>();
 
   /**
-   * This class is instantiated by TANG
-   * Constructs a single Compute Task for PageRank
+   * Constructs a single Compute Task for PageRank.
+   * This class is instantiated by TANG.
    * @param dataParser
    */
   @Inject
@@ -68,7 +68,7 @@ public class PageRankCmpTask extends UserComputeTask
   }
 
   /**
-   * Load a split subgraph and set the initial rank for each node
+   * Load a split subgraph and set the initial rank for each node.
    * @throws ParseException
    */
   @Override
@@ -114,18 +114,18 @@ public class PageRankCmpTask extends UserComputeTask
    * Receive the updated rank of all nodes from previous run.
    * At the iteration 0, the rank is empty.
    * @param iteration
-   * @param rank
+   * @param rankData
    */
   @Override
-  public final void receiveBroadcastData(final int iteration, final Map<Integer, Double> rank) {
+  public final void receiveBroadcastData(final int iteration, final Map<Integer, Double> rankData) {
     if (iteration < 1) {
       return;
     }
-    this.rank = rank;
+    this.rank = rankData;
   }
 
   /**
-   * Send the new increment for outgoing link nodes in this subgraph
+   * Send the new increment for outgoing link nodes in this subgraph.
    * @param iteration
    * @return
    */

@@ -28,7 +28,7 @@ public final class ShuffleTupleMessage<K, V> {
   private final List<Tuple<K, V>> tupleList;
 
   /**
-   * Construct a shuffle message tuple
+   * Construct a shuffle message tuple.
    *
    * @param shuffleName the name of shuffle
    * @param tupleList a tuple list

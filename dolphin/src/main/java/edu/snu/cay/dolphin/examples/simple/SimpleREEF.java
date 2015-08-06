@@ -23,10 +23,16 @@ import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 
 public final class SimpleREEF {
-  public final static void main(final String[] args) throws Exception {
+  /**
+   * Should not be instantiated.
+   */
+  private SimpleREEF() {
+  }
+
+  public static void main(final String[] args) throws Exception {
     DolphinLauncher.run(
         Configurations.merge(
-            DolphinConfiguration.CONF(args),
+            DolphinConfiguration.getConfiguration(args),
             Tang.Factory.getTang().newConfigurationBuilder()
                 .bindNamedParameter(JobIdentifier.class, "Simple REEF")
                 .bindImplementation(UserJobInfo.class, SimpleJobInfo.class)

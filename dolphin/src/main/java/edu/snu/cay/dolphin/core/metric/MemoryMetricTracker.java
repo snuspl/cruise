@@ -37,7 +37,7 @@ import java.util.TreeMap;
 public final class MemoryMetricTracker implements MetricTracker {
 
   /**
-   * time interval between two measurements of memory usage (millisecond)
+   * time interval between two measurements of memory usage (millisecond).
    */
   @NamedParameter(doc = "Time interval between two measurements of memory usage (millisecond)",
       short_name = "memoryMeasureInterval", default_value = "100")
@@ -45,59 +45,58 @@ public final class MemoryMetricTracker implements MetricTracker {
   }
 
   /**
-   * key for the Max memory measure (maximum memory usage)
+   * key for the Max memory measure (maximum memory usage).
    */
   public static final String KEY_METRIC_MEMORY_MAX = "METRIC_MEMORY_MAX";
 
   /**
-   * Key for the Average memory measure (average memory usage)
+   * Key for the Average memory measure (average memory usage).
    */
   public static final String KEY_METRIC_MEMORY_AVERAGE = "METRIC_MEMORY_AVERAGE";
 
   /**
-   * value returned when memory usage was never measured
+   * value returned when memory usage was never measured.
    */
   public static final double VALUE_METRIC_MEMORY_UNKNOWN = -1.0;
 
   /**
-   * time interval between metric tracking
+   * time interval between metric tracking.
    */
   private final long measureInterval;
 
   /**
-   * maximum memory usage
+   * maximum memory usage.
    */
   private long maxMemory = 0;
 
   /**
-   * sum of measured memory usage
+   * sum of measured memory usage.
    */
   private long sumMemory = 0;
 
   /**
-   * number of times memory usage is measured
+   * number of times memory usage is measured.
    */
   private int measureTimes = 0;
 
   /**
-   * Whether the thread measuring memory usage should stop or not
+   * Whether the thread measuring memory usage should stop or not.
    */
   private boolean shouldStop = true;
 
   /**
-   * Whether the thread measuring should close or not
+   * Whether the thread measuring should close or not.
    */
   private boolean shouldTerminate = false;
 
   /**
-   * MemoryMXBean for measuring memory usage
+   * MemoryMXBean for measuring memory usage.
    */
   private final MemoryMXBean mbean = ManagementFactory.getMemoryMXBean();
 
   /**
-   * This class is instantiated by TANG
-   *
-   * Constructor for the memory usage tracker, which accepts the time interval between metric tracking as a parameter
+   * Constructor for the memory usage tracker, which accepts the time interval between metric tracking as a parameter.
+   * This class is instantiated by TANG.
    * @param measureInterval time interval between metric tracking
    */
   @Inject

@@ -32,17 +32,17 @@ public final class ClusteringPreCmpTask extends UserComputeTask
     implements DataGatherSender<List<Vector>> {
 
   /**
-   * Number of clusters
+   * Number of clusters.
    */
   private final int numberOfClusters;
 
   /**
-   * Points read from input data to work on
+   * Points read from input data to work on.
    */
   private List<Vector> points = null;
 
   /**
-   * Sampled points
+   * Sampled points.
    */
   private List<Vector> samples = new LinkedList<>();
   private final DataParser<List<Vector>> dataParser;
@@ -77,7 +77,7 @@ public final class ClusteringPreCmpTask extends UserComputeTask
   }
 
   /**
-   * Random Sampling
+   * Random Sampling.
    * @param points
    * @param maxNumOfSamples
    * @return

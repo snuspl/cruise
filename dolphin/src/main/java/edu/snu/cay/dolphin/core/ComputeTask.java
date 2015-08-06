@@ -42,8 +42,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class ComputeTask implements Task {
-  public final static String TASK_ID_PREFIX = "CmpTask";
-  private final static Logger LOG = Logger.getLogger(ComputeTask.class.getName());
+  public static final String TASK_ID_PREFIX = "CmpTask";
+  private static final Logger LOG = Logger.getLogger(ComputeTask.class.getName());
 
   private final String taskId;
   private final UserComputeTask userComputeTask;
@@ -63,7 +63,8 @@ public final class ComputeTask implements Task {
                      final InsertableMetricTracker insertableMetricTracker) throws ClassNotFoundException {
     this.userComputeTask = userComputeTask;
     this.taskId = taskId;
-    this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
+    this.commGroup =
+        groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
     this.metricsCollector = metricsCollector;
     this.metricTrackerSet = metricTrackerSet;
@@ -71,7 +72,7 @@ public final class ComputeTask implements Task {
   }
 
   @Override
-  public final byte[] call(final byte[] memento) throws Exception {
+  public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
     userComputeTask.initialize();

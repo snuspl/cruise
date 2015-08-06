@@ -37,17 +37,16 @@ import java.util.logging.Logger;
  */
 @Unit
 public final class DataParseService {
-  private static Logger LOG = Logger.getLogger(DataParseService.class.getName());
+  private static final Logger LOG = Logger.getLogger(DataParseService.class.getName());
 
   /**
-   * parse function to exploit
+   * parse function to exploit.
    */
   private final DataParser dataParser;
 
   /**
-   * This class is instantiated by TANG
-   *
    * Constructor for parse manager, which accepts an actual parse function as a parameter
+   * This class is instantiated by TANG.
    * @param dataParser parse function to exploit
    */
   @Inject

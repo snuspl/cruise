@@ -26,8 +26,8 @@ import java.util.Locale;
  * This class represents a set of vectors by their sum and count.
  */
 public final class VectorSum implements Serializable {
-  public Vector sum;
-  public int count;
+  private Vector sum;
+  private int count;
 
   /**
    * We may select whether to create a deep copy of @member sum, or just a reference.
@@ -50,35 +50,35 @@ public final class VectorSum implements Serializable {
   }
 
   /**
-   * A deep copy constructor
+   * A deep copy constructor.
    */
   public VectorSum(final VectorSum vectorSum) {
-    this(vectorSum.sum, vectorSum.count, true);
+    this(vectorSum.getSum(), vectorSum.getCount(), true);
   }
 
-  public final void add(final VectorSum vectorSum) {
-    this.sum = this.sum.plus(vectorSum.sum);
-    this.count += vectorSum.count;
+  public void add(final VectorSum vectorSum) {
+    this.sum = this.getSum().plus(vectorSum.getSum());
+    this.count = this.getCount() + vectorSum.getCount();
   }
 
-  public final void add(final Vector vector) {
-    this.sum = this.sum.plus(vector);
-    this.count++;
+  public void add(final Vector vector) {
+    this.sum = this.getSum().plus(vector);
+    this.count = this.getCount() + 1;
   }
 
-  public final void addSums(final Iterable<VectorSum> vectorSums) {
+  public void addSums(final Iterable<VectorSum> vectorSums) {
     for (final VectorSum vectorSum : vectorSums) {
       this.add(vectorSum);
     }
   }
 
-  public final void addVectors(final Iterable<Vector> vectors) {
+  public void addVectors(final Iterable<Vector> vectors) {
     for (final Vector vector : vectors) {
       this.add(vector);
     }
   }
 
-  public final static VectorSum addAllSums(final Iterable<VectorSum> vectorSums) {
+  public static VectorSum addAllSums(final Iterable<VectorSum> vectorSums) {
     VectorSum totalVectorSum = null;
     for (final VectorSum vectorSum : vectorSums) {
       if (totalVectorSum == null) {
@@ -90,7 +90,7 @@ public final class VectorSum implements Serializable {
     return totalVectorSum;
   }
 
-  public final static VectorSum addAllVectors(final Iterable<Vector> vectors) {
+  public static VectorSum addAllVectors(final Iterable<Vector> vectors) {
     VectorSum vectorSum = null;
     for (final Vector vector : vectors) {
       if (vectorSum == null) {
@@ -102,10 +102,10 @@ public final class VectorSum implements Serializable {
     return vectorSum;
   }
 
-  public final Vector computeVectorMean() {
-    final Vector mean = new DenseVector(sum.size());
+  public Vector computeVectorMean() {
+    final Vector mean = new DenseVector(getSum().size());
     for (int i = 0; i < mean.size(); i++) {
-      mean.set(i, sum.get(i) / count);
+      mean.set(i, getSum().get(i) / getCount());
     }
     return mean;
   }
@@ -115,17 +115,25 @@ public final class VectorSum implements Serializable {
   public String toString() {
     final StringBuilder b = new StringBuilder("VectorSum(");
     try (final Formatter formatter = new Formatter(b, Locale.US)) {
-      formatter.format("Count %d, ", count);
+      formatter.format("Count %d, ", getCount());
 
-      if (sum == null || sum.size() == 0) {
+      if (getSum() == null || getSum().size() == 0) {
         formatter.format("Empty)");
       } else {
-        for (int i = 0; i < sum.size() - 1; ++i) {
-          formatter.format("%1.3f, ", sum.get(i));
+        for (int i = 0; i < getSum().size() - 1; ++i) {
+          formatter.format("%1.3f, ", getSum().get(i));
         }
-        formatter.format("%1.3f)", sum.get(sum.size() - 1));
+        formatter.format("%1.3f)", getSum().get(getSum().size() - 1));
       }
     }
     return b.toString();
+  }
+
+  public Vector getSum() {
+    return sum;
+  }
+
+  public int getCount() {
+    return count;
   }
 }

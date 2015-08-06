@@ -34,7 +34,7 @@ import java.util.List;
 public interface BaseShuffleSender<K, V> extends ShuffleSender<K, V> {
 
   /**
-   * Send a tuple to selected receivers using ShuffleStrategy of the shuffle
+   * Send a tuple to selected receivers using ShuffleStrategy of the shuffle.
    *
    * @param tuple a tuple
    * @return the selected receiver id list
@@ -53,7 +53,7 @@ public interface BaseShuffleSender<K, V> extends ShuffleSender<K, V> {
   List<String> sendTuple(List<Tuple<K, V>> tupleList);
 
   /**
-   * Send a tuple to the specific receiver
+   * Send a tuple to the specific receiver.
    *
    * @param receiverId a receiver id
    * @param tuple a tuple

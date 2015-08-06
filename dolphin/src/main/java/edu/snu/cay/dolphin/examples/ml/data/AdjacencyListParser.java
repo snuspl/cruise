@@ -30,11 +30,11 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Adjacency List Parser class
- * Assume that each line starts with a node id followed by its neighbor id set
+ * Adjacency List Parser class.
+ * Assume that each line starts with a node id followed by its neighbor id set.
  */
 public final class AdjacencyListParser implements DataParser<Map<Integer, List<Integer>>> {
-  private final static Logger LOG = Logger.getLogger(AdjacencyListParser.class.getName());
+  private static final Logger LOG = Logger.getLogger(AdjacencyListParser.class.getName());
 
   private final DataSet<LongWritable, Text> dataSet;
   private Map<Integer, List<Integer>> result = new HashMap<>();
@@ -46,7 +46,7 @@ public final class AdjacencyListParser implements DataParser<Map<Integer, List<I
   }
 
   @Override
-  public final Map<Integer, List<Integer>> get() throws ParseException {
+  public Map<Integer, List<Integer>> get() throws ParseException {
     if (result == null) {
       parse();
     }
@@ -57,7 +57,7 @@ public final class AdjacencyListParser implements DataParser<Map<Integer, List<I
   }
 
   @Override
-  public final void parse() {
+  public void parse() {
     final Map<Integer, List<Integer>> subgraphs = new HashMap<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {

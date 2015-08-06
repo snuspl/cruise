@@ -61,7 +61,7 @@ import java.util.logging.Logger;
  */
 @Unit
 public final class DolphinDriver {
-  private final static Logger LOG = Logger.getLogger(DolphinDriver.class.getName());
+  private static final Logger LOG = Logger.getLogger(DolphinDriver.class.getName());
 
   /**
    * Sub-id for Compute Tasks.
@@ -78,23 +78,23 @@ public final class DolphinDriver {
   private String ctrlTaskContextId;
 
   /**
-   * Driver that manages Group Communication settings
+   * Driver that manages Group Communication settings.
    */
   private final GroupCommDriver groupCommDriver;
 
   /**
-   * Accessor for data loading service
+   * Accessor for data loading service.
    * Can check whether a evaluator is configured with the service or not.
    */
   private final DataLoadingService dataLoadingService;
 
   /**
-   * Job to execute
+   * Job to execute.
    */
   private final UserJobInfo userJobInfo;
 
   /**
-   * List of stages composing the job to execute
+   * List of stages composing the job to execute.
    */
   private final List<StageInfo> stageInfoList;
 
@@ -105,17 +105,17 @@ public final class DolphinDriver {
   private final List<CommunicationGroupDriver> commGroupDriverList;
 
   /**
-   * Map to record which stage is being executed by each evaluator which is identified by context id
+   * Map to record which stage is being executed by each evaluator which is identified by context id.
    */
   private final Map<String, Integer> contextToStageSequence;
 
   /**
-   * The number of evaluators assigned for Compute Tasks
+   * The number of evaluators assigned for Compute Tasks.
    */
   private final Integer evalNum;
 
   /**
-   * Codec for metrics
+   * Codec for metrics.
    */
   private final MetricCodec metricCodec;
 
@@ -126,11 +126,11 @@ public final class DolphinDriver {
 
 
   /**
-   * This class is instantiated by TANG
-   *
    * Constructor for the Driver of a Dolphin job.
    * Store various objects as well as configuring Group Communication with
    * Broadcast and Reduce operations to use.
+   *
+   * This class is instantiated by TANG.
    *
    * @param groupCommDriver manager for Group Communication configurations
    * @param dataLoadingService manager for Data Loading configurations
@@ -165,7 +165,7 @@ public final class DolphinDriver {
   }
 
   /**
-   * Initialize the group communication driver
+   * Initialize the group communication driver.
    */
   private void initializeCommDriver(){
     int sequence = 0;
@@ -260,7 +260,7 @@ public final class DolphinDriver {
   }
 
   /**
-   * Return the ID of the given Context
+   * Return the ID of the given Context.
    */
   private String getContextId(final Configuration contextConf) {
     try {
@@ -272,7 +272,7 @@ public final class DolphinDriver {
   }
 
   /**
-   * Receives metrics from context
+   * Receives metrics from context.
    */
   final class ContextMessageHandler implements EventHandler<ContextMessage> {
 
@@ -299,7 +299,7 @@ public final class DolphinDriver {
   }
 
   /**
-   * When a certain task completes, the following task is submitted
+   * When a certain task completes, the following task is submitted.
    */
   final class TaskCompletedHandler implements EventHandler<CompletedTask> {
 
@@ -328,11 +328,11 @@ public final class DolphinDriver {
   }
 
   /**
-   * Execute the task of the given stage
+   * Execute the task of the given stage.
    * @param activeContext
    * @param stageSequence
    */
-  final private void submitTask(final ActiveContext activeContext, final int stageSequence) {
+  private void submitTask(final ActiveContext activeContext, final int stageSequence) {
     contextToStageSequence.put(activeContext.getId(), stageSequence);
     final StageInfo stageInfo = stageInfoList.get(stageSequence);
     final CommunicationGroupDriver commGroup = commGroupDriverList.get(stageSequence);
@@ -386,7 +386,7 @@ public final class DolphinDriver {
     activeContext.submitTask(finalTaskConf);
   }
 
-  final private boolean isCtrlTaskId(final String id){
+  private boolean isCtrlTaskId(final String id){
     if (ctrlTaskContextId==null) {
       return false;
     } else {
@@ -394,11 +394,11 @@ public final class DolphinDriver {
     }
   }
 
-  final private String getCtrlTaskId(final int sequence) {
+  private String getCtrlTaskId(final int sequence) {
     return ControllerTask.TASK_ID_PREFIX + "-" + sequence;
   }
 
-  final private String getCmpTaskId(final int sequence) {
+  private String getCmpTaskId(final int sequence) {
     return ComputeTask.TASK_ID_PREFIX + "-" + sequence;
   }
 
