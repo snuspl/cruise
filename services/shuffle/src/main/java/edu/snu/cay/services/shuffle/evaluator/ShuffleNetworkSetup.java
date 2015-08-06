@@ -17,6 +17,7 @@ package edu.snu.cay.services.shuffle.evaluator;
 
 import edu.snu.cay.services.shuffle.network.*;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.NetworkConnectionService;
@@ -31,6 +32,7 @@ import javax.inject.Inject;
  * Evaluator side helper class that register connection factories for
  * ShuffleTupleMessage and ShuffleControlMessage.
  */
+@EvaluatorSide
 public final class ShuffleNetworkSetup {
 
   private final NetworkConnectionService networkConnectionService;

@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.driver;
+package edu.snu.cay.services.shuffle.driver.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
-import edu.snu.cay.services.shuffle.evaluator.StaticShuffle;
+import edu.snu.cay.services.shuffle.driver.ShuffleManager;
+import edu.snu.cay.services.shuffle.evaluator.impl.BasicShuffle;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.utils.ShuffleDescriptionSerializer;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -34,13 +35,13 @@ import java.net.SocketAddress;
  * to the shuffle and cannot change the key, value codecs and shuffling strategy after the manager is created.
  */
 @DriverSide
-public final class StaticShuffleManager implements ShuffleManager {
+public final class BasicShuffleManager implements ShuffleManager {
 
   private final ShuffleDescription shuffleDescription;
   private final ShuffleDescriptionSerializer descriptionSerializer;
 
   @Inject
-  private StaticShuffleManager(
+  private BasicShuffleManager(
       final ShuffleDescription shuffleDescription,
       final ShuffleDescriptionSerializer descriptionSerializer) {
     this.shuffleDescription = shuffleDescription;
@@ -53,7 +54,7 @@ public final class StaticShuffleManager implements ShuffleManager {
    */
   @Override
   public Optional<Configuration> getShuffleConfiguration(final String endPointId) {
-    return descriptionSerializer.serialize(StaticShuffle.class, shuffleDescription, endPointId);
+    return descriptionSerializer.serialize(BasicShuffle.class, shuffleDescription, endPointId);
   }
 
   /**

@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator;
+package edu.snu.cay.services.shuffle.evaluator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorFactory;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
@@ -25,6 +26,8 @@ import org.apache.reef.io.network.Message;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Simple implementation of Shuffle.
@@ -33,13 +36,15 @@ import java.net.SocketAddress;
  * to the shuffle and cannot change the key, value codecs and shuffling strategy after the Shuffle is created.
  */
 @EvaluatorSide
-public final class StaticShuffle<K, V> implements Shuffle<K, V> {
+public final class BasicShuffle<K, V> implements Shuffle<K, V> {
+
+  private static final Logger LOG = Logger.getLogger(BasicShuffle.class.getName());
 
   private final ShuffleDescription shuffleDescription;
   private final ShuffleOperatorFactory<K, V> operatorFactory;
 
   @Inject
-  private StaticShuffle(
+  private BasicShuffle(
       final ShuffleDescription shuffleDescription,
       final ShuffleOperatorFactory<K, V> operatorFactory) {
     this.shuffleDescription = shuffleDescription;
@@ -63,6 +68,15 @@ public final class StaticShuffle<K, V> implements Shuffle<K, V> {
   }
 
   /**
+   * @param code a code for expecting ShuffleControlMessage
+   * @return the ShuffleControlMessage
+   */
+  @Override
+  public ShuffleControlMessage waitForControlMessage(final int code) {
+    return null;
+  }
+
+  /**
    * @return the initial shuffle description
    */
   @Override
@@ -77,7 +91,7 @@ public final class StaticShuffle<K, V> implements Shuffle<K, V> {
 
   @Override
   public void onSuccess(final Message<ShuffleControlMessage> shuffleControlMessage) {
-
+    LOG.log(Level.FINE, "ShuffleControlMessage was successfully sent : {0}", shuffleControlMessage);
   }
 
   @Override
@@ -85,6 +99,7 @@ public final class StaticShuffle<K, V> implements Shuffle<K, V> {
       final Throwable throwable,
       final SocketAddress socketAddress,
       final Message<ShuffleControlMessage> shuffleControlMessage) {
-
+    LOG.log(Level.WARNING, "An exception occurred while sending ShuffleControlMessage to driver. cause : {0}, " +
+        "socket address : {1}, message : {2}", new Object[]{throwable, socketAddress, shuffleControlMessage});
   }
 }

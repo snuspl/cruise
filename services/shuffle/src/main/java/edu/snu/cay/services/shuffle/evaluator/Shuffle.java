@@ -18,6 +18,7 @@ package edu.snu.cay.services.shuffle.evaluator;
 import edu.snu.cay.services.shuffle.common.ShuffleController;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 /**
@@ -45,4 +46,12 @@ public interface Shuffle<K, V> extends ShuffleController {
    */
   <T extends ShuffleSender<K, V>> T getSender();
 
+  /**
+   * Wait for a ShuffleControlMessage with code. All threads will be notified when the
+   * ShuffleControlMessage arrives.
+   *
+   * @param code a code for expecting ShuffleControlMessage
+   * @return the ShuffleControlMessage
+   */
+  ShuffleControlMessage waitForControlMessage(int code);
 }
