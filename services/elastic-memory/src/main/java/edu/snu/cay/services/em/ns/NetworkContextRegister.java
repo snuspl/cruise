@@ -15,10 +15,9 @@
  */
 package edu.snu.cay.services.em.ns;
 
-import edu.snu.cay.services.em.ns.api.NSWrapper;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
-import org.apache.reef.io.network.impl.NetworkService;
+import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
@@ -26,32 +25,33 @@ import org.apache.reef.wake.IdentifierFactory;
 import javax.inject.Inject;
 
 /**
- * Register and unregister context ids to and from a NSWrapper
+ * Register and unregister context ids to and from a NetworkConnectionService
  * when contexts spawn/terminate, respectively.
  */
 @Unit
-public final class NSWrapperContextRegister {
+public final class NetworkContextRegister {
 
-  private NetworkService networkService;
-  private IdentifierFactory ifac;
+  private final NetworkConnectionService networkConnectionService;
+  private final IdentifierFactory identifierFactory;
 
   @Inject
-  private NSWrapperContextRegister(final NSWrapper nsWrapper) {
-    this.networkService = nsWrapper.getNetworkService();
-    this.ifac = this.networkService.getIdentifierFactory();
+  private NetworkContextRegister(final NetworkConnectionService networkConnectionService,
+                                 final IdentifierFactory identifierFactory) {
+    this.networkConnectionService = networkConnectionService;
+    this.identifierFactory = identifierFactory;
   }
 
   public final class RegisterContextHandler implements EventHandler<ContextStart> {
     @Override
     public void onNext(final ContextStart contextStart) {
-      networkService.registerId(ifac.getNewInstance(contextStart.getId()));
+      networkConnectionService.registerId(identifierFactory.getNewInstance(contextStart.getId()));
     }
   }
 
   public final class UnregisterContextHandler implements EventHandler<ContextStop> {
     @Override
     public void onNext(final ContextStop contextStop) {
-      networkService.unregisterId(ifac.getNewInstance(contextStop.getId()));
+      networkConnectionService.unregisterId(identifierFactory.getNewInstance(contextStop.getId()));
     }
   }
 }

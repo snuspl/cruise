@@ -13,7 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Network service wrapper API implementations.
- */
-package edu.snu.cay.services.em.ns.impl;
+package edu.snu.cay.services.em.ns.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.wake.EventHandler;
+
+@NamedParameter(doc = "Network message receive handler for EM")
+public final class EMMessageHandler implements Name<EventHandler<?>> {
+}

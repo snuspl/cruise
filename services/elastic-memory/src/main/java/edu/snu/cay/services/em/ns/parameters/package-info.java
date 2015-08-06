@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Network service wrapper APIs that may have several implementations.
+ * NetworkConnectionService related parameter classes.
  */
-package edu.snu.cay.services.em.ns.api;
+package edu.snu.cay.services.em.ns.parameters;

@@ -15,9 +15,15 @@
  */
 package edu.snu.cay.services.em.msg.impl;
 
-import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.AvroLongRange;
+import edu.snu.cay.services.em.avro.CtrlMsg;
+import edu.snu.cay.services.em.avro.DataMsg;
+import edu.snu.cay.services.em.avro.RegisMsg;
+import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.cay.services.em.ns.api.NSWrapper;
+import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.AvroUtils;
 import org.apache.commons.lang.math.LongRange;
@@ -27,7 +33,6 @@ import org.apache.htrace.TraceScope;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
-import org.apache.reef.io.network.impl.NetworkService;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
 
@@ -39,7 +44,7 @@ import java.util.logging.Logger;
 
 
 /**
- * Sender class that uses a NetworkService instance provided by NSWrapper to
+ * Sender class that uses NetworkConnectionService to
  * send AvroElasticMemoryMessages to the driver and evaluators.
  */
 public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender {
@@ -49,22 +54,26 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private static final String SEND_DATA_MSG = "sendDataMsg";
   private static final String SEND_REGIS_MSG = "sendRegisMsg";
 
-  private final NetworkService<AvroElasticMemoryMessage> networkService;
+  private final EMNetworkSetup emNetworkSetup;
   private final IdentifierFactory identifierFactory;
+
   private final String driverId;
 
   @Inject
-  private ElasticMemoryMsgSenderImpl(final NSWrapper<AvroElasticMemoryMessage> nsWrapper,
-                                     @Parameter(DriverIdentifier.class) final String driverId) {
-    this.networkService = nsWrapper.getNetworkService();
-    this.identifierFactory = this.networkService.getIdentifierFactory();
+  private ElasticMemoryMsgSenderImpl(final EMNetworkSetup emNetworkSetup,
+                                     final IdentifierFactory identifierFactory,
+                                     @Parameter(DriverIdentifier.class) final String driverId) throws NetworkException {
+    this.emNetworkSetup = emNetworkSetup;
+    this.identifierFactory = identifierFactory;
+
     this.driverId = driverId;
   }
 
   private void send(final String destId, final AvroElasticMemoryMessage msg) {
-    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[] { destId, msg });
+    LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
 
-    final Connection<AvroElasticMemoryMessage> conn = networkService.newConnection(identifierFactory.getNewInstance(destId));
+    final Connection<AvroElasticMemoryMessage> conn = emNetworkSetup.getConnectionFactory()
+        .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();
       conn.write(msg);
@@ -124,7 +133,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.DataMsg)
-              .setSrcId(networkService.getMyId().toString())
+              .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(destId)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
               .setDataMsg(dataMsg)
@@ -154,7 +163,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.RegisMsg)
-              .setSrcId(networkService.getMyId().toString())
+              .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(driverId)
               .setRegisMsg(regisMsg)
               .build());

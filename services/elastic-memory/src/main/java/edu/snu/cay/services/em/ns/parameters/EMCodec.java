@@ -13,16 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.ns.api;
+package edu.snu.cay.services.em.ns.parameters;
 
-import edu.snu.cay.services.em.ns.impl.NSWrapperImpl;
-import org.apache.reef.io.network.impl.NetworkService;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.wake.remote.Codec;
 
-/**
- * Interface for NetworkService wrapper that provides NetworkService instances.
- */
-@DefaultImplementation(NSWrapperImpl.class)
-public interface NSWrapper<T> {
-  NetworkService<T> getNetworkService();
+@NamedParameter(doc = "Network connection service codec for EM")
+public final class EMCodec implements Name<Codec<?>> {
 }

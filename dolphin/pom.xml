@@ -33,7 +33,6 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <reef.version>0.12.0-incubating-SNAPSHOT</reef.version>
     <shimoga.version>0.1-SNAPSHOT</shimoga.version>
     <hadoop.version>2.4.0</hadoop.version>
     <mahout.version>0.9</mahout.version>
