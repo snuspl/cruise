@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
-import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.common.ShuffleController;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -25,7 +25,7 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
  * and also provides shuffle operators to users.
  */
 @EvaluatorSide
-public interface Shuffle<K, V> {
+public interface Shuffle<K, V> extends ShuffleController {
 
   /**
    * Return the ShuffleReceiver for the shuffle.
@@ -45,8 +45,4 @@ public interface Shuffle<K, V> {
    */
   <T extends ShuffleSender<K, V>> T getSender();
 
-  /**
-   * @return the shuffle description
-   */
-  ShuffleDescription getShuffleDescription();
 }

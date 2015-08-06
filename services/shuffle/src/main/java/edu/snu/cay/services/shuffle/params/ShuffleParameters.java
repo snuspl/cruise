@@ -32,7 +32,15 @@ public final class ShuffleParameters {
   private ShuffleParameters() {
   }
 
-  public static final String NETWORK_CONNECTION_SERVICE_ID = "SHUFFLE_NETWORK_CONNECTION_IDENTIFIER";
+  /**
+   * NetworkConnectionFactory identifier for ShuffleTupleMessage
+   */
+  public static final String SHUFFLE_TUPLE_MSG_NETWORK_ID = "SHUFFLE_TUPLE_MSG_NETWORK_ID";
+
+  /**
+   * NetworkConnectionFactory identifier for ShuffleControlMessage
+   */
+  public static final String SHUFFLE_CONTROL_MSG_NETWORK_ID = "SHUFFLE_CONTROL_MSG_NETWORK_ID";
 
   @NamedParameter(doc = "the name of the ShuffleMnager class")
   public static final class ShuffleManagerClassName implements Name<String> {

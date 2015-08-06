@@ -16,11 +16,15 @@
 package edu.snu.cay.services.shuffle.driver;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.network.ShuffleControlLinkListener;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessageCodec;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessageHandler;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
-import edu.snu.cay.services.shuffle.evaluator.ShuffleContextStartHandler;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleContextStopHandler;
-import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
+import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.io.network.NetworkConnectionService;
+import org.apache.reef.io.network.naming.NameServerParameters;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.JavaConfigurationBuilder;
@@ -29,6 +33,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.util.Optional;
+import org.apache.reef.wake.Identifier;
+import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +44,10 @@ final class ShuffleDriverImpl implements ShuffleDriver {
 
   private final Class<? extends ShuffleManager> shuffleManagerClass;
   private final ConfigurationSerializer confSerializer;
+  private final Injector rootInjector;
+  private final ShuffleControlMessageHandler controlMessageHandler;
+  private final ShuffleControlLinkListener controlLinkListener;
+
   private final ConcurrentMap<String, ShuffleManager> managerMap;
 
   /**
@@ -46,13 +56,31 @@ final class ShuffleDriverImpl implements ShuffleDriver {
   @Inject
   private ShuffleDriverImpl(
       @Parameter(ShuffleParameters.ShuffleManagerClassName.class) final String shuffleManagerClassName,
-      final ConfigurationSerializer confSerializer) {
+      final ConfigurationSerializer confSerializer,
+      final Injector rootInjector,
+      @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
+      final NetworkConnectionService networkConnectionService,
+      final ShuffleControlMessageCodec controlMessageCodec,
+      final ShuffleControlMessageHandler controlMessageHandler,
+      final ShuffleControlLinkListener controlLinkListener) {
     try {
       this.shuffleManagerClass = (Class<? extends ShuffleManager>) Class.forName(shuffleManagerClassName);
     } catch (final ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
     this.confSerializer = confSerializer;
+    this.rootInjector = rootInjector;
+    this.controlMessageHandler = controlMessageHandler;
+    this.controlLinkListener = controlLinkListener;
+
+    final Identifier controlMessageNetworkId = idFactory.getNewInstance(
+        ShuffleParameters.SHUFFLE_CONTROL_MSG_NETWORK_ID);
+    try {
+      networkConnectionService.registerConnectionFactory(
+          controlMessageNetworkId, controlMessageCodec, controlMessageHandler, controlLinkListener);
+    } catch (final NetworkException e) {
+      throw new RuntimeException(e);
+    }
     this.managerMap = new ConcurrentHashMap<>();
   }
 
@@ -62,11 +90,14 @@ final class ShuffleDriverImpl implements ShuffleDriver {
       throw new RuntimeException(shuffleDescription.getShuffleName()
           + " was already registered in ShuffleDriver");
     }
-    final Injector injector = Tang.Factory.getTang().newInjector();
+    final Injector injector = rootInjector.forkInjector();
     injector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
     try {
       final K manager = (K)injector.getInstance(shuffleManagerClass);
-      managerMap.put(shuffleDescription.getShuffleName(), manager);
+      final String shuffleName = shuffleDescription.getShuffleName();
+      managerMap.put(shuffleName, manager);
+      controlMessageHandler.registerMessageHandler(shuffleName, manager);
+      controlLinkListener.registerLinkListener(shuffleName, manager);
       return manager;
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
@@ -76,7 +107,6 @@ final class ShuffleDriverImpl implements ShuffleDriver {
   @Override
   public Configuration getContextConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextStartHandlers.class, ShuffleContextStartHandler.class)
         .bindSetEntry(ContextStopHandlers.class, ShuffleContextStopHandler.class)
         .build();
   }

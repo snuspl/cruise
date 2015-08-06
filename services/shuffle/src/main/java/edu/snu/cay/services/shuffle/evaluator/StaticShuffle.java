@@ -19,9 +19,12 @@ import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorFactory;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.io.network.Message;
 
 import javax.inject.Inject;
+import java.net.SocketAddress;
 
 /**
  * Simple implementation of Shuffle.
@@ -65,5 +68,23 @@ public final class StaticShuffle<K, V> implements Shuffle<K, V> {
   @Override
   public ShuffleDescription getShuffleDescription() {
     return shuffleDescription;
+  }
+
+  @Override
+  public void onNext(final Message<ShuffleControlMessage> shuffleControlMessage) {
+
+  }
+
+  @Override
+  public void onSuccess(final Message<ShuffleControlMessage> shuffleControlMessage) {
+
+  }
+
+  @Override
+  public void onException(
+      final Throwable throwable,
+      final SocketAddress socketAddress,
+      final Message<ShuffleControlMessage> shuffleControlMessage) {
+
   }
 }

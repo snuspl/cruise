@@ -13,27 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator;
+package edu.snu.cay.services.shuffle.common;
 
-import org.apache.reef.evaluator.context.events.ContextStop;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
+import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
-
-import javax.inject.Inject;
+import org.apache.reef.wake.remote.transport.LinkListener;
 
 /**
- * ContextStopHandler which un-registers connection factories.
+ * Controller that control a shuffle by exchanging ShuffleControlMessages with other
+ * ShuffleControllers.
  */
-public final class ShuffleContextStopHandler implements EventHandler<ContextStop> {
+public interface ShuffleController extends EventHandler<Message<ShuffleControlMessage>>,
+    LinkListener<Message<ShuffleControlMessage>> {
 
-  private final ShuffleNetworkSetup shuffleNetworkSetup;
-  @Inject
-  private ShuffleContextStopHandler(
-      final ShuffleNetworkSetup shuffleNetworkSetup) {
-    this.shuffleNetworkSetup = shuffleNetworkSetup;
-  }
-
-  @Override
-  public void onNext(final ContextStop value) {
-    shuffleNetworkSetup.unregisterConnectionFactories();
-  }
+  /**
+   * @return a shuffle description handled by the ShuffleController
+   */
+  ShuffleDescription getShuffleDescription();
 }

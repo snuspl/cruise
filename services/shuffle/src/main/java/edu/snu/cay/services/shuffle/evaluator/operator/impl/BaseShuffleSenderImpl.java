@@ -16,18 +16,17 @@
 package edu.snu.cay.services.shuffle.evaluator.operator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.evaluator.ShuffleNetworkSetup;
 import edu.snu.cay.services.shuffle.evaluator.operator.BaseShuffleSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleTupleMessageGenerator;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleLinkListener;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
-import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.io.network.naming.NameServerParameters;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
@@ -55,17 +54,16 @@ public final class BaseShuffleSenderImpl<K, V> implements BaseShuffleSender<K, V
       final ShuffleDescription shuffleDescription,
       final ShuffleStrategy<K> shuffleStrategy,
       final ShuffleTupleLinkListener shuffleTupleLinkListener,
-      final NetworkConnectionService networkConnectionService,
-      @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
-      final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator) {
+      final ShuffleNetworkSetup shuffleNetworkSetup,
+      final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator,
+      @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory) {
     this.shuffleName = shuffleDescription.getShuffleName();
     this.shuffleDescription = shuffleDescription;
     this.shuffleStrategy = shuffleStrategy;
     this.shuffleTupleLinkListener = shuffleTupleLinkListener;
-    this.tupleMessageConnectionFactory = networkConnectionService
-        .getConnectionFactory(idFactory.getNewInstance(ShuffleParameters.NETWORK_CONNECTION_SERVICE_ID));
-    this.idFactory = idFactory;
+    this.tupleMessageConnectionFactory = shuffleNetworkSetup.getTupleConnectionFactory();
     this.tupleMessageGenerator = tupleMessageGenerator;
+    this.idFactory = idFactory;
   }
 
   @Override

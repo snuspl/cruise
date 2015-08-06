@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.driver;
 
-import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.common.ShuffleController;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.util.Optional;
@@ -24,7 +24,7 @@ import org.apache.reef.util.Optional;
  * Driver-side interface which communicates with corresponding Shuffle instances in evaluators.
  */
 @DriverSide
-public interface ShuffleManager {
+public interface ShuffleManager extends ShuffleController {
 
   /**
    * Return a configuration of the shuffle description for endPointId.
@@ -35,8 +35,4 @@ public interface ShuffleManager {
    */
   Optional<Configuration> getShuffleConfiguration(String endPointId);
 
-  /**
-   * @return a shuffle description handled by the ShuffleManager
-   */
-  ShuffleDescription getShuffleDescription();
 }

@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
+import edu.snu.cay.services.shuffle.network.ShuffleControlLinkListener;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessageHandler;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -30,6 +32,8 @@ final class ShuffleProviderImpl implements ShuffleProvider {
 
   private final Injector rootInjector;
   private ConfigurationSerializer confSerializer;
+  private final ShuffleControlMessageHandler controlMessageHandler;
+  private final ShuffleControlLinkListener controlLinkListener;
 
   private final Map<String, Shuffle> shuffleMap;
 
@@ -37,11 +41,15 @@ final class ShuffleProviderImpl implements ShuffleProvider {
   private ShuffleProviderImpl(
       final Injector rootInjector,
       final ConfigurationSerializer confSerializer,
+      final ShuffleControlMessageHandler controlMessageHandler,
+      final ShuffleControlLinkListener controlLinkListener,
       @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet) {
     this.rootInjector = rootInjector;
     this.confSerializer = confSerializer;
-    this.shuffleMap = new HashMap<>();
+    this.controlMessageHandler = controlMessageHandler;
+    this.controlLinkListener = controlLinkListener;
 
+    this.shuffleMap = new HashMap<>();
     for (final String serializedShuffle : serializedShuffleSet) {
       deserializeShuffle(serializedShuffle);
     }
@@ -52,7 +60,10 @@ final class ShuffleProviderImpl implements ShuffleProvider {
       final Configuration shuffleConfiguration = confSerializer.fromString(serializedShuffle);
       final Injector injector = rootInjector.forkInjector(shuffleConfiguration);
       final Shuffle shuffle = injector.getInstance(Shuffle.class);
-      shuffleMap.put(shuffle.getShuffleDescription().getShuffleName(), shuffle);
+      final String shuffleName = injector.getNamedInstance(ShuffleParameters.ShuffleName.class);
+      shuffleMap.put(shuffleName, shuffle);
+      controlMessageHandler.registerMessageHandler(shuffleName, shuffle);
+      controlLinkListener.registerLinkListener(shuffleName, shuffle);
     } catch (final Exception e) {
       throw new RuntimeException("An exception occurred while deserializing shuffle : " + serializedShuffle, e);
     }

@@ -17,12 +17,15 @@ package edu.snu.cay.services.shuffle.driver;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.evaluator.StaticShuffle;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.utils.ShuffleDescriptionSerializer;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
+import java.net.SocketAddress;
 
 /**
  * Simple implementation of ShuffleManager.
@@ -59,5 +62,23 @@ public final class StaticShuffleManager implements ShuffleManager {
   @Override
   public ShuffleDescription getShuffleDescription() {
     return shuffleDescription;
+  }
+
+  @Override
+  public void onNext(final Message<ShuffleControlMessage> shuffleControlMessage) {
+
+  }
+
+  @Override
+  public void onSuccess(final Message<ShuffleControlMessage> shuffleControlMessage) {
+
+  }
+
+  @Override
+  public void onException(
+      final Throwable throwable,
+      final SocketAddress socketAddress,
+      final Message<ShuffleControlMessage> shuffleControlMessage) {
+
   }
 }
