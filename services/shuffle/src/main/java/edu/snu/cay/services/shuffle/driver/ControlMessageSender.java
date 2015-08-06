@@ -55,11 +55,11 @@ public final class ControlMessageSender {
 
   /**
    * Send a ShuffleControlMessage with code to endPointId.
-   * It throws a NetworkException when an error occurs during open a connection. In this case,
+   * It throws a NetworkException when an error occurs while opening a connection. In this case,
    * the link listener does not call any callbacks as the message is not tried to be sent.
    *
    * @param endPointId an end point id
-   * @param code a code
+   * @param code a control message code
    * @throws NetworkException
    */
   public void send(final String endPointId, final int code) throws NetworkException {
@@ -68,11 +68,11 @@ public final class ControlMessageSender {
 
   /**
    * Send a ShuffleControlMessage with code and dataList to endPointId.
-   * It throws a NetworkException when an error occurs during open a connection. In this case,
+   * It throws a NetworkException when an error occurs while opening a connection. In this case,
    * the link listener does not call any callbacks as the message is not tried to be sent.
    *
    * @param endPointId an end point id
-   * @param code a code
+   * @param code a control message code
    * @param dataList a data list
    * @throws NetworkException
    */

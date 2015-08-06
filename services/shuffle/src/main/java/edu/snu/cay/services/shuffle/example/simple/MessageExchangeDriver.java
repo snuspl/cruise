@@ -116,8 +116,6 @@ public final class MessageExchangeDriver {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
         .bindNamedParameter(NameResolverNameServerPort.class, String.valueOf(nameServer.getPort()))
-        .bindSetEntry(TaskConfigurationOptions.StartHandlers.class, BindNetworkConnectionServiceToTask.class)
-        .bindSetEntry(TaskConfigurationOptions.StopHandlers.class, UnbindNetworkConnectionServiceFromTask.class)
         .build();
   }
 

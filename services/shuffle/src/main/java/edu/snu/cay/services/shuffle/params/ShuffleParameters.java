@@ -81,4 +81,8 @@ public final class ShuffleParameters {
   @NamedParameter(doc = "set of serialized shuffle description")
   public static final class SerializedShuffleSet implements Name<Set<String>> {
   }
+
+  @NamedParameter(doc = "the end point identifier")
+  public static final class EndPointId implements Name<String> {
+  }
 }

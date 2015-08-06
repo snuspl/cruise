@@ -20,6 +20,7 @@ import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.util.Optional;
 
 /**
  * Evaluator side interface which communicates with corresponding ShuffleManager in driver,
@@ -48,10 +49,11 @@ public interface Shuffle<K, V> extends ShuffleController {
 
   /**
    * Wait for a ShuffleControlMessage with code. All threads will be notified when the
-   * ShuffleControlMessage arrives.
+   * ShuffleControlMessage arrives. It returns Optional.empty if the caller does not need
+   * to be wait or there is an exceptional case.
    *
-   * @param code a code for expecting ShuffleControlMessage
+   * @param code a code for an expected ShuffleControlMessage
    * @return the ShuffleControlMessage
    */
-  ShuffleControlMessage waitForControlMessage(int code);
+  Optional<ShuffleControlMessage> waitForControlMessage(int code);
 }

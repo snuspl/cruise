@@ -55,7 +55,7 @@ abstract class ShuffleLinkListener<K extends ShuffleMessage> implements LinkList
     if (linkListener != null) {
       linkListener.onSuccess(message);
     } else {
-      LOG.log(Level.INFO, "There is no registered link listener for {0}. A message was successfully sent {1}.",
+      LOG.log(Level.FINE, "There is no registered link listener for {0}. A message was successfully sent {1}.",
           new Object[]{shuffleMessage.getShuffleName(), message});
     }
   }

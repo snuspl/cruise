@@ -16,17 +16,22 @@
 package edu.snu.cay.services.shuffle.driver.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.driver.ControlMessageSender;
 import edu.snu.cay.services.shuffle.driver.ShuffleManager;
 import edu.snu.cay.services.shuffle.evaluator.impl.BasicShuffle;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.utils.ShuffleDescriptionSerializer;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Simple implementation of ShuffleManager.
@@ -37,15 +42,23 @@ import java.net.SocketAddress;
 @DriverSide
 public final class BasicShuffleManager implements ShuffleManager {
 
+  private static final Logger LOG = Logger.getLogger(BasicShuffleManager.class.getName());
+
   private final ShuffleDescription shuffleDescription;
   private final ShuffleDescriptionSerializer descriptionSerializer;
+  private final ControlMessageSender controlMessageSender;
+  private final AtomicInteger setupEndPointNumber;
 
   @Inject
   private BasicShuffleManager(
       final ShuffleDescription shuffleDescription,
-      final ShuffleDescriptionSerializer descriptionSerializer) {
+      final ShuffleDescriptionSerializer descriptionSerializer,
+      final ControlMessageSender controlMessageSender) {
     this.shuffleDescription = shuffleDescription;
     this.descriptionSerializer = descriptionSerializer;
+    this.controlMessageSender = controlMessageSender;
+    System.out.println(shuffleDescription.getEndPointIdSet());
+    setupEndPointNumber = new AtomicInteger(shuffleDescription.getEndPointIdSet().size());
   }
 
   /**
@@ -65,21 +78,39 @@ public final class BasicShuffleManager implements ShuffleManager {
     return shuffleDescription;
   }
 
-  @Override
-  public void onNext(final Message<ShuffleControlMessage> shuffleControlMessage) {
-
+  private void broadcastSetupMessage() {
+    try {
+      for (final String endPointId : shuffleDescription.getEndPointIdSet()) {
+        controlMessageSender.send(endPointId, BasicShuffleCode.MANAGER_SETUP);
+      }
+    } catch (final NetworkException e) {
+      // TODO : failure handling
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
-  public void onSuccess(final Message<ShuffleControlMessage> shuffleControlMessage) {
+  public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
+    final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
+    if (controlMessage.getCode() == BasicShuffleCode.SHUFFLE_SETUP) {
+      if (setupEndPointNumber.decrementAndGet() == 0) {
+        broadcastSetupMessage();
+      }
+    }
+  }
 
+  @Override
+  public void onSuccess(final Message<ShuffleControlMessage> networkControlMessage) {
+    LOG.log(Level.FINE, "A ShuffleControlMessage was successfully sent : {0}", networkControlMessage);
   }
 
   @Override
   public void onException(
-      final Throwable throwable,
+      final Throwable cause,
       final SocketAddress socketAddress,
-      final Message<ShuffleControlMessage> shuffleControlMessage) {
-
+      final Message<ShuffleControlMessage> networkControlMessage) {
+    LOG.log(Level.WARNING, "An exception occurred while sending a ShuffleControlMessage. " +
+        "cause : {0}, socket address : {1}, message : {2}", new Object[]{cause, socketAddress, networkControlMessage});
+    // TODO : failure handling.
   }
 }

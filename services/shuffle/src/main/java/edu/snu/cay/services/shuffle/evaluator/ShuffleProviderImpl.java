@@ -18,10 +18,13 @@ package edu.snu.cay.services.shuffle.evaluator;
 import edu.snu.cay.services.shuffle.network.ShuffleControlLinkListener;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessageHandler;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
+import org.apache.reef.io.network.NetworkConnectionService;
+import org.apache.reef.io.network.naming.NameServerParameters;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
+import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -43,12 +46,18 @@ final class ShuffleProviderImpl implements ShuffleProvider {
       final ConfigurationSerializer confSerializer,
       final ShuffleControlMessageHandler controlMessageHandler,
       final ShuffleControlLinkListener controlLinkListener,
-      @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet) {
+      @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet,
+      @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
+      final NetworkConnectionService networkConnectionService,
+      @Parameter(ShuffleParameters.EndPointId.class) final String endPointId) {
     this.rootInjector = rootInjector;
     this.confSerializer = confSerializer;
     this.controlMessageHandler = controlMessageHandler;
     this.controlLinkListener = controlLinkListener;
 
+    // TODO : Where to register the endPointId should be cleaned up when an issue about
+    // injecting evaluator-side shuffle components in context is resolved.
+    networkConnectionService.registerId(idFactory.getNewInstance(endPointId));
     this.shuffleMap = new HashMap<>();
     for (final String serializedShuffle : serializedShuffleSet) {
       deserializeShuffle(serializedShuffle);

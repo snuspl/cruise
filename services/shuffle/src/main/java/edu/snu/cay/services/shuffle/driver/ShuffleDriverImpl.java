@@ -121,6 +121,7 @@ final class ShuffleDriverImpl implements ShuffleDriver {
         // The shuffle manager has the endPointId as a sender or a receiver.
         confBuilder.bindSetEntry(
             ShuffleParameters.SerializedShuffleSet.class, confSerializer.toString(shuffleConf.get()));
+        confBuilder.bindNamedParameter(ShuffleParameters.EndPointId.class, endPointId);
       }
     }
     return confBuilder.build();

@@ -16,6 +16,9 @@
 package edu.snu.cay.services.shuffle.evaluator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.driver.impl.BasicShuffleCode;
+import edu.snu.cay.services.shuffle.evaluator.ControlMessageSender;
+import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorFactory;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
@@ -23,9 +26,11 @@ import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,13 +47,25 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
 
   private final ShuffleDescription shuffleDescription;
   private final ShuffleOperatorFactory<K, V> operatorFactory;
+  private final ControlMessageSender controlMessageSender;
+  private final ControlMessageSynchronizer synchronizer;
+
+  private final AtomicBoolean isSetupMessageSent;
+  private final AtomicBoolean initialized;
 
   @Inject
   private BasicShuffle(
       final ShuffleDescription shuffleDescription,
-      final ShuffleOperatorFactory<K, V> operatorFactory) {
+      final ShuffleOperatorFactory<K, V> operatorFactory,
+      final ControlMessageSender controlMessageSender,
+      final ControlMessageSynchronizer synchronizer) {
     this.shuffleDescription = shuffleDescription;
     this.operatorFactory = operatorFactory;
+    this.synchronizer = synchronizer;
+
+    this.isSetupMessageSent = new AtomicBoolean();
+    this.initialized = new AtomicBoolean();
+    this.controlMessageSender = controlMessageSender;
   }
 
   /**
@@ -56,6 +73,7 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleReceiver<K, V>> T getReceiver() {
+    sendSetupMessage();
     return operatorFactory.newShuffleReceiver();
   }
 
@@ -64,7 +82,18 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleSender<K, V>> T getSender() {
+    sendSetupMessage();
     return operatorFactory.newShuffleSender();
+  }
+
+  /**
+   * Send a setup message to driver. This should not be called in the constructor
+   * since the initialization can be finished before users register their shuffle message handler.
+   */
+  private void sendSetupMessage() {
+    if (isSetupMessageSent.compareAndSet(false, true)) {
+      controlMessageSender.send(BasicShuffleCode.SHUFFLE_SETUP);
+    }
   }
 
   /**
@@ -72,8 +101,8 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
    * @return the ShuffleControlMessage
    */
   @Override
-  public ShuffleControlMessage waitForControlMessage(final int code) {
-    return null;
+  public Optional<ShuffleControlMessage> waitForControlMessage(final int code) {
+    return synchronizer.waitForControlMessage(code);
   }
 
   /**
@@ -85,21 +114,27 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
   }
 
   @Override
-  public void onNext(final Message<ShuffleControlMessage> shuffleControlMessage) {
-
+  public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
+    final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
+    if (controlMessage.getCode() == BasicShuffleCode.MANAGER_SETUP) {
+      if (initialized.compareAndSet(false, true)) {
+        synchronizer.closeLatch(controlMessage);
+      }
+    }
   }
 
   @Override
-  public void onSuccess(final Message<ShuffleControlMessage> shuffleControlMessage) {
-    LOG.log(Level.FINE, "ShuffleControlMessage was successfully sent : {0}", shuffleControlMessage);
+  public void onSuccess(final Message<ShuffleControlMessage> networkControlMessage) {
+    LOG.log(Level.FINE, "ShuffleControlMessage was successfully sent : {0}", networkControlMessage);
   }
 
   @Override
   public void onException(
       final Throwable throwable,
       final SocketAddress socketAddress,
-      final Message<ShuffleControlMessage> shuffleControlMessage) {
+      final Message<ShuffleControlMessage> networkControlMessage) {
     LOG.log(Level.WARNING, "An exception occurred while sending ShuffleControlMessage to driver. cause : {0}, " +
-        "socket address : {1}, message : {2}", new Object[]{throwable, socketAddress, shuffleControlMessage});
+        "socket address : {1}, message : {2}", new Object[]{throwable, socketAddress, networkControlMessage});
+    throw new RuntimeException("An exception occurred while sending ShuffleControlMessage to driver", throwable);
   }
 }

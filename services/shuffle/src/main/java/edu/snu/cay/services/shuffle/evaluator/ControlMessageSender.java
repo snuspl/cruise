@@ -57,7 +57,7 @@ public final class ControlMessageSender {
   /**
    * Send a ShuffleControlMessage with code to the driver
    *
-   * @param code a code
+   * @param code a control message code
    */
   public void send(final int code) {
     send(code, null);
@@ -66,7 +66,7 @@ public final class ControlMessageSender {
   /**
    * Send a ShuffleControlMessage with code and dataList to the driver
    *
-   * @param code a code
+   * @param code a control message code
    * @param dataList a data list
    */
   public void send(final int code, final List<byte[]> dataList) {
