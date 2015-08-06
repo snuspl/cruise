@@ -26,34 +26,34 @@ import org.apache.reef.tang.annotations.Unit;
 import javax.inject.Inject;
 
 /**
- * A simple metric tracker class given in the form of a service.
+ * Provides configurations for the service that collects metrics from Tasks.
  * Should be inserted alongside a context.
  */
 @Unit
-public final class MetricTrackerService {
+public final class MetricsCollectionService {
 
   @Inject
-  private MetricTrackerService() {
+  private MetricsCollectionService() {
   }
 
   /**
-   * Return the service configuration for the metric tracker service
-   * @return service configuration for the metric tracker service
+   * Return the service configuration for the Metrics Collection Service
+   * @return service configuration for the Metrics Collection Service
    */
   public static Configuration getServiceConfiguration() {
     return ServiceConfiguration.CONF
-        .set(ServiceConfiguration.SERVICES, MetricManager.class)
+        .set(ServiceConfiguration.SERVICES, MetricsCollector.class)
         .build();
   }
 
   /**
-   * Return the context configuration for the metric tracker service
-   * @return context configuration for the metric tracker service
+   * Return the context configuration for the Metrics Collection Service
+   * @return context configuration for the Metrics Collection Service
    */
   public static Configuration getContextConfiguration() {
     return ContextConfiguration.CONF
-        .set(ContextConfiguration.IDENTIFIER, MetricTrackerService.class.getName())
-        .set(ContextConfiguration.ON_SEND_MESSAGE, MetricManager.class)
+        .set(ContextConfiguration.IDENTIFIER, MetricsCollectionService.class.getName())
+        .set(ContextConfiguration.ON_SEND_MESSAGE, MetricsCollector.class)
         .build();
   }
 
@@ -64,7 +64,7 @@ public final class MetricTrackerService {
    */
   public static Configuration getContextConfiguration(final Configuration previousConfiguration) {
     final Configuration contextConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextMessageSources.class, MetricManager.class)
+        .bindSetEntry(ContextMessageSources.class, MetricsCollector.class)
         .build();
 
     return Configurations.merge(contextConf, previousConfiguration);

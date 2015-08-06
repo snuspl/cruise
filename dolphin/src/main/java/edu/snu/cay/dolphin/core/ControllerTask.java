@@ -15,15 +15,22 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterSender;
 import edu.snu.cay.dolphin.groupcomm.names.*;
-import edu.snu.cay.dolphin.core.metric.MetricManager;
-import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
-import edu.snu.cay.dolphin.core.metric.MetricTrackers;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_START;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_END;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_USER_CONTROLLER_TASK_START;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_USER_CONTROLLER_TASK_END;
+
+
 import org.apache.reef.driver.task.TaskConfigurationOptions;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
 import org.apache.reef.io.network.group.api.task.CommunicationGroupClient;
 import org.apache.reef.io.network.group.api.task.GroupCommClient;
@@ -44,22 +51,25 @@ public final class ControllerTask implements Task {
   private final UserControllerTask userControllerTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
-  private final MetricManager metricManager;
+  private final MetricsCollector metricsCollector;
   private final Set<MetricTracker> metricTrackerSet;
+  private final InsertableMetricTracker insertableMetricTracker;
 
   @Inject
   public ControllerTask(final GroupCommClient groupCommClient,
                         final UserControllerTask userControllerTask,
                         @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                         @Parameter(CommunicationGroup.class) final String commGroupName,
-                        final MetricManager metricManager,
-                        @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet) throws ClassNotFoundException {
+                        final MetricsCollector metricsCollector,
+                        @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
+                        final InsertableMetricTracker insertableMetricTracker) throws ClassNotFoundException {
     this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.userControllerTask = userControllerTask;
     this.taskId = taskId;
     this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
-    this.metricManager = metricManager;
+    this.metricsCollector = metricsCollector;
     this.metricTrackerSet = metricTrackerSet;
+    this.insertableMetricTracker = insertableMetricTracker;
   }
 
   @Override
@@ -67,16 +77,16 @@ public final class ControllerTask implements Task {
     LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
     userControllerTask.initialize();
-    try (final MetricManager metricManager = this.metricManager;) {
-      metricManager.registerTrackers(metricTrackerSet);
+    try (final MetricsCollector metricsCollector = this.metricsCollector;) {
+      metricsCollector.registerTrackers(metricTrackerSet);
       int iteration = 0;
       while(!userControllerTask.isTerminated(iteration)) {
-        metricManager.start();
+        metricsCollector.start();
         ctrlMessageBroadcast.send(CtrlMessage.RUN);
         sendData(iteration);
         receiveData(iteration);
-        userControllerTask.run(iteration);
-        metricManager.stop();
+        runUserControllerTask(iteration);
+        metricsCollector.stop();
         updateTopology();
         iteration++;
       }
@@ -96,7 +106,14 @@ public final class ControllerTask implements Task {
     }
   }
 
-  private final void sendData(final int iteration) throws Exception {
+  private void runUserControllerTask(final int iteration) throws MetricException {
+    insertableMetricTracker.put(CONTROLLER_TASK_USER_CONTROLLER_TASK_START, System.currentTimeMillis());
+    userControllerTask.run(iteration);
+    insertableMetricTracker.put(CONTROLLER_TASK_USER_CONTROLLER_TASK_END, System.currentTimeMillis());
+  }
+
+  private final void sendData(final int iteration) throws NetworkException, InterruptedException, MetricException {
+    insertableMetricTracker.put(CONTROLLER_TASK_SEND_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isBroadcastUsed()) {
       commGroup.getBroadcastSender(DataBroadcast.class).send(
           ((DataBroadcastSender) userControllerTask).sendBroadcastData(iteration));
@@ -105,9 +122,11 @@ public final class ControllerTask implements Task {
       commGroup.getScatterSender(DataScatter.class).send(
           ((DataScatterSender) userControllerTask).sendScatterData(iteration));
     }
+    insertableMetricTracker.put(CONTROLLER_TASK_SEND_DATA_END, System.currentTimeMillis());
   }
 
-  private final void receiveData(final int iteration) throws Exception {
+  private final void receiveData(final int iteration) throws NetworkException, InterruptedException, MetricException {
+    insertableMetricTracker.put(CONTROLLER_TASK_RECEIVE_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isGatherUsed()) {
       ((DataGatherReceiver)userControllerTask).receiveGatherData(iteration,
           commGroup.getGatherReceiver(DataGather.class).receive());
@@ -116,5 +135,6 @@ public final class ControllerTask implements Task {
       ((DataReduceReceiver)userControllerTask).receiveReduceData(iteration,
           commGroup.getReduceReceiver(DataReduce.class).reduce());
     }
+    insertableMetricTracker.put(CONTROLLER_TASK_RECEIVE_DATA_END, System.currentTimeMillis());
   }
 }

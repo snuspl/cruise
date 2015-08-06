@@ -30,11 +30,11 @@ import java.util.TreeMap;
  *
  * This class is not thread-safe.
  * Although this class uses synchronization methods,
- * these are for synchronization between the thread using MetricTrackerMemory
+ * these are for synchronization between the thread using MemoryMetricTracker
  * and the Daemon thread created in the constructor.
  * This class assumes that its instance is used by one thread.
  */
-public final class MetricTrackerMemory implements MetricTracker {
+public final class MemoryMetricTracker implements MetricTracker {
 
   /**
    * time interval between two measurements of memory usage (millisecond)
@@ -101,7 +101,7 @@ public final class MetricTrackerMemory implements MetricTracker {
    * @param measureInterval time interval between metric tracking
    */
   @Inject
-  public MetricTrackerMemory(@Parameter(MeasureInterval.class) final Long measureInterval) {
+  public MemoryMetricTracker(@Parameter(MeasureInterval.class) final Long measureInterval) {
     this.measureInterval = measureInterval;
     new Thread(new Daemon()).start();
   }
@@ -141,14 +141,14 @@ public final class MetricTrackerMemory implements MetricTracker {
     public void run() {
 
       while (true) {
-        synchronized(MetricTrackerMemory.this) {
+        synchronized(MemoryMetricTracker.this) {
           if (shouldTerminate) {
             break;
           } else if (shouldStop) {
             try {
 
               //wait until stop or close method is called
-              MetricTrackerMemory.this.wait();
+              MemoryMetricTracker.this.wait();
             } catch (final InterruptedException e) {
               throw new RuntimeException(e);
             }

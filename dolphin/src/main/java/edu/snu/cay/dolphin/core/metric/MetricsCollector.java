@@ -28,16 +28,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Class managing registered trackers.
+ * Collects Metrics from the registered MetricTrackers,
+ * and sends the collected metrics to the driver.
  *
  * This class is not thread-safe.
  * Although this class uses synchronization methods,
- * these are for synchronization between the thread using MetricManager
+ * these are for synchronization between the thread using MetricsCollector
  * and other threads triggering heart beats.
  * This class assumes that its instance is used by one thread.
  */
-public final class MetricManager implements ContextMessageSource, AutoCloseable {
-  private final static Logger LOG = Logger.getLogger(MetricManager.class.getName());
+public final class MetricsCollector implements ContextMessageSource, AutoCloseable {
+  private final static Logger LOG = Logger.getLogger(MetricsCollector.class.getName());
 
   /**
    * Set of registered trackers
@@ -67,13 +68,13 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
   /**
    * This class is instantiated by TANG
    *
-   * Constructor for the metric manager, which accepts Heartbeat Trigger Manager as a parameter
+   * Constructor for the MetricsCollector, which accepts Heartbeat Trigger Manager as a parameter
    * @param heartBeatTriggerManager manager for sending heartbeat to the driver
    * @param metricCodec codec for metrics
    */
   @Inject
-  public MetricManager(final HeartBeatTriggerManager heartBeatTriggerManager,
-                       final MetricCodec metricCodec) {
+  public MetricsCollector(final HeartBeatTriggerManager heartBeatTriggerManager,
+                          final MetricCodec metricCodec) {
     this.heartBeatTriggerManager = heartBeatTriggerManager;
     this.metricCodec = metricCodec;
     this.metrics.set(new HashMap<String, Double>());
@@ -142,7 +143,7 @@ public final class MetricManager implements ContextMessageSource, AutoCloseable 
       return Optional.empty();
     } else {
       final Optional<ContextMessage> message = Optional.of(ContextMessage.from(
-          MetricTrackerService.class.getName(),
+          MetricsCollectionService.class.getName(),
           metricCodec.encode(newMetrics)));
       return message;
     }
