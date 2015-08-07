@@ -15,6 +15,6 @@
  */
 
 /**
- * Implementations of the ShuffleManager interface.
+ * Implementations of the ShuffleManager interface and associating helper classes.
  */
 package edu.snu.cay.services.shuffle.driver.impl;

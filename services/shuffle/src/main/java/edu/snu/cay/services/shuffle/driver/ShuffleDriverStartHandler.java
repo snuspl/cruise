@@ -26,7 +26,7 @@ import org.apache.reef.wake.time.runtime.event.RuntimeStart;
 import javax.inject.Inject;
 
 /**
- * RuntimeStartHandler which registers connection factory for ShuffleControlMessage.
+ * RuntimeStartHandler which registers a connection factory for ShuffleControlMessage.
  */
 public final class ShuffleDriverStartHandler implements EventHandler<RuntimeStart> {
 
@@ -40,7 +40,6 @@ public final class ShuffleDriverStartHandler implements EventHandler<RuntimeStar
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
       final NetworkConnectionService networkConnectionService) {
     this.networkConnectionService = networkConnectionService;
-
     this.driverId = idFactory.getNewInstance(ShuffleDriverConfiguration.SHUFFLE_DRIVER_NETWORK_IDENTIFIER);
   }
 

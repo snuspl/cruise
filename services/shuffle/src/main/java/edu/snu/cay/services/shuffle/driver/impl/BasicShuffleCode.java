@@ -17,7 +17,7 @@ package edu.snu.cay.services.shuffle.driver.impl;
 
 /**
  * Control message codes for basic shuffle classes.
- * The prefix of codes represent where the control message was sent from.
+ * The prefix of codes represents where the control message was sent from.
  */
 public final class BasicShuffleCode {
   /**

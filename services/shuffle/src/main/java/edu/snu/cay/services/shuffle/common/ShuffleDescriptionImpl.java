@@ -21,7 +21,10 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Default implementation of ShuffleDescription, it can be instantiated using

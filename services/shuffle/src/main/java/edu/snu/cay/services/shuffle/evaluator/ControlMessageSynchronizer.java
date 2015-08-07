@@ -50,7 +50,7 @@ public final class ControlMessageSynchronizer {
   }
 
   /**
-   * Open the latch for the code. It throws IllegalStateException if the latch was not closed.
+   * Open the latch for the code. It throws IllegalStateException if the latch is not closed.
    *
    * @param code a control message code
    */
@@ -78,8 +78,7 @@ public final class ControlMessageSynchronizer {
   }
 
   /**
-   * Release the latch for shuffleControlMessage if there are some threads waiting on
-   * the latch.
+   * Release the latch for shuffleControlMessage and notify all waiting threads on the latch.
    *
    * @param shuffleControlMessage a shuffle control message
    */
@@ -94,6 +93,7 @@ public final class ControlMessageSynchronizer {
 
   /**
    * Wait for the other thread releasing the latch for the code.
+   * It returns Optional.empty if the latch is closed.
    *
    * @param code a control message code
    * @return the expected ShuffleControlMessage
@@ -121,10 +121,10 @@ final class ControlMessageLatch {
 
   private boolean released;
   private ShuffleControlMessage expectedControlMessage;
-  private final int code;
+  private final int expectedCode;
 
-  ControlMessageLatch(final int code) {
-    this.code = code;
+  ControlMessageLatch(final int expectedCode) {
+    this.expectedCode = expectedCode;
   }
 
   /**
@@ -134,8 +134,8 @@ final class ControlMessageLatch {
    */
   void release(final ShuffleControlMessage controlMessage) {
     synchronized (this) {
-      if (controlMessage.getCode() != code) {
-        throw new IllegalArgumentException("The expected code is " + code + " but the latch is released with "
+      if (controlMessage.getCode() != expectedCode) {
+        throw new IllegalArgumentException("The expected code is " + expectedCode + " but the latch is released with "
             + controlMessage.getCode());
       }
 

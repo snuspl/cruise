@@ -20,7 +20,7 @@ import javax.inject.Inject;
 /**
  * Link listener for ShuffleControlMessage.
  */
-public final class ShuffleControlLinkListener extends ShuffleLinkListener<ShuffleControlMessage>{
+public final class ShuffleControlLinkListener extends ShuffleLinkListener<ShuffleControlMessage> {
 
   @Inject
   private ShuffleControlLinkListener() {

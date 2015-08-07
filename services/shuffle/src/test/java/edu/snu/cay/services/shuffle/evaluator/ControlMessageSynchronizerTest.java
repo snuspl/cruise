@@ -51,7 +51,9 @@ public final class ControlMessageSynchronizerTest {
   }
 
   /**
-   * Test releasing the same latch multiple times with many message types
+   * Test releasing the same latch multiple times with many message types.
+   * The main threads release all types of control message until entire threads
+   * receive prescribed number of messages.
    */
   @Test
   public void testMultipleReleaseWithManyMessageTypes() throws Exception {

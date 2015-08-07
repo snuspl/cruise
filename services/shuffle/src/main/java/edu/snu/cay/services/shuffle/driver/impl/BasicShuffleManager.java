@@ -40,6 +40,9 @@ import java.util.logging.Logger;
  *
  * The initial shuffle description can never be changed. Users cannot add or remove more tasks
  * to the shuffle and cannot change the key, value codecs and shuffling strategy after the manager is created.
+ *
+ * The manager broadcasts a MANAGER_SETUP message to all end points in the shuffle
+ * when all the end points are initialized.
  */
 @DriverSide
 public final class BasicShuffleManager implements ShuffleManager {

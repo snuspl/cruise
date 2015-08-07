@@ -20,7 +20,6 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.remote.Codec;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * Description of a shuffle containing key, value, shuffle strategy classes
@@ -58,4 +57,5 @@ public interface ShuffleDescription {
    * @return list of receiver identifiers
    */
   List<String> getReceiverIdList();
+
 }

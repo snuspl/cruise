@@ -35,7 +35,7 @@ import java.util.List;
 @EvaluatorSide
 public final class ControlMessageSender {
 
-  private Connection<ShuffleControlMessage> connectionToDriver;
+  private Connection<ShuffleControlMessage> connectionToManager;
   private final String shuffleName;
 
   @Inject
@@ -45,31 +45,31 @@ public final class ControlMessageSender {
       final ShuffleNetworkSetup shuffleNetworkSetup) {
     this.shuffleName = shuffleName;
     final ConnectionFactory<ShuffleControlMessage> connFactory = shuffleNetworkSetup.getControlConnectionFactory();
-    connectionToDriver = connFactory.newConnection(idFactory
+    connectionToManager = connFactory.newConnection(idFactory
         .getNewInstance(ShuffleDriverConfiguration.SHUFFLE_DRIVER_NETWORK_IDENTIFIER));
     try {
-      connectionToDriver.open();
+      connectionToManager.open();
     } catch (final NetworkException e) {
       throw new RuntimeException("An NetworkException occurred while opening a connection to driver.", e);
     }
   }
 
   /**
-   * Send a ShuffleControlMessage with code to the driver
+   * Send a ShuffleControlMessage with code to the manager
    *
    * @param code a control message code
    */
-  public void send(final int code) {
-    send(code, null);
+  public void sendToManager(final int code) {
+    sendToManager(code, null);
   }
 
   /**
-   * Send a ShuffleControlMessage with code and dataList to the driver
+   * Send a ShuffleControlMessage with code and dataList to the manager
    *
    * @param code a control message code
    * @param dataList a data list
    */
-  public void send(final int code, final List<byte[]> dataList) {
-    connectionToDriver.write(new ShuffleControlMessage(code, shuffleName, dataList));
+  public void sendToManager(final int code, final List<byte[]> dataList) {
+    connectionToManager.write(new ShuffleControlMessage(code, shuffleName, dataList));
   }
 }

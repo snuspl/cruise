@@ -92,7 +92,7 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
    */
   private void sendSetupMessage() {
     if (isSetupMessageSent.compareAndSet(false, true)) {
-      controlMessageSender.send(BasicShuffleCode.SHUFFLE_SETUP);
+      controlMessageSender.sendToManager(BasicShuffleCode.SHUFFLE_SETUP);
     }
   }
 

@@ -29,7 +29,7 @@ import org.apache.reef.wake.IdentifierFactory;
 import javax.inject.Inject;
 
 /**
- * Evaluator side helper class that register connection factories for
+ * Evaluator-side helper class that register connection factories for
  * ShuffleTupleMessage and ShuffleControlMessage.
  */
 @EvaluatorSide
