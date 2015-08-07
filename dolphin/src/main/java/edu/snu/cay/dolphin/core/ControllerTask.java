@@ -81,7 +81,7 @@ public final class ControllerTask implements Task {
     try (final MetricsCollector metricsCollector = this.metricsCollector;) {
       metricsCollector.registerTrackers(metricTrackerSet);
       int iteration = 0;
-      while(!userControllerTask.isTerminated(iteration)) {
+      while (!userControllerTask.isTerminated(iteration)) {
         metricsCollector.start();
         ctrlMessageBroadcast.send(CtrlMessage.RUN);
         sendData(iteration);

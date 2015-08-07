@@ -94,10 +94,10 @@ public final class ClusteringPreCmpTask extends UserComputeTask
     final int numberOfPoints = points.size();
     final int numberOfSamples = Math.min(maxNumOfSamples, numberOfPoints);
 
-    for (int i=0; i<numberOfSamples; i++) {
+    for (int i = 0; i < numberOfSamples; i++) {
       final int index = random.nextInt(numberOfPoints - 1 - i);
       samples.add(pointArray[index]);
-      pointArray[index] = pointArray[numberOfPoints-1-i];
+      pointArray[index] = pointArray[numberOfPoints - 1 - i];
     }
 
     return samples;

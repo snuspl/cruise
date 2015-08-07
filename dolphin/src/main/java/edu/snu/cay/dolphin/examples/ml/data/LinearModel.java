@@ -44,9 +44,9 @@ public final class LinearModel implements Model {
     final StringBuffer buffer = new StringBuffer();
     for (int i = 0; i < parameters.size() - 1; i++) {
       buffer.append(String.valueOf(parameters.get(i)));
-      buffer.append("x"+(i+1)+" + ");
+      buffer.append("x" + (i + 1) + " + ");
     }
-    buffer.append(parameters.get(parameters.size()-1));
+    buffer.append(parameters.get(parameters.size() - 1));
     return buffer.toString();
   }
 }

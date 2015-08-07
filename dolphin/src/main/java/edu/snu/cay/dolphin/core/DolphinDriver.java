@@ -167,7 +167,7 @@ public final class DolphinDriver {
   /**
    * Initialize the group communication driver.
    */
-  private void initializeCommDriver(){
+  private void initializeCommDriver() {
     int sequence = 0;
     for (final StageInfo stageInfo : stageInfoList) {
       final CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
@@ -309,7 +309,7 @@ public final class DolphinDriver {
 
       final ActiveContext activeContext = completedTask.getActiveContext();
       final String contextId = activeContext.getId();
-      final int nextSequence = contextToStageSequence.get(contextId)+1;
+      final int nextSequence = contextToStageSequence.get(contextId) + 1;
       if (nextSequence >= stageInfoList.size()) {
         completedTask.getActiveContext().close();
         return;
@@ -386,8 +386,8 @@ public final class DolphinDriver {
     activeContext.submitTask(finalTaskConf);
   }
 
-  private boolean isCtrlTaskId(final String id){
-    if (ctrlTaskContextId==null) {
+  private boolean isCtrlTaskId(final String id) {
+    if (ctrlTaskContextId == null) {
       return false;
     } else {
       return ctrlTaskContextId.equals(id);

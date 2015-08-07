@@ -85,7 +85,7 @@ public final class EMMainCmpTask extends UserComputeTask
 
       if (isCovarianceDiagonal) {
         outProd = new SparseMatrix(dimension, dimension);
-        for (int j=0; j<dimension; j++) {
+        for (int j = 0; j < dimension; j++) {
           outProd.set(j, j, vector.get(j) * vector.get(j));
         }
       } else {
@@ -102,16 +102,16 @@ public final class EMMainCmpTask extends UserComputeTask
 
         final Vector differ = vector.minus(centroid);
         numerators[i] = prior / Math.sqrt(covariance.determinant())
-            * Math.exp(differ.dot(inverse(covariance).times(differ))/(-2));
+            * Math.exp(differ.dot(inverse(covariance).times(differ)) / (-2));
         denominator += numerators[i];
       }
 
       for (int i = 0; i < numClusters; i++) {
-        final double posterior = denominator == 0 ? 1.0 / numerators.length : numerators[i]/denominator;
+        final double posterior = denominator == 0 ? 1.0 / numerators.length : numerators[i] / denominator;
         if (!clusterToStats.containsKey(i)) {
           clusterToStats.put(i, new ClusterStats(times(outProd, posterior),
               vector.times(posterior), posterior, false));
-        } else{
+        } else {
           clusterToStats.get(i).add(new ClusterStats(times(outProd, posterior),
               vector.times(posterior), posterior, false));
         }
@@ -144,12 +144,12 @@ public final class EMMainCmpTask extends UserComputeTask
    */
   private Matrix times(final Matrix matrix, final double scala) {
     final Matrix result = matrix.clone();
-    final Iterator<MatrixSlice> sliceIterator=matrix.iterator();
+    final Iterator<MatrixSlice> sliceIterator = matrix.iterator();
     while (sliceIterator.hasNext()) {
-      final MatrixSlice slice=sliceIterator.next();
+      final MatrixSlice slice = sliceIterator.next();
       final int row = slice.index();
       for (final Vector.Element e : slice.nonZeroes()) {
-        final int col=e.index();
+        final int col = e.index();
         result.set(row, col, e.get() * scala);
       }
     }

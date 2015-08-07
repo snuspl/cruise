@@ -48,7 +48,7 @@ final class ReceiverConstructor implements ExternalConstructor<SpanReceiver> {
     } else if (ZIPKIN.equals(receiverType)) {
       this.receiver = getZipkinReceiver(receiverHost, receiverPort);
     } else {
-      throw new RuntimeException("Unknown receiverType "+receiverType);
+      throw new RuntimeException("Unknown receiverType " + receiverType);
     }
   }
 

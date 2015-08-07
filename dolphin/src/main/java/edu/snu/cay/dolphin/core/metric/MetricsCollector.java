@@ -106,7 +106,7 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
    * Gathered measures are sent to the driver.
    */
   public void stop() throws MetricException {
-    if(!isStarted) {
+    if (!isStarted) {
       throw new MetricException("Metric tracking should be started first before being stopped");
     }
     final Map<String, Double> newMetrics = new HashMap<>();

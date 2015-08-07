@@ -53,7 +53,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
         + Integer.SIZE * mapSize// for cluster id
         + Double.SIZE * mapSize // for probability sum
         + Double.SIZE * dimension * mapSize// for point sum
-        + Double.SIZE * (diagonalCovariance ? dimension : dimension*dimension) * mapSize); // for outer product sum
+        + Double.SIZE * (diagonalCovariance ? dimension : dimension * dimension) * mapSize); // for outer product sum
 
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(map.size());
@@ -66,12 +66,12 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
           daos.writeDouble(clusterSummary.getPointSum().get(j));
         }
         if (diagonalCovariance) {
-          for (int i=0; i<dimension; i++) {
+          for (int i = 0; i < dimension; i++) {
             daos.writeDouble(clusterSummary.getOutProdSum().get(i, i));
           }
         } else {
-          for (int i=0; i<dimension; i++) {
-            for (int j=0; j<dimension; j++) {
+          for (int i = 0; i < dimension; i++) {
+            for (int j = 0; j < dimension; j++) {
               daos.writeDouble(clusterSummary.getOutProdSum().get(i, j));
             }
           }
@@ -102,13 +102,13 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
         Matrix outProdSum = null;
         if (diagonalCovariance) {
           outProdSum = new SparseMatrix(dimension, dimension);
-          for (int j=0; j<dimension; j++) {
+          for (int j = 0; j < dimension; j++) {
             outProdSum.set(j, j, dais.readDouble());
           }
         } else {
           outProdSum = new DenseMatrix(dimension, dimension);
-          for (int j=0; j<dimension; j++) {
-            for(int k=0; k<dimension; k++) {
+          for (int j = 0; j < dimension; j++) {
+            for (int k = 0; k < dimension; k++) {
               outProdSum.set(j, k, dais.readDouble());
             }
           }

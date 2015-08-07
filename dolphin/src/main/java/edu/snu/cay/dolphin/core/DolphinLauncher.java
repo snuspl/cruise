@@ -68,7 +68,7 @@ public final class DolphinLauncher {
   }
 
   private Configuration getRuntimeConfiguration() {
-    return dolphinParameters.getOnLocal()? getLocalRuntimeConfiguration() : getYarnRuntimeConfiguration();
+    return dolphinParameters.getOnLocal() ? getLocalRuntimeConfiguration() : getYarnRuntimeConfiguration();
   }
 
   private Configuration getYarnRuntimeConfiguration() {

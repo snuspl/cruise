@@ -88,7 +88,7 @@ public final class ClassificationDataParser implements DataParser<List<Row>> {
       final Vector feature = new DenseVector(split.length);
       try {
         output = Integer.valueOf(split[dimension]);
-        if (output!=positiveLabel && output!=negativeLabel) {
+        if (output != positiveLabel && output != negativeLabel) {
           throw new NumberFormatException();
         }
       } catch (final NumberFormatException e) {

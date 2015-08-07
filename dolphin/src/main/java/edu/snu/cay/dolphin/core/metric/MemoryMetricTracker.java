@@ -140,7 +140,7 @@ public final class MemoryMetricTracker implements MetricTracker {
     public void run() {
 
       while (true) {
-        synchronized(MemoryMetricTracker.this) {
+        synchronized (MemoryMetricTracker.this) {
           if (shouldTerminate) {
             break;
           } else if (shouldStop) {

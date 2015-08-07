@@ -34,7 +34,7 @@ public final class HingeLoss implements Loss {
   }
 
   @Override
-  public Vector gradient(final Vector feature, final double predict, final double output){
+  public Vector gradient(final Vector feature, final double predict, final double output) {
     return feature.times(predict * output >= 1 ? 0 : -output);
   }
 }

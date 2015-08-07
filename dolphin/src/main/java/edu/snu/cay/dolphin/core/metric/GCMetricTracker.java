@@ -58,7 +58,7 @@ public final class GCMetricTracker implements MetricTracker {
   public void start() {
     startGCCount = 0;
     startGCTime = 0;
-    for(final GarbageCollectorMXBean garbageCollectorMXBean : ManagementFactory.getGarbageCollectorMXBeans()) {
+    for (final GarbageCollectorMXBean garbageCollectorMXBean : ManagementFactory.getGarbageCollectorMXBeans()) {
       final long localCount = garbageCollectorMXBean.getCollectionCount();
       final long localTime = garbageCollectorMXBean.getCollectionTime();
       if (localCount > 0) {

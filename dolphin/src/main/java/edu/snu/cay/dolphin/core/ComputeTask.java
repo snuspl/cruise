@@ -78,7 +78,7 @@ public final class ComputeTask implements Task {
     userComputeTask.initialize();
     try (final MetricsCollector metricsCollector = this.metricsCollector) {
       metricsCollector.registerTrackers(metricTrackerSet);
-      int iteration=0;
+      int iteration = 0;
       while (!isTerminated()) {
         metricsCollector.start();
         receiveData(iteration);

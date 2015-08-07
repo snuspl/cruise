@@ -129,7 +129,7 @@ final class SimpleEMREEF {
     final Injector injector = parseCommandLine(args);
     final boolean onLocal = getOnLocal(injector);
     final Configuration runtimeConf = onLocal ?
-        LocalRuntimeConfiguration.CONF.build():
+        LocalRuntimeConfiguration.CONF.build() :
         YarnClientConfiguration.CONF.build();
 
     final HTraceParameters traceParameters = getTraceParameters(injector);

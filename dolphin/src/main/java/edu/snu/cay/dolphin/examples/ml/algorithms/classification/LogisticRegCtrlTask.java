@@ -51,7 +51,7 @@ public class LogisticRegCtrlTask extends UserControllerTask
     this.outputStreamProvider = outputStreamProvider;
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;
-    this.model = new LinearModel(new DenseVector(dimension+1));
+    this.model = new LinearModel(new DenseVector(dimension + 1));
   }
   
   @Override

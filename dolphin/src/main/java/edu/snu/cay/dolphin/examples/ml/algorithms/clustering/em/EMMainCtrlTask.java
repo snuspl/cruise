@@ -117,7 +117,7 @@ public final class EMMainCtrlTask extends UserControllerTask
 
     // Initialize cluster summaries
     final int numClusters = centroids.size();
-    for(int clusterID=0; clusterID<numClusters; clusterID++) {
+    for (int clusterID = 0; clusterID < numClusters; clusterID++) {
       final Vector vector = centroids.get(clusterID);
       final int dimension = vector.size();
       clusterSummaries.add(new ClusterSummary(1.0, vector,
@@ -134,13 +134,13 @@ public final class EMMainCtrlTask extends UserControllerTask
       ClusterStats clusterStatsSum = null;
       for (final Integer id : clusterStatsMap.keySet()) {
         final ClusterStats clusterStats = clusterStatsMap.get(id);
-        if (clusterStatsSum==null) {
+        if (clusterStatsSum == null) {
           clusterStatsSum = new ClusterStats(clusterStats, true);
         } else {
           clusterStatsSum.add(clusterStats);
         }
       }
-      if (clusterStatsSum!=null) {
+      if (clusterStatsSum != null) {
         covarianceMatrix = clusterStatsSum.computeCovariance();
       }
     }

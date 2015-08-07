@@ -90,7 +90,7 @@ public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTup
           stream.write(serializedTuple);
         }
       }
-    } catch(final IOException exception) {
+    } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }
   }
@@ -120,7 +120,7 @@ public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTup
       }
 
       return new ShuffleTupleMessage(shuffleName, tupleList);
-    } catch(final IOException exception) {
+    } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }
   }

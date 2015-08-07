@@ -82,8 +82,8 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
     final List<Vector> points = new LinkedList<>();
 
     // Flatten the given list of lists
-    for(final List<Vector> list : initialCentroidsData) {
-      for(final Vector vector: list){
+    for (final List<Vector> list : initialCentroidsData) {
+      for (final Vector vector : list) {
         points.add(vector);
       }
     }

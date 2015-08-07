@@ -78,7 +78,7 @@ public final class RegressionDataParser implements DataParser<List<Row>> {
 
       final String[] split = text.split("\\s+");
       if (split.length != dimension + 1) {
-        parseException = new ParseException("Parse failed: the number of features is not "+dimension);
+        parseException = new ParseException("Parse failed: the number of features is not " + dimension);
         return;
       }
 

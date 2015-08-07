@@ -34,12 +34,12 @@ public final class LogisticLoss implements Loss {
   }
 
   @Override
-  public Vector gradient(final Vector feature, final double predict, final double output){
+  public Vector gradient(final Vector feature, final double predict, final double output) {
 
     // http://lingpipe-blog.com/2012/02/16/howprevent-overflow-underflow-logistic-regression/
     final double exponent = -predict * output;
     final double maxExponent = Math.max(exponent, 0);
-    final double logSumExp = maxExponent + Math.log(Math.exp(-maxExponent)+Math.exp(exponent-maxExponent));
-    return feature.times(output * (Math.exp(-logSumExp)-1));
+    final double logSumExp = maxExponent + Math.log(Math.exp(-maxExponent) + Math.exp(exponent - maxExponent));
+    return feature.times(output * (Math.exp(-logSumExp) - 1));
   }
 }
