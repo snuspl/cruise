@@ -35,7 +35,6 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
   private final String shuffleName;
   private final List<String> senderIdList;
   private final List<String> receiverIdList;
-  private final Set<String> endPointIdSet;
   private final Class<? extends ShuffleStrategy> shuffleStrategyClass;
   private final Class<? extends Codec> keyCodecClass;
   private final Class<? extends Codec> valueCodecClass;
@@ -54,9 +53,6 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
     // Set does not guarantee that the order of elements is preserved, we should at least sort the receiver ids.
     Collections.sort(senderIdList);
     Collections.sort(receiverIdList);
-    this.endPointIdSet = new HashSet<>();
-    this.endPointIdSet.addAll(senderIdList);
-    this.endPointIdSet.addAll(receiverIdList);
 
     try {
       shuffleStrategyClass = (Class<? extends ShuffleStrategy>) Class.forName(shuffleStrategyClassName);
@@ -79,9 +75,6 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
     this.receiverIdList = receiverIdList;
     Collections.sort(senderIdList);
     Collections.sort(receiverIdList);
-    this.endPointIdSet = new HashSet<>();
-    this.endPointIdSet.addAll(senderIdList);
-    this.endPointIdSet.addAll(receiverIdList);
     this.shuffleStrategyClass = shuffleStrategyClass;
     this.keyCodecClass = keyCodecClass;
     this.valueCodecClass = valueCodecClass;
@@ -115,11 +108,6 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
   @Override
   public List<String> getReceiverIdList() {
     return receiverIdList;
-  }
-
-  @Override
-  public Set<String> getEndPointIdSet() {
-    return endPointIdSet;
   }
 
   /**

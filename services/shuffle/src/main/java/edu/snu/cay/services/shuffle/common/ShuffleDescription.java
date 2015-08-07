@@ -58,11 +58,4 @@ public interface ShuffleDescription {
    * @return list of receiver identifiers
    */
   List<String> getReceiverIdList();
-
-  /**
-   * Return a union of all senders and receivers
-   *
-   * @return set of all end point identifiers
-   */
-  Set<String> getEndPointIdSet();
 }

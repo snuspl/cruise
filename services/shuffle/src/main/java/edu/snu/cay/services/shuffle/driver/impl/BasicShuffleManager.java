@@ -29,6 +29,8 @@ import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -47,7 +49,8 @@ public final class BasicShuffleManager implements ShuffleManager {
   private final ShuffleDescription shuffleDescription;
   private final ShuffleDescriptionSerializer descriptionSerializer;
   private final ControlMessageSender controlMessageSender;
-  private final AtomicInteger setupEndPointNumber;
+  private final Set<String> endPointIdSet;
+  private final AtomicInteger setupEndPointCount;
 
   @Inject
   private BasicShuffleManager(
@@ -57,8 +60,10 @@ public final class BasicShuffleManager implements ShuffleManager {
     this.shuffleDescription = shuffleDescription;
     this.descriptionSerializer = descriptionSerializer;
     this.controlMessageSender = controlMessageSender;
-    System.out.println(shuffleDescription.getEndPointIdSet());
-    setupEndPointNumber = new AtomicInteger(shuffleDescription.getEndPointIdSet().size());
+    this.endPointIdSet = new HashSet<>();
+    this.endPointIdSet.addAll(shuffleDescription.getReceiverIdList());
+    this.endPointIdSet.addAll(shuffleDescription.getSenderIdList());
+    this.setupEndPointCount = new AtomicInteger(this.endPointIdSet.size());
   }
 
   /**
@@ -80,7 +85,7 @@ public final class BasicShuffleManager implements ShuffleManager {
 
   private void broadcastSetupMessage() {
     try {
-      for (final String endPointId : shuffleDescription.getEndPointIdSet()) {
+      for (final String endPointId : endPointIdSet) {
         controlMessageSender.send(endPointId, BasicShuffleCode.MANAGER_SETUP);
       }
     } catch (final NetworkException e) {
@@ -93,7 +98,7 @@ public final class BasicShuffleManager implements ShuffleManager {
   public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
     final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
     if (controlMessage.getCode() == BasicShuffleCode.SHUFFLE_SETUP) {
-      if (setupEndPointNumber.decrementAndGet() == 0) {
+      if (setupEndPointCount.decrementAndGet() == 0) {
         broadcastSetupMessage();
       }
     }
