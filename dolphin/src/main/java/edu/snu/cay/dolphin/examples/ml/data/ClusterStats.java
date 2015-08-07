@@ -70,7 +70,7 @@ public final class ClusterStats implements Serializable {
   public void add(final ClusterStats clusterStats) {
     this.outProdSum = this.getOutProdSum().plus(clusterStats.getOutProdSum());
     this.pointSum = this.getPointSum().plus(clusterStats.getPointSum());
-    this.probSum = this.getProbSum() + clusterStats.getProbSum();
+    this.probSum += clusterStats.getProbSum();
   }
 
   /**

@@ -58,12 +58,12 @@ public final class VectorSum implements Serializable {
 
   public void add(final VectorSum vectorSum) {
     this.sum = this.getSum().plus(vectorSum.getSum());
-    this.count = this.getCount() + vectorSum.getCount();
+    this.count += vectorSum.getCount();
   }
 
   public void add(final Vector vector) {
     this.sum = this.getSum().plus(vector);
-    this.count = this.getCount() + 1;
+    this.count += 1;
   }
 
   public void addSums(final Iterable<VectorSum> vectorSums) {

@@ -45,7 +45,7 @@ public final class DataParseService {
   private final DataParser dataParser;
 
   /**
-   * Constructor for parse manager, which accepts an actual parse function as a parameter
+   * Constructor for parse manager, which accepts an actual parse function as a parameter.
    * This class is instantiated by TANG.
    * @param dataParser parse function to exploit
    */
