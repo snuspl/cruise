@@ -56,14 +56,13 @@
   <!-- See http://checkstyle.sourceforge.net/config_misc.html#NewlineAtEndOfFile -->
   <module name="NewlineAtEndOfFile"/>
 
-  <!-- Checks that property files contain the same keys.         -->
-  <!-- See http://checkstyle.sf.net/config_misc.html#Translation -->
-  <module name="Translation"/>
-
+  <!-- Checks that source files are not too long (default: 2000 lines). -->
   <module name="FileLength"/>
+
+  <!-- Checks that there are no tab characters in the source code. -->
   <module name="FileTabCharacter"/>
 
-  <!-- not a check -->
+  <!-- Allows use of @SuppressWarnings annotation to suppress audits. -->
   <module name="SuppressWarningsFilter"/>
 
   <module name="TreeWalker">
@@ -75,11 +74,10 @@
       <property name="validateEnhancedForLoopVariable" value="true"/>
     </module>
 
-    <!-- not a check -->
+    <!-- Allows use of @SuppressWarnings annotation to suppress audits. -->
     <module name="SuppressWarningsHolder"/>
 
-
-    <!-- Checks for Javadoc comments.                     -->
+    <!-- Checks for Javadoc comments. TODO #77 Turn on this check. Currently just a warning. -->
     <!-- See http://checkstyle.sf.net/config_javadoc.html -->
     <module name="JavadocType">
       <property name="scope" value="public"/>
@@ -101,25 +99,22 @@
     <module name="TypeName"/>
 
     <!-- Checks for imports                              -->
-    <!-- See http://checkstyle.sf.net/config_import.html -->
+    <!-- See http://checkstyle.sf.net/config_imports.html -->
+    <!-- Rejects all sun.* packages -->
     <module name="IllegalImport"/>
-    <!-- defaults to sun.* packages -->
     <module name="RedundantImport"/>
     <module name="UnusedImports"/>
 
 
     <!-- Checks for Size Violations.                    -->
     <!-- See http://checkstyle.sf.net/config_sizes.html -->
+    <!-- Checks that line length is max 120 except for import statements. -->
     <module name="LineLength">
       <property name="ignorePattern" value="^import"/>
       <property name="max" value="120"/>
     </module>
+    <!-- Checks that methods are not too long (default: 150 lines). -->
     <module name="MethodLength"/>
-    <module name="ParameterNumber">
-      <property name="max" value="7"/>
-      <property name="tokens" value="METHOD_DEF"/>
-      <property name="severity" value="warning"/>
-    </module>
 
     <!-- Checks for whitespace                               -->
     <!-- See http://checkstyle.sf.net/config_whitespace.html -->
@@ -136,7 +131,7 @@
 
 
     <!-- Modifier Checks                                    -->
-    <!-- See http://checkstyle.sf.net/config_modifiers.html -->
+    <!-- See http://checkstyle.sf.net/config_modifier.html -->
     <module name="ModifierOrder"/>
     <module name="RedundantModifier"/>
 
@@ -156,23 +151,18 @@
 
     <!-- Checks for common coding problems               -->
     <!-- See http://checkstyle.sf.net/config_coding.html -->
-    <!-- module name="AvoidInlineConditionals"/-->
     <module name="EmptyStatement"/>
     <module name="EqualsHashCode"/>
+    <!-- Checks that local variables do not hide fields, except for constructors and setters. -->
     <module name="HiddenField">
       <property name="ignoreConstructorParameter" value="true"/>
       <property name="ignoreSetter" value="true"/>
       <property name="setterCanReturnItsClass" value="true"/>
     </module>
-    <module name="IllegalInstantiation"/>
     <module name="InnerAssignment"/>
     <module name="MissingSwitchDefault"/>
     <module name="SimplifyBooleanExpression"/>
     <module name="SimplifyBooleanReturn"/>
-
-    <!-- Check that parameters for methods, constructors, and catch blocks are final. -->
-    <!-- See http://checkstyle.sourceforge.net/config_misc.html#FinalParameters -->
-    <module name="FinalParameters"/>
 
     <!-- Checks for class design                         -->
     <!-- See http://checkstyle.sf.net/config_design.html -->
@@ -191,6 +181,8 @@
       <property name="basicOffset" value="2"/>
       <property name="caseIndent" value="0"/>
     </module>
+    <module name="UpperEll"/>
+    <!-- TODO #79 Add TODO comment checkstyle. Currently checks for JIRA comments, and set as warning. -->
     <module name="TodoComment">
       <property name="severity" value="warning"/>
       <property name="format" value="TODO[^\[][^J][^I][^R][^A]"/>
@@ -199,7 +191,8 @@
       <property name="severity" value="info"/>
       <property name="format" value="TODO\[JIRA"/>
     </module>
-    <module name="UpperEll"/>
+    <!-- Check that parameters for methods, constructors, and catch blocks are final. -->
+    <module name="FinalParameters"/>
   </module>
 
 </module>
