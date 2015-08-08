@@ -56,7 +56,7 @@ public final class DolphinLauncher {
           .getInstance(DolphinLauncher.class)
           .run();
     } catch (final Exception e) {
-      status = LauncherStatus.FAILED(e);
+      status = LauncherStatus.failed(e);
     }
 
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
