@@ -62,7 +62,8 @@
   <!-- Checks that there are no tab characters in the source code. -->
   <module name="FileTabCharacter"/>
 
-  <!-- Allows use of @SuppressWarnings annotation to suppress audits. -->
+  <!-- Allows use of @SuppressWarnings annotation to suppress audits. Used with SuppressWarningsHolder. -->
+  <!-- See http://checkstyle.sourceforge.net/config.html#Filters -->
   <module name="SuppressWarningsFilter"/>
 
   <module name="TreeWalker">
@@ -74,7 +75,7 @@
       <property name="validateEnhancedForLoopVariable" value="true"/>
     </module>
 
-    <!-- Allows use of @SuppressWarnings annotation to suppress audits. -->
+    <!-- Allows use of @SuppressWarnings annotation to suppress audits. Used with SuppressWarningsFilter. -->
     <module name="SuppressWarningsHolder"/>
 
     <!-- Checks for Javadoc comments. TODO #77 Turn on this check. Currently just a warning. -->
