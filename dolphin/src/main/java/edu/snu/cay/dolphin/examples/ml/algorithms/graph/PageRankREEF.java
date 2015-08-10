@@ -23,11 +23,17 @@ import edu.snu.cay.dolphin.parameters.JobIdentifier;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 
-public class PageRankREEF {
-  public final static void main(final String[] args) throws Exception {
+public final class PageRankREEF {
+  /**
+   * Should not be instantiated.
+   */
+  private PageRankREEF() {
+  }
+
+  public static void main(final String[] args) throws Exception {
     DolphinLauncher.run(
         Configurations.merge(
-            DolphinConfiguration.CONF(args, PageRankParameters.getCommandLine()),
+            DolphinConfiguration.getConfiguration(args, PageRankParameters.getCommandLine()),
             Tang.Factory.getTang().newConfigurationBuilder()
                 .bindNamedParameter(JobIdentifier.class, "PageRank")
                 .bindImplementation(UserJobInfo.class, PageRankJobInfo.class)

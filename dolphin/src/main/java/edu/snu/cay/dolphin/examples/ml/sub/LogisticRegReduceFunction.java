@@ -30,7 +30,7 @@ public class LogisticRegReduceFunction implements Reduce.ReduceFunction<Logistic
   public final LogisticRegSummary apply(final Iterable<LogisticRegSummary> summaryList) {
     LogisticRegSummary reducedSummary = null;
     for (final LogisticRegSummary summary : summaryList) {
-      if (reducedSummary==null) {
+      if (reducedSummary == null) {
         reducedSummary = summary;
       } else {
         reducedSummary.plus(summary);

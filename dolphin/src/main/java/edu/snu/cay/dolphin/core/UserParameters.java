@@ -19,15 +19,15 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Interface for providing configurations setting user-defined (algorithmic-specific, application-specific) parameters
+ * Interface for providing configurations setting user-defined (algorithmic-specific, application-specific) parameters.
  */
 @DefaultImplementation(UserParametersImpl.class)
 public interface UserParameters {
-  public Configuration getDriverConf();
+  Configuration getDriverConf();
 
-  public Configuration getServiceConf();
+  Configuration getServiceConf();
 
-  public Configuration getUserCmpTaskConf();
+  Configuration getUserCmpTaskConf();
 
-  public Configuration getUserCtrlTaskConf();
+  Configuration getUserCtrlTaskConf();
 }

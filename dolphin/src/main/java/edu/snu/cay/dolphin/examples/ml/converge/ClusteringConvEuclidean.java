@@ -24,14 +24,14 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 
 /**
- * Default implementation of ClusteringConvCond
+ * Default implementation of ClusteringConvCond.
  * Algorithm converges when every centroid has moved less than
- * a certain threshold after an iteration
+ * a certain threshold after an iteration.
  */
 public final class ClusteringConvEuclidean implements ClusteringConvCond {
   private ArrayList<Vector> oldCentroids;
   private final double convergenceThreshold;
-  final EuclideanDistance euclideanDistance;
+  private final EuclideanDistance euclideanDistance;
 
   @Inject
   public ClusteringConvEuclidean(
@@ -42,7 +42,7 @@ public final class ClusteringConvEuclidean implements ClusteringConvCond {
   }
 
   @Override
-  public final boolean checkConvergence(final Iterable<Vector> centroids) {
+  public boolean checkConvergence(final Iterable<Vector> centroids) {
     if (oldCentroids == null) {
       oldCentroids = new ArrayList<>();
 
@@ -71,7 +71,7 @@ public final class ClusteringConvEuclidean implements ClusteringConvCond {
     return hasConverged;
   }
 
-  public final double distance(final Vector v1, final Vector v2) {
+  public double distance(final Vector v1, final Vector v2) {
     return euclideanDistance.distance(v1, v2);
   }
 }

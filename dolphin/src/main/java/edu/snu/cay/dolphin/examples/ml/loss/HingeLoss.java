@@ -29,12 +29,12 @@ public final class HingeLoss implements Loss {
   }
 
   @Override
-  public final double loss(final double predict, final double output) {
+  public double loss(final double predict, final double output) {
     return Math.max(0, 1 - output * predict);
   }
 
   @Override
-  public final Vector gradient(final Vector feature, final double predict, final double output){
+  public Vector gradient(final Vector feature, final double predict, final double output) {
     return feature.times(predict * output >= 1 ? 0 : -output);
   }
 }

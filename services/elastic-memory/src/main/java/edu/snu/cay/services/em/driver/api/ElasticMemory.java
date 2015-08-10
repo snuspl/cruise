@@ -23,14 +23,14 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import java.util.Set;
 
 /**
- * Driver-side API of ElasticMemoryService
+ * Driver-side API of ElasticMemoryService.
  */
 @DriverSide
 @DefaultImplementation(ElasticMemoryImpl.class)
 public interface ElasticMemory {
 
   /**
-   * Add new evaluators as specified
+   * Add new evaluators as specified.
    *
    * @param number number of evaluators to add
    * @param megaBytes memory size of each new evaluator in MB
@@ -39,14 +39,14 @@ public interface ElasticMemory {
   void add(int number, int megaBytes, int cores);
 
   /**
-   * Release the evaluator specified by a given identifier
+   * Release the evaluator specified by a given identifier.
    *
    * @param evalId identifier of the evaluator to release
    */
   void delete(String evalId);
 
   /**
-   * Resize the evaluator specified by a given identifier
+   * Resize the evaluator specified by a given identifier.
    *
    * @param evalId identifier of the evaluator to delete
    * @param megaBytes new memory size in MB
@@ -55,7 +55,7 @@ public interface ElasticMemory {
   void resize(String evalId, int megaBytes, int cores);
 
   /**
-   * Move a part of an evaluator's state to another evaluator
+   * Move a part of an evaluator's state to another evaluator.
    *
    * @param dataClassName data type to perform this operation
    * @param rangeSet the range of integer identifiers that specify the state to move
@@ -65,7 +65,7 @@ public interface ElasticMemory {
   void move(String dataClassName, Set<LongRange> rangeSet, String srcEvalId, String destEvalId);
 
   /**
-   * Persist the state of an evaluator into stable storage
+   * Persist the state of an evaluator into stable storage.
    *
    * @param evalId identifier of the evaluator whose state should be persisted
    */

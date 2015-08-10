@@ -19,7 +19,7 @@ import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Interface for regularize function used in SGD jobs
+ * Interface for regularize function used in SGD jobs.
  */
 @DefaultImplementation(SquareLoss.class)
 public interface Loss {
@@ -29,7 +29,7 @@ public interface Loss {
    * @param output value of dependent variable
    * @return loss computed by predict and output
    */
-  public double loss(final double predict, final double output);
+  double loss(final double predict, final double output);
 
   /**
    * @param feature values of independent variables
@@ -37,5 +37,5 @@ public interface Loss {
    * @param output value of dependent variable
    * @return gradient of the loss function at the given feature
    */
-  public Vector gradient(final Vector feature, final double predict, final double output);
+  Vector gradient(final Vector feature, final double predict, final double output);
 }

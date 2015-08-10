@@ -24,11 +24,11 @@ import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import java.io.IOException;
 
 public final class DolphinConfiguration extends ConfigurationModuleBuilder {
-  public final static Configuration CONF(final String[] args) throws IOException {
-    return CONF(args, new CommandLine());
+  public static Configuration getConfiguration(final String[] args) throws IOException {
+    return getConfiguration(args, new CommandLine());
   }
 
-  public final static Configuration CONF(final String[] args, final CommandLine cl) throws IOException {
+  public static Configuration getConfiguration(final String[] args, final CommandLine cl) throws IOException {
     cl.registerShortNameOfClass(EvaluatorSize.class);
     cl.registerShortNameOfClass(OnLocal.class);
     cl.registerShortNameOfClass(EvaluatorNum.class);

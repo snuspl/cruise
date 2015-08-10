@@ -32,17 +32,17 @@ public final class ClusteringPreCmpTask extends UserComputeTask
     implements DataGatherSender<List<Vector>> {
 
   /**
-   * Number of clusters
+   * Number of clusters.
    */
   private final int numberOfClusters;
 
   /**
-   * Points read from input data to work on
+   * Points read from input data to work on.
    */
   private List<Vector> points = null;
 
   /**
-   * Sampled points
+   * Sampled points.
    */
   private List<Vector> samples = new LinkedList<>();
   private final DataParser<List<Vector>> dataParser;
@@ -77,7 +77,7 @@ public final class ClusteringPreCmpTask extends UserComputeTask
   }
 
   /**
-   * Random Sampling
+   * Random Sampling.
    * @param points
    * @param maxNumOfSamples
    * @return
@@ -94,10 +94,10 @@ public final class ClusteringPreCmpTask extends UserComputeTask
     final int numberOfPoints = points.size();
     final int numberOfSamples = Math.min(maxNumOfSamples, numberOfPoints);
 
-    for (int i=0; i<numberOfSamples; i++) {
+    for (int i = 0; i < numberOfSamples; i++) {
       final int index = random.nextInt(numberOfPoints - 1 - i);
       samples.add(pointArray[index]);
-      pointArray[index] = pointArray[numberOfPoints-1-i];
+      pointArray[index] = pointArray[numberOfPoints - 1 - i];
     }
 
     return samples;

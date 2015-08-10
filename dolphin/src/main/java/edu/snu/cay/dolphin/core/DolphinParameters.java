@@ -57,10 +57,10 @@ public final class DolphinParameters {
   }
 
   /**
-   * Return a configuration for the driver
+   * Return a configuration for the driver.
    * @return
    */
-  public final Configuration getDriverConf() {
+  public Configuration getDriverConf() {
     final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(EvaluatorNum.class, String.valueOf(evalNum))
         .bindNamedParameter(OutputDir.class, processOutputDir(outputDir, onLocal))
@@ -78,7 +78,7 @@ public final class DolphinParameters {
    * @param onLocal whether the path of the output directory given by the user is a local path
    * @return
    */
-  private final static String processOutputDir(final String outputDir, final boolean onLocal) {
+  private static String processOutputDir(final String outputDir, final boolean onLocal) {
     if (!onLocal) {
       return outputDir;
     }
@@ -86,27 +86,27 @@ public final class DolphinParameters {
     return outputFile.getAbsolutePath();
   }
 
-  public final String getIdentifier() {
+  public String getIdentifier() {
     return identifier;
   }
 
-  public final int getEvalNum() {
+  public int getEvalNum() {
     return evalNum;
   }
 
-  public final int getEvalSize() {
+  public int getEvalSize() {
     return evalSize;
   }
 
-  public final String getInputDir() {
+  public String getInputDir() {
     return inputDir;
   }
 
-  public final boolean getOnLocal() {
+  public boolean getOnLocal() {
     return onLocal;
   }
 
-  public final int getTimeout() {
+  public int getTimeout() {
     return timeout;
   }
 }

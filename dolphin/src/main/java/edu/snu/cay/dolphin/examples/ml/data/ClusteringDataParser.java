@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 public final class ClusteringDataParser implements DataParser<List<Vector>> {
-  private final static Logger LOG = Logger.getLogger(ClusteringDataParser.class.getName());
+  private static final Logger LOG = Logger.getLogger(ClusteringDataParser.class.getName());
 
   private final DataSet<LongWritable, Text> dataSet;
   private List<Vector> result;
@@ -42,7 +42,7 @@ public final class ClusteringDataParser implements DataParser<List<Vector>> {
   }
 
   @Override
-  public final List<Vector> get() throws ParseException {
+  public List<Vector> get() throws ParseException {
     if (result == null) {
       parse();
     }
@@ -53,7 +53,7 @@ public final class ClusteringDataParser implements DataParser<List<Vector>> {
   }
 
   @Override
-  public final void parse() {
+  public void parse() {
     final List<Vector> points = new ArrayList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {

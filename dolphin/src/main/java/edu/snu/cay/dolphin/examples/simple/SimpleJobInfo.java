@@ -27,7 +27,7 @@ import java.util.List;
 public class SimpleJobInfo implements UserJobInfo {
 
   @Inject
-  public SimpleJobInfo(){
+  public SimpleJobInfo() {
   }
 
   @Override

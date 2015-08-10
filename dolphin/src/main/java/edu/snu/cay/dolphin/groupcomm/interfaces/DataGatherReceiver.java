@@ -18,5 +18,5 @@ package edu.snu.cay.dolphin.groupcomm.interfaces;
 import java.util.List;
 
 public interface DataGatherReceiver<T> {
-  public void receiveGatherData(int iteration, List<T> data);
+  void receiveGatherData(int iteration, List<T> data);
 }

@@ -23,11 +23,17 @@ import edu.snu.cay.dolphin.core.UserParameters;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 
-public class LogisticRegREEF {
-  public final static void main(final String[] args) throws Exception {
+public final class LogisticRegREEF {
+  /**
+   * Should not be instantiated.
+   */
+  private LogisticRegREEF() {
+  }
+
+  public static void main(final String[] args) throws Exception {
     DolphinLauncher.run(
         Configurations.merge(
-            DolphinConfiguration.CONF(args, LogisticRegParameters.getCommandLine()),
+            DolphinConfiguration.getConfiguration(args, LogisticRegParameters.getCommandLine()),
             Tang.Factory.getTang().newConfigurationBuilder()
                 .bindNamedParameter(JobIdentifier.class, "Logistic Regression")
                 .bindImplementation(UserJobInfo.class, LogisticRegJobInfo.class)

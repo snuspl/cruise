@@ -25,7 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * A codec that encodes and decodes a list of Vectors
+ * A codec that encodes and decodes a list of Vectors.
  */
 public final class VectorListCodec implements Codec<List<Vector>> {
 
@@ -34,7 +34,7 @@ public final class VectorListCodec implements Codec<List<Vector>> {
   }
 
   @Override
-  public final byte[] encode(final List<Vector> list) {
+  public byte[] encode(final List<Vector> list) {
 
     /*
      * This codec assume that vectors have the same length
@@ -64,7 +64,7 @@ public final class VectorListCodec implements Codec<List<Vector>> {
     return baos.toByteArray();
   }
 
-  public final List<Vector> decode(final byte[] data) {
+  public List<Vector> decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final List<Vector> resultList = new LinkedList<>();
 

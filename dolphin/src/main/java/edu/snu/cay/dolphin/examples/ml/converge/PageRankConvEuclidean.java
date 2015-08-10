@@ -22,9 +22,9 @@ import javax.inject.Inject;
 import java.util.Map;
 
 /**
- * Default implementation of PageRankConvCond
+ * Default implementation of PageRankConvCond.
  * Algorithm converges when every ranks has moved less than
- * a certain threshold after an iteration
+ * a certain threshold after an iteration.
  */
 public final class PageRankConvEuclidean implements PageRankConvCond {
   private Map<Integer, Double> oldRank;
@@ -37,7 +37,7 @@ public final class PageRankConvEuclidean implements PageRankConvCond {
   }
 
   @Override
-  public final boolean checkConvergence(final Map<Integer, Double> rank) {
+  public boolean checkConvergence(final Map<Integer, Double> rank) {
     if (rank.size() == 0) {
       return false;
     }

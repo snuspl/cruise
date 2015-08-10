@@ -20,7 +20,7 @@ import org.apache.mahout.math.Vector;
 import javax.inject.Inject;
 
 /**
- * Implements DistanceMeasure (Default)
+ * Implements DistanceMeasure (Default).
  */
 public final class EuclideanDistance implements VectorDistanceMeasure {
 
@@ -29,7 +29,7 @@ public final class EuclideanDistance implements VectorDistanceMeasure {
   }
 
   @Override
-  public final double distance(final Vector v1, final Vector v2) {
+  public double distance(final Vector v1, final Vector v2) {
     if (v1.size() != v2.size()) {
       throw new IllegalArgumentException("Vector dimensions are not consistent");
     }

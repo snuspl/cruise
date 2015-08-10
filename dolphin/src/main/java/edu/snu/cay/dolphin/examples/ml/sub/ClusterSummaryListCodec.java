@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Codec for encoding and decoding a Cluster Summary List
+ * Codec for encoding and decoding a Cluster Summary List.
  */
 public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>> {
   private final boolean isDiagonalCovariance;
@@ -38,7 +38,7 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
   }
 
   @Override
-  public final byte[] encode(final List<ClusterSummary> list) {
+  public byte[] encode(final List<ClusterSummary> list) {
 
     final int numClusters = list.size();
     int dimension = 0;
@@ -50,8 +50,8 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
         Integer.SIZE * 2 // for dimension and the number of clusters
             + Double.SIZE * numClusters // for prior
             + Double.SIZE * dimension * numClusters// for centroids
-            + Double.SIZE * (isDiagonalCovariance?
-            dimension : dimension*dimension) * numClusters); // for covariance matrices
+            + Double.SIZE * (isDiagonalCovariance ?
+            dimension : dimension * dimension) * numClusters); // for covariance matrices
 
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(numClusters);
@@ -63,12 +63,12 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
           daos.writeDouble(clusterSummary.getCentroid().get(i));
         }
         if (isDiagonalCovariance) {
-          for (int i=0; i<dimension; i++) {
+          for (int i = 0; i < dimension; i++) {
             daos.writeDouble(clusterSummary.getCovariance().get(i, i));
           }
         } else {
-          for (int i=0; i<dimension; i++) {
-            for (int j=0; j<dimension; j++) {
+          for (int i = 0; i < dimension; i++) {
+            for (int j = 0; j < dimension; j++) {
               daos.writeDouble(clusterSummary.getCovariance().get(i, j));
             }
           }
@@ -82,7 +82,7 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
   }
 
   @Override
-  public final List<ClusterSummary> decode(final byte[] data) {
+  public List<ClusterSummary> decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final List<ClusterSummary> resultList = new ArrayList<>();
 
@@ -99,13 +99,13 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
         Matrix matrix = null;
         if (isDiagonalCovariance) {
           matrix = new SparseMatrix(dimension, dimension);
-          for (int j=0; j<dimension; j++) {
+          for (int j = 0; j < dimension; j++) {
             matrix.set(j, j, dais.readDouble());
           }
         } else {
           matrix = new DenseMatrix(dimension, dimension);
-          for (int j=0; j<dimension; j++) {
-            for(int k=0; k<dimension; k++) {
+          for (int j = 0; j < dimension; j++) {
+            for (int k = 0; k < dimension; k++) {
               matrix.set(j, k, dais.readDouble());
             }
           }

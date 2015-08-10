@@ -29,7 +29,7 @@ import java.util.List;
 public interface ShuffleTupleMessageGenerator<K, V> {
 
   /**
-   * Create a shuffle tuple message with a tuple
+   * Create a shuffle tuple message with a tuple.
    *
    * @param tuple a tuple
    * @return a ShuffleTupleMessage
@@ -37,7 +37,7 @@ public interface ShuffleTupleMessageGenerator<K, V> {
   ShuffleTupleMessage<K, V> createTupleMessage(Tuple<K, V> tuple);
 
   /**
-   * Create a shuffle tuple message with a tuple list
+   * Create a shuffle tuple message with a tuple list.
    *
    * @param tupleList a tuple list
    * @return a ShuffleTupleMessage

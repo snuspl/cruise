@@ -22,34 +22,33 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Metric tracker for the number of garbage collections and the elapsed time for garbage collections
+ * Metric tracker for the number of garbage collections and the elapsed time for garbage collections.
  */
 public final class GCMetricTracker implements MetricTracker {
 
   /**
-   * key for the GC count measure (the number of garbage collection)
+   * key for the GC count measure (the number of garbage collection).
    */
   public static final String KEY_METRIC_GC_COUNT = "METRIC_GC_COUNT";
 
   /**
-   * key for the GC time measure (elapsed time for garbage collection)
+   * key for the GC time measure (elapsed time for garbage collection).
    */
   public static final String KEY_METRIC_GC_TIME = "METRIC_GC_TIME";
 
   /**
-   * total number of garbage collections that have occurred when starting to track measures
+   * total number of garbage collections that have occurred when starting to track measures.
    */
   private int startGCCount = 0;
 
   /**
-   * approximate accumulated garbage collection elapsed time in milliseconds when starting to track measures
+   * approximate accumulated garbage collection elapsed time in milliseconds when starting to track measures.
    */
   private long startGCTime = 0;
 
   /**
-   * This class is instantiated by TANG
-   *
-   * Constructor for the Garbage Collector tracker
+   * Constructor for the Garbage Collector tracker.
+   * This class is instantiated by TANG.
    */
   @Inject
   public GCMetricTracker() {
@@ -59,7 +58,7 @@ public final class GCMetricTracker implements MetricTracker {
   public void start() {
     startGCCount = 0;
     startGCTime = 0;
-    for(final GarbageCollectorMXBean garbageCollectorMXBean : ManagementFactory.getGarbageCollectorMXBeans()) {
+    for (final GarbageCollectorMXBean garbageCollectorMXBean : ManagementFactory.getGarbageCollectorMXBeans()) {
       final long localCount = garbageCollectorMXBean.getCollectionCount();
       final long localTime = garbageCollectorMXBean.getCollectionTime();
       if (localCount > 0) {

@@ -26,8 +26,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Information of a stage, which corresponds to a BSP algorithm
- * One or more stages compose a job, a unit of work in Dolphin
+ * Information of a stage, which corresponds to a BSP algorithm.
+ * One or more stages compose a job, a unit of work in Dolphin.
  */
 public final class StageInfo {
   private final Class<? extends UserComputeTask> userComputeTaskClass;
@@ -159,9 +159,9 @@ public final class StageInfo {
     }
 
     public Builder setReduce(final Class<? extends Codec> codecClass,
-                             final Class<? extends Reduce.ReduceFunction> reduceFunctionClass) {
+                             final Class<? extends Reduce.ReduceFunction> functionClass) {
       this.reduceCodecClass = codecClass;
-      this.reduceFunctionClass = reduceFunctionClass;
+      this.reduceFunctionClass = functionClass;
       return this;
     }
 

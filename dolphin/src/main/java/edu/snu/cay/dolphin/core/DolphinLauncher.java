@@ -37,7 +37,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Job launch code for Dolphin jobs
+ * Job launch code for Dolphin jobs.
  */
 public final class DolphinLauncher {
   private static final Logger LOG = Logger.getLogger(DolphinLauncher.class.getName());
@@ -48,7 +48,7 @@ public final class DolphinLauncher {
     this.dolphinParameters = dolphinParameters;
   }
 
-  public final static void run(final Configuration dolphinConfig) {
+  public static void run(final Configuration dolphinConfig) {
     LauncherStatus status;
     try {
       status = Tang.Factory.getTang()
@@ -62,26 +62,26 @@ public final class DolphinLauncher {
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 
-  private final LauncherStatus run() throws InjectionException {
+  private LauncherStatus run() throws InjectionException {
     return DriverLauncher.getLauncher(getRuntimeConfiguration())
         .run(getDriverConfWithDataLoad(), dolphinParameters.getTimeout());
   }
 
-  private final Configuration getRuntimeConfiguration() {
-    return dolphinParameters.getOnLocal()? getLocalRuntimeConfiguration() : getYarnRuntimeConfiguration();
+  private Configuration getRuntimeConfiguration() {
+    return dolphinParameters.getOnLocal() ? getLocalRuntimeConfiguration() : getYarnRuntimeConfiguration();
   }
 
-  private final Configuration getYarnRuntimeConfiguration() {
+  private Configuration getYarnRuntimeConfiguration() {
     return YarnClientConfiguration.CONF.build();
   }
 
-  private final Configuration getLocalRuntimeConfiguration() {
+  private Configuration getLocalRuntimeConfiguration() {
     return LocalRuntimeConfiguration.CONF
         .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, dolphinParameters.getEvalNum() + 1)
         .build();
   }
 
-  private final Configuration getDriverConfWithDataLoad() {
+  private Configuration getDriverConfWithDataLoad() {
     final ConfigurationModule driverConfiguration = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
@@ -111,7 +111,7 @@ public final class DolphinLauncher {
         dolphinParameters.getDriverConf());
   }
 
-  private final String processInputDir(final String inputDir) {
+  private String processInputDir(final String inputDir) {
     if (!dolphinParameters.getOnLocal()) {
       return inputDir;
     }

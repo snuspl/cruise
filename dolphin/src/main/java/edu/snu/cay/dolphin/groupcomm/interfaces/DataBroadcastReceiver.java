@@ -16,5 +16,5 @@
 package edu.snu.cay.dolphin.groupcomm.interfaces;
 
 public interface DataBroadcastReceiver<T> {
-  public void receiveBroadcastData(int iteration, T data);
+  void receiveBroadcastData(int iteration, T data);
 }

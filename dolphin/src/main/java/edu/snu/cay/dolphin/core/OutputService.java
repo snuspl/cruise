@@ -37,10 +37,10 @@ import java.util.logging.Logger;
  */
 @Unit
 public final class OutputService {
-  private static Logger LOG = Logger.getLogger(OutputService.class.getName());
+  private static final Logger LOG = Logger.getLogger(OutputService.class.getName());
 
   /**
-   * A provider through which users create output streams
+   * A provider through which users create output streams.
    */
   private final OutputStreamProvider outputStreamProvider;
 
@@ -50,7 +50,7 @@ public final class OutputService {
   }
 
   /**
-   * Provides a configuration for Output service
+   * Provides a configuration for Output service.
    * @param outputDir
    * @param onLocal
    * @return

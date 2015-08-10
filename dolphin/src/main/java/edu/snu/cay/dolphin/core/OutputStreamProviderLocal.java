@@ -24,17 +24,17 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
- * Implementation of {@link OutputStreamProvider} which provides FileOutputStreams on the local disk
+ * Implementation of {@link OutputStreamProvider} which provides FileOutputStreams on the local disk.
  */
 public final class OutputStreamProviderLocal implements OutputStreamProvider {
 
   /**
-   * Path of the output directory on the local disk to write outputs
+   * Path of the output directory on the local disk to write outputs.
    */
   private final String outputPath;
 
   /**
-   * Id of the current task
+   * Id of the current task.
    */
   private String taskId;
 

@@ -18,7 +18,13 @@ package edu.snu.cay.dolphin.core;
 /**
  * Keys to identify metrics that come from Dolphin.
  */
-public class DolphinMetricKeys {
+public final class DolphinMetricKeys {
+
+  /**
+   * Should not be instantiated.
+   */
+  private DolphinMetricKeys() {
+  }
 
   // Keys to get/set the metrics in the ControllerTask.
   public static final String CONTROLLER_TASK_SEND_DATA_START =

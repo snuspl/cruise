@@ -19,27 +19,27 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 /**
- * A provider through which users create output streams
+ * A provider through which users create output streams.
  */
 public interface OutputStreamProvider {
 
   /**
-   * create an output stream using the given name
+   * create an output stream using the given name.
    * @param name name of the created output stream.
    *             it is used as the name of the directory if the created output stream is a file output stream
    * @throws java.io.IOException
    */
-  public DataOutputStream create(final String name) throws IOException;
+  DataOutputStream create(final String name) throws IOException;
 
   /**
-   * set the id of the current task
+   * set the id of the current task.
    * @param taskId id of the current task
    */
-  public void setTaskId(final String taskId);
+  void setTaskId(final String taskId);
 
   /**
-   * release unused resources
+   * release unused resources.
    * @throws IOException
    */
-  public void close() throws IOException;
+  void close() throws IOException;
 }

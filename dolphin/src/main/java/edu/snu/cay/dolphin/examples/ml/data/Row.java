@@ -26,11 +26,11 @@ public final class Row {
     this.feature = feature;
   }
 
-  public final double getOutput() {
+  public double getOutput() {
     return output;
   }
 
-  public final Vector getFeature() {
+  public Vector getFeature() {
     return feature;
   }
 }

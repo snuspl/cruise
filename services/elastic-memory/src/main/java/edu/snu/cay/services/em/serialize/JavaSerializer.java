@@ -20,7 +20,7 @@ import org.apache.reef.io.serialization.SerializableCodec;
 
 import javax.inject.Inject;
 
-public class JavaSerializer implements Serializer {
+public final class JavaSerializer implements Serializer {
 
   private final Codec defaultCodec;
 
