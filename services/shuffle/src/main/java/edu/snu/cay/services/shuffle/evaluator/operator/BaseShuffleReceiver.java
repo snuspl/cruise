@@ -21,6 +21,8 @@ import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
+// TODO (#82) : BaseShuffleReceiver will be renamed to TupleMessageReceiver
+// that does not implement ShuffleReceiver interface.
 /**
  * Shuffle receiver that has base operation to receive tuples.
  *

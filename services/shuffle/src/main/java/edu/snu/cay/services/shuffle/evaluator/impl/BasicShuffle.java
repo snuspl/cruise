@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+// TODO (#82) : This class will be removed and StaticPushShuffle will be added as a basic implementation of Shuffle.
 /**
  * Simple implementation of Shuffle.
  *

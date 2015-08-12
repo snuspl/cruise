@@ -26,6 +26,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 import java.util.List;
 
+// TODO (#82) : This class will be removed when BaseShuffleReceiver is changed to TupleMessageReceiver
 /**
  * Default implementation of BaseShuffleReceiver.
  */

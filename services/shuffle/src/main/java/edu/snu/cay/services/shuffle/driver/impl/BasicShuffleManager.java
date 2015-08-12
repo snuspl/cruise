@@ -35,6 +35,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+// TODO (#82) : This class will be removed and StaticPushShuffleManager will be added
+// as a basic implementation of ShuffleManager.
 /**
  * Simple implementation of ShuffleManager.
  *

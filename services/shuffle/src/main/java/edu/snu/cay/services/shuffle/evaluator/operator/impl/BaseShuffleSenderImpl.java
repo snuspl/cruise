@@ -36,6 +36,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 
+// TODO (#82) : This class will be removed when BaseShuffleSender is changed to TupleMessageSender
 /**
  * Default implementation of BaseShuffleSender.
  */

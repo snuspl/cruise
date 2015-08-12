@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.driver.impl;
 
+// TODO (#82) : This class will be removed and when BasicShuffle and BasicShuffleManager are removed.
 /**
  * Control message codes for basic shuffle classes.
  * The prefix of codes represents where the control message was sent from.

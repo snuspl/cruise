@@ -24,6 +24,8 @@ import org.apache.reef.wake.remote.transport.LinkListener;
 
 import java.util.List;
 
+// TODO (#82) : BaseShuffleSender will be renamed to TupleMessageSender
+// that does not implement ShuffleSender interface.
 /**
  * Shuffle sender that has base operation to send tuples.
  *
