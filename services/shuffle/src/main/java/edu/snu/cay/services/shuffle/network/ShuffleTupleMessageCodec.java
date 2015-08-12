@@ -77,9 +77,10 @@ public final class ShuffleTupleMessageCodec implements StreamingCodec<ShuffleTup
         stream.writeUTF(msg.getShuffleName());
       }
 
-      stream.writeInt(msg.size());
-
       final int messageLength = msg.size();
+
+      stream.writeInt(messageLength);
+
       final Codec<Tuple> tupleCodec = tupleCodecMap.get(msg.getShuffleName());
       for (int i = 0; i < messageLength; i++) {
         if (tupleCodec instanceof StreamingCodec) {

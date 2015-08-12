@@ -65,9 +65,10 @@ public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleC
       }
 
       stream.writeInt(msg.getCode());
-      stream.writeInt(msg.size());
 
       final int messageLength = msg.size();
+
+      stream.writeInt(messageLength);
       for (int i = 0; i < messageLength; i++) {
         final byte[] data = msg.get(i);
         stream.writeInt(data.length);
