@@ -124,6 +124,13 @@ public final class BasicShuffleManager implements ShuffleManager {
       final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
       if (controlMessage.getCode() == BasicShuffleCode.SHUFFLE_SETUP) {
         if (setupEndPointCount.decrementAndGet() == 0) {
+          // TODO (#82) : This redundant sleep will be removed and StaticPushShuffleManager will be added.
+          try {
+            // Wait for all tasks register their EventHandler.
+            Thread.sleep(2000);
+          } catch (final InterruptedException e) {
+            throw new RuntimeException(e);
+          }
           broadcastSetupMessage();
         }
       }
