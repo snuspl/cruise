@@ -17,7 +17,7 @@ package edu.snu.cay.services.shuffle.evaluator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.driver.impl.BasicShuffleCode;
-import edu.snu.cay.services.shuffle.evaluator.ControlMessageSender;
+import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorFactory;
@@ -50,7 +50,7 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
 
   private final ShuffleDescription shuffleDescription;
   private final ShuffleOperatorFactory<K, V> operatorFactory;
-  private final ControlMessageSender controlMessageSender;
+  private final ESControlMessageSender controlMessageSender;
   private final ControlMessageSynchronizer synchronizer;
 
   private final AtomicBoolean isSetupMessageSent;
@@ -63,7 +63,7 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
   private BasicShuffle(
       final ShuffleDescription shuffleDescription,
       final ShuffleOperatorFactory<K, V> operatorFactory,
-      final ControlMessageSender controlMessageSender,
+      final ESControlMessageSender controlMessageSender,
       final ControlMessageSynchronizer synchronizer) {
     this.shuffleDescription = shuffleDescription;
     this.operatorFactory = operatorFactory;

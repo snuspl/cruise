@@ -35,14 +35,14 @@ import java.util.List;
  * Driver-side control message sender.
  */
 @DriverSide
-public final class ControlMessageSender {
+public final class DSControlMessageSender {
 
   private final String shuffleName;
   private final IdentifierFactory idFactory;
   private final ConnectionFactory<ShuffleControlMessage> connectionFactory;
 
   @Inject
-  private ControlMessageSender(
+  private DSControlMessageSender(
       final ShuffleDescription shuffleDescription,
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
       final NetworkConnectionService networkConnectionService) {
@@ -63,7 +63,7 @@ public final class ControlMessageSender {
    * @throws NetworkException
    */
   public void send(final String endPointId, final int code) throws NetworkException {
-    send(endPointId, code, null);
+    send(endPointId, new ShuffleControlMessage(code, shuffleName));
   }
 
   /**
@@ -77,9 +77,22 @@ public final class ControlMessageSender {
    * @throws NetworkException
    */
   public void send(final String endPointId, final int code, final List<byte[]> dataList) throws NetworkException {
+    send(endPointId, new ShuffleControlMessage(code, shuffleName, dataList));
+  }
+
+  /**
+   * Send a ShuffleControlMessage with code and dataList to endPointId.
+   * It throws a NetworkException when an error occurs while opening a connection. In this case,
+   * the link listener does not call any callbacks as the message is not tried to be sent.
+   *
+   * @param endPointId an end point id
+   * @param controlMessage a ShuffleControlMessage
+   * @throws NetworkException
+   */
+  private void send(final String endPointId, final ShuffleControlMessage controlMessage)  throws NetworkException {
     final Connection<ShuffleControlMessage> connection = connectionFactory.newConnection(
         idFactory.getNewInstance(endPointId));
     connection.open();
-    connection.write(new ShuffleControlMessage(code, shuffleName, dataList));
+    connection.write(controlMessage);
   }
 }

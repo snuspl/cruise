@@ -16,7 +16,7 @@
 package edu.snu.cay.services.shuffle.driver.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
-import edu.snu.cay.services.shuffle.driver.ControlMessageSender;
+import edu.snu.cay.services.shuffle.driver.DSControlMessageSender;
 import edu.snu.cay.services.shuffle.driver.ShuffleManager;
 import edu.snu.cay.services.shuffle.evaluator.impl.BasicShuffle;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
@@ -55,7 +55,7 @@ public final class BasicShuffleManager implements ShuffleManager {
 
   private final ShuffleDescription shuffleDescription;
   private final ShuffleDescriptionSerializer descriptionSerializer;
-  private final ControlMessageSender controlMessageSender;
+  private final DSControlMessageSender controlMessageSender;
   private final Set<String> endPointIdSet;
   private final AtomicInteger setupEndPointCount;
 
@@ -66,7 +66,7 @@ public final class BasicShuffleManager implements ShuffleManager {
   private BasicShuffleManager(
       final ShuffleDescription shuffleDescription,
       final ShuffleDescriptionSerializer descriptionSerializer,
-      final ControlMessageSender controlMessageSender) {
+      final DSControlMessageSender controlMessageSender) {
     this.shuffleDescription = shuffleDescription;
     this.descriptionSerializer = descriptionSerializer;
     this.controlMessageSender = controlMessageSender;

@@ -36,6 +36,17 @@ public final class ShuffleControlMessage extends ShuffleMessage<byte[]> {
     this.code = code;
   }
 
+  /**
+   * Construct a shuffle control message.
+   *
+   * @param code a code
+   * @param shuffleName the name of shuffle
+   */
+  public ShuffleControlMessage(final int code, final String shuffleName) {
+    super(shuffleName, null);
+    this.code = code;
+  }
+
   public int getCode() {
     return code;
   }

@@ -33,13 +33,13 @@ import java.util.List;
  * Evaluator-side control message sender.
  */
 @EvaluatorSide
-public final class ControlMessageSender {
+public final class ESControlMessageSender {
 
   private Connection<ShuffleControlMessage> connectionToManager;
   private final String shuffleName;
 
   @Inject
-  private ControlMessageSender(
+  private ESControlMessageSender(
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
       @Parameter(ShuffleParameters.ShuffleName.class) final String shuffleName,
       final ShuffleNetworkSetup shuffleNetworkSetup) {
@@ -60,7 +60,7 @@ public final class ControlMessageSender {
    * @param code a control message code
    */
   public void sendToManager(final int code) {
-    sendToManager(code, null);
+    connectionToManager.write(new ShuffleControlMessage(code, shuffleName));
   }
 
   /**
