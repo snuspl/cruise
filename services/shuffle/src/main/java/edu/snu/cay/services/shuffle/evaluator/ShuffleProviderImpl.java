@@ -55,7 +55,7 @@ final class ShuffleProviderImpl implements ShuffleProvider {
     this.controlMessageHandler = controlMessageHandler;
     this.controlLinkListener = controlLinkListener;
 
-    // TODO : Where to register the endPointId should be cleaned up when an issue about
+    // TODO (#63) : Where to register the endPointId should be cleaned up when an issue about
     // injecting evaluator-side shuffle components in context is resolved.
     networkConnectionService.registerId(idFactory.getNewInstance(endPointId));
     this.shuffleMap = new HashMap<>();
