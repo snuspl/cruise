@@ -94,7 +94,7 @@ public final class BasicShuffleManager implements ShuffleManager {
         controlMessageSender.send(endPointId, BasicShuffleCode.MANAGER_SETUP);
       }
     } catch (final NetworkException e) {
-      // TODO : failure handling
+      // TODO (#67) : failure handling
       throw new RuntimeException(e);
     }
   }
@@ -121,6 +121,6 @@ public final class BasicShuffleManager implements ShuffleManager {
       final Message<ShuffleControlMessage> networkControlMessage) {
     LOG.log(Level.WARNING, "An exception occurred while sending a ShuffleControlMessage. " +
         "cause : {0}, socket address : {1}, message : {2}", new Object[]{cause, socketAddress, networkControlMessage});
-    // TODO : failure handling.
+    // TODO (#67) : failure handling.
   }
 }
