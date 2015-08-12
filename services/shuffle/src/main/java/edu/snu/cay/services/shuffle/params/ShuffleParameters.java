@@ -33,12 +33,12 @@ public final class ShuffleParameters {
   }
 
   /**
-   * NetworkConnectionFactory identifier for ShuffleTupleMessage
+   * NetworkConnectionFactory identifier for ShuffleTupleMessage.
    */
   public static final String SHUFFLE_TUPLE_MSG_NETWORK_ID = "SHUFFLE_TUPLE_MSG_NETWORK_ID";
 
   /**
-   * NetworkConnectionFactory identifier for ShuffleControlMessage
+   * NetworkConnectionFactory identifier for ShuffleControlMessage.
    */
   public static final String SHUFFLE_CONTROL_MSG_NETWORK_ID = "SHUFFLE_CONTROL_MSG_NETWORK_ID";
 

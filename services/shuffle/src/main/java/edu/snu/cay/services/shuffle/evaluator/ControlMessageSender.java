@@ -55,7 +55,7 @@ public final class ControlMessageSender {
   }
 
   /**
-   * Send a ShuffleControlMessage with code to the manager
+   * Send a ShuffleControlMessage with code to the manager.
    *
    * @param code a control message code
    */
@@ -64,7 +64,7 @@ public final class ControlMessageSender {
   }
 
   /**
-   * Send a ShuffleControlMessage with code and dataList to the manager
+   * Send a ShuffleControlMessage with code and dataList to the manager.
    *
    * @param code a control message code
    * @param dataList a data list

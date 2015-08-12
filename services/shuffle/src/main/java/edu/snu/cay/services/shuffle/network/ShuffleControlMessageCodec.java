@@ -73,7 +73,7 @@ public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleC
         stream.writeInt(data.length);
         stream.write(data);
       }
-    } catch(final IOException exception) {
+    } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }
   }
@@ -100,7 +100,7 @@ public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleC
       }
 
       return new ShuffleControlMessage(code, shuffleName, dataList);
-    } catch(final IOException exception) {
+    } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }
   }

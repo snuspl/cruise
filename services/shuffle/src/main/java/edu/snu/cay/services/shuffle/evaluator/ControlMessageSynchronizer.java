@@ -128,7 +128,7 @@ final class ControlMessageLatch {
   }
 
   /**
-   * Release the latch with the controlMessage
+   * Release the latch with the controlMessage.
    *
    * @param controlMessage a shuffle control message
    */
@@ -148,7 +148,7 @@ final class ControlMessageLatch {
   }
 
   /**
-   * Wait for the other thread releasing the latch
+   * Wait for the other thread releasing the latch.
    *
    * @return the expected ShuffleControlMessage
    */

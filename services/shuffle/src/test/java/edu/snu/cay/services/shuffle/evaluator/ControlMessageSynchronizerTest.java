@@ -186,7 +186,7 @@ public final class ControlMessageSynchronizerTest {
 
     Thread.sleep(500);
     LOG.log(Level.INFO, "Release the latch");
-    synchronizer.releaseLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test" ,null));
+    synchronizer.releaseLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
 
     waitForFinishing.await();
     LOG.log(Level.INFO, "Finished");

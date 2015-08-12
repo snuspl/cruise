@@ -78,7 +78,7 @@ public final class ShuffleNetworkSetup {
   }
 
   /**
-   * Unregister connection factories for ShuffleTupleMessage and ShuffleControlMessage
+   * Unregister connection factories for ShuffleTupleMessage and ShuffleControlMessage.
    */
   public void unregisterConnectionFactories() {
     networkConnectionService.unregisterConnectionFactory(tupleMessageNetworkId);

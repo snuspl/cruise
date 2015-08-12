@@ -25,7 +25,8 @@ public final class ShuffleControlMessage extends ShuffleMessage<byte[]> {
   private final int code;
 
   /**
-   * Construct a shuffle control message
+   * Construct a shuffle control message.
+   *
    * @param code a code
    * @param shuffleName the name of shuffle
    * @param dataList a data list

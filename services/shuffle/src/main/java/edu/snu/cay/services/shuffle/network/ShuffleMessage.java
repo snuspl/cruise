@@ -25,7 +25,8 @@ abstract class ShuffleMessage<T> {
   private final List<T> dataList;
 
   /**
-   * Construct a shuffle control message
+   * Construct a shuffle message.
+   *
    * @param shuffleName the name of shuffle
    * @param dataList a data list
    */
