@@ -21,14 +21,14 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
-import org.apache.reef.wake.time.runtime.event.RuntimeStart;
+import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 
 /**
  * RuntimeStartHandler which registers a connection factory for ShuffleControlMessage.
  */
-public final class ShuffleDriverStartHandler implements EventHandler<RuntimeStart> {
+public final class ShuffleDriverStartHandler implements EventHandler<StartTime> {
 
   private final NetworkConnectionService networkConnectionService;
 
@@ -44,7 +44,7 @@ public final class ShuffleDriverStartHandler implements EventHandler<RuntimeStar
   }
 
   @Override
-  public void onNext(final RuntimeStart runtimeStart) {
+  public void onNext(final StartTime startTime) {
     networkConnectionService.registerId(driverId);
   }
 }

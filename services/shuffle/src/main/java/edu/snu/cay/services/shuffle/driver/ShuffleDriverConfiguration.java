@@ -36,6 +36,6 @@ public final class ShuffleDriverConfiguration extends ConfigurationModuleBuilder
 
   public static final ConfigurationModule CONF = new ShuffleDriverConfiguration()
       .bindNamedParameter(ShuffleParameters.ShuffleManagerClassName.class, SHUFFLE_MANAGER_CLASS_NAME)
-      .bindSetEntry(Clock.RuntimeStartHandler.class, ShuffleDriverStartHandler.class)
+      .bindSetEntry(Clock.StartHandler.class, ShuffleDriverStartHandler.class)
       .build();
 }
