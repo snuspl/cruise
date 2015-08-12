@@ -24,9 +24,9 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 
 /**
- * Default implementation of LinearModelConvCond
+ * Default implementation of LinearModelConvCond.
  * Algorithm converges when its model is changed less than
- * a certain threshold in terms of Euclidean distance after an iteration
+ * a certain threshold in terms of Euclidean distance after an iteration.
  */
 public class LinearModelConvEuclidean implements  LinearModelConvCond {
   private LinearModel oldModel;

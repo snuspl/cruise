@@ -20,7 +20,7 @@ import org.apache.mahout.math.Vector;
 import javax.inject.Inject;
 
 /**
- * Represents the regularize for linear regression (least mean squares)
+ * Represents the regularize for linear regression (least mean squares).
  */
 public final class SquareLoss implements Loss {
 
@@ -29,12 +29,12 @@ public final class SquareLoss implements Loss {
   }
 
   @Override
-  public final double loss(final double predict, final double output) {
+  public double loss(final double predict, final double output) {
     return Math.pow(predict - output, 2) / 2;
   }
 
   @Override
-  public final Vector gradient(final Vector feature, final double predict, final double output) {
+  public Vector gradient(final Vector feature, final double predict, final double output) {
     return feature.times(predict - output);
   }
 }

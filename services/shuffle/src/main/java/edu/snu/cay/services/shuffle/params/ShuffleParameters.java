@@ -27,7 +27,7 @@ import java.util.Set;
 public final class ShuffleParameters {
 
   /**
-   * Empty private constructor to prohibit instantiation of utility class
+   * Empty private constructor to prohibit instantiation of utility class.
    */
   private ShuffleParameters() {
   }

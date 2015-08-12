@@ -26,7 +26,7 @@ import java.util.Map;
 public class PageRankSummaryCodec implements Codec<PageRankSummary> {
 
   @Inject
-  public PageRankSummaryCodec(){
+  public PageRankSummaryCodec() {
   }
 
   @Override

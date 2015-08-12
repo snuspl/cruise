@@ -16,5 +16,5 @@
 package edu.snu.cay.dolphin.groupcomm.interfaces;
 
 public interface DataScatterReceiver<T> {
-  public void receiveScatterData(int iteration, T data);
+  void receiveScatterData(int iteration, T data);
 }

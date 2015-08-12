@@ -21,7 +21,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import java.io.Serializable;
 
 /**
- * Interface for representations of models used in ML job
+ * Interface for representations of models used in ML job.
  */
 @DefaultImplementation(LinearModel.class)
 public interface Model extends Serializable {
@@ -29,16 +29,16 @@ public interface Model extends Serializable {
   /**
    * @return a Vector containing values that represent the model
    */
-  public Vector getParameters();
+  Vector getParameters();
 
   /**
    * @param parameters set this model using these values
    */
-  public void setParameters(Vector parameters);
+  void setParameters(Vector parameters);
 
   /**
    * @param point the Vector to perform prediction on
    * @return a predicted class value using the model
    */
-  public double predict(Vector point);
+  double predict(Vector point);
 }

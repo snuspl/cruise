@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Codec for encoding and decoding a map of Integer vs. Vector Sum
+ * Codec for encoding and decoding a map of Integer vs. Vector Sum.
  */
 public final class MapOfIntVSumCodec implements Codec<Map<Integer, VectorSum>> {
 
@@ -35,7 +35,7 @@ public final class MapOfIntVSumCodec implements Codec<Map<Integer, VectorSum>> {
   }
 
   @Override
-  public final byte[] encode(final Map<Integer, VectorSum> map) {
+  public byte[] encode(final Map<Integer, VectorSum> map) {
 
     /* This codec does not assume consistent centroid vector sizes(dimensions).
      * Therefore to specify the initial data size,
@@ -44,7 +44,7 @@ public final class MapOfIntVSumCodec implements Codec<Map<Integer, VectorSum>> {
      */
     int vectorSizeSum = 0;
     for (final VectorSum vectorSum : map.values()) {
-      vectorSizeSum += vectorSum.sum.size();
+      vectorSizeSum += vectorSum.getSum().size();
     }
 
     final ByteArrayOutputStream baos =
@@ -56,11 +56,11 @@ public final class MapOfIntVSumCodec implements Codec<Map<Integer, VectorSum>> {
       for (final Integer integer : map.keySet()) {
         final VectorSum vectorSum = map.get(integer);
         daos.writeInt(integer);
-        daos.writeInt(vectorSum.sum.size());
-        for (int j = 0; j < vectorSum.sum.size(); j++) {
-          daos.writeDouble(vectorSum.sum.get(j));
+        daos.writeInt(vectorSum.getSum().size());
+        for (int j = 0; j < vectorSum.getSum().size(); j++) {
+          daos.writeDouble(vectorSum.getSum().get(j));
         }
-        daos.writeInt(vectorSum.count);
+        daos.writeInt(vectorSum.getCount());
       }
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
@@ -70,7 +70,7 @@ public final class MapOfIntVSumCodec implements Codec<Map<Integer, VectorSum>> {
   }
 
   @Override
-  public final Map<Integer, VectorSum> decode(final byte[] data) {
+  public Map<Integer, VectorSum> decode(final byte[] data) {
     final ByteArrayInputStream bais = new ByteArrayInputStream(data);
     final Map<Integer, VectorSum> resultMap = new HashMap<>();
 

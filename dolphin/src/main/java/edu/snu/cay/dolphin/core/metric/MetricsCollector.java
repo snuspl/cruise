@@ -38,37 +38,36 @@ import java.util.logging.Logger;
  * This class assumes that its instance is used by one thread.
  */
 public final class MetricsCollector implements ContextMessageSource, AutoCloseable {
-  private final static Logger LOG = Logger.getLogger(MetricsCollector.class.getName());
+  private static final Logger LOG = Logger.getLogger(MetricsCollector.class.getName());
 
   /**
-   * Set of registered trackers
+   * Set of registered trackers.
    */
   private final List<MetricTracker> metricTrackerList = new LinkedList<>();
 
   /**
-   * Currently tracked metrics (Id of a metric -> value)
+   * Currently tracked metrics (Id of a metric -> value).
    */
   private final AtomicReference<Map<String, Double>> metrics = new AtomicReference<>();
 
   /**
-   * Codec for metrics
+   * Codec for metrics.
    */
   private final MetricCodec metricCodec;
 
   /**
-   * Manager of the trigger of hear beat on which tracked metrics are sent
+   * Manager of the trigger of hear beat on which tracked metrics are sent.
    */
   private final HeartBeatTriggerManager heartBeatTriggerManager;
 
   /**
-   * Whether tracking metrics is started or not
+   * Whether tracking metrics is started or not.
    */
   private boolean isStarted = false;
 
   /**
-   * This class is instantiated by TANG
-   *
-   * Constructor for the MetricsCollector, which accepts Heartbeat Trigger Manager as a parameter
+   * Constructor for the MetricsCollector, which accepts Heartbeat Trigger Manager as a parameter.
+   * This class is instantiated by TANG.
    * @param heartBeatTriggerManager manager for sending heartbeat to the driver
    * @param metricCodec codec for metrics
    */
@@ -81,7 +80,7 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
   }
 
   /**
-   * Register metric trackers
+   * Register metric trackers.
    * @param trackers trackers to register
    */
   public void registerTrackers(final Collection<MetricTracker> trackers) {
@@ -90,7 +89,7 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
   }
 
   /**
-   * Start registered metric trackers
+   * Start registered metric trackers.
    */
   public void start() throws MetricException {
     if (isStarted) {
@@ -103,11 +102,11 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
   }
 
   /**
-   * Stop registered metric trackers
-   * Gathered measures are sent to the driver
+   * Stop registered metric trackers.
+   * Gathered measures are sent to the driver.
    */
   public void stop() throws MetricException {
-    if(!isStarted) {
+    if (!isStarted) {
       throw new MetricException("Metric tracking should be started first before being stopped");
     }
     final Map<String, Double> newMetrics = new HashMap<>();
@@ -120,7 +119,7 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
   }
 
   /**
-   * Close registered metric trackers
+   * Close registered metric trackers.
    */
   @Override
   public void close() throws Exception {
@@ -132,7 +131,7 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
   }
 
   /**
-   * Return a message (gathered metrics) to be sent to the driver
+   * Return a message (gathered metrics) to be sent to the driver.
    * @return message
    */
   @Override

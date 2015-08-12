@@ -33,7 +33,7 @@ import org.apache.reef.wake.EventHandler;
 public interface BaseShuffleReceiver<K, V> extends ShuffleReceiver<K, V> {
 
   /**
-   * Register a message handler that receives tuples arriving at this receiver
+   * Register a message handler that receives tuples arriving at this receiver.
    *
    * @param messageHandler event handler for ShuffleTupleMessage
    */

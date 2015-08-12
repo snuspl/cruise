@@ -20,24 +20,23 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Metric tracker for wall-clock time
+ * Metric tracker for wall-clock time.
  */
 public final class TimeMetricTracker implements MetricTracker {
 
   /**
-   * key for the Wall-clock time measure
+   * key for the Wall-clock time measure.
    */
   public static final String KEY_METRIC_WALL_CLOCK_TIME = "METRIC_WALL_CLOCK_TIME";
 
   /**
-   * elapsed time when starting to track measures
+   * elapsed time when starting to track measures.
    */
   private long startTime = 0;
 
   /**
-   * This class is instantiated by TANG
-   *
-   * Constructor for the wall-clock time tracker
+   * Constructor for the wall-clock time tracker.
+   * This class is instantiated by TANG.
    */
   @Inject
   public TimeMetricTracker() {

@@ -27,7 +27,7 @@ import java.io.*;
 public class LinearRegSummaryCodec implements Codec<LinearRegSummary> {
 
   @Inject
-  public LinearRegSummaryCodec(){
+  public LinearRegSummaryCodec() {
   }
 
   @Override

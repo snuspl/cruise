@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Default implementation of MetricCodec
+ * Default implementation of MetricCodec.
  */
 public final class DefaultMetricCodecImpl implements MetricCodec {
 

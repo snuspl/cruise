@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.evaluator.api.SubMemoryStore;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.util.Pair;
 

@@ -39,7 +39,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Client code for SimpleEM
+ * Client code for SimpleEM.
  */
 final class SimpleEMREEF {
   private static final Logger LOG = Logger.getLogger(SimpleEMREEF.class.getName());
@@ -51,7 +51,13 @@ final class SimpleEMREEF {
   }
 
   /**
-   * Setup (register short names) and parse the command line, returning an Injector
+   * Should not be instantiated.
+   */
+  private SimpleEMREEF() {
+  }
+
+  /**
+   * Setup (register short names) and parse the command line, returning an Injector.
    */
   private static Injector parseCommandLine(final String[] args) throws InjectionException, IOException {
     final JavaConfigurationBuilder cb = TANG.newConfigurationBuilder();
@@ -67,28 +73,28 @@ final class SimpleEMREEF {
   }
 
   /**
-   * Get onLocal from the parsed command line Injector
+   * Get onLocal from the parsed command line Injector.
    */
   private static boolean getOnLocal(final Injector injector) throws InjectionException {
     return injector.getNamedInstance(OnLocal.class);
   }
 
   /**
-   * Get HTraceParameters from the parsed command line Injector
+   * Get HTraceParameters from the parsed command line Injector.
    */
   private static HTraceParameters getTraceParameters(final Injector injector) throws InjectionException {
     return injector.getInstance(HTraceParameters.class);
   }
 
   /**
-   * Get iterations from the parsed command line Injector
+   * Get iterations from the parsed command line Injector.
    */
   private static int getIterations(final Injector injector) throws InjectionException {
     return injector.getNamedInstance(Iterations.class);
   }
 
   /**
-   * Get periodMillis from the parsed command line Injector
+   * Get periodMillis from the parsed command line Injector.
    */
   private static long getPeriodMillis(final Injector injector) throws InjectionException {
     return injector.getNamedInstance(PeriodMillis.class);
@@ -123,8 +129,8 @@ final class SimpleEMREEF {
     final Injector injector = parseCommandLine(args);
     final boolean onLocal = getOnLocal(injector);
     final Configuration runtimeConf = onLocal ?
-      LocalRuntimeConfiguration.CONF.build():
-      YarnClientConfiguration.CONF.build();
+        LocalRuntimeConfiguration.CONF.build() :
+        YarnClientConfiguration.CONF.build();
 
     final HTraceParameters traceParameters = getTraceParameters(injector);
     final Configuration traceConf = traceParameters.getConfiguration();

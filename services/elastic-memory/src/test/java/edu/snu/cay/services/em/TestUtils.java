@@ -21,6 +21,12 @@ import java.util.concurrent.Executors;
 public final class TestUtils {
 
   /**
+   * Should not be instantiated.
+   */
+  private TestUtils() {
+  }
+
+  /**
    * Use a thread pool to concurrently execute threads.
    * Note that this method does NOT wait for the termination of all threads before returning.
    */

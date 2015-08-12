@@ -28,5 +28,5 @@ public interface ClusteringConvCond {
   /**
    * Check convergence conditions.
    */
-  public boolean checkConvergence(Iterable<Vector> centroids);
+  boolean checkConvergence(Iterable<Vector> centroids);
 }

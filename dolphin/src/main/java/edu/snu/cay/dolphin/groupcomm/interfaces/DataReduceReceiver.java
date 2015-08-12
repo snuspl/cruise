@@ -16,5 +16,5 @@
 package edu.snu.cay.dolphin.groupcomm.interfaces;
 
 public interface DataReduceReceiver<T> {
-  public void receiveReduceData(int iteration, T data);
+  void receiveReduceData(int iteration, T data);
 }

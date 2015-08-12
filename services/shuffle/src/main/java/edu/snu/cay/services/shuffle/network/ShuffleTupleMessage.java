@@ -25,7 +25,7 @@ import java.util.List;
 public final class ShuffleTupleMessage<K, V> extends ShuffleMessage<Tuple<K, V>> {
 
   /**
-   * Construct a shuffle tuple message
+   * Construct a shuffle tuple message.
    *
    * @param shuffleName the name of shuffle
    * @param tupleList a tuple list

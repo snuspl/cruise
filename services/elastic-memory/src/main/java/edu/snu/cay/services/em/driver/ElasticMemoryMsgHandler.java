@@ -17,7 +17,6 @@ package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.RegisMsg;
-import edu.snu.cay.services.em.trace.HTrace;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;
 import org.apache.htrace.Trace;
@@ -53,12 +52,12 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
 
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-      case RegisMsg:
-        onRegisMsg(innerMsg);
-        break;
+    case RegisMsg:
+      onRegisMsg(innerMsg);
+      break;
 
-      default:
-        throw new RuntimeException("Unexpected message: " + msg);
+    default:
+      throw new RuntimeException("Unexpected message: " + msg);
     }
 
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);

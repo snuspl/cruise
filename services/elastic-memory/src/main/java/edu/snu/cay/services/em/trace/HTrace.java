@@ -48,7 +48,7 @@ public final class HTrace {
   /**
    * Initialize HTrace.
    */
-  public final void initialize() {
+  public void initialize() {
     // Left empty, because the constructor does the initialization.
     // The method is here as a reminder that an instance of this class must be
     // injected before using Trace.[static method] calls.

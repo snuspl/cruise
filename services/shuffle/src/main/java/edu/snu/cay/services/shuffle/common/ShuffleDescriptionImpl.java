@@ -158,7 +158,7 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
      * @param keyCodecClass a key codec class
      * @return the builder itself
      */
-    public Builder setKeyCodec(final Class<? extends Codec> keyCodecClass) {
+    public Builder setKeyCodecClass(final Class<? extends Codec> keyCodecClass) {
       this.keyCodecClass = keyCodecClass;
       return this;
     }
@@ -167,7 +167,7 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
      * @param valueCodecClass a value codec class
      * @return the builder itself
      */
-    public Builder setValueCodec(final Class<? extends Codec> valueCodecClass) {
+    public Builder setValueCodecClass(final Class<? extends Codec> valueCodecClass) {
       this.valueCodecClass = valueCodecClass;
       return this;
     }
@@ -176,7 +176,7 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
      * @param shuffleStrategyClass a shuffle strategy class
      * @return the builder itself
      */
-    public Builder setShuffleStrategy(final Class<? extends ShuffleStrategy> shuffleStrategyClass) {
+    public Builder setShuffleStrategyClass(final Class<? extends ShuffleStrategy> shuffleStrategyClass) {
       this.shuffleStrategyClass = shuffleStrategyClass;
       return this;
     }

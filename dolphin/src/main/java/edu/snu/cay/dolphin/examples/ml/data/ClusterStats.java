@@ -24,25 +24,15 @@ import java.io.Serializable;
 import java.util.Iterator;
 
 /**
- * This class represents statistics obtained from data points assigned to each cluster
- * Statistics include (1) the pointSum of probabilities (2) the weighted pointSum of data points, and (3) the weighted pointSum of the outer product of data points
+ * This class represents statistics obtained from data points assigned to each cluster.
+ * Statistics include (1) the pointSum of probabilities (2) the weighted pointSum of data points,
+ * and (3) the weighted pointSum of the outer product of data points.
  */
 public final class ClusterStats implements Serializable {
 
-  /**
-   * weighted sum of outer product of data points
-   */
-  public Matrix outProdSum;
-
-  /**
-   * weighted pointSum of data points
-   */
-  public Vector pointSum;
-
-  /**
-   * pointSum of probability
-   */
-  public double probSum =0; // error occurs without initialize
+  private Matrix outProdSum;
+  private Vector pointSum;
+  private double probSum = 0; // error occurs without initialize
 
   /**
    * We may select whether to create a deep copy of @member pointSum and @member outProdSum, or just a reference.
@@ -67,52 +57,73 @@ public final class ClusterStats implements Serializable {
   }
 
   /**
-   * A deep copy constructor
+   * A deep copy constructor.
    */
   public ClusterStats(final ClusterStats clusterStats, final boolean isDeepCopy) {
-    this(clusterStats.outProdSum, clusterStats.pointSum, clusterStats.probSum, isDeepCopy);
+    this(clusterStats.getOutProdSum(), clusterStats.getPointSum(), clusterStats.getProbSum(), isDeepCopy);
   }
 
   /**
-   * Add the given statistics to the current statistics
+   * Add the given statistics to the current statistics.
    * @param clusterStats
    */
-  public final void add(final ClusterStats clusterStats) {
-    this.outProdSum = this.outProdSum.plus(clusterStats.outProdSum);
-    this.pointSum = this.pointSum.plus(clusterStats.pointSum);
-    this.probSum += clusterStats.probSum;
+  public void add(final ClusterStats clusterStats) {
+    this.outProdSum = this.getOutProdSum().plus(clusterStats.getOutProdSum());
+    this.pointSum = this.getPointSum().plus(clusterStats.getPointSum());
+    this.probSum += clusterStats.getProbSum();
   }
 
   /**
-   * Compute mean from the statistics
+   * Compute mean from the statistics.
    * @return
    */
-  public final Vector computeMean() {
-    final Vector mean = new DenseVector(pointSum.size());
+  public Vector computeMean() {
+    final Vector mean = new DenseVector(getPointSum().size());
     for (int i = 0; i < mean.size(); i++) {
-      mean.set(i, pointSum.get(i) / probSum);
+      mean.set(i, getPointSum().get(i) / getProbSum());
     }
     return mean;
   }
 
   /**
-   * Compute the covariance matrix from the statistics
+   * Compute the covariance matrix from the statistics.
    * @return
    */
-  public final Matrix computeCovariance() {
+  public Matrix computeCovariance() {
     final Vector mean = computeMean();
-    final Matrix covariance = outProdSum.clone();
+    final Matrix covariance = getOutProdSum().clone();
 
-    final Iterator<MatrixSlice> sliceIterator=outProdSum.iterator();
+    final Iterator<MatrixSlice> sliceIterator = getOutProdSum().iterator();
     while (sliceIterator.hasNext()) {
-      final MatrixSlice slice=sliceIterator.next();
+      final MatrixSlice slice = sliceIterator.next();
       final int row = slice.index();
       for (final Vector.Element e : slice.nonZeroes()) {
-        final int col=e.index();
+        final int col = e.index();
         final double squaredSum = e.get();
-        covariance.set(row, col, squaredSum/probSum - mean.get(row) * mean.get(col));
+        covariance.set(row, col, squaredSum / getProbSum() - mean.get(row) * mean.get(col));
       }
     }
     return covariance;
+  }
+
+  /**
+   * weighted sum of outer product of data points.
+   */
+  public Matrix getOutProdSum() {
+    return outProdSum;
+  }
+
+  /**
+   * weighted pointSum of data points.
+   */
+  public Vector getPointSum() {
+    return pointSum;
+  }
+
+  /**
+   * pointSum of probability.
+   */
+  public double getProbSum() {
+    return probSum;
   }
 }

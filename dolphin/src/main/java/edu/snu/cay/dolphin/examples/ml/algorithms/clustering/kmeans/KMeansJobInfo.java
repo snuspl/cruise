@@ -34,7 +34,7 @@ import java.util.List;
 public final class KMeansJobInfo implements UserJobInfo {
 
   @Inject
-  public KMeansJobInfo(){
+  public KMeansJobInfo() {
   }
 
   @Override

@@ -81,7 +81,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       throw new RuntimeException("NetworkException", ex);
     }
 
-    LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[] { destId, msg });
+    LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
   }
 
 

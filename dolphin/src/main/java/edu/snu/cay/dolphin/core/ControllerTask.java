@@ -44,8 +44,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class ControllerTask implements Task {
-  public final static String TASK_ID_PREFIX = "CtrlTask";
-  private final static Logger LOG = Logger.getLogger(ControllerTask.class.getName());
+  public static final String TASK_ID_PREFIX = "CtrlTask";
+  private static final Logger LOG = Logger.getLogger(ControllerTask.class.getName());
 
   private final String taskId;
   private final UserControllerTask userControllerTask;
@@ -63,7 +63,8 @@ public final class ControllerTask implements Task {
                         final MetricsCollector metricsCollector,
                         @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
                         final InsertableMetricTracker insertableMetricTracker) throws ClassNotFoundException {
-    this.commGroup = groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
+    this.commGroup =
+        groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.userControllerTask = userControllerTask;
     this.taskId = taskId;
     this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
@@ -73,14 +74,14 @@ public final class ControllerTask implements Task {
   }
 
   @Override
-  public final byte[] call(final byte[] memento) throws Exception {
+  public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, String.format("%s starting...", taskId));
 
     userControllerTask.initialize();
     try (final MetricsCollector metricsCollector = this.metricsCollector;) {
       metricsCollector.registerTrackers(metricTrackerSet);
       int iteration = 0;
-      while(!userControllerTask.isTerminated(iteration)) {
+      while (!userControllerTask.isTerminated(iteration)) {
         metricsCollector.start();
         ctrlMessageBroadcast.send(CtrlMessage.RUN);
         sendData(iteration);
@@ -98,9 +99,9 @@ public final class ControllerTask implements Task {
   }
 
   /**
-   * Update the group communication topology, if it has changed
+   * Update the group communication topology, if it has changed.
    */
-  private final void updateTopology() {
+  private void updateTopology() {
     if (commGroup.getTopologyChanges().exist()) {
       commGroup.updateTopology();
     }
@@ -112,7 +113,7 @@ public final class ControllerTask implements Task {
     insertableMetricTracker.put(CONTROLLER_TASK_USER_CONTROLLER_TASK_END, System.currentTimeMillis());
   }
 
-  private final void sendData(final int iteration) throws NetworkException, InterruptedException, MetricException {
+  private void sendData(final int iteration) throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(CONTROLLER_TASK_SEND_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isBroadcastUsed()) {
       commGroup.getBroadcastSender(DataBroadcast.class).send(
@@ -125,7 +126,7 @@ public final class ControllerTask implements Task {
     insertableMetricTracker.put(CONTROLLER_TASK_SEND_DATA_END, System.currentTimeMillis());
   }
 
-  private final void receiveData(final int iteration) throws NetworkException, InterruptedException, MetricException {
+  private void receiveData(final int iteration) throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(CONTROLLER_TASK_RECEIVE_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isGatherUsed()) {
       ((DataGatherReceiver)userControllerTask).receiveGatherData(iteration,

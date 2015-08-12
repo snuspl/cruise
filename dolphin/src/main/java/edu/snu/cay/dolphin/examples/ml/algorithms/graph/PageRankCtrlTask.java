@@ -34,7 +34,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * PageRank algorithm control class
+ * PageRank algorithm control class.
  * 
  * Reference
  * - http://en.wikipedia.org/wiki/PageRank
@@ -42,7 +42,7 @@ import java.util.logging.Logger;
  */
 public class PageRankCtrlTask extends UserControllerTask
     implements DataReduceReceiver<PageRankSummary>, DataBroadcastSender<Map<Integer, Double>> {
-  private final static Logger LOG = Logger.getLogger(PageRankCtrlTask.class.getName());
+  private static final Logger LOG = Logger.getLogger(PageRankCtrlTask.class.getName());
 
   /**
    * Check function to determine whether algorithm has converged or not.
@@ -52,29 +52,28 @@ public class PageRankCtrlTask extends UserControllerTask
   private final PageRankConvCond pageRankConvergenceCondition;
 
   /**
-   * Damping Factor
+   * Damping Factor.
    */
   private final double dampingFactor;
 
   /**
-   * Maximum number of iterations allowed before job stops
+   * Maximum number of iterations allowed before job stops.
    */
   private final int maxIter;
 
   /**
-   * Map of <nodeid, rank>
+   * Map of <nodeid, rank>.
    */
   private Map<Integer, Double> rank;
 
   /**
-   * Output stream provider to save the final ranks
+   * Output stream provider to save the final ranks.
    */
   private final OutputStreamProvider outputStreamProvider;
 
   /**
-   * This class is instantiated by TANG
-   *
-   * Constructs the Controller Task for PageRank
+   * Constructs the Controller Task for PageRank.
+   * This class is instantiated by TANG.
    *
    * @param outputStreamProvider
    * @param maxIter maximum number of iterations allowed before job stops
@@ -93,7 +92,7 @@ public class PageRankCtrlTask extends UserControllerTask
 
   @Override
   public final void run(final int iteration) {
-    LOG.log(Level.INFO, "{0}-th iteration", new Object[] { iteration });
+    LOG.log(Level.INFO, "{0}-th iteration", new Object[]{iteration});
   }
 
   @Override

@@ -27,7 +27,7 @@ import java.io.*;
 public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
 
   @Inject
-  public LogisticRegSummaryCodec(){
+  public LogisticRegSummaryCodec() {
   }
 
   @Override

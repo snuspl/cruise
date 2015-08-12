@@ -25,7 +25,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 public interface VectorDistanceMeasure {
 
   /**
-   * Compute distance between @param v1 and @param v2
+   * Compute distance between @param v1 and @param v2.
    */
-  public double distance(Vector v1, Vector v2);
+  double distance(Vector v1, Vector v2);
 }

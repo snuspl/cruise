@@ -92,7 +92,7 @@ public final class PartitionManagerTest {
 
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
-      threads[index] =new RemoveThread(countDownLatch, partitionManager,
+      threads[index] = new RemoveThread(countDownLatch, partitionManager,
           index, numThreads, removesPerThread, IndexParity.ALL_INDEX);
     }
     TestUtils.runConcurrently(threads);

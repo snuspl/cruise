@@ -26,10 +26,10 @@ import java.util.Map;
  *
  * This class is thread-safe, so multiple threads can call put() simultaneously.
  */
-public class InsertableMetricTracker implements MetricTracker {
+public final class InsertableMetricTracker implements MetricTracker {
 
   /**
-   * The metrics identified by key
+   * The metrics identified by key.
    */
   private final Map<String, Double> metrics = new HashMap<>();
 
@@ -64,7 +64,7 @@ public class InsertableMetricTracker implements MetricTracker {
   }
 
   /**
-   * Insert a metric with given key and value
+   * Insert a metric with given key and value.
    * @param key identifier to distinguish the metric
    * @throws MetricException if the metricTracker is not between start() and stop(),
    */

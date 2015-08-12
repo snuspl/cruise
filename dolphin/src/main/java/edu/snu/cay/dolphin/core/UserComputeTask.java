@@ -27,7 +27,7 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterReceiver;
 public abstract class UserComputeTask {
 
   /**
-   * Main process of a user-defined compute task
+   * Main process of a user-defined compute task.
    * @param iteration
    */
   public abstract void run(int iteration);
@@ -41,26 +41,26 @@ public abstract class UserComputeTask {
   }
 
   /**
-   * Clean up a user-defined compute task
-   * Default behavior of this method is to do nothing, but this method can be overridden in subclasses
+   * Clean up a user-defined compute task.
+   * Default behavior of this method is to do nothing, but this method can be overridden in subclasses.
    */
   public void cleanup() {
     return;
   }
 
-  final public boolean isReduceUsed() {
+  public final boolean isReduceUsed() {
     return (this instanceof DataReduceSender);
   }
 
-  final public boolean isGatherUsed() {
+  public final boolean isGatherUsed() {
     return (this instanceof DataGatherSender);
   }
 
-  final public boolean isBroadcastUsed() {
+  public final boolean isBroadcastUsed() {
     return (this instanceof DataBroadcastReceiver);
   }
 
-  final public boolean isScatterUsed() {
+  public final boolean isScatterUsed() {
     return (this instanceof DataScatterReceiver);
   }
 }

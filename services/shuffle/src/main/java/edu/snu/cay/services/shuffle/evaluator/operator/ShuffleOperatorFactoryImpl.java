@@ -56,7 +56,7 @@ final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K
     this.injector = injector;
   }
 
-  private void addTupleCodec(final ShuffleDescription shuffleDescription) {
+  private void addTupleCodec() {
     final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
     final Configuration tupleCodecConf = confBuilder
         .bindNamedParameter(ShuffleParameters.TupleKeyCodec.class, shuffleDescription.getKeyCodecClass())
@@ -78,11 +78,11 @@ final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K
         throw new RuntimeException(shuffleName + " does not have " + endPointId + " as a receiver.");
       }
 
-      final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
+      final Injector forkedInjector = getForkedInjectorWithParameters();
 
       try {
         shuffleReceiver = forkedInjector.getInstance(ShuffleReceiver.class);
-        addTupleCodec(shuffleDescription);
+        addTupleCodec();
       } catch (final InjectionException e) {
         throw new RuntimeException("An Exception occurred while injecting receiver with " + shuffleDescription, e);
       }
@@ -99,11 +99,11 @@ final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K
         throw new RuntimeException(shuffleName + " does not have " + endPointId + " as a sender.");
       }
 
-      final Injector forkedInjector = getForkedInjectorWithParameters(shuffleDescription);
+      final Injector forkedInjector = getForkedInjectorWithParameters();
 
       try {
         shuffleSender = forkedInjector.getInstance(ShuffleSender.class);
-        addTupleCodec(shuffleDescription);
+        addTupleCodec();
       } catch (final InjectionException e) {
         throw new RuntimeException("An InjectionException occurred while injecting sender with " +
             shuffleDescription, e);
@@ -113,13 +113,13 @@ final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K
     return (T)shuffleSender;
   }
 
-  private Injector getForkedInjectorWithParameters(final ShuffleDescription shuffleDescription) {
-    final Injector forkedInjector = injector.forkInjector(getBaseOperatorConfiguration(shuffleDescription));
+  private Injector getForkedInjectorWithParameters() {
+    final Injector forkedInjector = injector.forkInjector(getBaseOperatorConfiguration());
     forkedInjector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
     return forkedInjector;
   }
 
-  private Configuration getBaseOperatorConfiguration(final ShuffleDescription shuffleDescription) {
+  private Configuration getBaseOperatorConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(ShuffleStrategy.class, shuffleDescription.getShuffleStrategyClass())
         .build();
