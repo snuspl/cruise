@@ -15,16 +15,20 @@
  */
 package edu.snu.cay.services.shuffle.driver;
 
-import edu.snu.cay.services.shuffle.common.ShuffleController;
+import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.util.Optional;
+import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.transport.LinkListener;
 
 /**
  * Driver-side interface which communicates with corresponding Shuffle instances in evaluators.
  */
 @DriverSide
-public interface ShuffleManager extends ShuffleController {
+public interface ShuffleManager {
 
   /**
    * Return a configuration of the shuffle description for endPointId.
@@ -35,4 +39,18 @@ public interface ShuffleManager extends ShuffleController {
    */
   Optional<Configuration> getShuffleConfiguration(String endPointId);
 
+  /**
+   * @return a shuffle description handled by the ShuffleController
+   */
+  ShuffleDescription getShuffleDescription();
+
+  /**
+   * @return an event handler for shuffle control messages.
+   */
+  EventHandler<Message<ShuffleControlMessage>> getControlMessageHandler();
+
+  /**
+   * @return a link listener for shuffle control messages.
+   */
+  LinkListener<Message<ShuffleControlMessage>> getControlLinkListener();
 }

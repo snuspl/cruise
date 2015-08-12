@@ -27,6 +27,8 @@ import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.util.Optional;
+import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
@@ -54,6 +56,9 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
   private final AtomicBoolean isSetupMessageSent;
   private final AtomicBoolean initialized;
 
+  private final ControlMessageHandler controlMessageHandler;
+  private final ControlLinkListener controlLinkListener;
+
   @Inject
   private BasicShuffle(
       final ShuffleDescription shuffleDescription,
@@ -67,6 +72,9 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
     this.isSetupMessageSent = new AtomicBoolean();
     this.initialized = new AtomicBoolean();
     this.controlMessageSender = controlMessageSender;
+
+    this.controlMessageHandler = new ControlMessageHandler();
+    this.controlLinkListener = new ControlLinkListener();
   }
 
   /**
@@ -115,28 +123,45 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
   }
 
   @Override
-  public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
-    final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
-    if (controlMessage.getCode() == BasicShuffleCode.MANAGER_SETUP) {
-      if (initialized.compareAndSet(false, true)) {
-        synchronizer.closeLatch(controlMessage);
+  public EventHandler<Message<ShuffleControlMessage>> getControlMessageHandler() {
+    return controlMessageHandler;
+  }
+
+  @Override
+  public LinkListener<Message<ShuffleControlMessage>> getControlLinkListener() {
+    return controlLinkListener;
+  }
+
+
+  private final class ControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {
+
+    @Override
+    public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
+      final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
+      if (controlMessage.getCode() == BasicShuffleCode.MANAGER_SETUP) {
+        if (initialized.compareAndSet(false, true)) {
+          synchronizer.closeLatch(controlMessage);
+        }
       }
     }
   }
 
-  @Override
-  public void onSuccess(final Message<ShuffleControlMessage> networkControlMessage) {
-    LOG.log(Level.FINE, "ShuffleControlMessage was successfully sent : {0}", networkControlMessage);
-  }
+  private final class ControlLinkListener implements LinkListener<Message<ShuffleControlMessage>> {
 
-  @Override
-  public void onException(
-      final Throwable throwable,
-      final SocketAddress socketAddress,
-      final Message<ShuffleControlMessage> networkControlMessage) {
-    LOG.log(Level.WARNING, "An exception occurred while sending ShuffleControlMessage to driver. cause : {0}, " +
-        "socket address : {1}, message : {2}", new Object[]{throwable, socketAddress, networkControlMessage});
-    throw new RuntimeException("An exception occurred while sending ShuffleControlMessage to driver", throwable);
-    // TODO (#67) : failure handling.
+    @Override
+    public void onSuccess(final Message<ShuffleControlMessage> networkControlMessage) {
+      LOG.log(Level.FINE, "ShuffleControlMessage was successfully sent : {0}", networkControlMessage);
+    }
+
+    @Override
+    public void onException(
+        final Throwable throwable,
+        final SocketAddress socketAddress,
+        final Message<ShuffleControlMessage> networkControlMessage) {
+      LOG.log(Level.WARNING, "An exception occurred while sending ShuffleControlMessage to driver. cause : {0}, " +
+          "socket address : {1}, message : {2}", new Object[]{throwable, socketAddress, networkControlMessage});
+      throw new RuntimeException("An exception occurred while sending ShuffleControlMessage to driver", throwable);
+      // TODO (#67) : failure handling.
+    }
   }
 }

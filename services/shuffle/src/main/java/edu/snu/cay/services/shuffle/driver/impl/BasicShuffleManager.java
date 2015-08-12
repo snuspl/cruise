@@ -26,6 +26,8 @@ import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.util.Optional;
+import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
@@ -57,6 +59,9 @@ public final class BasicShuffleManager implements ShuffleManager {
   private final Set<String> endPointIdSet;
   private final AtomicInteger setupEndPointCount;
 
+  private final ControlMessageHandler controlMessageHandler;
+  private final ControlLinkListener controlLinkListener;
+
   @Inject
   private BasicShuffleManager(
       final ShuffleDescription shuffleDescription,
@@ -69,6 +74,9 @@ public final class BasicShuffleManager implements ShuffleManager {
     this.endPointIdSet.addAll(shuffleDescription.getReceiverIdList());
     this.endPointIdSet.addAll(shuffleDescription.getSenderIdList());
     this.setupEndPointCount = new AtomicInteger(this.endPointIdSet.size());
+
+    this.controlMessageHandler = new ControlMessageHandler();
+    this.controlLinkListener = new ControlLinkListener();
   }
 
   /**
@@ -88,6 +96,16 @@ public final class BasicShuffleManager implements ShuffleManager {
     return shuffleDescription;
   }
 
+  @Override
+  public EventHandler<Message<ShuffleControlMessage>> getControlMessageHandler() {
+    return controlMessageHandler;
+  }
+
+  @Override
+  public LinkListener<Message<ShuffleControlMessage>> getControlLinkListener() {
+    return controlLinkListener;
+  }
+
   private void broadcastSetupMessage() {
     try {
       for (final String endPointId : endPointIdSet) {
@@ -99,28 +117,34 @@ public final class BasicShuffleManager implements ShuffleManager {
     }
   }
 
-  @Override
-  public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
-    final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
-    if (controlMessage.getCode() == BasicShuffleCode.SHUFFLE_SETUP) {
-      if (setupEndPointCount.decrementAndGet() == 0) {
-        broadcastSetupMessage();
+  private final class ControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {
+
+    @Override
+    public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
+      final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
+      if (controlMessage.getCode() == BasicShuffleCode.SHUFFLE_SETUP) {
+        if (setupEndPointCount.decrementAndGet() == 0) {
+          broadcastSetupMessage();
+        }
       }
     }
   }
 
-  @Override
-  public void onSuccess(final Message<ShuffleControlMessage> networkControlMessage) {
-    LOG.log(Level.FINE, "A ShuffleControlMessage was successfully sent : {0}", networkControlMessage);
-  }
+  private final class ControlLinkListener implements LinkListener<Message<ShuffleControlMessage>> {
 
-  @Override
-  public void onException(
-      final Throwable cause,
-      final SocketAddress socketAddress,
-      final Message<ShuffleControlMessage> networkControlMessage) {
-    LOG.log(Level.WARNING, "An exception occurred while sending a ShuffleControlMessage. " +
-        "cause : {0}, socket address : {1}, message : {2}", new Object[]{cause, socketAddress, networkControlMessage});
-    // TODO (#67) : failure handling.
+    @Override
+    public void onSuccess(final Message<ShuffleControlMessage> networkControlMessage) {
+      LOG.log(Level.FINE, "A ShuffleControlMessage was successfully sent : {0}", networkControlMessage);
+    }
+
+    @Override
+    public void onException(
+        final Throwable cause,
+        final SocketAddress socketAddress,
+        final Message<ShuffleControlMessage> networkControlMessage) {
+      LOG.log(Level.WARNING, "An exception occurred while sending a ShuffleControlMessage. cause : {0}," +
+          " socket address : {1}, message : {2}", new Object[]{cause, socketAddress, networkControlMessage});
+      // TODO (#67) : failure handling.
+    }
   }
 }

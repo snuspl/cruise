@@ -96,8 +96,8 @@ final class ShuffleDriverImpl implements ShuffleDriver {
       final K manager = (K)injector.getInstance(shuffleManagerClass);
       final String shuffleName = shuffleDescription.getShuffleName();
       managerMap.put(shuffleName, manager);
-      controlMessageHandler.registerMessageHandler(shuffleName, manager);
-      controlLinkListener.registerLinkListener(shuffleName, manager);
+      controlMessageHandler.registerMessageHandler(shuffleName, manager.getControlMessageHandler());
+      controlLinkListener.registerLinkListener(shuffleName, manager.getControlLinkListener());
       return manager;
     } catch (final InjectionException e) {
       throw new RuntimeException(e);

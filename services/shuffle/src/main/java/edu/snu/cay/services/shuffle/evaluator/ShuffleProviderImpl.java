@@ -71,8 +71,8 @@ final class ShuffleProviderImpl implements ShuffleProvider {
       final Shuffle shuffle = injector.getInstance(Shuffle.class);
       final String shuffleName = injector.getNamedInstance(ShuffleParameters.ShuffleName.class);
       shuffleMap.put(shuffleName, shuffle);
-      controlMessageHandler.registerMessageHandler(shuffleName, shuffle);
-      controlLinkListener.registerLinkListener(shuffleName, shuffle);
+      controlMessageHandler.registerMessageHandler(shuffleName, shuffle.getControlMessageHandler());
+      controlLinkListener.registerLinkListener(shuffleName, shuffle.getControlLinkListener());
     } catch (final Exception e) {
       throw new RuntimeException("An exception occurred while deserializing shuffle : " + serializedShuffle, e);
     }

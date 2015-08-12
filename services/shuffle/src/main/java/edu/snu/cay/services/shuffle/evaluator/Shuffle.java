@@ -15,19 +15,22 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
-import edu.snu.cay.services.shuffle.common.ShuffleController;
+import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.io.network.Message;
 import org.apache.reef.util.Optional;
+import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.transport.LinkListener;
 
 /**
  * Evaluator side interface which communicates with corresponding ShuffleManager in driver,
  * and also provides shuffle operators to users.
  */
 @EvaluatorSide
-public interface Shuffle<K, V> extends ShuffleController {
+public interface Shuffle<K, V> {
 
   /**
    * Return the ShuffleReceiver for the shuffle.
@@ -56,4 +59,19 @@ public interface Shuffle<K, V> extends ShuffleController {
    * @return the ShuffleControlMessage
    */
   Optional<ShuffleControlMessage> waitForControlMessage(int code);
+
+  /**
+   * @return a shuffle description handled by the ShuffleController
+   */
+  ShuffleDescription getShuffleDescription();
+
+  /**
+   * @return an event handler for shuffle control messages.
+   */
+  EventHandler<Message<ShuffleControlMessage>> getControlMessageHandler();
+
+  /**
+   * @return a link listener for shuffle control messages.
+   */
+  LinkListener<Message<ShuffleControlMessage>> getControlLinkListener();
 }
