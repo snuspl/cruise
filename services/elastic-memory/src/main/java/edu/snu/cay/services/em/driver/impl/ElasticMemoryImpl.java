@@ -15,7 +15,9 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
@@ -26,9 +28,11 @@ import org.apache.htrace.TraceScope;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 @DriverSide
 public final class ElasticMemoryImpl implements ElasticMemory {
@@ -36,14 +40,19 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   private final EvaluatorRequestor requestor;
   private final ElasticMemoryMsgSender sender;
+  private final ElasticMemoryCallbackRouter callbackRouter;
+
+  private final AtomicLong operatorIdCounter = new AtomicLong();
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
                             final ElasticMemoryMsgSender sender,
+                            final ElasticMemoryCallbackRouter callbackRouter,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.requestor = requestor;
     this.sender = sender;
+    this.callbackRouter = callbackRouter;
   }
 
   @Override
@@ -71,9 +80,15 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   public void move(final String dataClassName,
                    final Set<LongRange> idRangeSet,
                    final String srcEvalId,
-                   final String destEvalId) {
+                   final String destEvalId,
+                   final EventHandler<AvroElasticMemoryMessage> callback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
-      sender.sendCtrlMsg(srcEvalId, dataClassName, destEvalId, idRangeSet, TraceInfo.fromSpan(traceScope.getSpan()));
+      final String operatorId = MOVE + "-" + Long.toString(operatorIdCounter.getAndIncrement());
+
+      callbackRouter.register(operatorId, callback);
+
+      sender.sendCtrlMsg(srcEvalId, dataClassName, destEvalId, idRangeSet,
+          operatorId, TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }
 

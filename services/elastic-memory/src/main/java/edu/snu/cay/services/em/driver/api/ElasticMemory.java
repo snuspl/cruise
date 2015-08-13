@@ -15,11 +15,14 @@
  */
 package edu.snu.cay.services.em.driver.api;
 
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.impl.ElasticMemoryImpl;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
+import org.apache.reef.wake.EventHandler;
 
+import javax.annotation.Nullable;
 import java.util.Set;
 
 /**
@@ -61,8 +64,10 @@ public interface ElasticMemory {
    * @param rangeSet the range of integer identifiers that specify the state to move
    * @param srcEvalId identifier of the source evaluator
    * @param destEvalId identifier of the destination evaluator
+   * @param callback handler to call when move operation is completed
    */
-  void move(String dataClassName, Set<LongRange> rangeSet, String srcEvalId, String destEvalId);
+  void move(String dataClassName, Set<LongRange> rangeSet, String srcEvalId, String destEvalId,
+            @Nullable EventHandler<AvroElasticMemoryMessage> callback);
 
   /**
    * Persist the state of an evaluator into stable storage.

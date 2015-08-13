@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.em.examples.simple;
 
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
@@ -186,8 +188,20 @@ final class SimpleEMDriver {
           LOG.info("- " + range + ", size: " + (range.getMaximumLong() - range.getMinimumLong() + 1));
         }
 
+        final boolean[] moveSucceeded = {false};
+
         try (final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS)) {
-          emService.move(SimpleEMTask.KEY, rangeSetToMove, srcId, destId);
+          emService.move(SimpleEMTask.KEY, rangeSetToMove, srcId, destId, new EventHandler<AvroElasticMemoryMessage>() {
+            @Override
+            public void onNext(final AvroElasticMemoryMessage emMsg) {
+              synchronized (SimpleEMDriver.this) {
+                moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS) ? true : false;
+                LOG.info("Move " + emMsg.getOperationId() +
+                    (moveSucceeded[0] ? " succeeded" : " failed"));
+                SimpleEMDriver.this.notifyAll();
+              }
+            }
+          });
         }
 
         // Swap
@@ -195,12 +209,15 @@ final class SimpleEMDriver {
         srcId = destId;
         destId = tmpContextId;
 
-        // Sleep except on final iteration
-        if (i != (iterations - 1)) {
+        // Wait for move to succeed
+        synchronized (this) {
           try {
-            Thread.sleep(periodMillis);
-          } catch (final InterruptedException e) {
-            throw new RuntimeException(e);
+            wait(periodMillis);
+            if (!moveSucceeded[0]) {
+              throw new RuntimeException("Move failed on iteration " + i);
+            }
+          } catch (InterruptedException e) {
+            throw new RuntimeException("Move wait interrupted on iteration " + i, e);
           }
         }
       }
