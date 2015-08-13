@@ -40,7 +40,7 @@ public interface ShuffleManager {
   Optional<Configuration> getShuffleConfiguration(String endPointId);
 
   /**
-   * @return a shuffle description handled by the ShuffleController
+   * @return a shuffle description
    */
   ShuffleDescription getShuffleDescription();
 

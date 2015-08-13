@@ -51,7 +51,16 @@ final class ShuffleDriverImpl implements ShuffleDriver {
   private final ConcurrentMap<String, ShuffleManager> managerMap;
 
   /**
-   * @param confSerializer Tang configuration serializer
+   * Construct a shuffle driver.
+   *
+   * @param shuffleManagerClassName a name of ShuffleManager class
+   * @param confSerializer Tang Configuration serializer
+   * @param rootInjector the root injector to share components that are already created
+   * @param idFactory an identifier factory
+   * @param networkConnectionService a network connection service
+   * @param controlMessageCodec a codec for shuffle control messages
+   * @param controlMessageHandler a message handler for shuffle control messages
+   * @param controlLinkListener a link listener for shuffle control messages
    */
   @Inject
   private ShuffleDriverImpl(
@@ -90,6 +99,8 @@ final class ShuffleDriverImpl implements ShuffleDriver {
       throw new RuntimeException(shuffleDescription.getShuffleName()
           + " was already registered in ShuffleDriver");
     }
+
+    // fork the root injector to share common components that are already instantiated in the driver.
     final Injector injector = rootInjector.forkInjector();
     injector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
     try {

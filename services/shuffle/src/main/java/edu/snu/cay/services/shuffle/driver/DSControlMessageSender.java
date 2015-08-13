@@ -29,7 +29,9 @@ import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Driver-side control message sender.
@@ -40,7 +42,16 @@ public final class DSControlMessageSender {
   private final String shuffleName;
   private final IdentifierFactory idFactory;
   private final ConnectionFactory<ShuffleControlMessage> connectionFactory;
+  private final Map<String, Connection<ShuffleControlMessage>> connectionMap;
 
+  /**
+   * Construct a driver-side control message sender. This can be instantiated multiple times
+   * for the corresponding shuffle manager by different forked injectors.
+   *
+   * @param shuffleDescription the description of the corresponding shuffle
+   * @param idFactory an identifier factory
+   * @param networkConnectionService a network connection service
+   */
   @Inject
   private DSControlMessageSender(
       final ShuffleDescription shuffleDescription,
@@ -51,6 +62,7 @@ public final class DSControlMessageSender {
     final Identifier controlMessageNetworkId = idFactory.getNewInstance(
         ShuffleParameters.SHUFFLE_CONTROL_MSG_NETWORK_ID);
     connectionFactory = networkConnectionService.getConnectionFactory(controlMessageNetworkId);
+    connectionMap = new HashMap<>();
   }
 
   /**
@@ -90,9 +102,18 @@ public final class DSControlMessageSender {
    * @throws NetworkException
    */
   private void send(final String endPointId, final ShuffleControlMessage controlMessage)  throws NetworkException {
-    final Connection<ShuffleControlMessage> connection = connectionFactory.newConnection(
-        idFactory.getNewInstance(endPointId));
+    final Connection<ShuffleControlMessage> connection = getConnection(endPointId);
     connection.open();
     connection.write(controlMessage);
+  }
+
+  private Connection<ShuffleControlMessage> getConnection(final String endPointId) {
+    synchronized (connectionMap) {
+      if (!connectionMap.containsKey(endPointId)) {
+        connectionMap.put(endPointId, connectionFactory.newConnection(idFactory.getNewInstance(endPointId)));
+      }
+
+      return connectionMap.get(endPointId);
+    }
   }
 }

@@ -34,26 +34,35 @@ import javax.inject.Inject;
  */
 final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K, V> {
 
-  // TODO: currently the identifier of the end point is same as the task identifier.
+  // TODO (#63) : currently the identifier of the end point is same as the task identifier.
   // It have to be changed for the case Shuffles are injected in context configuration.
   private final String endPointId;
   private final ShuffleDescription shuffleDescription;
   private final ShuffleTupleMessageCodec shuffleTupleCodec;
-  private final Injector injector;
+  private final Injector rootInjector;
 
   private ShuffleSender shuffleSender;
   private ShuffleReceiver shuffleReceiver;
 
+  /**
+   * Construct a factory that creates shuffle operators. This can be instantiated multiple times
+   * for the corresponding shuffle by different forked injectors.
+   *
+   * @param endPointId the end point id
+   * @param shuffleDescription the description of the corresponding shuffle
+   * @param shuffleTupleCodec the codec for shuffle tuple messages
+   * @param rootInjector the root injector to share components that are already created
+   */
   @Inject
   private ShuffleOperatorFactoryImpl(
       @Parameter(TaskConfigurationOptions.Identifier.class) final String endPointId,
       final ShuffleDescription shuffleDescription,
       final ShuffleTupleMessageCodec shuffleTupleCodec,
-      final Injector injector) {
+      final Injector rootInjector) {
     this.endPointId = endPointId;
     this.shuffleDescription = shuffleDescription;
     this.shuffleTupleCodec = shuffleTupleCodec;
-    this.injector = injector;
+    this.rootInjector = rootInjector;
   }
 
   private void addTupleCodec() {
@@ -114,7 +123,7 @@ final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K
   }
 
   private Injector getForkedInjectorWithParameters() {
-    final Injector forkedInjector = injector.forkInjector(getBaseOperatorConfiguration());
+    final Injector forkedInjector = rootInjector.forkInjector(getBaseOperatorConfiguration());
     forkedInjector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
     return forkedInjector;
   }

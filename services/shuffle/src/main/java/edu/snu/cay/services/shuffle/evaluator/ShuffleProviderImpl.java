@@ -40,6 +40,18 @@ final class ShuffleProviderImpl implements ShuffleProvider {
 
   private final Map<String, Shuffle> shuffleMap;
 
+  /**
+   * Construct a shuffle provider.
+   *
+   * @param rootInjector the root injector to share components that are already created
+   * @param confSerializer Tang Configuration serializer
+   * @param controlMessageHandler a message handler for shuffle control message
+   * @param controlLinkListener a link listener for shuffle control message
+   * @param serializedShuffleSet a set of serialized shuffles
+   * @param idFactory an identifier factory
+   * @param networkConnectionService a network connection service
+   * @param endPointId the end point id for the current evaluator
+   */
   @Inject
   private ShuffleProviderImpl(
       final Injector rootInjector,

@@ -61,7 +61,7 @@ public interface Shuffle<K, V> {
   Optional<ShuffleControlMessage> waitForControlMessage(int code);
 
   /**
-   * @return a shuffle description handled by the ShuffleController
+   * @return a shuffle description
    */
   ShuffleDescription getShuffleDescription();
 

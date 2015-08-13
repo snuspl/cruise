@@ -35,6 +35,10 @@ public final class ControlMessageSynchronizer {
   private Map<Integer, ControlMessageLatch> latchMap;
   private Map<Integer, Boolean> isLatchClosedMap;
 
+  /**
+   * Construct a synchronizer. This can be instantiated multiple times
+   * for the corresponding shuffle by different forked injectors.
+   */
   @Inject
   private ControlMessageSynchronizer() {
     this.latchMap = new HashMap<>();

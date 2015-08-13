@@ -23,7 +23,7 @@ import javax.inject.Inject;
 import java.util.List;
 
 /**
- * TODO : implements functionality.
+ * TODO (#82) : implements base functionality.
  */
 public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V> {
 

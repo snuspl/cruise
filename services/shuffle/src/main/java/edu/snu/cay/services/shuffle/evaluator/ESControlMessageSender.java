@@ -38,6 +38,14 @@ public final class ESControlMessageSender {
   private Connection<ShuffleControlMessage> connectionToManager;
   private final String shuffleName;
 
+  /**
+   * Construct a evaluator-side control message sender. This can be instantiated multiple times
+   * for the corresponding shuffle by different forked injectors.
+   *
+   * @param idFactory an identifier factory
+   * @param shuffleName the name of the corresponding shuffle
+   * @param shuffleNetworkSetup a network setup
+   */
   @Inject
   private ESControlMessageSender(
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
@@ -46,7 +54,7 @@ public final class ESControlMessageSender {
     this.shuffleName = shuffleName;
     final ConnectionFactory<ShuffleControlMessage> connFactory = shuffleNetworkSetup.getControlConnectionFactory();
     connectionToManager = connFactory.newConnection(idFactory
-        .getNewInstance(ShuffleDriverConfiguration.SHUFFLE_DRIVER_NETWORK_IDENTIFIER));
+        .getNewInstance(ShuffleDriverConfiguration.SHUFFLE_DRIVER_NCS_ID));
     try {
       connectionToManager.open();
     } catch (final NetworkException e) {

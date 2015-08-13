@@ -32,7 +32,7 @@ public final class ShuffleDriverStartHandler implements EventHandler<StartTime> 
 
   private final NetworkConnectionService networkConnectionService;
 
-  // TODO: This will be removed after reef-core includes a NCS configuration module for driver.
+  // TODO (#63) : This will be removed after reef-core includes a NCS configuration module for driver.
   private final Identifier driverId;
 
   @Inject
@@ -40,7 +40,7 @@ public final class ShuffleDriverStartHandler implements EventHandler<StartTime> 
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
       final NetworkConnectionService networkConnectionService) {
     this.networkConnectionService = networkConnectionService;
-    this.driverId = idFactory.getNewInstance(ShuffleDriverConfiguration.SHUFFLE_DRIVER_NETWORK_IDENTIFIER);
+    this.driverId = idFactory.getNewInstance(ShuffleDriverConfiguration.SHUFFLE_DRIVER_NCS_ID);
   }
 
   @Override

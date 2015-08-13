@@ -31,8 +31,8 @@ public final class ShuffleDriverConfiguration extends ConfigurationModuleBuilder
    */
   public static final RequiredParameter<String> SHUFFLE_MANAGER_CLASS_NAME = new RequiredParameter<>();
 
-  // TODO: This will be removed after reef-core includes a NCS configuration module for driver.
-  public static final String SHUFFLE_DRIVER_NETWORK_IDENTIFIER = "SHUFFLE_DRIVER_NETWORK_IDENTIFIER";
+  // TODO #(63) : This will be removed after reef-core includes a NCS configuration module for driver.
+  public static final String SHUFFLE_DRIVER_NCS_ID = "SHUFFLE_DRIVER_NCS_ID";
 
   public static final ConfigurationModule CONF = new ShuffleDriverConfiguration()
       .bindNamedParameter(ShuffleParameters.ShuffleManagerClassName.class, SHUFFLE_MANAGER_CLASS_NAME)
