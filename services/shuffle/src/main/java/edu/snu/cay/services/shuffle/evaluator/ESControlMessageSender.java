@@ -72,12 +72,12 @@ public final class ESControlMessageSender {
   }
 
   /**
-   * Send a ShuffleControlMessage with code and dataList to the manager.
+   * Send a ShuffleControlMessage with code and endPointIdList to the manager.
    *
    * @param code a control message code
-   * @param dataList a data list
+   * @param endPointIdList a list of end point ids
    */
-  public void sendToManager(final int code, final List<byte[]> dataList) {
-    connectionToManager.write(new ShuffleControlMessage(code, shuffleName, dataList));
+  public void sendToManager(final int code, final List<String> endPointIdList) {
+    connectionToManager.write(new ShuffleControlMessage(code, shuffleName, endPointIdList));
   }
 }

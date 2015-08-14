@@ -66,7 +66,7 @@ public final class DSControlMessageSender {
   }
 
   /**
-   * Send a ShuffleControlMessage with code to endPointId.
+   * Send a ShuffleControlMessage with code to the endPointId
    * It throws a NetworkException when an error occurs while opening a connection. In this case,
    * the link listener does not call any callbacks as the message is not tried to be sent.
    *
@@ -79,21 +79,21 @@ public final class DSControlMessageSender {
   }
 
   /**
-   * Send a ShuffleControlMessage with code and dataList to endPointId.
+   * Send a ShuffleControlMessage with code and endPointIdList to the endPointId
    * It throws a NetworkException when an error occurs while opening a connection. In this case,
    * the link listener does not call any callbacks as the message is not tried to be sent.
    *
    * @param endPointId an end point id
    * @param code a control message code
-   * @param dataList a data list
+   * @param endPointIdList a list of end point ids
    * @throws NetworkException
    */
-  public void send(final String endPointId, final int code, final List<byte[]> dataList) throws NetworkException {
-    send(endPointId, new ShuffleControlMessage(code, shuffleName, dataList));
+  public void send(final String endPointId, final int code, final List<String> endPointIdList) throws NetworkException {
+    send(endPointId, new ShuffleControlMessage(code, shuffleName, endPointIdList));
   }
 
   /**
-   * Send a ShuffleControlMessage with code and dataList to endPointId.
+   * Send a ShuffleControlMessage to the endPointId
    * It throws a NetworkException when an error occurs while opening a connection. In this case,
    * the link listener does not call any callbacks as the message is not tried to be sent.
    *

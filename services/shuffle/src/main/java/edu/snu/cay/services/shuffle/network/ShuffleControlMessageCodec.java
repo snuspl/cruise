@@ -70,9 +70,8 @@ public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleC
 
       stream.writeInt(messageLength);
       for (int i = 0; i < messageLength; i++) {
-        final byte[] data = msg.get(i);
-        stream.writeInt(data.length);
-        stream.write(data);
+        final String endPointId = msg.get(i);
+        stream.writeUTF(endPointId);
       }
     } catch (final IOException exception) {
       throw new RuntimeException(exception);
@@ -89,18 +88,15 @@ public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleC
       }
 
       final int code = stream.readInt();
-      final int dataNum = stream.readInt();
+      final int messageLength = stream.readInt();
 
-      final List<byte[]> dataList = new ArrayList<>(dataNum);
+      final List<String> endPointIdList = new ArrayList<>(messageLength);
 
-      for (int i = 0; i < dataNum; i++) {
-        final int length = stream.readInt();
-        final byte[] data = new byte[length];
-        stream.readFully(data);
-        dataList.add(data);
+      for (int i = 0; i < messageLength; i++) {
+        endPointIdList.add(stream.readUTF());
       }
 
-      return new ShuffleControlMessage(code, shuffleName, dataList);
+      return new ShuffleControlMessage(code, shuffleName, endPointIdList);
     } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }

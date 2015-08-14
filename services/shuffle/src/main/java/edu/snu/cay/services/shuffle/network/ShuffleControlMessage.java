@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * Shuffle control message containing byte data list and the shuffle name.
  */
-public final class ShuffleControlMessage extends ShuffleMessage<byte[]> {
+public final class ShuffleControlMessage extends ShuffleMessage<String> {
 
   private final int code;
 
@@ -29,10 +29,10 @@ public final class ShuffleControlMessage extends ShuffleMessage<byte[]> {
    *
    * @param code a code
    * @param shuffleName the name of shuffle
-   * @param dataList a data list
+   * @param endPointIdList a list of end point id that are related with the control message
    */
-  public ShuffleControlMessage(final int code, final String shuffleName, final List<byte[]> dataList) {
-    super(shuffleName, dataList);
+  public ShuffleControlMessage(final int code, final String shuffleName, final List<String> endPointIdList) {
+    super(shuffleName, endPointIdList);
     this.code = code;
   }
 
