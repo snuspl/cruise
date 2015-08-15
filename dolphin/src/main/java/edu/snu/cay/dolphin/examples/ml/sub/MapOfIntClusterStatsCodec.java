@@ -43,7 +43,7 @@ public final class MapOfIntClusterStatsCodec implements Codec<Map<Integer, Clust
     final int mapSize = map.size();
     int dimension = 0;
     if (mapSize > 0) {
-      for (final ClusterStats entry: map.values()) {
+      for (final ClusterStats entry : map.values()) {
         dimension = entry.getPointSum().size();
         break;
       }

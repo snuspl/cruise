@@ -128,7 +128,9 @@
     <module name="WhitespaceAfter">
       <property name="tokens" value="COMMA, SEMI"/>
     </module>
-    <module name="WhitespaceAround"/>
+    <module name="WhitespaceAround">
+      <property name="ignoreEnhancedForColon" value="false"/>
+    </module>
 
 
     <!-- Modifier Checks                                    -->
