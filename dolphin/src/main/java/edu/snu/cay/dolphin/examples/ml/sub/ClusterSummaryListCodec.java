@@ -57,7 +57,7 @@ public final class ClusterSummaryListCodec implements Codec<List<ClusterSummary>
       daos.writeInt(numClusters);
       daos.writeInt(dimension);
 
-      for (final ClusterSummary clusterSummary: list) {
+      for (final ClusterSummary clusterSummary : list) {
         daos.writeDouble(clusterSummary.getPrior());
         for (int i = 0; i < dimension; i++) {
           daos.writeDouble(clusterSummary.getCentroid().get(i));
