@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.example.simple;
 
+import edu.snu.cay.services.shuffle.driver.impl.BasicShuffleCode;
 import edu.snu.cay.services.shuffle.evaluator.operator.BaseShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.BaseShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
@@ -41,6 +42,7 @@ public final class MessageExchangeTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(MessageExchangeTask.class.getName());
 
+  private final Shuffle<Integer, Integer> shuffle;
   private final BaseShuffleSender<Integer, Integer> shuffleSender;
   private final List<String> receiverList;
   private final int taskNumber;
@@ -50,14 +52,11 @@ public final class MessageExchangeTask implements Task {
   @Inject
   private MessageExchangeTask(
       final ShuffleProvider shuffleProvider) {
-    final Shuffle<Integer, Integer> shuffle = shuffleProvider
-        .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
-
+    this.shuffle = shuffleProvider.getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     this.shuffleSender = shuffle.getSender();
     shuffleSender.registerTupleLinkListener(new TupleLinkListener());
 
-    final BaseShuffleReceiver<Integer, Integer> shuffleReceiver = shuffle
-        .getReceiver();
+    final BaseShuffleReceiver<Integer, Integer> shuffleReceiver = shuffle.getReceiver();
     shuffleReceiver.registerTupleMessageHandler(new TupleMessageHandler());
 
     this.receiverList = shuffle.getShuffleDescription().getReceiverIdList();
@@ -69,9 +68,7 @@ public final class MessageExchangeTask implements Task {
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
-    // TODO: Currently MessageExchangeTasks sleep 3 seconds to wait the other tasks start.
-    // Synchronization logic for all tasks in same shuffle will be included via another pull request.
-    Thread.sleep(3000);
+    shuffle.waitForControlMessage(BasicShuffleCode.SHUFFLE_INITIALIZED);
     final List<String> messageSentIdList = shuffleSender.sendTuple(generateRandomTuples());
     for (final String receiver : receiverList) {
       if (!messageSentIdList.contains(receiver)) {
@@ -95,7 +92,7 @@ public final class MessageExchangeTask implements Task {
 
   /**
    * The number of tuples is set to be less than the actual number of tasks in order to test the case where
-   * the current task sends an empty message to some tasks.
+   * the current task sends an empty message to some other tasks.
    */
   private int getTupleNumber() {
     return taskNumber * 3 / 5;

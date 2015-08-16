@@ -13,24 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.network;
-
-import org.apache.reef.io.Tuple;
-
-import java.util.List;
 
 /**
- * Shuffle tuple message containing tuple list and the shuffle name.
+ * Implementations of the Shuffle interface.
  */
-public final class ShuffleTupleMessage<K, V> extends ShuffleMessage<Tuple<K, V>> {
-
-  /**
-   * Construct a shuffle tuple message.
-   *
-   * @param shuffleName the name of shuffle
-   * @param tupleList a tuple list
-   */
-  public ShuffleTupleMessage(final String shuffleName, final List<Tuple<K, V>> tupleList) {
-    super(shuffleName, tupleList);
-  }
-}
+package edu.snu.cay.services.shuffle.evaluator.impl;

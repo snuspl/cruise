@@ -15,11 +15,16 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
+import edu.snu.cay.services.shuffle.network.ShuffleControlLinkListener;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessageHandler;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
+import org.apache.reef.io.network.NetworkConnectionService;
+import org.apache.reef.io.network.naming.NameServerParameters;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
+import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -30,18 +35,42 @@ final class ShuffleProviderImpl implements ShuffleProvider {
 
   private final Injector rootInjector;
   private ConfigurationSerializer confSerializer;
+  private final ShuffleControlMessageHandler controlMessageHandler;
+  private final ShuffleControlLinkListener controlLinkListener;
 
   private final Map<String, Shuffle> shuffleMap;
 
+  /**
+   * Construct a shuffle provider.
+   *
+   * @param rootInjector the root injector to share components that are already created
+   * @param confSerializer Tang Configuration serializer
+   * @param controlMessageHandler a message handler for shuffle control message
+   * @param controlLinkListener a link listener for shuffle control message
+   * @param serializedShuffleSet a set of serialized shuffles
+   * @param idFactory an identifier factory
+   * @param networkConnectionService a network connection service
+   * @param endPointId the end point id for the current evaluator
+   */
   @Inject
   private ShuffleProviderImpl(
       final Injector rootInjector,
       final ConfigurationSerializer confSerializer,
-      @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet) {
+      final ShuffleControlMessageHandler controlMessageHandler,
+      final ShuffleControlLinkListener controlLinkListener,
+      @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet,
+      @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
+      final NetworkConnectionService networkConnectionService,
+      @Parameter(ShuffleParameters.EndPointId.class) final String endPointId) {
     this.rootInjector = rootInjector;
     this.confSerializer = confSerializer;
-    this.shuffleMap = new HashMap<>();
+    this.controlMessageHandler = controlMessageHandler;
+    this.controlLinkListener = controlLinkListener;
 
+    // TODO (#63) : Where to register the endPointId should be cleaned up when an issue about
+    // injecting evaluator-side shuffle components in context is resolved.
+    networkConnectionService.registerId(idFactory.getNewInstance(endPointId));
+    this.shuffleMap = new HashMap<>();
     for (final String serializedShuffle : serializedShuffleSet) {
       deserializeShuffle(serializedShuffle);
     }
@@ -52,7 +81,10 @@ final class ShuffleProviderImpl implements ShuffleProvider {
       final Configuration shuffleConfiguration = confSerializer.fromString(serializedShuffle);
       final Injector injector = rootInjector.forkInjector(shuffleConfiguration);
       final Shuffle shuffle = injector.getInstance(Shuffle.class);
-      shuffleMap.put(shuffle.getShuffleDescription().getShuffleName(), shuffle);
+      final String shuffleName = injector.getNamedInstance(ShuffleParameters.ShuffleName.class);
+      shuffleMap.put(shuffleName, shuffle);
+      controlMessageHandler.registerMessageHandler(shuffleName, shuffle.getControlMessageHandler());
+      controlLinkListener.registerLinkListener(shuffleName, shuffle.getControlLinkListener());
     } catch (final Exception e) {
       throw new RuntimeException("An exception occurred while deserializing shuffle : " + serializedShuffle, e);
     }

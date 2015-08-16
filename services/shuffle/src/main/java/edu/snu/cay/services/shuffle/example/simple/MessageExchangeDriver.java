@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.example.simple;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescriptionImpl;
+import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
 import edu.snu.cay.services.shuffle.strategy.KeyShuffleStrategy;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -24,9 +24,6 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.driver.task.TaskConfigurationOptions;
-import org.apache.reef.io.network.impl.BindNetworkConnectionServiceToTask;
-import org.apache.reef.io.network.impl.UnbindNetworkConnectionServiceFromTask;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
@@ -116,8 +113,6 @@ public final class MessageExchangeDriver {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
         .bindNamedParameter(NameResolverNameServerPort.class, String.valueOf(nameServer.getPort()))
-        .bindSetEntry(TaskConfigurationOptions.StartHandlers.class, BindNetworkConnectionServiceToTask.class)
-        .bindSetEntry(TaskConfigurationOptions.StopHandlers.class, UnbindNetworkConnectionServiceFromTask.class)
         .build();
   }
 

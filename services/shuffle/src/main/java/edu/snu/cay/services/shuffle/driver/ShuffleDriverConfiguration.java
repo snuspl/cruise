@@ -19,6 +19,7 @@ import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.RequiredParameter;
+import org.apache.reef.wake.time.Clock;
 
 /**
  * Configuration module for driver-side shuffle components.
@@ -30,7 +31,11 @@ public final class ShuffleDriverConfiguration extends ConfigurationModuleBuilder
    */
   public static final RequiredParameter<String> SHUFFLE_MANAGER_CLASS_NAME = new RequiredParameter<>();
 
+  // TODO #(63) : This will be removed after reef-core includes a NCS configuration module for driver.
+  public static final String SHUFFLE_DRIVER_NCS_ID = "SHUFFLE_DRIVER_NCS_ID";
+
   public static final ConfigurationModule CONF = new ShuffleDriverConfiguration()
       .bindNamedParameter(ShuffleParameters.ShuffleManagerClassName.class, SHUFFLE_MANAGER_CLASS_NAME)
+      .bindSetEntry(Clock.StartHandler.class, ShuffleDriverStartHandler.class)
       .build();
 }

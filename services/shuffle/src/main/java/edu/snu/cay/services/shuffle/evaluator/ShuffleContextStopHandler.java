@@ -15,35 +15,25 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
-import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.evaluator.context.events.ContextStop;
-import org.apache.reef.io.network.NetworkConnectionService;
-import org.apache.reef.io.network.naming.NameServerParameters;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.Identifier;
-import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 
 /**
- * ContextStopHandler which un-registers connection factory for ShuffleTupleMessage.
+ * ContextStopHandler which un-registers connection factories.
  */
 public final class ShuffleContextStopHandler implements EventHandler<ContextStop> {
 
-  private final NetworkConnectionService networkConnectionService;
-  private final Identifier tupleMessageConnectionId;
-
+  private final ShuffleNetworkSetup shuffleNetworkSetup;
   @Inject
   private ShuffleContextStopHandler(
-      @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
-      final NetworkConnectionService networkConnectionService) {
-    this.networkConnectionService = networkConnectionService;
-    this.tupleMessageConnectionId = idFactory.getNewInstance(ShuffleParameters.NETWORK_CONNECTION_SERVICE_ID);
+      final ShuffleNetworkSetup shuffleNetworkSetup) {
+    this.shuffleNetworkSetup = shuffleNetworkSetup;
   }
 
   @Override
   public void onNext(final ContextStop value) {
-    networkConnectionService.unregisterConnectionFactory(tupleMessageConnectionId);
+    shuffleNetworkSetup.unregisterConnectionFactories();
   }
 }

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator.impl;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescription;
+import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.evaluator.operator.BaseShuffleReceiver;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageHandler;
@@ -26,6 +26,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 import java.util.List;
 
+// TODO (#82) : This class will be removed when BaseShuffleReceiver is changed to TupleMessageReceiver
 /**
  * Default implementation of BaseShuffleReceiver.
  */

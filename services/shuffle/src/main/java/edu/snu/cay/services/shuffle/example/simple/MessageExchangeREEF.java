@@ -16,7 +16,7 @@
 package edu.snu.cay.services.shuffle.example.simple;
 
 import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
-import edu.snu.cay.services.shuffle.driver.StaticShuffleManager;
+import edu.snu.cay.services.shuffle.driver.impl.BasicShuffleManager;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -77,7 +77,7 @@ public final class MessageExchangeREEF {
         .build();
 
     final Configuration shuffleConf = ShuffleDriverConfiguration.CONF
-        .set(ShuffleDriverConfiguration.SHUFFLE_MANAGER_CLASS_NAME, StaticShuffleManager.class.getName())
+        .set(ShuffleDriverConfiguration.SHUFFLE_MANAGER_CLASS_NAME, BasicShuffleManager.class.getName())
         .build();
 
     return Configurations.merge(taskNumberConf, driverConf, shuffleConf);

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.description.ShuffleDescription;
+import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.io.Tuple;
@@ -34,6 +34,13 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
   private final ShuffleDescription shuffleDescription;
   private final ShuffleStrategy<K> shuffleStrategy;
 
+  /**
+   * Construct a ShuffleTupleMessage generator.
+   * This should be instantiated once for each shuffle, using several forked injectors.
+   *
+   * @param shuffleDescription the description of the corresponding shuffle
+   * @param shuffleStrategy the shuffle strategy of the corresponding shuffle
+   */
   @Inject
   private ShuffleTupleMessageGeneratorImpl(
       final ShuffleDescription shuffleDescription,

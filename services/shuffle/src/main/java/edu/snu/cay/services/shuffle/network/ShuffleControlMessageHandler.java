@@ -13,8 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.services.shuffle.network;
+
+import javax.inject.Inject;
 
 /**
- * Descriptions of shuffles.
+ * Event handler for ShuffleControlMessage.
  */
-package edu.snu.cay.services.shuffle.description;
+public final class ShuffleControlMessageHandler extends ShuffleMessageHandler<ShuffleControlMessage> {
+
+  @Inject
+  private ShuffleControlMessageHandler() {
+  }
+}
