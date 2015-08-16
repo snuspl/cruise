@@ -39,8 +39,8 @@ public final class ESControlMessageSender {
   private final String shuffleName;
 
   /**
-   * Construct a evaluator-side control message sender. This can be instantiated multiple times
-   * for the corresponding shuffle by different forked injectors.
+   * Construct a evaluator-side control message sender.
+   * This should be instantiated once for each shuffle, using several forked injectors.
    *
    * @param idFactory an identifier factory
    * @param shuffleName the name of the corresponding shuffle

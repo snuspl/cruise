@@ -45,8 +45,8 @@ public final class DSControlMessageSender {
   private final Map<String, Connection<ShuffleControlMessage>> connectionMap;
 
   /**
-   * Construct a driver-side control message sender. This can be instantiated multiple times
-   * for the corresponding shuffle manager by different forked injectors.
+   * Construct a driver-side control message sender.
+   * This should be instantiated once for each shuffle manager, using several forked injectors.
    *
    * @param shuffleDescription the description of the corresponding shuffle
    * @param idFactory an identifier factory

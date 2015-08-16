@@ -51,12 +51,13 @@ public final class ControlMessageSynchronizerTest {
   }
 
   /**
-   * Test releasing the same latch multiple times with many message types.
-   * The main threads release all types of control message until entire threads
+   * Test ControlMessageSynchronizer.resetLatch().
+   *
+   * The main threads reset all types of control message until entire threads
    * receive prescribed number of messages.
    */
   @Test
-  public void testMultipleReleaseWithManyMessageTypes() throws Exception {
+  public void testMultipleResetWithManyMessageTypes() throws Exception {
     LOG.log(Level.INFO, name.getMethodName());
 
     final int threadNum = 50;
@@ -73,11 +74,11 @@ public final class ControlMessageSynchronizerTest {
           for (int i = 0; i < messageNum; i++) {
             final Optional<ShuffleControlMessage> controlMessage;
             if (i % 3 == 0) {
-              controlMessage = synchronizer.waitForControlMessage(FIRST_MESSAGE);
+              controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE);
             } else if (i % 3 == 1) {
-              controlMessage = synchronizer.waitForControlMessage(SECOND_MESSAGE);
+              controlMessage = synchronizer.waitOnLatch(SECOND_MESSAGE);
             } else {
-              controlMessage = synchronizer.waitForControlMessage(THIRD_MESSAGE);
+              controlMessage = synchronizer.waitOnLatch(THIRD_MESSAGE);
             }
 
             assert controlMessage.isPresent();
@@ -99,34 +100,34 @@ public final class ControlMessageSynchronizerTest {
 
     while (waitForFinishing.getCount() != 0) {
       Thread.sleep(rand.nextInt(50) + 10);
-      synchronizer.releaseLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
-      synchronizer.releaseLatch(new ShuffleControlMessage(SECOND_MESSAGE, "test", null));
-      synchronizer.releaseLatch(new ShuffleControlMessage(THIRD_MESSAGE, "test", null));
+      synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
+      synchronizer.resetLatch(new ShuffleControlMessage(SECOND_MESSAGE, "test", null));
+      synchronizer.resetLatch(new ShuffleControlMessage(THIRD_MESSAGE, "test", null));
     }
 
     LOG.log(Level.INFO, "Finished");
   }
 
   /**
-   * Test closing and re-opening a latch.
+   * Test ControlMessageSynchronizer.closeLatch() and reopenLatch().
    *
    * 1. All threads wait for a control message.
    * 2. The latch is closed so that the threads are notified.
-   * 3. The threads test that waitForControlMessage returns Optional.empty if the latch was closed.
+   * 3. The threads test that waitOnLatch returns Optional.empty if the latch was closed.
    * 4. The threads wait for that the latch is re-opened.
-   * 5. Finally the threads wait fot a control message.
-   * 6. Release the latch to test that re-opened latch works well.
+   * 5. Finally the threads wait for a control message.
+   * 6. Reset the latch to test that re-opened latch works well.
    * 7. The test is finished if all threads are closed successfully.
    */
   @Test
-  public void testCloseAndOpenLatch() throws Exception {
+  public void testCloseAndReopenLatch() throws Exception {
     LOG.log(Level.INFO, name.getMethodName());
 
     final int threadNum = 50;
     final CountDownLatch waitForStarting = new CountDownLatch(threadNum);
     final CountDownLatch waitForTestingClosedState = new CountDownLatch(threadNum);
     final CountDownLatch notifyLatchOpened = new CountDownLatch(1);
-    final CountDownLatch waitForLastReleasing = new CountDownLatch(threadNum);
+    final CountDownLatch waitForLastReset = new CountDownLatch(threadNum);
     final CountDownLatch waitForFinishing = new CountDownLatch(threadNum);
 
     final ExecutorService executor = Executors.newCachedThreadPool();
@@ -139,10 +140,10 @@ public final class ControlMessageSynchronizerTest {
           waitForStarting.countDown();
 
           // The current thread will be notified when the latch is closed
-          synchronizer.waitForControlMessage(FIRST_MESSAGE);
+          synchronizer.waitOnLatch(FIRST_MESSAGE);
 
           for (int i = 0; i < 100; i++) {
-            final Optional<ShuffleControlMessage> controlMessage = synchronizer.waitForControlMessage(FIRST_MESSAGE);
+            final Optional<ShuffleControlMessage> controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE);
 
             // The synchronizer returns Optional.empty if the latch was closed
             assert !controlMessage.isPresent();
@@ -157,9 +158,9 @@ public final class ControlMessageSynchronizerTest {
             throw new RuntimeException(e);
           }
 
-          waitForLastReleasing.countDown();
+          waitForLastReset.countDown();
 
-          synchronizer.waitForControlMessage(FIRST_MESSAGE);
+          synchronizer.waitOnLatch(FIRST_MESSAGE);
 
           waitForFinishing.countDown();
         }
@@ -178,15 +179,15 @@ public final class ControlMessageSynchronizerTest {
     waitForTestingClosedState.await();
 
     LOG.log(Level.INFO, "Open the latch");
-    synchronizer.openLatch(FIRST_MESSAGE);
+    synchronizer.reopenLatch(FIRST_MESSAGE);
 
     notifyLatchOpened.countDown();
 
-    waitForLastReleasing.await();
+    waitForLastReset.await();
 
     Thread.sleep(500);
-    LOG.log(Level.INFO, "Release the latch");
-    synchronizer.releaseLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
+    LOG.log(Level.INFO, "Reset the latch");
+    synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
 
     waitForFinishing.await();
     LOG.log(Level.INFO, "Finished");

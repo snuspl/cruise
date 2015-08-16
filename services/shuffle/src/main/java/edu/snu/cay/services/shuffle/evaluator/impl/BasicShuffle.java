@@ -101,7 +101,7 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
    */
   private void sendSetupMessage() {
     if (isSetupMessageSent.compareAndSet(false, true)) {
-      controlMessageSender.sendToManager(BasicShuffleCode.SHUFFLE_SETUP);
+      controlMessageSender.sendToManager(BasicShuffleCode.END_POINT_INITIALIZED);
     }
   }
 
@@ -111,7 +111,7 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public Optional<ShuffleControlMessage> waitForControlMessage(final int code) {
-    return synchronizer.waitForControlMessage(code);
+    return synchronizer.waitOnLatch(code);
   }
 
   /**
@@ -132,13 +132,12 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
     return controlLinkListener;
   }
 
-
   private final class ControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {
 
     @Override
     public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
       final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
-      if (controlMessage.getCode() == BasicShuffleCode.MANAGER_SETUP) {
+      if (controlMessage.getCode() == BasicShuffleCode.SHUFFLE_INITIALIZED) {
         if (initialized.compareAndSet(false, true)) {
           synchronizer.closeLatch(controlMessage);
         }

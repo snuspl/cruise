@@ -68,7 +68,7 @@ public final class MessageExchangeTask implements Task {
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
-    shuffle.waitForControlMessage(BasicShuffleCode.MANAGER_SETUP);
+    shuffle.waitForControlMessage(BasicShuffleCode.SHUFFLE_INITIALIZED);
     final List<String> messageSentIdList = shuffleSender.sendTuple(generateRandomTuples());
     for (final String receiver : receiverList) {
       if (!messageSentIdList.contains(receiver)) {

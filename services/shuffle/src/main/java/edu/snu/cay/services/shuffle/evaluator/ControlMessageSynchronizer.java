@@ -25,8 +25,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Evaluator-side interface to synchronize threads that wait for receiving
- * specific ShuffleControlMessages.
+ * Evaluator-side interface to synchronize threads that wait for receiving specific ShuffleControlMessages.
+ *
+ * First, threads should wait on a latch for a certain ShuffleControlMessage, specified by a code.
+ * Second, the waiting threads are woken up by another thread that resets the latch.
+ * Finally, the latch may be closed in case additional threads try to wait on the latch when waiting is unnecessary.
+ * The latch can be reopened for later use.
  */
 @EvaluatorSide
 @ThreadSafe
@@ -35,10 +39,6 @@ public final class ControlMessageSynchronizer {
   private Map<Integer, ControlMessageLatch> latchMap;
   private Map<Integer, Boolean> isLatchClosedMap;
 
-  /**
-   * Construct a synchronizer. This can be instantiated multiple times
-   * for the corresponding shuffle by different forked injectors.
-   */
   @Inject
   private ControlMessageSynchronizer() {
     this.latchMap = new HashMap<>();
@@ -46,55 +46,13 @@ public final class ControlMessageSynchronizer {
   }
 
   /**
-   * Open the latch for the code. It throws IllegalStateException if the latch is not closed.
-   *
-   * @param code a control message code
-   */
-  public void openLatch(final int code) {
-    synchronized (this) {
-      final Boolean isLatchClosed = isLatchClosedMap.get(code);
-      if (isLatchClosed == null || !isLatchClosed) {
-        throw new IllegalStateException("You cannot open the latch for the code[ " + code + " ] which is not closed");
-      }
-      isLatchClosedMap.put(code, false);
-    }
-  }
-
-  /**
-   * Close the latch for shuffleControlMessage. The later waitForControlMessage
-   * calls does not wait until the latch is re-opened.
-   *
-   * @param shuffleControlMessage a shuffle control message
-   */
-  public void closeLatch(final ShuffleControlMessage shuffleControlMessage) {
-    synchronized (this) {
-      releaseLatch(shuffleControlMessage);
-      isLatchClosedMap.put(shuffleControlMessage.getCode(), true);
-    }
-  }
-
-  /**
-   * Release the latch for shuffleControlMessage and notify all waiting threads on the latch.
-   *
-   * @param shuffleControlMessage a shuffle control message
-   */
-  public void releaseLatch(final ShuffleControlMessage shuffleControlMessage) {
-    synchronized (this) {
-      if (latchMap.containsKey(shuffleControlMessage.getCode())) {
-        latchMap.get(shuffleControlMessage.getCode()).release(shuffleControlMessage);
-        latchMap.remove(shuffleControlMessage.getCode());
-      }
-    }
-  }
-
-  /**
-   * Wait for the other thread releasing the latch for the code.
-   * It returns Optional.empty if the latch is closed.
+   * Wait for another thread to reset the latch for the ShuffleControlMessage that is specified by the given code.
+   * If the latch is closed, the caller returns Optional.empty without waiting.
    *
    * @param code a control message code
    * @return the expected ShuffleControlMessage
    */
-  public Optional<ShuffleControlMessage> waitForControlMessage(final int code) {
+  public Optional<ShuffleControlMessage> waitOnLatch(final int code) {
     final ControlMessageLatch controlMessageLatch;
     synchronized (this) {
       final Boolean isLatchClosed = isLatchClosedMap.get(code);
@@ -109,12 +67,53 @@ public final class ControlMessageSynchronizer {
       controlMessageLatch = latchMap.get(code);
     }
 
-    return controlMessageLatch.waitForControlMessage();
+    return controlMessageLatch.waitOnLatch();
   }
 
+  /**
+   * Release all waiting threads on the latch for shuffleControlMessage and reset the latch.
+   *
+   * @param shuffleControlMessage a shuffle control message
+   */
+  public void resetLatch(final ShuffleControlMessage shuffleControlMessage) {
+    synchronized (this) {
+      if (latchMap.containsKey(shuffleControlMessage.getCode())) {
+        latchMap.get(shuffleControlMessage.getCode()).release(shuffleControlMessage);
+        latchMap.remove(shuffleControlMessage.getCode());
+      }
+    }
+  }
 
   /**
-   * Latch for a corresponding control message code.
+   * Reset and close the latch for shuffleControlMessage so that
+   * threads that try to wait on shuffleControlMessage return without waiting.
+   *
+   * @param shuffleControlMessage a shuffle control message
+   */
+  public void closeLatch(final ShuffleControlMessage shuffleControlMessage) {
+    synchronized (this) {
+      resetLatch(shuffleControlMessage);
+      isLatchClosedMap.put(shuffleControlMessage.getCode(), true);
+    }
+  }
+
+  /**
+   * Reopen the latch for the code. Throws IllegalStateException if the latch is not closed.
+   *
+   * @param code a control message code
+   */
+  public void reopenLatch(final int code) {
+    synchronized (this) {
+      final Boolean isLatchClosed = isLatchClosedMap.get(code);
+      if (isLatchClosed == null || !isLatchClosed) {
+        throw new IllegalStateException("You cannot reopen the latch for the code[ " + code + " ] which is not closed");
+      }
+      isLatchClosedMap.put(code, false);
+    }
+  }
+
+  /**
+   * Latch for a certain control message code.
    */
   private final class ControlMessageLatch {
 
@@ -127,7 +126,7 @@ public final class ControlMessageSynchronizer {
     }
 
     /**
-     * Release the latch with the controlMessage.
+     * Release the latch for controlMessage.
      *
      * @param controlMessage a shuffle control message
      */
@@ -135,7 +134,7 @@ public final class ControlMessageSynchronizer {
       synchronized (this) {
         if (controlMessage.getCode() != expectedCode) {
           throw new IllegalArgumentException("The expected code is " + expectedCode +
-              " but the latch is released with " + controlMessage.getCode());
+              " but the latch was released with " + controlMessage.getCode());
         }
 
         if (!released) {
@@ -147,11 +146,11 @@ public final class ControlMessageSynchronizer {
     }
 
     /**
-     * Wait for the other thread releasing the latch.
+     * Wait for another thread to release the latch.
      *
      * @return the expected ShuffleControlMessage
      */
-    private Optional<ShuffleControlMessage> waitForControlMessage() {
+    private Optional<ShuffleControlMessage> waitOnLatch() {
       synchronized (this) {
         try {
           while (!released) {

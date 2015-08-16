@@ -45,7 +45,7 @@ import java.util.logging.Logger;
  * The initial shuffle description can never be changed. Users cannot add or remove more tasks
  * to the shuffle and cannot change the key, value codecs and shuffling strategy after the manager is created.
  *
- * The manager broadcasts a MANAGER_SETUP message to all end points in the shuffle
+ * The manager broadcasts a SHUFFLE_INITIALIZED message to all end points in the shuffle
  * when all the end points are initialized.
  */
 @DriverSide
@@ -109,7 +109,7 @@ public final class BasicShuffleManager implements ShuffleManager {
   private void broadcastSetupMessage() {
     try {
       for (final String endPointId : endPointIdSet) {
-        controlMessageSender.send(endPointId, BasicShuffleCode.MANAGER_SETUP);
+        controlMessageSender.send(endPointId, BasicShuffleCode.SHUFFLE_INITIALIZED);
       }
     } catch (final NetworkException e) {
       // TODO (#67) : failure handling
@@ -122,7 +122,7 @@ public final class BasicShuffleManager implements ShuffleManager {
     @Override
     public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
       final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
-      if (controlMessage.getCode() == BasicShuffleCode.SHUFFLE_SETUP) {
+      if (controlMessage.getCode() == BasicShuffleCode.END_POINT_INITIALIZED) {
         if (setupEndPointCount.decrementAndGet() == 0) {
           // TODO (#82) : This redundant sleep will be removed and StaticPushShuffleManager will be added.
           try {

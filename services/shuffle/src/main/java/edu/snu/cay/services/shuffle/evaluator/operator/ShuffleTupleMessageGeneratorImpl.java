@@ -35,8 +35,8 @@ final class ShuffleTupleMessageGeneratorImpl<K, V> implements ShuffleTupleMessag
   private final ShuffleStrategy<K> shuffleStrategy;
 
   /**
-   * Construct a ShuffleTupleMessage generator. This can be instantiated multiple times
-   * for the corresponding shuffle by different forked injectors.
+   * Construct a ShuffleTupleMessage generator.
+   * This should be instantiated once for each shuffle, using several forked injectors.
    *
    * @param shuffleDescription the description of the corresponding shuffle
    * @param shuffleStrategy the shuffle strategy of the corresponding shuffle

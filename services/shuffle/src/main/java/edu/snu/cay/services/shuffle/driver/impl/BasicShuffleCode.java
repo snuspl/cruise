@@ -18,19 +18,23 @@ package edu.snu.cay.services.shuffle.driver.impl;
 // TODO (#82) : This class will be removed when BasicShuffle and BasicShuffleManager are removed.
 /**
  * Control message codes for basic shuffle classes.
- * The prefix of codes represents where the control message was sent from.
  */
 public final class BasicShuffleCode {
 
   /**
-   * An end point is setup.
+   * An end point is initialized.
+   *
+   * A Shuffle instance in an evaluator sends the message to the manager.
    */
-  public static final int SHUFFLE_SETUP = 0;
+  public static final int END_POINT_INITIALIZED = 0;
 
   /**
-   * All end points in the shuffle are setup.
+   * All end points in the shuffle are initialized.
+   *
+   * When all of end points send END_POINT_INITIALIZED to the manager, the manager
+   * broadcast SHUFFLE_INITIALIZED message.
    */
-  public static final int MANAGER_SETUP = 1;
+  public static final int SHUFFLE_INITIALIZED = 1;
 
   /**
    * Empty private constructor to prohibit instantiation of utility class.
