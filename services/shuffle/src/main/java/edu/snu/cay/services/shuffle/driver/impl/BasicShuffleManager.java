@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-// TODO (#82) : This class will be removed and StaticPushShuffleManager will be added
+// TODO (#88) : This class will be removed and StaticPushShuffleManager will be added
 // as a basic implementation of ShuffleManager.
 /**
  * Simple implementation of ShuffleManager.
@@ -124,7 +124,7 @@ public final class BasicShuffleManager implements ShuffleManager {
       final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
       if (controlMessage.getCode() == BasicShuffleCode.END_POINT_INITIALIZED) {
         if (setupEndPointCount.decrementAndGet() == 0) {
-          // TODO (#82) : This redundant sleep will be removed and StaticPushShuffleManager will be added.
+          // TODO (#88) : This redundant sleep will be removed and StaticPushShuffleManager will be added.
           try {
             // Wait for all tasks register their EventHandler.
             Thread.sleep(2000);
