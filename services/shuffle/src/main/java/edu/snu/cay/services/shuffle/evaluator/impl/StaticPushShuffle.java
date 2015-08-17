@@ -16,7 +16,7 @@
 package edu.snu.cay.services.shuffle.evaluator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
-import edu.snu.cay.services.shuffle.driver.impl.BasicShuffleCode;
+import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleCode;
 import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-// TODO (#88) : This class will be removed and StaticPushShuffle will be added as a basic implementation of Shuffle.
+// TODO (#88) : Implement functionality.
 /**
  * Simple implementation of Shuffle.
  *
@@ -44,9 +44,9 @@ import java.util.logging.Logger;
  * to the shuffle and cannot change the key, value codecs and shuffling strategy after the Shuffle is created.
  */
 @EvaluatorSide
-public final class BasicShuffle<K, V> implements Shuffle<K, V> {
+public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
 
-  private static final Logger LOG = Logger.getLogger(BasicShuffle.class.getName());
+  private static final Logger LOG = Logger.getLogger(StaticPushShuffle.class.getName());
 
   private final ShuffleDescription shuffleDescription;
   private final ShuffleOperatorFactory<K, V> operatorFactory;
@@ -60,7 +60,7 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
   private final ControlLinkListener controlLinkListener;
 
   @Inject
-  private BasicShuffle(
+  private StaticPushShuffle(
       final ShuffleDescription shuffleDescription,
       final ShuffleOperatorFactory<K, V> operatorFactory,
       final ESControlMessageSender controlMessageSender,
@@ -101,7 +101,7 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
    */
   private void sendSetupMessage() {
     if (isSetupMessageSent.compareAndSet(false, true)) {
-      controlMessageSender.sendToManager(BasicShuffleCode.END_POINT_INITIALIZED);
+      controlMessageSender.sendToManager(StaticPushShuffleCode.END_POINT_INITIALIZED);
     }
   }
 
@@ -137,7 +137,7 @@ public final class BasicShuffle<K, V> implements Shuffle<K, V> {
     @Override
     public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
       final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
-      if (controlMessage.getCode() == BasicShuffleCode.SHUFFLE_INITIALIZED) {
+      if (controlMessage.getCode() == StaticPushShuffleCode.SHUFFLE_INITIALIZED) {
         if (initialized.compareAndSet(false, true)) {
           synchronizer.closeLatch(controlMessage);
         }

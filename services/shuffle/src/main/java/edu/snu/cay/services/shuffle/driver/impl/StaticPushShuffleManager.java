@@ -18,7 +18,7 @@ package edu.snu.cay.services.shuffle.driver.impl;
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.driver.DSControlMessageSender;
 import edu.snu.cay.services.shuffle.driver.ShuffleManager;
-import edu.snu.cay.services.shuffle.evaluator.impl.BasicShuffle;
+import edu.snu.cay.services.shuffle.evaluator.impl.StaticPushShuffle;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.utils.ShuffleDescriptionSerializer;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-// TODO (#88) : This class will be removed and StaticPushShuffleManager will be added
+// TODO (#88) : Implement functionality
 // as a basic implementation of ShuffleManager.
 /**
  * Simple implementation of ShuffleManager.
@@ -49,9 +49,9 @@ import java.util.logging.Logger;
  * when all the end points are initialized.
  */
 @DriverSide
-public final class BasicShuffleManager implements ShuffleManager {
+public final class StaticPushShuffleManager implements ShuffleManager {
 
-  private static final Logger LOG = Logger.getLogger(BasicShuffleManager.class.getName());
+  private static final Logger LOG = Logger.getLogger(StaticPushShuffleManager.class.getName());
 
   private final ShuffleDescription shuffleDescription;
   private final ShuffleDescriptionSerializer descriptionSerializer;
@@ -63,7 +63,7 @@ public final class BasicShuffleManager implements ShuffleManager {
   private final ControlLinkListener controlLinkListener;
 
   @Inject
-  private BasicShuffleManager(
+  private StaticPushShuffleManager(
       final ShuffleDescription shuffleDescription,
       final ShuffleDescriptionSerializer descriptionSerializer,
       final DSControlMessageSender controlMessageSender) {
@@ -85,7 +85,7 @@ public final class BasicShuffleManager implements ShuffleManager {
    */
   @Override
   public Optional<Configuration> getShuffleConfiguration(final String endPointId) {
-    return descriptionSerializer.serialize(BasicShuffle.class, shuffleDescription, endPointId);
+    return descriptionSerializer.serialize(StaticPushShuffle.class, shuffleDescription, endPointId);
   }
 
   /**
@@ -109,7 +109,7 @@ public final class BasicShuffleManager implements ShuffleManager {
   private void broadcastSetupMessage() {
     try {
       for (final String endPointId : endPointIdSet) {
-        controlMessageSender.send(endPointId, BasicShuffleCode.SHUFFLE_INITIALIZED);
+        controlMessageSender.send(endPointId, StaticPushShuffleCode.SHUFFLE_INITIALIZED);
       }
     } catch (final NetworkException e) {
       // TODO (#67) : failure handling
@@ -122,7 +122,7 @@ public final class BasicShuffleManager implements ShuffleManager {
     @Override
     public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
       final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
-      if (controlMessage.getCode() == BasicShuffleCode.END_POINT_INITIALIZED) {
+      if (controlMessage.getCode() == StaticPushShuffleCode.END_POINT_INITIALIZED) {
         if (setupEndPointCount.decrementAndGet() == 0) {
           // TODO (#88) : This redundant sleep will be removed and StaticPushShuffleManager will be added.
           try {

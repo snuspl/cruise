@@ -15,11 +15,11 @@
  */
 package edu.snu.cay.services.shuffle.driver.impl;
 
-// TODO (#88) : This class will be removed when BasicShuffle and BasicShuffleManager are removed.
+// TODO (#88) : Implement functionality
 /**
  * Control message codes for basic shuffle classes.
  */
-public final class BasicShuffleCode {
+public final class StaticPushShuffleCode {
 
   /**
    * An end point is initialized.
@@ -39,6 +39,6 @@ public final class BasicShuffleCode {
   /**
    * Empty private constructor to prohibit instantiation of utility class.
    */
-  private BasicShuffleCode() {
+  private StaticPushShuffleCode() {
   }
 }
