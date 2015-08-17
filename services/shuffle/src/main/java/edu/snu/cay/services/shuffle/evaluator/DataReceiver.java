@@ -13,30 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator.operator;
+package edu.snu.cay.services.shuffle.evaluator;
 
-import edu.snu.cay.services.shuffle.evaluator.operator.impl.BaseShuffleReceiverImpl;
+import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageHandler;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
-// TODO (#82) : BaseShuffleReceiver will be renamed to TupleMessageReceiver
-// that does not implement ShuffleReceiver interface.
+import javax.inject.Inject;
+
 /**
- * Shuffle receiver that has base operation to receive tuples.
+ * Data receiver that has base operation to receive tuples.
  *
  * Users have to register event handler for ShuffleTupleMessage to receive
  * tuples from senders.
  */
-@DefaultImplementation(BaseShuffleReceiverImpl.class)
-public interface BaseShuffleReceiver<K, V> extends ShuffleReceiver<K, V> {
+public final class DataReceiver<K, V> {
+
+  private final String shuffleName;
+  private final ShuffleTupleMessageHandler shuffleTupleMessageHandler;
+
+  @Inject
+  private DataReceiver(
+      final ShuffleDescription shuffleDescription,
+      final ShuffleTupleMessageHandler shuffleTupleMessageHandler) {
+    this.shuffleName = shuffleDescription.getShuffleName();
+    this.shuffleTupleMessageHandler = shuffleTupleMessageHandler;
+  }
 
   /**
    * Register a message handler that receives tuples arriving at this receiver.
    *
    * @param messageHandler event handler for ShuffleTupleMessage
    */
-  void registerTupleMessageHandler(EventHandler<Message<ShuffleTupleMessage<K, V>>> messageHandler);
-
+  public void registerTupleMessageHandler(final EventHandler<Message<ShuffleTupleMessage<K, V>>> messageHandler) {
+    shuffleTupleMessageHandler.registerMessageHandler(shuffleName, (EventHandler) messageHandler);
+  }
 }

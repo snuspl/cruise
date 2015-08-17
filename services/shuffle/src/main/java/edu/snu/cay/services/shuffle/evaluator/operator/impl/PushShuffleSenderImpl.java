@@ -15,24 +15,22 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator.impl;
 
-import edu.snu.cay.services.shuffle.evaluator.operator.BaseShuffleSender;
+import edu.snu.cay.services.shuffle.evaluator.DataSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
-import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 
 import javax.inject.Inject;
-import java.util.List;
 
 /**
  * TODO (#82) : implements base functionality.
  */
 public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V> {
 
-  private BaseShuffleSender<K, V> baseShuffleSender;
+  private DataSender<K, V> dataSender;
 
   @Inject
   private PushShuffleSenderImpl(
-      final BaseShuffleSender<K, V> baseShuffleSender) {
-    this.baseShuffleSender = baseShuffleSender;
+      final DataSender<K, V> dataSender) {
+    this.dataSender = dataSender;
   }
 
   @Override
@@ -48,15 +46,5 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public void completeAndWaitForReceivers() {
 
-  }
-
-  @Override
-  public ShuffleStrategy<K> getShuffleStrategy() {
-    return baseShuffleSender.getShuffleStrategy();
-  }
-
-  @Override
-  public List<String> getSelectedReceiverIdList(final K key) {
-    return baseShuffleSender.getSelectedReceiverIdList(key);
   }
 }

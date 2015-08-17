@@ -15,9 +15,8 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator.impl;
 
-import edu.snu.cay.services.shuffle.evaluator.operator.BaseShuffleReceiver;
+import edu.snu.cay.services.shuffle.evaluator.DataReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
-import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.io.Tuple;
 
 import javax.inject.Inject;
@@ -28,25 +27,15 @@ import java.util.List;
  */
 public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<K, V> {
 
-  private final BaseShuffleReceiver<K, V> baseShuffleReceiver;
+  private final DataReceiver<K, V> dataReceiver;
   @Inject
   private PushShuffleReceiverImpl(
-      final BaseShuffleReceiver<K, V> baseShuffleReceiver) {
-    this.baseShuffleReceiver = baseShuffleReceiver;
+      final DataReceiver<K, V> dataReceiver) {
+    this.dataReceiver = dataReceiver;
   }
 
   @Override
   public List<Tuple<K, V>> receive() {
     return null;
-  }
-
-  @Override
-  public ShuffleStrategy<K> getShuffleStrategy() {
-    return baseShuffleReceiver.getShuffleStrategy();
-  }
-
-  @Override
-  public List<String> getSelectedReceiverIdList(final K key) {
-    return baseShuffleReceiver.getSelectedReceiverIdList(key);
   }
 }
