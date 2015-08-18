@@ -16,8 +16,7 @@
 package edu.snu.cay.services.shuffle.evaluator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
-import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleCode;
-import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
+import edu.snu.cay.services.shuffle.driver.impl.PushShuffleCode;
 import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorFactory;
@@ -49,10 +48,8 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
 
   private final ShuffleDescription shuffleDescription;
   private final ShuffleOperatorFactory<K, V> operatorFactory;
-  private final ESControlMessageSender controlMessageSender;
   private final ControlMessageSynchronizer synchronizer;
 
-  private final AtomicBoolean isSetupMessageSent;
   private final AtomicBoolean initialized;
 
   private final ControlMessageHandler controlMessageHandler;
@@ -62,15 +59,12 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private StaticPushShuffle(
       final ShuffleDescription shuffleDescription,
       final ShuffleOperatorFactory<K, V> operatorFactory,
-      final ESControlMessageSender controlMessageSender,
       final ControlMessageSynchronizer synchronizer) {
     this.shuffleDescription = shuffleDescription;
     this.operatorFactory = operatorFactory;
     this.synchronizer = synchronizer;
 
-    this.isSetupMessageSent = new AtomicBoolean();
     this.initialized = new AtomicBoolean();
-    this.controlMessageSender = controlMessageSender;
 
     this.controlMessageHandler = new ControlMessageHandler();
     this.controlLinkListener = new ControlLinkListener();
@@ -81,7 +75,6 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleReceiver<K, V>> T getReceiver() {
-    sendSetupMessage();
     return operatorFactory.newShuffleReceiver();
   }
 
@@ -90,18 +83,7 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleSender<K, V>> T getSender() {
-    sendSetupMessage();
     return operatorFactory.newShuffleSender();
-  }
-
-  /**
-   * Send a setup message to driver. This should not be called in the constructor
-   * since the initialization can be finished before users register their shuffle message handler.
-   */
-  private void sendSetupMessage() {
-    if (isSetupMessageSent.compareAndSet(false, true)) {
-      controlMessageSender.sendToManager(StaticPushShuffleCode.END_POINT_INITIALIZED);
-    }
   }
 
   /**
@@ -134,12 +116,27 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private final class ControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {
 
     @Override
-    public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
-      final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
-      if (controlMessage.getCode() == StaticPushShuffleCode.SHUFFLE_INITIALIZED) {
+    public void onNext(final Message<ShuffleControlMessage> message) {
+      final ShuffleControlMessage controlMessage = message.getData().iterator().next();
+      switch (controlMessage.getCode()) {
+      case PushShuffleCode.SHUFFLE_INITIALIZED:
         if (initialized.compareAndSet(false, true)) {
           synchronizer.closeLatch(controlMessage);
         }
+        break;
+
+      case PushShuffleCode.ALL_RECEIVERS_RECEIVED:
+        LOG.log(Level.INFO, "All receivers received tuples from senders");
+        synchronizer.closeLatch(controlMessage);
+        break;
+
+      case PushShuffleCode.ALL_SENDERS_COMPLETED:
+        LOG.log(Level.INFO, "All senders are completed to send tuples");
+        synchronizer.closeLatch(controlMessage);
+        break;
+
+      default:
+        throw new RuntimeException("Illegal code[ " + controlMessage.getCode() + " ] from " + message.getSrcId());
       }
     }
   }

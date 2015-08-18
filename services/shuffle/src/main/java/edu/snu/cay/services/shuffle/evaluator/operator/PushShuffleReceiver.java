@@ -25,6 +25,9 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 @DefaultImplementation(PushShuffleReceiverImpl.class)
 public interface PushShuffleReceiver<K, V> extends ShuffleReceiver<K, V> {
 
+  /**
+   *
+   */
   Iterable<Tuple<K, V>> receive();
 
 }

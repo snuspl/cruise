@@ -16,28 +16,27 @@
 package edu.snu.cay.services.shuffle.driver.impl;
 
 /**
- * Control message codes for basic shuffle classes.
+ *
  */
-public final class StaticPushShuffleCode {
+public final class PushShuffleCode {
 
-  /**
-   * An end point is initialized.
-   *
-   * A Shuffle instance in an evaluator sends the message to the manager.
-   */
-  public static final int END_POINT_INITIALIZED = 0;
+  public static final int SHUFFLE_INITIALIZED = 0;
 
-  /**
-   * All end points in the shuffle are initialized.
-   *
-   * When all of end points send END_POINT_INITIALIZED to the manager, the manager
-   * broadcast SHUFFLE_INITIALIZED message.
-   */
-  public static final int SHUFFLE_INITIALIZED = 1;
+  public static final int SENDER_INITIALIZED = 1;
+
+  public static final int RECEIVER_INITIALIZED = 2;
+
+  public static final int SENDER_COMPLETED = 3;
+
+  public static final int ALL_SENDERS_COMPLETED = 4;
+
+  public static final int RECEIVER_RECEIVED = 5;
+
+  public static final int ALL_RECEIVERS_RECEIVED = 6;
 
   /**
    * Empty private constructor to prohibit instantiation of utility class.
    */
-  private StaticPushShuffleCode() {
+  private PushShuffleCode() {
   }
 }

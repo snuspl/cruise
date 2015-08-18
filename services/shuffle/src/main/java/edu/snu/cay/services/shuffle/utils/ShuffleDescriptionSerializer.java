@@ -16,6 +16,8 @@
 package edu.snu.cay.services.shuffle.utils;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
+import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import org.apache.reef.tang.Configuration;
@@ -38,11 +40,16 @@ public final class ShuffleDescriptionSerializer {
    * Return serialized Configuration with certain Shuffle type.
    *
    * @param shuffleClass a type of Shuffle
+   * @param senderClass a type of ShuffleSender
+   * @param receiverClass a type of ShuffleReceiver
    * @param shuffleDescription a shuffle description to serialize
    * @return serialized configuration
    */
   public Configuration serialize(
-      final Class<? extends Shuffle> shuffleClass, final ShuffleDescription shuffleDescription) {
+      final Class<? extends Shuffle> shuffleClass,
+      final Class<? extends ShuffleSender> senderClass,
+      final Class<? extends ShuffleReceiver> receiverClass,
+      final ShuffleDescription shuffleDescription) {
     final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
     confBuilder.bindImplementation(Shuffle.class, shuffleClass);
     confBuilder.bindNamedParameter(ShuffleParameters.ShuffleName.class, shuffleDescription.getShuffleName());
@@ -52,6 +59,8 @@ public final class ShuffleDescriptionSerializer {
         ShuffleParameters.ShuffleValueCodecClassName.class, shuffleDescription.getValueCodecClass().getName());
     confBuilder.bindNamedParameter(
         ShuffleParameters.ShuffleStrategyClassName.class, shuffleDescription.getShuffleStrategyClass().getName());
+    confBuilder.bindImplementation(ShuffleSender.class, senderClass);
+    confBuilder.bindImplementation(ShuffleReceiver.class, receiverClass);
 
     for (final String senderId : shuffleDescription.getSenderIdList()) {
       confBuilder.bindSetEntry(ShuffleParameters.ShuffleSenderIdSet.class, senderId);
@@ -69,12 +78,16 @@ public final class ShuffleDescriptionSerializer {
    * the endPointId as a sender or a receiver.
    *
    * @param shuffleClass a type of Shuffle
+   * @param senderClass a type of ShuffleSender
+   * @param receiverClass a type of ShuffleReceiver
    * @param shuffleDescription a shuffle description to serialize
    * @param endPointId an end point identifier
    * @return serialized configuration
    */
   public Optional<Configuration> serialize(
       final Class<? extends Shuffle> shuffleClass,
+      final Class<? extends ShuffleSender> senderClass,
+      final Class<? extends ShuffleReceiver> receiverClass,
       final ShuffleDescription shuffleDescription,
       final String endPointId) {
     if (!shuffleDescription.getSenderIdList().contains(endPointId) &&
@@ -82,6 +95,6 @@ public final class ShuffleDescriptionSerializer {
       return Optional.empty();
     }
 
-    return Optional.of(serialize(shuffleClass, shuffleDescription));
+    return Optional.of(serialize(shuffleClass, senderClass, receiverClass, shuffleDescription));
   }
 }

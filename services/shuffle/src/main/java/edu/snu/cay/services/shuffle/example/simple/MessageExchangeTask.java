@@ -43,20 +43,37 @@ public final class MessageExchangeTask implements Task {
     final Shuffle<Integer, Integer> shuffle = shuffleProvider.getShuffle(
         MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     this.shuffleSender = shuffle.getSender();
-    shuffleReceiver = shuffle.getReceiver();
-
+    this.shuffleReceiver = shuffle.getReceiver();
     this.taskNumber = shuffle.getShuffleDescription().getReceiverIdList().size();
   }
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 3; j++) {
+        System.out.println("send tuple");
+        shuffleSender.sendTuple(generateRandomTuples());
+      }
+
+      System.out.println("complete");
+      shuffleSender.complete();
+
+      System.out.println("receive");
+      for (final Tuple<Integer, Integer> tuple : shuffleReceiver.receive()) {
+        System.out.println(tuple);
+      }
+
+      System.out.println("wait for receivers");
+      shuffleSender.waitForReceivers();
+      System.out.println("finish");
+    }
     return null;
   }
 
   private List<Tuple<Integer, Integer>> generateRandomTuples() {
     final Random rand = new Random();
     final List<Tuple<Integer, Integer>> randomTupleList = new ArrayList<>();
-    for (int i = 0; i < taskNumber * 2; i++) {
+    for (int i = 0; i < taskNumber; i++) {
       randomTupleList.add(new Tuple<>(rand.nextInt(), rand.nextInt()));
     }
     return randomTupleList;
