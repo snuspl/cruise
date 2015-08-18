@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.example.simple;
+package edu.snu.cay.services.shuffle.example.push;
 
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
@@ -23,58 +23,69 @@ import org.apache.reef.io.Tuple;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Task for simple message exchanging example.
  */
-public final class MessageExchangeTask implements Task {
+public final class SenderReceiverTask implements Task {
 
-  private static final Logger LOG = Logger.getLogger(MessageExchangeTask.class.getName());
+  private static final Logger LOG = Logger.getLogger(SenderReceiverTask.class.getName());
 
   private final PushShuffleSender<Integer, Integer> shuffleSender;
   private final PushShuffleReceiver<Integer, Integer> shuffleReceiver;
-  private final int taskNumber;
+  private final int receiverNum;
 
   @Inject
-  private MessageExchangeTask(
-      final ShuffleProvider shuffleProvider) {
+  private SenderReceiverTask(final ShuffleProvider shuffleProvider) {
     final Shuffle<Integer, Integer> shuffle = shuffleProvider.getShuffle(
         MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     this.shuffleSender = shuffle.getSender();
     this.shuffleReceiver = shuffle.getReceiver();
-    this.taskNumber = shuffle.getShuffleDescription().getReceiverIdList().size();
+    this.receiverNum = shuffle.getShuffleDescription().getReceiverIdList().size();
   }
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
-    for (int i = 0; i < 5; i++) {
-      for (int j = 0; j < 3; j++) {
-        System.out.println("send tuple");
-        shuffleSender.sendTuple(generateRandomTuples());
+    int sentTupleCount = 0;
+    int receivedTupleCount = 0;
+    for (int i = 0; i < MessageExchangeDriver.ITERATION_NUMBER; i++) {
+      for (int j = 0; j < MessageExchangeDriver.NETWORK_MESSAGE_NUMBER_IN_ONE_ITERATION; j++) {
+        LOG.log(Level.INFO, "Send tuple messages");
+        final List<Tuple<Integer, Integer>> tupleList = generateRandomTuples();
+        sentTupleCount += tupleList.size();
+        shuffleSender.sendTuple(tupleList);
       }
 
-      System.out.println("complete");
+      LOG.log(Level.INFO, "Complete to send tuples");
       shuffleSender.complete();
 
-      System.out.println("receive");
+      LOG.log(Level.INFO, "Receive tuples from senders");
       for (final Tuple<Integer, Integer> tuple : shuffleReceiver.receive()) {
-        System.out.println(tuple);
+        LOG.log(Level.INFO, "A tuple arrived {0}", tuple);
+        receivedTupleCount++;
       }
 
-      System.out.println("wait for receivers");
+      LOG.log(Level.INFO, "Wait for all receivers received tuples from all senders");
       shuffleSender.waitForReceivers();
-      System.out.println("finish");
+      LOG.log(Level.INFO, "Finish iteration " + i);
     }
-    return null;
+
+    final ByteBuffer byteBuffer = ByteBuffer.allocate(8);
+    byteBuffer.putInt(sentTupleCount);
+    byteBuffer.putInt(receivedTupleCount);
+    return byteBuffer.array();
   }
 
   private List<Tuple<Integer, Integer>> generateRandomTuples() {
     final Random rand = new Random();
     final List<Tuple<Integer, Integer>> randomTupleList = new ArrayList<>();
-    for (int i = 0; i < taskNumber; i++) {
-      randomTupleList.add(new Tuple<>(rand.nextInt(), rand.nextInt()));
+    final int tupleListSize = receiverNum + rand.nextInt(receiverNum);
+    for (int i = 0; i < tupleListSize; i++) {
+      randomTupleList.add(new Tuple<>(rand.nextInt(receiverNum * 3), rand.nextInt()));
     }
     return randomTupleList;
   }
