@@ -35,23 +35,31 @@ public interface ElasticMemoryMsgSender {
    * Send a CtrlMsg that tells the Evaluator specified with {@code destId} to
    * send its {@code dataClassName} data to the Evaluator specified with
    * {@code targetEvalId}.
+   * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
   void sendCtrlMsg(final String destId,
                    final String dataClassName,
                    final String targetEvalId,
                    final Set<LongRange> idRangeSet,
+                   final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Send a DataMsg containing {@code unitIdPairList} to the Evaluator
    * named {@code destId}. The data key is {@code dataClassName}.
+   * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
   void sendDataMsg(final String destId,
                    final String dataClassName,
                    final List<UnitIdPair> unitIdPairList,
+                   final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
+
+  void sendResultMsg(final boolean success,
+                     final String operationId,
+                     @Nullable final TraceInfo parentTraceInfo);
 
   void sendRegisMsg(final String dataClassName,
                     final long unitStartId,

@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.RegisMsg;
+import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;
 import org.apache.htrace.Trace;
@@ -38,11 +39,15 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
   private static final String ON_REGIS_MSG = "onRegisMsg";
+  private static final String ON_RESULT_MSG = "onResultMsg";
 
+  private final ElasticMemoryCallbackRouter callbackRouter;
   private final PartitionManager partitionManager;
 
   @Inject
-  private ElasticMemoryMsgHandler(final PartitionManager partitionManager) {
+  private ElasticMemoryMsgHandler(final ElasticMemoryCallbackRouter callbackRouter,
+                                  final PartitionManager partitionManager) {
+    this.callbackRouter = callbackRouter;
     this.partitionManager = partitionManager;
   }
 
@@ -54,6 +59,10 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
     switch (innerMsg.getType()) {
     case RegisMsg:
       onRegisMsg(innerMsg);
+      break;
+
+    case ResultMsg:
+      onResultMsg(innerMsg);
       break;
 
     default:
@@ -71,6 +80,12 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       // register a partition for the evaluator as specified in the message
       partitionManager.registerPartition(msg.getSrcId().toString(),
           regisMsg.getDataClassName().toString(), regisMsg.getIdRange().getMin(), regisMsg.getIdRange().getMax());
+    }
+  }
+
+  private void onResultMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onResultMsgScope = Trace.startSpan(ON_RESULT_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+      callbackRouter.onCompleted(msg);
     }
   }
 }
