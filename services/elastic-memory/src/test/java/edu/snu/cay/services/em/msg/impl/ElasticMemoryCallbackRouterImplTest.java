@@ -132,4 +132,21 @@ public final class ElasticMemoryCallbackRouterImplTest {
     assertTrue("First callback called", firstCallbackCalled.get());
     assertFalse("Second callback not called", secondCallbackCalled.get());
   }
+
+  /**
+   * Test callback onCompleted on an operation registered with a null callback does not throw an exception.
+   */
+  @Test
+  public void testRegisterNullCallback() {
+    final String operationId = "TEST-null-callback-000";
+    callbackRouter.register(operationId, null);
+
+    final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
+        .setType(Type.ResultMsg)
+        .setSrcId("")
+        .setDestId("")
+        .setOperationId(operationId)
+        .build();
+    callbackRouter.onCompleted(msg);
+  }
 }

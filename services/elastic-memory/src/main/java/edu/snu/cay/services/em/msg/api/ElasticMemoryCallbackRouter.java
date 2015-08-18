@@ -20,6 +20,8 @@ import edu.snu.cay.services.em.msg.impl.ElasticMemoryCallbackRouterImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
+import javax.annotation.Nullable;
+
 /**
  * Routes callbacks for Elastic Memory operations by their operationId.
  * Elastic Memory registers each callback when the operation is called, and routes to that callback's onNext method
@@ -31,9 +33,9 @@ public interface ElasticMemoryCallbackRouter {
   /**
    * Register a new callback for an EM operation.
    * @param operationId A unique ID for the EM operation.
-   * @param callback The handler to be called when operation is complete.
+   * @param callback The handler to be called when operation is complete, or null for a no-op callback.
    */
-  void register(String operationId, EventHandler<AvroElasticMemoryMessage> callback);
+  void register(String operationId, @Nullable EventHandler<AvroElasticMemoryMessage> callback);
 
   /**
    * Call the registered callback for a completed EM operation.

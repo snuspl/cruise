@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import org.apache.reef.wake.EventHandler;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
@@ -32,6 +33,14 @@ import java.util.logging.Logger;
 public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallbackRouter {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryCallbackRouterImpl.class.getName());
 
+  private static final EventHandler<AvroElasticMemoryMessage> NOOP_CALLBACK =
+      new EventHandler<AvroElasticMemoryMessage>() {
+    @Override
+    public void onNext(final AvroElasticMemoryMessage value) {
+      // Do nothing
+    }
+  };
+
   private final ConcurrentHashMap<String, EventHandler<AvroElasticMemoryMessage>> handlerMap =
       new ConcurrentHashMap<>();
 
@@ -40,9 +49,19 @@ public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallb
   }
 
   @Override
-  public void register(final String operationId, final EventHandler<AvroElasticMemoryMessage> callback) {
-    if (handlerMap.putIfAbsent(operationId, callback) != null) {
-      LOG.warning("Failed to register callback for " + operationId + ". Already exists.");
+  public void register(final String operationId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
+    if (callback == null) {
+
+      if (handlerMap.putIfAbsent(operationId, NOOP_CALLBACK) != null) {
+        LOG.warning("Failed to register NOOP callback for " + operationId + ". Already exists.");
+      }
+
+    } else {
+
+      if (handlerMap.putIfAbsent(operationId, callback) != null) {
+        LOG.warning("Failed to register callback for " + operationId + ". Already exists.");
+      }
+
     }
   }
 

@@ -64,7 +64,7 @@ public interface ElasticMemory {
    * @param rangeSet the range of integer identifiers that specify the state to move
    * @param srcEvalId identifier of the source evaluator
    * @param destEvalId identifier of the destination evaluator
-   * @param callback handler to call when move operation is completed
+   * @param callback handler to call when move operation is completed, or null if no handler is needed
    */
   void move(String dataClassName, Set<LongRange> rangeSet, String srcEvalId, String destEvalId,
             @Nullable EventHandler<AvroElasticMemoryMessage> callback);

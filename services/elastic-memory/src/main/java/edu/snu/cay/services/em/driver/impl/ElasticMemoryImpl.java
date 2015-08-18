@@ -30,6 +30,7 @@ import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.wake.EventHandler;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -81,7 +82,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
                    final Set<LongRange> idRangeSet,
                    final String srcEvalId,
                    final String destEvalId,
-                   final EventHandler<AvroElasticMemoryMessage> callback) {
+                   @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
       final String operatorId = MOVE + "-" + Long.toString(operatorIdCounter.getAndIncrement());
 
