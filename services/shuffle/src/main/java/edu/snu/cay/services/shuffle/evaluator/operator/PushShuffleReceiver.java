@@ -19,14 +19,12 @@ import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleReceiverI
 import org.apache.reef.io.Tuple;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import java.util.List;
-
 /**
  * Push-based shuffle receiver.
  */
 @DefaultImplementation(PushShuffleReceiverImpl.class)
 public interface PushShuffleReceiver<K, V> extends ShuffleReceiver<K, V> {
 
-  List<Tuple<K, V>> receive();
+  Iterable<Tuple<K, V>> receive();
 
 }

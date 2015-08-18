@@ -20,7 +20,6 @@ import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
 import org.apache.reef.io.Tuple;
 
 import javax.inject.Inject;
-import java.util.List;
 
 /**
  *
@@ -35,7 +34,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   }
 
   @Override
-  public List<Tuple<K, V>> receive() {
+  public Iterable<Tuple<K, V>> receive() {
     return null;
   }
 }
