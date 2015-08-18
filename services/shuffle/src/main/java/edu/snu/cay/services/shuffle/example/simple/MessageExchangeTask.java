@@ -50,7 +50,6 @@ public final class MessageExchangeTask implements Task {
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
-    // TODO (#88) : Implement message exchanging using push-based shuffle.
     return null;
   }
 

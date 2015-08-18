@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-// TODO (#88) : Implement functionality.
 /**
  * Simple implementation of Shuffle.
  *

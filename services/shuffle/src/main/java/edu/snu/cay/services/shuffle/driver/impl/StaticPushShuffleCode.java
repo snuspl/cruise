@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.shuffle.driver.impl;
 
-// TODO (#88) : Implement functionality
 /**
  * Control message codes for basic shuffle classes.
  */
