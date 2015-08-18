@@ -77,7 +77,7 @@ public final class DolphinLauncher {
 
   private Configuration getLocalRuntimeConfiguration() {
     return LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, dolphinParameters.getEvalNum() + 1)
+        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, dolphinParameters.getLocalRuntimeContainersMax())
         .build();
   }
 
