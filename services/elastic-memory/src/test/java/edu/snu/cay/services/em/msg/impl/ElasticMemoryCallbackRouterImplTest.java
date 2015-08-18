@@ -81,7 +81,6 @@ public final class ElasticMemoryCallbackRouterImplTest {
         .setDestId("")
         .build();
     callbackRouter.onCompleted(msgWithoutOperationId);
-    assertTrue("No exceptions were thrown.", true);
   }
 
   /**
@@ -96,7 +95,6 @@ public final class ElasticMemoryCallbackRouterImplTest {
         .setOperationId("TEST-unregistered-000")
         .build();
     callbackRouter.onCompleted(msgWithoutOperationId);
-    assertTrue("No exceptions were thrown.", true);
   }
 
   /**

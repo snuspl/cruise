@@ -216,7 +216,7 @@ final class SimpleEMDriver {
             if (!moveSucceeded[0]) {
               throw new RuntimeException("Move failed on iteration " + i);
             }
-          } catch (InterruptedException e) {
+          } catch (final InterruptedException e) {
             throw new RuntimeException("Move wait interrupted on iteration " + i, e);
           }
         }

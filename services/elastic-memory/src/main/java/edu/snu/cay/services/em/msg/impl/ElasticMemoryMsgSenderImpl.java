@@ -154,7 +154,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     try (final TraceScope sendResultMsgScope = Trace.startSpan(SEND_RESULT_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
-          new Object[]{});
+          new Object[]{success, operationId});
 
       final ResultMsg resultMsg = ResultMsg.newBuilder()
           .setResult(success ? Result.SUCCESS : Result.FAILURE)
@@ -171,7 +171,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
-          new Object[]{});
+          new Object[]{success, operationId});
 
     }
   }

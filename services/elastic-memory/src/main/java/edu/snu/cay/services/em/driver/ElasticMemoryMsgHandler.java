@@ -60,9 +60,11 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
     case RegisMsg:
       onRegisMsg(innerMsg);
       break;
+
     case ResultMsg:
       onResultMsg(innerMsg);
       break;
+
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
