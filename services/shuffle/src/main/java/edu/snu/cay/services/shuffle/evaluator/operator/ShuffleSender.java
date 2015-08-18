@@ -15,12 +15,8 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.evaluator.operator.impl.BaseShuffleSenderImpl;
-import org.apache.reef.tang.annotations.DefaultImplementation;
-
 /**
  * Interface for a sender used in a Shuffle.
  */
-@DefaultImplementation(BaseShuffleSenderImpl.class)
-public interface ShuffleSender<K, V> extends ShuffleOperator<K, V> {
+public interface ShuffleSender<K, V> {
 }
