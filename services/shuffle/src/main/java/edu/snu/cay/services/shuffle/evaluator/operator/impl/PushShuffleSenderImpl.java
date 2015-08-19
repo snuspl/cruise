@@ -134,7 +134,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   private void waitForInitializing() {
     if (initialized.compareAndSet(false, true)) {
       controlMessageSender.sendToManager(PushShuffleCode.SENDER_INITIALIZED);
-      synchronizer.waitOnLatch(PushShuffleCode.SHUFFLE_INITIALIZED);
+      synchronizer.waitOnLatch(PushShuffleCode.SHUFFLE_INITIALIZED, 10000);
       checkAndSetState(State.CREATED, State.SENDING);
     }
   }
@@ -149,7 +149,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public void waitForReceivers() {
     LOG.log(Level.INFO, "Wait for all receivers received");
-    synchronizer.waitOnLatch(PushShuffleCode.ALL_RECEIVERS_RECEIVED);
+    synchronizer.waitOnLatch(PushShuffleCode.ALL_RECEIVERS_RECEIVED, 10000);
     synchronizer.reopenLatch(PushShuffleCode.ALL_RECEIVERS_RECEIVED);
     checkAndSetState(State.WAITING, State.SENDING);
   }

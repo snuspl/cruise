@@ -37,6 +37,7 @@ public final class ControlMessageSynchronizerTest {
 
   private static final Logger LOG = Logger.getLogger(ControlMessageSynchronizerTest.class.getName());
 
+  private static final long TIMEOUT = 600000;
   private static final int FIRST_MESSAGE = 0;
   private static final int SECOND_MESSAGE = 1;
   private static final int THIRD_MESSAGE = 2;
@@ -74,11 +75,11 @@ public final class ControlMessageSynchronizerTest {
           for (int i = 0; i < messageNum; i++) {
             final Optional<ShuffleControlMessage> controlMessage;
             if (i % 3 == 0) {
-              controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE);
+              controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE, TIMEOUT);
             } else if (i % 3 == 1) {
-              controlMessage = synchronizer.waitOnLatch(SECOND_MESSAGE);
+              controlMessage = synchronizer.waitOnLatch(SECOND_MESSAGE, TIMEOUT);
             } else {
-              controlMessage = synchronizer.waitOnLatch(THIRD_MESSAGE);
+              controlMessage = synchronizer.waitOnLatch(THIRD_MESSAGE, TIMEOUT);
             }
 
             assert controlMessage.isPresent();
@@ -140,13 +141,13 @@ public final class ControlMessageSynchronizerTest {
           waitForStarting.countDown();
 
           // The current thread will be notified when the latch is closed
-          synchronizer.waitOnLatch(FIRST_MESSAGE);
+          assert synchronizer.waitOnLatch(FIRST_MESSAGE, TIMEOUT).isPresent();
 
           for (int i = 0; i < 100; i++) {
-            final Optional<ShuffleControlMessage> controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE);
+            final Optional<ShuffleControlMessage> controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE, TIMEOUT);
 
             // The synchronizer returns Optional.empty if the latch was closed
-            assert !controlMessage.isPresent();
+            assert controlMessage.isPresent();
           }
 
           waitForTestingClosedState.countDown();
@@ -160,7 +161,7 @@ public final class ControlMessageSynchronizerTest {
 
           waitForLastReset.countDown();
 
-          synchronizer.waitOnLatch(FIRST_MESSAGE);
+          assert synchronizer.waitOnLatch(FIRST_MESSAGE, TIMEOUT).isPresent();
 
           waitForFinishing.countDown();
         }

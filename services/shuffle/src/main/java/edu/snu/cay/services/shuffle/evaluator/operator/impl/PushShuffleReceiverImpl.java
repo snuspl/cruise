@@ -82,7 +82,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     waitForInitializing();
     checkState(State.RECEIVING);
     LOG.log(Level.INFO, "Wait for all senders are completed");
-    synchronizer.waitOnLatch(PushShuffleCode.ALL_SENDERS_COMPLETED);
+    synchronizer.waitOnLatch(PushShuffleCode.ALL_SENDERS_COMPLETED, 10000);
     synchronizer.reopenLatch(PushShuffleCode.ALL_SENDERS_COMPLETED);
     final List<Tuple<K, V>> copiedList;
     synchronized (receivedTupleList) {
@@ -111,7 +111,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
 
   private void waitForInitializing() {
     if (initialized.compareAndSet(false, true)) {
-      synchronizer.waitOnLatch(PushShuffleCode.SHUFFLE_INITIALIZED);
+      synchronizer.waitOnLatch(PushShuffleCode.SHUFFLE_INITIALIZED, 10000);
       checkAndSetState(State.CREATED, State.RECEIVING);
     }
   }

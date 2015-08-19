@@ -25,7 +25,6 @@ import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.transport.LinkListener;
 
@@ -84,15 +83,6 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   @Override
   public <T extends ShuffleSender<K, V>> T getSender() {
     return operatorFactory.newShuffleSender();
-  }
-
-  /**
-   * @param code a code for expecting ShuffleControlMessage
-   * @return the ShuffleControlMessage
-   */
-  @Override
-  public Optional<ShuffleControlMessage> waitForControlMessage(final int code) {
-    return synchronizer.waitOnLatch(code);
   }
 
   /**
