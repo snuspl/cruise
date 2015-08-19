@@ -46,7 +46,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * REEF driver for simple message exchanging example.
+ * REEF driver for message exchanging example using push-based shuffle.
  */
 @DriverSide
 @Unit
@@ -86,7 +86,7 @@ public final class MessageExchangeDriver {
       final ShuffleDriver shuffleDriver,
       final LocalAddressProvider localAddressProvider,
       final NameServer nameServer) {
-    LOG.log(Level.INFO, "Driver is instantiated. sender num: {0}, receiver num: {1}, sender_receiver num: {2}",
+    LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}, sender_receiver num: {2}",
         new Object[]{senderNumber, receiverNumber, senderReceiverNumber});
     this.allocatedNum = new AtomicInteger();
     this.completedNum = new AtomicInteger();
@@ -141,6 +141,9 @@ public final class MessageExchangeDriver {
     }
   }
 
+  /**
+   * Compare total number of sent tuples and received tuples.
+   */
   public final class TaskCompletedHandler implements EventHandler<CompletedTask> {
 
     @Override
@@ -197,19 +200,19 @@ public final class MessageExchangeDriver {
       final int number = allocatedNum.getAndIncrement();
       final Configuration partialTaskConf;
       final String taskId;
-      if (number < senderNumber) {
+      if (number < senderNumber) { // SenderTask
         taskId = SENDER_PREFIX + number;
         partialTaskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, SenderTask.class)
             .build();
-      } else if (number < senderNumber + receiverNumber) {
+      } else if (number < senderNumber + receiverNumber) { // ReceiverTask
         taskId = RECEIVER_PREFIX + (number - senderNumber);
         partialTaskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
             .build();
-      } else if (number < senderNumber + receiverNumber + senderReceiverNumber) {
+      } else if (number < senderNumber + receiverNumber + senderReceiverNumber) { // SenderReceiverTask
         taskId = SENDER_RECEIVER_PREFIX + (number - senderNumber - receiverNumber);
         partialTaskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)

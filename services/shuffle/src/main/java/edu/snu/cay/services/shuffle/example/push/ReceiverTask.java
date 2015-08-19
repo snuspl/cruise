@@ -27,7 +27,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
+ *  Receive tuples from SenderTasks and SenderReceiverTasks.
  */
 public final class ReceiverTask implements Task {
 

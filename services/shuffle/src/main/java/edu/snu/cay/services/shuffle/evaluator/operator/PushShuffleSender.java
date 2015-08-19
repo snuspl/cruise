@@ -72,17 +72,19 @@ public interface PushShuffleSender<K, V> extends ShuffleSender<K, V> {
   void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList);
 
   /**
-   *
+   * Complete one iteration of pushing tuples. A ShuffleManager wakes up all receivers blocking on receive()
+   * when all senders call complete(). waitForReceivers() have to be firstly called to start next iteration
+   * of pushing tuples.
    */
   void complete();
 
   /**
-   *
+   * Wait for all receivers successfully received entire sent data.
    */
   void waitForReceivers();
 
   /**
-   *
+   * Call complete() and waitForReceivers() sequentially.
    */
   void completeAndWaitForReceivers();
 }

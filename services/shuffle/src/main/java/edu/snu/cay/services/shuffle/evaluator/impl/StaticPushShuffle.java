@@ -36,7 +36,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Simple implementation of Shuffle.
+ * Shuffle implementation for static push-based shuffling.
  *
  * The initial shuffle description can never be changed. Users cannot add or remove more tasks
  * to the shuffle and cannot change the key, value codecs and shuffling strategy after the Shuffle is created.

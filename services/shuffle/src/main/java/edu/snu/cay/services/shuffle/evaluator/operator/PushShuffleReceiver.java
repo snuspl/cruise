@@ -26,7 +26,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 public interface PushShuffleReceiver<K, V> extends ShuffleReceiver<K, V> {
 
   /**
-   *
+   * Blocking until all senders complete to push tuples during one iteration.
    */
   Iterable<Tuple<K, V>> receive();
 

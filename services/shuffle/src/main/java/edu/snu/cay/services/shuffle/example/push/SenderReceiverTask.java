@@ -29,7 +29,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Task for simple message exchanging example.
+ * Send tuples to ReceiverTasks and SenderReceiverTasks, also receive
+ * tuples from SenderTasks and SenderReceiverTasks.
  */
 public final class SenderReceiverTask implements Task {
 

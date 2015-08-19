@@ -33,7 +33,32 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
+ * Default implementation for push-based shuffle sender.
  *
+ * State summary.
+ *
+ * CREATED:
+ * Wait for initialized message from the manager. This sends a SENDER_INITIALIZED message
+ * to the manager when it is instantiated.
+ *
+ * SENDING:
+ * Send tuples to receivers.
+ *
+ * WAITING:
+ * Wait for all receivers received tuples from senders.
+ *
+ * Transition summary.
+ *
+ * CREATED -> SENDING:
+ * When a SHUFFLE_INITIALIZED message arrived from the manager.
+ *
+ * SENDING -> WAITING:
+ * When a user calls complete() method.
+ * It sends a SENDER_COMPLETED message to the manager.
+ *
+ * WAITING -> SENDING:
+ * When a ALL_RECEIVERS_RECEIVED message arrived from the manager.
+ * It wakes up a caller who is blocking on waitForReceiver() or completeAndWaitForReceiver().
  */
 public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V> {
 
@@ -56,7 +81,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     this.controlMessageSender = controlMessageSender;
     this.synchronizer = synchronizer;
     this.initialized = new AtomicBoolean();
-    this.currentState = State.STARTED;
+    this.currentState = State.CREATED;
   }
 
   private final class TupleLinkListener implements LinkListener<Message<ShuffleTupleMessage<K, V>>> {
@@ -110,7 +135,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     if (initialized.compareAndSet(false, true)) {
       controlMessageSender.sendToManager(PushShuffleCode.SENDER_INITIALIZED);
       synchronizer.waitOnLatch(PushShuffleCode.SHUFFLE_INITIALIZED);
-      checkAndSetState(State.STARTED, State.SENDING);
+      checkAndSetState(State.CREATED, State.SENDING);
     }
   }
 
@@ -135,16 +160,21 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     waitForReceivers();
   }
 
+  public enum State {
+    CREATED,
+    SENDING,
+    WAITING
+  }
+
   private synchronized void checkState(final State expectedState) {
     if (currentState != expectedState) {
-      throw new IllegalStateException("Expected state is "
-          + expectedState + " but the current state is " + currentState);
+      throw new IllegalStateException("Expected state is " + expectedState + " but actual state is " + currentState);
     }
   }
 
   public static boolean isLegalTransition(final State from, final State to) {
     switch (from) {
-    case STARTED:
+    case CREATED:
       switch (to) {
       case SENDING:
         return true;
@@ -181,11 +211,5 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   private synchronized void checkAndSetState(final State expectedState, final State state) {
     checkState(expectedState);
     setState(state);
-  }
-
-  public enum State {
-    STARTED,
-    SENDING,
-    WAITING
   }
 }

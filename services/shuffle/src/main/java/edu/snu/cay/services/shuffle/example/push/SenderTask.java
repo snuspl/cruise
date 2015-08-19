@@ -30,7 +30,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
+ * Send tuples to ReceiverTasks and SenderReceiverTasks.
  */
 public final class SenderTask implements Task {
 

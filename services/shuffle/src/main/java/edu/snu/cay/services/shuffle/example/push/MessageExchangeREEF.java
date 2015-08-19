@@ -36,13 +36,18 @@ import org.apache.reef.util.EnvironmentUtils;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/*
- * Simple message exchanging example using shuffle service.
+/**
+ * Message exchanging example using push-based shuffle.
  *
- * n tasks exchange tuples using the key grouping strategy. Because all tuples that are sent from one task to
- * another task are chunked into one network message, each task is blocked until exactly n messages arrive from
- * n tasks including itself.
- * (Tasks send at least an empty network message to wake up the other tasks)
+ * There are three types of tasks, SenderTask, ReceiverTask and SenderReceiverTask.
+ * SenderTasks/ReceiverTasks are only sending/receiving tuples whereas
+ * SenderReceiverTasks are sending tuples as well as receiving tuples.
+ *
+ * Senders(SenderTasks and SenderReceiverTasks) send random number of tuples to receivers(ReceiverTasks
+ * and SenderReceiverTasks) during certain number of iterations. Each iteration, receivers should receive
+ * tuples that are sent in the same iteration.
+ *
+ * The driver checks if total number of sent tuples and received tuples are same when all tasks are completed.
  */
 public final class MessageExchangeREEF {
 
@@ -118,21 +123,21 @@ public final class MessageExchangeREEF {
   }
 
   /**
-   * Number of tasks that works as sender.
+   * Number of tasks that work as sender.
    */
   @NamedParameter(short_name = "sender_num", default_value = "3")
   public static final class SenderNumber implements Name<Integer> {
   }
 
   /**
-   * Number of tasks that works as receiver.
+   * Number of tasks that work as receiver.
    */
   @NamedParameter(short_name = "receiver_num", default_value = "3")
   public static final class ReceiverNumber implements Name<Integer> {
   }
 
   /**
-   * Number of tasks that works as both sender and receiver.
+   * Number of tasks that work as sender and receiver simultaneously.
    */
   @NamedParameter(short_name = "sender_receiver_num", default_value = "3")
   public static final class SenderReceiverNumber implements Name<Integer> {

@@ -33,7 +33,23 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
+ * Default implementation for push-based shuffle receiver.
  *
+ * State summary.
+ *
+ * CREATED: Wait for initialized message from the manager. This sends a RECEIVER_INITIALIZED message
+ * to the manager when it is instantiated.
+ *
+ * RECEIVING: Receive tuples from sender
+ *
+ * Transition summary.
+ *
+ * CREATED -> RECEIVING
+ * When a SHUFFLE_INITIALIZED message arrived from the manager.
+ *
+ * RECEIVING -> RECEIVING
+ * When a ALL_SENDERS_COMPLETED message arrived from the manager.
+ * It wakes up a caller who is blocking on receive() along with received tuples.
  */
 public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<K, V> {
 
@@ -56,7 +72,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     this.synchronizer = synchronizer;
     this.initialized = new AtomicBoolean();
     this.receivedTupleList = new ArrayList<>();
-    this.currentState = State.STARTED;
+    this.currentState = State.CREATED;
 
     controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_INITIALIZED);
   }
@@ -96,20 +112,24 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private void waitForInitializing() {
     if (initialized.compareAndSet(false, true)) {
       synchronizer.waitOnLatch(PushShuffleCode.SHUFFLE_INITIALIZED);
-      checkAndSetState(State.STARTED, State.RECEIVING);
+      checkAndSetState(State.CREATED, State.RECEIVING);
     }
+  }
+
+  public enum State {
+    CREATED,
+    RECEIVING
   }
 
   private synchronized void checkState(final State expectedState) {
     if (currentState != expectedState) {
-      throw new IllegalStateException("Expected state is "
-          + expectedState + " but the current state is " + currentState);
+      throw new IllegalStateException("Expected state is " + expectedState + " but actual state is " + currentState);
     }
   }
 
   public static boolean isLegalTransition(final State from, final State to) {
     switch (from) {
-    case STARTED:
+    case CREATED:
       switch (to) {
       case RECEIVING:
         return true;
@@ -139,10 +159,5 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private synchronized void checkAndSetState(final State expectedState, final State state) {
     checkState(expectedState);
     setState(state);
-  }
-
-  public enum State {
-    STARTED,
-    RECEIVING
   }
 }

@@ -16,22 +16,57 @@
 package edu.snu.cay.services.shuffle.driver.impl;
 
 /**
- *
+ * Codes for control messages of push-based shuffle.
  */
 public final class PushShuffleCode {
 
+  /**
+   * All end points in the shuffle were initialized.
+   *
+   * The manager to all senders and receivers.
+   */
   public static final int SHUFFLE_INITIALIZED = 0;
 
+  /**
+   * A sender was initialized.
+   *
+   * The sender to the manager.
+   */
   public static final int SENDER_INITIALIZED = 1;
 
+  /**
+   * A receiver was initialized.
+   *
+   * The receiver to the manager.
+   */
   public static final int RECEIVER_INITIALIZED = 2;
 
+  /**
+   * A sender completed to push tuples.
+   *
+   * The sender to the manager.
+   */
   public static final int SENDER_COMPLETED = 3;
 
+  /**
+   * All senders completed to push tuples.
+   *
+   * The manager to all receivers.
+   */
   public static final int ALL_SENDERS_COMPLETED = 4;
 
+  /**
+   * A receiver successfully received tuples.
+   *
+   * The receiver to the manager.
+   */
   public static final int RECEIVER_RECEIVED = 5;
 
+  /**
+   * All receivers successfully received tuples.
+   *
+   * The manager to all senders.
+   */
   public static final int ALL_RECEIVERS_RECEIVED = 6;
 
   /**
