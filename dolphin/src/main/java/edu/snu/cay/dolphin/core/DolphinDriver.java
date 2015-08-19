@@ -176,10 +176,10 @@ public final class DolphinDriver {
 
     int sequence = 0;
     for (final StageInfo stageInfo : stageInfoList) {
-      LOG.log(Level.INFO, "Initializing CommunicationGroupDriver with numTasks " +
-          dataLoadingService.getNumberOfPartitions());
+      final int numTasks = dataLoadingService.getNumberOfPartitions() + 1;
+      LOG.log(Level.INFO, "Initializing CommunicationGroupDriver with numTasks " + numTasks);
       final CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
-          stageInfo.getCommGroupName(), dataLoadingService.getNumberOfPartitions());
+          stageInfo.getCommGroupName(), numTasks);
       commGroup.addBroadcast(CtrlMsgBroadcast.class,
           BroadcastOperatorSpec.newBuilder()
               .setSenderId(getCtrlTaskId(sequence))
