@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.scheduling;
 
-import edu.snu.cay.dolphin.parameters.LocalRuntimeContainersMax;
+import edu.snu.cay.dolphin.parameters.LocalRuntimeMaxNumEvaluators;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -23,7 +23,7 @@ import javax.inject.Inject;
 
 /**
  * A Schedulability Analyzer for the Local Runtime.
- * A Dolphin job is schedulable if the max number of containers is at least the sum of the
+ * A Dolphin job is schedulable if the max number of evaluators is at least the sum of the
  * number of compute tasks (= number of data loading partitions) and number of controller tasks (=1).
  */
 public final class LocalSchedulabilityAnalyzer implements SchedulabilityAnalyzer {
@@ -31,8 +31,8 @@ public final class LocalSchedulabilityAnalyzer implements SchedulabilityAnalyzer
 
   @Inject
   private LocalSchedulabilityAnalyzer(final DataLoadingService dataLoadingService,
-                                      @Parameter(LocalRuntimeContainersMax.class) final int containersMax) {
-    this.schedulable = containersMax >= (dataLoadingService.getNumberOfPartitions() + 1);
+                                      @Parameter(LocalRuntimeMaxNumEvaluators.class) final int maxNumEvaluators) {
+    this.schedulable = maxNumEvaluators >= (dataLoadingService.getNumberOfPartitions() + 1);
   }
 
   @Override

@@ -31,34 +31,34 @@ public final class DolphinParameters {
   private final String identifier;
   private final UserJobInfo userJobInfo;
   private final UserParameters userParameters;
-  private final int evalNum;
+  private final int desiredSplits;
   private final int evalSize;
   private final String inputDir;
   private final String outputDir;
   private final boolean onLocal;
-  private final int localRuntimeContainersMax;
+  private final int localRuntimeMaxNumEvaluators;
   private final int timeout;
 
   @Inject
   private DolphinParameters(@Parameter(JobIdentifier.class) final String identifier,
                             final UserJobInfo userJobInfo,
                             final UserParameters userParameters,
-                            @Parameter(EvaluatorNum.class) final int evalNum,
+                            @Parameter(DesiredSplits.class) final int desiredSplits,
                             @Parameter(EvaluatorSize.class) final int evalSize,
                             @Parameter(InputDir.class) final String inputDir,
                             @Parameter(OutputDir.class) final String outputDir,
                             @Parameter(OnLocal.class) final boolean onLocal,
-                            @Parameter(LocalRuntimeContainersMax.class) final int localRuntimeContainersMax,
+                            @Parameter(LocalRuntimeMaxNumEvaluators.class) final int localRuntimeMaxNumEvaluators,
                             @Parameter(Timeout.class) final int timeout) {
     this.identifier = identifier;
     this.userJobInfo = userJobInfo;
     this.userParameters = userParameters;
-    this.evalNum = evalNum;
+    this.desiredSplits = desiredSplits;
     this.evalSize = evalSize;
     this.inputDir = inputDir;
     this.outputDir = outputDir;
     this.onLocal = onLocal;
-    this.localRuntimeContainersMax = localRuntimeContainersMax;
+    this.localRuntimeMaxNumEvaluators = localRuntimeMaxNumEvaluators;
     this.timeout = timeout;
   }
 
@@ -68,7 +68,7 @@ public final class DolphinParameters {
    */
   public Configuration getDriverConf() {
     final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(EvaluatorNum.class, String.valueOf(evalNum))
+        .bindNamedParameter(DesiredSplits.class, String.valueOf(desiredSplits))
         .bindNamedParameter(OutputDir.class, processOutputDir(outputDir, onLocal))
         .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
         .bindImplementation(UserJobInfo.class, userJobInfo.getClass())
@@ -81,7 +81,7 @@ public final class DolphinParameters {
   private Configuration getLocalSchedulingConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(SchedulabilityAnalyzer.class, LocalSchedulabilityAnalyzer.class)
-        .bindNamedParameter(LocalRuntimeContainersMax.class, String.valueOf(localRuntimeContainersMax))
+        .bindNamedParameter(LocalRuntimeMaxNumEvaluators.class, String.valueOf(localRuntimeMaxNumEvaluators))
         .build();
   }
 
@@ -110,8 +110,8 @@ public final class DolphinParameters {
     return identifier;
   }
 
-  public int getEvalNum() {
-    return evalNum;
+  public int getDesiredSplits() {
+    return desiredSplits;
   }
 
   public int getEvalSize() {
@@ -126,8 +126,8 @@ public final class DolphinParameters {
     return onLocal;
   }
 
-  public int getLocalRuntimeContainersMax() {
-    return localRuntimeContainersMax;
+  public int getLocalRuntimeMaxNumEvaluators() {
+    return localRuntimeMaxNumEvaluators;
   }
 
   public int getTimeout() {

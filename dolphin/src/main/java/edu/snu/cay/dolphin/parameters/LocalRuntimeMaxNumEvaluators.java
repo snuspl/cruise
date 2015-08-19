@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of evaluators to run job with",
-                short_name = "split")
-public final class EvaluatorNum implements Name<Integer> {
+@NamedParameter(doc = "Maximum number of local runtime evaluators, must be at least Data Loading Splits + 1",
+    short_name = "maxNumEvaluators", default_value = "2")
+public final class LocalRuntimeMaxNumEvaluators implements Name<Integer> {
 }
