@@ -25,7 +25,6 @@ import javax.inject.Inject;
  * A Schedulability Analyzer for the Local Runtime.
  * A Dolphin job is schedulable if the max number of containers is at least the sum of the
  * number of compute tasks (= number of data loading partitions) and number of controller tasks (=1).
- * This is a static analysis, so a RuntimeException is thrown in the constructor to fail fast.
  */
 public final class LocalSchedulabilityAnalyzer implements SchedulabilityAnalyzer {
   private final boolean schedulable;
@@ -34,12 +33,6 @@ public final class LocalSchedulabilityAnalyzer implements SchedulabilityAnalyzer
   private LocalSchedulabilityAnalyzer(final DataLoadingService dataLoadingService,
                                       @Parameter(LocalRuntimeContainersMax.class) final int containersMax) {
     this.schedulable = containersMax >= (dataLoadingService.getNumberOfPartitions() + 1);
-
-    if (!this.schedulable) {
-      throw new RuntimeException("Configured max containers " + containersMax + " cannot satisfy " +
-          dataLoadingService.getNumberOfPartitions() + " compute tasks and 1 controller task." +
-          " To run this job, configure a larger -containersMax.");
-    }
   }
 
   @Override
