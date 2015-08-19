@@ -51,9 +51,12 @@ public final class ControlMessageSynchronizer {
   }
 
   /**
-   * Wait for another thread to reset the latch for the ShuffleControlMessage that is specified by the given code.
-   * If the latch is closed, it returns the saved control message that is used to closing the latch.
-   * It returns Optional.empty if the specified time elapsed without releasing.
+   * Wait certain amount of time until another thread resets the latch
+   * for the ShuffleControlMessage that is specified by the given code.
+   * If timeout is zero, callers endlessly wait for resetting.
+   *
+   * If the latch is closed, it returns the saved control message that is used for closing the latch.
+   * It returns Optional.empty if the specified time elapsed without resetting.
    *
    * @param code a control message code
    * @param timeout the maximum time to wait in milliseconds.
@@ -163,7 +166,9 @@ public final class ControlMessageSynchronizer {
     }
 
     /**
-     * Wait for another thread to release the latch.
+     * Wait certain amount of time until another thread releases the latch.
+     * If timeout is zero, callers endlessly wait for releasing.
+     *
      * It returns Optional.empty if the specified time elapsed without releasing.
      *
      * @param timeout the maximum time to wait in milliseconds.

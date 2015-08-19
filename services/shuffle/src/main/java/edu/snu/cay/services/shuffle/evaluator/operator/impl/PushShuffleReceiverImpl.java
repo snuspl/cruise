@@ -20,9 +20,14 @@ import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
 import edu.snu.cay.services.shuffle.evaluator.DataReceiver;
 import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -57,6 +62,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
 
   private final ESControlMessageSender controlMessageSender;
   private final ControlMessageSynchronizer synchronizer;
+  private final long receiverTimeout;
   private final AtomicBoolean initialized;
   private final List<Tuple<K, V>> receivedTupleList;
 
@@ -66,10 +72,12 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private PushShuffleReceiverImpl(
       final DataReceiver<K, V> dataReceiver,
       final ESControlMessageSender controlMessageSender,
-      final ControlMessageSynchronizer synchronizer) {
+      final ControlMessageSynchronizer synchronizer,
+      @Parameter(ReceiverTimeout.class) final long receiverTimeout) {
     dataReceiver.registerTupleMessageHandler(new TupleMessageHandler());
     this.controlMessageSender = controlMessageSender;
     this.synchronizer = synchronizer;
+    this.receiverTimeout = receiverTimeout;
     this.initialized = new AtomicBoolean();
     this.receivedTupleList = new ArrayList<>();
     this.currentState = State.CREATED;
@@ -82,7 +90,12 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     waitForInitializing();
     checkState(State.RECEIVING);
     LOG.log(Level.INFO, "Wait for all senders are completed");
-    synchronizer.waitOnLatch(PushShuffleCode.ALL_SENDERS_COMPLETED, 10000);
+    final Optional<ShuffleControlMessage> sendersCompletedMessage = synchronizer.waitOnLatch(
+        PushShuffleCode.ALL_SENDERS_COMPLETED, receiverTimeout);
+    if (!sendersCompletedMessage.isPresent()) {
+      // TODO (#33) : failure handling
+      throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
+    }
     synchronizer.reopenLatch(PushShuffleCode.ALL_SENDERS_COMPLETED);
     final List<Tuple<K, V>> copiedList;
     synchronized (receivedTupleList) {
@@ -111,7 +124,13 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
 
   private void waitForInitializing() {
     if (initialized.compareAndSet(false, true)) {
-      synchronizer.waitOnLatch(PushShuffleCode.SHUFFLE_INITIALIZED, 10000);
+      final Optional<ShuffleControlMessage> shuffleInitializedMessage = synchronizer.waitOnLatch(
+          PushShuffleCode.SHUFFLE_INITIALIZED, receiverTimeout);
+
+      if (!shuffleInitializedMessage.isPresent()) {
+        // TODO (#67) : failure handling
+        throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
+      }
       checkAndSetState(State.CREATED, State.RECEIVING);
     }
   }
@@ -159,5 +178,10 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private synchronized void checkAndSetState(final State expectedState, final State state) {
     checkState(expectedState);
     setState(state);
+  }
+
+  // default_value = 10 min
+  @NamedParameter(doc = "the maximum time to wait message in milliseconds.", default_value = "600000")
+  public static final class ReceiverTimeout implements Name<Long> {
   }
 }

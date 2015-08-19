@@ -20,9 +20,14 @@ import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
 import edu.snu.cay.services.shuffle.evaluator.DataSender;
 import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.util.Optional;
 import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
@@ -67,6 +72,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   private final DataSender<K, V> dataSender;
   private final ESControlMessageSender controlMessageSender;
   private final ControlMessageSynchronizer synchronizer;
+  private final long senderTimeout;
   private final AtomicBoolean initialized;
 
   private State currentState;
@@ -75,11 +81,13 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   private PushShuffleSenderImpl(
       final DataSender<K, V> dataSender,
       final ESControlMessageSender controlMessageSender,
-      final ControlMessageSynchronizer synchronizer) {
+      final ControlMessageSynchronizer synchronizer,
+      @Parameter(SenderTimeout.class) final long senderTimeout) {
     this.dataSender = dataSender;
     dataSender.registerTupleLinkListener(new TupleLinkListener());
     this.controlMessageSender = controlMessageSender;
     this.synchronizer = synchronizer;
+    this.senderTimeout = senderTimeout;
     this.initialized = new AtomicBoolean();
     this.currentState = State.CREATED;
   }
@@ -134,7 +142,13 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   private void waitForInitializing() {
     if (initialized.compareAndSet(false, true)) {
       controlMessageSender.sendToManager(PushShuffleCode.SENDER_INITIALIZED);
-      synchronizer.waitOnLatch(PushShuffleCode.SHUFFLE_INITIALIZED, 10000);
+      final Optional<ShuffleControlMessage> shuffleInitializedMessage = synchronizer.waitOnLatch(
+          PushShuffleCode.SHUFFLE_INITIALIZED, senderTimeout);
+
+      if (!shuffleInitializedMessage.isPresent()) {
+        // TODO (#33) : failure handling
+        throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
+      }
       checkAndSetState(State.CREATED, State.SENDING);
     }
   }
@@ -149,7 +163,13 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public void waitForReceivers() {
     LOG.log(Level.INFO, "Wait for all receivers received");
-    synchronizer.waitOnLatch(PushShuffleCode.ALL_RECEIVERS_RECEIVED, 10000);
+    final Optional<ShuffleControlMessage> receiversReceivedMessage = synchronizer.waitOnLatch(
+        PushShuffleCode.ALL_RECEIVERS_RECEIVED, senderTimeout);
+    if (!receiversReceivedMessage.isPresent()) {
+      // TODO (#67) : failure handling
+      throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
+    }
+
     synchronizer.reopenLatch(PushShuffleCode.ALL_RECEIVERS_RECEIVED);
     checkAndSetState(State.WAITING, State.SENDING);
   }
@@ -211,5 +231,10 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   private synchronized void checkAndSetState(final State expectedState, final State state) {
     checkState(expectedState);
     setState(state);
+  }
+
+  // default_value = 10 min
+  @NamedParameter(doc = "the maximum time to wait message in milliseconds.", default_value = "600000")
+  public static final class SenderTimeout implements Name<Long> {
   }
 }
