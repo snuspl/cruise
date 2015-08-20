@@ -19,6 +19,6 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Maximum number of local runtime evaluators, must be at least Data Loading Splits + 1",
-    short_name = "maxNumEvaluators", default_value = "2")
+    short_name = "maxNumEvalLocal", default_value = "2")
 public final class LocalRuntimeMaxNumEvaluators implements Name<Integer> {
 }
