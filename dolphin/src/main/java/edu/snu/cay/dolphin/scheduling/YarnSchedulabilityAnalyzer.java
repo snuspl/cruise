@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.scheduling;
 
 import javax.inject.Inject;
 
+// TODO: #92 This class should be implemented and used as a part of changes to support Gang Scheduling in Yarn.
 /**
  * Not yet implemented, so always returns isSchedulable as true.
  * A future implementation should take into account total Yarn resources and
