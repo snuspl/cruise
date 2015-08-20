@@ -16,13 +16,13 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.groupcomm.names.*;
-import edu.snu.cay.dolphin.parameters.EvaluatorNum;
 import edu.snu.cay.dolphin.parameters.OutputDir;
 import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.parameters.OnLocal;
+import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
 import org.apache.reef.driver.task.CompletedTask;
@@ -89,6 +89,12 @@ public final class DolphinDriver {
   private final DataLoadingService dataLoadingService;
 
   /**
+   * Schedulability analyzer for the current Runtime.
+   * Checks whether the number of evaluators configured by the data loading service can be gang scheduled.
+   */
+  private final SchedulabilityAnalyzer schedulabilityAnalyzer;
+
+  /**
    * Job to execute.
    */
   private final UserJobInfo userJobInfo;
@@ -110,11 +116,6 @@ public final class DolphinDriver {
   private final Map<String, Integer> contextToStageSequence;
 
   /**
-   * The number of evaluators assigned for Compute Tasks.
-   */
-  private final Integer evalNum;
-
-  /**
    * Codec for metrics.
    */
   private final MetricCodec metricCodec;
@@ -134,24 +135,25 @@ public final class DolphinDriver {
    *
    * @param groupCommDriver manager for Group Communication configurations
    * @param dataLoadingService manager for Data Loading configurations
+   * @param schedulabilityAnalyzer
    * @param userJobInfo
    * @param userParameters
    * @param metricCodec
    * @param outputDir
    * @param onLocal
-   * @param evalNum
    */
   @Inject
   private DolphinDriver(final GroupCommDriver groupCommDriver,
                         final DataLoadingService dataLoadingService,
+                        final SchedulabilityAnalyzer schedulabilityAnalyzer,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
                         final MetricCodec metricCodec,
                         @Parameter(OutputDir.class) final String outputDir,
-                        @Parameter(OnLocal.class) final boolean onLocal,
-                        @Parameter(EvaluatorNum.class) final Integer evalNum) {
+                        @Parameter(OnLocal.class) final boolean onLocal) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
+    this.schedulabilityAnalyzer = schedulabilityAnalyzer;
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
     this.commGroupDriverList = new LinkedList<>();
@@ -160,7 +162,6 @@ public final class DolphinDriver {
     this.metricCodec = metricCodec;
     this.outputDir = outputDir;
     this.onLocal = onLocal;
-    this.evalNum = evalNum;
     initializeCommDriver();
   }
 
@@ -168,10 +169,17 @@ public final class DolphinDriver {
    * Initialize the group communication driver.
    */
   private void initializeCommDriver() {
+    if (!schedulabilityAnalyzer.isSchedulable()) {
+      throw new RuntimeException("Schedulabiliy analysis shows that gang scheduling of " +
+          dataLoadingService.getNumberOfPartitions() + " compute tasks and 1 controller task is not possible.");
+    }
+
     int sequence = 0;
     for (final StageInfo stageInfo : stageInfoList) {
+      final int numTasks = dataLoadingService.getNumberOfPartitions() + 1;
+      LOG.log(Level.INFO, "Initializing CommunicationGroupDriver with numTasks " + numTasks);
       final CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
-          stageInfo.getCommGroupName(), evalNum + 1);
+          stageInfo.getCommGroupName(), numTasks);
       commGroup.addBroadcast(CtrlMsgBroadcast.class,
           BroadcastOperatorSpec.newBuilder()
               .setSenderId(getCtrlTaskId(sequence))

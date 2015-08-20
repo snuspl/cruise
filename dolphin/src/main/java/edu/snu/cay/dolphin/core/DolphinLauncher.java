@@ -77,7 +77,7 @@ public final class DolphinLauncher {
 
   private Configuration getLocalRuntimeConfiguration() {
     return LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, dolphinParameters.getEvalNum() + 1)
+        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, dolphinParameters.getLocalRuntimeMaxNumEvaluators())
         .build();
   }
 
@@ -101,7 +101,7 @@ public final class DolphinLauncher {
         .setMemoryMB(dolphinParameters.getEvalSize())
         .setInputFormatClass(TextInputFormat.class)
         .setInputPath(processInputDir(dolphinParameters.getInputDir()))
-        .setNumberOfDesiredSplits(dolphinParameters.getEvalNum())
+        .setNumberOfDesiredSplits(dolphinParameters.getDesiredSplits())
         .setComputeRequest(evalRequest)
         .setDriverConfigurationModule(driverConfiguration)
         .build();
