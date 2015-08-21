@@ -25,7 +25,6 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.io.File;
 
 public final class DolphinParameters {
   private final String identifier;
@@ -69,7 +68,6 @@ public final class DolphinParameters {
   public Configuration getDriverConf() {
     final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(DesiredSplits.class, String.valueOf(desiredSplits))
-        .bindNamedParameter(OutputDir.class, processOutputDir(outputDir, onLocal))
         .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
         .bindImplementation(UserJobInfo.class, userJobInfo.getClass())
         .bindImplementation(UserParameters.class, userParameters.getClass())
@@ -91,21 +89,6 @@ public final class DolphinParameters {
         .build();
   }
 
-  /**
-   * If a relative local file path is given as the output directory,
-   * transform the relative path into the absolute path based on the current directory where the user runs REEF.
-   * @param outputDir path of the output directory given by the user
-   * @param onLocal whether the path of the output directory given by the user is a local path
-   * @return
-   */
-  private static String processOutputDir(final String outputDir, final boolean onLocal) {
-    if (!onLocal) {
-      return outputDir;
-    }
-    final File outputFile = new File(outputDir);
-    return outputFile.getAbsolutePath();
-  }
-
   public String getIdentifier() {
     return identifier;
   }
@@ -120,6 +103,10 @@ public final class DolphinParameters {
 
   public String getInputDir() {
     return inputDir;
+  }
+
+  public String getOutputDir() {
+    return outputDir;
   }
 
   public boolean getOnLocal() {

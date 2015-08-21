@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.graph;
 
-import edu.snu.cay.dolphin.core.OutputStreamProvider;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.converge.PageRankConvCond;
@@ -23,6 +22,7 @@ import edu.snu.cay.dolphin.examples.ml.data.PageRankSummary;
 import edu.snu.cay.dolphin.examples.ml.parameters.DampingFactor;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
+import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;

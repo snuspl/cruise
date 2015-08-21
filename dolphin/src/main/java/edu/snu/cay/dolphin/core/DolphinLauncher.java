@@ -21,6 +21,10 @@ import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.io.data.loading.api.DataLoadingRequestBuilder;
+import org.apache.reef.io.data.output.TaskOutputServiceBuilder;
+import org.apache.reef.io.data.output.TaskOutputStreamProvider;
+import org.apache.reef.io.data.output.TaskOutputStreamProviderHDFS;
+import org.apache.reef.io.data.output.TaskOutputStreamProviderLocal;
 import org.apache.reef.io.network.group.impl.driver.GroupCommService;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
@@ -106,7 +110,13 @@ public final class DolphinLauncher {
         .setDriverConfigurationModule(driverConfiguration)
         .build();
 
+    final Configuration outputServiceConf = TaskOutputServiceBuilder.CONF
+        .set(TaskOutputServiceBuilder.TASK_OUTPUT_STREAM_PROVIDER, getTaskOutputStreamProvider())
+        .set(TaskOutputServiceBuilder.OUTPUT_PATH, processOutputDir(dolphinParameters.getOutputDir()))
+        .build();
+
     return Configurations.merge(driverConfWithDataLoad,
+        outputServiceConf,
         GroupCommService.getConfiguration(),
         dolphinParameters.getDriverConf());
   }
@@ -117,5 +127,24 @@ public final class DolphinLauncher {
     }
     final File inputFile = new File(inputDir);
     return "file:///" + inputFile.getAbsolutePath();
+  }
+
+  /**
+   * If a relative local file path is given as the output directory,
+   * transform the relative path into the absolute path based on the current directory where the user runs REEF.
+   * @param outputDir path of the output directory given by the user
+   * @return
+   */
+  private String processOutputDir(final String outputDir) {
+    if (!dolphinParameters.getOnLocal()) {
+      return outputDir;
+    }
+    final File outputFile = new File(outputDir);
+    return outputFile.getAbsolutePath();
+  }
+
+  private Class<? extends TaskOutputStreamProvider> getTaskOutputStreamProvider() {
+    return dolphinParameters.getOnLocal() ?
+        TaskOutputStreamProviderLocal.class : TaskOutputStreamProviderHDFS.class;
   }
 }
