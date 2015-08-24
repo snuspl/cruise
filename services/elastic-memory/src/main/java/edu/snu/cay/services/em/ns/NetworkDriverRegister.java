@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.ns;
 
 import org.apache.reef.driver.parameters.DriverIdentifier;
-import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -31,15 +30,15 @@ import javax.inject.Inject;
 @Unit
 public final class NetworkDriverRegister {
 
-  private final NetworkConnectionService networkConnectionService;
+  private final EMNetworkSetup emNetworkSetup;
   private final IdentifierFactory identifierFactory;
   private final String driverId;
 
   @Inject
-  private NetworkDriverRegister(final NetworkConnectionService networkConnectionService,
+  private NetworkDriverRegister(final EMNetworkSetup emNetworkSetup,
                                 final IdentifierFactory identifierFactory,
                                 @Parameter(DriverIdentifier.class) final String driverId) {
-    this.networkConnectionService = networkConnectionService;
+    this.emNetworkSetup = emNetworkSetup;
     this.identifierFactory = identifierFactory;
     this.driverId = driverId;
   }
@@ -47,7 +46,7 @@ public final class NetworkDriverRegister {
   public final class RegisterDriverHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime value) {
-      networkConnectionService.registerId(identifierFactory.getNewInstance(driverId));
+      emNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(driverId));
     }
   }
 }
