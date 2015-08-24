@@ -33,75 +33,44 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <hadoop.version>2.4.0</hadoop.version>
-    <mahout.version>0.9</mahout.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-common</artifactId>
-      <version>${reef.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-io</artifactId>
-      <version>${reef.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-runtime-local</artifactId>
-      <version>${reef.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-runtime-yarn</artifactId>
-      <version>${reef.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>reef-poison</artifactId>
-      <version>${reef.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>tang</artifactId>
-      <version>${reef.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>wake</artifactId>
-      <version>${reef.version}</version>
     </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.11</version>
-      <scope>test</scope>
-    </dependency>
-    <!-- HADOOP -->
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-mapreduce-client-core</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>provided</scope>
     </dependency>
-    <!-- End of HADOOP -->
     <dependency>
       <groupId>org.apache.mahout</groupId>
       <artifactId>mahout-math</artifactId>
-      <version>${mahout.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>2.5.0</version>
     </dependency>
   </dependencies>
 
