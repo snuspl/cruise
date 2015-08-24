@@ -35,6 +35,9 @@ public final class EMNetworkSetup {
 
   private final NetworkConnectionService networkConnectionService;
   private final Identifier connectionFactoryIdentifier;
+  private final Codec<AvroElasticMemoryMessage> codec;
+  private final EventHandler<Message<AvroElasticMemoryMessage>> handler;
+  private ConnectionFactory<AvroElasticMemoryMessage> connectionFactory;
 
   @Inject
   private EMNetworkSetup(
@@ -44,16 +47,26 @@ public final class EMNetworkSetup {
       @Parameter(EMMessageHandler.class) final EventHandler<Message<AvroElasticMemoryMessage>> handler
   ) throws NetworkException {
     this.networkConnectionService = networkConnectionService;
-
     this.connectionFactoryIdentifier = identifierFactory.getNewInstance(EM_IDENTIFIER);
-    this.networkConnectionService.registerConnectionFactory(this.connectionFactoryIdentifier, codec, handler, null);
+    this.codec = codec;
+    this.handler = handler;
+  }
+
+  public ConnectionFactory<AvroElasticMemoryMessage> registerConnectionFactory(final Identifier localEndPointId) {
+    connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryIdentifier,
+        codec, handler, null, localEndPointId);
+    return connectionFactory;
+  }
+
+  public void unregisterConnectionFactory() {
+    networkConnectionService.unregisterConnectionFactory(connectionFactoryIdentifier);
   }
 
   public ConnectionFactory<AvroElasticMemoryMessage> getConnectionFactory() {
-    return networkConnectionService.getConnectionFactory(connectionFactoryIdentifier);
+    return connectionFactory;
   }
 
   public Identifier getMyId() {
-    return networkConnectionService.getNetworkConnectionServiceId();
+    return connectionFactory.getLocalEndPointId();
   }
 }
