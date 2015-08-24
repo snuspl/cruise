@@ -22,6 +22,7 @@ import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import edu.snu.cay.services.shuffle.utils.StateMachine;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.annotations.Name;
@@ -39,31 +40,6 @@ import java.util.logging.Logger;
 
 /**
  * Default implementation for push-based shuffle sender.
- *
- * State summary.
- *
- * CREATED:
- * Wait for initialized message from the manager. This sends a SENDER_INITIALIZED message
- * to the manager when it is instantiated.
- *
- * SENDING:
- * Send tuples to receivers.
- *
- * WAITING:
- * Wait for all receivers received tuples from senders.
- *
- * Transition summary.
- *
- * CREATED -> SENDING:
- * When a SHUFFLE_INITIALIZED message arrived from the manager.
- *
- * SENDING -> WAITING:
- * When a user calls complete() method.
- * It sends a SENDER_COMPLETED message to the manager.
- *
- * WAITING -> SENDING:
- * When a ALL_RECEIVERS_RECEIVED message arrived from the manager.
- * It wakes up a caller who is blocking on waitForReceiver() or completeAndWaitForReceiver().
  */
 public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V> {
 
@@ -75,7 +51,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   private final long senderTimeout;
   private final AtomicBoolean initialized;
 
-  private State currentState;
+  private final StateMachine stateMachine;
 
   @Inject
   private PushShuffleSenderImpl(
@@ -89,7 +65,27 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     this.synchronizer = synchronizer;
     this.senderTimeout = senderTimeout;
     this.initialized = new AtomicBoolean();
-    this.currentState = State.CREATED;
+
+    this.stateMachine = createStateMachine();
+  }
+
+  /**
+   * @return a state machine for PushShuffleSenderImpl
+   */
+  public static StateMachine createStateMachine() {
+    return StateMachine.newBuilder()
+        .addState("CREATED", "Wait for initialized message from the manager")
+        .addState("SENDING", "Send tuples to receivers")
+        .addState("WAITING", "Wait for all receivers received tuples from senders")
+        .setInitialState("CREATED")
+        .addTransition("CREATED", "SENDING",
+            "When a SHUFFLE_INITIALIZED message arrived from the manager")
+        .addTransition("SENDING", "WAITING",
+            "When a user calls complete() method. It sends a SENDER_COMPLETED message to the manager.")
+        .addTransition("WAITING", "SENDING",
+            "When a ALL_RECEIVERS_RECEIVED message arrived from the manager."
+                + "It wakes up a caller who is blocking on waitForReceiver() or completeAndWaitForReceiver().")
+        .build();
   }
 
   private final class TupleLinkListener implements LinkListener<Message<ShuffleTupleMessage<K, V>>> {
@@ -114,28 +110,28 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public List<String> sendTuple(final Tuple<K, V> tuple) {
     waitForInitializing();
-    checkState(State.SENDING);
+    stateMachine.checkState("SENDING");
     return dataSender.sendTuple(tuple);
   }
 
   @Override
   public List<String> sendTuple(final List<Tuple<K, V>> tupleList) {
     waitForInitializing();
-    checkState(State.SENDING);
+    stateMachine.checkState("SENDING");
     return dataSender.sendTuple(tupleList);
   }
 
   @Override
   public void sendTupleTo(final String receiverId, final Tuple<K, V> tuple) {
     waitForInitializing();
-    checkState(State.SENDING);
+    stateMachine.checkState("SENDING");
     dataSender.sendTupleTo(receiverId, tuple);
   }
 
   @Override
   public void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList) {
     waitForInitializing();
-    checkState(State.SENDING);
+    stateMachine.checkState("SENDING");
     dataSender.sendTupleTo(receiverId, tupleList);
   }
 
@@ -149,14 +145,14 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
         // TODO (#33) : failure handling
         throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
       }
-      checkAndSetState(State.CREATED, State.SENDING);
+      stateMachine.checkAndSetState("CREATED", "SENDING");
     }
   }
 
   @Override
   public void complete() {
     LOG.log(Level.INFO, "Complete to send tuples");
-    checkAndSetState(State.SENDING, State.WAITING);
+    stateMachine.checkAndSetState("SENDING", "WAITING");
     controlMessageSender.sendToManager(PushShuffleCode.SENDER_COMPLETED);
   }
 
@@ -171,66 +167,13 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     }
 
     synchronizer.reopenLatch(PushShuffleCode.ALL_RECEIVERS_RECEIVED);
-    checkAndSetState(State.WAITING, State.SENDING);
+    stateMachine.checkAndSetState("WAITING", "SENDING");
   }
 
   @Override
   public void completeAndWaitForReceivers() {
     complete();
     waitForReceivers();
-  }
-
-  public enum State {
-    CREATED,
-    SENDING,
-    WAITING
-  }
-
-  private synchronized void checkState(final State expectedState) {
-    if (currentState != expectedState) {
-      throw new IllegalStateException("Expected state is " + expectedState + " but actual state is " + currentState);
-    }
-  }
-
-  public static boolean isLegalTransition(final State from, final State to) {
-    switch (from) {
-    case CREATED:
-      switch (to) {
-      case SENDING:
-        return true;
-      default:
-        return false;
-      }
-    case SENDING:
-      switch (to) {
-      case WAITING:
-        return true;
-      default:
-        return false;
-      }
-    case WAITING:
-      switch (to) {
-      case SENDING:
-        return true;
-      default:
-        return false;
-      }
-    default:
-      throw new RuntimeException("Unknown state : " + from);
-    }
-  }
-
-  private synchronized void setState(final State state) {
-    if (isLegalTransition(currentState, state)) {
-      currentState = state;
-    } else {
-      throw new IllegalStateException("Illegal state transition from " + currentState + " to " + state);
-    }
-  }
-
-  private synchronized void checkAndSetState(final State expectedState, final State state) {
-    checkState(expectedState);
-    setState(state);
   }
 
   // default_value = 10 min

@@ -22,6 +22,7 @@ import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import edu.snu.cay.services.shuffle.utils.StateMachine;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.annotations.Name;
@@ -39,22 +40,6 @@ import java.util.logging.Logger;
 
 /**
  * Default implementation for push-based shuffle receiver.
- *
- * State summary.
- *
- * CREATED: Wait for initialized message from the manager. This sends a RECEIVER_INITIALIZED message
- * to the manager when it is instantiated.
- *
- * RECEIVING: Receive tuples from sender
- *
- * Transition summary.
- *
- * CREATED -> RECEIVING
- * When a SHUFFLE_INITIALIZED message arrived from the manager.
- *
- * RECEIVING -> RECEIVING
- * When a ALL_SENDERS_COMPLETED message arrived from the manager.
- * It wakes up a caller who is blocking on receive() along with received tuples.
  */
 public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<K, V> {
 
@@ -66,7 +51,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private final AtomicBoolean initialized;
   private final List<Tuple<K, V>> receivedTupleList;
 
-  private State currentState;
+  private final StateMachine stateMachine;
 
   @Inject
   private PushShuffleReceiverImpl(
@@ -80,15 +65,31 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     this.receiverTimeout = receiverTimeout;
     this.initialized = new AtomicBoolean();
     this.receivedTupleList = new ArrayList<>();
-    this.currentState = State.CREATED;
 
+    this.stateMachine = createStateMachine();
     controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_INITIALIZED);
+  }
+
+  /**
+   * @return a state machine for PushShuffleReceiverImpl
+   */
+  public static StateMachine createStateMachine() {
+    return StateMachine.newBuilder()
+        .addState("CREATED", "Wait for initialized message from the manager")
+        .addState("RECEIVING", "Receive tuples from sender")
+        .setInitialState("CREATED")
+        .addTransition("CREATED", "RECEIVING",
+            "When a SHUFFLE_INITIALIZED message arrived from the manager")
+        .addTransition("RECEIVING", "RECEIVING",
+            "When a ALL_SENDERS_COMPLETED message arrived from the manager. "
+                + "It wakes up a caller who is blocking on receive() along with received tuples.")
+        .build();
   }
 
   @Override
   public Iterable<Tuple<K, V>> receive() {
     waitForInitializing();
-    checkState(State.RECEIVING);
+    stateMachine.checkState("RECEIVING");
     LOG.log(Level.INFO, "Wait for all senders are completed");
     final Optional<ShuffleControlMessage> sendersCompletedMessage = synchronizer.waitOnLatch(
         PushShuffleCode.ALL_SENDERS_COMPLETED, receiverTimeout);
@@ -131,53 +132,8 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
         // TODO (#67) : failure handling
         throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
       }
-      checkAndSetState(State.CREATED, State.RECEIVING);
+      stateMachine.checkAndSetState("CREATED", "RECEIVING");
     }
-  }
-
-  public enum State {
-    CREATED,
-    RECEIVING
-  }
-
-  private synchronized void checkState(final State expectedState) {
-    if (currentState != expectedState) {
-      throw new IllegalStateException("Expected state is " + expectedState + " but actual state is " + currentState);
-    }
-  }
-
-  public static boolean isLegalTransition(final State from, final State to) {
-    switch (from) {
-    case CREATED:
-      switch (to) {
-      case RECEIVING:
-        return true;
-      default:
-        return false;
-      }
-    case RECEIVING:
-      switch (to) {
-      case RECEIVING:
-        return true;
-      default:
-        return false;
-      }
-    default:
-      throw new RuntimeException("Unknown state : " + from);
-    }
-  }
-
-  private synchronized void setState(final State state) {
-    if (isLegalTransition(currentState, state)) {
-      currentState = state;
-    } else {
-      throw new IllegalStateException("Illegal state transition from " + currentState + " to " + state);
-    }
-  }
-
-  private synchronized void checkAndSetState(final State expectedState, final State state) {
-    checkState(expectedState);
-    setState(state);
   }
 
   // default_value = 10 min
