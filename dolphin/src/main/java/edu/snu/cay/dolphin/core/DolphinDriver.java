@@ -16,12 +16,10 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.groupcomm.names.*;
-import edu.snu.cay.dolphin.parameters.OutputDir;
 import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
-import edu.snu.cay.dolphin.parameters.OnLocal;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
@@ -31,6 +29,7 @@ import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
+import org.apache.reef.io.data.output.OutputService;
 import org.apache.reef.io.network.group.api.driver.CommunicationGroupDriver;
 import org.apache.reef.io.network.group.api.driver.GroupCommDriver;
 import org.apache.reef.io.network.group.impl.config.BroadcastOperatorSpec;
@@ -39,7 +38,6 @@ import org.apache.reef.io.network.group.impl.config.ReduceOperatorSpec;
 import org.apache.reef.io.network.group.impl.config.ScatterOperatorSpec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.*;
-import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
@@ -89,6 +87,12 @@ public final class DolphinDriver {
   private final DataLoadingService dataLoadingService;
 
   /**
+   * The output service.
+   * Used to create an output service configuration for each context.
+   */
+  private final OutputService outputService;
+
+  /**
    * Schedulability analyzer for the current Runtime.
    * Checks whether the number of evaluators configured by the data loading service can be gang scheduled.
    */
@@ -120,8 +124,6 @@ public final class DolphinDriver {
    */
   private final MetricCodec metricCodec;
 
-  private final String outputDir;
-  private final boolean onLocal;
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final UserParameters userParameters;
 
@@ -135,24 +137,23 @@ public final class DolphinDriver {
    *
    * @param groupCommDriver manager for Group Communication configurations
    * @param dataLoadingService manager for Data Loading configurations
+   * @param outputService
    * @param schedulabilityAnalyzer
    * @param userJobInfo
    * @param userParameters
    * @param metricCodec
-   * @param outputDir
-   * @param onLocal
    */
   @Inject
   private DolphinDriver(final GroupCommDriver groupCommDriver,
                         final DataLoadingService dataLoadingService,
+                        final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
-                        final MetricCodec metricCodec,
-                        @Parameter(OutputDir.class) final String outputDir,
-                        @Parameter(OnLocal.class) final boolean onLocal) {
+                        final MetricCodec metricCodec) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
+    this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
@@ -160,8 +161,6 @@ public final class DolphinDriver {
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
     this.metricCodec = metricCodec;
-    this.outputDir = outputDir;
-    this.onLocal = onLocal;
     initializeCommDriver();
   }
 
@@ -234,7 +233,7 @@ public final class DolphinDriver {
       if (!groupCommDriver.isConfigured(activeContext)) {
         final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
         final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
-        final Configuration outputServiceConf = OutputService.getServiceConfiguration(outputDir, onLocal);
+        final Configuration outputServiceConf = outputService.getServiceConfiguration();
         final Configuration keyValueServiceStoreConf = KeyValueStoreService.getServiceConfiguration();
         final Configuration metricTrackerServiceConf = MetricsCollectionService.getServiceConfiguration();
         final Configuration finalContextConf = MetricsCollectionService.getContextConfiguration(groupCommContextConf);

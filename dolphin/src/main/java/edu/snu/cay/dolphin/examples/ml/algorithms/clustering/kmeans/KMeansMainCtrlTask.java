@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
 import edu.snu.cay.dolphin.core.KeyValueStore;
-import edu.snu.cay.dolphin.core.OutputStreamProvider;
 import edu.snu.cay.dolphin.examples.ml.data.VectorSum;
 import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
@@ -25,6 +24,7 @@ import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.converge.ClusteringConvCond;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
 import org.apache.mahout.math.Vector;
+import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
