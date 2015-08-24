@@ -42,6 +42,11 @@ public final class ShuffleParameters {
    */
   public static final String SHUFFLE_CONTROL_MSG_NETWORK_ID = "SHUFFLE_CONTROL_MSG_NETWORK_ID";
 
+  /**
+   * Local end point id for driver.
+   */
+  public static final String SHUFFLE_DRIVER_LOCAL_END_POINT_ID = "SHUFFLE_DRIVER_LOCAL_END_POINT_ID";
+
   @NamedParameter(doc = "the name of ShuffleManger class")
   public static final class ShuffleManagerClassName implements Name<String> {
   }

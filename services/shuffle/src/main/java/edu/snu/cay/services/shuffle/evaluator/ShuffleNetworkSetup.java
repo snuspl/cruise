@@ -18,7 +18,6 @@ package edu.snu.cay.services.shuffle.evaluator;
 import edu.snu.cay.services.shuffle.network.*;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.io.network.naming.NameServerParameters;
@@ -39,6 +38,12 @@ public final class ShuffleNetworkSetup {
   private final NetworkConnectionService networkConnectionService;
   private final Identifier tupleMessageNetworkId;
   private final Identifier controlMessageNetworkId;
+  private final ShuffleTupleMessageCodec tupleMessageCodec;
+  private final ShuffleTupleMessageHandler tupleMessageHandler;
+  private final ShuffleTupleLinkListener tupleLinkListener;
+  private final ShuffleControlMessageCodec controlMessageCodec;
+  private final ShuffleControlMessageHandler controlMessageHandler;
+  private final ShuffleControlLinkListener controlLinkListener;
 
   @Inject
   private ShuffleNetworkSetup(
@@ -53,15 +58,12 @@ public final class ShuffleNetworkSetup {
     this.networkConnectionService = networkConnectionService;
     this.tupleMessageNetworkId = idFactory.getNewInstance(ShuffleParameters.SHUFFLE_TUPLE_MSG_NETWORK_ID);
     this.controlMessageNetworkId = idFactory.getNewInstance(ShuffleParameters.SHUFFLE_CONTROL_MSG_NETWORK_ID);
-
-    try {
-      networkConnectionService.registerConnectionFactory(
-          tupleMessageNetworkId, tupleMessageCodec, tupleMessageHandler, tupleLinkListener);
-      networkConnectionService.registerConnectionFactory(
-          controlMessageNetworkId, controlMessageCodec, controlMessageHandler, controlLinkListener);
-    } catch (final NetworkException e) {
-      throw new RuntimeException(e);
-    }
+    this.tupleMessageCodec = tupleMessageCodec;
+    this.tupleMessageHandler = tupleMessageHandler;
+    this.tupleLinkListener = tupleLinkListener;
+    this.controlMessageCodec = controlMessageCodec;
+    this.controlMessageHandler = controlMessageHandler;
+    this.controlLinkListener = controlLinkListener;
   }
 
   /**
@@ -76,6 +78,16 @@ public final class ShuffleNetworkSetup {
    */
   public ConnectionFactory<ShuffleTupleMessage> getTupleConnectionFactory() {
     return networkConnectionService.getConnectionFactory(tupleMessageNetworkId);
+  }
+
+  /**
+   * Register connection factories for ShuffleTupleMessage and ShuffleControlMessage.
+   */
+  public void registerConnectionFactories(final Identifier localEndPointId) {
+    networkConnectionService.registerConnectionFactory(
+        tupleMessageNetworkId, tupleMessageCodec, tupleMessageHandler, tupleLinkListener, localEndPointId);
+    networkConnectionService.registerConnectionFactory(
+        controlMessageNetworkId, controlMessageCodec, controlMessageHandler, controlLinkListener, localEndPointId);
   }
 
   /**
