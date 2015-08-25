@@ -22,7 +22,6 @@ import edu.snu.cay.services.shuffle.network.ShuffleControlMessageHandler;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleContextStopHandler;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
-import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.io.network.naming.NameServerParameters;
 import org.apache.reef.tang.Configuration;
@@ -33,7 +32,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.util.Optional;
-import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
@@ -81,16 +79,14 @@ final class ShuffleDriverImpl implements ShuffleDriver {
     this.rootInjector = rootInjector;
     this.controlMessageHandler = controlMessageHandler;
     this.controlLinkListener = controlLinkListener;
-
-    final Identifier controlMessageNetworkId = idFactory.getNewInstance(
-        ShuffleParameters.SHUFFLE_CONTROL_MSG_NETWORK_ID);
-    try {
-      networkConnectionService.registerConnectionFactory(
-          controlMessageNetworkId, controlMessageCodec, controlMessageHandler, controlLinkListener);
-    } catch (final NetworkException e) {
-      throw new RuntimeException(e);
-    }
     this.managerMap = new ConcurrentHashMap<>();
+
+    networkConnectionService.registerConnectionFactory(
+        idFactory.getNewInstance(ShuffleParameters.SHUFFLE_CONTROL_MSG_NETWORK_ID),
+        controlMessageCodec,
+        controlMessageHandler,
+        controlLinkListener,
+        idFactory.getNewInstance(ShuffleParameters.SHUFFLE_DRIVER_LOCAL_END_POINT_ID));
   }
 
   @Override
