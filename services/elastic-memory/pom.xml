@@ -30,10 +30,6 @@
     <relativePath>../../</relativePath>
   </parent>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>org.apache.reef</groupId>
@@ -79,18 +75,10 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
-        <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
-          <showDeprecation>true</showDeprecation>
-          <encoding>${project.build.sourceEncoding}</encoding>
-        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro-maven-plugin</artifactId>
-        <version>${avro.version}</version>
         <executions>
           <execution>
             <phase>generate-sources</phase>
@@ -110,7 +98,6 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>1.9.1</version>
         <executions>
           <execution>
             <id>add-source</id>
@@ -129,32 +116,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <outputFile>
-            ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
-          </outputFile>
-          <filters>
-            <filter>
-              <artifact>*:*</artifact>
-              <excludes>
-                <exclude>META-INF/*</exclude>
-                <exclude>LICENSE</exclude>
-                <exclude>yarn-default.xml</exclude>
-                <exclude>yarn-version-info.properties</exclude>
-                <exclude>core-default.xml</exclude>
-              </excludes>
-            </filter>
-          </filters>
-        </configuration>
       </plugin>
     </plugins>
   </build>
