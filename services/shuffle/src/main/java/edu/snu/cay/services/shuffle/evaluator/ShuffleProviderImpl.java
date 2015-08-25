@@ -18,7 +18,6 @@ package edu.snu.cay.services.shuffle.evaluator;
 import edu.snu.cay.services.shuffle.network.ShuffleControlLinkListener;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessageHandler;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
-import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.io.network.naming.NameServerParameters;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -49,7 +48,7 @@ final class ShuffleProviderImpl implements ShuffleProvider {
    * @param controlLinkListener a link listener for shuffle control message
    * @param serializedShuffleSet a set of serialized shuffles
    * @param idFactory an identifier factory
-   * @param networkConnectionService a network connection service
+   * @param networkSetup a shuffle network setup
    * @param endPointId the end point id for the current evaluator
    */
   @Inject
@@ -60,16 +59,14 @@ final class ShuffleProviderImpl implements ShuffleProvider {
       final ShuffleControlLinkListener controlLinkListener,
       @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet,
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
-      final NetworkConnectionService networkConnectionService,
+      final ShuffleNetworkSetup networkSetup,
       @Parameter(ShuffleParameters.EndPointId.class) final String endPointId) {
     this.rootInjector = rootInjector;
     this.confSerializer = confSerializer;
     this.controlMessageHandler = controlMessageHandler;
     this.controlLinkListener = controlLinkListener;
 
-    // TODO (#63) : Where to register the endPointId should be cleaned up when an issue about
-    // injecting evaluator-side shuffle components in context is resolved.
-    networkConnectionService.registerId(idFactory.getNewInstance(endPointId));
+    networkSetup.registerConnectionFactories(idFactory.getNewInstance(endPointId));
     this.shuffleMap = new HashMap<>();
     for (final String serializedShuffle : serializedShuffleSet) {
       deserializeShuffle(serializedShuffle);

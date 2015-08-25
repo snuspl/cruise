@@ -97,6 +97,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
         final long id = unitIdPair.getId();
         memoryStore.getElasticStore().put(dataClassName, id, codec.decode(data));
       }
+
+      sender.get().sendResultMsg(true,
+          msg.getOperationId().toString(), TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
   }
 
@@ -137,7 +140,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       }
 
       sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList,
-          TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
+          msg.getOperationId().toString(), TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
     }
   }
 }

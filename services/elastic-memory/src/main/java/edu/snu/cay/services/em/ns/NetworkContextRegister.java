@@ -17,7 +17,6 @@ package edu.snu.cay.services.em.ns;
 
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
-import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
@@ -31,27 +30,27 @@ import javax.inject.Inject;
 @Unit
 public final class NetworkContextRegister {
 
-  private final NetworkConnectionService networkConnectionService;
+  private final EMNetworkSetup emNetworkSetup;
   private final IdentifierFactory identifierFactory;
 
   @Inject
-  private NetworkContextRegister(final NetworkConnectionService networkConnectionService,
+  private NetworkContextRegister(final EMNetworkSetup emNetworkSetup,
                                  final IdentifierFactory identifierFactory) {
-    this.networkConnectionService = networkConnectionService;
+    this.emNetworkSetup = emNetworkSetup;
     this.identifierFactory = identifierFactory;
   }
 
   public final class RegisterContextHandler implements EventHandler<ContextStart> {
     @Override
     public void onNext(final ContextStart contextStart) {
-      networkConnectionService.registerId(identifierFactory.getNewInstance(contextStart.getId()));
+      emNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
     }
   }
 
   public final class UnregisterContextHandler implements EventHandler<ContextStop> {
     @Override
     public void onNext(final ContextStop contextStop) {
-      networkConnectionService.unregisterId(identifierFactory.getNewInstance(contextStop.getId()));
+      emNetworkSetup.unregisterConnectionFactory();
     }
   }
 }

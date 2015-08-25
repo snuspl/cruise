@@ -43,6 +43,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <reef.version>0.13.0-incubating-SNAPSHOT</reef.version>
     <hadoop.version>2.4.0</hadoop.version>
+    <htrace.version>3.2.0-incubating</htrace.version>
+    <mahout.version>0.9</mahout.version>
     <avro.version>1.7.7</avro.version>
     <jetty.version>6.1.26</jetty.version>
     <jackson.version>1.9.13</jackson.version>
@@ -60,10 +62,139 @@
     <module>services/elastic-memory</module>
     <module>services/shuffle</module>
   </modules>
+  
+  <dependencyManagement>
+    <dependencies>
+      <!-- REEF -->
+      <dependency>
+        <groupId>org.apache.reef</groupId>
+        <artifactId>reef-common</artifactId>
+        <version>${reef.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.reef</groupId>
+        <artifactId>reef-io</artifactId>
+        <version>${reef.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.reef</groupId>
+        <artifactId>reef-runtime-local</artifactId>
+        <version>${reef.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.reef</groupId>
+        <artifactId>reef-runtime-yarn</artifactId>
+        <version>${reef.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.reef</groupId>
+        <artifactId>tang</artifactId>
+        <version>${reef.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.reef</groupId>
+        <artifactId>wake</artifactId>
+        <version>${reef.version}</version>
+      </dependency>
+      <!-- HADOOP -->
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-common</artifactId>
+        <version>${hadoop.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-mapreduce-client-core</artifactId>
+        <version>${hadoop.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <!-- End of HADOOP -->
+      <!-- HTRACE -->
+      <dependency>
+        <groupId>org.apache.htrace</groupId>
+        <artifactId>htrace-core</artifactId>
+        <version>${htrace.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.htrace</groupId>
+        <artifactId>htrace-zipkin</artifactId>
+        <version>${htrace.version}</version>
+      </dependency>
+      <!-- End of HTRACE -->
+      <dependency>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro</artifactId>
+        <version>${avro.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.11</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.mahout</groupId>
+        <artifactId>mahout-math</artifactId>
+        <version>${mahout.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.1</version>
+          <configuration>
+            <source>1.7</source>
+            <target>1.7</target>
+            <showDeprecation>true</showDeprecation>
+            <encoding>${project.build.sourceEncoding}</encoding>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>2.3</version>
+          <executions>
+            <execution>
+              <phase>package</phase>
+              <goals>
+                <goal>shade</goal>
+              </goals>
+            </execution>
+          </executions>
+          <configuration>
+            <outputFile>
+              ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
+            </outputFile>
+            <filters>
+              <filter>
+                <artifact>*:*</artifact>
+                <excludes>
+                  <exclude>META-INF/*</exclude>
+                  <exclude>LICENSE</exclude>
+                  <exclude>yarn-default.xml</exclude>
+                  <exclude>yarn-version-info.properties</exclude>
+                  <exclude>core-default.xml</exclude>
+                </excludes>
+              </filter>
+            </filters>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.avro</groupId>
+          <artifactId>avro-maven-plugin</artifactId>
+          <version>${avro.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>build-helper-maven-plugin</artifactId>
+          <version>1.9.1</version>
+        </plugin>
         <plugin>
           <groupId>org.apache.rat</groupId>
           <artifactId>apache-rat-plugin</artifactId>

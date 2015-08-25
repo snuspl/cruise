@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
-import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -54,7 +53,7 @@ public final class ESControlMessageSender {
     this.shuffleName = shuffleName;
     final ConnectionFactory<ShuffleControlMessage> connFactory = shuffleNetworkSetup.getControlConnectionFactory();
     connectionToManager = connFactory.newConnection(idFactory
-        .getNewInstance(ShuffleDriverConfiguration.SHUFFLE_DRIVER_NCS_ID));
+        .getNewInstance(ShuffleParameters.SHUFFLE_DRIVER_LOCAL_END_POINT_ID));
     try {
       connectionToManager.open();
     } catch (final NetworkException e) {

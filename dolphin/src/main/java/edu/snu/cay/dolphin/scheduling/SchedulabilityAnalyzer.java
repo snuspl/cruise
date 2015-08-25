@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.parameters;
+package edu.snu.cay.dolphin.scheduling;
 
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Number of evaluators to run job with",
-                short_name = "split")
-public final class EvaluatorNum implements Name<Integer> {
+/**
+ * Determines whether dolphin's Gang Scheduling is possible for the Runtime and its current resources.
+ */
+public interface SchedulabilityAnalyzer {
+  /**
+   * @return whether scheduling is possible under current resource conditions.
+   */
+  boolean isSchedulable();
 }
