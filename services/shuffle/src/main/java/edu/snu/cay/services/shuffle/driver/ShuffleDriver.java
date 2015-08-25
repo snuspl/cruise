@@ -26,7 +26,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * in evaluators through this class.
  *
  * The evaluator-side components can be injected in task or context as a service.
- * // TODO (#63) : Add more explanation about how both cases are different when the functionality is included.
+ * // TODO #63: Add more explanation about how both cases are different when the functionality is included.
  */
 @DriverSide
 @DefaultImplementation(ShuffleDriverImpl.class)

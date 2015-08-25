@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-// TODO (#88) : Implement functionality
+// TODO #88: Implement functionality
 // as a basic implementation of ShuffleManager.
 /**
  * Simple implementation of ShuffleManager.
@@ -112,7 +112,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         controlMessageSender.send(endPointId, StaticPushShuffleCode.SHUFFLE_INITIALIZED);
       }
     } catch (final NetworkException e) {
-      // TODO (#67) : failure handling
+      // TODO #67: failure handling
       throw new RuntimeException(e);
     }
   }
@@ -124,7 +124,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
       if (controlMessage.getCode() == StaticPushShuffleCode.END_POINT_INITIALIZED) {
         if (setupEndPointCount.decrementAndGet() == 0) {
-          // TODO (#88) : This redundant sleep will be removed and StaticPushShuffleManager will be added.
+          // TODO #88: This redundant sleep will be removed and StaticPushShuffleManager will be added.
           try {
             // Wait for all tasks register their EventHandler.
             Thread.sleep(2000);
@@ -151,7 +151,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         final Message<ShuffleControlMessage> networkControlMessage) {
       LOG.log(Level.WARNING, "An exception occurred while sending a ShuffleControlMessage. cause : {0}," +
           " socket address : {1}, message : {2}", new Object[]{cause, socketAddress, networkControlMessage});
-      // TODO (#67) : failure handling.
+      // TODO #67: failure handling.
     }
   }
 }

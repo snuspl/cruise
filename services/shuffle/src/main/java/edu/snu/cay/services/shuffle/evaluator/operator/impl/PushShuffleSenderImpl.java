@@ -21,7 +21,7 @@ import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
 import javax.inject.Inject;
 
 /**
- * TODO (#88) : implements base functionality.
+ * TODO #88: implements base functionality.
  */
 public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V> {
 

@@ -23,8 +23,8 @@ import java.util.*;
 
 /**
  * Manager class for keeping track of partitions registered by evaluators.
- * TODO: Currently does not check whether ranges are disjoint or not.
- * TODO: Currently does not try to merge contiguous ranges.
+ * TODO #110: Currently does not check whether ranges are disjoint or not.
+ * TODO #111: Currently does not try to merge contiguous ranges.
  */
 @DriverSide
 public final class PartitionManager {

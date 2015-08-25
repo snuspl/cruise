@@ -23,7 +23,7 @@ import javax.inject.Inject;
 import java.util.List;
 
 /**
- * TODO (#88) : implements base functionality.
+ * TODO #88: implements base functionality.
  */
 public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<K, V> {
 

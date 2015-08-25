@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-// TODO (#88) : Implement functionality.
+// TODO #88: Implement functionality.
 /**
  * Simple implementation of Shuffle.
  *
@@ -160,7 +160,7 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
       LOG.log(Level.WARNING, "An exception occurred while sending ShuffleControlMessage to driver. cause : {0}, " +
           "socket address : {1}, message : {2}", new Object[]{throwable, socketAddress, networkControlMessage});
       throw new RuntimeException("An exception occurred while sending ShuffleControlMessage to driver", throwable);
-      // TODO (#67) : failure handling.
+      // TODO #67: failure handling.
     }
   }
 }

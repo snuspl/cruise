@@ -32,7 +32,7 @@ import javax.inject.Inject;
  * ShuffleTupleMessage and ShuffleControlMessage.
  */
 @EvaluatorSide
-// TODO (#63) : better naming.
+// TODO #63: better naming.
 public final class ShuffleNetworkSetup {
 
   private final NetworkConnectionService networkConnectionService;

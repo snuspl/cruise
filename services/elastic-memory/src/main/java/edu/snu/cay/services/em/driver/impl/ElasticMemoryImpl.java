@@ -65,13 +65,13 @@ public final class ElasticMemoryImpl implements ElasticMemory {
         .build());
   }
 
-  // TODO: implement
+  // TODO #112: implement delete
   @Override
   public void delete(final String evalId) {
     throw new NotImplementedException();
   }
 
-  // TODO: implement
+  // TODO #113: implement resize
   @Override
   public void resize(final String evalId, final int megaBytes, final int cores) {
     throw new NotImplementedException();
@@ -93,7 +93,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     }
   }
 
-  // TODO: implement
+  // TODO #114: implement checkpoint
   @Override
   public void checkpoint(final String evalId) {
     throw new NotImplementedException();
