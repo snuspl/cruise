@@ -30,7 +30,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Send tuples to ReceiverTasks and SenderReceiverTasks.
+ * Send tuples to ReceiverTasks.
  */
 public final class SenderTask implements Task {
 
@@ -58,10 +58,15 @@ public final class SenderTask implements Task {
         shuffleSender.sendTuple(tupleList);
       }
 
-      LOG.log(Level.INFO, "Complete to send tuples and wait for all receivers received tuples from all senders");
-      shuffleSender.completeAndWaitForReceivers();
-      LOG.log(Level.INFO, "Finish iteration " + i);
+      LOG.log(Level.INFO, "Complete iteration {0}", (i + 1));
+      if (i < MessageExchangeDriver.ITERATION_NUMBER - 1) {
+        shuffleSender.complete();
+      } else {
+        shuffleSender.finish();
+        LOG.log(Level.INFO, "Finish the final iteration");
+      }
     }
+
     final ByteBuffer byteBuffer = ByteBuffer.allocate(4);
     byteBuffer.putInt(sentTupleCount);
     return byteBuffer.array();
@@ -71,7 +76,7 @@ public final class SenderTask implements Task {
   private List<Tuple<Integer, Integer>> generateRandomTuples() {
     final Random rand = new Random();
     final List<Tuple<Integer, Integer>> randomTupleList = new ArrayList<>();
-    final int tupleListSize = receiverNum + rand.nextInt(receiverNum);
+    final int tupleListSize = receiverNum * 10000 + rand.nextInt(receiverNum) * 100;
     for (int i = 0; i < tupleListSize; i++) {
       randomTupleList.add(new Tuple<>(rand.nextInt(receiverNum * 3), rand.nextInt()));
     }

@@ -39,8 +39,20 @@ import java.util.concurrent.locks.ReentrantLock;
 @ThreadSafe
 public final class ControlMessageSynchronizer {
 
+  /**
+   * Map of ControlMessageLatches. There is a ControlMessageLatches for
+   * a certain code in the map only when some threads are waiting the code on the latch.
+   */
   private final Map<Integer, ControlMessageLatch> latchMap;
+
+  /**
+   * Indicates whether a latch for a certain code is closed or not.
+   */
   private final Map<Integer, Boolean> isLatchClosedMap;
+
+  /**
+   * Maintaining the ShuffleControlMessage which was used to closed a latch.
+   */
   private final Map<Integer, ShuffleControlMessage> closedControlMessageMap;
 
   @Inject

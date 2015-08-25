@@ -54,6 +54,7 @@ public final class StateMachine {
 
   /**
    * Set current state as a certain state.
+   *
    * @param state a state
    * @throws RuntimeException if the state is unknown state, or the transition
    * from the current state to the specified state is illegal
@@ -178,7 +179,7 @@ public final class StateMachine {
   }
 
   /**
-   * Builder that build a StateMachine.
+   * Builder that builds a StateMachine.
    */
   public static final class Builder {
     private final Set<String> stateSet;
@@ -214,7 +215,7 @@ public final class StateMachine {
     /**
      * @param initialState the initial state for StateMachine
      * @return the builder
-     * @throws RuntimeException if the initial state was not added
+     * @throws RuntimeException if the initial state was not added first
      */
     public Builder setInitialState(final String initialState) {
       if (!stateSet.contains(initialState)) {

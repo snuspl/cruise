@@ -30,7 +30,6 @@ import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -49,8 +48,6 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private final ShuffleOperatorFactory<K, V> operatorFactory;
   private final ControlMessageSynchronizer synchronizer;
 
-  private final AtomicBoolean initialized;
-
   private final ControlMessageHandler controlMessageHandler;
   private final ControlLinkListener controlLinkListener;
 
@@ -65,8 +62,6 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
     this.shuffleDescription = shuffleDescription;
     this.operatorFactory = operatorFactory;
     this.synchronizer = synchronizer;
-
-    this.initialized = new AtomicBoolean();
 
     this.controlMessageHandler = new ControlMessageHandler();
     this.controlLinkListener = new ControlLinkListener();
@@ -114,24 +109,25 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
     public void onNext(final Message<ShuffleControlMessage> message) {
       final ShuffleControlMessage controlMessage = message.getData().iterator().next();
       switch (controlMessage.getCode()) {
-      case PushShuffleCode.SHUFFLE_INITIALIZED:
-        if (initialized.compareAndSet(false, true)) {
-          synchronizer.closeLatch(controlMessage);
-        }
-        break;
-
-      case PushShuffleCode.ALL_RECEIVERS_RECEIVED:
-        LOG.log(Level.INFO, "All receivers received tuples from senders");
+      case PushShuffleCode.SENDER_CAN_SEND:
         synchronizer.closeLatch(controlMessage);
         break;
 
-      case PushShuffleCode.ALL_SENDERS_COMPLETED:
-        LOG.log(Level.INFO, "All senders are completed to send tuples");
+      case PushShuffleCode.SENDER_COMPLETED:
+        shuffleReceiver.onControlMessage(message);
+        break;
+
+      case PushShuffleCode.SENDER_FINISHED:
+        shuffleReceiver.onControlMessage(message);
+        break;
+
+      case PushShuffleCode.ALL_RECEIVERS_COMPLETED:
+        LOG.log(Level.INFO, "All receivers were completed to receive data");
         synchronizer.closeLatch(controlMessage);
         break;
 
       default:
-        throw new RuntimeException("Illegal code[ " + controlMessage.getCode() + " ] from " + message.getSrcId());
+        throw new RuntimeException("Unknown code [ " + controlMessage.getCode() + " ] from " + message.getSrcId());
       }
     }
   }

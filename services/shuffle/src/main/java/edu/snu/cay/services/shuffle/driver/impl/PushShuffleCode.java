@@ -21,53 +21,66 @@ package edu.snu.cay.services.shuffle.driver.impl;
 public final class PushShuffleCode {
 
   /**
-   * All end points in the shuffle were initialized.
-   *
-   * The manager to all senders and receivers.
-   */
-  public static final int SHUFFLE_INITIALIZED = 0;
-
-  /**
    * A sender was initialized.
    *
    * The sender to the manager.
    */
-  public static final int SENDER_INITIALIZED = 1;
+  public static final int SENDER_INITIALIZED = 0;
+
+  /**
+   * A sender can send data.
+   *
+   * The manager to the sender.
+   */
+  public static final int SENDER_CAN_SEND = 1;
+
+  /**
+   * A sender was completed to push tuples.
+   *
+   * The sender to all receivers.
+   */
+  public static final int SENDER_COMPLETED = 2;
+
+  /**
+   * A sender was finished sending data.
+   *
+   * The sender to all receivers.
+   */
+  public static final int SENDER_FINISHED = 3;
 
   /**
    * A receiver was initialized.
    *
    * The receiver to the manager.
    */
-  public static final int RECEIVER_INITIALIZED = 2;
+  public static final int RECEIVER_INITIALIZED = 4;
 
   /**
-   * A sender completed to push tuples.
-   *
-   * The sender to the manager.
-   */
-  public static final int SENDER_COMPLETED = 3;
-
-  /**
-   * All senders completed to push tuples.
-   *
-   * The manager to all receivers.
-   */
-  public static final int ALL_SENDERS_COMPLETED = 4;
-
-  /**
-   * A receiver successfully received tuples.
+   * A receiver was completed.
    *
    * The receiver to the manager.
    */
-  public static final int RECEIVER_RECEIVED = 5;
+  public static final int RECEIVER_COMPLETED = 5;
 
   /**
-   * All receivers successfully received tuples.
+   * A receiver was finished.
    *
-   * The manager to all senders.
+   * The receiver to the manager.
    */
-  public static final int ALL_RECEIVERS_RECEIVED = 6;
+  public static final int RECEIVER_FINISHED = 6;
+  /**
+   * All receivers were completed.
+   *
+   * The manager to all receivers.
+   */
+  public static final int ALL_RECEIVERS_COMPLETED = 7;
+
+  /**
+   * A receiver was ready to receive data.
+   *
+   * The receiver to the manager.
+   */
+  public static final int RECEIVER_READY = 8;
 
   /**
    * Empty private constructor to prohibit instantiation of utility class.

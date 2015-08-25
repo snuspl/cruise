@@ -39,13 +39,8 @@ import java.util.logging.Logger;
 /**
  * Message exchanging example using push-based shuffle.
  *
- * There are three types of tasks, SenderTask, ReceiverTask and SenderReceiverTask.
- * SenderTasks/ReceiverTasks are only sending/receiving tuples whereas
- * SenderReceiverTasks are sending tuples as well as receiving tuples.
- *
- * Senders(SenderTasks and SenderReceiverTasks) send random number of tuples to receivers(ReceiverTasks
- * and SenderReceiverTasks) during certain number of iterations. Each iteration, receivers should receive
- * tuples that are sent in the same iteration.
+ * SenderTasks send random number of tuples to ReceiverTasks during certain number of iterations.
+ * Each iteration, receivers should receive tuples that are sent in the same iteration.
  *
  * The driver checks if total number of sent tuples and received tuples are same when all tasks are completed.
  */
@@ -56,7 +51,7 @@ public final class MessageExchangeREEF {
   /**
    * The upper limit on the number of Evaluators that the local resourcemanager will hand out concurrently.
    */
-  private static final int MAX_NUMBER_OF_EVALUATORS = 15;
+  private static final int MAX_NUMBER_OF_EVALUATORS = 20;
 
   private static Configuration getRuntimeConfiguration(final boolean isLocal) {
     if (isLocal) {
@@ -73,7 +68,7 @@ public final class MessageExchangeREEF {
         .set(DriverConfiguration.DRIVER_IDENTIFIER, "MessageExchangeREEF")
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(MessageExchangeDriver.class))
         .set(DriverConfiguration.ON_DRIVER_STARTED, MessageExchangeDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, MessageExchangeDriver.AllocatedHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, MessageExchangeDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, MessageExchangeDriver.TaskCompletedHandler.class)
         .build();
 
@@ -98,7 +93,7 @@ public final class MessageExchangeREEF {
     final CommandLine commandLine = new CommandLine();
     commandLine.registerShortNameOfClass(Local.class);
     final Configuration commandLineConfiguration = commandLine.parseToConfiguration(
-        args, Local.class, SenderNumber.class, ReceiverNumber.class, SenderReceiverNumber.class, Timeout.class);
+        args, Local.class, SenderNumber.class, ReceiverNumber.class, Timeout.class);
     final Injector injector = Tang.Factory.getTang().newInjector(commandLineConfiguration);
 
     final boolean isLocal = injector.getNamedInstance(Local.class);
@@ -125,22 +120,15 @@ public final class MessageExchangeREEF {
   /**
    * Number of tasks that work as sender.
    */
-  @NamedParameter(short_name = "sender_num", default_value = "3")
+  @NamedParameter(short_name = "sender_num", default_value = "8")
   public static final class SenderNumber implements Name<Integer> {
   }
 
   /**
    * Number of tasks that work as receiver.
    */
-  @NamedParameter(short_name = "receiver_num", default_value = "3")
+  @NamedParameter(short_name = "receiver_num", default_value = "8")
   public static final class ReceiverNumber implements Name<Integer> {
-  }
-
-  /**
-   * Number of tasks that work as sender and receiver simultaneously.
-   */
-  @NamedParameter(short_name = "sender_receiver_num", default_value = "3")
-  public static final class SenderReceiverNumber implements Name<Integer> {
   }
 
   /**

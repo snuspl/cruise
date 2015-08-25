@@ -59,7 +59,6 @@ public final class MessageExchangeDriver {
   public static final String MESSAGE_EXCHANGE_SHUFFLE_NAME = "MESSAGE_EXCHANGE_SHUFFLE_NAME";
   public static final String SENDER_PREFIX = "SENDER";
   public static final String RECEIVER_PREFIX = "RECEIVER";
-  public static final String SENDER_RECEIVER_PREFIX = "SR";
 
   private final AtomicInteger allocatedNum;
   private final AtomicInteger completedNum;
@@ -72,7 +71,6 @@ public final class MessageExchangeDriver {
 
   private final int senderNumber;
   private final int receiverNumber;
-  private final int senderReceiverNumber;
 
   private final List<String> senderIdList;
   private final List<String> receiverIdList;
@@ -81,13 +79,12 @@ public final class MessageExchangeDriver {
   private MessageExchangeDriver(
       @Parameter(MessageExchangeREEF.SenderNumber.class) final int senderNumber,
       @Parameter(MessageExchangeREEF.ReceiverNumber.class) final int receiverNumber,
-      @Parameter(MessageExchangeREEF.SenderReceiverNumber.class) final int senderReceiverNumber,
       final EvaluatorRequestor evaluatorRequestor,
       final ShuffleDriver shuffleDriver,
       final LocalAddressProvider localAddressProvider,
       final NameServer nameServer) {
-    LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}, sender_receiver num: {2}",
-        new Object[]{senderNumber, receiverNumber, senderReceiverNumber});
+    LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}",
+        new Object[]{senderNumber, receiverNumber});
     this.allocatedNum = new AtomicInteger();
     this.completedNum = new AtomicInteger();
     this.totalSentTupleCount = new AtomicInteger();
@@ -96,22 +93,16 @@ public final class MessageExchangeDriver {
     this.shuffleDriver = shuffleDriver;
     this.localAddressProvider = localAddressProvider;
     this.nameServer = nameServer;
-    this.senderIdList = new ArrayList<>(senderNumber + senderReceiverNumber);
-    this.receiverIdList = new ArrayList<>(receiverNumber + senderReceiverNumber);
+    this.senderIdList = new ArrayList<>(senderNumber);
+    this.receiverIdList = new ArrayList<>(receiverNumber);
     this.senderNumber = senderNumber;
     this.receiverNumber = receiverNumber;
-    this.senderReceiverNumber = senderReceiverNumber;
     for (int i = 0; i < senderNumber; i++) {
       senderIdList.add(SENDER_PREFIX + i);
     }
 
     for (int i = 0; i < receiverNumber; i++) {
       receiverIdList.add(RECEIVER_PREFIX + i);
-    }
-
-    for (int i = 0; i < senderReceiverNumber; i++) {
-      senderIdList.add(SENDER_RECEIVER_PREFIX + i);
-      receiverIdList.add(SENDER_RECEIVER_PREFIX + i);
     }
 
     registerShuffle();
@@ -134,7 +125,7 @@ public final class MessageExchangeDriver {
     @Override
     public void onNext(final StartTime value) {
       evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(senderNumber + receiverNumber + senderReceiverNumber)
+          .setNumber(senderNumber + receiverNumber)
           .setMemory(128)
           .setNumberOfCores(1)
           .build());
@@ -159,21 +150,17 @@ public final class MessageExchangeDriver {
         final int receivedTupleCount = byteBuffer.getInt();
         LOG.log(Level.INFO, "{0} completed. It received {1} tuples", new Object[]{taskId, receivedTupleCount});
         totalReceivedTupleCount.addAndGet(receivedTupleCount);
-      } else if (taskId.startsWith(SENDER_RECEIVER_PREFIX)) {
-        final int sentTupleCount = byteBuffer.getInt();
-        final int receivedTupleCount = byteBuffer.getInt();
-        LOG.log(Level.INFO, "{0} completed. It sent {1} tuples and received {2} tuples.",
-            new Object[]{taskId, sentTupleCount, receivedTupleCount});
-        totalSentTupleCount.addAndGet(sentTupleCount);
-        totalReceivedTupleCount.addAndGet(receivedTupleCount);
       } else {
         throw new RuntimeException("Unknown task identifier " + taskId);
       }
 
-      if (completedNum.incrementAndGet() == senderNumber + receiverNumber + senderReceiverNumber) {
-        LOG.log(Level.INFO, "Total sent tuple count : {0}, total received tuple count : {1}",
+      if (completedNum.incrementAndGet() == senderNumber + receiverNumber) {
+        LOG.log(Level.INFO, "Total sent tuple number : {0}, total received tuple number : {1}",
             new Object[]{totalSentTupleCount.get(), totalReceivedTupleCount.get()});
-        assert totalSentTupleCount.get() == totalReceivedTupleCount.get();
+        if (totalSentTupleCount.get() != totalReceivedTupleCount.get()) {
+          throw new RuntimeException("Total sent tuple number " + totalSentTupleCount.get() + " have to be same as "
+              + " total received tuple number " + totalReceivedTupleCount.get());
+        }
       }
     }
   }
@@ -193,7 +180,7 @@ public final class MessageExchangeDriver {
         .build();
   }
 
-  public final class AllocatedHandler implements EventHandler<AllocatedEvaluator> {
+  public final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
@@ -211,12 +198,6 @@ public final class MessageExchangeDriver {
         partialTaskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
-            .build();
-      } else if (number < senderNumber + receiverNumber + senderReceiverNumber) { // SenderReceiverTask
-        taskId = SENDER_RECEIVER_PREFIX + (number - senderNumber - receiverNumber);
-        partialTaskConf = TaskConfiguration.CONF
-            .set(TaskConfiguration.IDENTIFIER, taskId)
-            .set(TaskConfiguration.TASK, SenderReceiverTask.class)
             .build();
       } else {
         throw new RuntimeException("Too many allocated evaluators");

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator.impl;
 
+import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.driver.impl.PushShuffleCode;
 import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
 import edu.snu.cay.services.shuffle.evaluator.DataSender;
@@ -34,7 +35,6 @@ import org.apache.reef.wake.remote.transport.LinkListener;
 import javax.inject.Inject;
 import java.net.SocketAddress;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,28 +45,37 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   private static final Logger LOG = Logger.getLogger(PushShuffleSenderImpl.class.getName());
 
+  private final ShuffleDescription shuffleDescription;
+  /**
+   * DataSender which sends data to proper receivers.
+   */
   private final DataSender<K, V> dataSender;
+  /**
+   * ControlMessageSender which sends control messages to the manager and receivers.
+   */
   private final ESControlMessageSender controlMessageSender;
   private final ControlMessageSynchronizer synchronizer;
   private final long senderTimeout;
-  private final AtomicBoolean initialized;
-
   private final StateMachine stateMachine;
+  private final SentMessageChecker messageChecker;
 
   @Inject
   private PushShuffleSenderImpl(
+      final ShuffleDescription shuffleDescription,
       final DataSender<K, V> dataSender,
       final ESControlMessageSender controlMessageSender,
       final ControlMessageSynchronizer synchronizer,
       @Parameter(SenderTimeout.class) final long senderTimeout) {
+    this.shuffleDescription = shuffleDescription;
     this.dataSender = dataSender;
-    dataSender.registerTupleLinkListener(new TupleLinkListener());
+    this.dataSender.registerTupleLinkListener(new TupleLinkListener());
     this.controlMessageSender = controlMessageSender;
     this.synchronizer = synchronizer;
     this.senderTimeout = senderTimeout;
-    this.initialized = new AtomicBoolean();
-
     this.stateMachine = createStateMachine();
+    this.messageChecker = new SentMessageChecker();
+
+    controlMessageSender.sendToManager(PushShuffleCode.SENDER_INITIALIZED);
   }
 
   /**
@@ -74,23 +83,24 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
    */
   public static StateMachine createStateMachine() {
     return StateMachine.newBuilder()
-        .addState("CREATED", "Wait for initialized message from the manager")
-        .addState("SENDING", "Send tuples to receivers")
-        .addState("WAITING", "Wait for all receivers received tuples from senders")
-        .setInitialState("CREATED")
-        .addTransition("CREATED", "SENDING",
-            "When a SHUFFLE_INITIALIZED message arrived from the manager")
-        .addTransition("SENDING", "WAITING",
-            "When a user calls complete() method. It sends a SENDER_COMPLETED message to the manager.")
-        .addTransition("WAITING", "SENDING",
-            "When a ALL_RECEIVERS_RECEIVED message arrived from the manager."
-                + "It wakes up a caller who is blocking on waitForReceiver() or completeAndWaitForReceiver().")
+        .addState("INIT", "A sender is initialized. It sends a SENDER_INITIALIZED message to the manager")
+        .addState("SENDING", "Sending tuples to receivers")
+        .addState("COMPLETED", "Waiting for all receivers are completed to receive tuples from senders")
+        .addState("FINISHED", "Finished sending data")
+        .setInitialState("INIT")
+        .addTransition("INIT", "SENDING",
+            "When a SENDER_CAN_SEND message arrived from the manager.")
+        .addTransition("SENDING", "COMPLETED",
+            "When a user calls complete() method. It broadcasts SENDER_COMPLETED messages to all receivers.")
+        .addTransition("COMPLETED", "SENDING",
+            "When a SENDER_CAN_SEND message arrived from the manager.")
+        .addTransition("SENDING", "FINISHED",
+            "When a user calls finish() method. It broadcasts SENDER_FINISHED messages to all receivers.")
         .build();
   }
 
   @Override
-  public void onControlMessage(final ShuffleControlMessage controlMessage) {
-
+  public void onControlMessage(final Message<ShuffleControlMessage> message) {
   }
 
   private final class TupleLinkListener implements LinkListener<Message<ShuffleTupleMessage<K, V>>> {
@@ -98,6 +108,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     @Override
     public void onSuccess(final Message<ShuffleTupleMessage<K, V>> message) {
       LOG.log(Level.FINE, "A ShuffleTupleMessage was successfully sent : {0}", message);
+      messageChecker.messageTransferred();
     }
 
     @Override
@@ -114,71 +125,117 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   @Override
   public List<String> sendTuple(final Tuple<K, V> tuple) {
-    waitForInitializing();
+    waitUntilSenderCanSendData();
     stateMachine.checkState("SENDING");
-    return dataSender.sendTuple(tuple);
+    final List<String> sentReceiverIdList = dataSender.sendTuple(tuple);
+    messageChecker.messageSent(sentReceiverIdList.size());
+    return sentReceiverIdList;
   }
 
   @Override
   public List<String> sendTuple(final List<Tuple<K, V>> tupleList) {
-    waitForInitializing();
+    waitUntilSenderCanSendData();
     stateMachine.checkState("SENDING");
-    return dataSender.sendTuple(tupleList);
+    final List<String> sentReceiverIdList = dataSender.sendTuple(tupleList);
+    messageChecker.messageSent(sentReceiverIdList.size());
+    return sentReceiverIdList;
   }
 
   @Override
   public void sendTupleTo(final String receiverId, final Tuple<K, V> tuple) {
-    waitForInitializing();
+    waitUntilSenderCanSendData();
     stateMachine.checkState("SENDING");
     dataSender.sendTupleTo(receiverId, tuple);
+    messageChecker.messageSent(1);
   }
 
   @Override
   public void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList) {
-    waitForInitializing();
+    waitUntilSenderCanSendData();
     stateMachine.checkState("SENDING");
     dataSender.sendTupleTo(receiverId, tupleList);
+    messageChecker.messageSent(1);
   }
 
-  private void waitForInitializing() {
-    if (initialized.compareAndSet(false, true)) {
-      controlMessageSender.sendToManager(PushShuffleCode.SENDER_INITIALIZED);
-      final Optional<ShuffleControlMessage> shuffleInitializedMessage = synchronizer.waitOnLatch(
-          PushShuffleCode.SHUFFLE_INITIALIZED, senderTimeout);
-
-      if (!shuffleInitializedMessage.isPresent()) {
-        // TODO (#33) : failure handling
-        throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
-      }
-      stateMachine.checkAndSetState("CREATED", "SENDING");
+  private void waitUntilSenderCanSendData() {
+    if (stateMachine.getCurrentState().equals("SENDING")) {
+      return;
     }
+
+    final Optional<ShuffleControlMessage> message = synchronizer.waitOnLatch(
+        PushShuffleCode.SENDER_CAN_SEND, senderTimeout);
+
+    if (message.isPresent()) {
+      synchronizer.reopenLatch(PushShuffleCode.SENDER_CAN_SEND);
+    } else {
+      // TODO (#33) : failure handling
+      throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
+    }
+
+    LOG.log(Level.INFO, "The sender can send data");
+    stateMachine.setState("SENDING");
   }
 
   @Override
   public void complete() {
-    LOG.log(Level.INFO, "Complete to send tuples");
-    stateMachine.checkAndSetState("SENDING", "WAITING");
-    controlMessageSender.sendToManager(PushShuffleCode.SENDER_COMPLETED);
-  }
-
-  @Override
-  public void waitForReceivers() {
-    LOG.log(Level.INFO, "Wait for all receivers received");
-    final Optional<ShuffleControlMessage> receiversReceivedMessage = synchronizer.waitOnLatch(
-        PushShuffleCode.ALL_RECEIVERS_RECEIVED, senderTimeout);
-    if (!receiversReceivedMessage.isPresent()) {
-      // TODO (#67) : failure handling
-      throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
+    LOG.log(Level.INFO, "Complete to send data");
+    stateMachine.checkAndSetState("SENDING", "COMPLETED");
+    messageChecker.waitForAllMessagesAreTransferred();
+    LOG.log(Level.INFO, "Broadcast to all receivers that the sender was completed to send data");
+    for (final String receiverId : shuffleDescription.getReceiverIdList()) {
+      controlMessageSender.sendTo(receiverId, PushShuffleCode.SENDER_COMPLETED);
     }
 
-    synchronizer.reopenLatch(PushShuffleCode.ALL_RECEIVERS_RECEIVED);
-    stateMachine.checkAndSetState("WAITING", "SENDING");
+    waitUntilSenderCanSendData();
   }
 
   @Override
-  public void completeAndWaitForReceivers() {
-    complete();
-    waitForReceivers();
+  public void finish() {
+    LOG.log(Level.INFO, "Finish to send data");
+    stateMachine.checkAndSetState("SENDING", "FINISHED");
+    messageChecker.waitForAllMessagesAreTransferred();
+    LOG.log(Level.INFO, "Broadcast to all receivers that the sender was finished sending data");
+    for (final String receiverId : shuffleDescription.getReceiverIdList()) {
+      controlMessageSender.sendTo(receiverId, PushShuffleCode.SENDER_FINISHED);
+    }
+  }
+
+  /**
+   * Checker that checks all sent messages in one iteration are really transferred.
+   */
+  private final class SentMessageChecker {
+    private int transferredMessageCount;
+    private int sentMessageCount;
+    private boolean waitingAllMessageTransferred;
+
+    private synchronized void messageSent(final int num) {
+      sentMessageCount += num;
+    }
+
+    private synchronized void messageTransferred() {
+      transferredMessageCount++;
+
+      if (waitingAllMessageTransferred && transferredMessageCount == sentMessageCount) {
+        this.notify();
+      }
+    }
+
+    private void waitForAllMessagesAreTransferred() {
+      synchronized (this) {
+        if (transferredMessageCount != sentMessageCount) {
+          waitingAllMessageTransferred = true;
+          try {
+            this.wait();
+          } catch (final InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      }
+
+      waitingAllMessageTransferred = false;
+      transferredMessageCount = 0;
+      sentMessageCount = 0;
+    }
   }
 
   // default_value = 10 min

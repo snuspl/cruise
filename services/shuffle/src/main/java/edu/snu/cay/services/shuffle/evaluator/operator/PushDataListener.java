@@ -32,7 +32,9 @@ public interface PushDataListener<K, V> {
 
   /**
    * Handle the case where all senders completed to send data in one iteration.
+   *
+   * @param finished whether the completed iteration is the final iteration, or not
    */
-  void onComplete();
+  void onComplete(boolean finished);
 
 }

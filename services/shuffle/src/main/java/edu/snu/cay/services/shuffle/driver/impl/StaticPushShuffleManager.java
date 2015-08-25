@@ -34,7 +34,9 @@ import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -108,7 +110,26 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     @Override
     public void onNext(final Message<ShuffleControlMessage> message) {
       final ShuffleControlMessage controlMessage = message.getData().iterator().next();
-      stateManager.onControlMessage(message.getSrcId().toString(), controlMessage);
+      final String endPointId = message.getSrcId().toString();
+      switch (controlMessage.getCode()) {
+      case PushShuffleCode.SENDER_INITIALIZED:
+        stateManager.onSenderInitialized(endPointId);
+        break;
+      case PushShuffleCode.RECEIVER_INITIALIZED:
+        stateManager.onReceiverInitialized(endPointId);
+        break;
+      case PushShuffleCode.RECEIVER_COMPLETED:
+        stateManager.onReceiverCompleted(endPointId);
+        break;
+      case PushShuffleCode.RECEIVER_READY:
+        stateManager.onReceiverReady(endPointId);
+        break;
+      case PushShuffleCode.RECEIVER_FINISHED:
+        stateManager.onReceiverFinished(endPointId);
+        break;
+      default:
+        throw new IllegalStateException("Unknown code " + controlMessage.getCode() + " from " + endPointId);
+      }
     }
   }
 
@@ -133,116 +154,134 @@ public final class StaticPushShuffleManager implements ShuffleManager {
 
   /**
    * State manager for StaticPushShuffleManager. This receives control messages
-   * from senders and receivers and makes a proper state transition as communicating
+   * from senders and receivers, and makes a proper state transition as communicating
    * with senders and receivers.
    */
   private final class StateManager {
 
-    private final int senderNum;
+    private boolean initialized;
     private final int receiverNum;
-    private Map<String, StateMachine> senderStateMachineMap;
     private Map<String, StateMachine> receiverStateMachineMap;
-    private int initializedSenderNum;
-    private int completedSenderNum;
+    private final List<String> initialzedSenderIdList;
     private int initializedReceiverNum;
-    private int receivedReceiverNum;
+    private int readiedReceiverNum;
+    private int completedReceiverNum;
+    private int finishedReceiverNum;
 
     private StateMachine stateMachine;
 
     private StateManager() {
-      this.senderNum = shuffleDescription.getSenderIdList().size();
+      this.initialzedSenderIdList = new ArrayList<>();
       this.receiverNum = shuffleDescription.getReceiverIdList().size();
-      this.senderStateMachineMap = new HashMap<>(senderNum);
       this.receiverStateMachineMap = new HashMap<>(receiverNum);
-
-      for (final String senderId : shuffleDescription.getSenderIdList()) {
-        senderStateMachineMap.put(senderId, PushShuffleSenderImpl.createStateMachine());
-      }
 
       for (final String receiverId : shuffleDescription.getReceiverIdList()) {
         receiverStateMachineMap.put(receiverId, PushShuffleReceiverImpl.createStateMachine());
       }
 
       this.stateMachine = StateMachine.newBuilder()
-          .addState("CREATED", "Wait for initialized messages from all senders and receivers")
-          .addState("SENDING", "Senders are sending tuples to receivers")
-          .addState("RECEIVING", "Wait for all receivers report that they received all tuples from senders")
-          .setInitialState("CREATED")
-          .addTransition("CREATED", "SENDING",
-              "When SENDER_INITIALIZED messages arrived from all senders and RECEIVER_INITIALIZED"
-                  + " messages arrived from all receivers."
-                  + " It sends SHUFFLE_INITIALIZED messages to all senders and receivers.")
-          .addTransition("SENDING", "RECEIVING",
-              "When SENDER_COMPLETED messages arrived from all senders." +
-                  " It sends ALL_SENDERS_COMPLETED messages to all receivers.")
-          .addTransition("RECEIVING", "SENDING",
-              "When RECEIVER_RECEIVED messages arrived from all receivers"
-              + " It sends ALL_RECEIVERS_RECEIVED messages to all senders.")
+          .addState("INIT", "Wait for all receivers are initialized")
+          .addState("CAN_SEND", "Prepared senders can send data to receivers")
+          .addState("RECEIVERS_COMPLETED", "All receivers were completed to receive data from senders in an iteration")
+          .addState("FINISHED", "All senders and receivers were finished")
+          .setInitialState("INIT")
+          .addTransition("INIT", "CAN_SEND",
+              "When RECEIVER_INITIALIZED messages arrived from all receivers."
+                  + " It sends SENDER_CAN_SEND messages to all initialized senders.")
+          .addTransition("CAN_SEND", "RECEIVERS_COMPLETED",
+              "When RECEIVER_COMPLETED messages arrived from all receivers." +
+                  " It broadcasts ALL_RECEIVERS_COMPLETED messages to all receivers.")
+          .addTransition("RECEIVERS_COMPLETED", "CAN_SEND",
+              "When RECEIVER_READY messages arrived from all receivers"
+              + " It broadcasts ALL_RECEIVERS_READY messages to all senders.")
+          .addTransition("CAN_SEND", "FINISHED",
+              "When RECEIVER_FINISHED messages arrived from all receivers")
           .build();
     }
 
+    private void sendSenderCanSendMessage(final String senderId) {
+      try {
+        controlMessageSender.send(senderId, PushShuffleCode.SENDER_CAN_SEND);
+      } catch (final NetworkException e) {
+        // cannot open connection to sender
+        // TODO (#67) : failure handling.
+        throw new RuntimeException(e);
+      }
+    }
+
     private synchronized void onSenderInitialized(final String senderId) {
-      senderStateMachineMap.get(senderId).checkAndSetState("CREATED", "SENDING");
-      LOG.log(Level.FINE, "A sender is initialized " + senderId);
-      initializedSenderNum++;
-      broadcastIfShuffleIsInitialized();
+      if (initialized) {
+        sendSenderCanSendMessage(senderId);
+      } else {
+        initialzedSenderIdList.add(senderId);
+      }
     }
 
     private synchronized void onReceiverInitialized(final String receiverId) {
-      receiverStateMachineMap.get(receiverId).checkAndSetState("CREATED", "RECEIVING");
+      stateMachine.checkState("INIT");
+      receiverStateMachineMap.get(receiverId).checkState("RECEIVING");
       LOG.log(Level.FINE, "A receiver is initialized " + receiverId);
       initializedReceiverNum++;
-      broadcastIfShuffleIsInitialized();
+      broadcastIfAllReceiversAreInitialized();
     }
 
-    private void broadcastIfShuffleIsInitialized() {
-      if (initializedSenderNum == senderNum && initializedReceiverNum == receiverNum) {
-        LOG.log(Level.INFO, "Broadcast to all end points that the shuffle is initialized");
-        stateMachine.checkAndSetState("CREATED", "SENDING");
-        broadcastToSender(PushShuffleCode.SHUFFLE_INITIALIZED);
-        broadcastToReceiver(PushShuffleCode.SHUFFLE_INITIALIZED);
+    private void broadcastIfAllReceiversAreInitialized() {
+      if (initializedReceiverNum == receiverNum) {
+        initialized = true;
+        LOG.log(Level.INFO, "All receivers are initialized");
+        stateMachine.checkAndSetState("INIT", "CAN_SEND");
+        for (final String senderId : initialzedSenderIdList) {
+          sendSenderCanSendMessage(senderId);
+        }
       }
     }
 
-    private synchronized void onSenderCompleted(final String senderId) {
-      senderStateMachineMap.get(senderId).checkAndSetState("SENDING", "WAITING");
-      completedSenderNum++;
+    private synchronized void onReceiverCompleted(final String receiverId) {
+      stateMachine.checkState("CAN_SEND");
+      receiverStateMachineMap.get(receiverId).checkAndSetState("RECEIVING", "COMPLETED");
+      completedReceiverNum++;
 
-      LOG.log(Level.FINE, "A sender completed to send tuples " + senderId);
+      LOG.log(Level.FINE, "A receiver " + receiverId + " was completed to receive data.");
 
-      if (completedSenderNum == senderNum) {
-        completedSenderNum = 0;
-        LOG.log(Level.INFO, "Broadcast to all receivers that all senders are completed to send tuples");
-        broadcastToReceiver(PushShuffleCode.ALL_SENDERS_COMPLETED);
-        stateMachine.checkAndSetState("SENDING", "RECEIVING");
+      if (completedReceiverNum == receiverNum) {
+        completedReceiverNum = 0;
+        LOG.log(Level.INFO, "Broadcast to all receivers that all receivers were completed");
+        stateMachine.checkAndSetState("CAN_SEND", "RECEIVERS_COMPLETED");
+        broadcastToReceivers(PushShuffleCode.ALL_RECEIVERS_COMPLETED);
       }
     }
 
-    private synchronized void onReceiverReceived(final String receiverId) {
-      receiverStateMachineMap.get(receiverId).checkAndSetState("RECEIVING", "RECEIVING");
-      receivedReceiverNum++;
+    private synchronized void onReceiverReady(final String receiverId) {
+      stateMachine.checkState("RECEIVERS_COMPLETED");
+      receiverStateMachineMap.get(receiverId).checkAndSetState("COMPLETED", "RECEIVING");
+      readiedReceiverNum++;
 
-      LOG.log(Level.FINE, "A receiver received all tuples from senders " + receiverId);
+      LOG.log(Level.FINE, "A receiver " + receiverId + " is ready to receive data.");
 
-      if (receivedReceiverNum == receiverNum) {
-        receivedReceiverNum = 0;
-        LOG.log(Level.INFO, "Broadcast to all senders that all receivers are received from senders");
-        broadcastToSender(PushShuffleCode.ALL_RECEIVERS_RECEIVED);
-        checkAndSetAllSenderStateMachinesState("WAITING", "SENDING");
-        stateMachine.checkAndSetState("RECEIVING", "SENDING");
+      if (readiedReceiverNum == receiverNum) {
+        readiedReceiverNum = 0;
+        LOG.log(Level.INFO, "Broadcast to all senders that they can send data to receivers.");
+        stateMachine.checkAndSetState("RECEIVERS_COMPLETED", "CAN_SEND");
+        broadcastToSenders(PushShuffleCode.SENDER_CAN_SEND);
       }
     }
 
-    private synchronized void checkAndSetAllSenderStateMachinesState(final String from, final String to) {
-      for (final StateMachine senderStateMachine : senderStateMachineMap.values()) {
-        senderStateMachine.checkAndSetState(from, to);
+    private synchronized void onReceiverFinished(final String receiverId) {
+      stateMachine.checkState("CAN_SEND");
+      receiverStateMachineMap.get(receiverId).checkAndSetState("RECEIVING", "FINISHED");
+      finishedReceiverNum++;
+
+
+      if (finishedReceiverNum == receiverNum) {
+        LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
+        stateMachine.checkAndSetState("CAN_SEND", "FINISHED");
       }
     }
 
-    private void broadcastToSender(final int code) {
-      for (final String sender : senderStateMachineMap.keySet()) {
+    private void broadcastToSenders(final int code) {
+      for (final String senderId : shuffleDescription.getSenderIdList()) {
         try {
-          controlMessageSender.send(sender, code);
+          controlMessageSender.send(senderId, code);
         } catch (final NetworkException e) {
           // cannot open connection to sender
           // TODO (#67) : failure handling.
@@ -251,34 +290,15 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       }
     }
 
-    private void broadcastToReceiver(final int code) {
-      for (final String receiver : receiverStateMachineMap.keySet()) {
+    private void broadcastToReceivers(final int code) {
+      for (final String receiverId : shuffleDescription.getReceiverIdList()) {
         try {
-          controlMessageSender.send(receiver, code);
+          controlMessageSender.send(receiverId, code);
         } catch (final NetworkException e) {
-          // cannot open connection to sender
+          // cannot open connection to receiver
           // TODO (#67) : failure handling.
           throw new RuntimeException(e);
         }
-      }
-    }
-
-    private void onControlMessage(final String endPointId, final ShuffleControlMessage controlMessage) {
-      switch (controlMessage.getCode()) {
-      case PushShuffleCode.SENDER_INITIALIZED:
-        onSenderInitialized(endPointId);
-        break;
-      case PushShuffleCode.RECEIVER_INITIALIZED:
-        onReceiverInitialized(endPointId);
-        break;
-      case PushShuffleCode.SENDER_COMPLETED:
-        onSenderCompleted(endPointId);
-        break;
-      case PushShuffleCode.RECEIVER_RECEIVED:
-        onReceiverReceived(endPointId);
-        break;
-      default:
-        throw new IllegalStateException("Unknown code " + controlMessage.getCode() + " from " + endPointId);
       }
     }
   }

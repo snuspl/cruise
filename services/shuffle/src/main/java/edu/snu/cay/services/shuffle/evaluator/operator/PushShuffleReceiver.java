@@ -16,7 +16,6 @@
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
 import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleReceiverImpl;
-import org.apache.reef.io.Tuple;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
@@ -24,11 +23,6 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  */
 @DefaultImplementation(PushShuffleReceiverImpl.class)
 public interface PushShuffleReceiver<K, V> extends ShuffleReceiver<K, V> {
-
-  /**
-   * Blocking until all senders complete to push tuples during one iteration.
-   */
-  Iterable<Tuple<K, V>> receive();
 
   /**
    * @param dataListener a data listener

@@ -17,46 +17,68 @@ package edu.snu.cay.services.shuffle.example.push;
 
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleProvider;
+import edu.snu.cay.services.shuffle.evaluator.operator.PushDataListener;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
-import org.apache.reef.io.Tuple;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import org.apache.reef.io.network.Message;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *  Receive tuples from SenderTasks and SenderReceiverTasks.
+ * Receive tuples from SenderTasks.
  */
 public final class ReceiverTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(SenderTask.class.getName());
-
-  private final PushShuffleReceiver<Integer, Integer> shuffleReceiver;
+  private AtomicInteger totalReceivedTupleCount;
+  private final AtomicInteger completedIterationCount;
 
   @Inject
   private ReceiverTask(final ShuffleProvider shuffleProvider) {
+    this.completedIterationCount = new AtomicInteger();
     final Shuffle<Integer, Integer> shuffle = shuffleProvider
         .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
-    this.shuffleReceiver = shuffle.getReceiver();
+    final PushShuffleReceiver<Integer, Integer> shuffleReceiver = shuffle.getReceiver();
+    shuffleReceiver.registerDataListener(new DataReceiver());
+    this.totalReceivedTupleCount = new AtomicInteger();
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
-    int receivedTupleCount = 0;
-    for (int i = 0; i < MessageExchangeDriver.ITERATION_NUMBER; i++) {
-      LOG.log(Level.INFO, "Receive tuples from senders");
-      for (final Tuple<Integer, Integer> tuple : shuffleReceiver.receive()) {
-        LOG.log(Level.INFO, "A tuple arrived {0}", tuple);
-        receivedTupleCount++;
-      }
-
-      LOG.log(Level.INFO, "Finish iteration " + i);
+    synchronized (this) {
+      this.wait();
     }
 
     final ByteBuffer byteBuffer = ByteBuffer.allocate(4);
-    byteBuffer.putInt(receivedTupleCount);
+    byteBuffer.putInt(totalReceivedTupleCount.get());
     return byteBuffer.array();
+  }
+
+  private final class DataReceiver implements PushDataListener<Integer, Integer> {
+
+    @Override
+    public void onTupleMessage(final Message<ShuffleTupleMessage<Integer, Integer>> message) {
+      for (final ShuffleTupleMessage<Integer, Integer> shuffleMessage : message.getData()) {
+        final int receivedTupleCount = shuffleMessage.size();
+        LOG.log(Level.INFO, "{0} tuples arrived from {1}", new Object[]{receivedTupleCount, message.getSrcId()});
+        totalReceivedTupleCount.addAndGet(receivedTupleCount);
+      }
+    }
+
+    @Override
+    public void onComplete(final boolean finished) {
+      LOG.log(Level.INFO, "{0} th iteration completed", completedIterationCount.incrementAndGet());
+      if (finished) {
+        LOG.log(Level.INFO, "The final iteration was completed");
+        synchronized (ReceiverTask.this) {
+          ReceiverTask.this.notify();
+        }
+      }
+    }
   }
 }
