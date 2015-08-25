@@ -34,7 +34,9 @@ import java.util.List;
 @EvaluatorSide
 public final class ESControlMessageSender {
 
-  private Connection<ShuffleControlMessage> connectionToManager;
+  private final IdentifierFactory idFactory;
+  private final ConnectionFactory<ShuffleControlMessage> connectionFactory;
+  private final Connection<ShuffleControlMessage> connectionToManager;
   private final String shuffleName;
 
   /**
@@ -50,13 +52,15 @@ public final class ESControlMessageSender {
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
       @Parameter(ShuffleParameters.ShuffleName.class) final String shuffleName,
       final ShuffleNetworkSetup shuffleNetworkSetup) {
+    this.idFactory = idFactory;
+    this.connectionFactory = shuffleNetworkSetup.getControlConnectionFactory();
     this.shuffleName = shuffleName;
-    final ConnectionFactory<ShuffleControlMessage> connFactory = shuffleNetworkSetup.getControlConnectionFactory();
-    connectionToManager = connFactory.newConnection(idFactory
+    this.connectionToManager = connectionFactory.newConnection(idFactory
         .getNewInstance(ShuffleParameters.SHUFFLE_DRIVER_LOCAL_END_POINT_ID));
     try {
       connectionToManager.open();
     } catch (final NetworkException e) {
+      // TODO (#67) : failure handling.
       throw new RuntimeException("An NetworkException occurred while opening a connection to driver.", e);
     }
   }
@@ -78,5 +82,38 @@ public final class ESControlMessageSender {
    */
   public void sendToManager(final int code, final List<String> endPointIdList) {
     connectionToManager.write(new ShuffleControlMessage(code, shuffleName, endPointIdList));
+  }
+
+  /**
+   * Send a ShuffleControlMessage with code to the endPointId.
+   *
+   * @param endPointId an end point id where the message will be sent
+   * @param code a control message code
+   */
+  public void sendTo(final String endPointId, final int code) {
+    sendTo(endPointId, new ShuffleControlMessage(code, shuffleName));
+  }
+
+  /**
+   * Send a ShuffleControlMessage with code and endPointIdList to the endPointId.
+   *
+   * @param endPointId an end point id where the message will be sent
+   * @param code a control message code
+   * @param endPointIdList a list of end point ids
+   */
+  public void sendTo(final String endPointId, final int code, final List<String> endPointIdList) {
+    sendTo(endPointId, new ShuffleControlMessage(code, shuffleName, endPointIdList));
+  }
+
+  private void sendTo(final String endPointId, final ShuffleControlMessage controlMessage) {
+    final Connection<ShuffleControlMessage> connection = connectionFactory.newConnection(
+        idFactory.getNewInstance(endPointId));
+    try {
+      connection.open();
+      connection.write(controlMessage);
+    } catch (final NetworkException ex) {
+      // TODO (#67) : failure handling.
+      throw new RuntimeException("An NetworkException occurred while sending message to" + endPointId, ex);
+    }
   }
 }

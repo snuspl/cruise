@@ -20,6 +20,7 @@ import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
 import edu.snu.cay.services.shuffle.evaluator.DataReceiver;
 import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
+import edu.snu.cay.services.shuffle.evaluator.operator.PushDataListener;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import edu.snu.cay.services.shuffle.utils.StateMachine;
@@ -50,6 +51,8 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private final long receiverTimeout;
   private final AtomicBoolean initialized;
   private final List<Tuple<K, V>> receivedTupleList;
+
+  private PushDataListener<K, V> dataListener;
 
   private final StateMachine stateMachine;
 
@@ -109,10 +112,21 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     return copiedList;
   }
 
+  @Override
+  public void registerDataListener(final PushDataListener<K, V> listener) {
+    this.dataListener = listener;
+  }
+
+  @Override
+  public void onControlMessage(final ShuffleControlMessage controlMessage) {
+
+  }
+
   private final class TupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage<K, V>>> {
 
     @Override
     public void onNext(final Message<ShuffleTupleMessage<K, V>> message) {
+      dataListener.onTupleMessage(message);
       synchronized (receivedTupleList) {
         for (final ShuffleTupleMessage<K, V> shuffleTupleMessage : message.getData()) {
           for (int i = 0; i < shuffleTupleMessage.size(); i++) {

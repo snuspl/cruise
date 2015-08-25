@@ -54,6 +54,9 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private final ControlMessageHandler controlMessageHandler;
   private final ControlLinkListener controlLinkListener;
 
+  private ShuffleReceiver<K, V> shuffleReceiver;
+  private ShuffleSender<K, V> shuffleSender;
+
   @Inject
   private StaticPushShuffle(
       final ShuffleDescription shuffleDescription,
@@ -74,7 +77,8 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleReceiver<K, V>> T getReceiver() {
-    return operatorFactory.newShuffleReceiver();
+    shuffleReceiver = operatorFactory.newShuffleReceiver();
+    return (T)shuffleReceiver;
   }
 
   /**
@@ -82,7 +86,8 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleSender<K, V>> T getSender() {
-    return operatorFactory.newShuffleSender();
+    shuffleSender = operatorFactory.newShuffleSender();
+    return (T) shuffleSender;
   }
 
   /**

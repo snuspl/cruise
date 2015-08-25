@@ -15,18 +15,24 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import org.apache.reef.io.network.Message;
 
 /**
- * Interface for a receiver used in a Shuffle.
+ *
  */
-public interface ShuffleReceiver<K, V> {
+public interface PushDataListener<K, V> {
 
   /**
-   * Handle a control message from Shuffle.
+   * Handle a message from a sender.
    *
-   * @param controlMessage a control message
+   * @param message a tuple message
    */
-  void onControlMessage(ShuffleControlMessage controlMessage);
+  void onTupleMessage(Message<ShuffleTupleMessage<K, V>> message);
+
+  /**
+   * Handle the case where all senders completed to send data in one iteration.
+   */
+  void onComplete();
 
 }

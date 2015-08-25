@@ -88,6 +88,11 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
         .build();
   }
 
+  @Override
+  public void onControlMessage(final ShuffleControlMessage controlMessage) {
+
+  }
+
   private final class TupleLinkListener implements LinkListener<Message<ShuffleTupleMessage<K, V>>> {
 
     @Override

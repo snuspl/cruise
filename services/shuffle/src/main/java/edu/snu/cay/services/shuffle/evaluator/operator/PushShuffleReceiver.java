@@ -30,4 +30,9 @@ public interface PushShuffleReceiver<K, V> extends ShuffleReceiver<K, V> {
    */
   Iterable<Tuple<K, V>> receive();
 
+  /**
+   * @param dataListener a data listener
+   */
+  void registerDataListener(PushDataListener<K, V> dataListener);
+
 }
