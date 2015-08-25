@@ -45,14 +45,13 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private static final Logger LOG = Logger.getLogger(StaticPushShuffle.class.getName());
 
   private final ShuffleDescription shuffleDescription;
-  private final ShuffleOperatorFactory<K, V> operatorFactory;
   private final ControlMessageSynchronizer synchronizer;
 
   private final ControlMessageHandler controlMessageHandler;
   private final ControlLinkListener controlLinkListener;
 
-  private ShuffleReceiver<K, V> shuffleReceiver;
-  private ShuffleSender<K, V> shuffleSender;
+  private final ShuffleReceiver<K, V> shuffleReceiver;
+  private final ShuffleSender<K, V> shuffleSender;
 
   @Inject
   private StaticPushShuffle(
@@ -60,8 +59,10 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
       final ShuffleOperatorFactory<K, V> operatorFactory,
       final ControlMessageSynchronizer synchronizer) {
     this.shuffleDescription = shuffleDescription;
-    this.operatorFactory = operatorFactory;
     this.synchronizer = synchronizer;
+
+    this.shuffleReceiver = operatorFactory.newShuffleReceiver();
+    this.shuffleSender = operatorFactory.newShuffleSender();
 
     this.controlMessageHandler = new ControlMessageHandler();
     this.controlLinkListener = new ControlLinkListener();
@@ -72,7 +73,9 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleReceiver<K, V>> T getReceiver() {
-    shuffleReceiver = operatorFactory.newShuffleReceiver();
+    if (shuffleReceiver == null) {
+      throw new RuntimeException("The end point is not a receiver of " + shuffleDescription.getShuffleName());
+    }
     return (T)shuffleReceiver;
   }
 
@@ -81,7 +84,9 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleSender<K, V>> T getSender() {
-    shuffleSender = operatorFactory.newShuffleSender();
+    if (shuffleSender == null) {
+      throw new RuntimeException("The end point is not a sender of " + shuffleDescription.getShuffleName());
+    }
     return (T) shuffleSender;
   }
 

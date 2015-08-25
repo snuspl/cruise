@@ -25,20 +25,18 @@ public interface ShuffleOperatorFactory<K, V> {
 
   /**
    * Create a shuffle receiver and register a tuple codec for the receiver.
-   * It returns the cached receiver if the receiver was already created and throws runtime exception
-   * if the end point is not a receiver of the shuffle.
+   * It returns null if the end point is not a sender of the shuffle.
    *
-   * @return created or cached shuffle receiver
+   * @return created shuffle receiver
    */
-  <T extends ShuffleReceiver<K, V>> T newShuffleReceiver();
+  ShuffleReceiver<K, V> newShuffleReceiver();
 
   /**
    * Create a shuffle sender and register a tuple codec for the sender.
-   * It returns the cached sender if the sender was already created and throws runtime exception
-   * if the end point is not a sender of the shuffle.
+   * It returns null if the end point is not a sender of the shuffle.
    *
-   * @return created or cached shuffle sender
+   * @return created shuffle sender
    */
-  <T extends ShuffleSender<K, V>> T  newShuffleSender();
+  ShuffleSender<K, V> newShuffleSender();
 
 }
