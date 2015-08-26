@@ -185,14 +185,19 @@
       <property name="caseIndent" value="0"/>
     </module>
     <module name="UpperEll"/>
-    <!-- TODO #79 Add TODO comment checkstyle. Currently checks for JIRA comments, and set as warning. -->
-    <module name="TodoComment">
-      <property name="severity" value="warning"/>
-      <property name="format" value="TODO[^\[][^J][^I][^R][^A]"/>
-    </module>
+    <!-- Checks for proper TODO comment format -->
+    <!--
+      All TODO comments should follow the following format:
+        TODO #Number: Comment
+      Throws an checkstyle error if an incorrect format is used.
+    -->
     <module name="TodoComment">
       <property name="severity" value="info"/>
-      <property name="format" value="TODO\[JIRA"/>
+      <property name="format" value="TODO #\d+: .*"/>
+    </module>
+    <module name="TodoComment">
+      <property name="severity" value="error"/>
+      <property name="format" value="TODO(?! #\d+: ).*"/>
     </module>
     <!-- Check that parameters for methods, constructors, and catch blocks are final. -->
     <module name="FinalParameters"/>
