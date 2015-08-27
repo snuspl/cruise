@@ -29,9 +29,9 @@ public interface PartitionTracker {
   /**
    * Send a partition register request to the driver.
    *
-   * @param key string that represents a certain data type
+   * @param dataType string that represents a certain data type
    * @param startId minimum value of the id range of the partition to register
    * @param endId maximum value of the id range of the partition to register
    */
-  void registerPartition(String key, long startId, long endId);
+  void registerPartition(String dataType, long startId, long endId);
 }

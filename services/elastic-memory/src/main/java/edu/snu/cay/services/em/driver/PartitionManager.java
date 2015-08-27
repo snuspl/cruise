@@ -29,7 +29,7 @@ import java.util.*;
 @DriverSide
 public final class PartitionManager {
 
-  private final Map<String, Map<String, TreeSet<LongRange>>> mapIdKeyRange;
+  private final Map<String, Map<String, TreeSet<LongRange>>> mapIdDatatypeRange;
 
   private Comparator<LongRange> longRangeComparator = new Comparator<LongRange>() {
     @Override
@@ -40,50 +40,50 @@ public final class PartitionManager {
 
   @Inject
   private PartitionManager() {
-    this.mapIdKeyRange = new HashMap<>();
+    this.mapIdDatatypeRange = new HashMap<>();
   }
 
   public void registerPartition(final String evalId,
-                                final String key, final long unitStartId, final long unitEndId) {
-    registerPartition(evalId, key, new LongRange(unitStartId, unitEndId));
+                                final String dataType, final long unitStartId, final long unitEndId) {
+    registerPartition(evalId, dataType, new LongRange(unitStartId, unitEndId));
   }
 
-  public synchronized void registerPartition(final String evalId, final String key, final LongRange idRange) {
-    if (!mapIdKeyRange.containsKey(evalId)) {
-      mapIdKeyRange.put(evalId, new HashMap<String, TreeSet<LongRange>>());
+  public synchronized void registerPartition(final String evalId, final String dataType, final LongRange idRange) {
+    if (!mapIdDatatypeRange.containsKey(evalId)) {
+      mapIdDatatypeRange.put(evalId, new HashMap<String, TreeSet<LongRange>>());
     }
 
-    final Map<String, TreeSet<LongRange>> mapKeyRange = mapIdKeyRange.get(evalId);
-    if (!mapKeyRange.containsKey(key)) {
-      mapKeyRange.put(key, new TreeSet<>(longRangeComparator));
+    final Map<String, TreeSet<LongRange>> mapDatatypeRange = mapIdDatatypeRange.get(evalId);
+    if (!mapDatatypeRange.containsKey(dataType)) {
+      mapDatatypeRange.put(dataType, new TreeSet<>(longRangeComparator));
     }
 
-    mapKeyRange.get(key).add(idRange);
+    mapDatatypeRange.get(dataType).add(idRange);
   }
 
-  public synchronized Set<LongRange> getRangeSet(final String evalId, final String key) {
-    if (!mapIdKeyRange.containsKey(evalId)) {
+  public synchronized Set<LongRange> getRangeSet(final String evalId, final String dataType) {
+    if (!mapIdDatatypeRange.containsKey(evalId)) {
       return new TreeSet<>();
     }
 
-    final Map<String, TreeSet<LongRange>> mapKeyRange = mapIdKeyRange.get(evalId);
-    if (!mapKeyRange.containsKey(key)) {
+    final Map<String, TreeSet<LongRange>> mapDatatypeRange = mapIdDatatypeRange.get(evalId);
+    if (!mapDatatypeRange.containsKey(dataType)) {
       return new TreeSet<>();
     }
 
-    return new TreeSet<>(mapKeyRange.get(key));
+    return new TreeSet<>(mapDatatypeRange.get(dataType));
   }
 
-  public synchronized boolean remove(final String evalId, final String key, final LongRange longRange) {
-    if (!mapIdKeyRange.containsKey(evalId)) {
+  public synchronized boolean remove(final String evalId, final String dataType, final LongRange longRange) {
+    if (!mapIdDatatypeRange.containsKey(evalId)) {
       return false;
     }
 
-    final Map<String, TreeSet<LongRange>> mapKeyRange = mapIdKeyRange.get(evalId);
-    if (!mapKeyRange.containsKey(key)) {
+    final Map<String, TreeSet<LongRange>> mapDatatypeRange = mapIdDatatypeRange.get(evalId);
+    if (!mapDatatypeRange.containsKey(dataType)) {
       return false;
     }
 
-    return mapKeyRange.get(key).remove(longRange);
+    return mapDatatypeRange.get(dataType).remove(longRange);
   }
 }
