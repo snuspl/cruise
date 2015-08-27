@@ -47,7 +47,7 @@ public interface ElasticMemoryMsgSender {
 
   /**
    * Send a DataMsg containing {@code unitIdPairList} to the Evaluator
-   * named {@code destId}. The data key is {@code dataClassName}.
+   * named {@code destId}, specified by the type {@code dataClassName}.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */

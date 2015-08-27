@@ -111,8 +111,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     try (final TraceScope onCtrlMsgScope = Trace.startSpan(ON_CTRL_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final CtrlMsg ctrlMsg = msg.getCtrlMsg();
-      final String key = ctrlMsg.getDataClassName().toString();
-      final Codec codec = serializer.getCodec(key);
+      final String dataType = ctrlMsg.getDataClassName().toString();
+      final Codec codec = serializer.getCodec(dataType);
 
       // extract all data items from my memory store that correspond to
       // the control message's id specification
@@ -120,7 +120,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       int numObject = 0;
       for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
         final Map<Long, Object> idObjectMap =
-            memoryStore.getElasticStore().removeRange(key, avroLongRange.getMin(), avroLongRange.getMax());
+            memoryStore.getElasticStore().removeRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
         numObject += idObjectMap.size();
         idObjectMapSet.add(idObjectMap);
       }
