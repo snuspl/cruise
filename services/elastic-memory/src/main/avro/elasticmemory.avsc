@@ -54,7 +54,7 @@
   "name": "CtrlMsg",
   "fields":
   [
-    {"name": "dataClassName", "type": "string"},
+    {"name": "dataType", "type": "string"},
     {"name": "idRange", "type": {"type": "array", "items": "AvroLongRange"}}
   ]
 },
@@ -70,7 +70,7 @@
   "name": "DataMsg",
   "fields":
   [
-    {"name": "dataClassName", "type": "string"},
+    {"name": "dataType", "type": "string"},
     {"name": "units", "type": {"type": "array", "items": "UnitIdPair"}}
   ]
 },
@@ -99,7 +99,7 @@
   "name": "RegisMsg",
   "fields":
   [
-    {"name": "dataClassName", "type": "string"},
+    {"name": "dataType", "type": "string"},
     {"name": "idRange", "type": "AvroLongRange"}
   ]
 },

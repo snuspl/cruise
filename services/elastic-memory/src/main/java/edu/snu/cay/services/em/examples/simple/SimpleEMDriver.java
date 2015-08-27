@@ -191,17 +191,19 @@ final class SimpleEMDriver {
         final boolean[] moveSucceeded = {false};
 
         try (final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS)) {
-          emService.move(SimpleEMTask.DATATYPE, rangeSetToMove, srcId, destId, new EventHandler<AvroElasticMemoryMessage>() {
-            @Override
-            public void onNext(final AvroElasticMemoryMessage emMsg) {
-              synchronized (SimpleEMDriver.this) {
-                moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS) ? true : false;
-                LOG.info("Move " + emMsg.getOperationId() +
-                    (moveSucceeded[0] ? " succeeded" : " failed"));
-                SimpleEMDriver.this.notifyAll();
+          emService.move(SimpleEMTask.DATATYPE, rangeSetToMove, srcId, destId,
+              new EventHandler<AvroElasticMemoryMessage>() {
+                @Override
+                public void onNext(final AvroElasticMemoryMessage emMsg) {
+                  synchronized (SimpleEMDriver.this) {
+                    moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS) ? true : false;
+                    LOG.info("Move " + emMsg.getOperationId() +
+                        (moveSucceeded[0] ? " succeeded" : " failed"));
+                    SimpleEMDriver.this.notifyAll();
+                  }
+                }
               }
-            }
-          });
+          );
         }
 
         // Swap
