@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.em.examples.simple;
 
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
-import org.apache.reef.driver.task.TaskConfigurationOptions;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import org.apache.reef.tang.annotations.Parameter;
@@ -30,7 +30,6 @@ import java.util.logging.Logger;
 final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
   public static final String DATATYPE = "INTEGER";
-  private static final int ID_BASE = 100;
 
   private final MemoryStore memoryStore;
   private final SimpleEMTaskReady simpleEMTaskReady;
@@ -44,7 +43,7 @@ final class SimpleEMTask implements Task {
       final SimpleEMTaskReady simpleEMTaskReady,
       final HeartBeatTriggerManager heartBeatTriggerManager,
       final PartitionTracker partitionTracker,
-      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
+      final DataIdFactory<Long> dataIdFactory,
       @Parameter(Iterations.class) final int iterations,
       @Parameter(PeriodMillis.class) final long periodMillis) {
     this.memoryStore = memoryStore;
@@ -53,13 +52,16 @@ final class SimpleEMTask implements Task {
     this.iterations = iterations;
     this.periodMillis = periodMillis;
 
-    final int myIdBase = Integer.valueOf(taskId.substring(SimpleEMDriver.TASK_ID_PREFIX.length())) * ID_BASE;
-    partitionTracker.registerPartition(DATATYPE, myIdBase, myIdBase + ID_BASE - 1);
-
-    for (int index = 0; index < 10; index++) {
-      final int item = myIdBase + index * 10;
-      this.memoryStore.getElasticStore().put(DATATYPE, (long) item, item);
+    final long firstItem = dataIdFactory.getId();
+    this.memoryStore.getElasticStore().put(DATATYPE, firstItem, firstItem);
+    for (int index = 1; index < 9; index++) {
+      final long item = dataIdFactory.getId();
+      this.memoryStore.getElasticStore().put(DATATYPE, item, item);
     }
+    final long lastItem = dataIdFactory.getId();
+    this.memoryStore.getElasticStore().put(DATATYPE, lastItem, lastItem);
+
+    partitionTracker.registerPartition(DATATYPE, firstItem, lastItem);
   }
 
   public byte[] call(final byte[] memento) throws InterruptedException {
