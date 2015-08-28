@@ -96,17 +96,22 @@ public final class DolphinLauncher {
         .set(DriverConfiguration.ON_TASK_RUNNING, DolphinDriver.TaskRunningHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, DolphinDriver.TaskFailedHandler.class);
 
-    final EvaluatorRequest evalRequest = EvaluatorRequest.newBuilder()
+    final EvaluatorRequest compRequest = EvaluatorRequest.newBuilder()
         .setNumber(1)
         .setMemory(dolphinParameters.getEvalSize())
         .build();
 
+    final EvaluatorRequest dataRequest = EvaluatorRequest.newBuilder()
+        .setNumber(dolphinParameters.getDesiredSplits())
+        .setMemory(dolphinParameters.getEvalSize())
+        .build();
+
     final Configuration driverConfWithDataLoad = new DataLoadingRequestBuilder()
-        .setMemoryMB(dolphinParameters.getEvalSize())
         .setInputFormatClass(TextInputFormat.class)
         .setInputPath(processInputDir(dolphinParameters.getInputDir()))
         .setNumberOfDesiredSplits(dolphinParameters.getDesiredSplits())
-        .setComputeRequest(evalRequest)
+        .addComputeRequest(compRequest)
+        .addDataRequest(dataRequest)
         .setDriverConfigurationModule(driverConfiguration)
         .build();
 
