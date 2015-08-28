@@ -101,8 +101,9 @@ public final class DolphinLauncher {
         .setMemory(dolphinParameters.getEvalSize())
         .build();
 
+    // We do not explicitly set the number of data loading evaluators here, because
+    // the number is being reset to the number of data partitions at the Driver in DataLoader anyway.
     final EvaluatorRequest dataRequest = EvaluatorRequest.newBuilder()
-        .setNumber(dolphinParameters.getDesiredSplits())
         .setMemory(dolphinParameters.getEvalSize())
         .build();
 
