@@ -147,7 +147,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         final Message<ShuffleControlMessage> message) {
       LOG.log(Level.WARNING, "An exception occurred while sending a ShuffleControlMessage. cause : {0}," +
           " socket address : {1}, message : {2}", new Object[]{cause, socketAddress, message});
-      // TODO (#67) : failure handling.
+      // TODO #67: failure handling.
       throw new RuntimeException("An exception occurred while sending a ShuffleControlMessage", cause);
     }
   }
@@ -204,7 +204,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         controlMessageSender.send(senderId, PushShuffleCode.SENDER_CAN_SEND);
       } catch (final NetworkException e) {
         // cannot open connection to sender
-        // TODO (#67) : failure handling.
+        // TODO #67: failure handling.
         throw new RuntimeException(e);
       }
     }
@@ -284,7 +284,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
           controlMessageSender.send(senderId, code);
         } catch (final NetworkException e) {
           // cannot open connection to sender
-          // TODO (#67) : failure handling.
+          // TODO #67: failure handling.
           throw new RuntimeException(e);
         }
       }
@@ -296,7 +296,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
           controlMessageSender.send(receiverId, code);
         } catch (final NetworkException e) {
           // cannot open connection to receiver
-          // TODO (#67) : failure handling.
+          // TODO #67: failure handling.
           throw new RuntimeException(e);
         }
       }

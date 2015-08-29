@@ -118,7 +118,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
         final Message<ShuffleTupleMessage<K, V>> message) {
       LOG.log(Level.WARNING, "An exception occurred while sending a ShuffleTupleMessage. cause : {0}," +
           " socket address : {1}, message : {2}", new Object[]{cause, socketAddress, message});
-      // TODO (#67) : failure handling.
+      // TODO #67: failure handling.
       throw new RuntimeException("An exception occurred while sending a ShuffleTupleMessage", cause);
     }
   }
@@ -168,7 +168,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     if (message.isPresent()) {
       synchronizer.reopenLatch(PushShuffleCode.SENDER_CAN_SEND);
     } else {
-      // TODO (#33) : failure handling
+      // TODO #33: failure handling
       throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
     }
 

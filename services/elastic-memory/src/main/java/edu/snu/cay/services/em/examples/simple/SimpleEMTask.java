@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 
 final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
-  public static final String KEY = "INTEGER";
+  public static final String DATATYPE = "INTEGER";
   private static final int ID_BASE = 100;
 
   private final MemoryStore memoryStore;
@@ -54,11 +54,11 @@ final class SimpleEMTask implements Task {
     this.periodMillis = periodMillis;
 
     final int myIdBase = Integer.valueOf(taskId.substring(SimpleEMDriver.TASK_ID_PREFIX.length())) * ID_BASE;
-    partitionTracker.registerPartition(KEY, myIdBase, myIdBase + ID_BASE - 1);
+    partitionTracker.registerPartition(DATATYPE, myIdBase, myIdBase + ID_BASE - 1);
 
     for (int index = 0; index < 10; index++) {
       final int item = myIdBase + index * 10;
-      this.memoryStore.getElasticStore().put(KEY, (long) item, item);
+      this.memoryStore.getElasticStore().put(DATATYPE, (long) item, item);
     }
   }
 
@@ -66,7 +66,7 @@ final class SimpleEMTask implements Task {
     LOG.info("SimpleEMTask commencing...");
 
     LOG.info("Before sleep, memory store contains: ");
-    LOG.info(memoryStore.getElasticStore().getAll(KEY).toString());
+    LOG.info(memoryStore.getElasticStore().getAll(DATATYPE).toString());
     // Should be either
     // [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
     // or
@@ -81,7 +81,7 @@ final class SimpleEMTask implements Task {
     Thread.sleep(sleepMillis);
 
     LOG.info("After sleep, memory store contains: ");
-    LOG.info(memoryStore.getElasticStore().getAll(KEY).toString());
+    LOG.info(memoryStore.getElasticStore().getAll(DATATYPE).toString());
     // Evaluator that receives on the last iteration should have more than before
     // Evaluator that sends on the last iterations should have less than before
 

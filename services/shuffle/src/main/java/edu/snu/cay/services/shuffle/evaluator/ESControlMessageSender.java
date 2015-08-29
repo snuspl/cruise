@@ -60,7 +60,7 @@ public final class ESControlMessageSender {
     try {
       connectionToManager.open();
     } catch (final NetworkException e) {
-      // TODO (#67) : failure handling.
+      // TODO #67: failure handling.
       throw new RuntimeException("An NetworkException occurred while opening a connection to driver.", e);
     }
   }
@@ -112,7 +112,7 @@ public final class ESControlMessageSender {
       connection.open();
       connection.write(controlMessage);
     } catch (final NetworkException ex) {
-      // TODO (#67) : failure handling.
+      // TODO #67: failure handling.
       throw new RuntimeException("An NetworkException occurred while sending message to" + endPointId, ex);
     }
   }

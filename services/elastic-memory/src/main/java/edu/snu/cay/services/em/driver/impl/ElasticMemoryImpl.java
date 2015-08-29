@@ -65,20 +65,20 @@ public final class ElasticMemoryImpl implements ElasticMemory {
         .build());
   }
 
-  // TODO: implement
+  // TODO #112: implement delete
   @Override
   public void delete(final String evalId) {
     throw new NotImplementedException();
   }
 
-  // TODO: implement
+  // TODO #113: implement resize
   @Override
   public void resize(final String evalId, final int megaBytes, final int cores) {
     throw new NotImplementedException();
   }
 
   @Override
-  public void move(final String dataClassName,
+  public void move(final String dataType,
                    final Set<LongRange> idRangeSet,
                    final String srcEvalId,
                    final String destEvalId,
@@ -88,12 +88,12 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
       callbackRouter.register(operatorId, callback);
 
-      sender.sendCtrlMsg(srcEvalId, dataClassName, destEvalId, idRangeSet,
+      sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, idRangeSet,
           operatorId, TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }
 
-  // TODO: implement
+  // TODO #114: implement checkpoint
   @Override
   public void checkpoint(final String evalId) {
     throw new NotImplementedException();

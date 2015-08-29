@@ -158,7 +158,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     if (message.isPresent()) {
       synchronizer.reopenLatch(PushShuffleCode.ALL_RECEIVERS_COMPLETED);
     } else {
-      // TODO (#33) : failure handling
+      // TODO #33: failure handling
       throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
     }
 
