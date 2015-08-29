@@ -50,7 +50,7 @@ public final class PartitionManager {
     registerPartition(evalId, key, new LongRange(unitStartId, unitEndId));
   }
 
-  public synchronized void registerPartition(final String evalId, final String key, final LongRange idRange) {
+  public synchronized boolean registerPartition(final String evalId, final String key, final LongRange idRange) {
     if (!mapIdKeyRange.containsKey(evalId)) {
       mapIdKeyRange.put(evalId, new HashMap<String, TreeSet<LongRange>>());
     }
@@ -60,7 +60,7 @@ public final class PartitionManager {
       mapKeyRange.put(key, new TreeSet<>(longRangeComparator));
     }
 
-    mapKeyRange.get(key).add(idRange);
+    return mapKeyRange.get(key).add(idRange);
   }
 
   public synchronized Set<LongRange> getRangeSet(final String evalId, final String key) {
