@@ -63,18 +63,13 @@ public final class PartitionManager {
     }
 
     // 1-1. Check the overlap of registering partition to adjacent partitions across all the evaluators
-    boolean overlap = false;
-    final LongRange higherMinRange = rangeSet.higher(idRange);
-    final LongRange lowerMinRange = rangeSet.lower(idRange);
-    if (higherMinRange != null && higherMinRange.getMinimumLong() <= idRange.getMaximumLong()) {
-      overlap = true; // upside (or may also downside) overlap(s)
-    } else {
-      if (lowerMinRange != null && lowerMinRange.getMaximumLong() >= idRange.getMinimumLong()) {
-        overlap = true; // downside overlap(s)
-      }
+    final LongRange higherRange = rangeSet.higher(idRange);
+    if (higherRange != null && higherRange.overlapsRange(idRange)) {
+      return false; // upside (or may also downside) overlap(s)
     }
-    if (overlap) {
-      return false;
+    final LongRange lowerRange = rangeSet.lower(idRange);
+    if (lowerRange != null && lowerRange.overlapsRange(idRange)) {
+      return false; // downside overlap(s)
     }
 
     assert (rangeSet.add(idRange));
