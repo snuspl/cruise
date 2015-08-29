@@ -50,6 +50,28 @@ public final class PartitionManagerTest {
   }
 
   /**
+   * Testing multi-thread addition on joint id ranges.
+   * Check that the consistency of a MemoryStore is preserved
+   * when multiple threads try to add joint ranges concurrently.
+   */
+  @Test
+  public void testAddJointRanges() throws InterruptedException {
+
+    final int totalNumberOfAdds = 100000;
+
+    for (int i = 0; i < totalNumberOfAdds; i++) {
+      partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1);
+    }
+
+    for (int i = 0; i < totalNumberOfAdds; i++) {
+      partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i + 1, 2 * i + 2);
+    }
+
+    // check that the total number of objects equal the expected number
+    assertEquals(MSG_SIZE_ASSERTION, totalNumberOfAdds, partitionManager.getRangeSet(EVAL_ID, DATA_TYPE).size());
+  }
+
+  /**
    * Testing multi-thread addition on duplicate id ranges.
    * Check that the consistency of a MemoryStore is preserved
    * when multiple threads try to add duplicate ranges concurrently.
