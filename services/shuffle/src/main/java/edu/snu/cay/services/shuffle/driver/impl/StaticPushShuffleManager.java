@@ -193,7 +193,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
                   " It broadcasts ALL_RECEIVERS_COMPLETED messages to all receivers.")
           .addTransition("RECEIVERS_COMPLETED", "CAN_SEND",
               "When RECEIVER_READY messages arrived from all receivers"
-              + " It broadcasts ALL_RECEIVERS_READY messages to all senders.")
+              + " It broadcasts SENDER_CAN_SEND messages to all senders.")
           .addTransition("CAN_SEND", "FINISHED",
               "When RECEIVER_FINISHED messages arrived from all receivers")
           .build();
