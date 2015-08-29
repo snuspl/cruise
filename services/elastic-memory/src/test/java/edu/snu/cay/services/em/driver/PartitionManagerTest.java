@@ -50,6 +50,35 @@ public final class PartitionManagerTest {
   }
 
   /**
+   * Testing multi-thread addition on duplicate id ranges.
+   * Check that the consistency of a MemoryStore is preserved
+   * when multiple threads try to add duplicate ranges concurrently.
+   */
+  @Test
+  public void testMultiThreadAddDuplicateRanges() throws InterruptedException {
+    final int numThreads = 8;
+    final int addsPerThread = 100000;
+    final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
+
+    final int dupFactor = 2; // adjust it
+    final int effectiveThreads = numThreads / dupFactor + ((numThreads % dupFactor == 0) ? 0 : 1);
+    final int totalNumberOfAdds = effectiveThreads * addsPerThread;
+
+    final Runnable[] threads = new Runnable[numThreads];
+    for (int index = 0; index < numThreads; index++) {
+      threads[index] = new RegisterThread(countDownLatch, partitionManager,
+          index / dupFactor, effectiveThreads, addsPerThread, IndexParity.ALL_INDEX);
+    }
+    TestUtils.runConcurrently(threads);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+
+    // check that all threads have finished without falling into deadlocks or infinite loops
+    assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
+    // check that the total number of objects equal the expected number
+    assertEquals(MSG_SIZE_ASSERTION, totalNumberOfAdds, partitionManager.getRangeSet(EVAL_ID, DATA_TYPE).size());
+  }
+
+  /**
    * Testing multi-thread addition on disjoint id ranges.
    * Check that the consistency of a MemoryStore is preserved
    * when multiple threads try to add disjoint ranges concurrently.
@@ -320,7 +349,7 @@ public final class PartitionManagerTest {
     }
   }
 
-  class GetThread implements Runnable {
+  final class GetThread implements Runnable {
     private final CountDownLatch countDownLatch;
     private final PartitionManager partitionManager;
     private final int getsPerThread;
