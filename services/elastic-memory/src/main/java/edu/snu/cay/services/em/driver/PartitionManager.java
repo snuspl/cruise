@@ -30,6 +30,7 @@ import java.util.*;
 public final class PartitionManager {
 
   private final Map<String, Map<String, TreeSet<LongRange>>> mapIdKeyRange;
+  private final Map<String, TreeSet<LongRange>> globalKeyRanges;
 
   private Comparator<LongRange> longRangeComparator = new Comparator<LongRange>() {
     @Override
@@ -41,6 +42,7 @@ public final class PartitionManager {
   @Inject
   private PartitionManager() {
     this.mapIdKeyRange = new HashMap<>();
+    this.globalKeyRanges = new HashMap<>();
   }
 
   public void registerPartition(final String evalId,
