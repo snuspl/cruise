@@ -51,6 +51,19 @@ public final class PartitionManager {
   }
 
   public synchronized boolean registerPartition(final String evalId, final String key, final LongRange idRange) {
+    // 1. Add a new partition into globalKeyRanges
+    TreeSet<LongRange> rangeSet = globalKeyRanges.get(key);
+    if (rangeSet != null) {
+      if (rangeSet.contains(idRange)) {
+        return false;
+      }
+    } else {
+      rangeSet = new TreeSet<>(longRangeComparator);
+      assert (globalKeyRanges.put(key, rangeSet) == null);
+    }
+
+    assert (rangeSet.add(idRange));
+
     if (!mapIdKeyRange.containsKey(evalId)) {
       mapIdKeyRange.put(evalId, new HashMap<String, TreeSet<LongRange>>());
     }
