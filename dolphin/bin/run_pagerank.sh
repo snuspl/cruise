@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_pagerank.sh -convThr 0.01 -maxIter 10 -dampingFactor 0.85 -local true -split 1 -input sample_pagerank -output output_pagerank
+# ./run_pagerank.sh -convThr 0.01 -maxIter 10 -dampingFactor 0.85 -local true -split 1 -input sample_pagerank -output output_pagerank -maxNumEvalLocal 2
 
 # RUNTIME
 SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
