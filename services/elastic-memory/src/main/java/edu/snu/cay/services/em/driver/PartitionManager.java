@@ -23,8 +23,6 @@ import java.util.*;
 
 /**
  * Manager class for keeping track of partitions registered by evaluators.
- * TODO #110: Currently does not check whether ranges are disjoint or not.
- * TODO #111: Currently does not try to merge contiguous ranges.
  */
 @DriverSide
 public final class PartitionManager {
@@ -45,70 +43,126 @@ public final class PartitionManager {
     this.globalKeyRanges = new HashMap<>();
   }
 
-  public void registerPartition(final String evalId,
+  public boolean registerPartition(final String evalId,
                                 final String key, final long unitStartId, final long unitEndId) {
-    registerPartition(evalId, key, new LongRange(unitStartId, unitEndId));
+    return registerPartition(evalId, key, new LongRange(unitStartId, unitEndId));
   }
 
   public synchronized boolean registerPartition(final String evalId, final String key, final LongRange idRange) {
-    // 1. Add a new partition into globalKeyRanges
-    TreeSet<LongRange> rangeSet = globalKeyRanges.get(key);
-    if (rangeSet != null) {
-      if (rangeSet.contains(idRange)) {
+    // 1. Check the acceptability of a new partition into globalKeyRanges
+    TreeSet<LongRange> rangeSetGlobal = globalKeyRanges.get(key);
+    if (rangeSetGlobal != null) {
+      if (rangeSetGlobal.contains(idRange)) {
         return false;
       }
     } else {
-      rangeSet = new TreeSet<>(longRangeComparator);
-      assert (globalKeyRanges.put(key, rangeSet) == null);
+      rangeSetGlobal = new TreeSet<>(longRangeComparator);
+      assert (globalKeyRanges.put(key, rangeSetGlobal) == null);
     }
 
     // 1-1. Check the overlap of registering partition to adjacent partitions across all the evaluators
-    final LongRange higherRange = rangeSet.higher(idRange);
+    final LongRange higherRange = rangeSetGlobal.higher(idRange);
     if (higherRange != null && higherRange.overlapsRange(idRange)) {
       return false; // upside (or may also downside) overlap(s)
     }
-    final LongRange lowerRange = rangeSet.lower(idRange);
+    final LongRange lowerRange = rangeSetGlobal.lower(idRange);
     if (lowerRange != null && lowerRange.overlapsRange(idRange)) {
       return false; // downside overlap(s)
     }
 
-    assert (rangeSet.add(idRange));
+    // 2. Check the acceptability of a new partition into evalKeyRangesMap
+    Map<String, TreeSet<LongRange>> evalKeyRanges = mapIdKeyRange.get(evalId);
 
-    if (!mapIdKeyRange.containsKey(evalId)) {
-      mapIdKeyRange.put(evalId, new HashMap<String, TreeSet<LongRange>>());
+    if (evalKeyRanges == null) {
+      evalKeyRanges = new HashMap<>();
+      assert (mapIdKeyRange.put(evalId, evalKeyRanges) == null);
     }
 
-    final Map<String, TreeSet<LongRange>> mapKeyRange = mapIdKeyRange.get(evalId);
-    if (!mapKeyRange.containsKey(key)) {
-      mapKeyRange.put(key, new TreeSet<>(longRangeComparator));
+    TreeSet<LongRange> rangeSetEval = evalKeyRanges.get(key);
+
+    if (rangeSetEval == null) {
+      rangeSetEval = new TreeSet<>(longRangeComparator);
+      assert (evalKeyRanges.put(key, rangeSetEval) == null);
     }
 
-    return mapKeyRange.get(key).add(idRange);
+    // 2-1. Check the registering partition's possibility to be merged to adjacent partitions within the evaluator
+    boolean upsideMerge = false;
+    boolean downsideMerge = false;
+    final LongRange higherRangeEval = rangeSetEval.higher(idRange);
+    final LongRange lowerRangeEval = rangeSetEval.lower(idRange);
+    if (higherRangeEval != null && higherRangeEval.getMinimumLong() == idRange.getMaximumLong() + 1) {
+      upsideMerge = true;
+    }
+    if (lowerRangeEval != null && lowerRangeEval.getMaximumLong() + 1 == idRange.getMinimumLong()) {
+      downsideMerge = true;
+    }
+
+    // merge partitions
+    LongRange mergedRange = idRange;
+
+    if (upsideMerge || downsideMerge) {
+      final long startId = downsideMerge ? lowerRangeEval.getMinimumLong() : idRange.getMinimumLong();
+      final long endId = upsideMerge ? higherRangeEval.getMaximumLong() : idRange.getMaximumLong();
+      mergedRange = new LongRange(startId, endId);
+
+      if (downsideMerge) {
+        assert (rangeSetGlobal.remove(lowerRangeEval));
+        assert (rangeSetEval.remove(lowerRangeEval));
+      }
+      if (upsideMerge) {
+        assert (rangeSetGlobal.remove(higherRangeEval));
+        assert (rangeSetEval.remove(higherRangeEval));
+      }
+    }
+
+    if (rangeSetGlobal.add(mergedRange)) {
+      if (rangeSetEval.add(mergedRange)) {
+        return true;
+      } else { // rollback when registering fails
+        assert (rangeSetGlobal.remove(mergedRange));
+
+        if (downsideMerge) {
+          assert (rangeSetGlobal.add(lowerRangeEval));
+          assert (rangeSetEval.add(lowerRangeEval));
+        }
+        if (upsideMerge) {
+          assert (rangeSetGlobal.add(higherRangeEval));
+          assert (rangeSetEval.add(higherRangeEval));
+        }
+      }
+    }
+
+    return false;
   }
 
   public synchronized Set<LongRange> getRangeSet(final String evalId, final String key) {
     if (!mapIdKeyRange.containsKey(evalId)) {
-      return new TreeSet<>();
+      return null;
     }
 
     final Map<String, TreeSet<LongRange>> mapKeyRange = mapIdKeyRange.get(evalId);
     if (!mapKeyRange.containsKey(key)) {
-      return new TreeSet<>();
+      return null;
     }
 
     return new TreeSet<>(mapKeyRange.get(key));
   }
 
+  /* TODO #122: handle a try of removing to merged partitions. split merged partition again? */
   public synchronized boolean remove(final String evalId, final String key, final LongRange longRange) {
     if (!mapIdKeyRange.containsKey(evalId)) {
       return false;
     }
 
-    final Map<String, TreeSet<LongRange>> mapKeyRange = mapIdKeyRange.get(evalId);
-    if (!mapKeyRange.containsKey(key)) {
+    final Map<String, TreeSet<LongRange>> evalKeyRanges = mapIdKeyRange.get(evalId);
+    if (evalKeyRanges == null) {
+      return false;
+    }
+    final TreeSet<LongRange> rangeSet = evalKeyRanges.get(key);
+    if (rangeSet == null) {
       return false;
     }
 
-    return mapKeyRange.get(key).remove(longRange);
+    return rangeSet.remove(longRange); // Note: TreeSet does not distinguish the difference in maximum value of range
   }
 }
