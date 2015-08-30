@@ -129,7 +129,7 @@ public final class PartitionManagerTest {
    * when multiple threads try to add disjoint ranges concurrently.
    */
   @Test
-  public void testMultithreadAddDisjointRanges() throws InterruptedException {
+  public void testMultiThreadAddDisjointRanges() throws InterruptedException {
     final int numThreads = 8;
     final int addsPerThread = 100000;
     final int totalNumberOfAdds = numThreads * addsPerThread;
@@ -155,7 +155,7 @@ public final class PartitionManagerTest {
    * when multiple threads try to remove disjoint ranges concurrently.
    */
   @Test
-  public void testMultithreadRemoveDisjointRanges() throws InterruptedException {
+  public void testMultiThreadRemoveDisjointRanges() throws InterruptedException {
     final int numThreads = 8;
     final int removesPerThread = 100000;
     final int totalNumberOfRemoves = numThreads * removesPerThread;
@@ -184,7 +184,7 @@ public final class PartitionManagerTest {
    * when multiple threads try to add and retrieve disjoint ranges concurrently.
    */
   @Test
-  public void testMultithreadAddGetDisjointRanges() throws InterruptedException {
+  public void testMultiThreadAddGetDisjointRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
     final int addsPerThread = 100000;
     final int getsPerThread = 100;
@@ -212,7 +212,7 @@ public final class PartitionManagerTest {
    * when multiple threads try to remove and retrieve disjoint ranges concurrently.
    */
   @Test
-  public void testMultithreadGetRemoveDisjointRanges() throws InterruptedException {
+  public void testMultiThreadGetRemoveDisjointRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
     final int removesPerThread = 100000;
     final int getsPerThread = 100;
@@ -243,7 +243,7 @@ public final class PartitionManagerTest {
    * when multiple threads try to add and remove disjoint ranges concurrently.
    */
   @Test
-  public void testMultithreadAddRemoveDisjointRanges() throws InterruptedException {
+  public void testMultiThreadAddRemoveDisjointRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
     final int addsPerThread = 100000;
     final int removesPerThread = addsPerThread;
@@ -282,7 +282,7 @@ public final class PartitionManagerTest {
    * when multiple threads try to add, remove, and retrieve disjoint ranges concurrently.
    */
   @Test
-  public void testMultithreadAddGetRemoveDisjointRanges() throws InterruptedException {
+  public void testMultiThreadAddGetRemoveDisjointRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
     final int addsPerThread = 100000;
     final int removesPerThread = addsPerThread;
