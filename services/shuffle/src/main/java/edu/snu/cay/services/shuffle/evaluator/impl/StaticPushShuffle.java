@@ -17,7 +17,6 @@ package edu.snu.cay.services.shuffle.evaluator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.driver.impl.PushShuffleCode;
-import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorFactory;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
@@ -45,7 +44,6 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private static final Logger LOG = Logger.getLogger(StaticPushShuffle.class.getName());
 
   private final ShuffleDescription shuffleDescription;
-  private final ControlMessageSynchronizer synchronizer;
 
   private final ControlMessageHandler controlMessageHandler;
   private final ControlLinkListener controlLinkListener;
@@ -56,10 +54,8 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   @Inject
   private StaticPushShuffle(
       final ShuffleDescription shuffleDescription,
-      final ShuffleOperatorFactory<K, V> operatorFactory,
-      final ControlMessageSynchronizer synchronizer) {
+      final ShuffleOperatorFactory<K, V> operatorFactory) {
     this.shuffleDescription = shuffleDescription;
-    this.synchronizer = synchronizer;
 
     this.shuffleReceiver = operatorFactory.newShuffleReceiver();
     this.shuffleSender = operatorFactory.newShuffleSender();
@@ -114,21 +110,18 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
     public void onNext(final Message<ShuffleControlMessage> message) {
       final ShuffleControlMessage controlMessage = message.getData().iterator().next();
       switch (controlMessage.getCode()) {
+
+      // Control messages for senders.
       case PushShuffleCode.SENDER_CAN_SEND:
-        synchronizer.closeLatch(controlMessage);
+      case PushShuffleCode.SENDER_SHUTDOWN:
+        shuffleSender.onControlMessage(message);
         break;
 
+      // Control messages for receivers.
       case PushShuffleCode.SENDER_COMPLETED:
+      case PushShuffleCode.RECEIVER_CAN_RECEIVE:
+      case PushShuffleCode.RECEIVER_SHUTDOWN:
         shuffleReceiver.onControlMessage(message);
-        break;
-
-      case PushShuffleCode.SENDER_FINISHED:
-        shuffleReceiver.onControlMessage(message);
-        break;
-
-      case PushShuffleCode.ALL_RECEIVERS_COMPLETED:
-        LOG.log(Level.INFO, "All receivers were completed to receive data");
-        synchronizer.closeLatch(controlMessage);
         break;
 
       default:

@@ -58,19 +58,19 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   private final long senderTimeout;
   private final StateMachine stateMachine;
   private final SentMessageChecker messageChecker;
+  private boolean shutdown;
 
   @Inject
   private PushShuffleSenderImpl(
       final ShuffleDescription shuffleDescription,
       final DataSender<K, V> dataSender,
       final ESControlMessageSender controlMessageSender,
-      final ControlMessageSynchronizer synchronizer,
       @Parameter(SenderTimeout.class) final long senderTimeout) {
     this.shuffleDescription = shuffleDescription;
     this.dataSender = dataSender;
     this.dataSender.registerTupleLinkListener(new TupleLinkListener());
     this.controlMessageSender = controlMessageSender;
-    this.synchronizer = synchronizer;
+    this.synchronizer = new ControlMessageSynchronizer();
     this.senderTimeout = senderTimeout;
     this.stateMachine = createStateMachine();
     this.messageChecker = new SentMessageChecker();
@@ -94,13 +94,30 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
             "When a user calls complete() method. It broadcasts SENDER_COMPLETED messages to all receivers.")
         .addTransition("COMPLETED", "SENDING",
             "When a SENDER_CAN_SEND message arrived from the manager.")
-        .addTransition("SENDING", "FINISHED",
-            "When a user calls finish() method. It broadcasts SENDER_FINISHED messages to all receivers.")
+        .addTransition("COMPLETED", "FINISHED",
+            "When a SENDER_SHUTDOWN message arrived from the manager.")
         .build();
   }
 
   @Override
   public void onControlMessage(final Message<ShuffleControlMessage> message) {
+    final ShuffleControlMessage controlMessage = message.getData().iterator().next();
+    switch (controlMessage.getCode()) {
+    // Control messages from the manager.
+    case PushShuffleCode.SENDER_CAN_SEND:
+      synchronizer.closeLatch(controlMessage);
+      break;
+
+    case PushShuffleCode.SENDER_SHUTDOWN:
+      shutdown = true;
+      // forcibly close the latch for SENDER_CAN_SEND to shutdown the sender.
+      synchronizer.closeLatch(new ShuffleControlMessage(
+          PushShuffleCode.SENDER_CAN_SEND, shuffleDescription.getShuffleName(), null));
+      break;
+
+    default:
+      throw new RuntimeException("Unknown code [ " + controlMessage.getCode() + " ] from " + message.getDestId());
+    }
   }
 
   private final class TupleLinkListener implements LinkListener<Message<ShuffleTupleMessage<K, V>>> {
@@ -125,7 +142,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   @Override
   public List<String> sendTuple(final Tuple<K, V> tuple) {
-    waitUntilSenderCanSendData();
+    waitForSenderInitialized();
     stateMachine.checkState("SENDING");
     final List<String> sentReceiverIdList = dataSender.sendTuple(tuple);
     messageChecker.messageSent(sentReceiverIdList.size());
@@ -134,7 +151,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   @Override
   public List<String> sendTuple(final List<Tuple<K, V>> tupleList) {
-    waitUntilSenderCanSendData();
+    waitForSenderInitialized();
     stateMachine.checkState("SENDING");
     final List<String> sentReceiverIdList = dataSender.sendTuple(tupleList);
     messageChecker.messageSent(sentReceiverIdList.size());
@@ -143,7 +160,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   @Override
   public void sendTupleTo(final String receiverId, final Tuple<K, V> tuple) {
-    waitUntilSenderCanSendData();
+    waitForSenderInitialized();
     stateMachine.checkState("SENDING");
     dataSender.sendTupleTo(receiverId, tuple);
     messageChecker.messageSent(1);
@@ -151,33 +168,21 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   @Override
   public void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList) {
-    waitUntilSenderCanSendData();
+    waitForSenderInitialized();
     stateMachine.checkState("SENDING");
     dataSender.sendTupleTo(receiverId, tupleList);
     messageChecker.messageSent(1);
   }
 
-  private void waitUntilSenderCanSendData() {
-    if (stateMachine.getCurrentState().equals("SENDING")) {
-      return;
+  private void waitForSenderInitialized() {
+    if (stateMachine.getCurrentState().equals("INIT")) {
+      waitForSenderCanSendData();
+      stateMachine.checkAndSetState("INIT", "SENDING");
     }
-
-    final Optional<ShuffleControlMessage> message = synchronizer.waitOnLatch(
-        PushShuffleCode.SENDER_CAN_SEND, senderTimeout);
-
-    if (message.isPresent()) {
-      synchronizer.reopenLatch(PushShuffleCode.SENDER_CAN_SEND);
-    } else {
-      // TODO #33: failure handling
-      throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
-    }
-
-    LOG.log(Level.INFO, "The sender can send data");
-    stateMachine.setState("SENDING");
   }
 
   @Override
-  public void complete() {
+  public boolean complete() {
     LOG.log(Level.INFO, "Complete to send data");
     stateMachine.checkAndSetState("SENDING", "COMPLETED");
     messageChecker.waitForAllMessagesAreTransferred();
@@ -186,17 +191,27 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
       controlMessageSender.sendTo(receiverId, PushShuffleCode.SENDER_COMPLETED);
     }
 
-    waitUntilSenderCanSendData();
+    waitForSenderCanSendData();
+    if (shutdown) {
+      LOG.log(Level.INFO, "The sender was finished.");
+      stateMachine.checkAndSetState("COMPLETED", "FINISHED");
+      return true;
+    } else {
+      LOG.log(Level.INFO, "The sender can send data");
+      stateMachine.checkAndSetState("COMPLETED", "SENDING");
+      return false;
+    }
   }
 
-  @Override
-  public void finish() {
-    LOG.log(Level.INFO, "Finish to send data");
-    stateMachine.checkAndSetState("SENDING", "FINISHED");
-    messageChecker.waitForAllMessagesAreTransferred();
-    LOG.log(Level.INFO, "Broadcast to all receivers that the sender was finished sending data");
-    for (final String receiverId : shuffleDescription.getReceiverIdList()) {
-      controlMessageSender.sendTo(receiverId, PushShuffleCode.SENDER_FINISHED);
+  private void waitForSenderCanSendData() {
+    final Optional<ShuffleControlMessage> message = synchronizer.waitOnLatch(
+        PushShuffleCode.SENDER_CAN_SEND, senderTimeout);
+
+    if (message.isPresent()) {
+      synchronizer.reopenLatch(PushShuffleCode.SENDER_CAN_SEND);
+    } else {
+      // TODO #33: failure handling
+      throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
     }
   }
 

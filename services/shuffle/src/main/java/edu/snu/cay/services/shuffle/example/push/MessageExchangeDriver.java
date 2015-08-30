@@ -17,6 +17,7 @@ package edu.snu.cay.services.shuffle.example.push;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
+import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
 import edu.snu.cay.services.shuffle.strategy.KeyShuffleStrategy;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -35,6 +36,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
+import org.apache.reef.wake.time.Clock;
+import org.apache.reef.wake.time.event.Alarm;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
@@ -66,14 +69,16 @@ public final class MessageExchangeDriver {
   private final AtomicInteger totalReceivedTupleCount;
   private final EvaluatorRequestor evaluatorRequestor;
   private final ShuffleDriver shuffleDriver;
+  private final StaticPushShuffleManager shuffleManager;
   private final LocalAddressProvider localAddressProvider;
   private final NameServer nameServer;
 
   private final int senderNumber;
   private final int receiverNumber;
 
-  private final List<String> senderIdList;
-  private final List<String> receiverIdList;
+  private final boolean shutdown;
+  private final int shutdownDelay;
+  private final Clock clock;
 
   @Inject
   private MessageExchangeDriver(
@@ -82,7 +87,10 @@ public final class MessageExchangeDriver {
       final EvaluatorRequestor evaluatorRequestor,
       final ShuffleDriver shuffleDriver,
       final LocalAddressProvider localAddressProvider,
-      final NameServer nameServer) {
+      final NameServer nameServer,
+      @Parameter(MessageExchangeREEF.Shutdown.class) final boolean shutdown,
+      @Parameter(MessageExchangeREEF.ShutdownDelay.class) final int shutdownDelay,
+      final Clock clock) {
     LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}",
         new Object[]{senderNumber, receiverNumber});
     this.allocatedNum = new AtomicInteger();
@@ -93,10 +101,11 @@ public final class MessageExchangeDriver {
     this.shuffleDriver = shuffleDriver;
     this.localAddressProvider = localAddressProvider;
     this.nameServer = nameServer;
-    this.senderIdList = new ArrayList<>(senderNumber);
-    this.receiverIdList = new ArrayList<>(receiverNumber);
     this.senderNumber = senderNumber;
     this.receiverNumber = receiverNumber;
+    final List<String> senderIdList = new ArrayList<>(senderNumber);
+    final List<String> receiverIdList = new ArrayList<>(receiverNumber);
+
     for (int i = 0; i < senderNumber; i++) {
       senderIdList.add(SENDER_PREFIX + i);
     }
@@ -105,11 +114,7 @@ public final class MessageExchangeDriver {
       receiverIdList.add(RECEIVER_PREFIX + i);
     }
 
-    registerShuffle();
-  }
-
-  private void registerShuffle() {
-    shuffleDriver.registerShuffle(
+    this.shuffleManager = shuffleDriver.registerShuffle(
         ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
             .setSenderIdList(senderIdList)
             .setReceiverIdList(receiverIdList)
@@ -118,6 +123,10 @@ public final class MessageExchangeDriver {
             .setShuffleStrategyClass(KeyShuffleStrategy.class)
             .build()
     );
+
+    this.shutdown = shutdown;
+    this.shutdownDelay = shutdownDelay;
+    this.clock = clock;
   }
 
   public final class StartHandler implements EventHandler<StartTime> {
@@ -146,10 +155,12 @@ public final class MessageExchangeDriver {
         final int sentTupleCount = byteBuffer.getInt();
         LOG.log(Level.INFO, "{0} completed. It sent {1} tuples", new Object[]{taskId, sentTupleCount});
         totalSentTupleCount.addAndGet(sentTupleCount);
+
       } else if (taskId.startsWith(RECEIVER_PREFIX)) {
         final int receivedTupleCount = byteBuffer.getInt();
         LOG.log(Level.INFO, "{0} completed. It received {1} tuples", new Object[]{taskId, receivedTupleCount});
         totalReceivedTupleCount.addAndGet(receivedTupleCount);
+
       } else {
         throw new RuntimeException("Unknown task identifier " + taskId);
       }
@@ -201,6 +212,18 @@ public final class MessageExchangeDriver {
             .build();
       } else {
         throw new RuntimeException("Too many allocated evaluators");
+      }
+
+      if (number == senderNumber + receiverNumber - 1) {
+        if (shutdown) {
+          clock.scheduleAlarm(shutdownDelay, new EventHandler<Alarm>() {
+            @Override
+            public void onNext(final Alarm alarm) {
+              LOG.log(Level.INFO, "Shutdown the application.");
+              shuffleManager.shutdown();
+            }
+          });
+        }
       }
 
       allocatedEvaluator.submitContextAndServiceAndTask(

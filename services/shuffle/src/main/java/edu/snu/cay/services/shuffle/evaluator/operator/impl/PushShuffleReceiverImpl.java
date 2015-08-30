@@ -47,6 +47,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
 
   private static final Logger LOG = Logger.getLogger(PushShuffleReceiverImpl.class.getName());
 
+  private final ShuffleDescription shuffleDescription;
   /**
    * ControlMessageSender which sends control messages to the manager.
    */
@@ -54,12 +55,12 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
 
   private final ControlMessageSynchronizer synchronizer;
   private final long receiverTimeout;
-  private final AtomicInteger finishedSenderCount;
   private final AtomicInteger completedSenderCount;
   private final int senderNum;
   private final Map<String, StateMachine> senderStateMachineMap;
   private final StateMachine stateMachine;
 
+  private boolean shutdown;
   private PushDataListener<K, V> dataListener;
 
   @Inject
@@ -67,13 +68,12 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
       final ShuffleDescription shuffleDescription,
       final DataReceiver<K, V> dataReceiver,
       final ESControlMessageSender controlMessageSender,
-      final ControlMessageSynchronizer synchronizer,
       @Parameter(ReceiverTimeout.class) final long receiverTimeout) {
     dataReceiver.registerTupleMessageHandler(new TupleMessageHandler());
+    this.shuffleDescription = shuffleDescription;
     this.controlMessageSender = controlMessageSender;
-    this.synchronizer = synchronizer;
+    this.synchronizer = new ControlMessageSynchronizer();
     this.receiverTimeout = receiverTimeout;
-    this.finishedSenderCount = new AtomicInteger();
     this.completedSenderCount = new AtomicInteger();
 
     final List<String> senderIdList = shuffleDescription.getSenderIdList();
@@ -101,13 +101,12 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
         .setInitialState("RECEIVING")
         .addTransition("RECEIVING", "COMPLETED",
             "When SENDER_COMPLETED messages arrived from all senders."
-                + " It sends RECEIVER_COMPLETE messages to the manager.")
+                + " It sends a RECEIVER_COMPLETED message to the manager.")
         .addTransition("COMPLETED", "RECEIVING",
-            "When a ALL_RECEIVERS_COMPLETED message arrived from the manager."
+            "When a RECEIVER_CAN_RECEIVE message arrived from the manager."
                 + " It sends a RECEIVER_READY message to the manager.")
-        .addTransition("RECEIVING", "FINISHED",
-            "When SENDER_FINISHED messages arrived from all senders."
-                + "It sends a RECEIVER_FINISHED to the manager.")
+        .addTransition("COMPLETED", "FINISHED",
+            "When a RECEIVER_SHUTDOWN message arrived from the manager.")
         .build();
   }
 
@@ -120,12 +119,21 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   public void onControlMessage(final Message<ShuffleControlMessage> message) {
     final ShuffleControlMessage controlMessage = message.getData().iterator().next();
     switch (controlMessage.getCode()) {
-    case PushShuffleCode.SENDER_COMPLETED:
-      onSenderCompleted(message.getSrcId().toString());
+    // Control messages from the manager.
+    case PushShuffleCode.RECEIVER_CAN_RECEIVE:
+      synchronizer.closeLatch(controlMessage);
       break;
 
-    case PushShuffleCode.SENDER_FINISHED:
-      onSenderFinished(message.getSrcId().toString());
+    case PushShuffleCode.RECEIVER_SHUTDOWN:
+      shutdown = true;
+      // forcibly close the latch for RECEIVER_CAN_RECEIVE to shutdown the receiver.
+      synchronizer.closeLatch(new ShuffleControlMessage(
+          PushShuffleCode.RECEIVER_CAN_RECEIVE, shuffleDescription.getShuffleName(), null));
+      break;
+
+    // Control messages from senders.
+    case PushShuffleCode.SENDER_COMPLETED:
+      onSenderCompleted(message.getSrcId().toString());
       break;
 
     default:
@@ -150,36 +158,29 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
       senderStateMachine.checkAndSetState("COMPLETED", "SENDING");
     }
 
-    dataListener.onComplete(false);
     controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_COMPLETED);
 
     final Optional<ShuffleControlMessage> message = synchronizer.waitOnLatch(
-        PushShuffleCode.ALL_RECEIVERS_COMPLETED, receiverTimeout);
+        PushShuffleCode.RECEIVER_CAN_RECEIVE, receiverTimeout);
     if (message.isPresent()) {
-      synchronizer.reopenLatch(PushShuffleCode.ALL_RECEIVERS_COMPLETED);
+      synchronizer.reopenLatch(PushShuffleCode.RECEIVER_CAN_RECEIVE);
     } else {
       // TODO #33: failure handling
       throw new RuntimeException("the specified time elapsed but the manager did not send an expected message.");
     }
 
-    stateMachine.checkAndSetState("COMPLETED", "RECEIVING");
-    controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_READY);
-  }
 
-  private void onSenderFinished(final String senderId) {
-    stateMachine.checkState("RECEIVING");
-    LOG.log(Level.FINE, senderId + " was finished sending data");
-    senderStateMachineMap.get(senderId).checkAndSetState("SENDING", "FINISHED");
-    if (finishedSenderCount.incrementAndGet() == senderNum) {
-      onAllSendersFinished();
+    if (shutdown) {
+      LOG.log(Level.INFO, "The receiver was finished.");
+      stateMachine.checkAndSetState("COMPLETED", "FINISHED");
+      dataListener.onComplete();
+      dataListener.onShutdown();
+    } else {
+      LOG.log(Level.INFO, "The receiver can receive data");
+      stateMachine.checkAndSetState("COMPLETED", "RECEIVING");
+      dataListener.onComplete();
+      controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_READY);
     }
-  }
-
-  private void onAllSendersFinished() {
-    stateMachine.checkAndSetState("RECEIVING", "FINISHED");
-    LOG.log(Level.INFO, "All senders were finished sending data");
-    controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_FINISHED);
-    dataListener.onComplete(true);
   }
 
   private final class TupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage<K, V>>> {

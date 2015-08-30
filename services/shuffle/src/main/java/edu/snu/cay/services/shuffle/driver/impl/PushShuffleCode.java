@@ -35,18 +35,18 @@ public final class PushShuffleCode {
   public static final int SENDER_CAN_SEND = 1;
 
   /**
-   * A sender was completed to push tuples.
+   * A sender was completed to push data.
    *
    * The sender to all receivers.
    */
   public static final int SENDER_COMPLETED = 2;
 
   /**
-   * A sender was finished sending data.
+   * Senders were shutdown by the manager.
    *
-   * The sender to all receivers.
+   * The manager to all senders.
    */
-  public static final int SENDER_FINISHED = 3;
+  public static final int SENDER_SHUTDOWN = 3;
 
   /**
    * A receiver was initialized.
@@ -63,24 +63,25 @@ public final class PushShuffleCode {
   public static final int RECEIVER_COMPLETED = 5;
 
   /**
-   * A receiver was finished.
+   * A receiver can receive data.
    *
-   * The receiver to the manager.
+   * The manager to the receiver.
    */
-  public static final int RECEIVER_FINISHED = 6;
-  /**
-   * All receivers were completed.
-   *
-   * The manager to all receivers.
-   */
-  public static final int ALL_RECEIVERS_COMPLETED = 7;
+  public static final int RECEIVER_CAN_RECEIVE = 6;
 
   /**
    * A receiver was ready to receive data.
    *
    * The receiver to the manager.
    */
-  public static final int RECEIVER_READY = 8;
+  public static final int RECEIVER_READY = 7;
+
+  /**
+   * A receiver was shutdown.
+   *
+   * The manager to the receiver.
+   */
+  public static final int RECEIVER_SHUTDOWN = 8;
 
   /**
    * Empty private constructor to prohibit instantiation of utility class.

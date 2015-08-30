@@ -20,7 +20,6 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.util.Optional;
 
 import javax.annotation.concurrent.ThreadSafe;
-import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -55,8 +54,10 @@ public final class ControlMessageSynchronizer {
    */
   private final Map<Integer, ShuffleControlMessage> closedControlMessageMap;
 
-  @Inject
-  private ControlMessageSynchronizer() {
+  /**
+   * Construct a synchronizer.
+   */
+  public ControlMessageSynchronizer() {
     this.latchMap = new HashMap<>();
     this.isLatchClosedMap = new HashMap<>();
     this.closedControlMessageMap = new HashMap<>();

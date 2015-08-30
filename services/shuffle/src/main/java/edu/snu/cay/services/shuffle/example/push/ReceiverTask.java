@@ -71,13 +71,22 @@ public final class ReceiverTask implements Task {
     }
 
     @Override
-    public void onComplete(final boolean finished) {
-      LOG.log(Level.INFO, "{0} th iteration completed", completedIterationCount.incrementAndGet());
-      if (finished) {
+    public void onComplete() {
+      final int iterationCount = completedIterationCount.incrementAndGet();
+      LOG.log(Level.INFO, "{0} th iteration completed", iterationCount);
+      if (iterationCount == MessageExchangeDriver.ITERATION_NUMBER) {
         LOG.log(Level.INFO, "The final iteration was completed");
         synchronized (ReceiverTask.this) {
           ReceiverTask.this.notify();
         }
+      }
+    }
+
+    @Override
+    public void onShutdown() {
+      LOG.log(Level.INFO, "The receiver was shutdown by the manager");
+      synchronized (ReceiverTask.this) {
+        ReceiverTask.this.notify();
       }
     }
   }

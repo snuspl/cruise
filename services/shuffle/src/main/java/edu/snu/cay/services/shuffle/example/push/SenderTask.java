@@ -59,11 +59,10 @@ public final class SenderTask implements Task {
       }
 
       LOG.log(Level.INFO, "Complete iteration {0}", (i + 1));
-      if (i < MessageExchangeDriver.ITERATION_NUMBER - 1) {
-        shuffleSender.complete();
-      } else {
-        shuffleSender.finish();
-        LOG.log(Level.INFO, "Finish the final iteration");
+      final boolean isSenderShutdown = shuffleSender.complete();
+      if (isSenderShutdown) {
+        LOG.log(Level.INFO, "The sender was shutdown by the manager.");
+        break;
       }
     }
 

@@ -16,7 +16,6 @@
 package edu.snu.cay.services.shuffle.evaluator;
 
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import org.apache.reef.tang.Tang;
 import org.apache.reef.util.Optional;
 import org.junit.Before;
 import org.junit.Rule;
@@ -48,7 +47,7 @@ public final class ControlMessageSynchronizerTest {
 
   @Before
   public void setUp() throws Exception {
-    synchronizer = Tang.Factory.getTang().newInjector().getInstance(ControlMessageSynchronizer.class);
+    synchronizer = new ControlMessageSynchronizer();
   }
 
   /**

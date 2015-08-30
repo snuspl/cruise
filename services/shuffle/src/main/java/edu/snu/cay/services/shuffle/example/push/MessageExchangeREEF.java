@@ -41,6 +41,7 @@ import java.util.logging.Logger;
  *
  * SenderTasks send random number of tuples to ReceiverTasks during certain number of iterations.
  * Each iteration, receivers should receive tuples that are sent in the same iteration.
+ * If shutdown parameter is set to true, the application will be shutdown after the specified time elapsed.
  *
  * The driver checks if total number of sent tuples and received tuples are same when all tasks are completed.
  */
@@ -92,8 +93,8 @@ public final class MessageExchangeREEF {
   public static void main(final String[] args) throws Exception {
     final CommandLine commandLine = new CommandLine();
     commandLine.registerShortNameOfClass(Local.class);
-    final Configuration commandLineConfiguration = commandLine.parseToConfiguration(
-        args, Local.class, SenderNumber.class, ReceiverNumber.class, Timeout.class);
+    final Configuration commandLineConfiguration = commandLine.parseToConfiguration(args, Local.class,
+        SenderNumber.class, ReceiverNumber.class, Timeout.class, Shutdown.class, ShutdownDelay.class);
     final Injector injector = Tang.Factory.getTang().newInjector(commandLineConfiguration);
 
     final boolean isLocal = injector.getNamedInstance(Local.class);
@@ -136,5 +137,19 @@ public final class MessageExchangeREEF {
    */
   @NamedParameter(short_name = "timeout", default_value = "60000")
   public static final class Timeout implements Name<Long> {
+  }
+
+  /**
+   * Whether shutdown the application before all iterations are completed, or not.
+   */
+  @NamedParameter(short_name = "shutdown", default_value = "false")
+  public static final class Shutdown implements Name<Boolean> {
+  }
+
+  /**
+   * How long to wait before the manager shutdown the application in milli seconds.
+   */
+  @NamedParameter(short_name = "delay", default_value = "25000")
+  public static final class ShutdownDelay implements Name<Integer> {
   }
 }

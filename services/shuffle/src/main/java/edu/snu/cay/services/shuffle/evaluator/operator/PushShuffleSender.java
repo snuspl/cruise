@@ -73,13 +73,10 @@ public interface PushShuffleSender<K, V> extends ShuffleSender<K, V> {
 
   /**
    * Complete one iteration of pushing data. The caller is blocking until a SENDER_CAN_SEND message
-   * arrives from the manager.
+   * or a SENDER_SHUTDOWN message arrives from the manager.
+   *
+   * @return whether the sender is shutdown by the manager, or not.
    */
-  void complete();
-
-  /**
-   * Completing the final iteration of pushing data, it makes receivers and manager be FINISHED.
-   */
-  void finish();
+  boolean complete();
 
 }
