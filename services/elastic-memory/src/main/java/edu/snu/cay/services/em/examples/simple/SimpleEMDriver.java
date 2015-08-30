@@ -178,7 +178,7 @@ final class SimpleEMDriver {
 
       for (int i = 0; i < iterations; i++) {
 
-        final Set<LongRange> srcRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.KEY);
+        final Set<LongRange> srcRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.DATATYPE);
 
         final long numToMove = getNumUnits(srcRangeSet) / 2;
         LOG.info("Move partitions of total size " + numToMove + " from " + srcId + " to " + destId);
@@ -191,17 +191,19 @@ final class SimpleEMDriver {
         final boolean[] moveSucceeded = {false};
 
         try (final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS)) {
-          emService.move(SimpleEMTask.KEY, rangeSetToMove, srcId, destId, new EventHandler<AvroElasticMemoryMessage>() {
-            @Override
-            public void onNext(final AvroElasticMemoryMessage emMsg) {
-              synchronized (SimpleEMDriver.this) {
-                moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS) ? true : false;
-                LOG.info("Move " + emMsg.getOperationId() +
-                    (moveSucceeded[0] ? " succeeded" : " failed"));
-                SimpleEMDriver.this.notifyAll();
+          emService.move(SimpleEMTask.DATATYPE, rangeSetToMove, srcId, destId,
+              new EventHandler<AvroElasticMemoryMessage>() {
+                @Override
+                public void onNext(final AvroElasticMemoryMessage emMsg) {
+                  synchronized (SimpleEMDriver.this) {
+                    moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS) ? true : false;
+                    LOG.info("Move " + emMsg.getOperationId() +
+                        (moveSucceeded[0] ? " succeeded" : " failed"));
+                    SimpleEMDriver.this.notifyAll();
+                  }
+                }
               }
-            }
-          });
+          );
         }
 
         // Swap
@@ -252,16 +254,16 @@ final class SimpleEMDriver {
           remaining -= numToMove;
 
           if (numToMove == length) { // Move the whole range
-            partitionManager.remove(srcId, SimpleEMTask.KEY, idRange);
-            partitionManager.registerPartition(destId, SimpleEMTask.KEY, idRange);
+            partitionManager.remove(srcId, SimpleEMTask.DATATYPE, idRange);
+            partitionManager.registerPartition(destId, SimpleEMTask.DATATYPE, idRange);
             rangeSetToMove.add(idRange);
           } else { // Split the range and move it
-            partitionManager.remove(srcId, SimpleEMTask.KEY, idRange);
+            partitionManager.remove(srcId, SimpleEMTask.DATATYPE, idRange);
             final long lastIdToKeep = idRange.getMaximumLong() - numToMove;
             final LongRange rangeToKeep = new LongRange(idRange.getMinimumLong(), lastIdToKeep);
             final LongRange rangeToMove = new LongRange(lastIdToKeep + 1, idRange.getMaximumLong());
-            partitionManager.registerPartition(srcId, SimpleEMTask.KEY, rangeToKeep);
-            partitionManager.registerPartition(destId, SimpleEMTask.KEY, rangeToMove);
+            partitionManager.registerPartition(srcId, SimpleEMTask.DATATYPE, rangeToKeep);
+            partitionManager.registerPartition(destId, SimpleEMTask.DATATYPE, rangeToMove);
             rangeSetToMove.add(rangeToMove);
           }
 

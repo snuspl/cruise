@@ -88,14 +88,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     try (final TraceScope onDataMsgScope = Trace.startSpan(ON_DATA_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final DataMsg dataMsg = msg.getDataMsg();
-      final String dataClassName = dataMsg.getDataClassName().toString();
-      final Codec codec = serializer.getCodec(dataMsg.getDataClassName().toString());
+      final String dataType = dataMsg.getDataType().toString();
+      final Codec codec = serializer.getCodec(dataMsg.getDataType().toString());
 
       // extract data items from the message and store them in my memory store
       for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
         final byte[] data = unitIdPair.getUnit().array();
         final long id = unitIdPair.getId();
-        memoryStore.getElasticStore().put(dataClassName, id, codec.decode(data));
+        memoryStore.getElasticStore().put(dataType, id, codec.decode(data));
       }
 
       sender.get().sendResultMsg(true,
@@ -111,8 +111,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     try (final TraceScope onCtrlMsgScope = Trace.startSpan(ON_CTRL_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final CtrlMsg ctrlMsg = msg.getCtrlMsg();
-      final String key = ctrlMsg.getDataClassName().toString();
-      final Codec codec = serializer.getCodec(key);
+      final String dataType = ctrlMsg.getDataType().toString();
+      final Codec codec = serializer.getCodec(dataType);
 
       // extract all data items from my memory store that correspond to
       // the control message's id specification
@@ -120,7 +120,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       int numObject = 0;
       for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
         final Map<Long, Object> idObjectMap =
-            memoryStore.getElasticStore().removeRange(key, avroLongRange.getMin(), avroLongRange.getMax());
+            memoryStore.getElasticStore().removeRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
         numObject += idObjectMap.size();
         idObjectMapSet.add(idObjectMap);
       }
@@ -139,7 +139,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
         }
       }
 
-      sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataClassName().toString(), unitIdPairList,
+      sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
           msg.getOperationId().toString(), TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
     }
   }

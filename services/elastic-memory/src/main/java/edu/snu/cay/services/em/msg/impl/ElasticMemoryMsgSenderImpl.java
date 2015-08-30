@@ -89,12 +89,12 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
 
   @Override
-  public void sendCtrlMsg(final String destId, final String dataClassName, final String targetEvalId,
+  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
                           final Set<LongRange> idRangeSet, final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
-          new Object[]{destId, dataClassName, targetEvalId, idRangeSet});
+          new Object[]{destId, dataType, targetEvalId, idRangeSet});
 
       final List<AvroLongRange> avroLongRangeList = new LinkedList<>();
       for (final LongRange idRange : idRangeSet) {
@@ -102,7 +102,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       }
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
-          .setDataClassName(dataClassName)
+          .setDataType(dataType)
           .setIdRange(avroLongRangeList)
           .build();
 
@@ -117,20 +117,20 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
-          new Object[]{destId, dataClassName, targetEvalId});
+          new Object[]{destId, dataType, targetEvalId});
     }
   }
 
   @Override
-  public void sendDataMsg(final String destId, final String dataClassName, final List<UnitIdPair> unitIdPairList,
+  public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
                           final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
-          new Object[]{destId, dataClassName});
+          new Object[]{destId, dataType});
 
       final DataMsg dataMsg = DataMsg.newBuilder()
-          .setDataClassName(dataClassName)
+          .setDataType(dataType)
           .setUnits(unitIdPairList)
           .build();
 
@@ -145,7 +145,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
-          new Object[]{destId, dataClassName});
+          new Object[]{destId, dataType});
     }
   }
 
@@ -177,15 +177,15 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendRegisMsg(final String dataClassName, final long unitStartId, final long unitEndId,
+  public void sendRegisMsg(final String dataType, final long unitStartId, final long unitEndId,
                            final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRegisMsgScope = Trace.startSpan(SEND_REGIS_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRegisMsg",
-          new Object[]{dataClassName, unitStartId, unitEndId});
+          new Object[]{dataType, unitStartId, unitEndId});
 
       final RegisMsg regisMsg = RegisMsg.newBuilder()
-          .setDataClassName(dataClassName)
+          .setDataType(dataType)
           .setIdRange(AvroLongRange.newBuilder()
               .setMin(unitStartId)
               .setMax(unitEndId)
@@ -201,7 +201,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRegisMsg",
-          new Object[]{dataClassName, unitStartId, unitEndId});
+          new Object[]{dataType, unitStartId, unitEndId});
     }
   }
 }

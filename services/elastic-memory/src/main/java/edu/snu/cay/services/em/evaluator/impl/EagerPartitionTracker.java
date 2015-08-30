@@ -39,9 +39,9 @@ public final class EagerPartitionTracker implements PartitionTracker {
   }
 
   @Override
-  public void registerPartition(final String key, final long startId, final long endId) {
+  public void registerPartition(final String dataType, final long startId, final long endId) {
     try (final TraceScope traceScope = Trace.startSpan(REGISTER_PARTITION)) {
-      sender.sendRegisMsg(key, startId, endId, TraceInfo.fromSpan(traceScope.getSpan()));
+      sender.sendRegisMsg(dataType, startId, endId, TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }
 }

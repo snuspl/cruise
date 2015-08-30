@@ -78,7 +78,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public void move(final String dataClassName,
+  public void move(final String dataType,
                    final Set<LongRange> idRangeSet,
                    final String srcEvalId,
                    final String destEvalId,
@@ -88,7 +88,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
       callbackRouter.register(operatorId, callback);
 
-      sender.sendCtrlMsg(srcEvalId, dataClassName, destEvalId, idRangeSet,
+      sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, idRangeSet,
           operatorId, TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }
