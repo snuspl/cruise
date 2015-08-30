@@ -27,8 +27,8 @@ import java.util.*;
 @DriverSide
 public final class PartitionManager {
 
-  private final Map<String, Map<String, TreeSet<LongRange>>> mapIdKeyRange;
-  private final Map<String, TreeSet<LongRange>> globalKeyRanges;
+  private final Map<String, Map<String, TreeSet<LongRange>>> mapIdDatatypeRange;
+  private final Map<String, TreeSet<LongRange>> globalDatatypeRanges;
 
   private Comparator<LongRange> longRangeComparator = new Comparator<LongRange>() {
     @Override
@@ -39,25 +39,25 @@ public final class PartitionManager {
 
   @Inject
   private PartitionManager() {
-    this.mapIdKeyRange = new HashMap<>();
-    this.globalKeyRanges = new HashMap<>();
+    this.mapIdDatatypeRange = new HashMap<>();
+    this.globalDatatypeRanges = new HashMap<>();
   }
 
   public boolean registerPartition(final String evalId,
-                                final String key, final long unitStartId, final long unitEndId) {
-    return registerPartition(evalId, key, new LongRange(unitStartId, unitEndId));
+                                final String dataType, final long unitStartId, final long unitEndId) {
+    return registerPartition(evalId, dataType, new LongRange(unitStartId, unitEndId));
   }
 
-  public synchronized boolean registerPartition(final String evalId, final String key, final LongRange idRange) {
-    // 1. Check the acceptability of a new partition into globalKeyRanges
-    TreeSet<LongRange> rangeSetGlobal = globalKeyRanges.get(key);
+  public synchronized boolean registerPartition(final String evalId, final String dataType, final LongRange idRange) {
+    // 1. Check the acceptability of a new partition into globalDatatypeRanges
+    TreeSet<LongRange> rangeSetGlobal = globalDatatypeRanges.get(dataType);
     if (rangeSetGlobal != null) {
       if (rangeSetGlobal.contains(idRange)) {
         return false;
       }
     } else {
       rangeSetGlobal = new TreeSet<>(longRangeComparator);
-      assert (globalKeyRanges.put(key, rangeSetGlobal) == null);
+      assert (globalDatatypeRanges.put(dataType, rangeSetGlobal) == null);
     }
 
     // 1-1. Check the overlap of registering partition to adjacent partitions across all the evaluators
@@ -70,19 +70,19 @@ public final class PartitionManager {
       return false; // downside overlap(s)
     }
 
-    // 2. Check the acceptability of a new partition into evalKeyRangesMap
-    Map<String, TreeSet<LongRange>> evalKeyRanges = mapIdKeyRange.get(evalId);
+    // 2. Check the acceptability of a new partition into mapIdDatatypeRange
+    Map<String, TreeSet<LongRange>> evalDatatypeRanges = mapIdDatatypeRange.get(evalId);
 
-    if (evalKeyRanges == null) {
-      evalKeyRanges = new HashMap<>();
-      assert (mapIdKeyRange.put(evalId, evalKeyRanges) == null);
+    if (evalDatatypeRanges == null) {
+      evalDatatypeRanges = new HashMap<>();
+      assert (mapIdDatatypeRange.put(evalId, evalDatatypeRanges) == null);
     }
 
-    TreeSet<LongRange> rangeSetEval = evalKeyRanges.get(key);
+    TreeSet<LongRange> rangeSetEval = evalDatatypeRanges.get(dataType);
 
     if (rangeSetEval == null) {
       rangeSetEval = new TreeSet<>(longRangeComparator);
-      assert (evalKeyRanges.put(key, rangeSetEval) == null);
+      assert (evalDatatypeRanges.put(dataType, rangeSetEval) == null);
     }
 
     // 2-1. Check the registering partition's possibility to be merged to adjacent partitions within the evaluator
@@ -135,30 +135,30 @@ public final class PartitionManager {
     return false;
   }
 
-  public synchronized Set<LongRange> getRangeSet(final String evalId, final String key) {
-    if (!mapIdKeyRange.containsKey(evalId)) {
+  public synchronized Set<LongRange> getRangeSet(final String evalId, final String dataType) {
+    if (!mapIdDatatypeRange.containsKey(evalId)) {
       return null;
     }
 
-    final Map<String, TreeSet<LongRange>> mapKeyRange = mapIdKeyRange.get(evalId);
-    if (!mapKeyRange.containsKey(key)) {
+    final Map<String, TreeSet<LongRange>> mapDatatypeRange = mapIdDatatypeRange.get(evalId);
+    if (!mapDatatypeRange.containsKey(dataType)) {
       return null;
     }
 
-    return new TreeSet<>(mapKeyRange.get(key));
+    return new TreeSet<>(mapDatatypeRange.get(dataType));
   }
 
   /* TODO #122: handle a try of removing to merged partitions. split merged partition again? */
-  public synchronized boolean remove(final String evalId, final String key, final LongRange longRange) {
-    if (!mapIdKeyRange.containsKey(evalId)) {
+  public synchronized boolean remove(final String evalId, final String dataType, final LongRange longRange) {
+    if (!mapIdDatatypeRange.containsKey(evalId)) {
       return false;
     }
 
-    final Map<String, TreeSet<LongRange>> evalKeyRanges = mapIdKeyRange.get(evalId);
-    if (evalKeyRanges == null) {
+    final Map<String, TreeSet<LongRange>> evalDatatypeRanges = mapIdDatatypeRange.get(evalId);
+    if (evalDatatypeRanges == null) {
       return false;
     }
-    final TreeSet<LongRange> rangeSet = evalKeyRanges.get(key);
+    final TreeSet<LongRange> rangeSet = evalDatatypeRanges.get(dataType);
     if (rangeSet == null) {
       return false;
     }
