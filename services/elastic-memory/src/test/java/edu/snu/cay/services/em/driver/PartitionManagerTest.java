@@ -30,11 +30,13 @@ import static org.junit.Assert.*;
 
 /**
  * Thread safeness checks for PartitionManager.
+ * TODO #121: Extend test cases that handle multiple evaluators are using PartitionManager with different keys
  */
 public final class PartitionManagerTest {
 
   private static final String EVAL_ID = "Evaluator-1";
   private static final String DATA_TYPE = "DATA_TYPE";
+  private static final String MSG_FALSE_RESULT = "unexpected result from partitionManager";
   private static final String MSG_SIZE_ASSERTION = "size of final partition manager";
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
 
@@ -50,9 +52,31 @@ public final class PartitionManagerTest {
   }
 
   /**
-   * Testing multi-thread addition on joint id ranges.
-   * Check that the consistency of a MemoryStore is preserved
-   * when multiple threads try to add joint ranges concurrently.
+   * Testing addition on contiguous id ranges.
+   * Check that the registering ranges are merged
+   * when a thread tries to add contiguous ranges.
+   */
+  @Test
+  public void testAddContiguousRanges() throws InterruptedException {
+
+    final int totalNumberOfAdds = 100000;
+
+    for (int i = 0; i < totalNumberOfAdds; i++) {
+      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1));
+    }
+
+    for (int i = totalNumberOfAdds * 3; i > totalNumberOfAdds * 2; i--) {
+      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1));
+    }
+
+    // check that the total number of objects equal the expected number
+    assertEquals(MSG_SIZE_ASSERTION, 2, partitionManager.getRangeSet(EVAL_ID, DATA_TYPE).size());
+  }
+
+  /**
+   * Testing addition on joint id ranges.
+   * Check that the partition can filter the registering ranges
+   * when they are joint with other existing ranges.
    */
   @Test
   public void testAddJointRanges() throws InterruptedException {
@@ -60,13 +84,12 @@ public final class PartitionManagerTest {
     final int totalNumberOfAdds = 100000;
 
     for (int i = 0; i < totalNumberOfAdds; i++) {
-      partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1);
+      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     for (int i = 0; i < totalNumberOfAdds; i++) {
-      partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i + 1, 2 * i + 2);
+      assertFalse(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i + 1, 3 * i + 2));
     }
-
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfAdds, partitionManager.getRangeSet(EVAL_ID, DATA_TYPE).size());
   }
@@ -138,7 +161,7 @@ public final class PartitionManagerTest {
     final int totalNumberOfRemoves = numThreads * removesPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
     for (int i = 0; i < totalNumberOfRemoves; i++) {
-      partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1);
+      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     final Runnable[] threads = new Runnable[numThreads];
@@ -196,7 +219,7 @@ public final class PartitionManagerTest {
     final int totalNumberOfRemoves = numThreadsPerOperation * removesPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
     for (int i = 0; i < totalNumberOfRemoves; i++) {
-      partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1);
+      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
@@ -229,7 +252,7 @@ public final class PartitionManagerTest {
 
     // Start with IndexParity.ODD_INDEX objects only. (for removal)
     for (int i = 1; i < totalNumberOfObjects; i += 2) {
-      partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1);
+      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
@@ -269,7 +292,7 @@ public final class PartitionManagerTest {
 
     // Start with IndexParity.ODD_INDEX objects only. (for removal)
     for (int i = 1; i < totalNumberOfObjects; i += 2) {
-      partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1);
+      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
@@ -328,7 +351,7 @@ public final class PartitionManagerTest {
 
         final int itemIndex = numThreads * i + myIndex;
         partitionManager.registerPartition(EVAL_ID, DATA_TYPE,
-            new LongRange(2 * itemIndex, 2 * itemIndex + 1));
+            new LongRange(3 * itemIndex, 3 * itemIndex + 1));
       }
       countDownLatch.countDown();
     }
@@ -365,7 +388,7 @@ public final class PartitionManagerTest {
 
         final int itemIndex = numThreads * i + myIndex;
         partitionManager.remove(EVAL_ID, DATA_TYPE,
-            new LongRange(2 * itemIndex, 2 * itemIndex + 1));
+            new LongRange(3 * itemIndex, 3 * itemIndex + 1));
       }
       countDownLatch.countDown();
     }
