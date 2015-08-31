@@ -28,8 +28,6 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
 
@@ -92,13 +90,17 @@ public final class MessageExchangeREEF {
    */
   public static void main(final String[] args) throws Exception {
     final CommandLine commandLine = new CommandLine();
-    commandLine.registerShortNameOfClass(Local.class);
-    final Configuration commandLineConfiguration = commandLine.parseToConfiguration(args, Local.class,
-        SenderNumber.class, ReceiverNumber.class, Timeout.class, Shutdown.class, ShutdownDelay.class);
+    commandLine.registerShortNameOfClass(MessageExchangeParameters.Local.class);
+
+    final Configuration commandLineConfiguration = commandLine.parseToConfiguration(
+        args, MessageExchangeParameters.Local.class, MessageExchangeParameters.SenderNumber.class,
+        MessageExchangeParameters.ReceiverNumber.class, MessageExchangeParameters.Timeout.class,
+        MessageExchangeParameters.Shutdown.class, MessageExchangeParameters.ShutdownDelay.class);
+
     final Injector injector = Tang.Factory.getTang().newInjector(commandLineConfiguration);
 
-    final boolean isLocal = injector.getNamedInstance(Local.class);
-    final long jobTimeout = injector.getNamedInstance(Timeout.class);
+    final boolean isLocal = injector.getNamedInstance(MessageExchangeParameters.Local.class);
+    final long jobTimeout = injector.getNamedInstance(MessageExchangeParameters.Timeout.class);
 
     final LauncherStatus state = DriverLauncher.getLauncher(getRuntimeConfiguration(isLocal))
         .run(getDriverConfiguration(commandLineConfiguration), jobTimeout);
@@ -109,47 +111,5 @@ public final class MessageExchangeREEF {
    * Empty private constructor to prohibit instantiation of utility class.
    */
   private MessageExchangeREEF() {
-  }
-
-  /**
-   * Command line parameter = true to run locally, or false to run on YARN.
-   */
-  @NamedParameter(short_name = "local", default_value = "true")
-  public static final class Local implements Name<Boolean> {
-  }
-
-  /**
-   * Number of tasks that work as sender.
-   */
-  @NamedParameter(short_name = "sender_num", default_value = "8")
-  public static final class SenderNumber implements Name<Integer> {
-  }
-
-  /**
-   * Number of tasks that work as receiver.
-   */
-  @NamedParameter(short_name = "receiver_num", default_value = "8")
-  public static final class ReceiverNumber implements Name<Integer> {
-  }
-
-  /**
-   * Number of milliseconds to wait for the job to complete.
-   */
-  @NamedParameter(short_name = "timeout", default_value = "60000")
-  public static final class Timeout implements Name<Long> {
-  }
-
-  /**
-   * Whether shutdown the application before all iterations are completed, or not.
-   */
-  @NamedParameter(short_name = "shutdown", default_value = "false")
-  public static final class Shutdown implements Name<Boolean> {
-  }
-
-  /**
-   * How long to wait before the manager shutdown the application in milli seconds.
-   */
-  @NamedParameter(short_name = "delay", default_value = "25000")
-  public static final class ShutdownDelay implements Name<Integer> {
   }
 }

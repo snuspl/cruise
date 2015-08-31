@@ -72,32 +72,13 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     this.controlMessageSender = controlMessageSender;
     this.synchronizer = new ControlMessageSynchronizer();
     this.senderTimeout = senderTimeout;
-    this.stateMachine = createStateMachine();
+    this.stateMachine = PushShuffleSenderState.createStateMachine();
     this.messageChecker = new SentMessageChecker();
 
     controlMessageSender.sendToManager(PushShuffleCode.SENDER_INITIALIZED);
   }
 
-  /**
-   * @return a state machine for PushShuffleSenderImpl
-   */
-  public static StateMachine createStateMachine() {
-    return StateMachine.newBuilder()
-        .addState("INIT", "A sender is initialized. It sends a SENDER_INITIALIZED message to the manager")
-        .addState("SENDING", "Sending tuples to receivers")
-        .addState("COMPLETED", "Waiting for all receivers are completed to receive tuples from senders")
-        .addState("FINISHED", "Finished sending data")
-        .setInitialState("INIT")
-        .addTransition("INIT", "SENDING",
-            "When a SENDER_CAN_SEND message arrived from the manager.")
-        .addTransition("SENDING", "COMPLETED",
-            "When a user calls complete() method. It broadcasts SENDER_COMPLETED messages to all receivers.")
-        .addTransition("COMPLETED", "SENDING",
-            "When a SENDER_CAN_SEND message arrived from the manager.")
-        .addTransition("COMPLETED", "FINISHED",
-            "When a SENDER_SHUTDOWN message arrived from the manager.")
-        .build();
-  }
+
 
   @Override
   public void onControlMessage(final Message<ShuffleControlMessage> message) {
@@ -143,7 +124,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public List<String> sendTuple(final Tuple<K, V> tuple) {
     waitForSenderInitialized();
-    stateMachine.checkState("SENDING");
+    stateMachine.checkState(PushShuffleSenderState.SENDING);
     final List<String> sentReceiverIdList = dataSender.sendTuple(tuple);
     messageChecker.messageSent(sentReceiverIdList.size());
     return sentReceiverIdList;
@@ -152,7 +133,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public List<String> sendTuple(final List<Tuple<K, V>> tupleList) {
     waitForSenderInitialized();
-    stateMachine.checkState("SENDING");
+    stateMachine.checkState(PushShuffleSenderState.SENDING);
     final List<String> sentReceiverIdList = dataSender.sendTuple(tupleList);
     messageChecker.messageSent(sentReceiverIdList.size());
     return sentReceiverIdList;
@@ -161,7 +142,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public void sendTupleTo(final String receiverId, final Tuple<K, V> tuple) {
     waitForSenderInitialized();
-    stateMachine.checkState("SENDING");
+    stateMachine.checkState(PushShuffleSenderState.SENDING);
     dataSender.sendTupleTo(receiverId, tuple);
     messageChecker.messageSent(1);
   }
@@ -169,22 +150,22 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Override
   public void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList) {
     waitForSenderInitialized();
-    stateMachine.checkState("SENDING");
+    stateMachine.checkState(PushShuffleSenderState.SENDING);
     dataSender.sendTupleTo(receiverId, tupleList);
     messageChecker.messageSent(1);
   }
 
   private void waitForSenderInitialized() {
-    if (stateMachine.getCurrentState().equals("INIT")) {
+    if (stateMachine.getCurrentState().equals(PushShuffleSenderState.INIT)) {
       waitForSenderCanSendData();
-      stateMachine.checkAndSetState("INIT", "SENDING");
+      stateMachine.checkAndSetState(PushShuffleSenderState.INIT, PushShuffleSenderState.SENDING);
     }
   }
 
   @Override
   public boolean complete() {
     LOG.log(Level.INFO, "Complete to send data");
-    stateMachine.checkAndSetState("SENDING", "COMPLETED");
+    stateMachine.checkAndSetState(PushShuffleSenderState.SENDING, PushShuffleSenderState.COMPLETED);
     messageChecker.waitForAllMessagesAreTransferred();
     LOG.log(Level.INFO, "Broadcast to all receivers that the sender was completed to send data");
     for (final String receiverId : shuffleDescription.getReceiverIdList()) {
@@ -194,11 +175,11 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     waitForSenderCanSendData();
     if (shutdown) {
       LOG.log(Level.INFO, "The sender was finished.");
-      stateMachine.checkAndSetState("COMPLETED", "FINISHED");
+      stateMachine.checkAndSetState(PushShuffleSenderState.COMPLETED, PushShuffleSenderState.FINISHED);
       return true;
     } else {
       LOG.log(Level.INFO, "The sender can send data");
-      stateMachine.checkAndSetState("COMPLETED", "SENDING");
+      stateMachine.checkAndSetState(PushShuffleSenderState.COMPLETED, PushShuffleSenderState.SENDING);
       return false;
     }
   }

@@ -50,7 +50,7 @@ public final class ControlMessageSynchronizer {
   private final Map<Integer, Boolean> isLatchClosedMap;
 
   /**
-   * Maintaining the ShuffleControlMessage which was used to closed a latch.
+   * Maintaining the ShuffleControlMessage which was used to close a latch.
    */
   private final Map<Integer, ShuffleControlMessage> closedControlMessageMap;
 

@@ -82,14 +82,14 @@ public final class MessageExchangeDriver {
 
   @Inject
   private MessageExchangeDriver(
-      @Parameter(MessageExchangeREEF.SenderNumber.class) final int senderNumber,
-      @Parameter(MessageExchangeREEF.ReceiverNumber.class) final int receiverNumber,
+      @Parameter(MessageExchangeParameters.SenderNumber.class) final int senderNumber,
+      @Parameter(MessageExchangeParameters.ReceiverNumber.class) final int receiverNumber,
       final EvaluatorRequestor evaluatorRequestor,
       final ShuffleDriver shuffleDriver,
       final LocalAddressProvider localAddressProvider,
       final NameServer nameServer,
-      @Parameter(MessageExchangeREEF.Shutdown.class) final boolean shutdown,
-      @Parameter(MessageExchangeREEF.ShutdownDelay.class) final int shutdownDelay,
+      @Parameter(MessageExchangeParameters.Shutdown.class) final boolean shutdown,
+      @Parameter(MessageExchangeParameters.ShutdownDelay.class) final int shutdownDelay,
       final Clock clock) {
     LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}",
         new Object[]{senderNumber, receiverNumber});
