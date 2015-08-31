@@ -35,17 +35,17 @@ import java.util.logging.Logger;
 public final class ReceiverTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(SenderTask.class.getName());
-  private AtomicInteger totalReceivedTupleCount;
-  private final AtomicInteger completedIterationCount;
+  private AtomicInteger totalNumReceivedTuples;
+  private final AtomicInteger numCompletedIterations;
 
   @Inject
   private ReceiverTask(final ShuffleProvider shuffleProvider) {
-    this.completedIterationCount = new AtomicInteger();
+    this.numCompletedIterations = new AtomicInteger();
     final Shuffle<Integer, Integer> shuffle = shuffleProvider
         .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     final PushShuffleReceiver<Integer, Integer> shuffleReceiver = shuffle.getReceiver();
     shuffleReceiver.registerDataListener(new DataReceiver());
-    this.totalReceivedTupleCount = new AtomicInteger();
+    this.totalNumReceivedTuples = new AtomicInteger();
   }
 
   @Override
@@ -55,7 +55,7 @@ public final class ReceiverTask implements Task {
     }
 
     final ByteBuffer byteBuffer = ByteBuffer.allocate(4);
-    byteBuffer.putInt(totalReceivedTupleCount.get());
+    byteBuffer.putInt(totalNumReceivedTuples.get());
     return byteBuffer.array();
   }
 
@@ -64,17 +64,17 @@ public final class ReceiverTask implements Task {
     @Override
     public void onTupleMessage(final Message<ShuffleTupleMessage<Integer, Integer>> message) {
       for (final ShuffleTupleMessage<Integer, Integer> shuffleMessage : message.getData()) {
-        final int receivedTupleCount = shuffleMessage.size();
-        LOG.log(Level.INFO, "{0} tuples arrived from {1}", new Object[]{receivedTupleCount, message.getSrcId()});
-        totalReceivedTupleCount.addAndGet(receivedTupleCount);
+        final int numReceivedTuples = shuffleMessage.size();
+        LOG.log(Level.INFO, "{0} tuples arrived from {1}", new Object[]{numReceivedTuples, message.getSrcId()});
+        totalNumReceivedTuples.addAndGet(numReceivedTuples);
       }
     }
 
     @Override
     public void onComplete() {
-      final int iterationCount = completedIterationCount.incrementAndGet();
-      LOG.log(Level.INFO, "{0} th iteration completed", iterationCount);
-      if (iterationCount == MessageExchangeDriver.ITERATION_NUMBER) {
+      final int numIterations = numCompletedIterations.incrementAndGet();
+      LOG.log(Level.INFO, "{0} th iteration completed", numIterations);
+      if (numIterations == MessageExchangeDriver.ITERATION_NUMBER) {
         LOG.log(Level.INFO, "The final iteration was completed");
         synchronized (ReceiverTask.this) {
           ReceiverTask.this.notify();

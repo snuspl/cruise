@@ -56,7 +56,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private final ControlMessageSynchronizer synchronizer;
   private final long receiverTimeout;
   private final AtomicInteger completedSenderCount;
-  private final int totalSenderNum;
+  private final int totalNumSenders;
   private final Map<String, StateMachine> senderStateMachineMap;
   private final StateMachine stateMachine;
 
@@ -77,8 +77,8 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     this.completedSenderCount = new AtomicInteger();
 
     final List<String> senderIdList = shuffleDescription.getSenderIdList();
-    this.totalSenderNum = senderIdList.size();
-    this.senderStateMachineMap = new HashMap<>(totalSenderNum);
+    this.totalNumSenders = senderIdList.size();
+    this.senderStateMachineMap = new HashMap<>(totalNumSenders);
     for (final String senderId : senderIdList) {
       final StateMachine senderStateMachine = PushShuffleSenderState.createStateMachine();
       senderStateMachine.setState(PushShuffleSenderState.SENDING);
@@ -125,7 +125,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     LOG.log(Level.FINE, senderId + " was completed to send data");
     senderStateMachineMap.get(senderId)
         .checkAndSetState(PushShuffleSenderState.SENDING, PushShuffleSenderState.COMPLETED);
-    if (completedSenderCount.incrementAndGet() == totalSenderNum) {
+    if (completedSenderCount.incrementAndGet() == totalNumSenders) {
       onAllSendersCompleted();
     }
   }

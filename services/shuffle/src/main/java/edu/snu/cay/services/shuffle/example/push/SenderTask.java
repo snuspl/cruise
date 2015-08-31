@@ -37,24 +37,24 @@ public final class SenderTask implements Task {
   private static final Logger LOG = Logger.getLogger(SenderTask.class.getName());
 
   private final PushShuffleSender<Integer, Integer> shuffleSender;
-  private final int receiverNum;
+  private final int totalNumReceivers;
 
   @Inject
   private SenderTask(final ShuffleProvider shuffleProvider) {
     final Shuffle<Integer, Integer> shuffle = shuffleProvider
         .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     this.shuffleSender = shuffle.getSender();
-    this.receiverNum = shuffle.getShuffleDescription().getReceiverIdList().size();
+    this.totalNumReceivers = shuffle.getShuffleDescription().getReceiverIdList().size();
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
-    int sentTupleCount = 0;
+    int numSentTuples = 0;
     for (int i = 0; i < MessageExchangeDriver.ITERATION_NUMBER; i++) {
       for (int j = 0; j < MessageExchangeDriver.NETWORK_MESSAGE_NUMBER_IN_ONE_ITERATION; j++) {
         LOG.log(Level.INFO, "Send tuple messages");
         final List<Tuple<Integer, Integer>> tupleList = generateRandomTuples();
-        sentTupleCount += tupleList.size();
+        numSentTuples += tupleList.size();
         shuffleSender.sendTuple(tupleList);
       }
 
@@ -67,7 +67,7 @@ public final class SenderTask implements Task {
     }
 
     final ByteBuffer byteBuffer = ByteBuffer.allocate(4);
-    byteBuffer.putInt(sentTupleCount);
+    byteBuffer.putInt(numSentTuples);
     return byteBuffer.array();
   }
 
@@ -75,9 +75,9 @@ public final class SenderTask implements Task {
   private List<Tuple<Integer, Integer>> generateRandomTuples() {
     final Random rand = new Random();
     final List<Tuple<Integer, Integer>> randomTupleList = new ArrayList<>();
-    final int tupleListSize = receiverNum * 10000 + rand.nextInt(receiverNum) * 100;
+    final int tupleListSize = totalNumReceivers * 10000 + rand.nextInt(totalNumReceivers) * 100;
     for (int i = 0; i < tupleListSize; i++) {
-      randomTupleList.add(new Tuple<>(rand.nextInt(receiverNum * 3), rand.nextInt()));
+      randomTupleList.add(new Tuple<>(rand.nextInt(totalNumReceivers * 3), rand.nextInt()));
     }
 
     return randomTupleList;

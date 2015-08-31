@@ -63,18 +63,18 @@ public final class MessageExchangeDriver {
   public static final String SENDER_PREFIX = "SENDER";
   public static final String RECEIVER_PREFIX = "RECEIVER";
 
-  private final AtomicInteger allocatedNum;
-  private final AtomicInteger completedNum;
-  private final AtomicInteger totalSentTupleCount;
-  private final AtomicInteger totalReceivedTupleCount;
+  private final AtomicInteger numAllocatedEvaluators;
+  private final AtomicInteger numCompletedTasks;
+  private final AtomicInteger totalNumSentTuples;
+  private final AtomicInteger totalNumReceivedTuples;
   private final EvaluatorRequestor evaluatorRequestor;
   private final ShuffleDriver shuffleDriver;
   private final StaticPushShuffleManager shuffleManager;
   private final LocalAddressProvider localAddressProvider;
   private final NameServer nameServer;
 
-  private final int senderNumber;
-  private final int receiverNumber;
+  private final int totalNumSenders;
+  private final int totalNumReceivers;
 
   private final boolean shutdown;
   private final int shutdownDelay;
@@ -93,16 +93,16 @@ public final class MessageExchangeDriver {
       final Clock clock) {
     LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}",
         new Object[]{senderNumber, receiverNumber});
-    this.allocatedNum = new AtomicInteger();
-    this.completedNum = new AtomicInteger();
-    this.totalSentTupleCount = new AtomicInteger();
-    this.totalReceivedTupleCount = new AtomicInteger();
+    this.numAllocatedEvaluators = new AtomicInteger();
+    this.numCompletedTasks = new AtomicInteger();
+    this.totalNumSentTuples = new AtomicInteger();
+    this.totalNumReceivedTuples = new AtomicInteger();
     this.evaluatorRequestor = evaluatorRequestor;
     this.shuffleDriver = shuffleDriver;
     this.localAddressProvider = localAddressProvider;
     this.nameServer = nameServer;
-    this.senderNumber = senderNumber;
-    this.receiverNumber = receiverNumber;
+    this.totalNumSenders = senderNumber;
+    this.totalNumReceivers = receiverNumber;
     final List<String> senderIdList = new ArrayList<>(senderNumber);
     final List<String> receiverIdList = new ArrayList<>(receiverNumber);
 
@@ -134,7 +134,7 @@ public final class MessageExchangeDriver {
     @Override
     public void onNext(final StartTime value) {
       evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(senderNumber + receiverNumber)
+          .setNumber(totalNumSenders + totalNumReceivers)
           .setMemory(128)
           .setNumberOfCores(1)
           .build());
@@ -152,25 +152,25 @@ public final class MessageExchangeDriver {
       final String taskId = completedTask.getId();
       final ByteBuffer byteBuffer = ByteBuffer.wrap(completedTask.get());
       if (taskId.startsWith(SENDER_PREFIX)) {
-        final int sentTupleCount = byteBuffer.getInt();
-        LOG.log(Level.INFO, "{0} completed. It sent {1} tuples", new Object[]{taskId, sentTupleCount});
-        totalSentTupleCount.addAndGet(sentTupleCount);
+        final int numSentTuples = byteBuffer.getInt();
+        LOG.log(Level.INFO, "{0} completed. It sent {1} tuples", new Object[]{taskId, numSentTuples});
+        totalNumSentTuples.addAndGet(numSentTuples);
 
       } else if (taskId.startsWith(RECEIVER_PREFIX)) {
-        final int receivedTupleCount = byteBuffer.getInt();
-        LOG.log(Level.INFO, "{0} completed. It received {1} tuples", new Object[]{taskId, receivedTupleCount});
-        totalReceivedTupleCount.addAndGet(receivedTupleCount);
+        final int numReceivedTuples = byteBuffer.getInt();
+        LOG.log(Level.INFO, "{0} completed. It received {1} tuples", new Object[]{taskId, numReceivedTuples});
+        totalNumReceivedTuples.addAndGet(numReceivedTuples);
 
       } else {
         throw new RuntimeException("Unknown task identifier " + taskId);
       }
 
-      if (completedNum.incrementAndGet() == senderNumber + receiverNumber) {
+      if (numCompletedTasks.incrementAndGet() == totalNumSenders + totalNumReceivers) {
         LOG.log(Level.INFO, "Total sent tuple number : {0}, total received tuple number : {1}",
-            new Object[]{totalSentTupleCount.get(), totalReceivedTupleCount.get()});
-        if (totalSentTupleCount.get() != totalReceivedTupleCount.get()) {
-          throw new RuntimeException("Total sent tuple number " + totalSentTupleCount.get() + " have to be same as "
-              + " total received tuple number " + totalReceivedTupleCount.get());
+            new Object[]{totalNumSentTuples.get(), totalNumReceivedTuples.get()});
+        if (totalNumSentTuples.get() != totalNumReceivedTuples.get()) {
+          throw new RuntimeException("Total sent tuple number " + totalNumSentTuples.get() + " have to be same as "
+              + " total received tuple number " + totalNumReceivedTuples.get());
         }
       }
     }
@@ -195,17 +195,17 @@ public final class MessageExchangeDriver {
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      final int number = allocatedNum.getAndIncrement();
+      final int number = numAllocatedEvaluators.getAndIncrement();
       final Configuration partialTaskConf;
       final String taskId;
-      if (number < senderNumber) { // SenderTask
+      if (number < totalNumSenders) { // SenderTask
         taskId = SENDER_PREFIX + number;
         partialTaskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, SenderTask.class)
             .build();
-      } else if (number < senderNumber + receiverNumber) { // ReceiverTask
-        taskId = RECEIVER_PREFIX + (number - senderNumber);
+      } else if (number < totalNumSenders + totalNumReceivers) { // ReceiverTask
+        taskId = RECEIVER_PREFIX + (number - totalNumSenders);
         partialTaskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
@@ -214,7 +214,7 @@ public final class MessageExchangeDriver {
         throw new RuntimeException("Too many allocated evaluators");
       }
 
-      if (number == senderNumber + receiverNumber - 1) {
+      if (number == totalNumSenders + totalNumReceivers - 1) {
         if (shutdown) {
           clock.scheduleAlarm(shutdownDelay, new EventHandler<Alarm>() {
             @Override

@@ -175,20 +175,20 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private boolean initialized;
     private boolean shutdown;
     private boolean shutdownAllSendersAndReceivers;
-    private final int totalReceiverNumber;
+    private final int totalNumReceivers;
     private Map<String, StateMachine> receiverStateMachineMap;
     private final List<String> initializedSenderIdList;
-    private int numInitializedReceiver;
-    private int numReadiedReceiver;
-    private int numCompletedReceiver;
-    private int numFinishedReceiver;
+    private int numInitializedReceivers;
+    private int numReadiedReceivers;
+    private int numCompletedReceivers;
+    private int numFinishedReceivers;
 
     private StateMachine stateMachine;
 
     private StateManager() {
       this.initializedSenderIdList = new ArrayList<>();
-      this.totalReceiverNumber = shuffleDescription.getReceiverIdList().size();
-      this.receiverStateMachineMap = new HashMap<>(totalReceiverNumber);
+      this.totalNumReceivers = shuffleDescription.getReceiverIdList().size();
+      this.receiverStateMachineMap = new HashMap<>(totalNumReceivers);
 
       for (final String receiverId : shuffleDescription.getReceiverIdList()) {
         receiverStateMachineMap.put(receiverId, PushShuffleReceiverState.createStateMachine());
@@ -240,12 +240,12 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       stateMachine.checkState(INIT);
       receiverStateMachineMap.get(receiverId).checkState(PushShuffleReceiverState.RECEIVING);
       LOG.log(Level.FINE, "A receiver is initialized " + receiverId);
-      numInitializedReceiver++;
+      numInitializedReceivers++;
       broadcastIfAllReceiversAreInitialized();
     }
 
     private void broadcastIfAllReceiversAreInitialized() {
-      if (numInitializedReceiver == totalReceiverNumber) {
+      if (numInitializedReceivers == totalNumReceivers) {
         initialized = true;
         LOG.log(Level.INFO, "All receivers are initialized");
         stateMachine.checkAndSetState(INIT, CAN_SEND);
@@ -259,11 +259,11 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       stateMachine.checkState(CAN_SEND);
       receiverStateMachineMap.get(receiverId)
           .checkAndSetState(PushShuffleReceiverState.RECEIVING, PushShuffleReceiverState.COMPLETED);
-      if (numCompletedReceiver == 0 && shutdown) {
+      if (numCompletedReceivers == 0 && shutdown) {
         shutdownAllSendersAndReceivers = true;
       }
 
-      numCompletedReceiver++;
+      numCompletedReceivers++;
 
       LOG.log(Level.FINE, "A receiver " + receiverId + " was completed to receive data.");
 
@@ -279,8 +279,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         throw new RuntimeException(e);
       }
 
-      if (numCompletedReceiver == totalReceiverNumber) {
-        numCompletedReceiver = 0;
+      if (numCompletedReceivers == totalNumReceivers) {
+        numCompletedReceivers = 0;
         stateMachine.checkAndSetState(CAN_SEND, RECEIVERS_COMPLETED);
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
 
@@ -298,12 +298,12 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private synchronized void onReceiverReady(final String receiverId) {
       receiverStateMachineMap.get(receiverId)
           .checkAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.RECEIVING);
-      numReadiedReceiver++;
+      numReadiedReceivers++;
 
       LOG.log(Level.FINE, "A receiver " + receiverId + " is ready to receive data.");
 
-      if (numReadiedReceiver == totalReceiverNumber) {
-        numReadiedReceiver = 0;
+      if (numReadiedReceivers == totalNumReceivers) {
+        numReadiedReceivers = 0;
         LOG.log(Level.INFO, "Broadcast to all senders that they can send data to receivers.");
         stateMachine.checkAndSetState(RECEIVERS_COMPLETED, CAN_SEND);
         broadcastToSenders(PushShuffleCode.SENDER_CAN_SEND);
@@ -314,10 +314,10 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       stateMachine.checkState(CAN_SEND);
       receiverStateMachineMap.get(receiverId)
           .checkAndSetState(PushShuffleReceiverState.RECEIVING, PushShuffleReceiverState.FINISHED);
-      numFinishedReceiver++;
+      numFinishedReceivers++;
 
 
-      if (numFinishedReceiver == totalReceiverNumber) {
+      if (numFinishedReceivers == totalNumReceivers) {
         LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
         stateMachine.checkAndSetState(CAN_SEND, FINISHED);
       }
