@@ -41,9 +41,6 @@ final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K
   private final ShuffleTupleMessageCodec shuffleTupleCodec;
   private final Injector rootInjector;
 
-  private ShuffleSender shuffleSender;
-  private ShuffleReceiver shuffleReceiver;
-
   /**
    * Construct a factory that creates shuffle operators.
    * This should be instantiated once for each shuffle, using several forked injectors.
@@ -63,6 +60,7 @@ final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K
     this.shuffleDescription = shuffleDescription;
     this.shuffleTupleCodec = shuffleTupleCodec;
     this.rootInjector = rootInjector;
+    addTupleCodec();
   }
 
   private void addTupleCodec() {
@@ -80,46 +78,33 @@ final class ShuffleOperatorFactoryImpl<K, V> implements ShuffleOperatorFactory<K
   }
 
   @Override
-  public <T extends ShuffleReceiver<K, V>> T newShuffleReceiver() {
-    final String shuffleName = shuffleDescription.getShuffleName();
-    if (shuffleReceiver == null) {
-      if (!shuffleDescription.getReceiverIdList().contains(endPointId)) {
-        throw new RuntimeException(shuffleName + " does not have " + endPointId + " as a receiver.");
-      }
+  public ShuffleReceiver<K, V> newShuffleReceiver() {
 
-      final Injector forkedInjector = getForkedInjectorWithParameters();
-
-      try {
-        shuffleReceiver = forkedInjector.getInstance(ShuffleReceiver.class);
-        addTupleCodec();
-      } catch (final InjectionException e) {
-        throw new RuntimeException("An Exception occurred while injecting receiver with " + shuffleDescription, e);
-      }
+    if (!shuffleDescription.getReceiverIdList().contains(endPointId)) {
+      return null;
     }
 
-    return (T)shuffleReceiver;
+    final Injector forkedInjector = getForkedInjectorWithParameters();
+    try {
+      return forkedInjector.getInstance(ShuffleReceiver.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException("An Exception occurred while injecting receiver with " + shuffleDescription, e);
+    }
   }
 
   @Override
-  public <T extends ShuffleSender<K, V>> T newShuffleSender() {
-    final String shuffleName = shuffleDescription.getShuffleName();
-    if (shuffleSender == null) {
-      if (!shuffleDescription.getSenderIdList().contains(endPointId)) {
-        throw new RuntimeException(shuffleName + " does not have " + endPointId + " as a sender.");
-      }
-
-      final Injector forkedInjector = getForkedInjectorWithParameters();
-
-      try {
-        shuffleSender = forkedInjector.getInstance(ShuffleSender.class);
-        addTupleCodec();
-      } catch (final InjectionException e) {
-        throw new RuntimeException("An InjectionException occurred while injecting sender with " +
-            shuffleDescription, e);
-      }
+  public ShuffleSender<K, V> newShuffleSender() {
+    if (!shuffleDescription.getSenderIdList().contains(endPointId)) {
+      return null;
     }
 
-    return (T)shuffleSender;
+    final Injector forkedInjector = getForkedInjectorWithParameters();
+    try {
+      return forkedInjector.getInstance(ShuffleSender.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException("An InjectionException occurred while injecting sender with " +
+          shuffleDescription, e);
+    }
   }
 
   private Injector getForkedInjectorWithParameters() {

@@ -21,7 +21,6 @@ import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.transport.LinkListener;
 
@@ -49,16 +48,6 @@ public interface Shuffle<K, V> {
    * @return shuffle sender
    */
   <T extends ShuffleSender<K, V>> T getSender();
-
-  /**
-   * Wait for a ShuffleControlMessage with code. All threads will be notified when the
-   * ShuffleControlMessage arrives. It returns Optional.empty if the caller does not need
-   * to be wait or there is an exceptional case.
-   *
-   * @param code a code for an expected ShuffleControlMessage
-   * @return the ShuffleControlMessage
-   */
-  Optional<ShuffleControlMessage> waitForControlMessage(int code);
 
   /**
    * @return a shuffle description

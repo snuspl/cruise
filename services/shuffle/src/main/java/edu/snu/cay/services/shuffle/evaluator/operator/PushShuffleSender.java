@@ -16,7 +16,10 @@
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
 import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleSenderImpl;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.tang.annotations.DefaultImplementation;
+
+import java.util.List;
 
 /**
  * Push-based shuffle sender.
@@ -24,9 +27,56 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 @DefaultImplementation(PushShuffleSenderImpl.class)
 public interface PushShuffleSender<K, V> extends ShuffleSender<K, V> {
 
-  void complete();
+  /**
+   * Send a tuple to selected receivers using ShuffleStrategy of the shuffle.
+   *
+   * Throws IllegalStateException if sender is waiting for receivers.
+   *
+   * @param tuple a tuple
+   * @return the selected receiver id list
+   */
+  List<String> sendTuple(final Tuple<K, V> tuple);
 
-  void waitForReceivers();
+  /**
+   * Send a tupleList to selected receivers using ShuffleStrategy of the shuffle.
+   *
+   * Each tuple in the tupleList can be sent to many receivers, so the tuples to the same end point are
+   * chunked into one ShuffleTupleMessage.
+   *
+   * Throws IllegalStateException if sender is waiting for receivers.
+   *
+   * @param tupleList a tuple list
+   * @return the selected receiver id list
+   */
+  List<String> sendTuple(final List<Tuple<K, V>> tupleList);
 
-  void completeAndWaitForReceivers();
+  /**
+   * Send a tuple to the specific receiver.
+   *
+   * Throws IllegalStateException if sender is waiting for receivers.
+   *
+   * @param receiverId a receiver id
+   * @param tuple a tuple
+   */
+  void sendTupleTo(final String receiverId, final Tuple<K, V> tuple);
+
+  /**
+   * Send a tuple list to the specific receiver. Note that this method does not use ShuffleStrategy to select
+   * receivers and send all of tuples in tuple list to the same receiver.
+   *
+   * Throws IllegalStateException if sender is waiting for receivers.
+   *
+   * @param receiverId a receiver id
+   * @param tupleList a tuple list
+   */
+  void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList);
+
+  /**
+   * Complete one iteration of pushing data. The caller is blocking until a SENDER_CAN_SEND message
+   * or a SENDER_SHUTDOWN message arrives from the manager.
+   *
+   * @return whether the sender is shutdown by the manager, or not.
+   */
+  boolean complete();
+
 }

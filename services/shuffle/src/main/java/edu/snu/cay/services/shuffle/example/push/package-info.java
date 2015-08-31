@@ -13,20 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator.operator;
-
-import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleReceiverImpl;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Push-based shuffle receiver.
+ * Examples of push-based shuffle implementation.
  */
-@DefaultImplementation(PushShuffleReceiverImpl.class)
-public interface PushShuffleReceiver<K, V> extends ShuffleReceiver<K, V> {
-
-  /**
-   * @param dataListener a data listener
-   */
-  void registerDataListener(PushDataListener<K, V> dataListener);
-
-}
+package edu.snu.cay.services.shuffle.example.push;

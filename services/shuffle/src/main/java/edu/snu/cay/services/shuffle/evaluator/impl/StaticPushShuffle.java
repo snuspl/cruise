@@ -16,9 +16,7 @@
 package edu.snu.cay.services.shuffle.evaluator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
-import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleCode;
-import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
-import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
+import edu.snu.cay.services.shuffle.driver.impl.PushShuffleCode;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorFactory;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
@@ -26,19 +24,16 @@ import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-// TODO #88: Implement functionality.
 /**
- * Simple implementation of Shuffle.
+ * Shuffle implementation for static push-based shuffling.
  *
  * The initial shuffle description can never be changed. Users cannot add or remove more tasks
  * to the shuffle and cannot change the key, value codecs and shuffling strategy after the Shuffle is created.
@@ -49,29 +44,21 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private static final Logger LOG = Logger.getLogger(StaticPushShuffle.class.getName());
 
   private final ShuffleDescription shuffleDescription;
-  private final ShuffleOperatorFactory<K, V> operatorFactory;
-  private final ESControlMessageSender controlMessageSender;
-  private final ControlMessageSynchronizer synchronizer;
-
-  private final AtomicBoolean isSetupMessageSent;
-  private final AtomicBoolean initialized;
 
   private final ControlMessageHandler controlMessageHandler;
   private final ControlLinkListener controlLinkListener;
 
+  private final ShuffleReceiver<K, V> shuffleReceiver;
+  private final ShuffleSender<K, V> shuffleSender;
+
   @Inject
   private StaticPushShuffle(
       final ShuffleDescription shuffleDescription,
-      final ShuffleOperatorFactory<K, V> operatorFactory,
-      final ESControlMessageSender controlMessageSender,
-      final ControlMessageSynchronizer synchronizer) {
+      final ShuffleOperatorFactory<K, V> operatorFactory) {
     this.shuffleDescription = shuffleDescription;
-    this.operatorFactory = operatorFactory;
-    this.synchronizer = synchronizer;
 
-    this.isSetupMessageSent = new AtomicBoolean();
-    this.initialized = new AtomicBoolean();
-    this.controlMessageSender = controlMessageSender;
+    this.shuffleReceiver = operatorFactory.newShuffleReceiver();
+    this.shuffleSender = operatorFactory.newShuffleSender();
 
     this.controlMessageHandler = new ControlMessageHandler();
     this.controlLinkListener = new ControlLinkListener();
@@ -82,8 +69,10 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleReceiver<K, V>> T getReceiver() {
-    sendSetupMessage();
-    return operatorFactory.newShuffleReceiver();
+    if (shuffleReceiver == null) {
+      throw new RuntimeException("The end point is not a receiver of " + shuffleDescription.getShuffleName());
+    }
+    return (T)shuffleReceiver;
   }
 
   /**
@@ -91,27 +80,10 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleSender<K, V>> T getSender() {
-    sendSetupMessage();
-    return operatorFactory.newShuffleSender();
-  }
-
-  /**
-   * Send a setup message to driver. This should not be called in the constructor
-   * since the initialization can be finished before users register their shuffle message handler.
-   */
-  private void sendSetupMessage() {
-    if (isSetupMessageSent.compareAndSet(false, true)) {
-      controlMessageSender.sendToManager(StaticPushShuffleCode.END_POINT_INITIALIZED);
+    if (shuffleSender == null) {
+      throw new RuntimeException("The end point is not a sender of " + shuffleDescription.getShuffleName());
     }
-  }
-
-  /**
-   * @param code a code for expecting ShuffleControlMessage
-   * @return the ShuffleControlMessage
-   */
-  @Override
-  public Optional<ShuffleControlMessage> waitForControlMessage(final int code) {
-    return synchronizer.waitOnLatch(code);
+    return (T) shuffleSender;
   }
 
   /**
@@ -135,12 +107,25 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private final class ControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {
 
     @Override
-    public void onNext(final Message<ShuffleControlMessage> networkControlMessage) {
-      final ShuffleControlMessage controlMessage = networkControlMessage.getData().iterator().next();
-      if (controlMessage.getCode() == StaticPushShuffleCode.SHUFFLE_INITIALIZED) {
-        if (initialized.compareAndSet(false, true)) {
-          synchronizer.closeLatch(controlMessage);
-        }
+    public void onNext(final Message<ShuffleControlMessage> message) {
+      final ShuffleControlMessage controlMessage = message.getData().iterator().next();
+      switch (controlMessage.getCode()) {
+
+      // Control messages for senders.
+      case PushShuffleCode.SENDER_CAN_SEND:
+      case PushShuffleCode.SENDER_SHUTDOWN:
+        shuffleSender.onControlMessage(message);
+        break;
+
+      // Control messages for receivers.
+      case PushShuffleCode.SENDER_COMPLETED:
+      case PushShuffleCode.RECEIVER_CAN_RECEIVE:
+      case PushShuffleCode.RECEIVER_SHUTDOWN:
+        shuffleReceiver.onControlMessage(message);
+        break;
+
+      default:
+        throw new RuntimeException("Unknown code [ " + controlMessage.getCode() + " ] from " + message.getSrcId());
       }
     }
   }

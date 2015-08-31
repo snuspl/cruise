@@ -13,28 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.example.simple;
+package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import org.apache.reef.wake.remote.Codec;
-
-import javax.inject.Inject;
+import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import org.apache.reef.io.network.Message;
 
 /**
- * Simple integer codec.
+ *
  */
-public final class IntegerCodec implements Codec<Integer> {
+public interface PushDataListener<K, V> {
 
-  @Inject
-  private IntegerCodec() {
-  }
+  /**
+   * Handle a message from a sender.
+   *
+   * @param message a tuple message
+   */
+  void onTupleMessage(Message<ShuffleTupleMessage<K, V>> message);
 
-  @Override
-  public Integer decode(final byte[] buf) {
-    return Integer.decode(new String(buf));
-  }
+  /**
+   * Handle the case where all senders completed to send data in one iteration.
+   */
+  void onComplete();
 
-  @Override
-  public byte[] encode(final Integer obj) {
-    return Integer.toString(obj).getBytes();
-  }
+  /**
+   * Handle the case where the receiver was shutdown by the manager.
+   */
+  void onShutdown();
 }

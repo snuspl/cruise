@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.example.simple;
+package edu.snu.cay.services.shuffle.example.push;
 
 import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
@@ -28,21 +28,20 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/*
- * Simple message exchanging example using shuffle service.
+/**
+ * Message exchanging example using push-based shuffle.
  *
- * n tasks exchange tuples using the key grouping strategy. Because all tuples that are sent from one task to
- * another task are chunked into one network message, each task is blocked until exactly n messages arrive from
- * n tasks including itself.
- * (Tasks send at least an empty network message to wake up the other tasks)
+ * SenderTasks send random number of tuples to ReceiverTasks during certain number of iterations.
+ * Each iteration, receivers should receive tuples that are sent in the same iteration.
+ * If shutdown parameter is set to true, the application will be shutdown after the specified time elapsed.
+ *
+ * The driver checks if total number of sent tuples and received tuples are same when all tasks are completed.
  */
 public final class MessageExchangeREEF {
 
@@ -51,7 +50,7 @@ public final class MessageExchangeREEF {
   /**
    * The upper limit on the number of Evaluators that the local resourcemanager will hand out concurrently.
    */
-  private static final int MAX_NUMBER_OF_EVALUATORS = 15;
+  private static final int MAX_NUMBER_OF_EVALUATORS = 20;
 
   private static Configuration getRuntimeConfiguration(final boolean isLocal) {
     if (isLocal) {
@@ -63,24 +62,24 @@ public final class MessageExchangeREEF {
     }
   }
 
-  private static Configuration getDriverConfiguration(final int taskNumber) {
-    final Configuration taskNumberConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(MessageExchangeREEF.TaskNumber.class, taskNumber + "")
-        .bindImplementation(NameResolver.class, LocalNameResolverImpl.class)
-        .build();
-
+  private static Configuration getDriverConfiguration(final Configuration baseConf) {
     final Configuration driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.DRIVER_IDENTIFIER, "MessageExchangeREEF")
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(MessageExchangeDriver.class))
         .set(DriverConfiguration.ON_DRIVER_STARTED, MessageExchangeDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, MessageExchangeDriver.AllocatedHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, MessageExchangeDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_TASK_COMPLETED, MessageExchangeDriver.TaskCompletedHandler.class)
         .build();
 
     final Configuration shuffleConf = ShuffleDriverConfiguration.CONF
         .set(ShuffleDriverConfiguration.SHUFFLE_MANAGER_CLASS_NAME, StaticPushShuffleManager.class.getName())
         .build();
 
-    return Configurations.merge(taskNumberConf, driverConf, shuffleConf);
+    final Configuration networkConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(NameResolver.class, LocalNameResolverImpl.class)
+        .build();
+
+    return Configurations.merge(baseConf, driverConf, networkConf, shuffleConf);
   }
 
   /**
@@ -91,16 +90,20 @@ public final class MessageExchangeREEF {
    */
   public static void main(final String[] args) throws Exception {
     final CommandLine commandLine = new CommandLine();
-    commandLine.registerShortNameOfClass(Local.class);
-    final Injector injector = Tang.Factory.getTang().newInjector(
-        commandLine.parseToConfiguration(args, Local.class, TaskNumber.class, Timeout.class));
+    commandLine.registerShortNameOfClass(MessageExchangeParameters.Local.class);
 
-    final boolean isLocal = injector.getNamedInstance(Local.class);
-    final int taskNumber = injector.getNamedInstance(TaskNumber.class);
-    final long jobTimeout = injector.getNamedInstance(Timeout.class);
+    final Configuration commandLineConfiguration = commandLine.parseToConfiguration(
+        args, MessageExchangeParameters.Local.class, MessageExchangeParameters.SenderNumber.class,
+        MessageExchangeParameters.ReceiverNumber.class, MessageExchangeParameters.Timeout.class,
+        MessageExchangeParameters.Shutdown.class, MessageExchangeParameters.ShutdownDelay.class);
+
+    final Injector injector = Tang.Factory.getTang().newInjector(commandLineConfiguration);
+
+    final boolean isLocal = injector.getNamedInstance(MessageExchangeParameters.Local.class);
+    final long jobTimeout = injector.getNamedInstance(MessageExchangeParameters.Timeout.class);
 
     final LauncherStatus state = DriverLauncher.getLauncher(getRuntimeConfiguration(isLocal))
-        .run(getDriverConfiguration(taskNumber), jobTimeout);
+        .run(getDriverConfiguration(commandLineConfiguration), jobTimeout);
     LOG.log(Level.INFO, "REEF job completed: {0}", state);
   }
 
@@ -108,26 +111,5 @@ public final class MessageExchangeREEF {
    * Empty private constructor to prohibit instantiation of utility class.
    */
   private MessageExchangeREEF() {
-  }
-
-  /**
-   * Command line parameter = true to run locally, or false to run on YARN.
-   */
-  @NamedParameter(short_name = "local", default_value = "true")
-  public static final class Local implements Name<Boolean> {
-  }
-
-  /**
-   * The running tasks number it the example.
-   */
-  @NamedParameter(short_name = "task_num", default_value = "5")
-  public static final class TaskNumber implements Name<Integer> {
-  }
-
-  /**
-   * Number of milliseconds to wait for the job to complete.
-   */
-  @NamedParameter(short_name = "timeout", default_value = "30000")
-  public static final class Timeout implements Name<Long> {
   }
 }

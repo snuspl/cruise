@@ -13,8 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.services.shuffle.example.push;
+
+import org.apache.reef.wake.remote.Codec;
+
+import javax.inject.Inject;
 
 /**
- * Simple message exchanging example.
+ * Simple integer codec.
  */
-package edu.snu.cay.services.shuffle.example.simple;
+public final class IntegerCodec implements Codec<Integer> {
+
+  @Inject
+  private IntegerCodec() {
+  }
+
+  @Override
+  public Integer decode(final byte[] buf) {
+    return Integer.decode(new String(buf));
+  }
+
+  @Override
+  public byte[] encode(final Integer obj) {
+    return Integer.toString(obj).getBytes();
+  }
+}

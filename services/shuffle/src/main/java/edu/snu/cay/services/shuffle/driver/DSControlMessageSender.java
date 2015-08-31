@@ -101,7 +101,7 @@ public final class DSControlMessageSender {
    * @param controlMessage a ShuffleControlMessage
    * @throws NetworkException
    */
-  private void send(final String endPointId, final ShuffleControlMessage controlMessage)  throws NetworkException {
+  private void send(final String endPointId, final ShuffleControlMessage controlMessage) throws NetworkException {
     final Connection<ShuffleControlMessage> connection = getConnection(endPointId);
     connection.open();
     connection.write(controlMessage);
