@@ -153,6 +153,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
       LOG.log(Level.INFO, "The receiver was finished.");
       stateMachine.checkAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.FINISHED);
       dataListener.onComplete();
+      controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_FINISHED);
       dataListener.onShutdown();
     } else {
       LOG.log(Level.INFO, "The receiver can receive data");

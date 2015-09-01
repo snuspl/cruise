@@ -132,7 +132,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       case PushShuffleCode.RECEIVER_READY:
         stateManager.onReceiverReady(endPointId);
         break;
-      case PushShuffleCode.RECEIVER_SHUTDOWN:
+      case PushShuffleCode.RECEIVER_FINISHED:
         stateManager.onReceiverFinished(endPointId);
         break;
       default:
@@ -174,7 +174,6 @@ public final class StaticPushShuffleManager implements ShuffleManager {
 
     private boolean initialized;
     private boolean shutdown;
-    private boolean shutdownAllSendersAndReceivers;
     private final int totalNumReceivers;
     private Map<String, StateMachine> receiverStateMachineMap;
     private final List<String> initializedSenderIdList;
@@ -259,39 +258,25 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       stateMachine.checkState(CAN_SEND);
       receiverStateMachineMap.get(receiverId)
           .checkAndSetState(PushShuffleReceiverState.RECEIVING, PushShuffleReceiverState.COMPLETED);
-      if (numCompletedReceivers == 0 && shutdown) {
-        shutdownAllSendersAndReceivers = true;
-      }
 
       numCompletedReceivers++;
 
       LOG.log(Level.FINE, "A receiver " + receiverId + " was completed to receive data.");
 
-      try {
-        if (shutdownAllSendersAndReceivers) {
-          controlMessageSender.send(receiverId, PushShuffleCode.RECEIVER_SHUTDOWN);
-        } else {
-          controlMessageSender.send(receiverId, PushShuffleCode.RECEIVER_CAN_RECEIVE);
-        }
-      } catch (final NetworkException e) {
-        // cannot open connection to receiver
-        // TODO #67: failure handling.
-        throw new RuntimeException(e);
-      }
-
       if (numCompletedReceivers == totalNumReceivers) {
         numCompletedReceivers = 0;
         stateMachine.checkAndSetState(CAN_SEND, RECEIVERS_COMPLETED);
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
-
-        if (shutdownAllSendersAndReceivers) {
-          shutdownAllSenders();
+        if (shutdown) {
+          shutdownAllSendersAndReceivers();
+        } else {
+          broadcastToReceivers(PushShuffleCode.RECEIVER_CAN_RECEIVE);
         }
       }
     }
 
-    private void shutdownAllSenders() {
-      stateMachine.checkAndSetState(RECEIVERS_COMPLETED, FINISHED);
+    private void shutdownAllSendersAndReceivers() {
+      broadcastToReceivers(PushShuffleCode.RECEIVER_SHUTDOWN);
       broadcastToSenders(PushShuffleCode.SENDER_SHUTDOWN);
     }
 
@@ -311,15 +296,14 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     }
 
     private synchronized void onReceiverFinished(final String receiverId) {
-      stateMachine.checkState(CAN_SEND);
+      stateMachine.checkState(RECEIVERS_COMPLETED);
       receiverStateMachineMap.get(receiverId)
-          .checkAndSetState(PushShuffleReceiverState.RECEIVING, PushShuffleReceiverState.FINISHED);
+          .checkAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.FINISHED);
       numFinishedReceivers++;
-
 
       if (numFinishedReceivers == totalNumReceivers) {
         LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
-        stateMachine.checkAndSetState(CAN_SEND, FINISHED);
+        stateMachine.checkAndSetState(RECEIVERS_COMPLETED, FINISHED);
       }
     }
 
@@ -329,6 +313,18 @@ public final class StaticPushShuffleManager implements ShuffleManager {
           controlMessageSender.send(senderId, code);
         } catch (final NetworkException e) {
           // cannot open connection to sender
+          // TODO #67: failure handling.
+          throw new RuntimeException(e);
+        }
+      }
+    }
+
+    private void broadcastToReceivers(final int code) {
+      for (final String receiverId : shuffleDescription.getReceiverIdList()) {
+        try {
+          controlMessageSender.send(receiverId, code);
+        } catch (final NetworkException e) {
+          // cannot open connection to receiver
           // TODO #67: failure handling.
           throw new RuntimeException(e);
         }
