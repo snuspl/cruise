@@ -123,16 +123,19 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       case PushShuffleCode.SENDER_INITIALIZED:
         stateManager.onSenderInitialized(endPointId);
         break;
+      case PushShuffleCode.SENDER_FINISHED:
+        stateManager.onSenderFinished(endPointId);
+        break;
       case PushShuffleCode.RECEIVER_INITIALIZED:
         stateManager.onReceiverInitialized(endPointId);
         break;
       case PushShuffleCode.RECEIVER_COMPLETED:
         stateManager.onReceiverCompleted(endPointId);
         break;
-      case PushShuffleCode.RECEIVER_READY:
-        stateManager.onReceiverReady(endPointId);
+      case PushShuffleCode.RECEIVER_READIED:
+        stateManager.onReceiverReadied(endPointId);
         break;
-      case PushShuffleCode.RECEIVER_SHUTDOWN:
+      case PushShuffleCode.RECEIVER_FINISHED:
         stateManager.onReceiverFinished(endPointId);
         break;
       default:
@@ -174,19 +177,21 @@ public final class StaticPushShuffleManager implements ShuffleManager {
 
     private boolean initialized;
     private boolean shutdown;
-    private boolean shutdownAllSendersAndReceivers;
+    private final int totalNumSenders;
     private final int totalNumReceivers;
     private Map<String, StateMachine> receiverStateMachineMap;
     private final List<String> initializedSenderIdList;
     private int numInitializedReceivers;
     private int numReadiedReceivers;
     private int numCompletedReceivers;
+    private int numFinishedSenders;
     private int numFinishedReceivers;
 
     private StateMachine stateMachine;
 
     private StateManager() {
       this.initializedSenderIdList = new ArrayList<>();
+      this.totalNumSenders = shuffleDescription.getSenderIdList().size();
       this.totalNumReceivers = shuffleDescription.getReceiverIdList().size();
       this.receiverStateMachineMap = new HashMap<>(totalNumReceivers);
 
@@ -207,7 +212,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
               "When RECEIVER_COMPLETED messages arrived from all receivers." +
                   " It broadcasts ALL_RECEIVERS_COMPLETED messages to all receivers.")
           .addTransition(RECEIVERS_COMPLETED, CAN_SEND,
-              "When RECEIVER_READY messages arrived from all receivers"
+              "When RECEIVER_READIED messages arrived from all receivers"
                   + " It broadcasts SENDER_CAN_SEND messages to all senders.")
           .addTransition(RECEIVERS_COMPLETED, FINISHED,
               "If shutdown() method was called before.")
@@ -236,6 +241,15 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       }
     }
 
+    private synchronized void onSenderFinished(final String senderId) {
+      stateMachine.checkState(RECEIVERS_COMPLETED);
+      numFinishedSenders++;
+
+      if (isAllSendersAndReceiversFinished()) {
+        finishManager();
+      }
+    }
+
     private synchronized void onReceiverInitialized(final String receiverId) {
       stateMachine.checkState(INIT);
       receiverStateMachineMap.get(receiverId).checkState(PushShuffleReceiverState.RECEIVING);
@@ -259,43 +273,30 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       stateMachine.checkState(CAN_SEND);
       receiverStateMachineMap.get(receiverId)
           .checkAndSetState(PushShuffleReceiverState.RECEIVING, PushShuffleReceiverState.COMPLETED);
-      if (numCompletedReceivers == 0 && shutdown) {
-        shutdownAllSendersAndReceivers = true;
-      }
 
       numCompletedReceivers++;
 
       LOG.log(Level.FINE, "A receiver " + receiverId + " was completed to receive data.");
 
-      try {
-        if (shutdownAllSendersAndReceivers) {
-          controlMessageSender.send(receiverId, PushShuffleCode.RECEIVER_SHUTDOWN);
-        } else {
-          controlMessageSender.send(receiverId, PushShuffleCode.RECEIVER_CAN_RECEIVE);
-        }
-      } catch (final NetworkException e) {
-        // cannot open connection to receiver
-        // TODO #67: failure handling.
-        throw new RuntimeException(e);
-      }
-
       if (numCompletedReceivers == totalNumReceivers) {
         numCompletedReceivers = 0;
         stateMachine.checkAndSetState(CAN_SEND, RECEIVERS_COMPLETED);
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
-
-        if (shutdownAllSendersAndReceivers) {
-          shutdownAllSenders();
+        // TODO #124: Add a callback that indicate the iteration was completed.
+        if (shutdown) {
+          shutdownAllSendersAndReceivers();
+        } else {
+          broadcastToReceivers(PushShuffleCode.RECEIVER_CAN_RECEIVE);
         }
       }
     }
 
-    private void shutdownAllSenders() {
-      stateMachine.checkAndSetState(RECEIVERS_COMPLETED, FINISHED);
+    private void shutdownAllSendersAndReceivers() {
+      broadcastToReceivers(PushShuffleCode.RECEIVER_SHUTDOWN);
       broadcastToSenders(PushShuffleCode.SENDER_SHUTDOWN);
     }
 
-    private synchronized void onReceiverReady(final String receiverId) {
+    private synchronized void onReceiverReadied(final String receiverId) {
       receiverStateMachineMap.get(receiverId)
           .checkAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.RECEIVING);
       numReadiedReceivers++;
@@ -311,16 +312,23 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     }
 
     private synchronized void onReceiverFinished(final String receiverId) {
-      stateMachine.checkState(CAN_SEND);
+      stateMachine.checkState(RECEIVERS_COMPLETED);
       receiverStateMachineMap.get(receiverId)
-          .checkAndSetState(PushShuffleReceiverState.RECEIVING, PushShuffleReceiverState.FINISHED);
+          .checkAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.FINISHED);
       numFinishedReceivers++;
 
-
-      if (numFinishedReceivers == totalNumReceivers) {
-        LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
-        stateMachine.checkAndSetState(CAN_SEND, FINISHED);
+      if (isAllSendersAndReceiversFinished()) {
+        finishManager();
       }
+    }
+
+    private boolean isAllSendersAndReceiversFinished() {
+      return numFinishedSenders == totalNumSenders && numFinishedReceivers == totalNumReceivers;
+    }
+
+    private void finishManager() {
+      LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
+      stateMachine.checkAndSetState(RECEIVERS_COMPLETED, FINISHED);
     }
 
     private void broadcastToSenders(final int code) {
@@ -329,6 +337,18 @@ public final class StaticPushShuffleManager implements ShuffleManager {
           controlMessageSender.send(senderId, code);
         } catch (final NetworkException e) {
           // cannot open connection to sender
+          // TODO #67: failure handling.
+          throw new RuntimeException(e);
+        }
+      }
+    }
+
+    private void broadcastToReceivers(final int code) {
+      for (final String receiverId : shuffleDescription.getReceiverIdList()) {
+        try {
+          controlMessageSender.send(receiverId, code);
+        } catch (final NetworkException e) {
+          // cannot open connection to receiver
           // TODO #67: failure handling.
           throw new RuntimeException(e);
         }

@@ -28,7 +28,7 @@ public final class PushShuffleCode {
   public static final int SENDER_INITIALIZED = 0;
 
   /**
-   * A sender can send data.
+   * Notify that a sender can send data.
    *
    * The manager to the sender.
    */
@@ -42,46 +42,60 @@ public final class PushShuffleCode {
   public static final int SENDER_COMPLETED = 2;
 
   /**
-   * Senders were shutdown by the manager.
+   * Make senders be shutdown.
    *
    * The manager to all senders.
    */
   public static final int SENDER_SHUTDOWN = 3;
 
   /**
+   * A sender was shutdown and finished by the manager.
+   *
+   * The sender to the manager.
+   */
+  public static final int SENDER_FINISHED = 4;
+
+  /**
    * A receiver was initialized.
    *
    * The receiver to the manager.
    */
-  public static final int RECEIVER_INITIALIZED = 4;
+  public static final int RECEIVER_INITIALIZED = 5;
 
   /**
    * A receiver was completed.
    *
    * The receiver to the manager.
    */
-  public static final int RECEIVER_COMPLETED = 5;
+  public static final int RECEIVER_COMPLETED = 6;
 
   /**
-   * A receiver can receive data.
+   * Notify that a receiver can receive data.
    *
    * The manager to the receiver.
    */
-  public static final int RECEIVER_CAN_RECEIVE = 6;
+  public static final int RECEIVER_CAN_RECEIVE = 7;
 
   /**
    * A receiver was ready to receive data.
    *
    * The receiver to the manager.
    */
-  public static final int RECEIVER_READY = 7;
+  public static final int RECEIVER_READIED = 8;
 
   /**
-   * A receiver was shutdown.
+   * Make receivers be shutdown.
    *
-   * The manager to the receiver.
+   * The manager to all receivers.
    */
-  public static final int RECEIVER_SHUTDOWN = 8;
+  public static final int RECEIVER_SHUTDOWN = 9;
+
+  /**
+   * A receiver was shutdown and finished by the manager.
+   *
+   * The receiver to the manager.
+   */
+  public static final int RECEIVER_FINISHED = 10;
 
   /**
    * Empty private constructor to prohibit instantiation of utility class.

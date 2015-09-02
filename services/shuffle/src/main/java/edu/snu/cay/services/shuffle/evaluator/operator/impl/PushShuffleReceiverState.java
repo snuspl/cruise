@@ -41,7 +41,7 @@ public final class PushShuffleReceiverState {
                 + " It sends a RECEIVER_COMPLETED message to the manager.")
         .addTransition(COMPLETED, RECEIVING,
             "When a RECEIVER_CAN_RECEIVE message arrived from the manager."
-                + " It sends a RECEIVER_READY message to the manager.")
+                + " It sends a RECEIVER_READIED message to the manager.")
         .addTransition(COMPLETED, FINISHED,
             "When a RECEIVER_SHUTDOWN message arrived from the manager.")
         .build();
