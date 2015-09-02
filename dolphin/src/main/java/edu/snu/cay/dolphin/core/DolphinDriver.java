@@ -68,7 +68,7 @@ public final class DolphinDriver {
    * This object grants different IDs to each task
    * e.g. ComputeTask-0, ComputeTask-1, and so on.
    */
-  private final AtomicInteger taskId = new AtomicInteger(0);
+  private final AtomicInteger taskIdCounter = new AtomicInteger(0);
 
   /**
    * ID of the Context that goes under Controller Task.
@@ -379,14 +379,14 @@ public final class DolphinDriver {
     } else {
       LOG.log(Level.INFO, "Submit ComputeTask");
 
-      final int taskIdOffset = this.taskId.getAndIncrement();
+      final int taskId = this.taskIdCounter.getAndIncrement();
 
       dolphinTaskConfBuilder.bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
                             .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-                            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskIdOffset));
+                            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskIdOffset))
+              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId))
               .set(TaskConfiguration.TASK, ComputeTask.class)
               .build(),
           dolphinTaskConfBuilder.build(),
