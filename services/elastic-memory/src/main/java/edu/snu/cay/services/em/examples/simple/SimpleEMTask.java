@@ -25,6 +25,7 @@ import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.logging.Logger;
 
 final class SimpleEMTask implements Task {
@@ -52,16 +53,11 @@ final class SimpleEMTask implements Task {
     this.iterations = iterations;
     this.periodMillis = periodMillis;
 
-    final long firstItem = dataIdFactory.getId();
-    this.memoryStore.getElasticStore().put(DATATYPE, firstItem, firstItem);
-    for (int index = 1; index < 9; index++) {
-      final long item = dataIdFactory.getId();
-      this.memoryStore.getElasticStore().put(DATATYPE, item, item);
-    }
-    final long lastItem = dataIdFactory.getId();
-    this.memoryStore.getElasticStore().put(DATATYPE, lastItem, lastItem);
+    final List<Long> ids = dataIdFactory.getIds(10);
+    // Just use ids as data (data do not matter)
+    this.memoryStore.getElasticStore().putList(DATATYPE, ids, ids);
 
-    partitionTracker.registerPartition(DATATYPE, firstItem, lastItem);
+    partitionTracker.registerPartition(DATATYPE, ids.get(0), ids.get(9));
   }
 
   public byte[] call(final byte[] memento) throws InterruptedException {
