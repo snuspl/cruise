@@ -29,7 +29,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@link DataIdFactory} implementation.
  * Gives {@code Long} type ids for evaluators.
  * All data ids are composed of {@code base} and {@code counter}.
+ * Different BaseCounterDataIdFactories should have different {@code bases}
+ * to guarantee that they create globally unique data ids without asking the driver.
  * Driver should bind a unique {@code NamedParameter} to initialize {@code base}.
+ * Note that this factory has limitation in number of items: only provides 2^32 globally unique ids.
  */
 public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
 
@@ -41,8 +44,6 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
 
   /**
    * {@code base} should be a global unique value.
-   * Different BaseCounterDataIdFactories should have different bases
-   * to guarantee that they create global unique data ids without asking the driver.
    * Postfix of {@code taskId} in Dolphin and SimpleEMREEF is a possible value for {@code base}.
    */
   private final long base;
@@ -66,7 +67,7 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
     return idVector;
   }
 
-  @NamedParameter(doc = "Global unique base value of BaseCounterDataIdFactory")
+  @NamedParameter(doc = "Global unique base value of BaseCounterDataIdFactory to prevents conflict between each other")
   public final class Base implements Name<Integer> {
   }
 }

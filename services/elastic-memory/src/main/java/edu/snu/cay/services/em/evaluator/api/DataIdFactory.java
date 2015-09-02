@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.evaluator.api;
 import java.util.List;
 
 /**
- * Interface for evaluators to create global unique ids for data.
+ * Interface for evaluators to create globally unique ids for data.
  * @param <T> type of data id
  */
 public interface DataIdFactory<T> {
