@@ -81,7 +81,7 @@ public final class PushShuffleCode {
    *
    * The receiver to the manager.
    */
-  public static final int RECEIVER_READY = 8;
+  public static final int RECEIVER_READIED = 8;
 
   /**
    * Make receivers be shutdown.
