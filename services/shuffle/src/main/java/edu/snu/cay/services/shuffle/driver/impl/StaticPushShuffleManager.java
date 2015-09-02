@@ -133,7 +133,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         stateManager.onReceiverCompleted(endPointId);
         break;
       case PushShuffleCode.RECEIVER_READIED:
-        stateManager.onReceiverReady(endPointId);
+        stateManager.onReceiverReadied(endPointId);
         break;
       case PushShuffleCode.RECEIVER_FINISHED:
         stateManager.onReceiverFinished(endPointId);
@@ -223,13 +223,6 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       shutdown = true;
     }
 
-    private void finishManager() {
-      if (numFinishedSenders == totalNumSenders && numFinishedReceivers == totalNumReceivers) {
-        LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
-        stateMachine.checkAndSetState(RECEIVERS_COMPLETED, FINISHED);
-      }
-    }
-
     private void sendSenderCanSendMessage(final String senderId) {
       try {
         controlMessageSender.send(senderId, PushShuffleCode.SENDER_CAN_SEND);
@@ -252,7 +245,9 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       stateMachine.checkState(RECEIVERS_COMPLETED);
       numFinishedSenders++;
 
-      finishManager();
+      if (isAllSendersAndReceiversFinished()) {
+        finishManager();
+      }
     }
 
     private synchronized void onReceiverInitialized(final String receiverId) {
@@ -287,7 +282,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         numCompletedReceivers = 0;
         stateMachine.checkAndSetState(CAN_SEND, RECEIVERS_COMPLETED);
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
-        // TODO #124: Add a listener's method.
+        // TODO #124: Add a callback that indicate the iteration was completed.
         if (shutdown) {
           shutdownAllSendersAndReceivers();
         } else {
@@ -301,7 +296,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       broadcastToSenders(PushShuffleCode.SENDER_SHUTDOWN);
     }
 
-    private synchronized void onReceiverReady(final String receiverId) {
+    private synchronized void onReceiverReadied(final String receiverId) {
       receiverStateMachineMap.get(receiverId)
           .checkAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.RECEIVING);
       numReadiedReceivers++;
@@ -322,7 +317,18 @@ public final class StaticPushShuffleManager implements ShuffleManager {
           .checkAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.FINISHED);
       numFinishedReceivers++;
 
-      finishManager();
+      if (isAllSendersAndReceiversFinished()) {
+        finishManager();
+      }
+    }
+
+    private boolean isAllSendersAndReceiversFinished() {
+      return numFinishedSenders == totalNumSenders && numFinishedReceivers == totalNumReceivers;
+    }
+
+    private void finishManager() {
+      LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
+      stateMachine.checkAndSetState(RECEIVERS_COMPLETED, FINISHED);
     }
 
     private void broadcastToSenders(final int code) {
