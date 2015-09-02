@@ -176,6 +176,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     if (shutdown) {
       LOG.log(Level.INFO, "The sender was finished.");
       stateMachine.checkAndSetState(PushShuffleSenderState.COMPLETED, PushShuffleSenderState.FINISHED);
+      controlMessageSender.sendToManager(PushShuffleCode.SENDER_FINISHED);
       return true;
     } else {
       LOG.log(Level.INFO, "The sender can send data");
