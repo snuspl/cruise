@@ -27,14 +27,16 @@ import java.util.List;
 public interface DataIdFactory<T> {
   /**
    * Give a new data id.
+   * Throws {@code RuntimeException} when it is impossible to create unique id.
    * @return new data id
    */
-  T getId();
+  T getId() throws RuntimeException;
 
   /**
    * Give new data ids.
+   * Throws {@code RuntimeException} when it is impossible to create unique ids.
    * @param size number of data ids to return
    * @return List of new data ids
    */
-  List<T> getIds(int size);
+  List<T> getIds(int size) throws RuntimeException;
 }
