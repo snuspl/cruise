@@ -37,8 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
 
   /**
-   * {@code counter} is an {@code AtomicInteger}.
-   * Starts from 0, increases one by one when we create data ids by calling {@code getId} and {@code getIds}.
+   * {@code counter} starts from 0, increases one by one
+   * when we create data ids by calling {@code getId} and {@code getIds}.
    */
   private final AtomicInteger counter = new AtomicInteger(0);
 
