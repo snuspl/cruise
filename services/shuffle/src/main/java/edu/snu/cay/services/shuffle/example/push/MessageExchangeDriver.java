@@ -129,8 +129,8 @@ public final class MessageExchangeDriver {
             .setShuffleStrategyClass(KeyShuffleStrategy.class)
             .build()
     );
-    this.shuffleManager.setPushShuffleListener(new IterationListener(shuffleManager, shutdown, numShutdownIteration));
-
+    this.shuffleManager.setPushShuffleListener(
+        new SimplePushShuffleListener(shuffleManager, shutdown, numShutdownIteration));
   }
 
   public final class StartHandler implements EventHandler<StartTime> {

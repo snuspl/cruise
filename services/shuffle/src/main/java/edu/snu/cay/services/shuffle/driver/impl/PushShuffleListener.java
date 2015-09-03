@@ -17,7 +17,7 @@
 package edu.snu.cay.services.shuffle.driver.impl;
 
 /**
- *
+ * Interface for a listener used in PushShuffleManager.
  */
 public interface PushShuffleListener {
 

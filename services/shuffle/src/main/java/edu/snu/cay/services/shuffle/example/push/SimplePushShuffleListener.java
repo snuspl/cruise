@@ -23,16 +23,16 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
- *
+ * Shutdown the manager when the number of completed iterations reaches a certain number.
  */
-final class IterationListener implements PushShuffleListener {
+final class SimplePushShuffleListener implements PushShuffleListener {
   private final StaticPushShuffleManager shuffleManager;
   private final boolean shutdown;
   private final int numShutdownIteration;
-  private static final Logger LOG = Logger.getLogger(IterationListener.class.getName());
+  private static final Logger LOG = Logger.getLogger(SimplePushShuffleListener.class.getName());
 
-  IterationListener(final StaticPushShuffleManager shuffleManager,
-      final boolean shutdown, final int numShutdownIteration) {
+  SimplePushShuffleListener(final StaticPushShuffleManager shuffleManager,
+                            final boolean shutdown, final int numShutdownIteration) {
     this.shuffleManager = shuffleManager;
     this.shutdown = shutdown;
     this.numShutdownIteration = numShutdownIteration;
