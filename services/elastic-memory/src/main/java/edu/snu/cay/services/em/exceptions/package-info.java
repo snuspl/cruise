@@ -13,19 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.impl;
-
 /**
- * Thrown when data identifier generation fails.
- * The common reason of this failure is that it is impossible to make unique data identifier.
+ * Exceptions used in Elastic Memory.
  */
-public class IdGenerationException extends Exception {
-
-  /**
-   * Constructs a new exception with the specified detail message.
-   * @param msg the detail message.
-   */
-  public IdGenerationException(final String msg) {
-    super(msg);
-  }
-}
+package edu.snu.cay.services.em.exceptions;

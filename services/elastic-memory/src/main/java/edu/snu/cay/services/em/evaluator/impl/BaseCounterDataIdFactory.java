@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
@@ -23,7 +24,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Vector;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * {@link DataIdFactory} implementation.
@@ -40,7 +41,7 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
    * {@code counter} starts from 0, increases one by one
    * when we create data ids by calling {@code getId} and {@code getIds}.
    */
-  private final AtomicInteger counter = new AtomicInteger(0);
+  private final AtomicLong counter = new AtomicLong(0);
 
   /**
    * {@code base} should be a global unique value.
@@ -54,12 +55,18 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
   }
 
   @Override
-  public Long getId() {
+  public Long getId() throws IdGenerationException {
+    if (counter.get() == 0x100000000L) {
+      throw new IdGenerationException("No more id available");
+    }
     return base + counter.getAndIncrement();
   }
 
   @Override
-  public List<Long> getIds(final int size) {
+  public List<Long> getIds(final int size) throws IdGenerationException {
+    if (counter.get() + size > 0x100000000L) {
+      throw new IdGenerationException("No more id available");
+    }
     final Vector<Long> idVector = new Vector<>();
     for (int i = 0; i < size; i++) {
       idVector.add(base + counter.getAndIncrement());

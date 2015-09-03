@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.examples.simple;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
-import edu.snu.cay.services.em.evaluator.impl.IdGenerationException;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import org.apache.reef.tang.annotations.Parameter;
