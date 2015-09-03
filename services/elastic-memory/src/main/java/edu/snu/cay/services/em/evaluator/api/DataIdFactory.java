@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
+import edu.snu.cay.services.em.evaluator.impl.IdGenerationException;
+
 import java.util.List;
 
 /**
@@ -30,7 +32,7 @@ public interface DataIdFactory<T> {
    * Throws {@code RuntimeException} when it is impossible to create unique id.
    * @return new data id
    */
-  T getId() throws RuntimeException;
+  T getId() throws IdGenerationException;
 
   /**
    * Give new data ids.
@@ -38,5 +40,5 @@ public interface DataIdFactory<T> {
    * @param size number of data ids to return
    * @return List of new data ids
    */
-  List<T> getIds(int size) throws RuntimeException;
+  List<T> getIds(int size) throws IdGenerationException;
 }

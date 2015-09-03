@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.examples.simple;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
+import edu.snu.cay.services.em.evaluator.impl.IdGenerationException;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import org.apache.reef.tang.annotations.Parameter;
@@ -47,7 +48,7 @@ final class SimpleEMTask implements Task {
       final PartitionTracker partitionTracker,
       final DataIdFactory<Long> dataIdFactory,
       @Parameter(Iterations.class) final int iterations,
-      @Parameter(PeriodMillis.class) final long periodMillis) {
+      @Parameter(PeriodMillis.class) final long periodMillis) throws IdGenerationException {
     this.memoryStore = memoryStore;
     this.simpleEMTaskReady = simpleEMTaskReady;
     this.heartBeatTriggerManager = heartBeatTriggerManager;
