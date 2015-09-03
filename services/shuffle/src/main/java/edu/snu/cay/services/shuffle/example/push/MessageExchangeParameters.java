@@ -65,6 +65,10 @@ public final class MessageExchangeParameters {
   public static final class ShutdownDelay implements Name<Integer> {
   }
 
+  @NamedParameter(short_name = "iteration_num", default_value = "3")
+  public static final class ShutdownIterationNum implements Name<Integer> {
+  }
+
   /**
    * Empty private constructor to prohibit instantiation of utility class.
    */

@@ -37,7 +37,6 @@ import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.reef.wake.time.Clock;
-import org.apache.reef.wake.time.event.Alarm;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
@@ -79,6 +78,7 @@ public final class MessageExchangeDriver {
   private final boolean shutdown;
   private final int shutdownDelay;
   private final Clock clock;
+  private final int numShutdownIteration;
 
   @Inject
   private MessageExchangeDriver(
@@ -90,6 +90,7 @@ public final class MessageExchangeDriver {
       final NameServer nameServer,
       @Parameter(MessageExchangeParameters.Shutdown.class) final boolean shutdown,
       @Parameter(MessageExchangeParameters.ShutdownDelay.class) final int shutdownDelay,
+      @Parameter(MessageExchangeParameters.ShutdownIterationNum.class) final int numShutdownIteration,
       final Clock clock) {
     LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}",
         new Object[]{senderNumber, receiverNumber});
@@ -114,6 +115,11 @@ public final class MessageExchangeDriver {
       receiverIdList.add(RECEIVER_PREFIX + i);
     }
 
+    this.shutdown = shutdown;
+    this.shutdownDelay = shutdownDelay;
+    this.clock = clock;
+    this.numShutdownIteration = numShutdownIteration;
+
     this.shuffleManager = shuffleDriver.registerShuffle(
         ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
             .setSenderIdList(senderIdList)
@@ -123,10 +129,8 @@ public final class MessageExchangeDriver {
             .setShuffleStrategyClass(KeyShuffleStrategy.class)
             .build()
     );
+    this.shuffleManager.setPushShuffleListener(new IterationListener(shuffleManager, shutdown, numShutdownIteration));
 
-    this.shutdown = shutdown;
-    this.shutdownDelay = shutdownDelay;
-    this.clock = clock;
   }
 
   public final class StartHandler implements EventHandler<StartTime> {
@@ -212,18 +216,6 @@ public final class MessageExchangeDriver {
             .build();
       } else {
         throw new RuntimeException("Too many allocated evaluators");
-      }
-
-      if (number == totalNumSenders + totalNumReceivers - 1) {
-        if (shutdown) {
-          clock.scheduleAlarm(shutdownDelay, new EventHandler<Alarm>() {
-            @Override
-            public void onNext(final Alarm alarm) {
-              LOG.log(Level.INFO, "Shutdown the application.");
-              shuffleManager.shutdown();
-            }
-          });
-        }
       }
 
       allocatedEvaluator.submitContextAndServiceAndTask(

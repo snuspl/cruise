@@ -95,7 +95,8 @@ public final class MessageExchangeREEF {
     final Configuration commandLineConfiguration = commandLine.parseToConfiguration(
         args, MessageExchangeParameters.Local.class, MessageExchangeParameters.SenderNumber.class,
         MessageExchangeParameters.ReceiverNumber.class, MessageExchangeParameters.Timeout.class,
-        MessageExchangeParameters.Shutdown.class, MessageExchangeParameters.ShutdownDelay.class);
+        MessageExchangeParameters.Shutdown.class, MessageExchangeParameters.ShutdownDelay.class,
+        MessageExchangeParameters.ShutdownIterationNum.class);
 
     final Injector injector = Tang.Factory.getTang().newInjector(commandLineConfiguration);
 

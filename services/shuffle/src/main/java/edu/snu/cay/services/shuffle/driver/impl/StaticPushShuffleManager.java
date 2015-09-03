@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -60,6 +61,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
   private final ControlMessageHandler controlMessageHandler;
   private final ControlLinkListener controlLinkListener;
   private final StateManager stateManager;
+
+  private PushShuffleListener pushShuffleListener;
 
   @Inject
   private StaticPushShuffleManager(
@@ -144,6 +147,10 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     }
   }
 
+  public void setPushShuffleListener(final PushShuffleListener pushShuffleListener) {
+    this.pushShuffleListener = pushShuffleListener;
+  }
+
   private final class ControlLinkListener implements LinkListener<Message<ShuffleControlMessage>> {
 
     @Override
@@ -186,6 +193,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private int numCompletedReceivers;
     private int numFinishedSenders;
     private int numFinishedReceivers;
+    private AtomicInteger numCompletedIterations;
 
     private StateMachine stateMachine;
 
@@ -194,6 +202,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       this.totalNumSenders = shuffleDescription.getSenderIdList().size();
       this.totalNumReceivers = shuffleDescription.getReceiverIdList().size();
       this.receiverStateMachineMap = new HashMap<>(totalNumReceivers);
+      this.numCompletedIterations = new AtomicInteger();
 
       for (final String receiverId : shuffleDescription.getReceiverIdList()) {
         receiverStateMachineMap.put(receiverId, PushShuffleReceiverState.createStateMachine());
@@ -282,7 +291,9 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         numCompletedReceivers = 0;
         stateMachine.checkAndSetState(CAN_SEND, RECEIVERS_COMPLETED);
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
-        // TODO #124: Add a callback that indicate the iteration was completed.
+        if (pushShuffleListener != null) {
+          pushShuffleListener.onIterationCompleted(numCompletedIterations.incrementAndGet());
+        }
         if (shutdown) {
           shutdownAllSendersAndReceivers();
         } else {
@@ -329,6 +340,9 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private void finishManager() {
       LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
       stateMachine.checkAndSetState(RECEIVERS_COMPLETED, FINISHED);
+      if (pushShuffleListener != null) {
+        pushShuffleListener.onFinished();
+      }
     }
 
     private void broadcastToSenders(final int code) {
