@@ -17,19 +17,19 @@ package edu.snu.cay.services.shuffle.driver.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.driver.DSControlMessageSender;
+import edu.snu.cay.services.shuffle.driver.DSNetworkSetup;
 import edu.snu.cay.services.shuffle.driver.ShuffleManager;
 import edu.snu.cay.services.shuffle.evaluator.impl.StaticPushShuffle;
 import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleReceiverImpl;
 import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleReceiverState;
 import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleSenderImpl;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import edu.snu.cay.services.shuffle.utils.ShuffleDescriptionSerializer;
+import edu.snu.cay.services.shuffle.driver.ShuffleConfigurationSerializer;
 import edu.snu.cay.services.shuffle.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.transport.LinkListener;
 
@@ -54,25 +54,26 @@ public final class StaticPushShuffleManager implements ShuffleManager {
   private static final Logger LOG = Logger.getLogger(StaticPushShuffleManager.class.getName());
 
   private final ShuffleDescription shuffleDescription;
-  private final ShuffleDescriptionSerializer descriptionSerializer;
+  private final ShuffleConfigurationSerializer descriptionSerializer;
+  private final DSNetworkSetup networkSetup;
   private final DSControlMessageSender controlMessageSender;
 
-  private final ControlMessageHandler controlMessageHandler;
-  private final ControlLinkListener controlLinkListener;
   private final StateManager stateManager;
 
   @Inject
   private StaticPushShuffleManager(
       final ShuffleDescription shuffleDescription,
-      final ShuffleDescriptionSerializer descriptionSerializer,
+      final ShuffleConfigurationSerializer descriptionSerializer,
+      final DSNetworkSetup networkSetup,
       final DSControlMessageSender controlMessageSender) {
     this.shuffleDescription = shuffleDescription;
     this.descriptionSerializer = descriptionSerializer;
+    this.networkSetup = networkSetup;
     this.controlMessageSender = controlMessageSender;
 
     this.stateManager = new StateManager();
-    this.controlMessageHandler = new ControlMessageHandler();
-    this.controlLinkListener = new ControlLinkListener();
+
+    networkSetup.setControlMessageHandlerAndLinkListener(new ControlMessageHandler(), new ControlLinkListener());
   }
 
   /**
@@ -80,12 +81,14 @@ public final class StaticPushShuffleManager implements ShuffleManager {
    * @return Serialized shuffle description for the endPointId
    */
   @Override
-  public Optional<Configuration> getShuffleConfiguration(final String endPointId) {
+  public Configuration getShuffleConfiguration(final String endPointId) {
     return descriptionSerializer.serialize(
         StaticPushShuffle.class,
         PushShuffleSenderImpl.class,
         PushShuffleReceiverImpl.class,
-        shuffleDescription, endPointId);
+        shuffleDescription,
+        endPointId
+    );
   }
 
   /**
@@ -96,14 +99,12 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     return shuffleDescription;
   }
 
+  /**
+   * Close the network setup.
+   */
   @Override
-  public EventHandler<Message<ShuffleControlMessage>> getControlMessageHandler() {
-    return controlMessageHandler;
-  }
-
-  @Override
-  public LinkListener<Message<ShuffleControlMessage>> getControlLinkListener() {
-    return controlLinkListener;
+  public void close() {
+    networkSetup.close();
   }
 
   /**

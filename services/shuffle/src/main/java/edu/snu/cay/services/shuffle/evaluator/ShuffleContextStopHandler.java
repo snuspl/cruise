@@ -21,19 +21,19 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 
 /**
- * ContextStopHandler which un-registers connection factories.
+ * ContextStopHandler which closes the shuffle provider.
  */
 public final class ShuffleContextStopHandler implements EventHandler<ContextStop> {
 
-  private final ShuffleNetworkSetup shuffleNetworkSetup;
+  private ShuffleProvider shuffleProvider;
+
   @Inject
   private ShuffleContextStopHandler(
-      final ShuffleNetworkSetup shuffleNetworkSetup) {
-    this.shuffleNetworkSetup = shuffleNetworkSetup;
+      final ShuffleProvider shuffleProvider) {
+    this.shuffleProvider = shuffleProvider;
   }
-
   @Override
-  public void onNext(final ContextStop value) {
-    shuffleNetworkSetup.unregisterConnectionFactories();
+  public void onNext(final ContextStop contextStop) {
+    shuffleProvider.close();
   }
 }

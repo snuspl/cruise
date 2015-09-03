@@ -18,36 +18,59 @@ package edu.snu.cay.services.shuffle.network;
 import java.util.List;
 
 /**
- * Shuffle control message containing byte data list and the shuffle name.
+ * Shuffle control message containing end point id list and certain code.
  */
-public final class ShuffleControlMessage extends ShuffleMessage<String> {
+public final class ShuffleControlMessage {
 
   private final int code;
+  private final List<String> endPointIdList;
 
   /**
    * Construct a shuffle control message.
    *
    * @param code a code
-   * @param shuffleName the name of shuffle
    * @param endPointIdList a list of end point id that are related with the control message
    */
-  public ShuffleControlMessage(final int code, final String shuffleName, final List<String> endPointIdList) {
-    super(shuffleName, endPointIdList);
+  public ShuffleControlMessage(final int code, final List<String> endPointIdList) {
     this.code = code;
+    this.endPointIdList = endPointIdList;
   }
 
   /**
    * Construct a shuffle control message.
    *
    * @param code a code
-   * @param shuffleName the name of shuffle
    */
-  public ShuffleControlMessage(final int code, final String shuffleName) {
-    super(shuffleName, null);
+  public ShuffleControlMessage(final int code) {
     this.code = code;
+    this.endPointIdList = null;
   }
 
+  /**
+   * @return the code
+   */
   public int getCode() {
     return code;
+  }
+
+  /**
+   * @return the size
+   */
+  public int size() {
+    if (endPointIdList == null) {
+      return 0;
+    }
+
+    return endPointIdList.size();
+  }
+
+  /**
+   * Return end point id at index.
+   *
+   * @param index an index
+   * @return the end point id
+   */
+  public String get(final int index) {
+    return endPointIdList.get(index);
   }
 }

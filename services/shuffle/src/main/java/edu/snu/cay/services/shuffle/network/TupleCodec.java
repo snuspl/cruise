@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator;
+package edu.snu.cay.services.shuffle.network;
 
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.io.Tuple;
@@ -43,7 +43,7 @@ public final class TupleCodec<K, V> implements StreamingCodec<Tuple<K, V>> {
    * @param valueCodec value codec
    */
   @Inject
-  public TupleCodec(
+  private TupleCodec(
       @Parameter(ShuffleParameters.TupleKeyCodec.class) final Codec<K> keyCodec,
       @Parameter(ShuffleParameters.TupleValueCodec.class) final Codec<V> valueCodec) {
     this.keyCodec = keyCodec;

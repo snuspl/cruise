@@ -15,22 +15,72 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
-import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import edu.snu.cay.services.shuffle.params.ShuffleParameters;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.formats.ConfigurationSerializer;
+
+import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * Evaluator-side interface for providing Shuffles.
- *
- * Shuffles in the provider are automatically injected if the end point's configuration
- * was merged with proper configuration from ShuffleDriver.
+ * Provide all shuffles that are injected in the same context.
  */
-@EvaluatorSide
-@DefaultImplementation(ShuffleProviderImpl.class)
-public interface ShuffleProvider {
+public final class ShuffleProvider implements AutoCloseable {
+
+  private final Injector rootInjector;
+  private ConfigurationSerializer confSerializer;
+
+  private final Map<String, Shuffle> shuffleMap;
+
+  /**
+   * Construct a shuffle provider.
+   *
+   * @param rootInjector the root injector to share components that are already created
+   * @param confSerializer Tang Configuration serializer
+   * @param serializedShuffleSet a set of serialized shuffles
+   */
+  @Inject
+  private ShuffleProvider(
+      final Injector rootInjector,
+      final ConfigurationSerializer confSerializer,
+      @Parameter(ShuffleParameters.SerializedShuffleSet.class) final Set<String> serializedShuffleSet) {
+    this.rootInjector = rootInjector;
+    this.confSerializer = confSerializer;
+
+    this.shuffleMap = new HashMap<>();
+    for (final String serializedShuffle : serializedShuffleSet) {
+      deserializeShuffle(serializedShuffle);
+    }
+  }
+
+  private void deserializeShuffle(final String serializedShuffle) {
+    try {
+      final Injector injector = rootInjector.forkInjector(confSerializer.fromString(serializedShuffle));
+      final Shuffle shuffle = injector.getInstance(Shuffle.class);
+      shuffleMap.put(shuffle.getShuffleDescription().getShuffleName(), shuffle);
+    } catch (final Exception e) {
+      throw new RuntimeException("An exception occurred while deserializing shuffle : " + serializedShuffle, e);
+    }
+  }
 
   /**
    * @param shuffleName name of the shuffle
    * @return the Shuffle instance named shuffleName
    */
-  <K, V> Shuffle<K, V> getShuffle(String shuffleName);
+  public <K, V> Shuffle<K, V>  getShuffle(final String shuffleName) {
+    return shuffleMap.get(shuffleName);
+  }
+
+  /**
+   * Close all shuffles in the provider.
+   */
+  @Override
+  public void close() {
+    for (final Shuffle shuffle : shuffleMap.values()) {
+      shuffle.close();
+    }
+  }
 }

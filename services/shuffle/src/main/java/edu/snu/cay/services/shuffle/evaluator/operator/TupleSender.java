@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator;
+package edu.snu.cay.services.shuffle.evaluator.operator;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
-import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleTupleMessageGenerator;
+import edu.snu.cay.services.shuffle.evaluator.ESNetworkSetup;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleLinkListener;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Connection;
@@ -31,33 +31,40 @@ import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Data sender that has base operation to send tuples.
+ * Sender that has base operation to send tuples.
+ *
+ * ESNetworkSetup should be injected first to use this class.
  *
  * Users can register link listener for ShuffleTupleMessage to track whether the message
  * sent from this operator has been transferred successfully.
+ *
+ * Note that Shuffle, ShuffleSender, ShuffleReceiver can not send tuples
+ * through this class in the constructor of them.
  */
-public final class DataSender<K, V> {
+public final class TupleSender<K, V> {
 
-  private final String shuffleName;
-  private final ShuffleTupleLinkListener shuffleTupleLinkListener;
-  private final ConnectionFactory<ShuffleTupleMessage> tupleMessageConnectionFactory;
+  private final ShuffleDescription shuffleDescription;
+  private final ShuffleTupleLinkListener<K, V> shuffleTupleLinkListener;
+  private final ConnectionFactory<Tuple<K, V>> tupleMessageConnectionFactory;
+  private final ShuffleStrategy<K> shuffleStrategy;
   private final IdentifierFactory idFactory;
-  private final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator;
 
   @Inject
-  private DataSender(
+  private TupleSender(
       final ShuffleDescription shuffleDescription,
-      final ShuffleTupleLinkListener shuffleTupleLinkListener,
-      final ShuffleNetworkSetup shuffleNetworkSetup,
-      final ShuffleTupleMessageGenerator<K, V> tupleMessageGenerator,
+      final ShuffleTupleLinkListener<K, V> shuffleTupleLinkListener,
+      final ESNetworkSetup networkSetup,
+      final ShuffleStrategy<K> shuffleStrategy,
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory) {
-    this.shuffleName = shuffleDescription.getShuffleName();
+    this.shuffleDescription = shuffleDescription;
     this.shuffleTupleLinkListener = shuffleTupleLinkListener;
-    this.tupleMessageConnectionFactory = shuffleNetworkSetup.getTupleConnectionFactory();
-    this.tupleMessageGenerator = tupleMessageGenerator;
+    this.tupleMessageConnectionFactory = networkSetup.getTupleConnectionFactory();
+    this.shuffleStrategy = shuffleStrategy;
     this.idFactory = idFactory;
   }
 
@@ -68,7 +75,12 @@ public final class DataSender<K, V> {
    * @return the selected receiver id list
    */
   public List<String> sendTuple(final Tuple<K, V> tuple) {
-    return sendShuffleMessageTupleList(tupleMessageGenerator.createTupleMessageAndReceiverList(tuple));
+    final List<String> selectedReceiverIdList = shuffleStrategy
+        .selectReceivers(tuple.getKey(), shuffleDescription.getReceiverIdList());
+    for (final String receiverId : selectedReceiverIdList) {
+      sendTupleTo(receiverId, tuple);
+    }
+    return selectedReceiverIdList;
   }
 
   /**
@@ -81,19 +93,42 @@ public final class DataSender<K, V> {
    * @return the selected receiver id list
    */
   public List<String> sendTuple(final List<Tuple<K, V>> tupleList) {
-    return sendShuffleMessageTupleList(tupleMessageGenerator.createTupleMessageAndReceiverList(tupleList));
+    final Map<String, List<Tuple<K, V>>> tupleListMap = new HashMap<>();
+    final List<String> receiverIdList = shuffleDescription.getReceiverIdList();
+    for (final Tuple<K, V> tuple : tupleList) {
+      for (final String receiverId : shuffleStrategy.selectReceivers(tuple.getKey(), receiverIdList)) {
+        if (!tupleListMap.containsKey(receiverId)) {
+          tupleListMap.put(receiverId, new ArrayList<Tuple<K, V>>());
+        }
+
+        tupleListMap.get(receiverId).add(tuple);
+      }
+    }
+
+    final List<String> selectedReceiverIdList = new ArrayList<>(tupleListMap.keySet());
+    for (final String receiverId : selectedReceiverIdList) {
+      sendTupleTo(receiverId, tupleListMap.get(receiverId));
+    }
+
+    return selectedReceiverIdList;
   }
 
   /**
-   * Send a tuple to the specific receiver.
+   * Send a tuple to the specific receiver. Note that this method does not use ShuffleStrategy to select
+   * receivers and send the tuple to the receiver.
    *
    * @param receiverId a receiver id
    * @param tuple a tuple
    */
   public void sendTupleTo(final String receiverId, final Tuple<K, V> tuple) {
-    final List<Tuple<String, ShuffleTupleMessage<K, V>>> shuffleMessageTupleList = new ArrayList<>(1);
-    shuffleMessageTupleList.add(new Tuple<>(receiverId, tupleMessageGenerator.createTupleMessage(tuple)));
-    sendShuffleMessageTupleList(shuffleMessageTupleList);
+    try {
+      final Connection<Tuple<K, V>> connection = tupleMessageConnectionFactory
+          .newConnection(idFactory.getNewInstance(receiverId));
+      connection.open();
+      connection.write(tuple);
+    } catch (final NetworkException exception) {
+      throw new RuntimeException(exception);
+    }
   }
 
   /**
@@ -104,9 +139,14 @@ public final class DataSender<K, V> {
    * @param tupleList a tuple list
    */
   public void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList) {
-    final List<Tuple<String, ShuffleTupleMessage<K, V>>> shuffleMessageTupleList = new ArrayList<>(1);
-    shuffleMessageTupleList.add(new Tuple<>(receiverId, tupleMessageGenerator.createTupleMessage(tupleList)));
-    sendShuffleMessageTupleList(shuffleMessageTupleList);
+    try {
+      final Connection<Tuple<K, V>> connection = tupleMessageConnectionFactory
+          .newConnection(idFactory.getNewInstance(receiverId));
+      connection.open();
+      connection.write(tupleList);
+    } catch (final NetworkException exception) {
+      throw new RuntimeException(exception);
+    }
   }
 
   /**
@@ -114,29 +154,7 @@ public final class DataSender<K, V> {
    *
    * @param linkListener link listener for ShuffleTupleMessage
    */
-  public void registerTupleLinkListener(final LinkListener<Message<ShuffleTupleMessage<K, V>>> linkListener) {
-    shuffleTupleLinkListener.registerLinkListener(shuffleName, (LinkListener) linkListener);
-  }
-
-  private List<String> sendShuffleMessageTupleList(
-      final List<Tuple<String, ShuffleTupleMessage<K, V>>> messageTupleList) {
-    final List<String> receiverList = new ArrayList<>(messageTupleList.size());
-    for (final Tuple<String, ShuffleTupleMessage<K, V>> shuffleMessageTuple : messageTupleList) {
-      sendShuffleMessageTuple(shuffleMessageTuple);
-      receiverList.add(shuffleMessageTuple.getKey());
-    }
-
-    return receiverList;
-  }
-
-  private void sendShuffleMessageTuple(final Tuple<String, ShuffleTupleMessage<K, V>> messageTuple) {
-    try {
-      final Connection<ShuffleTupleMessage> connection = tupleMessageConnectionFactory
-          .newConnection(idFactory.getNewInstance(messageTuple.getKey()));
-      connection.open();
-      connection.write(messageTuple.getValue());
-    } catch (final NetworkException exception) {
-      throw new RuntimeException(exception);
-    }
+  public void setTupleLinkListener(final LinkListener<Message<Tuple<K, V>>> linkListener) {
+    shuffleTupleLinkListener.setTupleLinkListener(linkListener);
   }
 }

@@ -17,8 +17,9 @@ package edu.snu.cay.services.shuffle.evaluator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.driver.impl.PushShuffleCode;
+import edu.snu.cay.services.shuffle.evaluator.ESNetworkSetup;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
-import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorFactory;
+import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorProvider;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
@@ -45,23 +46,21 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
 
   private final ShuffleDescription shuffleDescription;
 
-  private final ControlMessageHandler controlMessageHandler;
-  private final ControlLinkListener controlLinkListener;
-
   private final ShuffleReceiver<K, V> shuffleReceiver;
   private final ShuffleSender<K, V> shuffleSender;
+
+  private final ESNetworkSetup networkSetup;
 
   @Inject
   private StaticPushShuffle(
       final ShuffleDescription shuffleDescription,
-      final ShuffleOperatorFactory<K, V> operatorFactory) {
+      final ShuffleOperatorProvider<K, V> operatorProvider,
+      final ESNetworkSetup networkSetup) {
     this.shuffleDescription = shuffleDescription;
-
-    this.shuffleReceiver = operatorFactory.newShuffleReceiver();
-    this.shuffleSender = operatorFactory.newShuffleSender();
-
-    this.controlMessageHandler = new ControlMessageHandler();
-    this.controlLinkListener = new ControlLinkListener();
+    this.shuffleReceiver = operatorProvider.getReceiver();
+    this.shuffleSender = operatorProvider.getSender();
+    this.networkSetup = networkSetup;
+    networkSetup.setControlMessageHandlerAndLinkListener(new ControlMessageHandler(), new ControlLinkListener());
   }
 
   /**
@@ -69,9 +68,6 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleReceiver<K, V>> T getReceiver() {
-    if (shuffleReceiver == null) {
-      throw new RuntimeException("The end point is not a receiver of " + shuffleDescription.getShuffleName());
-    }
     return (T)shuffleReceiver;
   }
 
@@ -80,9 +76,6 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public <T extends ShuffleSender<K, V>> T getSender() {
-    if (shuffleSender == null) {
-      throw new RuntimeException("The end point is not a sender of " + shuffleDescription.getShuffleName());
-    }
     return (T) shuffleSender;
   }
 
@@ -94,14 +87,12 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
     return shuffleDescription;
   }
 
+  /**
+   * Close the network setup.
+   */
   @Override
-  public EventHandler<Message<ShuffleControlMessage>> getControlMessageHandler() {
-    return controlMessageHandler;
-  }
-
-  @Override
-  public LinkListener<Message<ShuffleControlMessage>> getControlLinkListener() {
-    return controlLinkListener;
+  public void close() {
+    networkSetup.close();
   }
 
   private final class ControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {
@@ -111,13 +102,13 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
       final ShuffleControlMessage controlMessage = message.getData().iterator().next();
       switch (controlMessage.getCode()) {
 
-      // Control messages for senders.
+      // Control messages to senders.
       case PushShuffleCode.SENDER_CAN_SEND:
       case PushShuffleCode.SENDER_SHUTDOWN:
         shuffleSender.onControlMessage(message);
         break;
 
-      // Control messages for receivers.
+      // Control messages to receivers.
       case PushShuffleCode.SENDER_COMPLETED:
       case PushShuffleCode.RECEIVER_CAN_RECEIVE:
       case PushShuffleCode.RECEIVER_SHUTDOWN:

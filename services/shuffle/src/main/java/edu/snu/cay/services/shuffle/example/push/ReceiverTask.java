@@ -19,7 +19,7 @@ import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleProvider;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushDataListener;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.task.Task;
 
@@ -35,6 +35,7 @@ import java.util.logging.Logger;
 public final class ReceiverTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(SenderTask.class.getName());
+
   private AtomicInteger totalNumReceivedTuples;
   private final AtomicInteger numCompletedIterations;
 
@@ -50,6 +51,7 @@ public final class ReceiverTask implements Task {
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
+    LOG.log(Level.INFO, "A ReceiverTask is started");
     synchronized (this) {
       this.wait();
     }
@@ -62,11 +64,12 @@ public final class ReceiverTask implements Task {
   private final class DataReceiver implements PushDataListener<Integer, Integer> {
 
     @Override
-    public void onTupleMessage(final Message<ShuffleTupleMessage<Integer, Integer>> message) {
-      for (final ShuffleTupleMessage<Integer, Integer> shuffleMessage : message.getData()) {
-        final int numReceivedTuples = shuffleMessage.size();
-        LOG.log(Level.INFO, "{0} tuples arrived from {1}", new Object[]{numReceivedTuples, message.getSrcId()});
-        totalNumReceivedTuples.addAndGet(numReceivedTuples);
+    public void onTupleMessage(final Message<Tuple<Integer, Integer>> message) {
+      for (final Tuple<Integer, Integer> tuple : message.getData()) {
+        final int numArrivedTuples = totalNumReceivedTuples.incrementAndGet();
+        if (numArrivedTuples % 10000 == 0) {
+          LOG.log(Level.INFO, "{0} tuples arrived", numArrivedTuples);
+        }
       }
     }
 

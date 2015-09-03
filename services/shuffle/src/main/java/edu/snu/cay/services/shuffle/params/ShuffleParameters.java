@@ -33,14 +33,20 @@ public final class ShuffleParameters {
   }
 
   /**
-   * NetworkConnectionFactory identifier for ShuffleTupleMessage.
+   * @param shuffleName name of the shuffle
+   * @return tuple connection factory id for the shuffle
    */
-  public static final String SHUFFLE_TUPLE_MSG_NETWORK_ID = "SHUFFLE_TUPLE_MSG_NETWORK_ID";
+  public static String getTupleConnectionFactoryId(final String shuffleName) {
+    return "SHUFFLE_TUPLE_" + shuffleName;
+  }
 
   /**
-   * NetworkConnectionFactory identifier for ShuffleControlMessage.
+   * @param shuffleName name of the shuffle
+   * @return control connection factory id for the shuffle
    */
-  public static final String SHUFFLE_CONTROL_MSG_NETWORK_ID = "SHUFFLE_CONTROL_MSG_NETWORK_ID";
+  public static String getControlConnectionFactoryId(final String shuffleName) {
+    return "SHUFFLE_CONTROL_" + shuffleName;
+  }
 
   /**
    * Local end point id for driver.
@@ -64,15 +70,15 @@ public final class ShuffleParameters {
   }
 
   @NamedParameter(doc = "set of receiver identifiers of the shuffle description")
-  public final class ShuffleReceiverIdSet implements Name<Set<String>> {
+  public static final class ShuffleReceiverIdSet implements Name<Set<String>> {
   }
 
   @NamedParameter(doc = "set of sender identifiers of the shuffle description")
-  public final class ShuffleSenderIdSet implements Name<Set<String>> {
+  public static final class ShuffleSenderIdSet implements Name<Set<String>> {
   }
 
   @NamedParameter(doc = "name of the ShuffleStrategy class of the shuffle description")
-  public final class ShuffleStrategyClassName implements Name<String> {
+  public static final class ShuffleStrategyClassName implements Name<String> {
   }
 
   @NamedParameter(doc = "name of the key codec class of the shuffle description")
@@ -80,7 +86,7 @@ public final class ShuffleParameters {
   }
 
   @NamedParameter(doc = "name of the value codec class of the shuffle description")
-  public final class ShuffleValueCodecClassName implements Name<String> {
+  public static final class ShuffleValueCodecClassName implements Name<String> {
   }
 
   @NamedParameter(doc = "set of serialized shuffle description")

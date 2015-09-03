@@ -18,13 +18,13 @@ package edu.snu.cay.services.shuffle.evaluator.operator.impl;
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.driver.impl.PushShuffleCode;
 import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
-import edu.snu.cay.services.shuffle.evaluator.DataReceiver;
+import edu.snu.cay.services.shuffle.evaluator.operator.TupleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushDataListener;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import edu.snu.cay.services.shuffle.utils.StateMachine;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
@@ -36,18 +36,18 @@ import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Default implementation for push-based shuffle receiver.
+ * Default implementation of push-based shuffle receiver.
  */
 public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<K, V> {
 
   private static final Logger LOG = Logger.getLogger(PushShuffleReceiverImpl.class.getName());
 
-  private final ShuffleDescription shuffleDescription;
   /**
    * ControlMessageSender which sends control messages to the manager.
    */
@@ -60,17 +60,17 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private final Map<String, StateMachine> senderStateMachineMap;
   private final StateMachine stateMachine;
 
+  private final AtomicBoolean initialized;
   private boolean shutdown;
   private PushDataListener<K, V> dataListener;
 
   @Inject
   private PushShuffleReceiverImpl(
       final ShuffleDescription shuffleDescription,
-      final DataReceiver<K, V> dataReceiver,
+      final TupleReceiver<K, V> tupleReceiver,
       final ESControlMessageSender controlMessageSender,
       @Parameter(ReceiverTimeout.class) final long receiverTimeout) {
-    dataReceiver.registerTupleMessageHandler(new TupleMessageHandler());
-    this.shuffleDescription = shuffleDescription;
+    tupleReceiver.setTupleMessageHandler(new TupleMessageHandler());
     this.controlMessageSender = controlMessageSender;
     this.synchronizer = new ControlMessageSynchronizer();
     this.receiverTimeout = receiverTimeout;
@@ -86,11 +86,14 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     }
 
     this.stateMachine = PushShuffleReceiverState.createStateMachine();
-    controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_INITIALIZED);
+    this.initialized = new AtomicBoolean();
   }
 
   @Override
   public void registerDataListener(final PushDataListener<K, V> listener) {
+    if (initialized.compareAndSet(false, true)) {
+      controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_INITIALIZED);
+    }
     this.dataListener = listener;
   }
 
@@ -106,8 +109,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     case PushShuffleCode.RECEIVER_SHUTDOWN:
       shutdown = true;
       // forcibly close the latch for RECEIVER_CAN_RECEIVE to shutdown the receiver.
-      synchronizer.closeLatch(new ShuffleControlMessage(
-          PushShuffleCode.RECEIVER_CAN_RECEIVE, shuffleDescription.getShuffleName(), null));
+      synchronizer.closeLatch(new ShuffleControlMessage(PushShuffleCode.RECEIVER_CAN_RECEIVE, null));
       break;
 
     // Control messages from senders.
@@ -158,17 +160,17 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     } else {
       LOG.log(Level.INFO, "The receiver can receive data");
       stateMachine.checkAndSetState(PushShuffleReceiverState.COMPLETED, PushShuffleReceiverState.RECEIVING);
-      dataListener.onComplete();
       controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_READIED);
+      dataListener.onComplete();
     }
   }
 
-  private final class TupleMessageHandler implements EventHandler<Message<ShuffleTupleMessage<K, V>>> {
+  private final class TupleMessageHandler implements EventHandler<Message<Tuple<K, V>>> {
 
     @Override
-    public void onNext(final Message<ShuffleTupleMessage<K, V>> message) {
+    public void onNext(final Message<Tuple<K, V>> tupleMessage) {
       stateMachine.checkState(PushShuffleReceiverState.RECEIVING);
-      dataListener.onTupleMessage(message);
+      dataListener.onTupleMessage(tupleMessage);
     }
   }
 

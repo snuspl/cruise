@@ -15,14 +15,42 @@
  */
 package edu.snu.cay.services.shuffle.network;
 
+import org.apache.reef.io.Tuple;
+import org.apache.reef.io.network.Message;
+import org.apache.reef.wake.remote.transport.LinkListener;
+
 import javax.inject.Inject;
+import java.net.SocketAddress;
 
 /**
- * Link listener for ShuffleTupleMessage.
+ * Link listener for tuples.
  */
-public final class ShuffleTupleLinkListener extends ShuffleLinkListener<ShuffleTupleMessage> {
+public final class ShuffleTupleLinkListener<K, V> implements LinkListener<Message<Tuple<K, V>>> {
+
+  private LinkListener<Message<Tuple<K, V>>> tupleLinkListener;
 
   @Inject
   private ShuffleTupleLinkListener() {
+  }
+
+  public void setTupleLinkListener(final LinkListener<Message<Tuple<K, V>>> tupleLinkListener) {
+    this.tupleLinkListener = tupleLinkListener;
+  }
+
+  @Override
+  public void onSuccess(final Message<Tuple<K, V>> message) {
+    if (tupleLinkListener != null) {
+      tupleLinkListener.onSuccess(message);
+    }
+  }
+
+  @Override
+  public void onException(
+      final Throwable throwable,
+      final SocketAddress socketAddress,
+      final Message<Tuple<K, V>> message) {
+    if (tupleLinkListener != null) {
+      tupleLinkListener.onException(throwable, socketAddress, message);
+    }
   }
 }

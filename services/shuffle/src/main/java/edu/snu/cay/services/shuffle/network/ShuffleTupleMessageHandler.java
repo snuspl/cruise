@@ -15,14 +15,29 @@
  */
 package edu.snu.cay.services.shuffle.network;
 
+import org.apache.reef.io.Tuple;
+import org.apache.reef.io.network.Message;
+import org.apache.reef.wake.EventHandler;
+
 import javax.inject.Inject;
 
 /**
- * Event handler for ShuffleTupleMessage.
+ * Event handler for tuples.
  */
-public final class ShuffleTupleMessageHandler extends ShuffleMessageHandler<ShuffleTupleMessage> {
+public final class ShuffleTupleMessageHandler<K, V> implements EventHandler<Message<Tuple<K, V>>> {
+
+  private EventHandler<Message<Tuple<K, V>>> tupleMessageHandler;
 
   @Inject
   private ShuffleTupleMessageHandler() {
+  }
+
+  public void setTupleMessageHandler(final EventHandler<Message<Tuple<K, V>>> tupleMessageHandler) {
+    this.tupleMessageHandler = tupleMessageHandler;
+  }
+
+  @Override
+  public void onNext(final Message<Tuple<K, V>> tupleMessage) {
+    tupleMessageHandler.onNext(tupleMessage);
   }
 }

@@ -13,41 +13,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator;
+package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.common.ShuffleDescription;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageHandler;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
 /**
- * Data receiver that has base operation to receive tuples.
+ * Receiver that has base operation to receive tuples.
+ *
+ * ESNetworkSetup should be injected first to use this class.
  *
  * Users have to register event handler for ShuffleTupleMessage to receive
  * tuples from senders.
  */
-public final class DataReceiver<K, V> {
+public final class TupleReceiver<K, V> {
 
-  private final String shuffleName;
-  private final ShuffleTupleMessageHandler shuffleTupleMessageHandler;
+  private final ShuffleTupleMessageHandler<K, V> shuffleTupleMessageHandler;
 
   @Inject
-  private DataReceiver(
-      final ShuffleDescription shuffleDescription,
-      final ShuffleTupleMessageHandler shuffleTupleMessageHandler) {
-    this.shuffleName = shuffleDescription.getShuffleName();
+  private TupleReceiver(
+      final ShuffleTupleMessageHandler<K, V> shuffleTupleMessageHandler) {
     this.shuffleTupleMessageHandler = shuffleTupleMessageHandler;
   }
 
   /**
-   * Register a message handler that receives tuples arriving at this receiver.
+   * Set a message handler that receives tuples arriving at this receiver.
    *
    * @param messageHandler event handler for ShuffleTupleMessage
    */
-  public void registerTupleMessageHandler(final EventHandler<Message<ShuffleTupleMessage<K, V>>> messageHandler) {
-    shuffleTupleMessageHandler.registerMessageHandler(shuffleName, (EventHandler) messageHandler);
+  public void setTupleMessageHandler(final EventHandler<Message<Tuple<K, V>>> messageHandler) {
+    shuffleTupleMessageHandler.setTupleMessageHandler(messageHandler);
   }
 }
