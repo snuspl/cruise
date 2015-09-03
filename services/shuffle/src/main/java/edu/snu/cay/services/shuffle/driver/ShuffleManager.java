@@ -25,9 +25,11 @@ import org.apache.reef.tang.Configuration;
 @DriverSide
 public interface ShuffleManager extends AutoCloseable {
 
+  // TODO #63: The shuffle configurations can not be injected to the task if the below context already
+  // have their shuffles.
   /**
    * Return a configuration of the shuffle description for endPointId.
-   * Multiple shuffle configurations can be merged and injected to the same context,
+   * Multiple shuffle configurations can be merged and injected to the same context or task,
    * and the merged shuffles are provided through the same ShuffleProvider.
    *
    * @param endPointId end point id

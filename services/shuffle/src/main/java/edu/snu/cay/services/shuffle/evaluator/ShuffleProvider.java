@@ -25,8 +25,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+// TODO #63: The shuffle configurations can not be injected to the task if the below context already
+// have their shuffles.
 /**
- * Provide all shuffles that are injected in the same context.
+ * Provide all shuffles that are injected in the same context or task.
  */
 public final class ShuffleProvider implements AutoCloseable {
 
