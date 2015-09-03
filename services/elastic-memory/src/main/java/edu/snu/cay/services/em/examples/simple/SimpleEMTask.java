@@ -31,6 +31,7 @@ import java.util.logging.Logger;
 final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
   public static final String DATATYPE = "INTEGER";
+  private static final int DATANUM = 10;
 
   private final MemoryStore memoryStore;
   private final SimpleEMTaskReady simpleEMTaskReady;
@@ -53,11 +54,11 @@ final class SimpleEMTask implements Task {
     this.iterations = iterations;
     this.periodMillis = periodMillis;
 
-    final List<Long> ids = dataIdFactory.getIds(10);
+    final List<Long> ids = dataIdFactory.getIds(DATANUM);
     // Just use ids as data (data do not matter)
     this.memoryStore.getElasticStore().putList(DATATYPE, ids, ids);
 
-    partitionTracker.registerPartition(DATATYPE, ids.get(0), ids.get(9));
+    partitionTracker.registerPartition(DATATYPE, ids.get(0), ids.get(DATANUM - 1));
   }
 
   public byte[] call(final byte[] memento) throws InterruptedException {
