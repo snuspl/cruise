@@ -76,6 +76,35 @@ public final class PartitionManagerTest {
   }
 
   /**
+   * Testing multi-thread addition on contiguous id ranges.
+   * Check that the partitions are properly merged
+   * when multiple threads try to add contiguous ranges concurrently.
+   */
+  @Test
+  public void testMultiThreadAddContiguousRanges() throws InterruptedException {
+    final int numThreads = 8;
+    final int addsPerThread = 100000;
+    final long rangeTerm = 2;
+    final long rangeLength = 2;
+    final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
+
+    final Runnable[] threads = new Runnable[numThreads];
+
+    for (int index = 0; index < numThreads; index++) {
+      threads[index] = new RegisterThread(countDownLatch, partitionManager,
+          index, rangeTerm, rangeLength, numThreads, addsPerThread, IndexParity.ALL_INDEX);
+    }
+
+    TestUtils.runConcurrently(threads);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+
+    // check that all threads have finished without falling into deadlocks or infinite loops
+    assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
+    // check that the total number of objects equal the expected number
+    assertEquals(MSG_SIZE_ASSERTION, 1, partitionManager.getRangeSet(EVAL_ID, DATA_TYPE).size());
+  }
+
+  /**
    * Testing addition on joint id ranges.
    * Check that the partition can filter the registering ranges
    * when they are joint with other existing ranges.
@@ -130,12 +159,12 @@ public final class PartitionManagerTest {
   }
 
   /**
-   * Testing multi-thread addition on disjoint id ranges.
+   * Testing multi-thread addition on discontiguous id ranges.
    * Check that the consistency of a MemoryStore is preserved
-   * when multiple threads try to add disjoint ranges concurrently.
+   * when multiple threads try to add discontiguous ranges concurrently.
    */
   @Test
-  public void testMultiThreadAddDisjointRanges() throws InterruptedException {
+  public void testMultiThreadAddDiscontiguousRanges() throws InterruptedException {
     final int numThreads = 8;
     final int addsPerThread = 100000;
     final long rangeTerm = 3;
@@ -158,12 +187,12 @@ public final class PartitionManagerTest {
   }
 
   /**
-   * Testing multi-thread removal on disjoint id ranges.
+   * Testing multi-thread removal on discontiguous id ranges.
    * Check that the consistency of a MemoryStore is preserved
-   * when multiple threads try to remove disjoint ranges concurrently.
+   * when multiple threads try to remove discontiguous ranges concurrently.
    */
   @Test
-  public void testMultiThreadRemoveDisjointRanges() throws InterruptedException {
+  public void testMultiThreadRemoveDiscontiguousRanges() throws InterruptedException {
     final int numThreads = 8;
     final int removesPerThread = 100000;
     final long rangeTerm = 3;
@@ -190,12 +219,12 @@ public final class PartitionManagerTest {
   }
 
   /**
-   * Testing multi-thread addition and retrieval on disjoint id ranges.
+   * Testing multi-thread addition and retrieval on discontiguous id ranges.
    * Check that the consistency of a MemoryStore is preserved
-   * when multiple threads try to add and retrieve disjoint ranges concurrently.
+   * when multiple threads try to add and retrieve discontiguous ranges concurrently.
    */
   @Test
-  public void testMultiThreadAddGetDisjointRanges() throws InterruptedException {
+  public void testMultiThreadAddGetDiscontiguousRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
     final int addsPerThread = 100000;
     final int getsPerThread = 100;
@@ -220,12 +249,12 @@ public final class PartitionManagerTest {
   }
 
   /**
-   * Testing multi-thread removal and retrieval on disjoint id ranges.
+   * Testing multi-thread removal and retrieval on discontiguous id ranges.
    * Check that the consistency of a MemoryStore is preserved
-   * when multiple threads try to remove and retrieve disjoint ranges concurrently.
+   * when multiple threads try to remove and retrieve discontiguous ranges concurrently.
    */
   @Test
-  public void testMultiThreadGetRemoveDisjointRanges() throws InterruptedException {
+  public void testMultiThreadGetRemoveDiscontiguousRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
     final int removesPerThread = 100000;
     final int getsPerThread = 100;
@@ -254,12 +283,12 @@ public final class PartitionManagerTest {
   }
 
   /**
-   * Testing multi-thread addition and removal on disjoint id ranges.
+   * Testing multi-thread addition and removal on discontiguous id ranges.
    * Check that the consistency of a MemoryStore is preserved
-   * when multiple threads try to add and remove disjoint ranges concurrently.
+   * when multiple threads try to add and remove discontiguous ranges concurrently.
    */
   @Test
-  public void testMultiThreadAddRemoveDisjointRanges() throws InterruptedException {
+  public void testMultiThreadAddRemoveDiscontiguousRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
     final int addsPerThread = 100000;
     final int removesPerThread = addsPerThread;
@@ -296,12 +325,12 @@ public final class PartitionManagerTest {
   }
 
   /**
-   * Testing multi-thread addition, removal, and retrieval on disjoint id ranges.
+   * Testing multi-thread addition, removal, and retrieval on discontiguous id ranges.
    * Check that the consistency of a MemoryStore is preserved
-   * when multiple threads try to add, remove, and retrieve disjoint ranges concurrently.
+   * when multiple threads try to add, remove, and retrieve discontiguous ranges concurrently.
    */
   @Test
-  public void testMultiThreadAddGetRemoveDisjointRanges() throws InterruptedException {
+  public void testMultiThreadAddGetRemoveDiscontiguousRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
     final int addsPerThread = 100000;
     final int removesPerThread = addsPerThread;
