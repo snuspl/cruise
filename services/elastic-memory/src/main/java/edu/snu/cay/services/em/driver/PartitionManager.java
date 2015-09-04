@@ -33,7 +33,7 @@ public final class PartitionManager {
   private Comparator<LongRange> longRangeComparator = new Comparator<LongRange>() {
     @Override
     public int compare(final LongRange o1, final LongRange o2) {
-      return (int) (o1.getMinimumLong() - o2.getMinimumLong());
+      return (int) ((o1.getMinimumLong() - o2.getMinimumLong()) + (o1.getMaximumLong() - o2.getMaximumLong()));
     }
   };
 
@@ -163,6 +163,6 @@ public final class PartitionManager {
       return false;
     }
 
-    return rangeSet.remove(longRange); // Note: TreeSet does not distinguish the difference in maximum value of range
+    return rangeSet.remove(longRange);
   }
 }
