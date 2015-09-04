@@ -121,27 +121,26 @@ public final class PartitionManager {
 
   public synchronized Set<LongRange> getRangeSet(final String evalId, final String dataType) {
     if (!mapEvalDatatypeRanges.containsKey(evalId)) {
-      return null;
+      return new TreeSet<>();
     }
 
     final Map<String, TreeSet<LongRange>> mapDatatypeRange = mapEvalDatatypeRanges.get(evalId);
     if (!mapDatatypeRange.containsKey(dataType)) {
-      return null;
+      return new TreeSet<>();
     }
 
     return new TreeSet<>(mapDatatypeRange.get(dataType));
   }
 
-  /* TODO #122: handle a try of removing to merged partitions. split merged partition again? */
+  // TODO #122: Handle a request to remove the merged partitions. There are two possible choices:
+  // 1) Do not accept the request
+  // 2) Split the big partition into several smaller partitions again and remove the requested partition
   public synchronized boolean remove(final String evalId, final String dataType, final LongRange longRange) {
-    if (!mapEvalDatatypeRanges.containsKey(evalId)) {
-      return false;
-    }
-
     final Map<String, TreeSet<LongRange>> evalDatatypeRanges = mapEvalDatatypeRanges.get(evalId);
     if (evalDatatypeRanges == null) {
       return false;
     }
+
     final TreeSet<LongRange> rangeSet = evalDatatypeRanges.get(dataType);
     if (rangeSet == null) {
       return false;
