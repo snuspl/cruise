@@ -27,7 +27,7 @@ import java.util.*;
 @DriverSide
 public final class PartitionManager {
 
-  private final Map<String, Map<String, TreeSet<LongRange>>> mapIdDatatypeRange;
+  private final Map<String, Map<String, TreeSet<LongRange>>> mapEvalDatatypeRanges;
   private final Map<String, TreeSet<LongRange>> globalDatatypeRanges;
 
   private Comparator<LongRange> longRangeComparator = new Comparator<LongRange>() {
@@ -39,7 +39,7 @@ public final class PartitionManager {
 
   @Inject
   private PartitionManager() {
-    this.mapIdDatatypeRange = new HashMap<>();
+    this.mapEvalDatatypeRanges = new HashMap<>();
     this.globalDatatypeRanges = new HashMap<>();
   }
 
@@ -50,97 +50,81 @@ public final class PartitionManager {
 
   public synchronized boolean registerPartition(final String evalId, final String dataType, final LongRange idRange) {
     // 1. Check the acceptability of a new partition into globalDatatypeRanges
-    TreeSet<LongRange> rangeSetGlobal = globalDatatypeRanges.get(dataType);
-    if (rangeSetGlobal != null) {
-      if (rangeSetGlobal.contains(idRange)) {
-        return false;
+    final TreeSet<LongRange> rangeSetGlobal;
+
+    if (globalDatatypeRanges.containsKey(dataType)) {
+      // Check the overlap of registering partition to adjacent partitions across all the evaluators
+      rangeSetGlobal = globalDatatypeRanges.get(dataType);
+      final LongRange ceilingRange = rangeSetGlobal.ceiling(idRange);
+      if (ceilingRange != null && ceilingRange.overlapsRange(idRange)) {
+        return false; // upside overlaps
+      }
+      final LongRange floorRange = rangeSetGlobal.floor(idRange);
+      if (floorRange != null && floorRange.overlapsRange(idRange)) {
+        return false; // downside overlaps
       }
     } else {
       rangeSetGlobal = new TreeSet<>(longRangeComparator);
-      assert (globalDatatypeRanges.put(dataType, rangeSetGlobal) == null);
+      globalDatatypeRanges.put(dataType, rangeSetGlobal);
     }
 
-    // 1-1. Check the overlap of registering partition to adjacent partitions across all the evaluators
-    final LongRange higherRange = rangeSetGlobal.higher(idRange);
-    if (higherRange != null && higherRange.overlapsRange(idRange)) {
-      return false; // upside (or may also downside) overlap(s)
-    }
-    final LongRange lowerRange = rangeSetGlobal.lower(idRange);
-    if (lowerRange != null && lowerRange.overlapsRange(idRange)) {
-      return false; // downside overlap(s)
-    }
+    // 2. Check the acceptability of a new partition into mapEvalDatatypeRanges
+    final Map<String, TreeSet<LongRange>> evalDatatypeRanges;
 
-    // 2. Check the acceptability of a new partition into mapIdDatatypeRange
-    Map<String, TreeSet<LongRange>> evalDatatypeRanges = mapIdDatatypeRange.get(evalId);
-
-    if (evalDatatypeRanges == null) {
+    if (mapEvalDatatypeRanges.containsKey(evalId)) {
+      evalDatatypeRanges = mapEvalDatatypeRanges.get(evalId);
+    } else {
       evalDatatypeRanges = new HashMap<>();
-      assert (mapIdDatatypeRange.put(evalId, evalDatatypeRanges) == null);
+      mapEvalDatatypeRanges.put(evalId, evalDatatypeRanges);
     }
 
-    TreeSet<LongRange> rangeSetEval = evalDatatypeRanges.get(dataType);
+    final TreeSet<LongRange> rangeSetEval;
 
-    if (rangeSetEval == null) {
+    if (evalDatatypeRanges.containsKey(dataType)) {
+      rangeSetEval = evalDatatypeRanges.get(dataType);
+    } else {
       rangeSetEval = new TreeSet<>(longRangeComparator);
-      assert (evalDatatypeRanges.put(dataType, rangeSetEval) == null);
+      evalDatatypeRanges.put(dataType, rangeSetEval);
     }
 
-    // 2-1. Check the registering partition's possibility to be merged to adjacent partitions within the evaluator
-    boolean upsideMerge = false;
-    boolean downsideMerge = false;
+    // Check the registering partition's possibility to be merged to adjacent partitions within the evaluator
+    // and then merge contiguous partitions into a big partition
     final LongRange higherRangeEval = rangeSetEval.higher(idRange);
-    final LongRange lowerRangeEval = rangeSetEval.lower(idRange);
+    final long endId;
+
     if (higherRangeEval != null && higherRangeEval.getMinimumLong() == idRange.getMaximumLong() + 1) {
-      upsideMerge = true;
+      rangeSetGlobal.remove(higherRangeEval);
+      rangeSetEval.remove(higherRangeEval);
+      endId = higherRangeEval.getMaximumLong();
+    } else {
+      endId = idRange.getMaximumLong();
     }
+
+    final LongRange lowerRangeEval = rangeSetEval.lower(idRange);
+    final long startId;
+
     if (lowerRangeEval != null && lowerRangeEval.getMaximumLong() + 1 == idRange.getMinimumLong()) {
-      downsideMerge = true;
+      rangeSetGlobal.remove(lowerRangeEval);
+      rangeSetEval.remove(lowerRangeEval);
+      startId = lowerRangeEval.getMinimumLong();
+    } else {
+      startId = idRange.getMinimumLong();
     }
 
-    // merge partitions
-    LongRange mergedRange = idRange;
+    final LongRange mergedRange = new LongRange(startId, endId);
 
-    if (upsideMerge || downsideMerge) {
-      final long startId = downsideMerge ? lowerRangeEval.getMinimumLong() : idRange.getMinimumLong();
-      final long endId = upsideMerge ? higherRangeEval.getMaximumLong() : idRange.getMaximumLong();
-      mergedRange = new LongRange(startId, endId);
+    rangeSetGlobal.add(mergedRange);
+    rangeSetEval.add(mergedRange);
 
-      if (downsideMerge) {
-        assert (rangeSetGlobal.remove(lowerRangeEval));
-        assert (rangeSetEval.remove(lowerRangeEval));
-      }
-      if (upsideMerge) {
-        assert (rangeSetGlobal.remove(higherRangeEval));
-        assert (rangeSetEval.remove(higherRangeEval));
-      }
-    }
-
-    if (rangeSetGlobal.add(mergedRange)) {
-      if (rangeSetEval.add(mergedRange)) {
-        return true;
-      } else { // rollback when registering fails
-        assert (rangeSetGlobal.remove(mergedRange));
-
-        if (downsideMerge) {
-          assert (rangeSetGlobal.add(lowerRangeEval));
-          assert (rangeSetEval.add(lowerRangeEval));
-        }
-        if (upsideMerge) {
-          assert (rangeSetGlobal.add(higherRangeEval));
-          assert (rangeSetEval.add(higherRangeEval));
-        }
-      }
-    }
-
-    return false;
+    return true;
   }
 
   public synchronized Set<LongRange> getRangeSet(final String evalId, final String dataType) {
-    if (!mapIdDatatypeRange.containsKey(evalId)) {
+    if (!mapEvalDatatypeRanges.containsKey(evalId)) {
       return null;
     }
 
-    final Map<String, TreeSet<LongRange>> mapDatatypeRange = mapIdDatatypeRange.get(evalId);
+    final Map<String, TreeSet<LongRange>> mapDatatypeRange = mapEvalDatatypeRanges.get(evalId);
     if (!mapDatatypeRange.containsKey(dataType)) {
       return null;
     }
@@ -150,11 +134,11 @@ public final class PartitionManager {
 
   /* TODO #122: handle a try of removing to merged partitions. split merged partition again? */
   public synchronized boolean remove(final String evalId, final String dataType, final LongRange longRange) {
-    if (!mapIdDatatypeRange.containsKey(evalId)) {
+    if (!mapEvalDatatypeRanges.containsKey(evalId)) {
       return false;
     }
 
-    final Map<String, TreeSet<LongRange>> evalDatatypeRanges = mapIdDatatypeRange.get(evalId);
+    final Map<String, TreeSet<LongRange>> evalDatatypeRanges = mapEvalDatatypeRanges.get(evalId);
     if (evalDatatypeRanges == null) {
       return false;
     }
