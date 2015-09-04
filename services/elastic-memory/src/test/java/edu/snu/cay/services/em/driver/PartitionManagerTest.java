@@ -33,6 +33,8 @@ import static org.junit.Assert.*;
  */
 public final class PartitionManagerTest {
 
+  // Before use, put index at the end of these prefixes.
+  // For single evaluator or single data type case, just use these prefixes without change for convenience.
   private static final String EVAL_ID_PREFIX = "Evaluator-";
   private static final String DATA_TYPE_PREFIX = "DATA_TYPE_";
   private static final String MSG_SIZE_ASSERTION = "size of final partition manager";
@@ -250,6 +252,12 @@ public final class PartitionManagerTest {
         partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
+  /**
+   * Testing multi-thread addition, removal, and retrieval on disjoint id ranges.
+   * Use more than one evaluators to test this.
+   * Check that the consistency of a MemoryStore is preserved when multiple evaluators
+   * on multiple threads try to add, remove, and retrieve disjoint ranges concurrently.
+   */
   @Test
   public void testMultithreadMultiEvaluatorAddGetRemoveDisjointRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
@@ -260,6 +268,7 @@ public final class PartitionManagerTest {
     final CountDownLatch countDownLatch = new CountDownLatch(3 * numThreadsPerOperation);
 
     // Start with IndexParity.ODD_INDEX objects only. (for removal)
+    // Use evaluator-0 to evaluator-7, total 8 evaluator ids. (same as numThreadsPerOperation)
     for (int i = 1; i < addsPerThread; i += 2) {
       for (int j = 0; j < numThreadsPerOperation; j++) {
         final int itemIndex = numThreadsPerOperation * i + j;
@@ -273,6 +282,7 @@ public final class PartitionManagerTest {
     // Thus, we partition the objects set so that AddThreads and RemoveThreads
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
+    // Be careful with handling indexes to completely remove exact objects in exact evaluator ids.
     for (int index = 0; index < numThreadsPerOperation; index++) {
       threads[3 * index] = new RegisterThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
           addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX);
@@ -294,6 +304,12 @@ public final class PartitionManagerTest {
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2, realNumberOfObjects);
   }
 
+  /**
+   * Testing multi-thread addition, removal, and retrieval on disjoint id ranges.
+   * Use more than one data types to test this.
+   * Check that the consistency of a MemoryStore is preserved
+   * when multiple threads try to add, remove, and retrieve disjoint ranges of data types concurrently.
+   */
   @Test
   public void testMultithreadMultiDataTypeAddGetRemoveDisjointRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
@@ -304,6 +320,7 @@ public final class PartitionManagerTest {
     final CountDownLatch countDownLatch = new CountDownLatch(3 * numThreadsPerOperation);
 
     // Start with IndexParity.ODD_INDEX objects only. (for removal)
+    // Use DATA_TYPE_0 to DATA_TYPE_7, total 8 data types. (same as numThreadsPerOperation)
     for (int i = 1; i < addsPerThread; i += 2) {
       for (int j = 0; j < numThreadsPerOperation; j++) {
         final int itemIndex = numThreadsPerOperation * i + j;
@@ -317,6 +334,7 @@ public final class PartitionManagerTest {
     // Thus, we partition the objects set so that AddThreads and RemoveThreads
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
+    // Be careful with handling indexes to completely remove exact objects in exact data types.
     for (int index = 0; index < numThreadsPerOperation; index++) {
       threads[3 * index] = new RegisterThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
           addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index);
@@ -338,6 +356,12 @@ public final class PartitionManagerTest {
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2, realNumberOfObjects);
   }
 
+  /**
+   * Testing multi-thread addition, removal, and retrieval on disjoint id ranges.
+   * Use more than one evaluators and data types to test this.
+   * Check that the consistency of a MemoryStore is preserved when multiple evaluators
+   * on multiple threads try to add, remove, and retrieve disjoint ranges of data types concurrently.
+   */
   @Test
   public void testMultithreadMultiEvaluatorMultiDataTypeAddGetRemoveDisjointRanges() throws InterruptedException {
     final int numThreadsPerOperation = 8;
@@ -348,6 +372,7 @@ public final class PartitionManagerTest {
     final CountDownLatch countDownLatch = new CountDownLatch(3 * numThreadsPerOperation);
 
     // Start with IndexParity.ODD_INDEX objects only. (for removal)
+    // Use 4 evaluators and 2 data types, total 8 cases. (same as numThreadsPerOperation)
     for (int i = 1; i < addsPerThread; i += 2) {
       for (int j = 0; j < numThreadsPerOperation; j++) {
         final int itemIndex = numThreadsPerOperation * i + j;
@@ -364,6 +389,7 @@ public final class PartitionManagerTest {
     // Thus, we partition the objects set so that AddThreads and RemoveThreads
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
+    // Be careful with handling indexes to completely remove exact objects in exact evaluators and data types.
     for (int index = 0; index < numThreadsPerOperation; index++) {
       final int evalIndex = index / 2 % 4;
       final int dataTypeIndex = index % 2;
