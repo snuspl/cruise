@@ -65,7 +65,11 @@ public final class MessageExchangeParameters {
   public static final class ShutdownDelay implements Name<Integer> {
   }
 
-  @NamedParameter(short_name = "iteration_num", default_value = "3")
+  @NamedParameter(short_name = "total_itr_num", default_value = "10")
+  public static final class TotalIterationNum implements Name<Integer> {
+  }
+
+  @NamedParameter(short_name = "shutdown_itr_num", default_value = "3")
   public static final class ShutdownIterationNum implements Name<Integer> {
   }
 

@@ -26,21 +26,21 @@ import java.util.logging.Level;
  * Shutdown the manager when the number of completed iterations reaches a certain number.
  */
 final class SimplePushShuffleListener implements PushShuffleListener {
-  private final StaticPushShuffleManager shuffleManager;
-  private final boolean shutdown;
-  private final int numShutdownIteration;
+
   private static final Logger LOG = Logger.getLogger(SimplePushShuffleListener.class.getName());
 
+  private final StaticPushShuffleManager shuffleManager;
+  private final int numShutdownIteration;
+
   SimplePushShuffleListener(final StaticPushShuffleManager shuffleManager,
-                            final boolean shutdown, final int numShutdownIteration) {
+      final int numShutdownIteration) {
     this.shuffleManager = shuffleManager;
-    this.shutdown = shutdown;
     this.numShutdownIteration = numShutdownIteration;
   }
 
   @Override
   public void onIterationCompleted(final int numCompletedIterations) {
-    if (shutdown && numCompletedIterations == numShutdownIteration) {
+    if (numCompletedIterations == numShutdownIteration) {
       shuffleManager.shutdown();
     }
   }

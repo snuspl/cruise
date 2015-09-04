@@ -56,12 +56,12 @@ public final class MessageExchangeDriver {
 
   private static final Logger LOG = Logger.getLogger(MessageExchangeDriver.class.getName());
 
-  public static final int ITERATION_NUMBER = 10;
   public static final int NETWORK_MESSAGE_NUMBER_IN_ONE_ITERATION = 3;
   public static final String MESSAGE_EXCHANGE_SHUFFLE_NAME = "MESSAGE_EXCHANGE_SHUFFLE_NAME";
   public static final String SENDER_PREFIX = "SENDER";
   public static final String RECEIVER_PREFIX = "RECEIVER";
 
+  public static int numTotalIterations;
   private final AtomicInteger numAllocatedEvaluators;
   private final AtomicInteger numCompletedTasks;
   private final AtomicInteger totalNumSentTuples;
@@ -75,11 +75,6 @@ public final class MessageExchangeDriver {
   private final int totalNumSenders;
   private final int totalNumReceivers;
 
-  private final boolean shutdown;
-  private final int shutdownDelay;
-  private final Clock clock;
-  private final int numShutdownIteration;
-
   @Inject
   private MessageExchangeDriver(
       @Parameter(MessageExchangeParameters.SenderNumber.class) final int senderNumber,
@@ -88,12 +83,12 @@ public final class MessageExchangeDriver {
       final ShuffleDriver shuffleDriver,
       final LocalAddressProvider localAddressProvider,
       final NameServer nameServer,
+      @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations,
       @Parameter(MessageExchangeParameters.Shutdown.class) final boolean shutdown,
-      @Parameter(MessageExchangeParameters.ShutdownDelay.class) final int shutdownDelay,
-      @Parameter(MessageExchangeParameters.ShutdownIterationNum.class) final int numShutdownIteration,
-      final Clock clock) {
+      @Parameter(MessageExchangeParameters.ShutdownIterationNum.class) final int numShutdownIterations) {
     LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}",
         new Object[]{senderNumber, receiverNumber});
+    this.numTotalIterations = numTotalIterations;
     this.numAllocatedEvaluators = new AtomicInteger();
     this.numCompletedTasks = new AtomicInteger();
     this.totalNumSentTuples = new AtomicInteger();
@@ -115,11 +110,6 @@ public final class MessageExchangeDriver {
       receiverIdList.add(RECEIVER_PREFIX + i);
     }
 
-    this.shutdown = shutdown;
-    this.shutdownDelay = shutdownDelay;
-    this.clock = clock;
-    this.numShutdownIteration = numShutdownIteration;
-
     this.shuffleManager = shuffleDriver.registerShuffle(
         ShuffleDescriptionImpl.newBuilder(MESSAGE_EXCHANGE_SHUFFLE_NAME)
             .setSenderIdList(senderIdList)
@@ -129,8 +119,11 @@ public final class MessageExchangeDriver {
             .setShuffleStrategyClass(KeyShuffleStrategy.class)
             .build()
     );
-    this.shuffleManager.setPushShuffleListener(
-        new SimplePushShuffleListener(shuffleManager, shutdown, numShutdownIteration));
+
+    if (shutdown) {
+      this.shuffleManager.setPushShuffleListener(
+          new SimplePushShuffleListener(shuffleManager, numShutdownIterations));
+    }
   }
 
   public final class StartHandler implements EventHandler<StartTime> {

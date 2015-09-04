@@ -50,7 +50,7 @@ public final class SenderTask implements Task {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     int numSentTuples = 0;
-    for (int i = 0; i < MessageExchangeDriver.ITERATION_NUMBER; i++) {
+    for (int i = 0; i < MessageExchangeDriver.numTotalIterations; i++) {
       for (int j = 0; j < MessageExchangeDriver.NETWORK_MESSAGE_NUMBER_IN_ONE_ITERATION; j++) {
         LOG.log(Level.INFO, "Send tuple messages");
         final List<Tuple<Integer, Integer>> tupleList = generateRandomTuples();

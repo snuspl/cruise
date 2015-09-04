@@ -74,7 +74,7 @@ public final class ReceiverTask implements Task {
     public void onComplete() {
       final int numIterations = numCompletedIterations.incrementAndGet();
       LOG.log(Level.INFO, "{0} th iteration completed", numIterations);
-      if (numIterations == MessageExchangeDriver.ITERATION_NUMBER) {
+      if (numIterations == MessageExchangeDriver.numTotalIterations) {
         LOG.log(Level.INFO, "The final iteration was completed");
         synchronized (ReceiverTask.this) {
           ReceiverTask.this.notify();

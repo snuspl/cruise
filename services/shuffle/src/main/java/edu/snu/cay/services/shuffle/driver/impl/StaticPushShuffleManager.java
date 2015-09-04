@@ -193,7 +193,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private int numCompletedReceivers;
     private int numFinishedSenders;
     private int numFinishedReceivers;
-    private AtomicInteger numCompletedIterations;
+    private int numCompletedIterations;
 
     private StateMachine stateMachine;
 
@@ -202,7 +202,6 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       this.totalNumSenders = shuffleDescription.getSenderIdList().size();
       this.totalNumReceivers = shuffleDescription.getReceiverIdList().size();
       this.receiverStateMachineMap = new HashMap<>(totalNumReceivers);
-      this.numCompletedIterations = new AtomicInteger();
 
       for (final String receiverId : shuffleDescription.getReceiverIdList()) {
         receiverStateMachineMap.put(receiverId, PushShuffleReceiverState.createStateMachine());
@@ -292,7 +291,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         stateMachine.checkAndSetState(CAN_SEND, RECEIVERS_COMPLETED);
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
         if (pushShuffleListener != null) {
-          pushShuffleListener.onIterationCompleted(numCompletedIterations.incrementAndGet());
+          pushShuffleListener.onIterationCompleted(++numCompletedIterations);
         }
         if (shutdown) {
           shutdownAllSendersAndReceivers();
