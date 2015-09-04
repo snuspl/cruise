@@ -103,6 +103,8 @@ public final class PartitionManagerTest {
   public void testMultiThreadAddDuplicateRanges() throws InterruptedException {
     final int numThreads = 8;
     final int addsPerThread = 100000;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
 
     final int dupFactor = 2; // adjust it
@@ -112,7 +114,7 @@ public final class PartitionManagerTest {
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
       threads[index] = new RegisterThread(countDownLatch, partitionManager,
-          index / dupFactor, effectiveThreads, addsPerThread, IndexParity.ALL_INDEX);
+          index / dupFactor, rangeTerm, rangeLength, effectiveThreads, addsPerThread, IndexParity.ALL_INDEX);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -132,13 +134,15 @@ public final class PartitionManagerTest {
   public void testMultiThreadAddDisjointRanges() throws InterruptedException {
     final int numThreads = 8;
     final int addsPerThread = 100000;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
     final int totalNumberOfAdds = numThreads * addsPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
 
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
       threads[index] = new RegisterThread(countDownLatch, partitionManager,
-          index, numThreads, addsPerThread, IndexParity.ALL_INDEX);
+          index, rangeTerm, rangeLength, numThreads, addsPerThread, IndexParity.ALL_INDEX);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -158,6 +162,8 @@ public final class PartitionManagerTest {
   public void testMultiThreadRemoveDisjointRanges() throws InterruptedException {
     final int numThreads = 8;
     final int removesPerThread = 100000;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
     final int totalNumberOfRemoves = numThreads * removesPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
     for (int i = 0; i < totalNumberOfRemoves; i++) {
@@ -167,7 +173,7 @@ public final class PartitionManagerTest {
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
       threads[index] = new RemoveThread(countDownLatch, partitionManager,
-          index, numThreads, removesPerThread, IndexParity.ALL_INDEX);
+          index, rangeTerm, rangeLength, numThreads, removesPerThread, IndexParity.ALL_INDEX);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -188,13 +194,15 @@ public final class PartitionManagerTest {
     final int numThreadsPerOperation = 8;
     final int addsPerThread = 100000;
     final int getsPerThread = 100;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
     final int totalNumberOfAdds = numThreadsPerOperation * addsPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
       threads[2 * index] = new RegisterThread(countDownLatch, partitionManager,
-          index, numThreadsPerOperation, addsPerThread, IndexParity.ALL_INDEX);
+          index, rangeTerm, rangeLength, numThreadsPerOperation, addsPerThread, IndexParity.ALL_INDEX);
       threads[2 * index + 1] = new GetThread(countDownLatch, partitionManager, getsPerThread);
     }
     TestUtils.runConcurrently(threads);
@@ -216,6 +224,8 @@ public final class PartitionManagerTest {
     final int numThreadsPerOperation = 8;
     final int removesPerThread = 100000;
     final int getsPerThread = 100;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
     final int totalNumberOfRemoves = numThreadsPerOperation * removesPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
     for (int i = 0; i < totalNumberOfRemoves; i++) {
@@ -225,7 +235,7 @@ public final class PartitionManagerTest {
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
       threads[2 * index] = new RemoveThread(countDownLatch, partitionManager,
-          index, numThreadsPerOperation, removesPerThread, IndexParity.ALL_INDEX);
+          index, rangeTerm, rangeLength, numThreadsPerOperation, removesPerThread, IndexParity.ALL_INDEX);
       threads[2 * index + 1] = new GetThread(countDownLatch, partitionManager, getsPerThread);
     }
     TestUtils.runConcurrently(threads);
@@ -247,6 +257,8 @@ public final class PartitionManagerTest {
     final int numThreadsPerOperation = 8;
     final int addsPerThread = 100000;
     final int removesPerThread = addsPerThread;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
     final int totalNumberOfObjects = numThreadsPerOperation * addsPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
 
@@ -263,9 +275,9 @@ public final class PartitionManagerTest {
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadsPerOperation; index++) {
       threads[index] = new RegisterThread(countDownLatch, partitionManager,
-          index, numThreadsPerOperation, addsPerThread, IndexParity.EVEN_INDEX);
+          index, rangeTerm, rangeLength, numThreadsPerOperation, addsPerThread, IndexParity.EVEN_INDEX);
       threads[index + numThreadsPerOperation] = new RemoveThread(countDownLatch, partitionManager,
-          index, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX);
+          index, rangeTerm, rangeLength, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -287,6 +299,8 @@ public final class PartitionManagerTest {
     final int addsPerThread = 100000;
     final int removesPerThread = addsPerThread;
     final int getsPerThread = 100;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
     final int totalNumberOfObjects = numThreadsPerOperation * addsPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(3 * numThreadsPerOperation);
 
@@ -303,10 +317,10 @@ public final class PartitionManagerTest {
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadsPerOperation; index++) {
       threads[3 * index] = new RegisterThread(countDownLatch, partitionManager,
-          index, numThreadsPerOperation, addsPerThread, IndexParity.EVEN_INDEX);
+          index, rangeTerm, rangeLength, numThreadsPerOperation, addsPerThread, IndexParity.EVEN_INDEX);
       threads[3 * index + 1] = new GetThread(countDownLatch, partitionManager, getsPerThread);
       threads[3 * index + 2] = new RemoveThread(countDownLatch, partitionManager,
-          index, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX);
+          index, rangeTerm, rangeLength, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -325,15 +339,20 @@ public final class PartitionManagerTest {
     private final CountDownLatch countDownLatch;
     private final PartitionManager partitionManager;
     private final int myIndex;
+    final long rangeTerm;
+    final long rangeLength;
     private final int numThreads;
     private final int addsPerThread;
     private final IndexParity indexParity;
 
     RegisterThread(final CountDownLatch countDownLatch, final PartitionManager partitionManager,
-                   final int myIndex, final int numThreads, final int addsPerThread, final IndexParity indexParity) {
+                   final int myIndex, final long rangeTerm, final long rangeLength,
+                   final int numThreads, final int addsPerThread, final IndexParity indexParity) {
       this.countDownLatch = countDownLatch;
       this.partitionManager = partitionManager;
       this.myIndex = myIndex;
+      this.rangeTerm = rangeTerm;
+      this.rangeLength = rangeLength;
       this.numThreads = numThreads;
       this.addsPerThread = addsPerThread;
       this.indexParity = indexParity;
@@ -351,7 +370,7 @@ public final class PartitionManagerTest {
 
         final int itemIndex = numThreads * i + myIndex;
         partitionManager.registerPartition(EVAL_ID, DATA_TYPE,
-            new LongRange(3 * itemIndex, 3 * itemIndex + 1));
+            new LongRange(rangeTerm * itemIndex, rangeTerm * itemIndex + (rangeLength - 1)));
       }
       countDownLatch.countDown();
     }
@@ -361,16 +380,20 @@ public final class PartitionManagerTest {
     private final CountDownLatch countDownLatch;
     private final PartitionManager partitionManager;
     private final int myIndex;
+    final long rangeTerm;
+    final long rangeLength;
     private final int numThreads;
     private final int removesPerThread;
     private final IndexParity indexParity;
 
     RemoveThread(final CountDownLatch countDownLatch, final PartitionManager partitionManager,
-                 final int myIndex, final int numThreads, final int removesPerThread,
-                 final IndexParity indexParity) {
+                 final int myIndex, final long rangeTerm, final long rangeLength,
+                 final int numThreads, final int removesPerThread, final IndexParity indexParity) {
       this.countDownLatch = countDownLatch;
       this.partitionManager = partitionManager;
       this.myIndex = myIndex;
+      this.rangeTerm = rangeTerm;
+      this.rangeLength = rangeLength;
       this.numThreads = numThreads;
       this.removesPerThread = removesPerThread;
       this.indexParity = indexParity;
@@ -388,7 +411,7 @@ public final class PartitionManagerTest {
 
         final int itemIndex = numThreads * i + myIndex;
         partitionManager.remove(EVAL_ID, DATA_TYPE,
-            new LongRange(3 * itemIndex, 3 * itemIndex + 1));
+            new LongRange(rangeTerm * itemIndex, rangeTerm * itemIndex + (rangeLength - 1)));
       }
       countDownLatch.countDown();
     }
