@@ -36,7 +36,7 @@ public final class PartitionManagerTest {
 
   private static final String EVAL_ID = "Evaluator-1";
   private static final String DATA_TYPE = "DATA_TYPE";
-  private static final String MSG_FALSE_RESULT = "unexpected result from partitionManager";
+  private static final String MSG_REGISTER_UNEXPECTED_RESULT = "unexpected result when registering a partition";
   private static final String MSG_SIZE_ASSERTION = "size of final partition manager";
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
 
@@ -62,11 +62,11 @@ public final class PartitionManagerTest {
     final int totalNumberOfAdds = 100000;
 
     for (int i = 0; i < totalNumberOfAdds; i++) {
-      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1));
+      assertTrue(MSG_REGISTER_UNEXPECTED_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1));
     }
 
     for (int i = totalNumberOfAdds * 3; i > totalNumberOfAdds * 2; i--) {
-      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1));
+      assertTrue(MSG_REGISTER_UNEXPECTED_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 2 * i, 2 * i + 1));
     }
 
     // check that the total number of objects equal the expected number
@@ -84,11 +84,11 @@ public final class PartitionManagerTest {
     final int totalNumberOfAdds = 100000;
 
     for (int i = 0; i < totalNumberOfAdds; i++) {
-      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
+      assertTrue(MSG_REGISTER_UNEXPECTED_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     for (int i = 0; i < totalNumberOfAdds; i++) {
-      assertFalse(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i + 1, 3 * i + 2));
+      assertFalse(MSG_REGISTER_UNEXPECTED_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i + 1, 3 * i + 2));
     }
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfAdds, partitionManager.getRangeSet(EVAL_ID, DATA_TYPE).size());
@@ -161,7 +161,7 @@ public final class PartitionManagerTest {
     final int totalNumberOfRemoves = numThreads * removesPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
     for (int i = 0; i < totalNumberOfRemoves; i++) {
-      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
+      assertTrue(MSG_REGISTER_UNEXPECTED_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     final Runnable[] threads = new Runnable[numThreads];
@@ -219,7 +219,7 @@ public final class PartitionManagerTest {
     final int totalNumberOfRemoves = numThreadsPerOperation * removesPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
     for (int i = 0; i < totalNumberOfRemoves; i++) {
-      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
+      assertTrue(MSG_REGISTER_UNEXPECTED_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
@@ -252,7 +252,7 @@ public final class PartitionManagerTest {
 
     // Start with IndexParity.ODD_INDEX objects only. (for removal)
     for (int i = 1; i < totalNumberOfObjects; i += 2) {
-      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
+      assertTrue(MSG_REGISTER_UNEXPECTED_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
@@ -292,7 +292,7 @@ public final class PartitionManagerTest {
 
     // Start with IndexParity.ODD_INDEX objects only. (for removal)
     for (int i = 1; i < totalNumberOfObjects; i += 2) {
-      assertTrue(MSG_FALSE_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
+      assertTrue(MSG_REGISTER_UNEXPECTED_RESULT, partitionManager.registerPartition(EVAL_ID, DATA_TYPE, 3 * i, 3 * i + 1));
     }
 
     final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
