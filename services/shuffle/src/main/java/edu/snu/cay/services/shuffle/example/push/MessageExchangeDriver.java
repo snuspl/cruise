@@ -36,7 +36,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
-import org.apache.reef.wake.time.Clock;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
@@ -61,7 +60,6 @@ public final class MessageExchangeDriver {
   public static final String SENDER_PREFIX = "SENDER";
   public static final String RECEIVER_PREFIX = "RECEIVER";
 
-  public static int numTotalIterations;
   private final AtomicInteger numAllocatedEvaluators;
   private final AtomicInteger numCompletedTasks;
   private final AtomicInteger totalNumSentTuples;
@@ -83,12 +81,10 @@ public final class MessageExchangeDriver {
       final ShuffleDriver shuffleDriver,
       final LocalAddressProvider localAddressProvider,
       final NameServer nameServer,
-      @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations,
       @Parameter(MessageExchangeParameters.Shutdown.class) final boolean shutdown,
       @Parameter(MessageExchangeParameters.ShutdownIterationNum.class) final int numShutdownIterations) {
     LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}",
         new Object[]{senderNumber, receiverNumber});
-    this.numTotalIterations = numTotalIterations;
     this.numAllocatedEvaluators = new AtomicInteger();
     this.numCompletedTasks = new AtomicInteger();
     this.totalNumSentTuples = new AtomicInteger();
