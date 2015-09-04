@@ -27,13 +27,14 @@ import java.util.Vector;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * {@link DataIdFactory} implementation.
- * Gives {@code Long} type ids for evaluators.
- * All data ids are composed of {@code base} and {@code counter}.
- * Different BaseCounterDataIdFactories should have different {@code bases}
- * to guarantee that they create globally unique data ids without asking the driver.
- * Driver should bind a unique {@code NamedParameter} to initialize {@code base}.
- * Note that this factory has limitation in number of items: only provides 2^32 globally unique ids.
+ * An implementation of {@link DataIdFactory}. This factory creates ids of {@code Long} type
+ * by combining {@code base} and {@code counter}.
+ *
+ * To guarantee that different factories create unique data ids without asking to the driver or
+ * to other evaluators, the driver should bind a unique NamedParameter {@code Base} to each factory.
+ *
+ * Note that this factory can only create up to 2^32 global unique ids. Beyond that, the methods throw Exceptions
+ * because the ids are not guaranteed to be unique.
  */
 public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
 
@@ -74,7 +75,7 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
     return idVector;
   }
 
-  @NamedParameter(doc = "Global unique base value of BaseCounterDataIdFactory to prevents conflict between each other")
+  @NamedParameter(doc = "Global unique base value of BaseCounterDataIdFactory to prevent conflict between each other")
   public final class Base implements Name<Integer> {
   }
 }

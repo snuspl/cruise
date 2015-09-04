@@ -20,7 +20,7 @@ import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import java.util.List;
 
 /**
- * Interface to create globally unique ids when storing data in {@code MemoryStore}.
+ * Interface to create global unique ids when storing data in {@code MemoryStore}.
  * {@code DataIdFactory} should create ids without conflict between each other.
  * It is recommended to create unique ids without asking each other whether this id is used or not,
  * to avoid tedious communications between evaluators.
