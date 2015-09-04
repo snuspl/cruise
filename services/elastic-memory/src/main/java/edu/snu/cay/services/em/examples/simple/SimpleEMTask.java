@@ -32,7 +32,7 @@ import java.util.logging.Logger;
 final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
   public static final String DATATYPE = "INTEGER";
-  private static final int DATANUM = 10;
+  private static final int NUM_DATA = 10;
 
   private final MemoryStore memoryStore;
   private final SimpleEMTaskReady simpleEMTaskReady;
@@ -55,11 +55,11 @@ final class SimpleEMTask implements Task {
     this.iterations = iterations;
     this.periodMillis = periodMillis;
 
-    final List<Long> ids = dataIdFactory.getIds(DATANUM);
+    final List<Long> ids = dataIdFactory.getIds(NUM_DATA);
     // Just use ids as data (data do not matter)
     this.memoryStore.getElasticStore().putList(DATATYPE, ids, ids);
 
-    partitionTracker.registerPartition(DATATYPE, ids.get(0), ids.get(DATANUM - 1));
+    partitionTracker.registerPartition(DATATYPE, ids.get(0), ids.get(NUM_DATA - 1));
   }
 
   public byte[] call(final byte[] memento) throws InterruptedException {
@@ -68,9 +68,9 @@ final class SimpleEMTask implements Task {
     LOG.info("Before sleep, memory store contains: ");
     LOG.info(memoryStore.getElasticStore().getAll(DATATYPE).toString());
     // Should be either
-    // [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+    // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     // or
-    // [100, 110, 120, 130, 140, 150, 160, 170, 180, 190]
+    // [2^32, 2^32+1, 2^32+2, 2^32+3, 2^32+4, 2^32+5, 2^32+6, 2^32+7, 2^32+8, 2^32+9]
 
     simpleEMTaskReady.setReady(true);
     heartBeatTriggerManager.triggerHeartBeat();
