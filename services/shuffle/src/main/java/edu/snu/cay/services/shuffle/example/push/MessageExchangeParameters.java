@@ -59,16 +59,15 @@ public final class MessageExchangeParameters {
   }
 
   /**
-   * How long to wait before the manager shutdown the application in milli seconds.
+   * The number of total iterations.
    */
-  @NamedParameter(short_name = "delay", default_value = "25000")
-  public static final class ShutdownDelay implements Name<Integer> {
-  }
-
   @NamedParameter(short_name = "total_itr_num", default_value = "10")
   public static final class TotalIterationNum implements Name<Integer> {
   }
 
+  /**
+   * The threshold to shut down the application for the case where Shutdown is set to true.
+   */
   @NamedParameter(short_name = "shutdown_itr_num", default_value = "3")
   public static final class ShutdownIterationNum implements Name<Integer> {
   }

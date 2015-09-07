@@ -23,7 +23,8 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
- * Shutdown the manager when the number of completed iterations reaches a certain number.
+ * This shutdown the manager when the number of completed iterations reaches a certain number
+ * only if the shutdown parameter was set to true.
  */
 final class SimplePushShuffleListener implements PushShuffleListener {
 
@@ -43,6 +44,7 @@ final class SimplePushShuffleListener implements PushShuffleListener {
   @Override
   public void onIterationCompleted(final int numCompletedIterations) {
     if (shutdown && numCompletedIterations == numShutdownIteration) {
+      LOG.log(Level.INFO, "Shut down the manager after the {0}th iteration was completed", numCompletedIterations);
       shuffleManager.shutdown();
     }
   }

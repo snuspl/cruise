@@ -42,7 +42,8 @@ public final class SenderTask implements Task {
   private final int numTotalIterations;
 
   @Inject
-  private SenderTask(final ShuffleProvider shuffleProvider,
+  private SenderTask(
+      final ShuffleProvider shuffleProvider,
       @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations) {
     final Shuffle<Integer, Integer> shuffle = shuffleProvider
         .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);

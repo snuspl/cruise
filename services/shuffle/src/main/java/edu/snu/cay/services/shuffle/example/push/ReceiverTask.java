@@ -41,7 +41,8 @@ public final class ReceiverTask implements Task {
   private final int numTotalIterations;
 
   @Inject
-  private ReceiverTask(final ShuffleProvider shuffleProvider,
+  private ReceiverTask(
+      final ShuffleProvider shuffleProvider,
       @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations) {
     this.numCompletedIterations = new AtomicInteger();
     final Shuffle<Integer, Integer> shuffle = shuffleProvider
