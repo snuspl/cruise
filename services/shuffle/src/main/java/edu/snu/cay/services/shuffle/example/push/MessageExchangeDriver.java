@@ -36,8 +36,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
-import org.apache.reef.wake.time.Clock;
-import org.apache.reef.wake.time.event.Alarm;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
@@ -57,7 +55,6 @@ public final class MessageExchangeDriver {
 
   private static final Logger LOG = Logger.getLogger(MessageExchangeDriver.class.getName());
 
-  public static final int ITERATION_NUMBER = 10;
   public static final int NETWORK_MESSAGE_NUMBER_IN_ONE_ITERATION = 3;
   public static final String MESSAGE_EXCHANGE_SHUFFLE_NAME = "MESSAGE_EXCHANGE_SHUFFLE_NAME";
   public static final String SENDER_PREFIX = "SENDER";
@@ -75,10 +72,7 @@ public final class MessageExchangeDriver {
 
   private final int totalNumSenders;
   private final int totalNumReceivers;
-
-  private final boolean shutdown;
-  private final int shutdownDelay;
-  private final Clock clock;
+  private final int numTotalIterations;
 
   @Inject
   private MessageExchangeDriver(
@@ -89,8 +83,8 @@ public final class MessageExchangeDriver {
       final LocalAddressProvider localAddressProvider,
       final NameServer nameServer,
       @Parameter(MessageExchangeParameters.Shutdown.class) final boolean shutdown,
-      @Parameter(MessageExchangeParameters.ShutdownDelay.class) final int shutdownDelay,
-      final Clock clock) {
+      @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations,
+      @Parameter(MessageExchangeParameters.ShutdownIterationNum.class) final int numShutdownIterations) {
     LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}",
         new Object[]{senderNumber, receiverNumber});
     this.numAllocatedEvaluators = new AtomicInteger();
@@ -103,6 +97,7 @@ public final class MessageExchangeDriver {
     this.nameServer = nameServer;
     this.totalNumSenders = senderNumber;
     this.totalNumReceivers = receiverNumber;
+    this.numTotalIterations = numTotalIterations;
     final List<String> senderIdList = new ArrayList<>(senderNumber);
     final List<String> receiverIdList = new ArrayList<>(receiverNumber);
 
@@ -124,9 +119,8 @@ public final class MessageExchangeDriver {
             .build()
     );
 
-    this.shutdown = shutdown;
-    this.shutdownDelay = shutdownDelay;
-    this.clock = clock;
+    this.shuffleManager.setPushShuffleListener(
+        new SimplePushShuffleListener(shuffleManager, shutdown, numShutdownIterations));
   }
 
   public final class StartHandler implements EventHandler<StartTime> {
@@ -198,32 +192,26 @@ public final class MessageExchangeDriver {
       final int number = numAllocatedEvaluators.getAndIncrement();
       final Configuration partialTaskConf;
       final String taskId;
+      final Configuration iterationConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(MessageExchangeParameters.TotalIterationNum.class, Integer.toString(numTotalIterations))
+          .build();
+
       if (number < totalNumSenders) { // SenderTask
         taskId = SENDER_PREFIX + number;
-        partialTaskConf = TaskConfiguration.CONF
+        partialTaskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, SenderTask.class)
-            .build();
+            .build(), iterationConf);
+
       } else if (number < totalNumSenders + totalNumReceivers) { // ReceiverTask
         taskId = RECEIVER_PREFIX + (number - totalNumSenders);
-        partialTaskConf = TaskConfiguration.CONF
+        partialTaskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
-            .build();
+            .build(), iterationConf);
+
       } else {
         throw new RuntimeException("Too many allocated evaluators");
-      }
-
-      if (number == totalNumSenders + totalNumReceivers - 1) {
-        if (shutdown) {
-          clock.scheduleAlarm(shutdownDelay, new EventHandler<Alarm>() {
-            @Override
-            public void onNext(final Alarm alarm) {
-              LOG.log(Level.INFO, "Shutdown the application.");
-              shuffleManager.shutdown();
-            }
-          });
-        }
       }
 
       allocatedEvaluator.submitContextAndServiceAndTask(
