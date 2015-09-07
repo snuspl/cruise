@@ -146,7 +146,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     }
   }
 
-  public void setPushShuffleListener(final PushShuffleListener pushShuffleListener) {
+  public synchronized void setPushShuffleListener(final PushShuffleListener pushShuffleListener) {
     this.pushShuffleListener = pushShuffleListener;
   }
 
@@ -289,9 +289,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         numCompletedReceivers = 0;
         stateMachine.checkAndSetState(CAN_SEND, RECEIVERS_COMPLETED);
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
-        if (pushShuffleListener != null) {
-          pushShuffleListener.onIterationCompleted(++numCompletedIterations);
-        }
+        pushShuffleListener.onIterationCompleted(++numCompletedIterations);
         if (shutdown) {
           shutdownAllSendersAndReceivers();
         } else {
@@ -338,9 +336,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private void finishManager() {
       LOG.log(Level.INFO, "The StaticPushShuffleManager is finished");
       stateMachine.checkAndSetState(RECEIVERS_COMPLETED, FINISHED);
-      if (pushShuffleListener != null) {
-        pushShuffleListener.onFinished();
-      }
+      pushShuffleListener.onFinished();
     }
 
     private void broadcastToSenders(final int code) {

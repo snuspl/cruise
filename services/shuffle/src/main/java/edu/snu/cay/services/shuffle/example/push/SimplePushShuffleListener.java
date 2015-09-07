@@ -30,17 +30,19 @@ final class SimplePushShuffleListener implements PushShuffleListener {
   private static final Logger LOG = Logger.getLogger(SimplePushShuffleListener.class.getName());
 
   private final StaticPushShuffleManager shuffleManager;
+  private final boolean shutdown;
   private final int numShutdownIteration;
 
   SimplePushShuffleListener(final StaticPushShuffleManager shuffleManager,
-      final int numShutdownIteration) {
+      final boolean shutdown, final int numShutdownIteration) {
     this.shuffleManager = shuffleManager;
+    this.shutdown = shutdown;
     this.numShutdownIteration = numShutdownIteration;
   }
 
   @Override
   public void onIterationCompleted(final int numCompletedIterations) {
-    if (numCompletedIterations == numShutdownIteration) {
+    if (shutdown && numCompletedIterations == numShutdownIteration) {
       shuffleManager.shutdown();
     }
   }

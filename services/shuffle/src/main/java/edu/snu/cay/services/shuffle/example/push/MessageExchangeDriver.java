@@ -72,6 +72,7 @@ public final class MessageExchangeDriver {
 
   private final int totalNumSenders;
   private final int totalNumReceivers;
+  private final int numTotalIterations;
 
   @Inject
   private MessageExchangeDriver(
@@ -82,6 +83,7 @@ public final class MessageExchangeDriver {
       final LocalAddressProvider localAddressProvider,
       final NameServer nameServer,
       @Parameter(MessageExchangeParameters.Shutdown.class) final boolean shutdown,
+      @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations,
       @Parameter(MessageExchangeParameters.ShutdownIterationNum.class) final int numShutdownIterations) {
     LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}",
         new Object[]{senderNumber, receiverNumber});
@@ -97,6 +99,7 @@ public final class MessageExchangeDriver {
     this.totalNumReceivers = receiverNumber;
     final List<String> senderIdList = new ArrayList<>(senderNumber);
     final List<String> receiverIdList = new ArrayList<>(receiverNumber);
+    this.numTotalIterations = numTotalIterations;
 
     for (int i = 0; i < senderNumber; i++) {
       senderIdList.add(SENDER_PREFIX + i);
@@ -116,10 +119,8 @@ public final class MessageExchangeDriver {
             .build()
     );
 
-    if (shutdown) {
-      this.shuffleManager.setPushShuffleListener(
-          new SimplePushShuffleListener(shuffleManager, numShutdownIterations));
-    }
+    this.shuffleManager.setPushShuffleListener(
+        new SimplePushShuffleListener(shuffleManager, shutdown, numShutdownIterations));
   }
 
   public final class StartHandler implements EventHandler<StartTime> {
@@ -191,18 +192,24 @@ public final class MessageExchangeDriver {
       final int number = numAllocatedEvaluators.getAndIncrement();
       final Configuration partialTaskConf;
       final String taskId;
+      final Configuration iterationConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(MessageExchangeParameters.TotalIterationNum.class, Integer.toString(numTotalIterations))
+          .build();
+
       if (number < totalNumSenders) { // SenderTask
         taskId = SENDER_PREFIX + number;
-        partialTaskConf = TaskConfiguration.CONF
+        partialTaskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, SenderTask.class)
-            .build();
+            .build(), iterationConf);
+
       } else if (number < totalNumSenders + totalNumReceivers) { // ReceiverTask
         taskId = RECEIVER_PREFIX + (number - totalNumSenders);
-        partialTaskConf = TaskConfiguration.CONF
+        partialTaskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
-            .build();
+            .build(), iterationConf);
+
       } else {
         throw new RuntimeException("Too many allocated evaluators");
       }

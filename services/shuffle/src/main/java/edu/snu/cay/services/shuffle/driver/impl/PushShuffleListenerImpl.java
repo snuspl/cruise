@@ -13,25 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package edu.snu.cay.services.shuffle.driver.impl;
 
-import org.apache.reef.tang.annotations.DefaultImplementation;
-
 /**
- * Interface for a listener used in a push-based shuffle manager.
+ * Default implementation of PushShuffleListener.
  */
 
-@DefaultImplementation(PushShuffleListenerImpl.class)
-public interface PushShuffleListener {
+public class PushShuffleListenerImpl implements PushShuffleListener {
+  @Override
+  public void onIterationCompleted(final int numCompletedIterations) {
+  }
 
-  /**
-   * Handle the case when a iteration is finished.
-   */
-  void onIterationCompleted(int numCompletedIterations);
-
-  /**
-   * Handle the case when the manager is finished.
-   */
-  void onFinished();
+  @Override
+  public void onFinished() {
+  }
 }

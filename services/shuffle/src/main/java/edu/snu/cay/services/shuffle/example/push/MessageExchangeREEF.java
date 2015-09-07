@@ -38,8 +38,11 @@ import java.util.logging.Logger;
  * Message exchanging example using push-based shuffle.
  *
  * SenderTasks send random number of tuples to ReceiverTasks during certain number of iterations.
+ * A user can set the number of iterations.
  * Each iteration, receivers should receive tuples that are sent in the same iteration.
- * If shutdown parameter is set to true, the application will be shutdown after the specified time elapsed.
+ *
+ * If shutdown parameter is set to true, the application will be shutdown when the number of iterations reaches
+ * the number that user set.
  *
  * The driver checks if total number of sent tuples and received tuples are same when all tasks are completed.
  */
@@ -96,7 +99,7 @@ public final class MessageExchangeREEF {
         args, MessageExchangeParameters.Local.class, MessageExchangeParameters.SenderNumber.class,
         MessageExchangeParameters.ReceiverNumber.class, MessageExchangeParameters.Timeout.class,
         MessageExchangeParameters.Shutdown.class, MessageExchangeParameters.ShutdownDelay.class,
-        MessageExchangeParameters.ShutdownIterationNum.class);
+        MessageExchangeParameters.TotalIterationNum.class, MessageExchangeParameters.ShutdownIterationNum.class);
 
     final Injector injector = Tang.Factory.getTang().newInjector(commandLineConfiguration);
 
