@@ -27,7 +27,7 @@ public class DefaultPushShuffleListener implements PushShuffleListener {
 
   @Override
   public void onIterationCompleted(final int numCompletedIterations) {
-    LOG.log(Level.INFO, "{0}th iteration is completed.");
+    LOG.log(Level.INFO, "{0}th iteration is completed.", numCompletedIterations);
   }
 
   @Override
