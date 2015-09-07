@@ -15,16 +15,23 @@
  */
 package edu.snu.cay.services.shuffle.driver.impl;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * Default implementation of PushShuffleListener.
  */
+public class DefaultPushShuffleListener implements PushShuffleListener {
 
-public class PushShuffleListenerImpl implements PushShuffleListener {
+  private static final Logger LOG = Logger.getLogger(DefaultPushShuffleListener.class.getName());
+
   @Override
   public void onIterationCompleted(final int numCompletedIterations) {
+    LOG.log(Level.INFO, "{0}th iteration is completed.");
   }
 
   @Override
   public void onFinished() {
+    LOG.log(Level.INFO, "The manager is finished.");
   }
 }

@@ -21,8 +21,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 /**
  * Interface for a listener used in a push-based shuffle manager.
  */
-
-@DefaultImplementation(PushShuffleListenerImpl.class)
+@DefaultImplementation(DefaultPushShuffleListener.class)
 public interface PushShuffleListener {
 
   /**

@@ -97,9 +97,9 @@ public final class MessageExchangeDriver {
     this.nameServer = nameServer;
     this.totalNumSenders = senderNumber;
     this.totalNumReceivers = receiverNumber;
+    this.numTotalIterations = numTotalIterations;
     final List<String> senderIdList = new ArrayList<>(senderNumber);
     final List<String> receiverIdList = new ArrayList<>(receiverNumber);
-    this.numTotalIterations = numTotalIterations;
 
     for (int i = 0; i < senderNumber; i++) {
       senderIdList.add(SENDER_PREFIX + i);
