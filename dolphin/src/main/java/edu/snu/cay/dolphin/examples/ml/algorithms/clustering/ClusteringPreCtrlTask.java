@@ -40,12 +40,12 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   public static final String KEY_CENTROIDS = "centroids";
 
   /**
-   * Number of clusters
+   * Number of clusters.
    */
   private final int numberOfClusters;
 
   /**
-   * Initial centroids passed from Compute Tasks
+   * Initial centroids passed from Compute Tasks.
    */
   private List<Vector> initialCentroids = null;
 
@@ -72,12 +72,12 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void cleanup() throws IdGenerationException{
+  public void cleanup() throws IdGenerationException {
     /*
      * Pass the initial centroids to the main process.
      * Since CtrlTask is the only one to own the data, putMovable is not needed.
      */
-    List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
+    final List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
     memoryStore.getLocalStore().putList(KEY_CENTROIDS, ids, initialCentroids);
   }
 

@@ -37,7 +37,7 @@ public final class KMeansMainCmpTask extends UserComputeTask
     implements DataBroadcastReceiver<List<Vector>>, DataReduceSender<Map<Integer, VectorSum>> {
 
   /**
-   * Key used in Elastic Memory to put/get the data
+   * Key used in Elastic Memory to put/get the data.
    */
   private static final String KEY_POINTS = "points";
 
@@ -67,8 +67,8 @@ public final class KMeansMainCmpTask extends UserComputeTask
   private final DataIdFactory<Long> dataIdFactory;
 
   /**
-   * This class is instantiated by TANG
-   * Constructs a single Compute Task for k-means
+   * Constructs a single Compute Task for k-means.
+   * This class is instantiated by TANG.
    * @param dataParser
    * @param memoryStore Memory storage to put/get the data
    * @param distanceMeasure distance measure to use to compute distances between points

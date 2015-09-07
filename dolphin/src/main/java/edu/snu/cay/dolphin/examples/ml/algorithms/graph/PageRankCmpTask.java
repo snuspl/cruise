@@ -39,7 +39,7 @@ public class PageRankCmpTask extends UserComputeTask
     implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer, Double>> {
 
   /**
-   * Key used in Elastic Memory to put/get the data
+   * Key used in Elastic Memory to put/get the data.
    */
   private static final String KEY_GRAPH = "graph";
 
@@ -56,7 +56,7 @@ public class PageRankCmpTask extends UserComputeTask
   private Map<Integer, Double> rank;
 
   /**
-   * Map of contributed increment to outgoing neighbor nodes
+   * Map of contributed increment to outgoing neighbor nodes.
    */
   private final Map<Integer, Double> increment = new HashMap<>();
 
@@ -78,13 +78,13 @@ public class PageRankCmpTask extends UserComputeTask
    */
   @Override
   public void initialize() throws ParseException {
-    Map<Integer, List<Integer>> subgraphs = dataParser.get();
+    final Map<Integer, List<Integer>> subgraphs = dataParser.get();
     // Map of current rank
-    final Map<Integer, Double> rank = new HashMap<>();
+    rank = new HashMap<>();
     for (final Integer key : subgraphs.keySet()) {
       rank.put(key, 1.0d);
     }
-    for (Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
+    for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
       memoryStore.getElasticStore().put(KEY_GRAPH, (long) entry.getKey(), entry.getValue());
     }
   }
@@ -92,7 +92,7 @@ public class PageRankCmpTask extends UserComputeTask
   @Override
   public final void run(final int iteration) {
     increment.clear();
-    Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(KEY_GRAPH);
+    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(KEY_GRAPH);
     for (final Map.Entry<Long, List<Integer>> entry : subgraphs.entrySet()) {
       final Integer nodeId = entry.getKey().intValue();
       final List<Integer> outList = entry.getValue();

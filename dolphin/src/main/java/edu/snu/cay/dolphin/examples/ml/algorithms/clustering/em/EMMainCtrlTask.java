@@ -119,7 +119,7 @@ public final class EMMainCtrlTask extends UserControllerTask
   public void initialize() {
 
     // Load the initial centroids from the previous stage
-    Map<?, Vector> centroidsMap = memoryStore.getLocalStore().getAll(ClusteringPreCtrlTask.KEY_CENTROIDS);
+    final Map<?, Vector> centroidsMap = memoryStore.getLocalStore().getAll(ClusteringPreCtrlTask.KEY_CENTROIDS);
     centroids.addAll(centroidsMap.values());
 
     // Initialize cluster summaries

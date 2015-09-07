@@ -45,7 +45,7 @@ public abstract class UserControllerTask {
    * Clean up a user-defined controller task.
    * Default behavior of this method is to do nothing, but this method can be overridden in subclasses.
    */
-  public void cleanup() throws IdGenerationException{
+  public void cleanup() throws IdGenerationException {
     return;
   }
 

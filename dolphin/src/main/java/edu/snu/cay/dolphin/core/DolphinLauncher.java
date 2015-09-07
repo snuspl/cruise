@@ -86,7 +86,7 @@ public final class DolphinLauncher {
         .build();
   }
 
-  private final Configuration getDriverConfiguration() {
+  private Configuration getDriverConfiguration() {
     final ConfigurationModule driverConfiguration = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))

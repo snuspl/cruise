@@ -37,7 +37,7 @@ public final class EMMainCmpTask extends UserComputeTask
     implements DataBroadcastReceiver<List<ClusterSummary>>, DataReduceSender<Map<Integer, ClusterStats>> {
 
   /**
-   * Key used in Elastic Memory to put/get the data
+   * Key used in Elastic Memory to put/get the data.
    */
   private static final String KEY_POINTS = "points";
 
@@ -66,8 +66,8 @@ public final class EMMainCmpTask extends UserComputeTask
   private final DataIdFactory<Long> dataIdFactory;
 
   /**
-   * This class is instantiated by TANG
-   * Constructs a single Compute Task for the EM algorithm
+   * Constructs a single Compute Task for the EM algorithm.
+   * This class is instantiated by TANG.
    * @param dataParser
    * @param memoryStore Memory storage to put/get the data
    * @param isCovarianceDiagonal  whether covariance matrices are diagonal or not
