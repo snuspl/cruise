@@ -23,7 +23,9 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.ClusterSummary;
 import edu.snu.cay.dolphin.examples.ml.parameters.IsCovarianceShared;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.*;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
@@ -61,6 +63,8 @@ public final class EMMainCmpTask extends UserComputeTask
    */
   private final MemoryStore memoryStore;
 
+  private final DataIdFactory<Long> dataIdFactory;
+
   /**
    * This class is instantiated by TANG
    * Constructs a single Compute Task for the EM algorithm
@@ -72,17 +76,20 @@ public final class EMMainCmpTask extends UserComputeTask
   public EMMainCmpTask(
       final DataParser<List<Vector>> dataParser,
       final MemoryStore memoryStore,
+      final DataIdFactory<Long> dataIdFactory,
       @Parameter(IsCovarianceShared.class) final boolean isCovarianceDiagonal) {
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
+    this.dataIdFactory = dataIdFactory;
     this.isCovarianceDiagonal = isCovarianceDiagonal;
   }
 
   @Override
-  public void initialize() throws ParseException {
+  public void initialize() throws ParseException, IdGenerationException {
     // Points read from input data to work on
     final List<Vector> points = dataParser.get();
-    memoryStore.putMovable(KEY_POINTS, points);
+    final List<Long> ids = dataIdFactory.getIds(points.size());
+    memoryStore.getElasticStore().putList(KEY_POINTS, ids, points);
   }
 
   @Override
@@ -91,8 +98,8 @@ public final class EMMainCmpTask extends UserComputeTask
     final int numClusters = clusterSummaries.size();
 
     // Compute the partial statistics of each cluster
-    final List<Vector> points = memoryStore.get(KEY_POINTS);
-    for (final Vector vector : points) {
+    final Map<?, Vector> points = memoryStore.getElasticStore().getAll(KEY_POINTS);
+    for (final Vector vector : points.values()) {
       final int dimension = vector.size();
       Matrix outProd = null;
 

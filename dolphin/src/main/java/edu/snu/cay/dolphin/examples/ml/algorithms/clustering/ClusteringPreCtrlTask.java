@@ -18,7 +18,9 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -52,11 +54,15 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
    */
   private final MemoryStore memoryStore;
 
+  private final DataIdFactory<Long> dataIdFactory;
+
   @Inject
   public ClusteringPreCtrlTask(
       final MemoryStore memoryStore,
+      final DataIdFactory<Long> dataIdFactory,
       @Parameter(NumberOfClusters.class) final int numberOfClusters) {
     this.memoryStore = memoryStore;
+    this.dataIdFactory = dataIdFactory;
     this.numberOfClusters = numberOfClusters;
   }
 
@@ -66,12 +72,13 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void cleanup() {
+  public void cleanup() throws IdGenerationException{
     /*
      * Pass the initial centroids to the main process.
      * Since CtrlTask is the only one to own the data, putMovable is not needed.
      */
-    memoryStore.putLocal(KEY_CENTROIDS, initialCentroids);
+    List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
+    memoryStore.getLocalStore().putList(KEY_CENTROIDS, ids, initialCentroids);
   }
 
   @Override

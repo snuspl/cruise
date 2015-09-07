@@ -99,7 +99,8 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    */
   @Override
   public void initialize() {
-    centroids = memoryStore.get(ClusteringPreCtrlTask.KEY_CENTROIDS);
+    Map<?, Vector> centroidsMap = memoryStore.getLocalStore().getAll(ClusteringPreCtrlTask.KEY_CENTROIDS);
+    centroids.addAll(centroidsMap.values());
   }
 
   @Override

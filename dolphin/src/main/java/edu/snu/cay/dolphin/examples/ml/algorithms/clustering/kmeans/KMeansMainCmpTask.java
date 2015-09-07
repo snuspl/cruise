@@ -22,7 +22,9 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.VectorDistanceMeasure;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 
 import javax.inject.Inject;
@@ -62,6 +64,8 @@ public final class KMeansMainCmpTask extends UserComputeTask
    */
   private final MemoryStore memoryStore;
 
+  private final DataIdFactory<Long> dataIdFactory;
+
   /**
    * This class is instantiated by TANG
    * Constructs a single Compute Task for k-means
@@ -72,17 +76,20 @@ public final class KMeansMainCmpTask extends UserComputeTask
   @Inject
   public KMeansMainCmpTask(final VectorDistanceMeasure distanceMeasure,
                            final DataParser<List<Vector>> dataParser,
-                           final MemoryStore memoryStore) {
+                           final MemoryStore memoryStore,
+                           final DataIdFactory<Long> dataIdFactory) {
     this.distanceMeasure = distanceMeasure;
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
+    this.dataIdFactory = dataIdFactory;
   }
 
   @Override
-  public void initialize() throws ParseException {
+  public void initialize() throws ParseException, IdGenerationException {
     // Points read from input data to work on
     final List<Vector> points = dataParser.get();
-    memoryStore.putMovable(KEY_POINTS, points);
+    final List<Long> ids = dataIdFactory.getIds(points.size());
+    memoryStore.getElasticStore().putList(KEY_POINTS, ids, points);
   }
 
   @Override
@@ -90,8 +97,8 @@ public final class KMeansMainCmpTask extends UserComputeTask
 
     // Compute the nearest cluster centroid for each point
     pointSum = new HashMap<>();
-    final List<Vector> points = memoryStore.get(KEY_POINTS);
-    for (final Vector vector : points) {
+    final Map<?, Vector> points = memoryStore.getElasticStore().getAll(KEY_POINTS);
+    for (final Vector vector : points.values()) {
       double nearestClusterDist = Double.MAX_VALUE;
       int nearestClusterId = -1;
       int clusterId = 0;

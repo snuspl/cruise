@@ -41,7 +41,7 @@ public class PageRankCmpTask extends UserComputeTask
   /**
    * Key used in Elastic Memory to put/get the data
    */
-  private static final String KEY_RANK = "rank";
+  private static final String KEY_GRAPH = "graph";
 
   /**
    * Adjacency list data parser.
@@ -49,10 +49,11 @@ public class PageRankCmpTask extends UserComputeTask
   private final DataParser<Map<Integer, List<Integer>>> dataParser;
 
   private final MemoryStore memoryStore;
+
   /**
-   * Subgraph consists a node and its outgoing neighbor set.
+   * Map of current rank.
    */
-  private Map<Integer, List<Integer>> subgraphs;
+  private Map<Integer, Double> rank;
 
   /**
    * Map of contributed increment to outgoing neighbor nodes
@@ -77,21 +78,23 @@ public class PageRankCmpTask extends UserComputeTask
    */
   @Override
   public void initialize() throws ParseException {
-    subgraphs = dataParser.get();
+    Map<Integer, List<Integer>> subgraphs = dataParser.get();
     // Map of current rank
     final Map<Integer, Double> rank = new HashMap<>();
     for (final Integer key : subgraphs.keySet()) {
       rank.put(key, 1.0d);
     }
-    // TODO Revisit once #38 is merged: put each entry as a separate unit.
-    memoryStore.putMovable(KEY_RANK, rank);
+    for (Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
+      memoryStore.getElasticStore().put(KEY_GRAPH, (long) entry.getKey(), entry.getValue());
+    }
   }
 
   @Override
   public final void run(final int iteration) {
     increment.clear();
-    for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
-      final Integer nodeId = entry.getKey();
+    Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(KEY_GRAPH);
+    for (final Map.Entry<Long, List<Integer>> entry : subgraphs.entrySet()) {
+      final Integer nodeId = entry.getKey().intValue();
       final List<Integer> outList = entry.getValue();
 
       // Add itself to ensure existence in graph
@@ -105,8 +108,6 @@ public class PageRankCmpTask extends UserComputeTask
 
       // The rank of node is distributed evenly to its outbound neighbor nodes.
       // Compute a contribution per each node
-      // TODO Revisit once #38 is merged: get() will return the set of entries.
-      final Map<Integer, Double> rank = (Map<Integer, Double>) memoryStore.get(KEY_RANK).get(0);
       final double contribution = rank.get(nodeId) * 1.0d / outList.size();
       // Add the contribution to each node
       for (final Integer adjNode : outList) {
@@ -130,8 +131,7 @@ public class PageRankCmpTask extends UserComputeTask
     if (iteration < 1) {
       return;
     }
-    // TODO Revisit once #38 is merged: put each entry as a separate unit.
-    memoryStore.putMovable(KEY_RANK, rankData);
+    rank = rankData;
   }
 
   /**

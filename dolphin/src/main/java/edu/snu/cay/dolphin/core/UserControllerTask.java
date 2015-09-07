@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 
 /**
  * Abstract class for user-defined controller tasks.
@@ -44,7 +45,7 @@ public abstract class UserControllerTask {
    * Clean up a user-defined controller task.
    * Default behavior of this method is to do nothing, but this method can be overridden in subclasses.
    */
-  public void cleanup() {
+  public void cleanup() throws IdGenerationException{
     return;
   }
 
