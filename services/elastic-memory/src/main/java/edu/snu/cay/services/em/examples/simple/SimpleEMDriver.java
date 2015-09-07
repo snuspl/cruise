@@ -20,6 +20,8 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import edu.snu.cay.services.em.trace.HTraceParameters;
@@ -140,11 +142,18 @@ final class SimpleEMDriver {
       final String contextId = activeContext.getId();
       final String taskId = contextId.replace(CONTEXT_ID_PREFIX, TASK_ID_PREFIX);
 
-      final Configuration taskConf = TaskConfiguration.CONF
-          .set(TaskConfiguration.IDENTIFIER, taskId)
-          .set(TaskConfiguration.TASK, SimpleEMTask.class)
-          .set(TaskConfiguration.ON_SEND_MESSAGE, SimpleEMTaskReady.class)
-          .build();
+      final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+          .bindNamedParameter(BaseCounterDataIdFactory.Base.class,
+              taskId.substring(SimpleEMDriver.TASK_ID_PREFIX.length())).build();
+
+      final Configuration taskConf = Configurations.merge(
+          TaskConfiguration.CONF
+              .set(TaskConfiguration.IDENTIFIER, taskId)
+              .set(TaskConfiguration.TASK, SimpleEMTask.class)
+              .set(TaskConfiguration.ON_SEND_MESSAGE, SimpleEMTaskReady.class)
+              .build(),
+          idFactoryConf);
 
       activeContext.submitTask(taskConf);
     }

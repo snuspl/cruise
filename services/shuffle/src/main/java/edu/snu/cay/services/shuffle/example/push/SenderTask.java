@@ -19,6 +19,7 @@ import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleProvider;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
 import org.apache.reef.io.Tuple;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
@@ -38,19 +39,23 @@ public final class SenderTask implements Task {
 
   private final PushShuffleSender<Integer, Integer> shuffleSender;
   private final int totalNumReceivers;
+  private final int numTotalIterations;
 
   @Inject
-  private SenderTask(final ShuffleProvider shuffleProvider) {
+  private SenderTask(
+      final ShuffleProvider shuffleProvider,
+      @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations) {
     final Shuffle<Integer, Integer> shuffle = shuffleProvider
         .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     this.shuffleSender = shuffle.getSender();
     this.totalNumReceivers = shuffle.getShuffleDescription().getReceiverIdList().size();
+    this.numTotalIterations = numTotalIterations;
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     int numSentTuples = 0;
-    for (int i = 0; i < MessageExchangeDriver.ITERATION_NUMBER; i++) {
+    for (int i = 0; i < numTotalIterations; i++) {
       for (int j = 0; j < MessageExchangeDriver.NETWORK_MESSAGE_NUMBER_IN_ONE_ITERATION; j++) {
         LOG.log(Level.INFO, "Send tuple messages");
         final List<Tuple<Integer, Integer>> tupleList = generateRandomTuples();

@@ -21,6 +21,7 @@ import edu.snu.cay.services.shuffle.evaluator.operator.PushDataListener;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
@@ -38,15 +39,19 @@ public final class ReceiverTask implements Task {
 
   private AtomicInteger totalNumReceivedTuples;
   private final AtomicInteger numCompletedIterations;
+  private final int numTotalIterations;
 
   @Inject
-  private ReceiverTask(final ShuffleProvider shuffleProvider) {
+  private ReceiverTask(
+      final ShuffleProvider shuffleProvider,
+      @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations) {
     this.numCompletedIterations = new AtomicInteger();
     final Shuffle<Integer, Integer> shuffle = shuffleProvider
         .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     final PushShuffleReceiver<Integer, Integer> shuffleReceiver = shuffle.getReceiver();
     shuffleReceiver.registerDataListener(new DataReceiver());
     this.totalNumReceivedTuples = new AtomicInteger();
+    this.numTotalIterations = numTotalIterations;
   }
 
   @Override
@@ -77,7 +82,7 @@ public final class ReceiverTask implements Task {
     public void onComplete() {
       final int numIterations = numCompletedIterations.incrementAndGet();
       LOG.log(Level.INFO, "{0} th iteration completed", numIterations);
-      if (numIterations == MessageExchangeDriver.ITERATION_NUMBER) {
+      if (numIterations == numTotalIterations) {
         LOG.log(Level.INFO, "The final iteration was completed");
         synchronized (ReceiverTask.this) {
           ReceiverTask.this.notify();

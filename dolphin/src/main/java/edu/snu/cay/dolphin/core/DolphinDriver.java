@@ -21,6 +21,8 @@ import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
 import org.apache.reef.driver.task.CompletedTask;
@@ -66,7 +68,7 @@ public final class DolphinDriver {
    * This object grants different IDs to each task
    * e.g. ComputeTask-0, ComputeTask-1, and so on.
    */
-  private final AtomicInteger taskId = new AtomicInteger(0);
+  private final AtomicInteger taskIdCounter = new AtomicInteger(0);
 
   /**
    * ID of the Context that goes under Controller Task.
@@ -377,10 +379,14 @@ public final class DolphinDriver {
     } else {
       LOG.log(Level.INFO, "Submit ComputeTask");
 
-      dolphinTaskConfBuilder.bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass());
+      final int taskId = this.taskIdCounter.getAndIncrement();
+
+      dolphinTaskConfBuilder.bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
+                            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+                            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId.getAndIncrement()))
+              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId))
               .set(TaskConfiguration.TASK, ComputeTask.class)
               .build(),
           dolphinTaskConfBuilder.build(),
