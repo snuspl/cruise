@@ -27,6 +27,8 @@ import org.apache.reef.io.data.output.TaskOutputStreamProvider;
 import org.apache.reef.io.data.output.TaskOutputStreamProviderHDFS;
 import org.apache.reef.io.data.output.TaskOutputStreamProviderLocal;
 import org.apache.reef.io.network.group.impl.driver.GroupCommService;
+import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
+import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -126,6 +128,8 @@ public final class DolphinLauncher {
         outputServiceConf,
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
+        NameServerConfiguration.CONF.build(),
+        LocalNameResolverConfiguration.CONF.build(),
         dolphinParameters.getDriverConf());
   }
 

@@ -24,6 +24,7 @@ import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
+import edu.snu.cay.services.em.trace.HTraceParameters;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
 import org.apache.reef.driver.task.CompletedTask;
@@ -132,6 +133,8 @@ public final class DolphinDriver {
    */
   private final MetricCodec metricCodec;
 
+  private final HTraceParameters traceParameters;
+
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final UserParameters userParameters;
 
@@ -160,7 +163,8 @@ public final class DolphinDriver {
                         final ElasticMemoryConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
-                        final MetricCodec metricCodec) {
+                        final MetricCodec metricCodec,
+                        final HTraceParameters traceParameters) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
     this.outputService = outputService;
@@ -172,6 +176,7 @@ public final class DolphinDriver {
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
     this.metricCodec = metricCodec;
+    this.traceParameters = traceParameters;
     initializeCommDriver();
   }
 
@@ -247,7 +252,8 @@ public final class DolphinDriver {
         final Configuration outputServiceConf = outputService.getServiceConfiguration();
         final Configuration metricTrackerServiceConf = MetricsCollectionService.getServiceConfiguration();
         final Configuration emContextConf = emConf.getContextConfiguration();
-        final Configuration emServiceConf = emConf.getServiceConfiguration();
+        final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
+        final Configuration traceConf = traceParameters.getConfiguration();
         final Configuration finalContextConf = MetricsCollectionService.getContextConfiguration(
                 Configurations.merge(groupCommContextConf, emContextConf));
         final Configuration finalServiceConf;
@@ -260,7 +266,7 @@ public final class DolphinDriver {
           // the Metric Collection service, and the Group Communication service
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
-              outputServiceConf);
+              outputServiceConf, traceConf);
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
@@ -269,7 +275,7 @@ public final class DolphinDriver {
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, dataParseConf, outputServiceConf,
-              metricTrackerServiceConf);
+              metricTrackerServiceConf, traceConf);
         }
 
         activeContext.submitContextAndService(finalContextConf, finalServiceConf);
@@ -375,7 +381,9 @@ public final class DolphinDriver {
     if (isCtrlTaskId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
 
-      dolphinTaskConfBuilder.bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass());
+      dolphinTaskConfBuilder.bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
+                            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+                            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(stageSequence))

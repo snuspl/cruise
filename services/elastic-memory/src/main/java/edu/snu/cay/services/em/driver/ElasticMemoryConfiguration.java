@@ -115,6 +115,23 @@ public final class ElasticMemoryConfiguration {
     return Configurations.merge(networkConf, nameClientConf, serviceConf, otherConf);
   }
 
+  public Configuration getServiceConfigurationWithoutNameResolver() {
+    final Configuration networkConf = getNetworkConfigurationBuilder()
+        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.evaluator.ElasticMemoryMsgHandler.class)
+        .build();
+
+    final Configuration serviceConf = ServiceConfiguration.CONF
+        .set(ServiceConfiguration.SERVICES, MemoryStoreImpl.class)
+        .build();
+
+    final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindNamedParameter(DriverIdentifier.class, driverId)
+        .build();
+
+    return Configurations.merge(networkConf, serviceConf, otherConf);
+  }
+
   private static JavaConfigurationBuilder getNetworkConfigurationBuilder() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(EMCodec.class, ElasticMemoryMsgCodec.class)
