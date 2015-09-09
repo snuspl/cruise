@@ -381,12 +381,13 @@ public final class DolphinDriver {
     if (isCtrlTaskId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
 
-      dolphinTaskConfBuilder.bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
-                            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-                            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
+      dolphinTaskConfBuilder
+          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+          .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
+          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskIdCounter.get()));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(stageSequence))
+              .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(taskIdCounter.getAndIncrement()))
               .set(TaskConfiguration.TASK, ControllerTask.class)
               .build(),
           dolphinTaskConfBuilder.build(),
@@ -398,14 +399,13 @@ public final class DolphinDriver {
     } else {
       LOG.log(Level.INFO, "Submit ComputeTask");
 
-      final int taskId = this.taskIdCounter.getAndIncrement();
-
-      dolphinTaskConfBuilder.bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
-                            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-                            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
+      dolphinTaskConfBuilder
+          .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
+          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskIdCounter.get()));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId))
+              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskIdCounter.getAndIncrement()))
               .set(TaskConfiguration.TASK, ComputeTask.class)
               .build(),
           dolphinTaskConfBuilder.build(),
@@ -433,8 +433,4 @@ public final class DolphinDriver {
   private String getCmpTaskId(final int sequence) {
     return ComputeTask.TASK_ID_PREFIX + "-" + sequence;
   }
-
-
-
-
 }
