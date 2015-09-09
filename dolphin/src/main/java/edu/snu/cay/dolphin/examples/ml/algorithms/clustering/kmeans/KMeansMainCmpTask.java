@@ -88,7 +88,7 @@ public final class KMeansMainCmpTask extends UserComputeTask
   }
 
   @Override
-  public void initialize() throws ParseException, RuntimeException {
+  public void initialize() throws ParseException {
     // Points read from input data to work on
     final List<Vector> points = dataParser.get();
     try {

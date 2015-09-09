@@ -36,7 +36,7 @@ public abstract class UserComputeTask {
    * Initialize a user-defined compute task.
    * Default behavior of this method is to do nothing, but this method can be overridden in subclasses
    */
-  public void initialize() throws ParseException, RuntimeException {
+  public void initialize() throws ParseException {
     return;
   }
 

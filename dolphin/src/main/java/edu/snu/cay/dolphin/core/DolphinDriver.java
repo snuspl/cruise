@@ -381,13 +381,14 @@ public final class DolphinDriver {
     if (isCtrlTaskId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
 
+      final int taskId = taskIdCounter.getAndIncrement();
       dolphinTaskConfBuilder
           .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
           .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
-          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskIdCounter.get()));
+          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(taskIdCounter.getAndIncrement()))
+              .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(taskId))
               .set(TaskConfiguration.TASK, ControllerTask.class)
               .build(),
           dolphinTaskConfBuilder.build(),
@@ -399,13 +400,14 @@ public final class DolphinDriver {
     } else {
       LOG.log(Level.INFO, "Submit ComputeTask");
 
+      final int taskId = taskIdCounter.getAndIncrement();
       dolphinTaskConfBuilder
           .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
           .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskIdCounter.get()));
+          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskIdCounter.getAndIncrement()))
+              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId))
               .set(TaskConfiguration.TASK, ComputeTask.class)
               .build(),
           dolphinTaskConfBuilder.build(),

@@ -70,7 +70,7 @@ public class LogisticRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public void initialize() throws ParseException, RuntimeException {
+  public void initialize() throws ParseException {
     final List<Row> rows = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(rows.size());

@@ -75,7 +75,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void cleanup() throws RuntimeException {
+  public void cleanup() {
     /*
      * Pass the initial centroids to the main process.
      * Since CtrlTask is the only one to own the data, put data in LocalStore.
