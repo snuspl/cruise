@@ -22,6 +22,9 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.VectorDistanceMeasure;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 
 import javax.inject.Inject;
@@ -34,9 +37,9 @@ public final class KMeansMainCmpTask extends UserComputeTask
     implements DataBroadcastReceiver<List<Vector>>, DataReduceSender<Map<Integer, VectorSum>> {
 
   /**
-   * Points read from input data to work on.
+   * Key used in Elastic Memory to put/get the data.
    */
-  private List<Vector> points = null;
+  private static final String KEY_POINTS = "points";
 
   /**
    * Centroids of clusters.
@@ -53,25 +56,47 @@ public final class KMeansMainCmpTask extends UserComputeTask
    * Default measure is Euclidean distance
    */
   private final VectorDistanceMeasure distanceMeasure;
+
   private final DataParser<List<Vector>> dataParser;
+
+  /**
+   * Memory storage to put/get the data.
+   */
+  private final MemoryStore memoryStore;
+
+  /**
+   * Data identifier factory to generate id for data.
+   */
+  private final DataIdFactory<Long> dataIdFactory;
 
   /**
    * Constructs a single Compute Task for k-means.
    * This class is instantiated by TANG.
    * @param dataParser
+   * @param memoryStore Memory storage to put/get the data
    * @param distanceMeasure distance measure to use to compute distances between points
    */
   @Inject
   public KMeansMainCmpTask(final VectorDistanceMeasure distanceMeasure,
-                           final DataParser<List<Vector>> dataParser) {
-
+                           final DataParser<List<Vector>> dataParser,
+                           final MemoryStore memoryStore,
+                           final DataIdFactory<Long> dataIdFactory) {
     this.distanceMeasure = distanceMeasure;
     this.dataParser = dataParser;
+    this.memoryStore = memoryStore;
+    this.dataIdFactory = dataIdFactory;
   }
 
   @Override
   public void initialize() throws ParseException {
-    points = dataParser.get();
+    // Points read from input data to work on
+    final List<Vector> points = dataParser.get();
+    try {
+      final List<Long> ids = dataIdFactory.getIds(points.size());
+      memoryStore.getElasticStore().putList(KEY_POINTS, ids, points);
+    } catch (IdGenerationException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -79,7 +104,8 @@ public final class KMeansMainCmpTask extends UserComputeTask
 
     // Compute the nearest cluster centroid for each point
     pointSum = new HashMap<>();
-    for (final Vector vector : points) {
+    final Map<?, Vector> points = memoryStore.getElasticStore().getAll(KEY_POINTS);
+    for (final Vector vector : points.values()) {
       double nearestClusterDist = Double.MAX_VALUE;
       int nearestClusterId = -1;
       int clusterId = 0;
