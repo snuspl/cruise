@@ -64,6 +64,9 @@ public final class KMeansMainCmpTask extends UserComputeTask
    */
   private final MemoryStore memoryStore;
 
+  /**
+   * Data identifier factory to generate id for data.
+   */
   private final DataIdFactory<Long> dataIdFactory;
 
   /**

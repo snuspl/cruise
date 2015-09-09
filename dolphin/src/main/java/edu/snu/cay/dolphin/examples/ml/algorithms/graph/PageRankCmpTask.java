@@ -48,6 +48,9 @@ public class PageRankCmpTask extends UserComputeTask
    */
   private final DataParser<Map<Integer, List<Integer>>> dataParser;
 
+  /**
+   * Memory storage to put/get the data.
+   */
   private final MemoryStore memoryStore;
 
   /**

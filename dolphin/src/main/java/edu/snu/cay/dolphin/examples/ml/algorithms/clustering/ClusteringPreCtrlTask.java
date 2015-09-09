@@ -54,6 +54,9 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
    */
   private final MemoryStore memoryStore;
 
+  /**
+   * Data identifier factory to generate id for data.
+   */
   private final DataIdFactory<Long> dataIdFactory;
 
   @Inject
