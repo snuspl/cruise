@@ -19,7 +19,6 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterReceiver;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
 
 /**
  * Abstract class for user-defined compute tasks.
@@ -37,7 +36,7 @@ public abstract class UserComputeTask {
    * Initialize a user-defined compute task.
    * Default behavior of this method is to do nothing, but this method can be overridden in subclasses
    */
-  public void initialize() throws ParseException, IdGenerationException {
+  public void initialize() throws ParseException, RuntimeException {
     return;
   }
 

@@ -72,13 +72,17 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   }
 
   @Override
-  public void cleanup() throws IdGenerationException {
+  public void cleanup() throws RuntimeException {
     /*
      * Pass the initial centroids to the main process.
-     * Since CtrlTask is the only one to own the data, putMovable is not needed.
+     * Since CtrlTask is the only one to own the data, put data in LocalStore.
      */
-    final List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
-    memoryStore.getLocalStore().putList(KEY_CENTROIDS, ids, initialCentroids);
+    try {
+      final List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
+      memoryStore.getLocalStore().putList(KEY_CENTROIDS, ids, initialCentroids);
+    } catch (IdGenerationException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

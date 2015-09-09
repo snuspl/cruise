@@ -85,11 +85,15 @@ public final class KMeansMainCmpTask extends UserComputeTask
   }
 
   @Override
-  public void initialize() throws ParseException, IdGenerationException {
+  public void initialize() throws ParseException, RuntimeException {
     // Points read from input data to work on
     final List<Vector> points = dataParser.get();
-    final List<Long> ids = dataIdFactory.getIds(points.size());
-    memoryStore.getElasticStore().putList(KEY_POINTS, ids, points);
+    try {
+      final List<Long> ids = dataIdFactory.getIds(points.size());
+      memoryStore.getElasticStore().putList(KEY_POINTS, ids, points);
+    } catch (IdGenerationException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
