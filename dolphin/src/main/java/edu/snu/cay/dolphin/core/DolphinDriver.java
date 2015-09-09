@@ -66,7 +66,7 @@ public final class DolphinDriver {
   private static final Logger LOG = Logger.getLogger(DolphinDriver.class.getName());
 
   /**
-   * Sub-id for Compute Tasks.
+   * Sub-id for Control and Compute Tasks.
    * This object grants different IDs to each task
    * e.g. ComputeTask-0, ComputeTask-1, and so on.
    */
