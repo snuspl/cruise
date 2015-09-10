@@ -233,6 +233,7 @@ public final class DolphinDriver {
       commGroup.finalise();
       sequence++;
     }
+    taskIdCounter.set(sequence);
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
@@ -381,14 +382,13 @@ public final class DolphinDriver {
     if (isCtrlTaskId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
 
-      final int taskId = taskIdCounter.getAndIncrement();
       dolphinTaskConfBuilder
           .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
           .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
-          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
+          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(taskId))
+              .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(stageSequence))
               .set(TaskConfiguration.TASK, ControllerTask.class)
               .build(),
           dolphinTaskConfBuilder.build(),
