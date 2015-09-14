@@ -43,7 +43,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final ElasticMemoryMsgSender sender;
   private final ElasticMemoryCallbackRouter callbackRouter;
 
-  private final AtomicLong operatorIdCounter = new AtomicLong();
+  private final AtomicLong operationIdCounter = new AtomicLong();
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
@@ -84,12 +84,11 @@ public final class ElasticMemoryImpl implements ElasticMemory {
                    final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
-      final String operatorId = MOVE + "-" + Long.toString(operatorIdCounter.getAndIncrement());
+      final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
 
-      callbackRouter.register(operatorId, callback);
-
+      callbackRouter.register(operationId, callback);
       sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, idRangeSet,
-          operatorId, TraceInfo.fromSpan(traceScope.getSpan()));
+          operationId, TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }
 
