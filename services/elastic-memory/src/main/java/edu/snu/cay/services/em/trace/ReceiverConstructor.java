@@ -18,10 +18,10 @@ package edu.snu.cay.services.em.trace;
 import edu.snu.cay.services.em.trace.parameters.ReceiverHost;
 import edu.snu.cay.services.em.trace.parameters.ReceiverPort;
 import edu.snu.cay.services.em.trace.parameters.ReceiverType;
-import org.apache.htrace.HTraceConfiguration;
-import org.apache.htrace.SpanReceiver;
-import org.apache.htrace.impl.StandardOutSpanReceiver;
-import org.apache.htrace.impl.ZipkinSpanReceiver;
+import org.htrace.HTraceConfiguration;
+import org.htrace.SpanReceiver;
+import org.htrace.impl.StandardOutSpanReceiver;
+import org.htrace.impl.ZipkinSpanReceiver;
 import org.apache.reef.tang.ExternalConstructor;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -44,7 +44,7 @@ final class ReceiverConstructor implements ExternalConstructor<SpanReceiver> {
                               @Parameter(ReceiverHost.class) final String receiverHost,
                               @Parameter(ReceiverPort.class) final int receiverPort) {
     if (STDOUT.equals(receiverType)) {
-      this.receiver = new StandardOutSpanReceiver(HTraceConfiguration.EMPTY);
+      this.receiver = new StandardOutSpanReceiver();
     } else if (ZIPKIN.equals(receiverType)) {
       this.receiver = getZipkinReceiver(receiverHost, receiverPort);
     } else {
@@ -56,7 +56,10 @@ final class ReceiverConstructor implements ExternalConstructor<SpanReceiver> {
     final Map<String, String> confMap = new HashMap<>(2);
     confMap.put("zipkin.collector-hostname", receiverHost);
     confMap.put("zipkin.collector-port", Integer.toString(receiverPort));
-    return new ZipkinSpanReceiver(HTraceConfiguration.fromMap(confMap));
+
+    final ZipkinSpanReceiver receiver = new ZipkinSpanReceiver();
+    receiver.configure(HTraceConfiguration.fromMap(confMap));
+    return receiver;
   }
 
   @Override

@@ -55,11 +55,11 @@
       <artifactId>wake</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.htrace</groupId>
+      <groupId>org.htrace</groupId>
       <artifactId>htrace-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.htrace</groupId>
+      <groupId>org.htrace</groupId>
       <artifactId>htrace-zipkin</artifactId>
     </dependency>
     <dependency>
