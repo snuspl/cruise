@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.driver.MigrationManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -42,6 +43,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final EvaluatorRequestor requestor;
   private final ElasticMemoryMsgSender sender;
   private final ElasticMemoryCallbackRouter callbackRouter;
+  private final MigrationManager migrationManager;
 
   private final AtomicLong operationIdCounter = new AtomicLong();
 
@@ -49,11 +51,13 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
                             final ElasticMemoryMsgSender sender,
                             final ElasticMemoryCallbackRouter callbackRouter,
+                            final MigrationManager migrationManager,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.requestor = requestor;
     this.sender = sender;
     this.callbackRouter = callbackRouter;
+    this.migrationManager = migrationManager;
   }
 
   @Override
@@ -87,6 +91,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
 
       callbackRouter.register(operationId, callback);
+      migrationManager.put(operationId, srcEvalId, destEvalId);
       sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, idRangeSet,
           operationId, TraceInfo.fromSpan(traceScope.getSpan()));
     }

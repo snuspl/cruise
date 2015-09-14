@@ -26,6 +26,7 @@ import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
+import edu.snu.cay.services.em.trace.HTrace;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.AvroUtils;
 import org.apache.commons.lang.math.LongRange;
@@ -38,6 +39,7 @@ import org.apache.reef.io.network.Connection;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.LinkedList;
 import java.util.List;
@@ -203,5 +205,15 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRegisMsg",
           new Object[]{dataType, unitStartId, unitEndId});
     }
+  }
+
+  @Override
+  public void sendUpdateMsg(final String destId, final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.UpdateMsg)
+              .setOperationId(operationId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .build());
   }
 }

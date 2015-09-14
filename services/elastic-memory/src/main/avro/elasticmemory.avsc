@@ -104,6 +104,14 @@
   ]
 },
 
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "UpdateMsg",
+  "fields":
+  []
+},
+
 /**
  * The message protocol used by Network Service for Elastic Memory.
  * CtrlMsg, DataMsg, etc. are all included as nullable fields, and
@@ -116,7 +124,7 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["CtrlMsg", "DataMsg", "ResultMsg", "RegisMsg"]}},
+        "symbols": ["CtrlMsg", "DataMsg", "ResultMsg", "RegisMsg", "UpdateMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
@@ -124,7 +132,8 @@
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
     {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
-    {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null}
+    {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null},
+    {"name": "updateMsg", "type": ["null", "UpdateMsg"], "default": null}
   ]
 }
 ]

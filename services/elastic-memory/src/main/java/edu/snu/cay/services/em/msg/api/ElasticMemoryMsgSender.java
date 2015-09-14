@@ -65,4 +65,8 @@ public interface ElasticMemoryMsgSender {
                     final long unitStartId,
                     final long unitEndId,
                     @Nullable final TraceInfo parentTraceInfo);
+
+  void sendUpdateMsg(final String destId,
+                     final String operationId,
+                     @Nullable final TraceInfo parentTraceInfo);
 }
