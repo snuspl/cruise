@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.trace;
 import edu.snu.cay.services.em.trace.parameters.ReceiverHost;
 import edu.snu.cay.services.em.trace.parameters.ReceiverPort;
 import edu.snu.cay.services.em.trace.parameters.ReceiverType;
-import org.apache.htrace.SpanReceiver;
+import org.htrace.SpanReceiver;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
