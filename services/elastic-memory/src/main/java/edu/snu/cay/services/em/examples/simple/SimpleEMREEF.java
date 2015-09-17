@@ -41,7 +41,7 @@ import java.util.logging.Logger;
 /**
  * Client code for SimpleEM.
  */
-final class SimpleEMREEF {
+public final class SimpleEMREEF {
   private static final Logger LOG = Logger.getLogger(SimpleEMREEF.class.getName());
   private static final int TIMEOUT = 100000;
   private static final Tang TANG = Tang.Factory.getTang();
