@@ -23,15 +23,21 @@ import java.util.Collection;
  * Holds the information of data to add to MemoryStore after migration completes.
  */
 class AddInfo implements UpdateInfo {
+  private final String dataType;
   private final Collection<UnitIdPair> unitIdPairs;
 
-  AddInfo(final Collection<UnitIdPair> unitIdPairs) {
+  AddInfo(final String dataType, final Collection<UnitIdPair> unitIdPairs) {
+    this.dataType = dataType;
     this.unitIdPairs = unitIdPairs;
   }
 
   @Override
   public Type getType() {
     return Type.ADD;
+  }
+
+  String getDataType() {
+    return dataType;
   }
 
   Collection<UnitIdPair> getUnitIdPairs() {

@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.msg.api;
 
 import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.TraceInfo;
@@ -69,4 +70,8 @@ public interface ElasticMemoryMsgSender {
   void sendUpdateMsg(final String destId,
                      final String operationId,
                      @Nullable final TraceInfo parentTraceInfo);
+
+  void sendUpdateAckMsg(final String operationId,
+                        final UpdateResult result,
+                        @Nullable final TraceInfo parentTraceInfo);
 }

@@ -15,15 +15,7 @@
  */
 package edu.snu.cay.services.em.msg.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.AvroLongRange;
-import edu.snu.cay.services.em.avro.CtrlMsg;
-import edu.snu.cay.services.em.avro.DataMsg;
-import edu.snu.cay.services.em.avro.RegisMsg;
-import edu.snu.cay.services.em.avro.Result;
-import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.avro.Type;
-import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.services.em.trace.HTraceUtils;
@@ -58,6 +50,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private static final String SEND_RESULT_MSG = "sendResultMsg";
   private static final String SEND_REGIS_MSG = "sendRegisMsg";
   private static final String SEND_UPDATE_MSG = "sendUpdateMsg";
+  private static final String SEND_UPDATE_ACK_MSG = "sendUpdateAckMsg";
 
   private final EMNetworkSetup emNetworkSetup;
   private final IdentifierFactory identifierFactory;
@@ -217,12 +210,43 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.UpdateMsg)
+              .setSrcId(driverId)
+              .setDestId(destId) // Or set ""
               .setOperationId(operationId)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateMsg",
           new Object[]{});
+    }
+  }
+
+  @Override
+  public void sendUpdateAckMsg(final String operationId,
+                               final UpdateResult result,
+                               @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendUpdateAckMsgScope = Trace.startSpan(SEND_UPDATE_ACK_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateAckMsg",
+          new Object[]{operationId, result});
+
+      final UpdateAckMsg updateAckMsg =
+          UpdateAckMsg.newBuilder()
+              .setResult(result)
+              .build();
+
+      send(driverId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.UpdateAckMsg)
+              .setSrcId(emNetworkSetup.getMyId().toString())
+              .setDestId("") // Or set ""
+              .setOperationId(operationId)
+              .setUpdateAckMsg(updateAckMsg)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateAckMsg",
+          new Object[]{operationId, result});
     }
   }
 }

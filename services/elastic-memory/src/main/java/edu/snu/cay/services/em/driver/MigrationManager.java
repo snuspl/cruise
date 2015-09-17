@@ -15,9 +15,11 @@
  */
 package edu.snu.cay.services.em.driver;
 
+import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
+import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -33,7 +35,7 @@ public final class MigrationManager {
       SENDING, UPDATING_RECEIVER, UPDATING_SENDER
   }
 
-  private final ConcurrentHashMap<CharSequence, MigrationInfo> ongoingMigrations = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, MigrationInfo> ongoingMigrations = new ConcurrentHashMap<>();
 
   @Inject
   private MigrationManager() {
@@ -45,35 +47,39 @@ public final class MigrationManager {
    * @param senderId Identifier of the sender
    * @param receiverId Identifier of the receiver
    */
-  public void put(final CharSequence operationId, final String senderId, final String receiverId) {
-    ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId));
+  public void put(final String operationId,
+                  final String senderId,
+                  final String receiverId,
+                  final String dataType,
+                  final Collection<LongRange> ranges) {
+    ongoingMigrations.putIfAbsent(operationId, new MigrationInfo(senderId, receiverId, dataType, ranges));
   }
 
   /**
    * Called when the data has been sent to the receiver successfully.
    * @param operationId Identifier of {@code move} operation.
    */
-  public void onDataSent(final CharSequence operationId) {
+  public void onDataSent(final String operationId) {
     final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
     assert migrationInfo.state == State.SENDING;
-    migrationInfo.state = State.UPDATING_RECEIVER;
+    migrationInfo.setState(State.UPDATING_RECEIVER);
   }
 
   /**
    * Called when the MemoryStore's state has been updated in the receiver successfully.
    * @param operationId Identifier of {@code move} operation.
    */
-  public void onReceiverUpdated(final CharSequence operationId) {
+  public void onReceiverUpdated(final String operationId) {
     final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
     assert migrationInfo.state == State.UPDATING_RECEIVER;
-    migrationInfo.state = State.UPDATING_SENDER;
+    migrationInfo.setState(State.UPDATING_SENDER);
   }
 
   /**
    * Called when the MemoryStore's state has been updated in the sender successfully.
    * @param operationId Identifier of {@code move} operation.
    */
-  public void onSenderUpdated(final CharSequence operationId) {
+  public void onSenderUpdated(final String operationId) {
     final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
     assert migrationInfo.state == State.UPDATING_SENDER;
     ongoingMigrations.remove(operationId);
@@ -83,7 +89,7 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    * @return Identifier of whom sends the data.
    */
-  public String getSenderId(final CharSequence operationId) {
+  public String getSenderId(final String operationId) {
     return ongoingMigrations.get(operationId).senderId;
   }
 
@@ -91,8 +97,24 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    * @return Identifier of whom receives the data.
    */
-  public String getReceiverId(final CharSequence operationId) {
+  public String getReceiverId(final String operationId) {
     return ongoingMigrations.get(operationId).receiverId;
+  }
+
+  /**
+   * @param operationId Identifier of {@code move} operation.
+   * @return Type of the data to move.
+   */
+  public String getDataType(final CharSequence operationId) {
+    return ongoingMigrations.get(operationId).dataType;
+  }
+
+  /**
+   * @param operationId Identifier of {@code move} operation.
+   * @return Ranges of the data to move.
+   */
+  public Collection<LongRange> getRanges(final String operationId) {
+    return ongoingMigrations.get(operationId).ranges;
   }
 
   /**
@@ -101,17 +123,33 @@ public final class MigrationManager {
   private final class MigrationInfo {
     private final String senderId;
     private final String receiverId;
-    private State state;
+    private final String dataType;
+    private final Collection<LongRange> ranges; // TODO #95: Ranges may not be able to set at the first time
+    private State state = State.SENDING;
 
     /**
      * Creates a new MigrationInfo when move() is requested.
      * @param senderId Identifier of the sender.
      * @param receiverId Identifier of the receiver.
+     * @param dataType Type of data
+     * @param ranges Set of ranges to move
      */
-    MigrationInfo(final String senderId, final String receiverId) {
+    private MigrationInfo(final String senderId,
+                          final String receiverId,
+                          final String dataType,
+                          final Collection<LongRange> ranges) {
       this.senderId = senderId;
       this.receiverId = receiverId;
-      this.state = State.SENDING;
+      this.dataType = dataType;
+      this.ranges = ranges;
+    }
+
+    private State getState() {
+      return state;
+    }
+
+    private void setState(final State state) {
+      this.state = state;
     }
   }
 }

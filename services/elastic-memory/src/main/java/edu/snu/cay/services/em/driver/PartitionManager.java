@@ -74,6 +74,19 @@ public final class PartitionManager {
     return new TreeSet<>(mapDatatypeRange.get(dataType));
   }
 
+  public synchronized boolean move(final String senderId,
+                                   final String receiverId,
+                                   final String dataType,
+                                   final LongRange range) {
+    final boolean removeSucceed = remove(senderId, dataType, range);
+    if (removeSucceed)  {
+      registerPartition(receiverId, dataType, range);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   public synchronized boolean remove(final String evalId, final String dataType, final LongRange longRange) {
     if (!mapIdDatatypeRange.containsKey(evalId)) {
       return false;

@@ -91,7 +91,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
 
       callbackRouter.register(operationId, callback);
-      migrationManager.put(operationId, srcEvalId, destEvalId);
+      migrationManager.put(operationId, srcEvalId, destEvalId, dataType, idRangeSet);
       sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, idRangeSet,
           operationId, TraceInfo.fromSpan(traceScope.getSpan()));
     }

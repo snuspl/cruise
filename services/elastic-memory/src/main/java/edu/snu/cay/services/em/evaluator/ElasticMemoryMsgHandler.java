@@ -47,6 +47,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
   private static final String ON_DATA_MSG = "onDataMsg";
   private static final String ON_CTRL_MSG = "onCtrlMsg";
+  private static final String ON_UPDATE_MSG = "onUpdateMsg";
 
   private final MemoryStore memoryStore;
   private final Serializer serializer;
@@ -77,11 +78,82 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       onCtrlMsg(innerMsg);
       break;
 
+    case UpdateMsg:
+      onUpdateMsg(innerMsg);
+      break;
+
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
 
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+  }
+
+  /**
+   * Applies the pending updates (add, remove) to the MemoryStore.
+   */
+  private void onUpdateMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onUpdateMsgScope =
+             Trace.startSpan(ON_UPDATE_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+      final CharSequence operationId = msg.getOperationId();
+      final UpdateResult updateResult;
+
+      final UpdateInfo updateInfo = pendingUpdates.get(operationId);
+      if (updateInfo == null) {
+        updateResult = UpdateResult.FAILED;
+      } else {
+        switch (updateInfo.getType()) {
+        case ADD:
+          final AddInfo addInfo = (AddInfo) updateInfo;
+          applyAdd(addInfo);
+          updateResult = UpdateResult.RECEIVER_UPDATED;
+          break;
+        case REMOVE:
+          final RemoveInfo removeInfo = (RemoveInfo) updateInfo;
+          applyRemove(removeInfo);
+          updateResult = UpdateResult.SENDER_UPDATED;
+          break;
+        default:
+          throw new RuntimeException("Undefined Message type of UpdateInfo: " + updateInfo);
+        }
+      }
+
+      sendUpdateAckMsg(operationId, updateResult, onUpdateMsgScope);
+    }
+  }
+
+   /**
+   * Adds the data to the MemoryStore.
+   */
+  private void applyAdd(final AddInfo addInfo) {
+    final String dataType = addInfo.getDataType();
+    final Codec codec = serializer.getCodec(dataType);
+
+    for (final UnitIdPair unitIdPair : addInfo.getUnitIdPairs()) {
+      final byte[] data = unitIdPair.getUnit().array();
+      final long id = unitIdPair.getId();
+      memoryStore.getElasticStore().put(dataType, id, codec.decode(data));
+    }
+  }
+
+  /**
+   * Removes the data from the MemoryStore. It is guaranteed that the data is transferred,
+   * and the Driver updated its partition status successfully.
+   */
+  private void applyRemove(final RemoveInfo removeInfo) {
+    final String dataType = removeInfo.getDataType();
+    for (final long id : removeInfo.getIds()) {
+      memoryStore.getElasticStore().remove(dataType, id);
+    }
+  }
+
+  /**
+   * Send the ACK message of the update operation.
+   */
+  private void sendUpdateAckMsg(final CharSequence operationId,
+                                final UpdateResult result,
+                                final TraceScope traceScope) {
+    sender.get().sendUpdateAckMsg(operationId.toString(), result, TraceInfo.fromSpan(traceScope.getSpan()));
   }
 
   /**
@@ -92,10 +164,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       final DataMsg dataMsg = msg.getDataMsg();
       final String dataType = dataMsg.getDataType().toString();
-      final Codec codec = serializer.getCodec(dataMsg.getDataType().toString());
 
       // store the items in the pendingUpdates, so the items will be added later.
-      pendingUpdates.put(msg.getOperationId(), new AddInfo(dataMsg.getUnits()));
+      pendingUpdates.put(msg.getOperationId(), new AddInfo(dataType, dataMsg.getUnits()));
 
       sender.get().sendResultMsg(true,
           msg.getOperationId().toString(), TraceInfo.fromSpan(onDataMsgScope.getSpan()));

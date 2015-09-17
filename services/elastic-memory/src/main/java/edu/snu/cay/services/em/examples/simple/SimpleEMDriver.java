@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
@@ -205,9 +205,10 @@ final class SimpleEMDriver {
                 @Override
                 public void onNext(final AvroElasticMemoryMessage emMsg) {
                   synchronized (SimpleEMDriver.this) {
-                    moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS) ? true : false;
-                    LOG.info("Move " + emMsg.getOperationId() +
-                        (moveSucceeded[0] ? " succeeded" : " failed"));
+                    moveSucceeded[0] = emMsg.getUpdateAckMsg().getResult().equals(UpdateResult.SENDER_UPDATED)
+                        ? true : false;
+                    LOG.info("Move " + emMsg.getOperationId() + (moveSucceeded[0]
+                        ? " succeeded" : " " + emMsg.getUpdateAckMsg().getResult()));
                     SimpleEMDriver.this.notifyAll();
                   }
                 }
