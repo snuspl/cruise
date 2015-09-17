@@ -33,6 +33,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
@@ -50,6 +51,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private final MemoryStore memoryStore;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
+
+  private final ConcurrentHashMap<CharSequence, UpdateInfo> pendingUpdates = new ConcurrentHashMap<>();
 
   @Inject
   private ElasticMemoryMsgHandler(final MemoryStore memoryStore,
@@ -91,12 +94,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final String dataType = dataMsg.getDataType().toString();
       final Codec codec = serializer.getCodec(dataMsg.getDataType().toString());
 
-      // extract data items from the message and store them in my memory store
-      for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
-        final byte[] data = unitIdPair.getUnit().array();
-        final long id = unitIdPair.getId();
-        memoryStore.getElasticStore().put(dataType, id, codec.decode(data));
-      }
+      // store the items in the pendingUpdates, so the items will be added later.
+      pendingUpdates.put(msg.getOperationId(), new AddInfo(dataMsg.getUnits()));
 
       sender.get().sendResultMsg(true,
           msg.getOperationId().toString(), TraceInfo.fromSpan(onDataMsgScope.getSpan()));
@@ -120,24 +119,32 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       int numObject = 0;
       for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
         final Map<Long, Object> idObjectMap =
-            memoryStore.getElasticStore().removeRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
+            memoryStore.getElasticStore().getRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
         numObject += idObjectMap.size();
         idObjectMapSet.add(idObjectMap);
       }
 
-      // pack the extracted items into a single list for message transmission
-      // the identifiers for each item are included with the item itself as an UnitIdPair
+      // collect the identifiers of the extracted items to remove them after the data is sent successfully.
+      // for message transmission, the items are packed into a single list of UnitIdPair,
+      // each of which includes the identifier of each item
       final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
+      final Set<Long> ids = new HashSet<>(numObject);
       for (final Map<Long, Object> idObjectMap : idObjectMapSet) {
         for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
-          final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-              .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
-              .setId(idObject.getKey())
-              .build();
+          final long id = idObject.getKey();
+          ids.add(id);
 
+          final Object unit = idObject.getValue();
+          final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+              .setUnit(ByteBuffer.wrap(codec.encode(unit)))
+              .setId(id)
+              .build();
           unitIdPairList.add(unitIdPair);
         }
       }
+
+      // Register the information of this operation to remove the items from the MemoryStore later.
+      pendingUpdates.put(msg.getOperationId(), new RemoveInfo(dataType, ids));
 
       sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
           msg.getOperationId().toString(), TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));

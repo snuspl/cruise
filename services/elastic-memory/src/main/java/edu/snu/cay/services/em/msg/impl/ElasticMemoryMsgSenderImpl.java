@@ -26,7 +26,6 @@ import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
-import edu.snu.cay.services.em.trace.HTrace;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.AvroUtils;
 import org.apache.commons.lang.math.LongRange;
@@ -58,6 +57,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private static final String SEND_DATA_MSG = "sendDataMsg";
   private static final String SEND_RESULT_MSG = "sendResultMsg";
   private static final String SEND_REGIS_MSG = "sendRegisMsg";
+  private static final String SEND_UPDATE_MSG = "sendUpdateMsg";
 
   private final EMNetworkSetup emNetworkSetup;
   private final IdentifierFactory identifierFactory;
@@ -209,11 +209,20 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendUpdateMsg(final String destId, final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendUpdateMsgScope = Trace.startSpan(SEND_UPDATE_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateMsg",
+          new Object[]{destId});
+
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.UpdateMsg)
               .setOperationId(operationId)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
               .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateMsg",
+          new Object[]{});
+    }
   }
 }

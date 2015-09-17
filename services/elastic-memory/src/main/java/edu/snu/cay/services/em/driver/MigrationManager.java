@@ -33,7 +33,7 @@ public final class MigrationManager {
       SENDING, UPDATING_RECEIVER, UPDATING_SENDER
   }
 
-  private final ConcurrentHashMap<String, MigrationInfo> ongoingMigrations = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<CharSequence, MigrationInfo> ongoingMigrations = new ConcurrentHashMap<>();
 
   @Inject
   private MigrationManager() {
@@ -45,7 +45,7 @@ public final class MigrationManager {
    * @param senderId Identifier of the sender
    * @param receiverId Identifier of the receiver
    */
-  public void put(final String operationId, final String senderId, final String receiverId) {
+  public void put(final CharSequence operationId, final String senderId, final String receiverId) {
     ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId));
   }
 
@@ -53,7 +53,7 @@ public final class MigrationManager {
    * Called when the data has been sent to the receiver successfully.
    * @param operationId Identifier of {@code move} operation.
    */
-  public void onDataSent(final String operationId) {
+  public void onDataSent(final CharSequence operationId) {
     final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
     assert migrationInfo.state == State.SENDING;
     migrationInfo.state = State.UPDATING_RECEIVER;
@@ -63,7 +63,7 @@ public final class MigrationManager {
    * Called when the MemoryStore's state has been updated in the receiver successfully.
    * @param operationId Identifier of {@code move} operation.
    */
-  public void onReceiverUpdated(final String operationId) {
+  public void onReceiverUpdated(final CharSequence operationId) {
     final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
     assert migrationInfo.state == State.UPDATING_RECEIVER;
     migrationInfo.state = State.UPDATING_SENDER;
@@ -73,7 +73,7 @@ public final class MigrationManager {
    * Called when the MemoryStore's state has been updated in the sender successfully.
    * @param operationId Identifier of {@code move} operation.
    */
-  public void onSenderUpdated(final String operationId) {
+  public void onSenderUpdated(final CharSequence operationId) {
     final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
     assert migrationInfo.state == State.UPDATING_SENDER;
     ongoingMigrations.remove(operationId);
@@ -83,7 +83,7 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    * @return Identifier of whom sends the data.
    */
-  public String getSenderId(final String operationId) {
+  public String getSenderId(final CharSequence operationId) {
     return ongoingMigrations.get(operationId).senderId;
   }
 
@@ -91,7 +91,7 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    * @return Identifier of whom receives the data.
    */
-  public String getReceiverId(final String operationId) {
+  public String getReceiverId(final CharSequence operationId) {
     return ongoingMigrations.get(operationId).receiverId;
   }
 
