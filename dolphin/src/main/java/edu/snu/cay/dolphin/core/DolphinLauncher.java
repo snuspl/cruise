@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
-import org.apache.reef.io.data.loading.api.DataLoadingRequestBuilder;
 import org.apache.reef.io.data.output.TaskOutputServiceBuilder;
 import org.apache.reef.io.data.output.TaskOutputStreamProvider;
 import org.apache.reef.io.data.output.TaskOutputStreamProviderHDFS;
