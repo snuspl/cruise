@@ -280,7 +280,7 @@ public final class DataLoadingRequestBuilder
     return jcb.bindImplementation(DataLoadingService.class, InputFormatLoadingService.class).build();
   }
 
-  @NamedParameter(short_name = "num_splits", default_value = NumberOfDesiredSplits.DEFAULT_DESIRED_SPLITS)
+  @NamedParameter(short_name = "num_desired_splits", default_value = NumberOfDesiredSplits.DEFAULT_DESIRED_SPLITS)
   public static final class NumberOfDesiredSplits implements Name<Integer> {
     static final String DEFAULT_DESIRED_SPLITS = "0";
   }
