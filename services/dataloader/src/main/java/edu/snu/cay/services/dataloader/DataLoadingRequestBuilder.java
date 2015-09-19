@@ -18,7 +18,6 @@ package edu.snu.cay.services.dataloader;
 import org.apache.commons.lang.Validate;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.TextInputFormat;
-import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.data.loading.api.DistributedDataSet;
@@ -56,7 +55,6 @@ public final class DataLoadingRequestBuilder
   private final List<EvaluatorRequest> computeRequests = new ArrayList<>();
   private final List<EvaluatorRequest> dataRequests = new ArrayList<>();
   private boolean inMemory = false;
-  private boolean renewFailedEvaluators = true;
   private ConfigurationModule driverConfigurationModule = null;
   private String inputFormatClass;
   /**
@@ -137,12 +135,6 @@ public final class DataLoadingRequestBuilder
   @SuppressWarnings("checkstyle:hiddenfield")
   public DataLoadingRequestBuilder loadIntoMemory(final boolean inMemory) {
     this.inMemory = inMemory;
-    return this;
-  }
-
-  @SuppressWarnings("checkstyle:hiddenfield")
-  public DataLoadingRequestBuilder renewFailedEvaluators(final boolean renewFailedEvaluators) {
-    this.renewFailedEvaluators = renewFailedEvaluators;
     return this;
   }
 
@@ -227,19 +219,7 @@ public final class DataLoadingRequestBuilder
       this.inputFormatClass = TextInputFormat.class.getName();
     }
 
-    final Configuration driverConfiguration;
-    if (renewFailedEvaluators) {
-      driverConfiguration = this.driverConfigurationModule
-          .set(DriverConfiguration.ON_DRIVER_STARTED, DataLoader.StartHandler.class)
-          .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, DataLoader.EvaluatorAllocatedHandler.class)
-          .set(DriverConfiguration.ON_EVALUATOR_FAILED, DataLoader.EvaluatorFailedHandler.class)
-          .build();
-    } else {
-      driverConfiguration = this.driverConfigurationModule
-          .set(DriverConfiguration.ON_DRIVER_STARTED, DataLoader.StartHandler.class)
-          .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, DataLoader.EvaluatorAllocatedHandler.class)
-          .build();
-    }
+    final Configuration driverConfiguration = this.driverConfigurationModule.build();
 
     final JavaConfigurationBuilder jcb =
         Tang.Factory.getTang().newConfigurationBuilder(driverConfiguration);

@@ -21,12 +21,15 @@ import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
+import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.trace.HTraceParameters;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
+import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.RunningTask;
@@ -46,6 +49,7 @@ import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -89,6 +93,12 @@ public final class DolphinDriver {
    * Can check whether a evaluator is configured with the service or not.
    */
   private final DataLoadingService dataLoadingService;
+
+  /**
+   * Customized REEF DataLoader.
+   * Sends evaluator allocation requests for data loading.
+   */
+  private final DataLoader dataLoader;
 
   /**
    * The output service.
@@ -158,6 +168,7 @@ public final class DolphinDriver {
   @Inject
   private DolphinDriver(final GroupCommDriver groupCommDriver,
                         final DataLoadingService dataLoadingService,
+                        final DataLoader dataLoader,
                         final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
                         final ElasticMemoryConfiguration emConf,
@@ -167,6 +178,7 @@ public final class DolphinDriver {
                         final HTraceParameters traceParameters) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
+    this.dataLoader = dataLoader;
     this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
     this.emConf = emConf;
@@ -234,6 +246,31 @@ public final class DolphinDriver {
       sequence++;
     }
     taskIdCounter.set(sequence);
+  }
+
+  final class StartHandler implements EventHandler<StartTime> {
+
+    @Override
+    public void onNext(final StartTime startTime) {
+      LOG.log(Level.INFO, "StartTime: {0}", startTime);
+      dataLoader.releaseResourceRequestGate();
+    }
+  }
+
+  final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+
+    @Override
+    public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+      dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
+    }
+  }
+
+  final class EvaluatorFailedHandler implements EventHandler<FailedEvaluator> {
+
+    @Override
+    public void onNext(final FailedEvaluator failedEvaluator) {
+      dataLoader.handleDataLoadingEvalFailure(failedEvaluator);
+    }
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {

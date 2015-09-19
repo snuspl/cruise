@@ -28,13 +28,11 @@ import org.apache.reef.io.data.loading.impl.AvroEvaluatorRequestSerializer;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.BindException;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.impl.SingleThreadStage;
 import org.apache.reef.wake.time.Clock;
 import org.apache.reef.wake.time.event.Alarm;
-import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 
@@ -55,7 +53,6 @@ import java.util.logging.Logger;
  * that enables a task to get access to Data via the DataSet.
  */
 @DriverSide
-@Unit
 public class DataLoader {
 
   private static final Logger LOG = Logger.getLogger(DataLoader.class.getName());
@@ -158,127 +155,115 @@ public class DataLoader {
     }
   }
 
-  public class StartHandler implements EventHandler<StartTime> {
-    @Override
-    public void onNext(final StartTime startTime) {
-      LOG.log(Level.INFO, "StartTime: {0}", startTime);
-      resourceRequestHandler.releaseResourceRequestGate();
-    }
+  public void releaseResourceRequestGate() {
+    resourceRequestHandler.releaseResourceRequestGate();
   }
 
-  public class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+  public void handleDataLoadingEvalAlloc(final AllocatedEvaluator allocatedEvaluator) {
 
-    @Override
-    public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+    final String evalId = allocatedEvaluator.getId();
+    LOG.log(Level.FINEST, "Allocated evaluator: {0}", evalId);
 
-      final String evalId = allocatedEvaluator.getId();
-      LOG.log(Level.FINEST, "Allocated evaluator: {0}", evalId);
-
-      if (!failedComputeEvalConfigs.isEmpty()) {
-        LOG.log(Level.FINE, "Failed Compute requests need to be satisfied for {0}", evalId);
-        final Configuration conf = failedComputeEvalConfigs.poll();
-        if (conf != null) {
-          LOG.log(Level.FINE, "Satisfying failed configuration for {0}", evalId);
-          allocatedEvaluator.submitContext(conf);
-          submittedComputeEvalConfigs.put(evalId, conf);
-          return;
-        }
+    if (!failedComputeEvalConfigs.isEmpty()) {
+      LOG.log(Level.FINE, "Failed Compute requests need to be satisfied for {0}", evalId);
+      final Configuration conf = failedComputeEvalConfigs.poll();
+      if (conf != null) {
+        LOG.log(Level.FINE, "Satisfying failed configuration for {0}", evalId);
+        allocatedEvaluator.submitContext(conf);
+        submittedComputeEvalConfigs.put(evalId, conf);
+        return;
       }
+    }
 
-      if (!failedDataEvalConfigs.isEmpty()) {
-        LOG.log(Level.FINE, "Failed Data requests need to be satisfied for {0}", evalId);
-        final Pair<Configuration, Configuration> confPair = failedDataEvalConfigs.poll();
-        if (confPair != null) {
-          LOG.log(Level.FINE, "Satisfying failed configuration for {0}", evalId);
-          allocatedEvaluator.submitContextAndService(confPair.getFirst(), confPair.getSecond());
-          submittedDataEvalConfigs.put(evalId, confPair);
-          return;
-        }
-      }
-
-      final int evaluatorsForComputeRequest = numComputeRequestsToSubmit.decrementAndGet();
-
-      if (evaluatorsForComputeRequest >= 0) {
-        LOG.log(Level.FINE, "Evaluators for compute request: {0}", evaluatorsForComputeRequest);
-        try {
-          final Configuration idConfiguration = ContextConfiguration.CONF.set(
-              ContextConfiguration.IDENTIFIER,
-              dataLoadingService.getComputeContextIdPrefix()
-                  + evaluatorsForComputeRequest).build();
-          LOG.log(Level.FINE, "Submitting Compute Context to {0}", evalId);
-          allocatedEvaluator.submitContext(idConfiguration);
-          submittedComputeEvalConfigs.put(allocatedEvaluator.getId(),
-              idConfiguration);
-          // should release the request gate when there are >= 0 compute
-          // requests (now that we can have more than 1)
-          LOG.log(
-              Level.FINE,
-              evaluatorsForComputeRequest > 0 ? "More Compute requests need to be satisfied"
-                  : "All Compute requests satisfied." + " Releasing gate");
-          resourceRequestHandler.releaseResourceRequestGate();
-        } catch (final BindException e) {
-          throw new RuntimeException(
-              "Unable to bind context id for Compute request", e);
-        }
-
-      } else {
-
-        final int evaluatorsForDataRequest = numDataRequestsToSubmit.decrementAndGet();
-        LOG.log(Level.FINE, "Evaluators for data request: {0}", evaluatorsForDataRequest);
-
-        final Pair<Configuration, Configuration> confPair = new Pair<>(
-            dataLoadingService.getContextConfiguration(allocatedEvaluator),
-            dataLoadingService.getServiceConfiguration(allocatedEvaluator));
-
-        LOG.log(Level.FINE, "Submitting data loading context to {0}", evalId);
+    if (!failedDataEvalConfigs.isEmpty()) {
+      LOG.log(Level.FINE, "Failed Data requests need to be satisfied for {0}", evalId);
+      final Pair<Configuration, Configuration> confPair = failedDataEvalConfigs.poll();
+      if (confPair != null) {
+        LOG.log(Level.FINE, "Satisfying failed configuration for {0}", evalId);
         allocatedEvaluator.submitContextAndService(confPair.getFirst(), confPair.getSecond());
-        submittedDataEvalConfigs.put(allocatedEvaluator.getId(), confPair);
+        submittedDataEvalConfigs.put(evalId, confPair);
+        return;
+      }
+    }
 
-        // release the gate to keep on asking for more "data" evaluators.
-        if (evaluatorsForDataRequest > 0) {
-          LOG.log(Level.FINE, "More Data requests need to be satisfied. Releasing gate");
-          resourceRequestHandler.releaseResourceRequestGate();
-          // don't need to release if it's 0
-        } else if (evaluatorsForDataRequest == 0) {
-          LOG.log(Level.FINE, "All Data requests satisfied");
-        }
+    final int evaluatorsForComputeRequest = numComputeRequestsToSubmit.decrementAndGet();
+
+    if (evaluatorsForComputeRequest >= 0) {
+      LOG.log(Level.FINE, "Evaluators for compute request: {0}", evaluatorsForComputeRequest);
+      try {
+        final Configuration idConfiguration = ContextConfiguration.CONF.set(
+            ContextConfiguration.IDENTIFIER,
+            dataLoadingService.getComputeContextIdPrefix()
+                + evaluatorsForComputeRequest).build();
+        LOG.log(Level.FINE, "Submitting Compute Context to {0}", evalId);
+        allocatedEvaluator.submitContext(idConfiguration);
+        submittedComputeEvalConfigs.put(allocatedEvaluator.getId(),
+            idConfiguration);
+        // should release the request gate when there are >= 0 compute
+        // requests (now that we can have more than 1)
+        LOG.log(
+            Level.FINE,
+            evaluatorsForComputeRequest > 0 ? "More Compute requests need to be satisfied"
+                : "All Compute requests satisfied." + " Releasing gate");
+        resourceRequestHandler.releaseResourceRequestGate();
+      } catch (final BindException e) {
+        throw new RuntimeException(
+            "Unable to bind context id for Compute request", e);
+      }
+
+    } else {
+
+      final int evaluatorsForDataRequest = numDataRequestsToSubmit.decrementAndGet();
+      LOG.log(Level.FINE, "Evaluators for data request: {0}", evaluatorsForDataRequest);
+
+      final Pair<Configuration, Configuration> confPair = new Pair<>(
+          dataLoadingService.getContextConfiguration(allocatedEvaluator),
+          dataLoadingService.getServiceConfiguration(allocatedEvaluator));
+
+      LOG.log(Level.FINE, "Submitting data loading context to {0}", evalId);
+      allocatedEvaluator.submitContextAndService(confPair.getFirst(), confPair.getSecond());
+      submittedDataEvalConfigs.put(allocatedEvaluator.getId(), confPair);
+
+      // release the gate to keep on asking for more "data" evaluators.
+      if (evaluatorsForDataRequest > 0) {
+        LOG.log(Level.FINE, "More Data requests need to be satisfied. Releasing gate");
+        resourceRequestHandler.releaseResourceRequestGate();
+        // don't need to release if it's 0
+      } else if (evaluatorsForDataRequest == 0) {
+        LOG.log(Level.FINE, "All Data requests satisfied");
       }
     }
   }
 
-  public class EvaluatorFailedHandler implements EventHandler<FailedEvaluator> {
-    @Override
-    public void onNext(final FailedEvaluator failedEvaluator) {
+  public void handleDataLoadingEvalFailure(final FailedEvaluator failedEvaluator) {
+    final String evalId = failedEvaluator.getId();
 
-      final String evalId = failedEvaluator.getId();
+    final Configuration computeConfig = submittedComputeEvalConfigs.remove(evalId);
+    if (computeConfig != null) {
 
-      final Configuration computeConfig = submittedComputeEvalConfigs.remove(evalId);
-      if (computeConfig != null) {
+      LOG.log(Level.INFO, "Received failed compute evaluator: {0}", evalId);
+      failedComputeEvalConfigs.add(computeConfig);
 
-        LOG.log(Level.INFO, "Received failed compute evaluator: {0}", evalId);
-        failedComputeEvalConfigs.add(computeConfig);
+      requestor.submit(EvaluatorRequest.newBuilder()
+          .setMemory(computeEvalMemoryMB).setNumber(1).setNumberOfCores(computeEvalCore).build());
+
+    } else {
+
+      final Pair<Configuration, Configuration> confPair = submittedDataEvalConfigs.remove(evalId);
+      if (confPair != null) {
+
+        LOG.log(Level.INFO, "Received failed data evaluator: {0}", evalId);
+        failedDataEvalConfigs.add(confPair);
 
         requestor.submit(EvaluatorRequest.newBuilder()
-            .setMemory(computeEvalMemoryMB).setNumber(1).setNumberOfCores(computeEvalCore).build());
+            .setMemory(dataEvalMemoryMB).setNumber(1).setNumberOfCores(dataEvalCore).build());
 
       } else {
 
-        final Pair<Configuration, Configuration> confPair = submittedDataEvalConfigs.remove(evalId);
-        if (confPair != null) {
+        LOG.log(Level.SEVERE, "Received unknown failed evaluator " + evalId,
+            failedEvaluator.getEvaluatorException());
 
-          LOG.log(Level.INFO, "Received failed data evaluator: {0}", evalId);
-          failedDataEvalConfigs.add(confPair);
-
-          requestor.submit(EvaluatorRequest.newBuilder()
-              .setMemory(dataEvalMemoryMB).setNumber(1).setNumberOfCores(dataEvalCore).build());
-
-        } else {
-
-          LOG.log(Level.SEVERE, "Received unknown failed evaluator " + evalId,
-              failedEvaluator.getEvaluatorException());
-
-          throw new RuntimeException("Received failed evaluator that I did not submit: " + evalId);
-        }
+        throw new RuntimeException("Received failed evaluator that I did not submit: " + evalId);
       }
     }
   }
