@@ -46,6 +46,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
+ * TODO #151: Add comments to new DataLoader APIs
  * The driver component for the DataLoadingService
  * Also acts as the central point for resource requests
  * All the allocated evaluators pass through this and
@@ -155,10 +156,12 @@ public class DataLoader {
     }
   }
 
+  // TODO #151: Add comments to new DataLoader APIs
   public void releaseResourceRequestGate() {
     resourceRequestHandler.releaseResourceRequestGate();
   }
 
+  // TODO #151: Add comments to new DataLoader APIs
   public void handleDataLoadingEvalAlloc(final AllocatedEvaluator allocatedEvaluator) {
 
     final String evalId = allocatedEvaluator.getId();
@@ -235,6 +238,7 @@ public class DataLoader {
     }
   }
 
+  // TODO #151: Add comments to new DataLoader APIs
   public void handleDataLoadingEvalFailure(final FailedEvaluator failedEvaluator) {
     final String evalId = failedEvaluator.getId();
 
