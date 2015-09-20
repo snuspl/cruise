@@ -21,6 +21,7 @@ import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.PageRankSummary;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -38,14 +39,19 @@ public class PageRankCmpTask extends UserComputeTask
     implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer, Double>> {
 
   /**
+   * Key used in Elastic Memory to put/get the data.
+   */
+  private static final String KEY_GRAPH = "graph";
+
+  /**
    * Adjacency list data parser.
    */
   private final DataParser<Map<Integer, List<Integer>>> dataParser;
 
   /**
-   * Subgraph consists a node and its outgoing neighbor set.
+   * Memory storage to put/get the data.
    */
-  private Map<Integer, List<Integer>> subgraphs;
+  private final MemoryStore memoryStore;
 
   /**
    * Map of current rank.
@@ -63,8 +69,10 @@ public class PageRankCmpTask extends UserComputeTask
    * @param dataParser
    */
   @Inject
-  public PageRankCmpTask(final DataParser<Map<Integer, List<Integer>>> dataParser) {
+  public PageRankCmpTask(final DataParser<Map<Integer, List<Integer>>> dataParser,
+                         final MemoryStore memoryStore) {
     this.dataParser = dataParser;
+    this.memoryStore = memoryStore;
   }
 
   /**
@@ -73,18 +81,23 @@ public class PageRankCmpTask extends UserComputeTask
    */
   @Override
   public void initialize() throws ParseException {
-    subgraphs = dataParser.get();
+    final Map<Integer, List<Integer>> subgraphs = dataParser.get();
+    // Map of current rank
     rank = new HashMap<>();
     for (final Integer key : subgraphs.keySet()) {
       rank.put(key, 1.0d);
+    }
+    for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
+      memoryStore.getElasticStore().put(KEY_GRAPH, (long) entry.getKey(), entry.getValue());
     }
   }
 
   @Override
   public final void run(final int iteration) {
     increment.clear();
-    for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
-      final Integer nodeId = entry.getKey();
+    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(KEY_GRAPH);
+    for (final Map.Entry<Long, List<Integer>> entry : subgraphs.entrySet()) {
+      final Integer nodeId = entry.getKey().intValue();
       final List<Integer> outList = entry.getValue();
 
       // Add itself to ensure existence in graph
@@ -121,7 +134,7 @@ public class PageRankCmpTask extends UserComputeTask
     if (iteration < 1) {
       return;
     }
-    this.rank = rankData;
+    rank = rankData;
   }
 
   /**

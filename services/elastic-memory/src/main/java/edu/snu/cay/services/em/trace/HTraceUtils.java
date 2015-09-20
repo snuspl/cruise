@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.trace;
 
-import org.apache.htrace.TraceInfo;
+import org.htrace.TraceInfo;
 
 /**
  * Utility methods to convert between HTrace and Avro.

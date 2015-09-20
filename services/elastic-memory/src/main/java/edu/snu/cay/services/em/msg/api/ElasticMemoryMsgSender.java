@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.msg.api;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
 import org.apache.commons.lang.math.LongRange;
-import org.apache.htrace.TraceInfo;
+import org.htrace.TraceInfo;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;

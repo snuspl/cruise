@@ -26,19 +26,30 @@ import edu.snu.cay.dolphin.examples.ml.parameters.StepSize;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Map;
 
 public class LinearRegCmpTask extends UserComputeTask
     implements DataReduceSender<LinearRegSummary>, DataBroadcastReceiver<LinearModel> {
+
+  /**
+   * Key used in Elastic Memory to put/get the data.
+   */
+  private static final String KEY_ROWS = "rows";
+
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
   private DataParser<List<Row>> dataParser;
-  private List<Row> rows;
+  private MemoryStore memoryStore;
+  private final DataIdFactory<Long> dataIdFactory;
   private LinearModel model;
   private double lossSum = 0;
 
@@ -46,16 +57,26 @@ public class LinearRegCmpTask extends UserComputeTask
   public LinearRegCmpTask(@Parameter(StepSize.class) final double stepSize,
                           final Loss loss,
                           final Regularization regularization,
-                          final DataParser<List<Row>> dataParser) {
+                          final DataParser<List<Row>> dataParser,
+                          final MemoryStore memoryStore,
+                          final DataIdFactory<Long> dataIdFactory) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
     this.dataParser = dataParser;
+    this.memoryStore = memoryStore;
+    this.dataIdFactory = dataIdFactory;
   }
 
   @Override
   public void initialize() throws ParseException {
-    rows = dataParser.get();
+    final List<Row> rows = dataParser.get();
+    try {
+      final List<Long> ids = dataIdFactory.getIds(rows.size());
+      memoryStore.getElasticStore().putList(KEY_ROWS, ids, rows);
+    } catch (IdGenerationException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -63,14 +84,15 @@ public class LinearRegCmpTask extends UserComputeTask
 
     // measure loss
     lossSum = 0;
-    for (final Row row : rows) {
+    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(KEY_ROWS);
+    for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());
       lossSum += loss.loss(predict, output);
     }
 
     // optimize
-    for (final Row row : rows) {
+    for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final Vector input = row.getFeature();
       final Vector gradient = loss.gradient(input, model.predict(input), output).plus(regularization.gradient(model));
