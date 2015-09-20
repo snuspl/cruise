@@ -33,7 +33,7 @@ import java.util.Set;
 public final class ShuffleProvider implements AutoCloseable {
 
   private final Injector rootInjector;
-  private ConfigurationSerializer confSerializer;
+  private final ConfigurationSerializer confSerializer;
 
   private final Map<String, Shuffle> shuffleMap;
 
