@@ -63,6 +63,8 @@ public final class MessageExchangeDriver {
   public static final String SENDER_PREFIX = "SENDER";
   public static final String RECEIVER_PREFIX = "RECEIVER";
 
+  private static final String TASK_POSTFIX = "-TASK";
+
   private final AtomicInteger numAllocatedEvaluators;
   private final AtomicInteger numCompletedTasks;
   private final AtomicInteger totalNumSentTuples;
@@ -201,14 +203,14 @@ public final class MessageExchangeDriver {
           .build();
       if (number < totalNumSenders) { // SenderTask
         endPointId = SENDER_PREFIX + number;
-        taskId = endPointId + "-TASK";
+        taskId = endPointId + TASK_POSTFIX;
         taskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, SenderTask.class)
             .build(), iterationConf);
       } else if (number < totalNumSenders + totalNumReceivers) { // ReceiverTask
         endPointId = RECEIVER_PREFIX + (number - totalNumSenders);
-        taskId = endPointId + "-TASK";
+        taskId = endPointId + TASK_POSTFIX;
         taskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
