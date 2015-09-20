@@ -46,7 +46,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   private final ShuffleDescription shuffleDescription;
   /**
-   * DataSender which sends data to proper receivers.
+   * TupleSender which sends tuples to proper receivers.
    */
   private final TupleSender<K, V> tupleSender;
   /**
@@ -73,6 +73,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     this.senderTimeout = senderTimeout;
     this.stateMachine = PushShuffleSenderState.createStateMachine();
     this.messageChecker = new SentMessageChecker();
+    controlMessageSender.sendToManager(PushShuffleCode.SENDER_INITIALIZED);
   }
 
   @Override
@@ -151,7 +152,6 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   private void waitForSenderInitialized() {
     if (stateMachine.getCurrentState().equals(PushShuffleSenderState.INIT)) {
-      controlMessageSender.sendToManager(PushShuffleCode.SENDER_INITIALIZED);
       waitForSenderCanSendData();
       stateMachine.checkAndSetState(PushShuffleSenderState.INIT, PushShuffleSenderState.SENDING);
     }

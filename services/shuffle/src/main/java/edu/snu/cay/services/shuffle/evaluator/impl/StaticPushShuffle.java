@@ -17,11 +17,11 @@ package edu.snu.cay.services.shuffle.evaluator.impl;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.driver.impl.PushShuffleCode;
-import edu.snu.cay.services.shuffle.evaluator.ESNetworkSetup;
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleOperatorProvider;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
+import edu.snu.cay.services.shuffle.network.ControlMessageNetworkSetup;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
@@ -34,33 +34,34 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Shuffle implementation for static push-based shuffling.
+ * Shuffle implementation for static push-based shuffle.
  *
  * The initial shuffle description can never be changed. Users cannot add or remove more tasks
- * to the shuffle and cannot change the key, value codecs and shuffling strategy after the Shuffle is created.
+ * to the shuffle and cannot change the key, value codecs and shuffle strategy after the Shuffle is created.
  */
 @EvaluatorSide
 public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
 
   private static final Logger LOG = Logger.getLogger(StaticPushShuffle.class.getName());
 
+  private final ControlMessageNetworkSetup controlMessageNetworkSetup;
   private final ShuffleDescription shuffleDescription;
 
   private final ShuffleReceiver<K, V> shuffleReceiver;
   private final ShuffleSender<K, V> shuffleSender;
 
-  private final ESNetworkSetup networkSetup;
-
   @Inject
   private StaticPushShuffle(
       final ShuffleDescription shuffleDescription,
       final ShuffleOperatorProvider<K, V> operatorProvider,
-      final ESNetworkSetup networkSetup) {
+      final ControlMessageNetworkSetup controlMessageNetworkSetup) {
+
+    controlMessageNetworkSetup
+        .setControlMessageHandlerAndLinkListener(new ControlMessageHandler(), new ControlLinkListener());
+    this.controlMessageNetworkSetup = controlMessageNetworkSetup;
     this.shuffleDescription = shuffleDescription;
     this.shuffleReceiver = operatorProvider.getReceiver();
     this.shuffleSender = operatorProvider.getSender();
-    this.networkSetup = networkSetup;
-    networkSetup.setControlMessageHandlerAndLinkListener(new ControlMessageHandler(), new ControlLinkListener());
   }
 
   /**
@@ -92,7 +93,7 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
    */
   @Override
   public void close() {
-    networkSetup.close();
+    controlMessageNetworkSetup.close();
   }
 
   private final class ControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {

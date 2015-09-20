@@ -15,31 +15,30 @@
  */
 package edu.snu.cay.services.shuffle.network;
 
-import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
-final class ShuffleTupleMessageHandler<K, V> implements EventHandler<Message<Tuple<K, V>>> {
+final class ShuffleControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {
 
-  private volatile EventHandler<Message<Tuple<K, V>>> tupleMessageHandler;
+  private volatile EventHandler<Message<ShuffleControlMessage>> controlMessageHandler;
 
   @Inject
-  private ShuffleTupleMessageHandler() {
+  private ShuffleControlMessageHandler() {
   }
 
-  public void setTupleMessageHandler(final EventHandler<Message<Tuple<K, V>>> tupleMessageHandler) {
-    this.tupleMessageHandler = tupleMessageHandler;
+  void setControlMessageHandler(final EventHandler<Message<ShuffleControlMessage>> controlMessageHandler) {
+    this.controlMessageHandler = controlMessageHandler;
   }
 
   @Override
-  public void onNext(final Message<Tuple<K, V>> tupleMessage) {
-    if (tupleMessageHandler == null) {
-      throw new RuntimeException("The tuple message handler should be set first through TupleMessageSetup " +
-          "before receiving tuples.");
+  public void onNext(final Message<ShuffleControlMessage> tupleMessage) {
+    if (controlMessageHandler == null) {
+      throw new RuntimeException("The control message handler should be set first through ControlMessageSetup" +
+          " before receiving messages.");
     }
 
-    tupleMessageHandler.onNext(tupleMessage);
+    controlMessageHandler.onNext(tupleMessage);
   }
 }

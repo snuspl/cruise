@@ -22,12 +22,9 @@ import org.apache.reef.wake.remote.transport.LinkListener;
 import javax.inject.Inject;
 import java.net.SocketAddress;
 
-/**
- * Link listener for tuples.
- */
-public final class ShuffleTupleLinkListener<K, V> implements LinkListener<Message<Tuple<K, V>>> {
+final class ShuffleTupleLinkListener<K, V> implements LinkListener<Message<Tuple<K, V>>> {
 
-  private LinkListener<Message<Tuple<K, V>>> tupleLinkListener;
+  private volatile LinkListener<Message<Tuple<K, V>>> tupleLinkListener;
 
   @Inject
   private ShuffleTupleLinkListener() {
@@ -39,9 +36,12 @@ public final class ShuffleTupleLinkListener<K, V> implements LinkListener<Messag
 
   @Override
   public void onSuccess(final Message<Tuple<K, V>> message) {
-    if (tupleLinkListener != null) {
-      tupleLinkListener.onSuccess(message);
+    if (tupleLinkListener == null) {
+      throw new RuntimeException("The tuple link listener should be set first through TupleMessageSetup " +
+          " before sending tuples.");
     }
+
+    tupleLinkListener.onSuccess(message);
   }
 
   @Override
@@ -49,8 +49,11 @@ public final class ShuffleTupleLinkListener<K, V> implements LinkListener<Messag
       final Throwable throwable,
       final SocketAddress socketAddress,
       final Message<Tuple<K, V>> message) {
-    if (tupleLinkListener != null) {
-      tupleLinkListener.onException(throwable, socketAddress, message);
+    if (tupleLinkListener == null) {
+      throw new RuntimeException("The tuple link listener should be set first through TupleMessageSetup " +
+          "before sending tuples.");
     }
+
+    tupleLinkListener.onException(throwable, socketAddress, message);
   }
 }

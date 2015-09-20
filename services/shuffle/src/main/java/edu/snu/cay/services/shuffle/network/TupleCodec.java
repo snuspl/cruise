@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
  * Streaming Codec for Tuple. It can encode and decode key and value instances
  * using streaming if the key and value codecs are also streaming codecs.
  */
-public final class TupleCodec<K, V> implements StreamingCodec<Tuple<K, V>> {
+final class TupleCodec<K, V> implements StreamingCodec<Tuple<K, V>> {
 
   private final Codec<K> keyCodec;
   private final Codec<V> valueCodec;

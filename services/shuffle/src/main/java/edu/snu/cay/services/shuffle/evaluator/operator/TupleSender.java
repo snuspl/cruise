@@ -16,8 +16,7 @@
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
-import edu.snu.cay.services.shuffle.evaluator.ESNetworkSetup;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleLinkListener;
+import edu.snu.cay.services.shuffle.network.TupleNetworkSetup;
 import edu.snu.cay.services.shuffle.strategy.ShuffleStrategy;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.Tuple;
@@ -38,18 +37,13 @@ import java.util.Map;
 /**
  * Sender that has base operation to send tuples.
  *
- * ESNetworkSetup should be injected first to use this class.
- *
- * Users can register link listener for ShuffleTupleMessage to track whether the message
+ * Users have to register link listener for ShuffleTupleMessage to track whether the message
  * sent from this operator has been transferred successfully.
- *
- * Note that Shuffle, ShuffleSender, ShuffleReceiver can not send tuples
- * through this class in the constructor of them.
  */
 public final class TupleSender<K, V> {
 
   private final ShuffleDescription shuffleDescription;
-  private final ShuffleTupleLinkListener<K, V> shuffleTupleLinkListener;
+  private final TupleNetworkSetup<K, V> tupleNetworkSetup;
   private final ConnectionFactory<Tuple<K, V>> tupleMessageConnectionFactory;
   private final ShuffleStrategy<K> shuffleStrategy;
   private final IdentifierFactory idFactory;
@@ -57,13 +51,12 @@ public final class TupleSender<K, V> {
   @Inject
   private TupleSender(
       final ShuffleDescription shuffleDescription,
-      final ShuffleTupleLinkListener<K, V> shuffleTupleLinkListener,
-      final ESNetworkSetup networkSetup,
+      final TupleNetworkSetup<K, V> tupleNetworkSetup,
       final ShuffleStrategy<K> shuffleStrategy,
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory) {
     this.shuffleDescription = shuffleDescription;
-    this.shuffleTupleLinkListener = shuffleTupleLinkListener;
-    this.tupleMessageConnectionFactory = networkSetup.getTupleConnectionFactory();
+    this.tupleNetworkSetup = tupleNetworkSetup;
+    this.tupleMessageConnectionFactory = tupleNetworkSetup.getTupleConnectionFactory();
     this.shuffleStrategy = shuffleStrategy;
     this.idFactory = idFactory;
   }
@@ -155,6 +148,6 @@ public final class TupleSender<K, V> {
    * @param linkListener link listener for ShuffleTupleMessage
    */
   public void setTupleLinkListener(final LinkListener<Message<Tuple<K, V>>> linkListener) {
-    shuffleTupleLinkListener.setTupleLinkListener(linkListener);
+    tupleNetworkSetup.setTupleLinkListener(linkListener);
   }
 }

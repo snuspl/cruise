@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
+import edu.snu.cay.services.shuffle.network.ControlMessageNetworkSetup;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -31,55 +32,38 @@ import java.util.List;
 /**
  * Evaluator-side control message sender.
  *
- * The connection factory of ShuffleControlMessage should be registered first through ESNetworkSetup.
- *
- * Note that Shuffle, ShuffleSender, ShuffleReceiver can not send control messages
- * through this class in the constructor of them.
+ * Note that a control message handler and a control link listener should be set first through
+ * ControlMessageNetworkSetup to use this class.
  */
 @EvaluatorSide
 public final class ESControlMessageSender {
 
   private final IdentifierFactory idFactory;
-  private final ESNetworkSetup networkSetup;
-  private ConnectionFactory<ShuffleControlMessage> connectionFactory;
-  private Connection<ShuffleControlMessage> connectionToManager;
+  private final ConnectionFactory<ShuffleControlMessage> connectionFactory;
+  private final Connection<ShuffleControlMessage> connectionToManager;
 
   /**
    * Construct a evaluator-side control message sender.
    * This should be instantiated once for each shuffle, using several forked injectors.
    *
    * @param idFactory an identifier factory
-   * @param networkSetup a network setup
+   * @param controlMessageNetworkSetup a control message network setup
    */
   @Inject
   private ESControlMessageSender(
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
-      final ESNetworkSetup networkSetup) {
+      final ControlMessageNetworkSetup controlMessageNetworkSetup) {
     this.idFactory = idFactory;
-    this.networkSetup = networkSetup;
-  }
-
-  private Connection<ShuffleControlMessage> getConnectionToManager() {
-    if (connectionToManager == null) {
-      connectionToManager = getConnectionFactory()
-          .newConnection(idFactory.getNewInstance(ShuffleParameters.SHUFFLE_DRIVER_LOCAL_END_POINT_ID));
-      try {
-        connectionToManager.open();
-      } catch (final NetworkException e) {
-        // TODO #67: failure handling.
-        throw new RuntimeException("Failed to open a connection to the driver");
-      }
+    this.connectionFactory = controlMessageNetworkSetup.getControlConnectionFactory();
+    try {
+      connectionToManager = connectionFactory
+          .newConnection(idFactory.getNewInstance(ShuffleParameters.DRIVER_LOCAL_END_POINT_ID));
+      connectionToManager.open();
+    } catch (final NetworkException e) {
+      // TODO #67: failure handling.
+      throw new RuntimeException("Failed to open a connection to the driver");
     }
 
-    return connectionToManager;
-  }
-
-  private ConnectionFactory<ShuffleControlMessage> getConnectionFactory() {
-    if (connectionFactory == null) {
-      connectionFactory = networkSetup.getControlConnectionFactory();
-    }
-
-    return connectionFactory;
   }
 
   /**
@@ -88,7 +72,7 @@ public final class ESControlMessageSender {
    * @param code a control message code
    */
   public void sendToManager(final int code) {
-    getConnectionToManager().write(new ShuffleControlMessage(code));
+    connectionToManager.write(new ShuffleControlMessage(code));
   }
 
   /**
@@ -98,7 +82,7 @@ public final class ESControlMessageSender {
    * @param endPointIdList a list of end point ids
    */
   public void sendToManager(final int code, final List<String> endPointIdList) {
-    getConnectionToManager().write(new ShuffleControlMessage(code, endPointIdList));
+    connectionToManager.write(new ShuffleControlMessage(code, endPointIdList));
   }
 
   /**
@@ -123,7 +107,7 @@ public final class ESControlMessageSender {
   }
 
   private void sendTo(final String endPointId, final ShuffleControlMessage controlMessage) {
-    final Connection<ShuffleControlMessage> connection = getConnectionFactory().newConnection(
+    final Connection<ShuffleControlMessage> connection = connectionFactory.newConnection(
         idFactory.getNewInstance(endPointId));
     try {
       connection.open();

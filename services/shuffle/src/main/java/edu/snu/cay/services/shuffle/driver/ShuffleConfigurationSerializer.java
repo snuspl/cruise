@@ -41,7 +41,8 @@ public final class ShuffleConfigurationSerializer {
   }
 
   /**
-   * Return serialized Configuration for endPointId with certain types of shuffle, sender and receiver.
+   * Return serialized Configuration for endPointId with certain types of Shuffle, ShuffleSender
+   * and ShuffleReceiver.
    *
    * @param shuffleClass a type of Shuffle
    * @param senderClass a type of ShuffleSender

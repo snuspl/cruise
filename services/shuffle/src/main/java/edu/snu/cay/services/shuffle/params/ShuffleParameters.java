@@ -33,25 +33,9 @@ public final class ShuffleParameters {
   }
 
   /**
-   * @param shuffleName name of the shuffle
-   * @return tuple connection factory id for the shuffle
-   */
-  public static String getTupleConnectionFactoryId(final String shuffleName) {
-    return "SHUFFLE_TUPLE_" + shuffleName;
-  }
-
-  /**
-   * @param shuffleName name of the shuffle
-   * @return control connection factory id for the shuffle
-   */
-  public static String getControlConnectionFactoryId(final String shuffleName) {
-    return "SHUFFLE_CONTROL_" + shuffleName;
-  }
-
-  /**
    * Local end point id for driver.
    */
-  public static final String SHUFFLE_DRIVER_LOCAL_END_POINT_ID = "SHUFFLE_DRIVER_LOCAL_END_POINT_ID";
+  public static final String DRIVER_LOCAL_END_POINT_ID = "DRIVER_LOCAL_END_POINT_ID";
 
   @NamedParameter(doc = "the name of ShuffleManger class")
   public static final class ShuffleManagerClassName implements Name<String> {

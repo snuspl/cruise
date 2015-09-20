@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessageHandler;
+import edu.snu.cay.services.shuffle.network.TupleNetworkSetup;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
@@ -25,19 +25,17 @@ import javax.inject.Inject;
 /**
  * Receiver that has base operation to receive tuples.
  *
- * ESNetworkSetup should be injected first to use this class.
- *
  * Users have to register event handler for ShuffleTupleMessage to receive
  * tuples from senders.
  */
 public final class TupleReceiver<K, V> {
 
-  private final ShuffleTupleMessageHandler<K, V> shuffleTupleMessageHandler;
+  private final TupleNetworkSetup<K, V> tupleNetworkSetup;
 
   @Inject
   private TupleReceiver(
-      final ShuffleTupleMessageHandler<K, V> shuffleTupleMessageHandler) {
-    this.shuffleTupleMessageHandler = shuffleTupleMessageHandler;
+      final TupleNetworkSetup<K, V> tupleNetworkSetup) {
+    this.tupleNetworkSetup = tupleNetworkSetup;
   }
 
   /**
@@ -46,6 +44,6 @@ public final class TupleReceiver<K, V> {
    * @param messageHandler event handler for ShuffleTupleMessage
    */
   public void setTupleMessageHandler(final EventHandler<Message<Tuple<K, V>>> messageHandler) {
-    shuffleTupleMessageHandler.setTupleMessageHandler(messageHandler);
+    tupleNetworkSetup.setTupleMessageHandler(messageHandler);
   }
 }

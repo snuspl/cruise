@@ -62,6 +62,8 @@ final class ShuffleDriverImpl implements ShuffleDriver {
     // fork the root injector to share common components that are already instantiated in the driver.
     final Injector injector = rootInjector.forkInjector();
     injector.bindVolatileInstance(ShuffleDescription.class, shuffleDescription);
+    injector.bindVolatileParameter(ShuffleParameters.ShuffleName.class, shuffleDescription.getShuffleName());
+    injector.bindVolatileParameter(ShuffleParameters.EndPointId.class, ShuffleParameters.DRIVER_LOCAL_END_POINT_ID);
     try {
       final K manager = (K)injector.getInstance(shuffleManagerClass);
       final String shuffleName = shuffleDescription.getShuffleName();

@@ -15,39 +15,47 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.exceptions.InjectionException;
+
 import javax.inject.Inject;
 
 /**
  * Provide shuffle sender and receiver.
- * If the end point is not a sender or a receiver, sender or receiver is set to null.
+ *
+ * If the end point is not a sender or a receiver, they are set to NullShuffleSender and
+ * NullShuffleReceiver, respectively.
+ *
+ * Note that classes used in operators, such as ESControlMessageSender, should be initialized
+ * and set needed parameters firstly before getting operators.
+ *
+ * For example, when a sender want to use ESControlMessageSender,
+ * ControlMessageSetup.setControlMessageHandlerAndLinkListener should be called before a user get
+ * the sender using getSender().
  */
 public final class ShuffleOperatorProvider<K, V> {
 
-  private final ShuffleSender<K, V> sender;
-  private final ShuffleReceiver<K, V> receiver;
+  private final Injector injector;
+  private ShuffleSender<K, V> sender;
+  private ShuffleReceiver<K, V> receiver;
 
   @Inject
-  private ShuffleOperatorProvider(final ShuffleSender<K, V> sender, final ShuffleReceiver<K, V> receiver) {
-    this.sender = sender;
-    this.receiver = receiver;
-  }
-
-  @Inject
-  private ShuffleOperatorProvider(final ShuffleReceiver<K, V> receiver) {
-    this.sender = null;
-    this.receiver = receiver;
-  }
-
-  @Inject
-  private ShuffleOperatorProvider(final ShuffleSender<K, V> sender) {
-    this.sender = sender;
-    this.receiver = null;
+  private ShuffleOperatorProvider(final Injector injector) {
+    this.injector = injector;
   }
 
   /**
    * @return a sender
    */
   public ShuffleSender<K, V> getSender() {
+    if (sender == null) {
+      try {
+        sender = injector.forkInjector().getInstance(ShuffleSender.class);
+      } catch (final InjectionException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
     return sender;
   }
 
@@ -55,6 +63,14 @@ public final class ShuffleOperatorProvider<K, V> {
    * @return a receiver
    */
   public ShuffleReceiver<K, V> getReceiver() {
+    if (receiver == null) {
+      try {
+        receiver = injector.forkInjector().getInstance(ShuffleReceiver.class);
+      } catch (final InjectionException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
     return receiver;
   }
 }

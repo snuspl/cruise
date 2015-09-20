@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.driver;
 
+import edu.snu.cay.services.shuffle.network.ControlMessageNetworkSetup;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -32,17 +33,14 @@ import java.util.Map;
 /**
  * Driver-side control message sender.
  *
- * The connection factory of ShuffleControlMessage should be registered first through DSNetworkSetup.
- *
- * Note that ShuffleManager can not send control messages
- * through this class in the constructor of them.
+ * Note that a control message handler and a control link listener should be set first through
+ * ControlMessageNetworkSetup to use this class.
  */
 @DriverSide
 public final class DSControlMessageSender {
 
   private final IdentifierFactory idFactory;
-  private final DSNetworkSetup networkSetup;
-  private ConnectionFactory<ShuffleControlMessage> connectionFactory;
+  private final ConnectionFactory<ShuffleControlMessage> connectionFactory;
   private final Map<String, Connection<ShuffleControlMessage>> connectionMap;
 
   /**
@@ -50,14 +48,14 @@ public final class DSControlMessageSender {
    * This should be instantiated once for each shuffle manager, using several forked injectors.
    *
    * @param idFactory an identifier factory
-   * @param networkSetup a network setup
+   * @param controlMessageNetworkSetup a control message network setup
    */
   @Inject
   private DSControlMessageSender(
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
-      final DSNetworkSetup networkSetup) {
+      final ControlMessageNetworkSetup controlMessageNetworkSetup) {
     this.idFactory = idFactory;
-    this.networkSetup = networkSetup;
+    this.connectionFactory = controlMessageNetworkSetup.getControlConnectionFactory();
     this.connectionMap = new HashMap<>();
   }
 
@@ -104,10 +102,6 @@ public final class DSControlMessageSender {
   }
 
   private Connection<ShuffleControlMessage> getConnection(final String endPointId) {
-    if (connectionFactory == null) {
-      connectionFactory = networkSetup.getControlConnectionFactory();
-    }
-
     synchronized (connectionMap) {
       if (!connectionMap.containsKey(endPointId)) {
         connectionMap.put(endPointId, connectionFactory.newConnection(idFactory.getNewInstance(endPointId)));

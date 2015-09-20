@@ -36,7 +36,6 @@ import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -60,7 +59,6 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private final Map<String, StateMachine> senderStateMachineMap;
   private final StateMachine stateMachine;
 
-  private final AtomicBoolean initialized;
   private boolean shutdown;
   private PushDataListener<K, V> dataListener;
 
@@ -86,14 +84,11 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     }
 
     this.stateMachine = PushShuffleReceiverState.createStateMachine();
-    this.initialized = new AtomicBoolean();
+    controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_INITIALIZED);
   }
 
   @Override
   public void registerDataListener(final PushDataListener<K, V> listener) {
-    if (initialized.compareAndSet(false, true)) {
-      controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_INITIALIZED);
-    }
     this.dataListener = listener;
   }
 

@@ -37,7 +37,8 @@ public final class ReceiverTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(SenderTask.class.getName());
 
-  private AtomicInteger totalNumReceivedTuples;
+  private final ShuffleProvider shuffleProvider;
+  private final AtomicInteger totalNumReceivedTuples;
   private final AtomicInteger numCompletedIterations;
   private final int numTotalIterations;
 
@@ -45,6 +46,7 @@ public final class ReceiverTask implements Task {
   private ReceiverTask(
       final ShuffleProvider shuffleProvider,
       @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations) {
+    this.shuffleProvider = shuffleProvider;
     this.numCompletedIterations = new AtomicInteger();
     final Shuffle<Integer, Integer> shuffle = shuffleProvider
         .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
@@ -61,6 +63,7 @@ public final class ReceiverTask implements Task {
       this.wait();
     }
 
+    shuffleProvider.close();
     final ByteBuffer byteBuffer = ByteBuffer.allocate(4);
     byteBuffer.putInt(totalNumReceivedTuples.get());
     return byteBuffer.array();

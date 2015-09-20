@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.shuffle.network;
 
-
 import org.apache.reef.io.network.impl.StreamingCodec;
 
 import javax.inject.Inject;
@@ -26,7 +25,7 @@ import java.util.List;
 /**
  * Codec for ShuffleControlMessage.
  */
-public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleControlMessage> {
+final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleControlMessage> {
 
   @Inject
   private ShuffleControlMessageCodec() {
