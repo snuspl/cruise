@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
-import org.apache.reef.io.data.loading.api.DataLoadingRequestBuilder;
 import org.apache.reef.io.data.output.TaskOutputServiceBuilder;
 import org.apache.reef.io.data.output.TaskOutputStreamProvider;
 import org.apache.reef.io.data.output.TaskOutputStreamProviderHDFS;
@@ -93,6 +93,9 @@ public final class DolphinLauncher {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, dolphinParameters.getIdentifier())
+        .set(DriverConfiguration.ON_DRIVER_STARTED, DolphinDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, DolphinDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.EvaluatorFailedHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, DolphinDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_MESSAGE, DolphinDriver.ContextMessageHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, DolphinDriver.TaskCompletedHandler.class)
