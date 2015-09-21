@@ -18,11 +18,10 @@ package edu.snu.cay.services.shuffle.evaluator.operator.impl;
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import edu.snu.cay.services.shuffle.driver.impl.PushShuffleCode;
 import edu.snu.cay.services.shuffle.evaluator.ControlMessageSynchronizer;
-import edu.snu.cay.services.shuffle.evaluator.DataSender;
+import edu.snu.cay.services.shuffle.evaluator.operator.TupleSender;
 import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
 import edu.snu.cay.services.shuffle.utils.StateMachine;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
@@ -39,7 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Default implementation for push-based shuffle sender.
+ * Default implementation of push-based shuffle sender.
  */
 public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V> {
 
@@ -47,9 +46,9 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   private final ShuffleDescription shuffleDescription;
   /**
-   * DataSender which sends data to proper receivers.
+   * TupleSender which sends tuples to proper receivers.
    */
-  private final DataSender<K, V> dataSender;
+  private final TupleSender<K, V> tupleSender;
   /**
    * ControlMessageSender which sends control messages to the manager and receivers.
    */
@@ -63,22 +62,19 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   @Inject
   private PushShuffleSenderImpl(
       final ShuffleDescription shuffleDescription,
-      final DataSender<K, V> dataSender,
+      final TupleSender<K, V> tupleSender,
       final ESControlMessageSender controlMessageSender,
       @Parameter(SenderTimeout.class) final long senderTimeout) {
     this.shuffleDescription = shuffleDescription;
-    this.dataSender = dataSender;
-    this.dataSender.registerTupleLinkListener(new TupleLinkListener());
+    this.tupleSender = tupleSender;
+    this.tupleSender.setTupleLinkListener(new TupleLinkListener());
     this.controlMessageSender = controlMessageSender;
     this.synchronizer = new ControlMessageSynchronizer();
     this.senderTimeout = senderTimeout;
     this.stateMachine = PushShuffleSenderState.createStateMachine();
     this.messageChecker = new SentMessageChecker();
-
     controlMessageSender.sendToManager(PushShuffleCode.SENDER_INITIALIZED);
   }
-
-
 
   @Override
   public void onControlMessage(final Message<ShuffleControlMessage> message) {
@@ -92,8 +88,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     case PushShuffleCode.SENDER_SHUTDOWN:
       shutdown = true;
       // forcibly close the latch for SENDER_CAN_SEND to shutdown the sender.
-      synchronizer.closeLatch(new ShuffleControlMessage(
-          PushShuffleCode.SENDER_CAN_SEND, shuffleDescription.getShuffleName(), null));
+      synchronizer.closeLatch(new ShuffleControlMessage(PushShuffleCode.SENDER_CAN_SEND, null));
       break;
 
     default:
@@ -101,10 +96,10 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     }
   }
 
-  private final class TupleLinkListener implements LinkListener<Message<ShuffleTupleMessage<K, V>>> {
+  private final class TupleLinkListener implements LinkListener<Message<Tuple<K, V>>> {
 
     @Override
-    public void onSuccess(final Message<ShuffleTupleMessage<K, V>> message) {
+    public void onSuccess(final Message<Tuple<K, V>> message) {
       LOG.log(Level.FINE, "A ShuffleTupleMessage was successfully sent : {0}", message);
       messageChecker.messageTransferred();
     }
@@ -113,7 +108,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
     public void onException(
         final Throwable cause,
         final SocketAddress socketAddress,
-        final Message<ShuffleTupleMessage<K, V>> message) {
+        final Message<Tuple<K, V>> message) {
       LOG.log(Level.WARNING, "An exception occurred while sending a ShuffleTupleMessage. cause : {0}," +
           " socket address : {1}, message : {2}", new Object[]{cause, socketAddress, message});
       // TODO #67: failure handling.
@@ -125,7 +120,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   public List<String> sendTuple(final Tuple<K, V> tuple) {
     waitForSenderInitialized();
     stateMachine.checkState(PushShuffleSenderState.SENDING);
-    final List<String> sentReceiverIdList = dataSender.sendTuple(tuple);
+    final List<String> sentReceiverIdList = tupleSender.sendTuple(tuple);
     messageChecker.messageSent(sentReceiverIdList.size());
     return sentReceiverIdList;
   }
@@ -134,7 +129,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   public List<String> sendTuple(final List<Tuple<K, V>> tupleList) {
     waitForSenderInitialized();
     stateMachine.checkState(PushShuffleSenderState.SENDING);
-    final List<String> sentReceiverIdList = dataSender.sendTuple(tupleList);
+    final List<String> sentReceiverIdList = tupleSender.sendTuple(tupleList);
     messageChecker.messageSent(sentReceiverIdList.size());
     return sentReceiverIdList;
   }
@@ -143,7 +138,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   public void sendTupleTo(final String receiverId, final Tuple<K, V> tuple) {
     waitForSenderInitialized();
     stateMachine.checkState(PushShuffleSenderState.SENDING);
-    dataSender.sendTupleTo(receiverId, tuple);
+    tupleSender.sendTupleTo(receiverId, tuple);
     messageChecker.messageSent(1);
   }
 
@@ -151,7 +146,7 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
   public void sendTupleTo(final String receiverId, final List<Tuple<K, V>> tupleList) {
     waitForSenderInitialized();
     stateMachine.checkState(PushShuffleSenderState.SENDING);
-    dataSender.sendTupleTo(receiverId, tupleList);
+    tupleSender.sendTupleTo(receiverId, tupleList);
     messageChecker.messageSent(1);
   }
 

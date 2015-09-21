@@ -37,6 +37,7 @@ public final class SenderTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(SenderTask.class.getName());
 
+  private final ShuffleProvider shuffleProvider;
   private final PushShuffleSender<Integer, Integer> shuffleSender;
   private final int totalNumReceivers;
   private final int numTotalIterations;
@@ -45,6 +46,7 @@ public final class SenderTask implements Task {
   private SenderTask(
       final ShuffleProvider shuffleProvider,
       @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations) {
+    this.shuffleProvider = shuffleProvider;
     final Shuffle<Integer, Integer> shuffle = shuffleProvider
         .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     this.shuffleSender = shuffle.getSender();
@@ -71,6 +73,7 @@ public final class SenderTask implements Task {
       }
     }
 
+    shuffleProvider.close();
     final ByteBuffer byteBuffer = ByteBuffer.allocate(4);
     byteBuffer.putInt(numSentTuples);
     return byteBuffer.array();

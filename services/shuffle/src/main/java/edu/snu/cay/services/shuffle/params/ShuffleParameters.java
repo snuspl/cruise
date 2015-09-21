@@ -33,19 +33,9 @@ public final class ShuffleParameters {
   }
 
   /**
-   * NetworkConnectionFactory identifier for ShuffleTupleMessage.
-   */
-  public static final String SHUFFLE_TUPLE_MSG_NETWORK_ID = "SHUFFLE_TUPLE_MSG_NETWORK_ID";
-
-  /**
-   * NetworkConnectionFactory identifier for ShuffleControlMessage.
-   */
-  public static final String SHUFFLE_CONTROL_MSG_NETWORK_ID = "SHUFFLE_CONTROL_MSG_NETWORK_ID";
-
-  /**
    * Local end point id for driver.
    */
-  public static final String SHUFFLE_DRIVER_LOCAL_END_POINT_ID = "SHUFFLE_DRIVER_LOCAL_END_POINT_ID";
+  public static final String DRIVER_LOCAL_END_POINT_ID = "DRIVER_LOCAL_END_POINT_ID";
 
   @NamedParameter(doc = "the name of ShuffleManger class")
   public static final class ShuffleManagerClassName implements Name<String> {
@@ -64,15 +54,15 @@ public final class ShuffleParameters {
   }
 
   @NamedParameter(doc = "set of receiver identifiers of the shuffle description")
-  public final class ShuffleReceiverIdSet implements Name<Set<String>> {
+  public static final class ShuffleReceiverIdSet implements Name<Set<String>> {
   }
 
   @NamedParameter(doc = "set of sender identifiers of the shuffle description")
-  public final class ShuffleSenderIdSet implements Name<Set<String>> {
+  public static final class ShuffleSenderIdSet implements Name<Set<String>> {
   }
 
   @NamedParameter(doc = "name of the ShuffleStrategy class of the shuffle description")
-  public final class ShuffleStrategyClassName implements Name<String> {
+  public static final class ShuffleStrategyClassName implements Name<String> {
   }
 
   @NamedParameter(doc = "name of the key codec class of the shuffle description")
@@ -80,7 +70,7 @@ public final class ShuffleParameters {
   }
 
   @NamedParameter(doc = "name of the value codec class of the shuffle description")
-  public final class ShuffleValueCodecClassName implements Name<String> {
+  public static final class ShuffleValueCodecClassName implements Name<String> {
   }
 
   @NamedParameter(doc = "set of serialized shuffle description")

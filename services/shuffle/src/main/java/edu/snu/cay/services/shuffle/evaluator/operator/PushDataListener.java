@@ -15,20 +15,20 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
-import edu.snu.cay.services.shuffle.network.ShuffleTupleMessage;
+import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 
 /**
- *
+ * Data listener of push-based shuffles.
  */
 public interface PushDataListener<K, V> {
 
   /**
    * Handle a message from a sender.
    *
-   * @param message a tuple message
+   * @param tupleMessage a tuple message
    */
-  void onTupleMessage(Message<ShuffleTupleMessage<K, V>> message);
+  void onTupleMessage(Message<Tuple<K, V>> tupleMessage);
 
   /**
    * Handle the case where all senders completed to send data in one iteration.

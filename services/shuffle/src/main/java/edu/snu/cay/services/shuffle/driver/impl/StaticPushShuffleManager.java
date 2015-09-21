@@ -22,14 +22,14 @@ import edu.snu.cay.services.shuffle.evaluator.impl.StaticPushShuffle;
 import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleReceiverImpl;
 import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleReceiverState;
 import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleSenderImpl;
+import edu.snu.cay.services.shuffle.network.ControlMessageNetworkSetup;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import edu.snu.cay.services.shuffle.utils.ShuffleDescriptionSerializer;
+import edu.snu.cay.services.shuffle.driver.ShuffleConfigurationSerializer;
 import edu.snu.cay.services.shuffle.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.transport.LinkListener;
 
@@ -43,10 +43,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * ShuffleManager implementation for static push-based shuffling.
+ * ShuffleManager implementation for static push-based shuffle.
  *
  * The initial shuffle description can never be changed. Users cannot add or remove more tasks
- * to the shuffle and cannot change the key, value codecs and shuffling strategy after the manager is created.
+ * to the shuffle and cannot change the key, value codecs and shuffle strategy after the manager is created.
  */
 @DriverSide
 public final class StaticPushShuffleManager implements ShuffleManager {
@@ -54,11 +54,10 @@ public final class StaticPushShuffleManager implements ShuffleManager {
   private static final Logger LOG = Logger.getLogger(StaticPushShuffleManager.class.getName());
 
   private final ShuffleDescription shuffleDescription;
-  private final ShuffleDescriptionSerializer descriptionSerializer;
+  private final ShuffleConfigurationSerializer shuffleConfSerializer;
+  private final ControlMessageNetworkSetup controlMessageNetworkSetup;
   private final DSControlMessageSender controlMessageSender;
 
-  private final ControlMessageHandler controlMessageHandler;
-  private final ControlLinkListener controlLinkListener;
   private final StateManager stateManager;
 
   private PushShuffleListener pushShuffleListener;
@@ -66,15 +65,17 @@ public final class StaticPushShuffleManager implements ShuffleManager {
   @Inject
   private StaticPushShuffleManager(
       final ShuffleDescription shuffleDescription,
-      final ShuffleDescriptionSerializer descriptionSerializer,
+      final ShuffleConfigurationSerializer shuffleConfSerializer,
+      final ControlMessageNetworkSetup controlMessageNetworkSetup,
       final DSControlMessageSender controlMessageSender) {
-    this.shuffleDescription = shuffleDescription;
-    this.descriptionSerializer = descriptionSerializer;
-    this.controlMessageSender = controlMessageSender;
 
+    controlMessageNetworkSetup.setControlMessageHandlerAndLinkListener(
+        new ControlMessageHandler(), new ControlLinkListener());
+    this.shuffleDescription = shuffleDescription;
+    this.shuffleConfSerializer = shuffleConfSerializer;
+    this.controlMessageNetworkSetup = controlMessageNetworkSetup;
+    this.controlMessageSender = controlMessageSender;
     this.stateManager = new StateManager();
-    this.controlMessageHandler = new ControlMessageHandler();
-    this.controlLinkListener = new ControlLinkListener();
   }
 
   /**
@@ -82,12 +83,14 @@ public final class StaticPushShuffleManager implements ShuffleManager {
    * @return Serialized shuffle description for the endPointId
    */
   @Override
-  public Optional<Configuration> getShuffleConfiguration(final String endPointId) {
-    return descriptionSerializer.serialize(
+  public Configuration getShuffleConfiguration(final String endPointId) {
+    return shuffleConfSerializer.serialize(
         StaticPushShuffle.class,
         PushShuffleSenderImpl.class,
         PushShuffleReceiverImpl.class,
-        shuffleDescription, endPointId);
+        shuffleDescription,
+        endPointId
+    );
   }
 
   /**
@@ -98,14 +101,12 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     return shuffleDescription;
   }
 
+  /**
+   * Close the network setup.
+   */
   @Override
-  public EventHandler<Message<ShuffleControlMessage>> getControlMessageHandler() {
-    return controlMessageHandler;
-  }
-
-  @Override
-  public LinkListener<Message<ShuffleControlMessage>> getControlLinkListener() {
-    return controlLinkListener;
+  public void close() {
+    controlMessageNetworkSetup.close();
   }
 
   /**
