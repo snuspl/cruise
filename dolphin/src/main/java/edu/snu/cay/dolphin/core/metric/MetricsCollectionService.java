@@ -15,12 +15,8 @@
  */
 package edu.snu.cay.dolphin.core.metric;
 
-import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.context.ServiceConfiguration;
-import org.apache.reef.evaluator.context.parameters.ContextMessageSources;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Configurations;
-import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Unit;
 
 import javax.inject.Inject;
@@ -44,29 +40,5 @@ public final class MetricsCollectionService {
     return ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, MetricsCollector.class)
         .build();
-  }
-
-  /**
-   * Return the context configuration for the Metrics Collection Service.
-   * @return context configuration for the Metrics Collection Service
-   */
-  public static Configuration getContextConfiguration() {
-    return ContextConfiguration.CONF
-        .set(ContextConfiguration.IDENTIFIER, MetricsCollectionService.class.getName())
-        .set(ContextConfiguration.ON_SEND_MESSAGE, MetricsCollector.class)
-        .build();
-  }
-
-  /**
-   * Add a context message source to the pre-existed context configuration.
-   * @param previousConfiguration pre-existed context configuration
-   * @return context configuration to which a context message source is added
-   */
-  public static Configuration getContextConfiguration(final Configuration previousConfiguration) {
-    final Configuration contextConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextMessageSources.class, MetricsCollector.class)
-        .build();
-
-    return Configurations.merge(contextConf, previousConfiguration);
   }
 }
