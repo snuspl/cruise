@@ -34,7 +34,7 @@ import java.util.Map;
  * - http://en.wikipedia.org/wiki/PageRank
  * - https://github.com/apache/spark/blob/master/graphx/src/main/scala/org/apache/spark/graphx/lib/PageRank.scala
  */
-public class PageRankCmpTask extends UserComputeTask
+public class PageRankMainCmpTask extends UserComputeTask
     implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer, Double>> {
 
   /**
@@ -58,7 +58,7 @@ public class PageRankCmpTask extends UserComputeTask
    * @param memoryStore
    */
   @Inject
-  public PageRankCmpTask(final MemoryStore memoryStore) {
+  public PageRankMainCmpTask(final MemoryStore memoryStore) {
     this.memoryStore = memoryStore;
   }
 

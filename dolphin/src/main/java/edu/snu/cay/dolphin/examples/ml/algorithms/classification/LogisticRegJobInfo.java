@@ -47,7 +47,7 @@ public final class LogisticRegJobInfo implements UserJobInfo {
             .build());
 
     stageInfoList.add(
-        StageInfo.newBuilder(LogisticRegCmpTask.class, LogisticRegCtrlTask.class, CommunicationGroup.class)
+        StageInfo.newBuilder(LogisticRegMainCmpTask.class, LogisticRegMainCtrlTask.class, CommunicationGroup.class)
             .setBroadcast(LinearModelCodec.class)
             .setReduce(LogisticRegSummaryCodec.class, LogisticRegReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)

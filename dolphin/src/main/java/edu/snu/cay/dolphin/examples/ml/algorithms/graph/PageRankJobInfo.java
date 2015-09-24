@@ -47,7 +47,7 @@ public final class PageRankJobInfo implements UserJobInfo {
             .build());
 
     stageInfoList.add(
-        StageInfo.newBuilder(PageRankCmpTask.class, PageRankCtrlTask.class, CommunicationGroup.class)
+        StageInfo.newBuilder(PageRankMainCmpTask.class, PageRankMainCtrlTask.class, CommunicationGroup.class)
             .setBroadcast(PageRankCodec.class)
             .setReduce(PageRankSummaryCodec.class, PageRankReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)

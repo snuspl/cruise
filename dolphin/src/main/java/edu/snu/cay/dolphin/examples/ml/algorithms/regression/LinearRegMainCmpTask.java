@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
+package edu.snu.cay.dolphin.examples.ml.algorithms.regression;
 
-import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
-import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;
+import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
+import edu.snu.cay.dolphin.examples.ml.data.LinearRegSummary;
 import edu.snu.cay.dolphin.examples.ml.loss.Loss;
 import edu.snu.cay.dolphin.examples.ml.parameters.StepSize;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
@@ -31,23 +31,21 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.Map;
 
-public class LogisticRegCmpTask extends UserComputeTask
-    implements DataReduceSender<LogisticRegSummary>, DataBroadcastReceiver<LinearModel> {
-
+public class LinearRegMainCmpTask extends UserComputeTask
+    implements DataReduceSender<LinearRegSummary>, DataBroadcastReceiver<LinearModel> {
 
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
-  private final MemoryStore memoryStore;
+  private MemoryStore memoryStore;
   private LinearModel model;
-  private int posNum = 0;
-  private int negNum = 0;
+  private double lossSum = 0;
 
   @Inject
-  public LogisticRegCmpTask(@Parameter(StepSize.class) final double stepSize,
-                            final Loss loss,
-                            final Regularization regularization,
-                            final MemoryStore memoryStore) {
+  public LinearRegMainCmpTask(@Parameter(StepSize.class) final double stepSize,
+                              final Loss loss,
+                              final Regularization regularization,
+                              final MemoryStore memoryStore) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
@@ -57,18 +55,13 @@ public class LogisticRegCmpTask extends UserComputeTask
   @Override
   public final void run(final int iteration) {
 
-    // measure accuracy
-    posNum = 0;
-    negNum = 0;
-    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(LogisticRegPreCmpTask.KEY_ROWS);
+    // measure loss
+    lossSum = 0;
+    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(LinearRegPreCmpTask.KEY_ROWS);
     for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());
-      if (output * predict > 0) {
-        posNum++;
-      } else {
-        negNum++;
-      }
+      lossSum += loss.loss(predict, output);
     }
 
     // optimize
@@ -86,7 +79,7 @@ public class LogisticRegCmpTask extends UserComputeTask
   }
 
   @Override
-  public LogisticRegSummary sendReduceData(final int iteration) {
-    return new LogisticRegSummary(this.model, 1, posNum, negNum);
+  public LinearRegSummary sendReduceData(final int iteration) {
+    return new LinearRegSummary(this.model, 1, this.lossSum);
   }
 }

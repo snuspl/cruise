@@ -47,7 +47,7 @@ public final class LinearRegJobInfo implements UserJobInfo {
             .build());
 
     stageInfoList.add(
-        StageInfo.newBuilder(LinearRegCmpTask.class, LinearRegCtrlTask.class, CommunicationGroup.class)
+        StageInfo.newBuilder(LinearRegMainCmpTask.class, LinearRegMainCtrlTask.class, CommunicationGroup.class)
             .setBroadcast(LinearModelCodec.class)
             .setReduce(LinearRegSummaryCodec.class, LinearRegReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
