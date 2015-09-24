@@ -20,6 +20,9 @@ import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -30,6 +33,11 @@ import java.util.Random;
 
 public final class ClusteringPreCmpTask extends UserComputeTask
     implements DataGatherSender<List<Vector>> {
+
+  /**
+   * Key used in Elastic Memory to put/get the data.
+   */
+  public static final String KEY_POINTS = "points";
 
   /**
    * Number of clusters.
@@ -48,20 +56,40 @@ public final class ClusteringPreCmpTask extends UserComputeTask
   private final DataParser<List<Vector>> dataParser;
 
   /**
+   * Memory storage to put/get the data.
+   */
+  private final MemoryStore memoryStore;
+
+  /**
+   * Data identifier factory to generate id for data.
+   */
+  private final DataIdFactory<Long> dataIdFactory;
+
+  /**
    * @param dataParser
    * @param numberOfClusters
    */
   @Inject
   public ClusteringPreCmpTask(
       final DataParser<List<Vector>> dataParser,
+      final MemoryStore memoryStore,
+      final DataIdFactory<Long> dataIdFactory,
       @Parameter(NumberOfClusters.class) final int numberOfClusters) {
     this.dataParser = dataParser;
+    this.memoryStore = memoryStore;
+    this.dataIdFactory = dataIdFactory;
     this.numberOfClusters = numberOfClusters;
   }
 
   @Override
   public void initialize() throws ParseException {
     points = dataParser.get();
+    try {
+      final List<Long> ids = dataIdFactory.getIds(points.size());
+      memoryStore.getElasticStore().putList(KEY_POINTS, ids, points);
+    } catch (IdGenerationException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
