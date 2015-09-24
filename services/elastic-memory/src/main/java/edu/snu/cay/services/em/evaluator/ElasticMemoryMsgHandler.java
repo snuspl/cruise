@@ -180,32 +180,27 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final Codec codec = serializer.getCodec(dataType);
     final int numUnits = ctrlMsg.getNumUnits();
 
-    // first, fetch all items from my memory store
+    // fetch all items of the given data type from my memory store
+    // TODO #15: this clones the entire map of the given data type, and may cause memory problems
     final Map<Long, Object> dataMap = memoryStore.getElasticStore().getAll(dataType);
-    final Map<Long, Object> newMap = new HashMap<>();
-    int numObject = 0;
+    final List<UnitIdPair> unitIdPairList = new ArrayList<>(Math.min(numUnits, dataMap.size()));
+
+    // TODO #15: this loop may be creating a gigantic message, and may cause memory problems
     for (final Map.Entry<Long, Object> entry : dataMap.entrySet()) {
-      if (numObject++ >= numUnits) {
+      if (unitIdPairList.size() >= numUnits) {
         break;
       }
 
       final Long key = entry.getKey();
       final Object value = entry.getValue();
 
-      // remove items one by one until numUnits items have been removed
+      // remove items one by one until the required number of items has been removed
       memoryStore.getElasticStore().remove(dataType, key);
-      newMap.put(key, value);
-    }
 
-    // pack the extracted items into a single list for message transmission
-    // the identifiers for each item are included with the item itself as an UnitIdPair
-    final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
-    for (final Map.Entry<Long, Object> idObject : newMap.entrySet()) {
       final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-          .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
-          .setId(idObject.getKey())
+          .setUnit(ByteBuffer.wrap(codec.encode(value)))
+          .setId(key)
           .build();
-
       unitIdPairList.add(unitIdPair);
     }
 
