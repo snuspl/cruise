@@ -116,16 +116,16 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
-                          final int unitNum, final String operationId, final TraceInfo parentTraceInfo) {
+                          final int numUnits, final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
-          new Object[]{destId, dataType, targetEvalId, unitNum});
+          new Object[]{destId, dataType, targetEvalId, numUnits});
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
           .setDataType(dataType)
-          .setCtrlMsgType(CtrlMsgType.UnitNum)
-          .setUnitNum(unitNum)
+          .setCtrlMsgType(CtrlMsgType.NumUnits)
+          .setNumUnits(numUnits)
           .build();
 
       send(destId,

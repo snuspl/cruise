@@ -55,9 +55,9 @@
   "fields":
   [
     {"name": "dataType", "type": "string"},
-    {"name": "ctrlMsgType", "type": {"type": "enum", "name": "CtrlMsgType", "symbols": ["IdRange", "UnitNum"]}},
+    {"name": "ctrlMsgType", "type": {"type": "enum", "name": "CtrlMsgType", "symbols": ["IdRange", "NumUnits"]}},
     {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
-    {"name": "unitNum", "type": ["null", "int"], "default": null}
+    {"name": "numUnits", "type": ["null", "int"], "default": null}
   ]
 },
 

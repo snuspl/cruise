@@ -47,7 +47,7 @@ public interface ElasticMemoryMsgSender {
 
   /**
    * Send a CtrlMsg that tells the Evaluator specified with {@code destId} to
-   * send {@code unitNum} units of its {@code dataType} data to the Evaluator specified with
+   * send {@code numUnits} units of its {@code dataType} data to the Evaluator specified with
    * {@code targetEvalId}.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
@@ -55,7 +55,7 @@ public interface ElasticMemoryMsgSender {
   void sendCtrlMsg(final String destId,
                    final String dataType,
                    final String targetEvalId,
-                   final int unitNum,
+                   final int numUnits,
                    final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
 

@@ -121,8 +121,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
         onCtrlMsgIdRange(msg, onCtrlMsgScope);
         break;
 
-      case UnitNum:
-        onCtrlMsgUnitNum(msg, onCtrlMsgScope);
+      case NumUnits:
+        onCtrlMsgNumUnits(msg, onCtrlMsgScope);
         break;
 
       default:
@@ -170,30 +170,30 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Create a data message using the number of units (unitNum) specified in the given control message and send it.
-   * This method randomly picks unitNum units from the memory store.
-   * More precisely, the first unitNum entries of Map.entrySet().iterator() are picked.
+   * Create a data message using the number of units (numUnits) specified in the given control message and send it.
+   * This method randomly picks numUnits units from the memory store.
+   * More precisely, the first numUnits entries of Map.entrySet().iterator() are picked.
    */
-  private void onCtrlMsgUnitNum(final AvroElasticMemoryMessage msg,
-                                final TraceScope parentTraceInfo) {
+  private void onCtrlMsgNumUnits(final AvroElasticMemoryMessage msg,
+                                 final TraceScope parentTraceInfo) {
     final CtrlMsg ctrlMsg = msg.getCtrlMsg();
     final String dataType = ctrlMsg.getDataType().toString();
     final Codec codec = serializer.getCodec(dataType);
-    final int unitNum = ctrlMsg.getUnitNum();
+    final int numUnits = ctrlMsg.getNumUnits();
 
     // first, fetch all items from my memory store
     final Map<Long, Object> dataMap = memoryStore.getElasticStore().getAll(dataType);
     final Map<Long, Object> newMap = new HashMap<>();
     int numObject = 0;
     for (final Map.Entry<Long, Object> entry : dataMap.entrySet()) {
-      if (numObject++ >= unitNum) {
+      if (numObject++ >= numUnits) {
         break;
       }
 
       final Long key = entry.getKey();
       final Object value = entry.getValue();
 
-      // remove items one by one until unitNum items have been removed
+      // remove items one by one until numUnits items have been removed
       memoryStore.getElasticStore().remove(dataType, key);
       newMap.put(key, value);
     }

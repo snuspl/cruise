@@ -95,7 +95,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Override
   public void move(final String dataType,
-                   final int unitNum,
+                   final int numUnits,
                    final String srcEvalId,
                    final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
@@ -104,7 +104,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
       callbackRouter.register(operatorId, callback);
 
-      sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, unitNum,
+      sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, numUnits,
           operatorId, TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }
