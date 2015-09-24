@@ -15,8 +15,6 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
-import edu.snu.cay.dolphin.core.ParseException;
-import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;
@@ -26,30 +24,21 @@ import edu.snu.cay.dolphin.examples.ml.parameters.StepSize;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
-import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.List;
 import java.util.Map;
 
 public class LogisticRegCmpTask extends UserComputeTask
     implements DataReduceSender<LogisticRegSummary>, DataBroadcastReceiver<LinearModel> {
 
-  /**
-   * Key used in Elastic Memory to put/get the data.
-   */
-  private static final String KEY_ROWS = "rows";
 
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
-  private final DataParser<List<Row>> dataParser;
   private final MemoryStore memoryStore;
-  private final DataIdFactory<Long> dataIdFactory;
   private LinearModel model;
   private int posNum = 0;
   private int negNum = 0;
@@ -58,26 +47,11 @@ public class LogisticRegCmpTask extends UserComputeTask
   public LogisticRegCmpTask(@Parameter(StepSize.class) final double stepSize,
                             final Loss loss,
                             final Regularization regularization,
-                            final DataParser<List<Row>> dataParser,
-                            final MemoryStore memoryStore,
-                            final DataIdFactory<Long> dataIdFactory) {
+                            final MemoryStore memoryStore) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
-    this.dataParser = dataParser;
     this.memoryStore = memoryStore;
-    this.dataIdFactory = dataIdFactory;
-  }
-
-  @Override
-  public void initialize() throws ParseException {
-    final List<Row> rows = dataParser.get();
-    try {
-      final List<Long> ids = dataIdFactory.getIds(rows.size());
-      memoryStore.getElasticStore().putList(KEY_ROWS, ids, rows);
-    } catch (IdGenerationException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   @Override
@@ -86,7 +60,7 @@ public class LogisticRegCmpTask extends UserComputeTask
     // measure accuracy
     posNum = 0;
     negNum = 0;
-    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(KEY_ROWS);
+    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(LogisticRegPreCmpTask.KEY_ROWS);
     for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());
