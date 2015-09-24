@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * API implemenatations for Resource Request Manager
+ * API implemenatations for Resource Request Manager.
  */
 package edu.snu.cay.services.rrm.impl;
