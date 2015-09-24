@@ -153,6 +153,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     // pack the extracted items into a single list for message transmission
     // the identifiers for each item are included with the item itself as an UnitIdPair
+    // TODO #90: if this store doesn't contain the expected ids,
+    //           then the Driver should be notified (ResultMsg.FAILURE)
     final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
     for (final Map<Long, Object> idObjectMap : idObjectMapSet) {
       for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
@@ -186,6 +188,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final List<UnitIdPair> unitIdPairList = new ArrayList<>(Math.min(numUnits, dataMap.size()));
 
     // TODO #15: this loop may be creating a gigantic message, and may cause memory problems
+    // TODO #90: if the number of units requested is greater than this memory store's capacity,
+    //           then the Driver should be notified (ResultMsg.FAILURE)
     for (final Map.Entry<Long, Object> entry : dataMap.entrySet()) {
       if (unitIdPairList.size() >= numUnits) {
         break;
