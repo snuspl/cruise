@@ -13,26 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.examples.ml.data;
+package edu.snu.cay.dolphin.examples.ml.parameters;
 
-import org.apache.mahout.math.Vector;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-import javax.inject.Inject;
-
-/**
- * Implements DistanceMeasure (Default).
- */
-public final class EuclideanDistance implements VectorDistanceMeasure {
-
-  @Inject
-  private EuclideanDistance() {
-  }
-
-  @Override
-  public double distance(final Vector v1, final Vector v2) {
-    if (v1.size() != v2.size()) {
-      throw new IllegalArgumentException("Vector dimensions are not consistent");
-    }
-    return Math.sqrt(v1.getDistanceSquared(v2));
-  }
+@NamedParameter(doc = "whether a type of input vector is dense or not",
+                short_name = "isDense")
+public final class IsDenseVector implements Name<Boolean> {
 }

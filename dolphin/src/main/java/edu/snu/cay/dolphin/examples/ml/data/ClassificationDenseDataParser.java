@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class ClassificationDataParser implements DataParser<List<Row>> {
-  private static final Logger LOG = Logger.getLogger(ClassificationDataParser.class.getName());
+public final class ClassificationDenseDataParser implements DataParser<List<Row>> {
+  private static final Logger LOG = Logger.getLogger(ClassificationDenseDataParser.class.getName());
 
   private final AtomicInteger count = new AtomicInteger(0);
   private final int positiveLabel = 1;
@@ -45,15 +45,15 @@ public final class ClassificationDataParser implements DataParser<List<Row>> {
   private ParseException parseException;
 
   @Inject
-  public ClassificationDataParser(@Parameter(Dimension.class) final int dimension,
-      final DataSet<LongWritable, Text> dataSet) {
+  public ClassificationDenseDataParser(@Parameter(Dimension.class) final int dimension,
+                                       final DataSet<LongWritable, Text> dataSet) {
     this.dimension = dimension;
     this.dataSet = dataSet;
   }
 
   @Override
   public List<Row> get() throws ParseException {
-    LOG.log(Level.INFO, "ClassificationDataParser called {0} times", count.incrementAndGet());
+    LOG.log(Level.INFO, "ClassificationDenseDataParser called {0} times", count.incrementAndGet());
     if (result == null) {
       parse();
     }

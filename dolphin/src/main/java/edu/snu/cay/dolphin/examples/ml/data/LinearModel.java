@@ -42,11 +42,18 @@ public final class LinearModel implements Model {
   @Override
   public String toString() {
     final StringBuffer buffer = new StringBuffer();
-    for (int i = 0; i < parameters.size() - 1; i++) {
-      buffer.append(String.valueOf(parameters.get(i)));
-      buffer.append("x" + (i + 1) + " + ");
+    boolean addPlus = false;
+    for (final Vector.Element element : parameters.nonZeroes()) {
+      if (addPlus) {
+        buffer.append(" + ");
+      }
+      buffer.append(String.valueOf(element.get()));
+      final int index = element.index();
+      if (index != parameters.size() - 1) {  // not constant term
+        buffer.append(String.format("x%d", index + 1));
+      }
+      addPlus = true;
     }
-    buffer.append(parameters.get(parameters.size() - 1));
     return buffer.toString();
   }
 }
