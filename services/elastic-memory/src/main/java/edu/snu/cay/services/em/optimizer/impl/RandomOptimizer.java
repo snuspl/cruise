@@ -43,8 +43,8 @@ import java.util.logging.Logger;
  * 1. Choosing uniformly between [minEvaluatorsFraction * availableEvaluators,
  *    maxEvaluatorsFraction * availableEvaluators] evaluators to use in the plan.
  *    {@link #getEvaluatorsToUse}
- * 2. For each dataType, requesting uniformly at random a fixed number of units (10)
- *    across the evaluators.
+ * 2. For each dataType, randomly redistributing all units -- by batching units (of 10) and
+ *    sending each batch to an evaluator selected uniformly at random.
  *    {@link #uniformlyRandomDataRequestPerEvaluator}
  * 3. For each dataType, creating transfer steps by greedily taking data needed to
  *    satisfy the request from an evaluator from it's right side (in a circular array).
@@ -71,12 +71,24 @@ public final class RandomOptimizer implements Optimizer {
   @Inject
   private RandomOptimizer(@Parameter(MinEvaluatorsFraction.class) final double minEvaluatorsFraction,
                           @Parameter(MaxEvaluatorsFraction.class) final double maxEvaluatorsFraction) {
+    if (minEvaluatorsFraction < 0.0 || minEvaluatorsFraction > 1.0
+        || maxEvaluatorsFraction < 0.0 || maxEvaluatorsFraction > 1.0) {
+      throw new IllegalArgumentException(
+          "minEvaluatorsFraction " + minEvaluatorsFraction
+              + " and maxEvaluatorsFraction " + maxEvaluatorsFraction
+              + " must be within range [0.0, 1.0]");
+    }
+
     this.minEvaluatorsFraction = minEvaluatorsFraction;
     this.maxEvaluatorsFraction = maxEvaluatorsFraction;
   }
 
   @Override
   public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+    if (availableEvaluators <= 0) {
+      throw new IllegalArgumentException("availableEvaluators " + availableEvaluators + " must be > 0");
+    }
+
     final int numEvaluators = getEvaluatorsToUse(availableEvaluators);
 
     final List<EvaluatorParameters> evaluatorsToAdd;
@@ -156,12 +168,15 @@ public final class RandomOptimizer implements Optimizer {
   }
 
   private static List<OptimizedEvaluator> getWrappedEvaluators(final String dataType,
-                                                     final Collection<EvaluatorParameters> evaluators) {
+                                                               final Collection<EvaluatorParameters> evaluators) {
     final List<OptimizedEvaluator> wrappedEvaluators = new ArrayList<>(evaluators.size());
     for (final EvaluatorParameters parameters : evaluators) {
       boolean dataTypeAdded = false;
       for (final DataInfo dataInfo : parameters.getDataInfos()) {
         if (dataType.equals(dataInfo.getDataType())) {
+          if (dataTypeAdded) {
+            throw new IllegalArgumentException("Cannot have multiple infos for " + dataType);
+          }
           wrappedEvaluators.add(new OptimizedEvaluator(parameters.getId(), dataInfo));
           dataTypeAdded = true;
         }
@@ -184,10 +199,10 @@ public final class RandomOptimizer implements Optimizer {
   private void uniformlyRandomDataRequestPerEvaluator(final List<OptimizedEvaluator> evaluators,
                                                       final long totalData) {
     // Add each unit of data to a random evaluator.
-    final long unit = 10;
+    final int unit = 10;
 
     // Do remainder first
-    final long remainder = totalData % unit;
+    final int remainder = (int) totalData % unit;
     evaluators.get(randomEvaluatorIndex(evaluators.size())).setDataRequested(remainder);
 
     // Do the rest in unit increments
@@ -209,7 +224,7 @@ public final class RandomOptimizer implements Optimizer {
         for (int j = 1; j < evaluators.size(); j++) {
           final OptimizedEvaluator srcEvaluator = evaluators.get((i + j) % evaluators.size());
           if (srcEvaluator.getDataRemaining() < 0) {
-            final long dataToTransfer = Math.min(dstEvaluator.getDataRemaining(), 0 - srcEvaluator.getDataRemaining());
+            final int dataToTransfer = Math.min(dstEvaluator.getDataRemaining(), 0 - srcEvaluator.getDataRemaining());
             srcEvaluator.sendData(dstEvaluator.getId(), dataToTransfer);
             dstEvaluator.receiveData(srcEvaluator.getId(), dataToTransfer);
           }
@@ -240,8 +255,8 @@ public final class RandomOptimizer implements Optimizer {
     private final String id;
     private final String dataType;
     private final List<TransferStep> dstTransferSteps = new ArrayList<>();
-    private long dataAllocated;
-    private long dataRequested;
+    private int dataAllocated;
+    private int dataRequested;
 
     public OptimizedEvaluator(final String id, final DataInfo dataInfo) {
       this.id = id;
@@ -261,29 +276,29 @@ public final class RandomOptimizer implements Optimizer {
       return id;
     }
 
-    public long getDataRequested() {
+    public int getDataRequested() {
       return dataRequested;
     }
 
-    public void setDataRequested(final long dataRequested) {
+    public void setDataRequested(final int dataRequested) {
       this.dataRequested = dataRequested;
     }
 
-    public long getDataAllocated() {
+    public int getDataAllocated() {
       return dataAllocated;
     }
 
-    public long getDataRemaining() {
+    public int getDataRemaining() {
       return dataRequested - dataAllocated;
     }
 
-    public void sendData(final String dst, final long data) {
+    public void sendData(final String dst, final int data) {
       dataAllocated -= data;
     }
 
-    public void receiveData(final String src, final long data) {
+    public void receiveData(final String src, final int data) {
       dataAllocated += data;
-      dstTransferSteps.add(new TransferStepImpl(src, id, new DataInfoImpl(dataType, (int) data)));
+      dstTransferSteps.add(new TransferStepImpl(src, id, new DataInfoImpl(dataType, data)));
     }
 
     public List<TransferStep> getDstTransferSteps() {

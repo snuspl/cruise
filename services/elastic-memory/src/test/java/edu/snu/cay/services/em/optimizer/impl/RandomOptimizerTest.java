@@ -30,7 +30,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 
 /**
  * Test that the Random Optimizer behaves correctly.
@@ -145,29 +144,16 @@ public final class RandomOptimizerTest {
     assertEquals(1, singleEvaluatorPlan.getEvaluatorsToDelete().size());
 
     final String evaluatorToDelete = singleEvaluatorPlan.getEvaluatorsToDelete().iterator().next();
-    if ("1".equals(evaluatorToDelete)) {
+    assertEquals("2", evaluatorToDelete);
+    assertEquals(2, singleEvaluatorPlan.getTransferSteps().size());
 
-      assertEquals(1, singleEvaluatorPlan.getTransferSteps().size());
-      final TransferStep transferStep = singleEvaluatorPlan.getTransferSteps().iterator().next();
-      assertEquals("1", transferStep.getSrcId());
-      assertEquals("2", transferStep.getDstId());
-      assertEquals("dataTypeB", transferStep.getDataInfo().getDataType());
-      assertEquals(300, transferStep.getDataInfo().getNumUnits());
-
-    } else if ("2".equals(evaluatorToDelete)) {
-
-      assertEquals(2, singleEvaluatorPlan.getTransferSteps().size());
-      long sum = 0;
-      for (final TransferStep transferStep : singleEvaluatorPlan.getTransferSteps()) {
-        assertEquals("2", transferStep.getSrcId());
-        assertEquals("1", transferStep.getDstId());
-        sum += transferStep.getDataInfo().getNumUnits();
-      }
-      assertEquals(1000 + 500, sum);
-
-    } else {
-      fail("Unknown evaluatorToDelete " + evaluatorToDelete);
+    long sum = 0;
+    for (final TransferStep transferStep : singleEvaluatorPlan.getTransferSteps()) {
+      assertEquals("2", transferStep.getSrcId());
+      assertEquals("1", transferStep.getDstId());
+      sum += transferStep.getDataInfo().getNumUnits();
     }
+    assertEquals(1000 + 500, sum);
   }
 
   private Collection<EvaluatorParameters> getUniformEvaluators(final long dataPerEvaluator, final int numEvaluators) {
