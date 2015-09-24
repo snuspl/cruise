@@ -45,8 +45,9 @@
 
 /**
  * Control message that is sent from the driver to evaluators.
- * The message contains the data type to send, as well as an array of
- * {@code AvroLongRange}s that show which identifiers to send.
+ * The message contains the data type to send, as well as either
+ * an array of {@code AvroLongRange}s that show which identifiers to send, or
+ * simply the number of units to send.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",

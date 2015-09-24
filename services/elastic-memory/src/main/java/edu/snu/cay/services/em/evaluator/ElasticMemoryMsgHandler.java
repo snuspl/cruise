@@ -102,7 +102,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
         memoryStore.getElasticStore().put(dataType, id, codec.decode(data));
       }
 
-      final Set<LongRange> longRangeSet = LongRangeUtils.generateLongRangeSet(newIds);
+      final Set<LongRange> longRangeSet = LongRangeUtils.generateDenseLongRanges(newIds);
       sender.get().sendResultMsg(true, dataType, longRangeSet,
           msg.getOperationId().toString(), TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
@@ -170,9 +170,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Create a data message using the number of units (numUnits) specified in the given control message and send it.
-   * This method randomly picks numUnits units from the memory store.
-   * More precisely, the first numUnits entries of Map.entrySet().iterator() are picked.
+   * Create a data message using the number of units specified in the given control message and send it.
+   * This method simply picks the first n entries that are returned by Map.entrySet().iterator().
    */
   private void onCtrlMsgNumUnits(final AvroElasticMemoryMessage msg,
                                  final TraceScope parentTraceInfo) {

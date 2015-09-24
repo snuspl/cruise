@@ -34,10 +34,9 @@ public final class LongRangeUtils {
 
   /**
    * Create a {@code Set} of {@code LongRange}s using a {@code SortedSet} of {@code Long}s.
-   * This method tries to create as few {@code Set}s as possible, putting continuous {@code Long}s
-   * in a single {@code LongRange}.
+   * This method tries to create as few {@code LongRange}s as possible, given that each of them must be dense.
    */
-  public static Set<LongRange> generateLongRangeSet(final SortedSet<Long> longSortedSet) {
+  public static Set<LongRange> generateDenseLongRanges(final SortedSet<Long> longSortedSet) {
     final Set<LongRange> longRangeSet = new HashSet<>();
 
     Long anchorLong = null;
