@@ -84,7 +84,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
     try {
       final List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
       memoryStore.getLocalStore().putList(KEY_CENTROIDS, ids, initialCentroids);
-    } catch (IdGenerationException e) {
+    } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }
   }

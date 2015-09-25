@@ -53,7 +53,7 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
     try {
       final List<Long> ids = dataIdFactory.getIds(rows.size());
       memoryStore.getElasticStore().putList(KEY_ROWS, ids, rows);
-    } catch (IdGenerationException e) {
+    } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }
   }
