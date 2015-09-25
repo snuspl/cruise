@@ -93,26 +93,24 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public void applyUpdates() {
-    try (final TraceScope traceScope = Trace.startSpan(APPLY_UPDATE)) {
-      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      migrationManager.applyUpdates(traceInfo);
-    }
-  }
-
-  @Override
   public void move(final String dataType,
                    final int numUnits,
                    final String srcEvalId,
                    final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
-      final String operatorId = MOVE + "-" + Long.toString(operatorIdCounter.getAndIncrement());
+      final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
+      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
+      callbackRouter.register(operationId, callback);
+      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, numUnits, traceInfo);
+    }
+  }
 
-      callbackRouter.register(operatorId, callback);
-
-      sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, numUnits,
-          operatorId, TraceInfo.fromSpan(traceScope.getSpan()));
+  @Override
+  public void applyUpdates() {
+    try (final TraceScope traceScope = Trace.startSpan(APPLY_UPDATE)) {
+      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
+      migrationManager.applyUpdates(traceInfo);
     }
   }
 

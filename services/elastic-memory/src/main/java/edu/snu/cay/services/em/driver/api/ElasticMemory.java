@@ -69,7 +69,6 @@ public interface ElasticMemory {
   void move(String dataType, Set<LongRange> rangeSet, String srcEvalId, String destEvalId,
             @Nullable EventHandler<AvroElasticMemoryMessage> callback);
 
-
   /**
    * Move a certain number of units of an evaluator's state to another evaluator.
    *

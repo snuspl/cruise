@@ -27,13 +27,13 @@ final class MigrationInfo {
    * Represents the status of the migration.
    */
   public enum State {
-    SENDING_DATA, DATA_SENT, UPDATING_RECEIVER, PARTITION_UPDATED, UPDATING_SENDER, RECEIVER_UPDATED
+    SENDING_DATA, WAITING_UPDATE, UPDATING_RECEIVER, PARTITION_UPDATED, UPDATING_SENDER, RECEIVER_UPDATED, FINISHED
   }
 
   private final String senderId;
   private final String receiverId;
   private final String dataType;
-  private final Collection<LongRange> ranges; // TODO #95: Ranges may not be able to set at the first time
+  private Collection<LongRange> ranges; // Ranges are updated once the driver receives the update message.
   private State state = State.SENDING_DATA;
 
   /**
@@ -41,16 +41,13 @@ final class MigrationInfo {
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
    * @param dataType Type of data
-   * @param ranges Set of ranges to move
    */
   public MigrationInfo(final String senderId,
                        final String receiverId,
-                       final String dataType,
-                       final Collection<LongRange> ranges) {
+                       final String dataType) {
     this.senderId = senderId;
     this.receiverId = receiverId;
     this.dataType = dataType;
-    this.ranges = ranges;
   }
 
   /**
@@ -83,6 +80,14 @@ final class MigrationInfo {
   }
 
   /**
+   * Update the data ranges.
+   * @param ranges ranges of the data that participates in this migration.
+   */
+  public void setRanges(final Collection<LongRange> ranges) {
+    this.ranges = ranges;
+  }
+
+  /**
    * @return The status of the migration.
    */
   public State getState() {
@@ -90,7 +95,8 @@ final class MigrationInfo {
   }
 
   /**
-   * @param state Update the status of the migration.
+   * Update the status of the migration.
+   * @param state Target state
    */
   public void setState(final State state) {
     this.state = state;

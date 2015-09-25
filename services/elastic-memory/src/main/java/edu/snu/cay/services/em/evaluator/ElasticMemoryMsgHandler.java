@@ -124,7 +124,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     }
   }
 
-   /**
+  /**
    * Adds the data to the MemoryStore.
    */
   private void applyAdd(final AddInfo addInfo) {
@@ -168,18 +168,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final String dataType = dataMsg.getDataType().toString();
 
       // store the items in the pendingUpdates, so the items will be added later.
-// FIXME
-//      pendingUpdates.put(msg.getOperationId(), new AddInfo(dataType, dataMsg.getUnits()));
-      // extract data items from the message and store them in my memory store
+      pendingUpdates.put(msg.getOperationId(), new AddInfo(dataType, dataMsg.getUnits()));
+
+      // Compress the ranges so the number of ranges minimizes.
       final SortedSet<Long> newIds = new TreeSet<>();
       for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
-        final byte[] data = unitIdPair.getUnit().array();
         final long id = unitIdPair.getId();
         newIds.add(id);
-// FIXME
-//        memoryStore.getElasticStore().put(dataType, id, codec.decode(data));
       }
-
       final Set<LongRange> longRangeSet = LongRangeUtils.generateDenseLongRanges(newIds);
       sender.get().sendResultMsg(true, dataType, longRangeSet,
           msg.getOperationId().toString(), TraceInfo.fromSpan(onDataMsgScope.getSpan()));
@@ -224,10 +220,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     int numObject = 0;
     for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
       final Map<Long, Object> idObjectMap =
-          memoryStore.getElasticStore().removeRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
+          memoryStore.getElasticStore().getRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
       numObject += idObjectMap.size();
       idObjectMapSet.add(idObjectMap);
+
     }
+
+    // keep the ids of the items to be deleted later
+    final Set<Long> ids = new HashSet<>();
 
     // pack the extracted items into a single list for message transmission
     // the identifiers for each item are included with the item itself as an UnitIdPair
@@ -236,33 +236,19 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
     for (final Map<Long, Object> idObjectMap : idObjectMapSet) {
       for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
+        final long id = idObject.getKey();
         final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
             .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
-            .setId(idObject.getKey())
+            .setId(id)
             .build();
-
-      // extract all data items from my memory store that correspond to
-      // the control message's id specification
-      final Set<Map<Long, Object>> idObjectMapSet = new HashSet<>();
-      int numObject = 0;
-      for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
-        final Map<Long, Object> idObjectMap =
-            memoryStore.getElasticStore().removeRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
-        numObject += idObjectMap.size();
-        idObjectMapSet.add(idObjectMap);
-      // extract all data items from my memory store that correspond to
-      // the control message's id specification
-      final Set<Map<Long, Object>> idObjectMapSet = new HashSet<>();
-      int numObject = 0;
-      for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
-        final Map<Long, Object> idObjectMap =
-            memoryStore.getElasticStore().getRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
-        numObject += idObjectMap.size();
-        idObjectMapSet.add(idObjectMap);
         unitIdPairList.add(unitIdPair);
+
+        ids.add(id);
       }
     }
 
+    // The items of the ids will be removed after the migration succeeds.
+    pendingUpdates.put(msg.getOperationId(), new RemoveInfo(dataType, ids));
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
         msg.getOperationId().toString(), TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
@@ -278,33 +264,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final Codec codec = serializer.getCodec(dataType);
     final int numUnits = ctrlMsg.getNumUnits();
 
-      // pack the extracted items into a single list for message transmission
-      // the identifiers for each item are included with the item itself as an UnitIdPair
-      final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
-      for (final Map<Long, Object> idObjectMap : idObjectMapSet) {
-        for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
-      // collect the identifiers of the extracted items to remove them after the data is sent successfully.
-      // for message transmission, the items are packed into a single list of UnitIdPair,
-      // each of which includes the identifier of each item
-      final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
-      final Set<Long> ids = new HashSet<>(numObject);
-      for (final Map<Long, Object> idObjectMap : idObjectMapSet) {
-        for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
-          final long id = idObject.getKey();
-          ids.add(id);
     // fetch all items of the given data type from my memory store
     // TODO #15: this clones the entire map of the given data type, and may cause memory problems
     final Map<Long, Object> dataMap = memoryStore.getElasticStore().getAll(dataType);
     final List<UnitIdPair> unitIdPairList = new ArrayList<>(Math.min(numUnits, dataMap.size()));
 
-          final Object unit = idObject.getValue();
-              .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
-              .setId(idObject.getKey())
-              .build();
-
-              .setUnit(ByteBuffer.wrap(codec.encode(unit)))
-              .setId(id)
-              .build();
+    // keep the ids of the items to be deleted later
+    final Set<Long> ids = new HashSet<>(numUnits);
 
     // TODO #15: this loop may be creating a gigantic message, and may cause memory problems
     // TODO #90: if the number of units requested is greater than this memory store's capacity,
@@ -314,13 +280,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
         break;
       }
 
-      // Register the information of this operation to remove the items from the MemoryStore later.
-      pendingUpdates.put(msg.getOperationId(), new RemoveInfo(dataType, ids));
       final Long key = entry.getKey();
       final Object value = entry.getValue();
-
-      // remove items one by one until the required number of items has been removed
-      memoryStore.getElasticStore().remove(dataType, key);
 
       final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
           .setUnit(ByteBuffer.wrap(codec.encode(value)))
@@ -328,8 +289,11 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
           .build();
       unitIdPairList.add(unitIdPair);
 
+      ids.add(key);
     }
 
+    // The items of the ids will be removed after the migration succeeds.
+    pendingUpdates.put(msg.getOperationId().toString(), new RemoveInfo(dataType, ids));
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
         msg.getOperationId().toString(), TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }

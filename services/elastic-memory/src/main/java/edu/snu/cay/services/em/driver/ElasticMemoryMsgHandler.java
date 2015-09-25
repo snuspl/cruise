@@ -15,12 +15,11 @@
  */
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.RegisMsg;
-import edu.snu.cay.services.em.avro.ResultMsg;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;
+import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
 import org.htrace.TraceScope;
 import org.htrace.TraceInfo;
@@ -29,6 +28,8 @@ import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -98,12 +99,18 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
     try (final TraceScope onResultMsgScope = Trace.startSpan(ON_RESULT_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final Result result = msg.getResultMsg().getResult();
       switch (result) {
+
       case SUCCESS:
-        // After data is sent, EM should wait for user's approval before applying those changes.
-        // Once EM can make sure there is no race condition even without this barrier, this step should be removed.
+        // Register the range information of the migration, and wait for the user's approval to update.
+        // Once EM can make sure there is no race condition, this synchronization barrier should be removed.
+        final Set<LongRange> ranges = new HashSet<>();
+        for (final AvroLongRange range : msg.getResultMsg().getIdRange()) {
+          ranges.add(new LongRange(range.getMin(), range.getMax()));
+        }
         final String operationId = msg.getOperationId().toString();
-        migrationManager.waitUpdate(operationId);
+        migrationManager.waitUpdate(operationId, ranges);
         break;
+
       case FAILURE:
         // TODO #90: We need to handle the failure and notify the failure via callback.
         break;
@@ -113,7 +120,7 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
     }
   }
 
-   private void onUpdateAckMsg(final AvroElasticMemoryMessage msg) {
+  private void onUpdateAckMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onUpdateAckMsgScope =
              Trace.startSpan(ON_UPDATE_ACK_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
       final UpdateResult updateResult = msg.getUpdateAckMsg().getResult();
@@ -121,9 +128,9 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
 
       switch (updateResult) {
 
-      // After receiver updates its state, EM guarantees that the partition can be accessed in the receiver side.
-      // So update the partition state and update the sender.
       case RECEIVER_UPDATED:
+        // After receiver updates its state, EM guarantees that the partition can be accessed in the receiver side.
+        // So update the partition state and update the sender.
         final TraceInfo traceInfo = TraceInfo.fromSpan(onUpdateAckMsgScope.getSpan());
         final boolean partitionMoved = migrationManager.movePartition(operationId, traceInfo);
 
