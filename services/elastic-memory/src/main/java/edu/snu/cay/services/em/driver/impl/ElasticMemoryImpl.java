@@ -93,6 +93,22 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     }
   }
 
+  @Override
+  public void move(final String dataType,
+                   final int numUnits,
+                   final String srcEvalId,
+                   final String destEvalId,
+                   @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
+    try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
+      final String operatorId = MOVE + "-" + Long.toString(operatorIdCounter.getAndIncrement());
+
+      callbackRouter.register(operatorId, callback);
+
+      sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, numUnits,
+          operatorId, TraceInfo.fromSpan(traceScope.getSpan()));
+    }
+  }
+
   // TODO #114: implement checkpoint
   @Override
   public void checkpoint(final String evalId) {
