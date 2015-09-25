@@ -71,18 +71,20 @@ public final class ResourceRequestManagerImpl implements ResourceRequestManager 
 
   @Override
   public String getRequestor(final AllocatedEvaluator allocatedEvaluator) {
-    final Map.Entry<String, EventHandler<ActiveContext>> value = requestQueue.poll();
-    if (value == null) {
-      LOG.severe("Failed to find a requestor for " + allocatedEvaluator.toString());
-      return null;
-    } else {
-      final String requestorId = value.getKey();
-      final EventHandler<ActiveContext> handler = value.getValue();
-      final String evaluatorId = allocatedEvaluator.getId();
-      if (!idMap.containsKey(evaluatorId)) {
+    final String evaluatorId = allocatedEvaluator.getId();
+    if (!idMap.containsKey(evaluatorId)) {
+      final Map.Entry<String, EventHandler<ActiveContext>> value = requestQueue.poll();
+      if (value == null) {
+        LOG.severe("Failed to find a requestor for " + allocatedEvaluator.toString());
+        return null;
+      } else {
+        final String requestorId = value.getKey();
+        final EventHandler<ActiveContext> handler = value.getValue();
         idMap.put(evaluatorId, requestorId);
         resourceRequestCallbackRouter.register(evaluatorId, handler);
+        return requestorId;
       }
+    } else {
       return idMap.get(evaluatorId);
     }
   }
