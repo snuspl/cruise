@@ -36,6 +36,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
 
   /**
    * Key used in Elastic Memory to put/get the centroids.
+   * TODO #168: we should find better place to put this
    */
   public static final String KEY_CENTROIDS = "centroids";
 
@@ -83,7 +84,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
     try {
       final List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
       memoryStore.getLocalStore().putList(KEY_CENTROIDS, ids, initialCentroids);
-    } catch (IdGenerationException e) {
+    } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }
   }

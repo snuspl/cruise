@@ -17,7 +17,6 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.graph;
 
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
-import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.PageRankSummary;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
@@ -35,18 +34,8 @@ import java.util.Map;
  * - http://en.wikipedia.org/wiki/PageRank
  * - https://github.com/apache/spark/blob/master/graphx/src/main/scala/org/apache/spark/graphx/lib/PageRank.scala
  */
-public class PageRankCmpTask extends UserComputeTask
+public class PageRankMainCmpTask extends UserComputeTask
     implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer, Double>> {
-
-  /**
-   * Key used in Elastic Memory to put/get the data.
-   */
-  private static final String KEY_GRAPH = "graph";
-
-  /**
-   * Adjacency list data parser.
-   */
-  private final DataParser<Map<Integer, List<Integer>>> dataParser;
 
   /**
    * Memory storage to put/get the data.
@@ -66,12 +55,10 @@ public class PageRankCmpTask extends UserComputeTask
   /**
    * Constructs a single Compute Task for PageRank.
    * This class is instantiated by TANG.
-   * @param dataParser
+   * @param memoryStore
    */
   @Inject
-  public PageRankCmpTask(final DataParser<Map<Integer, List<Integer>>> dataParser,
-                         final MemoryStore memoryStore) {
-    this.dataParser = dataParser;
+  public PageRankMainCmpTask(final MemoryStore memoryStore) {
     this.memoryStore = memoryStore;
   }
 
@@ -81,21 +68,18 @@ public class PageRankCmpTask extends UserComputeTask
    */
   @Override
   public void initialize() throws ParseException {
-    final Map<Integer, List<Integer>> subgraphs = dataParser.get();
+    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(PageRankPreCmpTask.KEY_GRAPH);
     // Map of current rank
     rank = new HashMap<>();
-    for (final Integer key : subgraphs.keySet()) {
-      rank.put(key, 1.0d);
-    }
-    for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
-      memoryStore.getElasticStore().put(KEY_GRAPH, (long) entry.getKey(), entry.getValue());
+    for (final Long key : subgraphs.keySet()) {
+      rank.put(key.intValue(), 1.0d);
     }
   }
 
   @Override
   public final void run(final int iteration) {
     increment.clear();
-    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(KEY_GRAPH);
+    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(PageRankPreCmpTask.KEY_GRAPH);
     for (final Map.Entry<Long, List<Integer>> entry : subgraphs.entrySet()) {
       final Integer nodeId = entry.getKey().intValue();
       final List<Integer> outList = entry.getValue();

@@ -15,14 +15,44 @@
  */
 package edu.snu.cay.services.shuffle.network;
 
-import javax.inject.Inject;
+import org.apache.reef.io.network.Message;
+import org.apache.reef.wake.remote.transport.LinkListener;
 
-/**
- * Link listener for ShuffleControlMessage.
- */
-public final class ShuffleControlLinkListener extends ShuffleLinkListener<ShuffleControlMessage> {
+import javax.inject.Inject;
+import java.net.SocketAddress;
+
+final class ShuffleControlLinkListener implements LinkListener<Message<ShuffleControlMessage>> {
+
+  private volatile LinkListener<Message<ShuffleControlMessage>> controlLinkListener;
 
   @Inject
   private ShuffleControlLinkListener() {
+  }
+
+  void setControlLinkListener(final LinkListener<Message<ShuffleControlMessage>> controlLinkListener) {
+    this.controlLinkListener = controlLinkListener;
+  }
+
+  @Override
+  public void onSuccess(final Message<ShuffleControlMessage> message) {
+    if (controlLinkListener == null) {
+      throw new RuntimeException("The control link listener should be set first through ControlMessageSetup " +
+          "before sending messages.");
+    }
+
+    controlLinkListener.onSuccess(message);
+  }
+
+  @Override
+  public void onException(
+      final Throwable throwable,
+      final SocketAddress socketAddress,
+      final Message<ShuffleControlMessage> message) {
+    if (controlLinkListener != null) {
+      throw new RuntimeException("The control link listener should be set first through ControlMessageSetup " +
+          "before sending messages.");
+    }
+
+    controlLinkListener.onException(throwable, socketAddress, message);
   }
 }

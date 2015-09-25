@@ -15,17 +15,14 @@
  */
 package edu.snu.cay.services.shuffle.driver;
 
-import edu.snu.cay.services.shuffle.common.ShuffleDescription;
+import edu.snu.cay.services.shuffle.network.ControlMessageNetworkSetup;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
-import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.io.network.naming.NameServerParameters;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
@@ -35,11 +32,13 @@ import java.util.Map;
 
 /**
  * Driver-side control message sender.
+ *
+ * Note that a control message handler and a control link listener should be set first through
+ * ControlMessageNetworkSetup to use this class.
  */
 @DriverSide
 public final class DSControlMessageSender {
 
-  private final String shuffleName;
   private final IdentifierFactory idFactory;
   private final ConnectionFactory<ShuffleControlMessage> connectionFactory;
   private final Map<String, Connection<ShuffleControlMessage>> connectionMap;
@@ -48,21 +47,16 @@ public final class DSControlMessageSender {
    * Construct a driver-side control message sender.
    * This should be instantiated once for each shuffle manager, using several forked injectors.
    *
-   * @param shuffleDescription the description of the corresponding shuffle
    * @param idFactory an identifier factory
-   * @param networkConnectionService a network connection service
+   * @param controlMessageNetworkSetup a control message network setup
    */
   @Inject
   private DSControlMessageSender(
-      final ShuffleDescription shuffleDescription,
       @Parameter(NameServerParameters.NameServerIdentifierFactory.class) final IdentifierFactory idFactory,
-      final NetworkConnectionService networkConnectionService) {
-    this.shuffleName = shuffleDescription.getShuffleName();
+      final ControlMessageNetworkSetup controlMessageNetworkSetup) {
     this.idFactory = idFactory;
-    final Identifier controlMessageNetworkId = idFactory.getNewInstance(
-        ShuffleParameters.SHUFFLE_CONTROL_MSG_NETWORK_ID);
-    connectionFactory = networkConnectionService.getConnectionFactory(controlMessageNetworkId);
-    connectionMap = new HashMap<>();
+    this.connectionFactory = controlMessageNetworkSetup.getControlConnectionFactory();
+    this.connectionMap = new HashMap<>();
   }
 
   /**
@@ -75,7 +69,7 @@ public final class DSControlMessageSender {
    * @throws NetworkException
    */
   public void send(final String endPointId, final int code) throws NetworkException {
-    send(endPointId, new ShuffleControlMessage(code, shuffleName));
+    send(endPointId, new ShuffleControlMessage(code));
   }
 
   /**
@@ -89,7 +83,7 @@ public final class DSControlMessageSender {
    * @throws NetworkException
    */
   public void send(final String endPointId, final int code, final List<String> endPointIdList) throws NetworkException {
-    send(endPointId, new ShuffleControlMessage(code, shuffleName, endPointIdList));
+    send(endPointId, new ShuffleControlMessage(code, endPointIdList));
   }
 
   /**

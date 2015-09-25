@@ -17,16 +17,12 @@ package edu.snu.cay.services.shuffle.driver;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
  * Driver-side shuffle controller.
- * Users can register a ShuffleDescription and retrieve context, task configurations for shuffle components
- * in evaluators through this class.
  *
- * The evaluator-side components can be injected in task or context as a service.
- * // TODO #63: Add more explanation about how both cases are different when the functionality is included.
+ * Users can register a ShuffleDescription through this class.
  */
 @DriverSide
 @DefaultImplementation(ShuffleDriverImpl.class)
@@ -40,17 +36,4 @@ public interface ShuffleDriver {
    */
   <K extends ShuffleManager> K registerShuffle(ShuffleDescription shuffleDescription);
 
-  /**
-   * @return context configuration for shuffle service components in evaluators
-   */
-  Configuration getContextConfiguration();
-
-  /**
-   * Return task configuration contains all information about shuffles where the endPointId is included.
-   * The returned configuration is used to instantiating Shuffles in the tasks.
-   *
-   * @param endPointId end point identifier
-   * @return task configuration for endPointId
-   */
-  Configuration getTaskConfiguration(String endPointId);
 }

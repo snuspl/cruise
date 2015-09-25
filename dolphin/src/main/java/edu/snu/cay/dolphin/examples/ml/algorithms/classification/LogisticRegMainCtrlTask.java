@@ -33,9 +33,9 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class LogisticRegCtrlTask extends UserControllerTask
+public class LogisticRegMainCtrlTask extends UserControllerTask
     implements DataReduceReceiver<LogisticRegSummary>, DataBroadcastSender<LinearModel> {
-  private static final Logger LOG = Logger.getLogger(LogisticRegCtrlTask.class.getName());
+  private static final Logger LOG = Logger.getLogger(LogisticRegMainCtrlTask.class.getName());
 
   private final LinearModelConvCond convergeCondition;
   private final int maxIter;
@@ -44,10 +44,10 @@ public class LogisticRegCtrlTask extends UserControllerTask
   private final OutputStreamProvider outputStreamProvider;
 
   @Inject
-  public LogisticRegCtrlTask(final OutputStreamProvider outputStreamProvider,
-                             final LinearModelConvCond convergeCondition,
-                             @Parameter(MaxIterations.class) final int maxIter,
-                             @Parameter(Dimension.class) final int dimension) {
+  public LogisticRegMainCtrlTask(final OutputStreamProvider outputStreamProvider,
+                                 final LinearModelConvCond convergeCondition,
+                                 @Parameter(MaxIterations.class) final int maxIter,
+                                 @Parameter(Dimension.class) final int dimension) {
     this.outputStreamProvider = outputStreamProvider;
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;

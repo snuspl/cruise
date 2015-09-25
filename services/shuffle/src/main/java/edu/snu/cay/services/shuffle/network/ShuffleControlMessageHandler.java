@@ -15,14 +15,30 @@
  */
 package edu.snu.cay.services.shuffle.network;
 
+import org.apache.reef.io.network.Message;
+import org.apache.reef.wake.EventHandler;
+
 import javax.inject.Inject;
 
-/**
- * Event handler for ShuffleControlMessage.
- */
-public final class ShuffleControlMessageHandler extends ShuffleMessageHandler<ShuffleControlMessage> {
+final class ShuffleControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {
+
+  private volatile EventHandler<Message<ShuffleControlMessage>> controlMessageHandler;
 
   @Inject
   private ShuffleControlMessageHandler() {
+  }
+
+  void setControlMessageHandler(final EventHandler<Message<ShuffleControlMessage>> controlMessageHandler) {
+    this.controlMessageHandler = controlMessageHandler;
+  }
+
+  @Override
+  public void onNext(final Message<ShuffleControlMessage> tupleMessage) {
+    if (controlMessageHandler == null) {
+      throw new RuntimeException("The control message handler should be set first through ControlMessageSetup" +
+          " before receiving messages.");
+    }
+
+    controlMessageHandler.onNext(tupleMessage);
   }
 }

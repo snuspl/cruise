@@ -15,14 +15,45 @@
  */
 package edu.snu.cay.services.shuffle.network;
 
-import javax.inject.Inject;
+import org.apache.reef.io.Tuple;
+import org.apache.reef.io.network.Message;
+import org.apache.reef.wake.remote.transport.LinkListener;
 
-/**
- * Link listener for ShuffleTupleMessage.
- */
-public final class ShuffleTupleLinkListener extends ShuffleLinkListener<ShuffleTupleMessage> {
+import javax.inject.Inject;
+import java.net.SocketAddress;
+
+final class ShuffleTupleLinkListener<K, V> implements LinkListener<Message<Tuple<K, V>>> {
+
+  private volatile LinkListener<Message<Tuple<K, V>>> tupleLinkListener;
 
   @Inject
   private ShuffleTupleLinkListener() {
+  }
+
+  public void setTupleLinkListener(final LinkListener<Message<Tuple<K, V>>> tupleLinkListener) {
+    this.tupleLinkListener = tupleLinkListener;
+  }
+
+  @Override
+  public void onSuccess(final Message<Tuple<K, V>> message) {
+    if (tupleLinkListener == null) {
+      throw new RuntimeException("The tuple link listener should be set first through TupleMessageSetup " +
+          " before sending tuples.");
+    }
+
+    tupleLinkListener.onSuccess(message);
+  }
+
+  @Override
+  public void onException(
+      final Throwable throwable,
+      final SocketAddress socketAddress,
+      final Message<Tuple<K, V>> message) {
+    if (tupleLinkListener == null) {
+      throw new RuntimeException("The tuple link listener should be set first through TupleMessageSetup " +
+          "before sending tuples.");
+    }
+
+    tupleLinkListener.onException(throwable, socketAddress, message);
   }
 }

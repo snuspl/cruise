@@ -16,28 +16,26 @@
 package edu.snu.cay.services.shuffle.driver;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescription;
-import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.util.Optional;
-import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.remote.transport.LinkListener;
 
 /**
  * Driver-side interface which communicates with corresponding Shuffle instances in evaluators.
  */
 @DriverSide
-public interface ShuffleManager {
+public interface ShuffleManager extends AutoCloseable {
 
+  // TODO #63: The shuffle configurations can not be injected to the task if the below context already
+  // have their shuffles.
   /**
    * Return a configuration of the shuffle description for endPointId.
-   * It returns Optional.empty if the endPointId is not included in any shuffles.
+   * Multiple shuffle configurations can be merged and injected to the same context or task,
+   * and the merged shuffles are provided through the same ShuffleProvider.
    *
    * @param endPointId end point id
-   * @return optional shuffle configuration
+   * @return shuffle configuration
    */
-  Optional<Configuration> getShuffleConfiguration(String endPointId);
+  Configuration getShuffleConfiguration(String endPointId);
 
   /**
    * @return a shuffle description
@@ -45,12 +43,9 @@ public interface ShuffleManager {
   ShuffleDescription getShuffleDescription();
 
   /**
-   * @return an event handler for shuffle control messages.
+   * Close resources.
    */
-  EventHandler<Message<ShuffleControlMessage>> getControlMessageHandler();
+  @Override
+  void close();
 
-  /**
-   * @return a link listener for shuffle control messages.
-   */
-  LinkListener<Message<ShuffleControlMessage>> getControlLinkListener();
 }

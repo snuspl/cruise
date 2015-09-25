@@ -58,15 +58,28 @@ public interface ElasticMemory {
   void resize(String evalId, int megaBytes, int cores);
 
   /**
-   * Move a part of an evaluator's state to another evaluator.
+   * Move specific partitions of an evaluator's state to another evaluator.
    *
    * @param dataType data type to perform this operation
    * @param rangeSet the range of integer identifiers that specify the state to move
    * @param srcEvalId identifier of the source evaluator
    * @param destEvalId identifier of the destination evaluator
-   * @param callback handler to call when move operation is completed, or null if no handler is needed
+   * @param callback handler to call when move operation is completed, or null if no callback is needed
    */
   void move(String dataType, Set<LongRange> rangeSet, String srcEvalId, String destEvalId,
+            @Nullable EventHandler<AvroElasticMemoryMessage> callback);
+
+
+  /**
+   * Move a certain number of units of an evaluator's state to another evaluator.
+   *
+   * @param dataType data type to perform this operation
+   * @param numUnits the number of units to move
+   * @param srcEvalId identifier of the source evaluator
+   * @param destEvalId identifier of the destination evaluator
+   * @param callback handler to call when move operation is completed, or null if no callback is needed
+   */
+  void move(String dataType, int numUnits, String srcEvalId, String destEvalId,
             @Nullable EventHandler<AvroElasticMemoryMessage> callback);
 
   /**

@@ -100,9 +100,9 @@ public final class ControlMessageSynchronizerTest {
 
     while (waitForFinishing.getCount() != 0) {
       Thread.sleep(rand.nextInt(50) + 10);
-      synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
-      synchronizer.resetLatch(new ShuffleControlMessage(SECOND_MESSAGE, "test", null));
-      synchronizer.resetLatch(new ShuffleControlMessage(THIRD_MESSAGE, "test", null));
+      synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, null));
+      synchronizer.resetLatch(new ShuffleControlMessage(SECOND_MESSAGE, null));
+      synchronizer.resetLatch(new ShuffleControlMessage(THIRD_MESSAGE, null));
     }
 
     LOG.log(Level.INFO, "Finished");
@@ -174,7 +174,7 @@ public final class ControlMessageSynchronizerTest {
 
     Thread.sleep(50);
     LOG.log(Level.INFO, "Close the latch");
-    synchronizer.closeLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
+    synchronizer.closeLatch(new ShuffleControlMessage(FIRST_MESSAGE, null));
 
     waitForTestingClosedState.await();
 
@@ -187,7 +187,7 @@ public final class ControlMessageSynchronizerTest {
 
     Thread.sleep(500);
     LOG.log(Level.INFO, "Reset the latch");
-    synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
+    synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, null));
 
     waitForFinishing.await();
     LOG.log(Level.INFO, "Finished");

@@ -13,24 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.network;
+package edu.snu.cay.dolphin.examples.ml.algorithms.graph;
 
-import org.apache.reef.io.Tuple;
+import edu.snu.cay.dolphin.core.UserControllerTask;
 
-import java.util.List;
+import javax.inject.Inject;
 
-/**
- * Shuffle tuple message containing tuple list and the shuffle name.
- */
-public final class ShuffleTupleMessage<K, V> extends ShuffleMessage<Tuple<K, V>> {
+public final class PageRankPreCtrlTask extends UserControllerTask {
 
-  /**
-   * Construct a shuffle tuple message.
-   *
-   * @param shuffleName the name of shuffle
-   * @param tupleList a tuple list
-   */
-  public ShuffleTupleMessage(final String shuffleName, final List<Tuple<K, V>> tupleList) {
-    super(shuffleName, tupleList);
+  @Inject
+  private PageRankPreCtrlTask() {
+
+  }
+
+  @Override
+  public void run(final int iteration) {
+    // do nothing
+  }
+
+  @Override
+  public boolean isTerminated(final int iteration) {
+    return iteration > 0;
   }
 }

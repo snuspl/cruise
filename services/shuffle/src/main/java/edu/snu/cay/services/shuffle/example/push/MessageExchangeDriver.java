@@ -18,6 +18,7 @@ package edu.snu.cay.services.shuffle.example.push;
 import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
+import edu.snu.cay.services.shuffle.evaluator.ShuffleContextStopHandler;
 import edu.snu.cay.services.shuffle.strategy.KeyShuffleStrategy;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -26,6 +27,8 @@ import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.evaluator.context.parameters.Services;
+import org.apache.reef.io.network.impl.NetworkConnectionServiceImpl;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
@@ -60,12 +63,13 @@ public final class MessageExchangeDriver {
   public static final String SENDER_PREFIX = "SENDER";
   public static final String RECEIVER_PREFIX = "RECEIVER";
 
+  private static final String TASK_POSTFIX = "-TASK";
+
   private final AtomicInteger numAllocatedEvaluators;
   private final AtomicInteger numCompletedTasks;
   private final AtomicInteger totalNumSentTuples;
   private final AtomicInteger totalNumReceivedTuples;
   private final EvaluatorRequestor evaluatorRequestor;
-  private final ShuffleDriver shuffleDriver;
   private final StaticPushShuffleManager shuffleManager;
   private final LocalAddressProvider localAddressProvider;
   private final NameServer nameServer;
@@ -92,7 +96,6 @@ public final class MessageExchangeDriver {
     this.totalNumSentTuples = new AtomicInteger();
     this.totalNumReceivedTuples = new AtomicInteger();
     this.evaluatorRequestor = evaluatorRequestor;
-    this.shuffleDriver = shuffleDriver;
     this.localAddressProvider = localAddressProvider;
     this.nameServer = nameServer;
     this.totalNumSenders = senderNumber;
@@ -170,16 +173,18 @@ public final class MessageExchangeDriver {
     }
   }
 
-  private Configuration getContextConfiguration() {
+  private Configuration getContextConfiguration(final String endPointId) {
     final Configuration partialContextConf = ContextConfiguration.CONF
         .set(ContextConfiguration.IDENTIFIER, "MessageExchangeContext")
+        .set(ContextConfiguration.ON_CONTEXT_STOP, ShuffleContextStopHandler.class)
         .build();
 
-    return Configurations.merge(partialContextConf, shuffleDriver.getContextConfiguration());
+    return Configurations.merge(partialContextConf, shuffleManager.getShuffleConfiguration(endPointId));
   }
 
   private Configuration getServiceConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindSetEntry(Services.class, NetworkConnectionServiceImpl.class)
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
         .bindNamedParameter(NameResolverNameServerPort.class, String.valueOf(nameServer.getPort()))
         .build();
@@ -190,34 +195,35 @@ public final class MessageExchangeDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final int number = numAllocatedEvaluators.getAndIncrement();
-      final Configuration partialTaskConf;
+      final Configuration taskConf;
       final String taskId;
+      final String endPointId;
       final Configuration iterationConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(MessageExchangeParameters.TotalIterationNum.class, Integer.toString(numTotalIterations))
           .build();
-
       if (number < totalNumSenders) { // SenderTask
-        taskId = SENDER_PREFIX + number;
-        partialTaskConf = Configurations.merge(TaskConfiguration.CONF
+        endPointId = SENDER_PREFIX + number;
+        taskId = endPointId + TASK_POSTFIX;
+        taskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, SenderTask.class)
             .build(), iterationConf);
-
       } else if (number < totalNumSenders + totalNumReceivers) { // ReceiverTask
-        taskId = RECEIVER_PREFIX + (number - totalNumSenders);
-        partialTaskConf = Configurations.merge(TaskConfiguration.CONF
+        endPointId = RECEIVER_PREFIX + (number - totalNumSenders);
+        taskId = endPointId + TASK_POSTFIX;
+        taskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
             .build(), iterationConf);
-
       } else {
         throw new RuntimeException("Too many allocated evaluators");
       }
 
       allocatedEvaluator.submitContextAndServiceAndTask(
-          getContextConfiguration(),
+          getContextConfiguration(endPointId),
           getServiceConfiguration(),
-          Configurations.merge(partialTaskConf, shuffleDriver.getTaskConfiguration(taskId)));
+          taskConf
+      );
     }
   }
 }

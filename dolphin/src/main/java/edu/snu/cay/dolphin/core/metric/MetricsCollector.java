@@ -15,15 +15,8 @@
  */
 package edu.snu.cay.dolphin.core.metric;
 
-
-import org.apache.reef.evaluator.context.ContextMessage;
-import org.apache.reef.evaluator.context.ContextMessageSource;
-import org.apache.reef.task.HeartBeatTriggerManager;
-import org.apache.reef.util.Optional;
-
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,7 +30,7 @@ import java.util.logging.Logger;
  * and other threads triggering heart beats.
  * This class assumes that its instance is used by one thread.
  */
-public final class MetricsCollector implements ContextMessageSource, AutoCloseable {
+public final class MetricsCollector implements AutoCloseable {
   private static final Logger LOG = Logger.getLogger(MetricsCollector.class.getName());
 
   /**
@@ -46,19 +39,9 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
   private final List<MetricTracker> metricTrackerList = new LinkedList<>();
 
   /**
-   * Currently tracked metrics (Id of a metric -> value).
+   * Handler called when metrics become available.
    */
-  private final AtomicReference<Map<String, Double>> metrics = new AtomicReference<>();
-
-  /**
-   * Codec for metrics.
-   */
-  private final MetricCodec metricCodec;
-
-  /**
-   * Manager of the trigger of hear beat on which tracked metrics are sent.
-   */
-  private final HeartBeatTriggerManager heartBeatTriggerManager;
+  private final MetricsHandler metricsHandler;
 
   /**
    * Whether tracking metrics is started or not.
@@ -66,17 +49,11 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
   private boolean isStarted = false;
 
   /**
-   * Constructor for the MetricsCollector, which accepts Heartbeat Trigger Manager as a parameter.
-   * This class is instantiated by TANG.
-   * @param heartBeatTriggerManager manager for sending heartbeat to the driver
-   * @param metricCodec codec for metrics
+   *
    */
   @Inject
-  public MetricsCollector(final HeartBeatTriggerManager heartBeatTriggerManager,
-                          final MetricCodec metricCodec) {
-    this.heartBeatTriggerManager = heartBeatTriggerManager;
-    this.metricCodec = metricCodec;
-    this.metrics.set(new HashMap<String, Double>());
+  private MetricsCollector(final MetricsHandler metricsHandler) {
+    this.metricsHandler = metricsHandler;
   }
 
   /**
@@ -113,8 +90,7 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
     for (final MetricTracker metricTracker : metricTrackerList) {
       newMetrics.putAll(metricTracker.stop());
     }
-    metrics.set(newMetrics);
-    heartBeatTriggerManager.triggerHeartBeat();
+    metricsHandler.onNext(newMetrics);
     isStarted = false;
   }
 
@@ -128,23 +104,5 @@ public final class MetricsCollector implements ContextMessageSource, AutoCloseab
     }
     metricTrackerList.clear();
     LOG.log(Level.INFO, "Metric trackers closed");
-  }
-
-  /**
-   * Return a message (gathered metrics) to be sent to the driver.
-   * @return message
-   */
-  @Override
-  public Optional<ContextMessage> getMessage() {
-    LOG.log(Level.INFO, "Context Message Sent");
-    final Map<String, Double> newMetrics = metrics.getAndSet(new HashMap<String, Double>());
-    if (newMetrics.isEmpty()) {
-      return Optional.empty();
-    } else {
-      final Optional<ContextMessage> message = Optional.of(ContextMessage.from(
-          MetricsCollectionService.class.getName(),
-          metricCodec.encode(newMetrics)));
-      return message;
-    }
   }
 }

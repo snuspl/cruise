@@ -15,7 +15,9 @@
  */
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.RegisMsg;
+import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;

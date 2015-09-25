@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.groupcomm.names.*;
+import edu.snu.cay.dolphin.core.metric.HeartbeatMetricsHandler;
 import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
@@ -292,10 +293,13 @@ public final class DolphinDriver {
         final Configuration emContextConf = emConf.getContextConfiguration();
         final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
         final Configuration traceConf = traceParameters.getConfiguration();
-        final Configuration finalContextConf = MetricsCollectionService.getContextConfiguration(
-                Configurations.merge(groupCommContextConf, emContextConf));
-        final Configuration finalServiceConf;
+        final Configuration heartbeatContextConf = HeartbeatMetricsHandler.getContextConfiguration();
+        final Configuration heartbeatServiceConf = HeartbeatMetricsHandler.getServiceConfiguration();
 
+        final Configuration finalContextConf = Configurations.merge(
+            groupCommContextConf, emContextConf, heartbeatContextConf);
+
+        final Configuration finalServiceConf;
         if (dataLoadingService.isComputeContext(activeContext)) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
           ctrlTaskContextId = getContextId(groupCommContextConf);
@@ -304,7 +308,7 @@ public final class DolphinDriver {
           // the Metric Collection service, and the Group Communication service
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
-              outputServiceConf, traceConf);
+              outputServiceConf, traceConf, heartbeatServiceConf);
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
@@ -313,7 +317,7 @@ public final class DolphinDriver {
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, dataParseConf, outputServiceConf,
-              metricTrackerServiceConf, traceConf);
+              metricTrackerServiceConf, traceConf, heartbeatServiceConf);
         }
 
         activeContext.submitContextAndService(finalContextConf, finalServiceConf);

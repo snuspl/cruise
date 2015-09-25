@@ -13,23 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.evaluator.operator;
+package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
-import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import org.apache.reef.io.network.Message;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import edu.snu.cay.dolphin.core.UserControllerTask;
 
-/**
- * Interface for a sender used in a Shuffle.
- */
-@DefaultImplementation(NullShuffleSender.class)
-public interface ShuffleSender<K, V> {
+import javax.inject.Inject;
 
-  /**
-   * Handle a control message from Shuffle.
-   *
-   * @param message a control message
-   */
-  void onControlMessage(Message<ShuffleControlMessage> message);
+public final class LogisticRegPreCtrlTask extends UserControllerTask {
 
+  @Inject
+  private LogisticRegPreCtrlTask() {
+
+  }
+
+  @Override
+  public void run(final int iteration) {
+    // do nothing
+  }
+
+  @Override
+  public boolean isTerminated(final int iteration) {
+    return iteration > 0;
+  }
 }
