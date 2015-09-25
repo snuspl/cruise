@@ -15,9 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.regression;
 
-import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
-import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
 import edu.snu.cay.dolphin.examples.ml.data.LinearRegSummary;
@@ -26,57 +24,32 @@ import edu.snu.cay.dolphin.examples.ml.parameters.StepSize;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
-import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.List;
 import java.util.Map;
 
-public class LinearRegCmpTask extends UserComputeTask
+public class LinearRegMainCmpTask extends UserComputeTask
     implements DataReduceSender<LinearRegSummary>, DataBroadcastReceiver<LinearModel> {
-
-  /**
-   * Key used in Elastic Memory to put/get the data.
-   */
-  private static final String KEY_ROWS = "rows";
 
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
-  private DataParser<List<Row>> dataParser;
   private MemoryStore memoryStore;
-  private final DataIdFactory<Long> dataIdFactory;
   private LinearModel model;
   private double lossSum = 0;
 
   @Inject
-  public LinearRegCmpTask(@Parameter(StepSize.class) final double stepSize,
-                          final Loss loss,
-                          final Regularization regularization,
-                          final DataParser<List<Row>> dataParser,
-                          final MemoryStore memoryStore,
-                          final DataIdFactory<Long> dataIdFactory) {
+  public LinearRegMainCmpTask(@Parameter(StepSize.class) final double stepSize,
+                              final Loss loss,
+                              final Regularization regularization,
+                              final MemoryStore memoryStore) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
-    this.dataParser = dataParser;
     this.memoryStore = memoryStore;
-    this.dataIdFactory = dataIdFactory;
-  }
-
-  @Override
-  public void initialize() throws ParseException {
-    final List<Row> rows = dataParser.get();
-    try {
-      final List<Long> ids = dataIdFactory.getIds(rows.size());
-      memoryStore.getElasticStore().putList(KEY_ROWS, ids, rows);
-    } catch (IdGenerationException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   @Override
@@ -84,7 +57,7 @@ public class LinearRegCmpTask extends UserComputeTask
 
     // measure loss
     lossSum = 0;
-    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(KEY_ROWS);
+    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(LinearRegPreCmpTask.KEY_ROWS);
     for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());

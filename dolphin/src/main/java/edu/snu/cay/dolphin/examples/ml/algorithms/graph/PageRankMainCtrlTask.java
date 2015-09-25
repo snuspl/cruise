@@ -40,9 +40,9 @@ import java.util.logging.Logger;
  * - http://en.wikipedia.org/wiki/PageRank
  * - https://github.com/apache/spark/blob/master/graphx/src/main/scala/org/apache/spark/graphx/lib/PageRank.scala
  */
-public class PageRankCtrlTask extends UserControllerTask
+public class PageRankMainCtrlTask extends UserControllerTask
     implements DataReduceReceiver<PageRankSummary>, DataBroadcastSender<Map<Integer, Double>> {
-  private static final Logger LOG = Logger.getLogger(PageRankCtrlTask.class.getName());
+  private static final Logger LOG = Logger.getLogger(PageRankMainCtrlTask.class.getName());
 
   /**
    * Check function to determine whether algorithm has converged or not.
@@ -79,10 +79,10 @@ public class PageRankCtrlTask extends UserControllerTask
    * @param maxIter maximum number of iterations allowed before job stops
    */
   @Inject
-  public PageRankCtrlTask(final PageRankConvCond pageRankConvergenceCondition,
-                          final OutputStreamProvider outputStreamProvider,
-                          @Parameter(DampingFactor.class) final double dampingFactor,
-                          @Parameter(MaxIterations.class) final int maxIter) {
+  public PageRankMainCtrlTask(final PageRankConvCond pageRankConvergenceCondition,
+                              final OutputStreamProvider outputStreamProvider,
+                              @Parameter(DampingFactor.class) final double dampingFactor,
+                              @Parameter(MaxIterations.class) final int maxIter) {
     this.pageRankConvergenceCondition = pageRankConvergenceCondition;
     this.outputStreamProvider = outputStreamProvider;
     this.dampingFactor = dampingFactor;
