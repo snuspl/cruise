@@ -36,6 +36,7 @@ public final class ClusteringPreCmpTask extends UserComputeTask
 
   /**
    * Key used in Elastic Memory to put/get the data.
+   * TODO #168: we should find better place to put this
    */
   public static final String KEY_POINTS = "points";
 
