@@ -19,7 +19,6 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.MigrationManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
@@ -39,9 +38,9 @@ import java.util.concurrent.atomic.AtomicLong;
 @DriverSide
 public final class ElasticMemoryImpl implements ElasticMemory {
   private static final String MOVE = "move";
+  private static final String APPLY_UPDATE = "apply_update";
 
   private final EvaluatorRequestor requestor;
-  private final ElasticMemoryMsgSender sender;
   private final ElasticMemoryCallbackRouter callbackRouter;
   private final MigrationManager migrationManager;
 
@@ -49,13 +48,11 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
-                            final ElasticMemoryMsgSender sender,
                             final ElasticMemoryCallbackRouter callbackRouter,
                             final MigrationManager migrationManager,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.requestor = requestor;
-    this.sender = sender;
     this.callbackRouter = callbackRouter;
     this.migrationManager = migrationManager;
   }
@@ -89,11 +86,17 @@ public final class ElasticMemoryImpl implements ElasticMemory {
                    @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
-
+      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       callbackRouter.register(operationId, callback);
-      migrationManager.put(operationId, srcEvalId, destEvalId, dataType, idRangeSet);
-      sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, idRangeSet,
-          operationId, TraceInfo.fromSpan(traceScope.getSpan()));
+      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, idRangeSet, traceInfo);
+    }
+  }
+
+  @Override
+  public void applyUpdates() {
+    try (final TraceScope traceScope = Trace.startSpan(APPLY_UPDATE)) {
+      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
+      migrationManager.applyUpdates(traceInfo);
     }
   }
 

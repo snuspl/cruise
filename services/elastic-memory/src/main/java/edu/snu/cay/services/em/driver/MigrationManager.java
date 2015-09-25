@@ -15,141 +15,150 @@
  */
 package edu.snu.cay.services.em.driver;
 
+import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.InjectionFuture;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Manages ongoing Migrations.
  */
 @DriverSide
-// TODO #96: Let's revisit the thread-safety later.
 public final class MigrationManager {
-  /**
-   * Represents the status of the migration.
-   */
-  private enum State {
-      SENDING, UPDATING_RECEIVER, UPDATING_SENDER
-  }
+  private final InjectionFuture<ElasticMemoryMsgSender> sender;
+  private final PartitionManager partitionManager;
 
   private final ConcurrentHashMap<String, MigrationInfo> ongoingMigrations = new ConcurrentHashMap<>();
+  private final Set<String> updateWaiters = new HashSet<>();
+  private CountDownLatch updateCounter = new CountDownLatch(0);
+
+  private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
+  private static final String APPLY_UPDATES = "apply_updates";
+  private static final String UPDATE_PARTITION = "update_partition";
+  private static final int UPDATE_TIMEOUT_MS = 100000; // Wait at most 100 to apply updates.
 
   @Inject
-  private MigrationManager() {
+  private MigrationManager(final InjectionFuture<ElasticMemoryMsgSender> sender,
+                           final PartitionManager partitionManager) {
+    this.sender = sender;
+    this.partitionManager = partitionManager;
   }
 
   /**
-   * Registers a migration with the information.
+   * Register a migration info and send the message to the receiver.
    * @param operationId Identifier of the {@code move} operation.
-   * @param senderId Identifier of the sender
-   * @param receiverId Identifier of the receiver
+   * @param senderId Identifier of the sender.
+   * @param receiverId Identifier of the receiver.
+   * @param dataType Type of the data.
+   * @param ranges Range of the data. TODO #161: Ranges will be set after the data is transferred.
+   * @param traceInfo Information for Trace.
    */
-  public void put(final String operationId,
-                  final String senderId,
-                  final String receiverId,
-                  final String dataType,
-                  final Collection<LongRange> ranges) {
+  public void startMigration(final String operationId,
+                             final String senderId,
+                             final String receiverId,
+                             final String dataType,
+                             final Set<LongRange> ranges,
+                             final TraceInfo traceInfo) {
     ongoingMigrations.putIfAbsent(operationId, new MigrationInfo(senderId, receiverId, dataType, ranges));
+    sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
   }
 
   /**
-   * Called when the data has been sent to the receiver successfully.
+   * Make migrations wait until {@link edu.snu.cay.services.em.driver.api.ElasticMemory#applyUpdates()} is called.
+   * We will fix this to update the states without this barrier later.
    * @param operationId Identifier of {@code move} operation.
    */
-  public void onDataSent(final String operationId) {
-    final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
-    assert migrationInfo.state == State.SENDING;
-    migrationInfo.setState(State.UPDATING_RECEIVER);
+  public synchronized void waitUpdate(final String operationId) {
+      final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
+      assert (migrationInfo.getState() == MigrationInfo.State.SENDING_DATA);
+      migrationInfo.setState(MigrationInfo.State.DATA_SENT);
+
+      // TODO #161: the range would be updated here
+      updateWaiters.add(operationId);
   }
 
   /**
-   * Called when the MemoryStore's state has been updated in the receiver successfully.
-   * @param operationId Identifier of {@code move} operation.
+   * Updates the states of the Driver and Evaluators. Blocks until all updates are applied.
+   * @param traceInfo Trace information
    */
-  public void onReceiverUpdated(final String operationId) {
-    final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
-    assert migrationInfo.state == State.UPDATING_RECEIVER;
-    migrationInfo.setState(State.UPDATING_SENDER);
-  }
+  public synchronized void applyUpdates(final TraceInfo traceInfo) {
+    try (final TraceScope onApplyUpdate = Trace.startSpan(APPLY_UPDATES, traceInfo)) {
+      assert (updateCounter.getCount() == 0); // Make sure there is only one update at a time.
+      updateCounter = new CountDownLatch(updateWaiters.size());
 
-  /**
-   * Called when the MemoryStore's state has been updated in the sender successfully.
-   * @param operationId Identifier of {@code move} operation.
-   */
-  public void onSenderUpdated(final String operationId) {
-    final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
-    assert migrationInfo.state == State.UPDATING_SENDER;
-    ongoingMigrations.remove(operationId);
-  }
-
-  /**
-   * @param operationId Identifier of {@code move} operation.
-   * @return Identifier of whom sends the data.
-   */
-  public String getSenderId(final String operationId) {
-    return ongoingMigrations.get(operationId).senderId;
-  }
-
-  /**
-   * @param operationId Identifier of {@code move} operation.
-   * @return Identifier of whom receives the data.
-   */
-  public String getReceiverId(final String operationId) {
-    return ongoingMigrations.get(operationId).receiverId;
-  }
-
-  /**
-   * @param operationId Identifier of {@code move} operation.
-   * @return Type of the data to move.
-   */
-  public String getDataType(final CharSequence operationId) {
-    return ongoingMigrations.get(operationId).dataType;
-  }
-
-  /**
-   * @param operationId Identifier of {@code move} operation.
-   * @return Ranges of the data to move.
-   */
-  public Collection<LongRange> getRanges(final String operationId) {
-    return ongoingMigrations.get(operationId).ranges;
-  }
-
-  /**
-   * Inner class that encapsulates a migration.
-   */
-  private final class MigrationInfo {
-    private final String senderId;
-    private final String receiverId;
-    private final String dataType;
-    private final Collection<LongRange> ranges; // TODO #95: Ranges may not be able to set at the first time
-    private State state = State.SENDING;
-
-    /**
-     * Creates a new MigrationInfo when move() is requested.
-     * @param senderId Identifier of the sender.
-     * @param receiverId Identifier of the receiver.
-     * @param dataType Type of data
-     * @param ranges Set of ranges to move
-     */
-    private MigrationInfo(final String senderId,
-                          final String receiverId,
-                          final String dataType,
-                          final Collection<LongRange> ranges) {
-      this.senderId = senderId;
-      this.receiverId = receiverId;
-      this.dataType = dataType;
-      this.ranges = ranges;
+      for (final String updateWaiter : updateWaiters) {
+        final MigrationInfo migrationInfo = ongoingMigrations.get(updateWaiter);
+        final String receiverId = migrationInfo.getReceiverId();
+        sender.get().sendUpdateMsg(receiverId, updateWaiter, traceInfo);
+      }
+      updateCounter.await(UPDATE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+    } catch (final InterruptedException e) {
+      // TODO #90: Instead of runtime exception, we need to handle the failure and notify the failure via callback.
+      new RuntimeException(e);
     }
+  }
 
-    private State getState() {
-      return state;
-    }
+  /**
+   * Move the partition from the Sender to the Receiver.
+   * @param operationId Identifier of the {@code move} operation
+   * @param traceInfo Trace information
+   */
+  public synchronized boolean movePartition(final String operationId, final TraceInfo traceInfo) {
+    try (final TraceScope updatePartition = Trace.startSpan(UPDATE_PARTITION, traceInfo)) {
+      final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
+      assert (migrationInfo.getState() == MigrationInfo.State.UPDATING_RECEIVER);
+      migrationInfo.setState(MigrationInfo.State.PARTITION_UPDATED);
 
-    private void setState(final State state) {
-      this.state = state;
+      final String senderId = migrationInfo.getSenderId();
+      final String receiverId = migrationInfo.getReceiverId();
+      final String dataType = migrationInfo.getDataType();
+
+      final Collection<LongRange> ranges = migrationInfo.getRanges();
+      boolean result = true;
+      for (final LongRange range : ranges) {
+        if (!partitionManager.move(senderId, receiverId, dataType, range)) {
+          LOG.log(Level.SEVERE, "Failed while moving partition in the range of {0}", range);
+          result = false;
+        }
+      }
+      return result;
     }
+  }
+
+  /**
+   * Sends an update message to the Sender of the migration.
+   * @param operationId Identifier of {@code move} operation.
+   * @param traceInfo Trace information
+   */
+  public synchronized void updateSender(final String operationId, final TraceInfo traceInfo) {
+    final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
+    assert (migrationInfo.getState() == MigrationInfo.State.PARTITION_UPDATED);
+    migrationInfo.setState(MigrationInfo.State.UPDATING_SENDER);
+
+    final String senderId = migrationInfo.getSenderId();
+    sender.get().sendUpdateMsg(senderId, operationId, traceInfo);
+  }
+
+  /**
+   * Finish the migration.
+   * @param operationId Identifier of {@code move} operation.
+   */
+  public void finishMigration(final String operationId) {
+    final MigrationInfo migrationInfo = ongoingMigrations.remove(operationId);
+    assert (migrationInfo.getState() == MigrationInfo.State.UPDATING_SENDER);
+    updateCounter.countDown();
   }
 }

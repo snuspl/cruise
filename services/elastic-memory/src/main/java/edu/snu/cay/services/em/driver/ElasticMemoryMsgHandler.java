@@ -17,20 +17,16 @@ package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;
-import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
 import org.htrace.TraceScope;
 import org.htrace.TraceInfo;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.Collection;
 import java.util.logging.Logger;
 
 /**
@@ -44,20 +40,17 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
 
   private static final String ON_REGIS_MSG = "onRegisMsg";
   private static final String ON_RESULT_MSG = "onResultMsg";
-  private static final String ON_RESULT_ACK_MSG = "onUpdateAckMsg";
+  private static final String ON_UPDATE_ACK_MSG = "onUpdateAckMsg";
 
   private final ElasticMemoryCallbackRouter callbackRouter;
-  private final InjectionFuture<ElasticMemoryMsgSender> sender;
   private final PartitionManager partitionManager;
   private final MigrationManager migrationManager;
 
   @Inject
   private ElasticMemoryMsgHandler(final ElasticMemoryCallbackRouter callbackRouter,
-                                  final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   final PartitionManager partitionManager,
                                   final MigrationManager migrationManager) {
     this.callbackRouter = callbackRouter;
-    this.sender = sender;
     this.partitionManager = partitionManager;
     this.migrationManager = migrationManager;
   }
@@ -87,43 +80,6 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
-  private void onUpdateAckMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onResultAckMsgScope =
-             Trace.startSpan(ON_RESULT_ACK_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final UpdateResult updateResult = msg.getUpdateAckMsg().getResult();
-      final String operationId = msg.getOperationId().toString();
-      final String senderId = migrationManager.getSenderId(operationId);
-      final String receiverId = migrationManager.getReceiverId(operationId);
-
-      switch (updateResult) {
-
-      // Update the Driver's state including the partition status of that range.
-      // After that, send the update message to the Sender.
-      case RECEIVER_UPDATED:
-        final String dataType = migrationManager.getDataType(operationId);
-        final Collection<LongRange> ranges = migrationManager.getRanges(operationId);
-        for (final LongRange range : ranges) {
-          partitionManager.move(senderId, receiverId, dataType, range);
-        }
-        migrationManager.onReceiverUpdated(msg.getOperationId().toString());
-        sender.get().sendUpdateMsg(senderId, operationId, TraceInfo.fromSpan(onResultAckMsgScope.getSpan()));
-        break;
-
-      // Update the Driver's state, which finishes the migration.
-      case SENDER_UPDATED:
-        migrationManager.onSenderUpdated(msg.getOperationId().toString());
-        callbackRouter.onCompleted(msg);
-        break;
-
-      case FAILED:
-        // TODO #90: We can use various strategies (e.g., retry, abort, notify via callback, etc).
-        break;
-
-      default:
-        throw new RuntimeException("Undefined result: " + updateResult);
-      }
-    }
-  }
 
   private void onRegisMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onRegisMsgScope = Trace.startSpan(ON_REGIS_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
@@ -141,18 +97,52 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       final Result result = msg.getResultMsg().getResult();
       switch (result) {
       case SUCCESS:
-        // if the receiver has received the data successfully,
-        // update the Driver's state and notify the receiver to update its state.
+        // After data is sent, EM should wait for user's approval before applying those changes.
+        // Once EM can make sure there is no race condition even without this barrier, this step should be removed.
         final String operationId = msg.getOperationId().toString();
-        final String receiverId = migrationManager.getReceiverId(operationId);
-        migrationManager.onDataSent(operationId);
-        sender.get().sendUpdateMsg(receiverId, operationId, TraceInfo.fromSpan(onResultMsgScope.getSpan()));
+        migrationManager.waitUpdate(operationId);
         break;
       case FAILURE:
-        // TODO #90: We can use various strategies (e.g., retry, abort, notify via callback, etc).
+        // TODO #90: We need to handle the failure and notify the failure via callback.
         break;
       default:
         throw new RuntimeException("Undefined result: " + result);
+      }
+    }
+  }
+
+   private void onUpdateAckMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onUpdateAckMsgScope =
+             Trace.startSpan(ON_UPDATE_ACK_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+      final UpdateResult updateResult = msg.getUpdateAckMsg().getResult();
+      final String operationId = msg.getOperationId().toString();
+
+      switch (updateResult) {
+
+      // After receiver updates its state, EM guarantees that the partition can be accessed in the receiver side.
+      // So update the partition state and update the sender.
+      case RECEIVER_UPDATED:
+        final TraceInfo traceInfo = TraceInfo.fromSpan(onUpdateAckMsgScope.getSpan());
+        final boolean partitionMoved = migrationManager.movePartition(operationId, traceInfo);
+
+        if (partitionMoved) {
+          migrationManager.updateSender(operationId, traceInfo);
+        } else {
+          // TODO #90: Moving partition failed. We need to handle the failure and notify the failure via callback.
+        }
+        break;
+
+      case SENDER_UPDATED:
+        migrationManager.finishMigration(operationId);
+        callbackRouter.onCompleted(msg);
+        break;
+
+      case FAILED:
+        // TODO #90: We need to handle the failure and notify the failure via callback.
+        break;
+
+      default:
+        throw new RuntimeException("Undefined result: " + updateResult);
       }
     }
   }
