@@ -28,6 +28,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -86,7 +87,6 @@ public final class ClassificationSparseDataParser implements DataParser<List<Row
 
       final String[] split = text.split("\\s+");
       final int output;
-      final Vector feature = new SequentialAccessSparseVector(dimension + 1, split.length); // +1 for a constant term
 
       // parse output
       try {
@@ -102,28 +102,52 @@ public final class ClassificationSparseDataParser implements DataParser<List<Row
       }
 
       // parse a feature vector
-      try {
-        for (int i = 1; i < split.length; ++i) {
-          final String[] elementSplit = split[i].split(":");
-          if (elementSplit.length != 2) {
-            parseException = new ParseException(
-                "Parse failed: the format of each element of a sparse vector must be [index]:[value]");
-            return;
-          }
-
-          final int index = Integer.valueOf(elementSplit[0]);
-          final double value = Double.valueOf(elementSplit[1]);
-
-          feature.set(index, value);
-        }
-        feature.set(dimension, 1); // a constant term
-
-      } catch (final NumberFormatException e) {
-        parseException = new ParseException("Parse failed: invalid number format " + e);
+      final Vector feature = parseFeatureVector(Arrays.copyOfRange(split, 1, split.length));
+      if (feature == null) {
         return;
       }
 
       result.add(new Row(output, feature));
     }
+  }
+
+  /**
+   * Parses a string to a pair of an index and a value.
+   * If fails to parse, returns {@code null} and {@code parseException} will be set.
+   * @param elemString a string that uses the format "index:value".
+   * @return a pair of an index and a value or {@code null} if a specified string is invalid.
+   */
+  private Pair<Integer, Double> parseElement(final String elemString) {
+    try {
+      final String[] split = elemString.split(":");
+      if (split.length != 2) {
+        parseException = new ParseException(
+            "Parse failed: the format of each element of a sparse vector must be [index]:[value]");
+        return null;
+      }
+      return new Pair<>(Integer.valueOf(split[0]), Double.valueOf(split[1]));
+    } catch (final NumberFormatException e) {
+      parseException = new ParseException("Parse failed: invalid number format " + e);
+      return null;
+    }
+  }
+
+  /**
+   * Parses an array of strings to sparse feature vector.
+   * If fails to parse, returns {@code null} and {@code parseException} will be set.
+   * @param split an array of strings that represent elements of feature vector.
+   * @return a feature vector or {@code null} if a specified array is invalid.
+   */
+  private Vector parseFeatureVector(final String[] split) {
+    final Vector ret = new SequentialAccessSparseVector(dimension + 1, split.length); // +1 for a constant term
+    for (int i = 1; i < split.length; ++i) {
+      final Pair<Integer, Double> elementPair = parseElement(split[i]);
+      if (elementPair == null) {
+        return null;
+      }
+      ret.set(elementPair.getFirst(), elementPair.getSecond());
+    }
+    ret.set(dimension, 1); // a constant term
+    return ret;
   }
 }
