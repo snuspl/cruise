@@ -47,10 +47,10 @@ public final class LinearModel implements Model {
       if (addPlus) {
         buffer.append(" + ");
       }
-      buffer.append(String.valueOf(element.get()));
+      buffer.append(String.format("%e", element.get()));
       final int index = element.index();
       if (index != parameters.size() - 1) {  // not constant term
-        buffer.append(String.format("x%d", index + 1));
+        buffer.append(String.format(" * x%d", index + 1));
       }
       addPlus = true;
     }
