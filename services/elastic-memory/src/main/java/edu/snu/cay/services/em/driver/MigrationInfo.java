@@ -27,7 +27,7 @@ final class MigrationInfo {
    * Represents the status of the migration.
    */
   public enum State {
-    SENDING_DATA, WAITING_UPDATE, UPDATING_RECEIVER, PARTITION_UPDATED, UPDATING_SENDER, RECEIVER_UPDATED, FINISHED
+    SENDING_DATA, WAITING_UPDATE, UPDATING_RECEIVER, RECEIVER_UPDATED, MOVING_PARTITION, UPDATING_SENDER, FINISHED
   }
 
   private final String senderId;

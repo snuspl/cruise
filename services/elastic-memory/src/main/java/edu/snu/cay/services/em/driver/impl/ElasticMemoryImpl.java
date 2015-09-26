@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @DriverSide
 public final class ElasticMemoryImpl implements ElasticMemory {
   private static final String MOVE = "move";
-  private static final String APPLY_UPDATE = "apply_update";
+  private static final String APPLY_UPDATES = "apply_updates";
 
   private final EvaluatorRequestor requestor;
   private final ElasticMemoryCallbackRouter callbackRouter;
@@ -107,8 +107,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public void applyUpdates() {
-    try (final TraceScope traceScope = Trace.startSpan(APPLY_UPDATE)) {
+  public synchronized void applyUpdates() {
+    try (final TraceScope traceScope = Trace.startSpan(APPLY_UPDATES)) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       migrationManager.applyUpdates(traceInfo);
     }

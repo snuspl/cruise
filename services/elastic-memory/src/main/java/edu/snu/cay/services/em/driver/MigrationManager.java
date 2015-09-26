@@ -19,6 +19,9 @@ import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.tang.annotations.Parameter;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -36,27 +39,30 @@ import java.util.logging.Logger;
 import static edu.snu.cay.services.em.driver.MigrationInfo.State.*;
 
 /**
- * Manages ongoing Migrations.
+ * Manages the status of Migrations. EM registers a migration when User called ElasticMemory.move().
+ * Most state transition is done internally in EM, except applyUpdates(): the result of the migration
+ * (e.g., location of partitions, MemoryStore in Evaluators) are updated only when user requests explicitly.
  */
 @DriverSide
 public final class MigrationManager {
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
   private final PartitionManager partitionManager;
+  private final int updateTimeoutMillis;
 
   private final ConcurrentHashMap<String, MigrationInfo> ongoingMigrations = new ConcurrentHashMap<>();
-  private final Set<String> updateWaiters = new HashSet<>();
+  private final Set<String> waiterIds = new HashSet<>();
   private CountDownLatch updateCounter = new CountDownLatch(0);
 
   private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
-  private static final String APPLY_UPDATES = "apply_updates";
-  private static final String UPDATE_PARTITION = "update_partition";
-  private static final int UPDATE_TIMEOUT_MS = 100000; // Wait at most 100 to apply updates.
+  private static final String MOVE_PARTITION = "move_partition";
 
   @Inject
   private MigrationManager(final InjectionFuture<ElasticMemoryMsgSender> sender,
-                           final PartitionManager partitionManager) {
+                           final PartitionManager partitionManager,
+                           @Parameter(UpdateTimeoutMillis.class) final int updateTimeoutMillis) {
     this.sender = sender;
     this.partitionManager = partitionManager;
+    this.updateTimeoutMillis = updateTimeoutMillis;
   }
 
   /**
@@ -68,18 +74,23 @@ public final class MigrationManager {
    * @param ranges Range of the data.
    * @param traceInfo Information for Trace.
    */
-  public void startMigration(final String operationId,
-                             final String senderId,
-                             final String receiverId,
-                             final String dataType,
-                             final Set<LongRange> ranges,
-                             final TraceInfo traceInfo) {
-    ongoingMigrations.putIfAbsent(operationId, new MigrationInfo(senderId, receiverId, dataType));
-    sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
+  // TODO #90: Instead of RuntimeException, handle the exception properly.
+  public synchronized void startMigration(final String operationId,
+                                          final String senderId,
+                                          final String receiverId,
+                                          final String dataType,
+                                          final Set<LongRange> ranges,
+                                          final TraceInfo traceInfo) {
+    if (ongoingMigrations.containsKey(operationId)) {
+      throw new RuntimeException("Already registered id : " + operationId);
+    } else {
+      ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType));
+      sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
+    }
   }
 
   /**
-   * Register a migration info and send the message to the receiver.
+   * Register a migration info and send the message to the receiver. Note that the OperationId should be unique.
    * @param operationId Identifier of the {@code move} operation.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
@@ -87,14 +98,19 @@ public final class MigrationManager {
    * @param numUnits Number of units.
    * @param traceInfo Information for Trace.
    */
-  public void startMigration(final String operationId,
-                             final String senderId,
-                             final String receiverId,
-                             final String dataType,
-                             final int numUnits,
-                             final TraceInfo traceInfo) {
-    ongoingMigrations.putIfAbsent(operationId, new MigrationInfo(senderId, receiverId, dataType));
-    sender.get().sendCtrlMsg(senderId, dataType, receiverId, numUnits, operationId, traceInfo);
+  // TODO #90: Instead of RuntimeException, handle the exception properly.
+  public synchronized void startMigration(final String operationId,
+                                          final String senderId,
+                                          final String receiverId,
+                                          final String dataType,
+                                          final int numUnits,
+                                          final TraceInfo traceInfo) {
+    if (ongoingMigrations.containsKey(operationId)) {
+      throw new RuntimeException("Already registered id : " + operationId);
+    } else {
+      ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType));
+      sender.get().sendCtrlMsg(senderId, dataType, receiverId, numUnits, operationId, traceInfo);
+    }
   }
 
   /**
@@ -105,41 +121,33 @@ public final class MigrationManager {
    * @param ranges Ranges of the data.
    */
   public synchronized void waitUpdate(final String operationId, final Set<LongRange> ranges) {
-    final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
-    if (migrationInfo == null) {
-      throw new IllegalArgumentException("Migration with id : " + operationId + " does not exist.");
-    } else {
-      checkAndUpdateState(migrationInfo, SENDING_DATA, WAITING_UPDATE);
-    }
-    migrationInfo.setRanges(ranges); // Update the range information also.
+    final MigrationInfo updatedInfo = checkAndUpdateState(operationId, SENDING_DATA, WAITING_UPDATE);
+    updatedInfo.setRanges(ranges); // Update the range information also.
 
-    updateWaiters.add(operationId);
+    waiterIds.add(operationId);
   }
 
   /**
-   * Updates the states of the Driver and Evaluators. Blocks until all updates are applied.
+   * Updates the states of the Driver and Evaluators.
+   * Note that this method usually takes long (default timeout: 100s) because it blocks until
+   * all waiting updates at the moment are complete.
    * @param traceInfo Trace information
    */
-  public synchronized void applyUpdates(final TraceInfo traceInfo) {
-    try (final TraceScope onApplyUpdate = Trace.startSpan(APPLY_UPDATES, traceInfo)) {
-      assert (updateCounter.getCount() == 0); // Make sure there is only one update at a time.
-      updateCounter = new CountDownLatch(updateWaiters.size());
+  public void applyUpdates(final TraceInfo traceInfo) {
+    try {
+      synchronized (this) {
+        updateCounter = new CountDownLatch(waiterIds.size());
 
-      // Update receivers first.
-      for (final String updateWaiter : updateWaiters) {
-        final MigrationInfo migrationInfo = ongoingMigrations.get(updateWaiter);
-        if (migrationInfo == null) {
-          throw new IllegalArgumentException("Migration with id : " + updateWaiter + " does not exist.");
-        } else {
-          checkAndUpdateState(migrationInfo, WAITING_UPDATE, UPDATING_RECEIVER);
+        // Update receivers first.
+        for (final String waiterId : waiterIds) {
+          final MigrationInfo updatedInfo = checkAndUpdateState(waiterId, WAITING_UPDATE, UPDATING_RECEIVER);
+          final String receiverId = updatedInfo.getReceiverId();
+          sender.get().sendUpdateMsg(receiverId, waiterId, traceInfo);
         }
-
-        final String receiverId = migrationInfo.getReceiverId();
-        sender.get().sendUpdateMsg(receiverId, updateWaiter, traceInfo);
+        waiterIds.clear();
       }
-
-      // This thread holds until all the updates are applied.
-      updateCounter.await(UPDATE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      // This thread blocks until all the updates are applied.
+      updateCounter.await(updateTimeoutMillis, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
       // TODO #90: Instead of runtime exception, we need to handle the failure and notify the failure via callback.
       new RuntimeException(e);
@@ -151,20 +159,16 @@ public final class MigrationManager {
    * @param operationId Identifier of the {@code move} operation
    * @param traceInfo Trace information
    */
+  // TODO #160: We need a clever remove(), register(), and move() operation in PartitionManager.
   public synchronized boolean movePartition(final String operationId, final TraceInfo traceInfo) {
-    try (final TraceScope updatePartition = Trace.startSpan(UPDATE_PARTITION, traceInfo)) {
-      final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
-      if (migrationInfo == null) {
-        throw new IllegalArgumentException("Migration with id : " + operationId + " does not exist.");
-      } else {
-        checkAndUpdateState(migrationInfo, UPDATING_RECEIVER, PARTITION_UPDATED);
-      }
+    try (final TraceScope movePartition = Trace.startSpan(MOVE_PARTITION, traceInfo)) {
+      final MigrationInfo updatedInfo = checkAndUpdateState(operationId, UPDATING_RECEIVER, MOVING_PARTITION);
 
-      final String senderId = migrationInfo.getSenderId();
-      final String receiverId = migrationInfo.getReceiverId();
-      final String dataType = migrationInfo.getDataType();
+      final String senderId = updatedInfo.getSenderId();
+      final String receiverId = updatedInfo.getReceiverId();
+      final String dataType = updatedInfo.getDataType();
 
-      final Collection<LongRange> ranges = migrationInfo.getRanges();
+      final Collection<LongRange> ranges = updatedInfo.getRanges();
       boolean result = true;
       for (final LongRange range : ranges) {
         if (!partitionManager.move(senderId, receiverId, dataType, range)) {
@@ -182,14 +186,9 @@ public final class MigrationManager {
    * @param traceInfo Trace information
    */
   public synchronized void updateSender(final String operationId, final TraceInfo traceInfo) {
-    final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
-    if (migrationInfo == null) {
-      throw new IllegalArgumentException("Migration with id : " + operationId + " does not exist.");
-    } else {
-      checkAndUpdateState(migrationInfo, PARTITION_UPDATED, UPDATING_SENDER);
-    }
+    final MigrationInfo updatedInfo = checkAndUpdateState(operationId, MOVING_PARTITION, UPDATING_SENDER);
 
-    final String senderId = migrationInfo.getSenderId();
+    final String senderId = updatedInfo.getSenderId();
     sender.get().sendUpdateMsg(senderId, operationId, traceInfo);
   }
 
@@ -197,26 +196,37 @@ public final class MigrationManager {
    * Finish the migration.
    * @param operationId Identifier of {@code move} operation.
    */
-  public void finishMigration(final String operationId) {
-    final MigrationInfo migrationInfo = ongoingMigrations.remove(operationId);
-    if (migrationInfo == null) {
-      throw new IllegalArgumentException("Migration with id : " + operationId + " does not exist.");
-    } else {
-      checkAndUpdateState(migrationInfo, UPDATING_SENDER, FINISHED);
-    }
+  public synchronized void finishMigration(final String operationId) {
+    checkAndUpdateState(operationId, UPDATING_SENDER, FINISHED);
+    ongoingMigrations.remove(operationId);
     updateCounter.countDown();
   }
 
   /**
-   * Check the current status and update it to the expected state.
+   * Check the current status and update it.
+   * @return Updated migration information.
    */
-  private void checkAndUpdateState(final MigrationInfo migrationInfo,
-                                   final MigrationInfo.State expectedCurrentState,
-                                   final MigrationInfo.State targetState) {
-    if (migrationInfo.getState() == expectedCurrentState) {
-      migrationInfo.setState(targetState);
-    } else {
-      throw new IllegalStateException("The state should be " + expectedCurrentState);
+  // TODO #90: Instead of runtime exception, we need to handle the failure and notify the failure via callback.
+  private synchronized MigrationInfo checkAndUpdateState(final String operationId,
+                                                         final MigrationInfo.State expectedCurrentState,
+                                                         final MigrationInfo.State targetState) {
+    if (!ongoingMigrations.containsKey(operationId)) {
+      throw new IllegalArgumentException("Migration with id : " + operationId + " does not exist.");
     }
+
+    final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
+    if (migrationInfo.getState() != expectedCurrentState) {
+      throw new IllegalStateException(
+          new StringBuilder().append("The state should be ").append(expectedCurrentState)
+              .append(", but was ").append(migrationInfo.getState())
+              .toString());
+    } else {
+      migrationInfo.setState(targetState);
+      return migrationInfo;
+    }
+  }
+
+  @NamedParameter(doc = "Timeout for updating EM's state (default: 100s).", default_value = "100000")
+  public final class UpdateTimeoutMillis implements Name<Integer> {
   }
 }
