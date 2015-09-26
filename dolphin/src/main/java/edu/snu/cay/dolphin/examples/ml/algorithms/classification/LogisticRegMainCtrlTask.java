@@ -60,8 +60,8 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
   
   @Override
   public final void run(final int iteration) {
-    LOG.log(Level.INFO, "{0}-th iteration accuracy: {1}%, new model: {2}",
-        new Object[]{iteration, accuracy * 100, model});
+    LOG.log(Level.INFO, "{0}-th iteration accuracy: {1}%", new Object[]{iteration, accuracy * 100});
+    LOG.log(Level.FINEST, "new model: {0}", model);
   }
   
   @Override
