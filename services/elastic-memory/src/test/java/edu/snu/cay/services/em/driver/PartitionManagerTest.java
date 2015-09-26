@@ -22,6 +22,7 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -53,6 +54,75 @@ public final class PartitionManagerTest {
     } catch (final InjectionException e) {
       throw new RuntimeException("InjectionException while injecting PartitionManager", e);
     }
+  }
+
+  /**
+   * Testing removal on small disjoint partitions using a large partition.
+   * All the sub-partitions are removed.
+   */
+  @Test
+  public void testLargeRangeRemove() {
+    final String evalId = EVAL_ID_PREFIX + 0;
+    final String dataType = DATA_TYPE_PREFIX + 0;
+
+    // Multiple sub-partitions are removed when requested to remove a large partition.
+    // Register disjoint ranges: [1, 2] [4, 5] [7, 8] ...
+    final int numItems = 10;
+    for (int i = 0; i < numItems; i++) {
+      partitionManager.registerPartition(evalId, dataType, 3 * i + 1, 3 * i + 2);
+    }
+
+    // Removing range [0, 30] will remove all partitions.
+    final Set<LongRange> removed = partitionManager.remove(evalId, dataType, new LongRange(0, 30));
+    assertEquals(0, partitionManager.getRangeSet(evalId, dataType).size());
+    assertEquals(numItems, removed.size());
+  }
+
+  /**
+   * Testing removal on a large partition using a small partition.
+   * The large partition is split into two pieces.
+   */
+  @Test
+  public void testRepartitioningRemove() {
+    final String evalId = EVAL_ID_PREFIX + 0;
+    final String dataType = DATA_TYPE_PREFIX + 0;
+
+    // A partition is split into two sub-partitions.
+    partitionManager.registerPartition(evalId, dataType, 0, 10);
+    final LongRange toRemove = new LongRange(3, 5);
+    final Set<LongRange> removed = partitionManager.remove(evalId, dataType, toRemove);
+
+    // Only this partition is returned
+    assertTrue(removed.contains(toRemove));
+    assertEquals(1, removed.size());
+
+    // Remaining partitions: [0, 2] and [6, 10]
+    assertEquals(2, partitionManager.getRangeSet(evalId, dataType).size());
+    assertTrue(partitionManager.getRangeSet(evalId, dataType).contains(new LongRange(0, 2)));
+    assertTrue(partitionManager.getRangeSet(evalId, dataType).contains(new LongRange(6, 10)));
+  }
+
+  /**
+   * Testing removal on intersecting range.
+   * Only part of the range will be removed.
+   */
+  @Test
+  public void testIntersectingRangeRemove() {
+    final String evalId = EVAL_ID_PREFIX + 0;
+    final String dataType = DATA_TYPE_PREFIX + 0;
+
+    // Register range [2, 4]
+    partitionManager.registerPartition(evalId, dataType, 2, 4);
+
+    // Removing [1, 3] will return [2, 3] leaving [4, 4]
+    final LongRange toRemove = new LongRange(1, 3);
+    final Set<LongRange> removed = partitionManager.remove(evalId, dataType, toRemove);
+
+    assertEquals(1, removed.size());
+    assertTrue(removed.contains(new LongRange(2, 3)));
+    final Set<LongRange> left = partitionManager.getRangeSet(evalId, dataType);
+    assertEquals(1, left.size());
+    assertTrue(left.contains(new LongRange(4, 4)));
   }
 
   /**
