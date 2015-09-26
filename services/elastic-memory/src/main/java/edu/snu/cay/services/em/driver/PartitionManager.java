@@ -150,7 +150,7 @@ public final class PartitionManager {
    * Get the existing range set in a evaluator of a type.
    * @return Sorted set of ranges. An empty set is returned if there is no matched range.
    */
-  public synchronized Set<LongRange> getRanges(final String evalId, final String dataType) {
+  public synchronized Set<LongRange> getRangeSet(final String evalId, final String dataType) {
     if (!evalPartitions.containsKey(evalId)) {
       return new TreeSet<>();
     }
@@ -167,12 +167,12 @@ public final class PartitionManager {
    * Remove the range from the partitions. After deleting a range, the partitions could be rearranged.
    * @param evalId Identifier of Evaluator.
    * @param dataType Type of data.
-   * @param longRange Range to remove.
+   * @param idRange Range of unit ids to remove.
    * @return Ranges that are removed from the partitions. If the entire range is not matched, part of range
    * is removed and returned. On the other hand, multiple ranges could be deleted if the range contains multiple
    * partitions. An empty set is returned if there is no intersecting range.
    */
-  public synchronized TreeSet<LongRange> remove(final String evalId, final String dataType, final LongRange longRange) {
+  public synchronized TreeSet<LongRange> remove(final String evalId, final String dataType, final LongRange idRange) {
     // Early failure if the evaluator is empty.
     final Map<String, TreeSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
     if (evalDataTypeRanges == null) {
@@ -188,22 +188,22 @@ public final class PartitionManager {
     final TreeSet<LongRange> globalRanges = globalPartitions.get(dataType);
     final TreeSet<LongRange> removedRanges = new TreeSet<>(LONG_RANGE_COMPARATOR);
 
-    final Set<LongRange> insideRanges = removeInsideRanges(globalRanges, evalRanges, longRange);
+    final Set<LongRange> insideRanges = removeInsideRanges(globalRanges, evalRanges, idRange);
     removedRanges.addAll(insideRanges);
 
     // Remove overlapping ranges if any. Try ceilingRange first.
-    final LongRange ceilingRange = evalRanges.ceiling(longRange);
-    if (ceilingRange != null) {
-      final LongRange ceilingRemoved = removeIntersectingRange(globalRanges, evalRanges, ceilingRange, longRange);
+    final LongRange ceilingRange = evalRanges.ceiling(idRange);
+    if (ceilingRange != null && ceilingRange.overlapsRange(idRange)) {
+      final LongRange ceilingRemoved = removeIntersectingRange(globalRanges, evalRanges, ceilingRange, idRange);
       if (ceilingRemoved != null) {
         removedRanges.add(ceilingRemoved);
       }
     }
 
     // Next try the floorRange. There is no duplicate removal because we already removed ceiling range.
-    final LongRange floorRange = evalRanges.floor(longRange);
-    if (floorRange != null) {
-      final LongRange floorRemoved = removeIntersectingRange(globalRanges, evalRanges, floorRange, longRange);
+    final LongRange floorRange = evalRanges.floor(idRange);
+    if (floorRange != null && floorRange.overlapsRange(idRange)) {
+      final LongRange floorRemoved = removeIntersectingRange(globalRanges, evalRanges, floorRange, idRange);
       if (floorRemoved != null) {
         removedRanges.add(floorRemoved);
       }
@@ -217,9 +217,12 @@ public final class PartitionManager {
    * @param srcId Id of the source.
    * @param destId Id of the destination.
    * @param dataType Type of the data.
-   * @return {@true} if the move was successful.
+   * @return {@code true} if the move was successful.
    */
-  public synchronized boolean move(final String srcId, final String destId, final String dataType, LongRange toMove) {
+  public synchronized boolean move(final String srcId,
+                                   final String destId,
+                                   final String dataType,
+                                   final LongRange toMove) {
     final TreeSet<LongRange> removed = remove(srcId, dataType, toMove);
     for (final LongRange toRegister : removed) {
       final boolean succeeded = register(destId, dataType, toRegister);
@@ -235,19 +238,19 @@ public final class PartitionManager {
    * (e.g., [3, 4] [5, 6] when [1, 10] is requested to remove).
    * @return Ranges that are removed. An empty list is returned if there was no range to remove.
    */
-  private Set<LongRange> removeInsideRanges(final TreeSet<LongRange> globalRanges,
-                                            final TreeSet<LongRange> evalRanges,
-                                            final LongRange target) {
+  private synchronized Set<LongRange> removeInsideRanges(final TreeSet<LongRange> globalRanges,
+                                                         final TreeSet<LongRange> evalRanges,
+                                                         final LongRange target) {
     final long min = target.getMinimumLong();
     final long max = target.getMaximumLong();
 
     final NavigableSet<LongRange> insideRanges =
         evalRanges.subSet(new LongRange(min, min), false, new LongRange(max, max), false);
 
-    // If we do not copy the ranges, we lose them because the references are removed from the set.
+    // Copy the ranges to avoid ConcurrentModificationException and losing references.
     final NavigableSet<LongRange> copied = new TreeSet<>(insideRanges);
-    removeAll(evalRanges, insideRanges);
-    removeAll(globalRanges, insideRanges);
+    evalRanges.removeAll(copied);
+    globalRanges.removeAll(copied);
     return copied;
   }
 
@@ -257,10 +260,10 @@ public final class PartitionManager {
    * @param target Target range to remove
    * @return Deleted range. {@code null} if there is no range to delete.
    */
-  private LongRange removeIntersectingRange(final TreeSet<LongRange> globalRanges,
-                                            final TreeSet<LongRange> evalRanges,
-                                            final LongRange from,
-                                            final LongRange target) {
+  private synchronized LongRange removeIntersectingRange(final TreeSet<LongRange> globalRanges,
+                                                         final TreeSet<LongRange> evalRanges,
+                                                         final LongRange from,
+                                                         final LongRange target) {
     // Remove the range temporarily.
     evalRanges.remove(from);
     globalRanges.remove(from);
@@ -272,15 +275,15 @@ public final class PartitionManager {
     } else if (from.containsRange(target)) {
       // If the original range is larger, need repartition
       // Split the original range outside target in 2 pieces, and insert them
-      final LongRange smaller = new LongRange(from.getMinimumLong(), target.getMinimumLong() - 1);
-      final LongRange bigger = new LongRange(target.getMaximumLong() + 1, from.getMaximumLong());
-      globalRanges.add(smaller);
-      globalRanges.add(bigger);
-      evalRanges.add(smaller);
-      evalRanges.add(bigger);
+      final LongRange left = new LongRange(from.getMinimumLong(), target.getMinimumLong() - 1);
+      final LongRange right = new LongRange(target.getMaximumLong() + 1, from.getMaximumLong());
+      globalRanges.add(left);
+      globalRanges.add(right);
+      evalRanges.add(left);
+      evalRanges.add(right);
       return target;
 
-    } else if (from.getMinimumLong() < target.getMinimumLong()){
+    } else if (from.getMinimumLong() < target.getMinimumLong()) {
       // Partially overlapping ranges will remove intersection only.
       // Reinsert the rest of the range.
       // min(from) < min(target) < max(from) < max(target)
@@ -299,20 +302,6 @@ public final class PartitionManager {
       return toRemove;
     } else {
       throw new RuntimeException("Might be an unhandled corner case.");
-    }
-  }
-
-  /**
-   * Helper method that removes all the original from the range set. Since {@code Set.removeAll()} throws
-   * {@link ConcurrentModificationException}, iterator is used instead.
-   */
-  private void removeAll(final TreeSet<LongRange> original, final Set<LongRange> toRemove) {
-    final Iterator<LongRange> iterator = original.iterator();
-    while (iterator.hasNext()) {
-      final LongRange range = iterator.next();
-      if (toRemove.contains(range)) {
-        iterator.remove();
-      }
     }
   }
 }
