@@ -27,8 +27,8 @@ import java.util.*;
 @DriverSide
 public final class PartitionManager {
 
-  private final Map<String, Map<String, TreeSet<LongRange>>> evalDataTypeRanges;
-  private final Map<String, TreeSet<LongRange>> globalDataTypeRanges;
+  private final Map<String, Map<String, TreeSet<LongRange>>> evalPartitions;
+  private final Map<String, TreeSet<LongRange>> globalPartitions;
 
   /**
    * If ranges are not overlapped, we can always compare the two ranges, so the ranges
@@ -50,91 +50,98 @@ public final class PartitionManager {
 
   @Inject
   private PartitionManager() {
-    this.evalDataTypeRanges = new HashMap<>();
-    this.globalDataTypeRanges = new HashMap<>();
+    this.evalPartitions = new HashMap<>();
+    this.globalPartitions = new HashMap<>();
   }
 
   /**
-   * Add a partition to an evaluator.
+   * Register a partition to an evaluator.
    * @param evalId Identifier of the Evaluator.
    * @param dataType Type of the data.
    * @param unitStartId Smallest unit id in the partition.
    * @param unitEndId Largest unit id in the partition.
    * @return {@code true} if the partition is registered successfully, {@code false} otherwise.
    */
-  public boolean registerPartition(final String evalId, final String dataType,
-                                   final long unitStartId, final long unitEndId) {
-    return registerPartition(evalId, dataType, new LongRange(unitStartId, unitEndId));
+  public boolean register(final String evalId, final String dataType,
+                          final long unitStartId, final long unitEndId) {
+    return register(evalId, dataType, new LongRange(unitStartId, unitEndId));
   }
 
-  public synchronized boolean registerPartition(final String evalId, final String dataType, final LongRange idRange) {
-    // Check the acceptability of a new partition into globalDataTypeRanges.
+  /**
+   * Register a partition to an evaluator.
+   * @param evalId Identifier of the Evaluator.
+   * @param dataType Type of the data.
+   * @param idRange Range of id
+   * @return {@code true} if the partition is registered successfully, {@code false} otherwise.
+   */
+  public synchronized boolean register(final String evalId, final String dataType, final LongRange idRange) {
+    // Check the acceptability of a new partition into globalPartitions.
     // Early failure in this step guarantees that all ranges are unique across evaluators.
-    final TreeSet<LongRange> rangeSetGlobal;
+    final TreeSet<LongRange> globalRanges;
 
-    if (globalDataTypeRanges.containsKey(dataType)) {
-      rangeSetGlobal = globalDataTypeRanges.get(dataType);
-      final LongRange ceilingRange = rangeSetGlobal.ceiling(idRange);
+    if (globalPartitions.containsKey(dataType)) {
+      globalRanges = globalPartitions.get(dataType);
+      final LongRange ceilingRange = globalRanges.ceiling(idRange);
       if (ceilingRange != null && ceilingRange.overlapsRange(idRange)) {
         return false; // upside overlaps
       }
-      final LongRange floorRange = rangeSetGlobal.floor(idRange);
+      final LongRange floorRange = globalRanges.floor(idRange);
       if (floorRange != null && floorRange.overlapsRange(idRange)) {
         return false; // downside overlaps
       }
     } else {
       // Successfully registered in the global partitions.
-      rangeSetGlobal = new TreeSet<>(LONG_RANGE_COMPARATOR);
-      globalDataTypeRanges.put(dataType, rangeSetGlobal);
+      globalRanges = new TreeSet<>(LONG_RANGE_COMPARATOR);
+      globalPartitions.put(dataType, globalRanges);
     }
 
-    // Check the acceptability of a new partition into evalDataTypeRanges
-    final Map<String, TreeSet<LongRange>> evalPartitions;
+    // Check the acceptability of a new partition into evalPartitions
+    final Map<String, TreeSet<LongRange>> evalDataTypeRanges;
 
-    if (this.evalDataTypeRanges.containsKey(evalId)) {
-      evalPartitions = this.evalDataTypeRanges.get(evalId);
+    if (this.evalPartitions.containsKey(evalId)) {
+      evalDataTypeRanges = this.evalPartitions.get(evalId);
     } else {
-      evalPartitions = new HashMap<>();
-      this.evalDataTypeRanges.put(evalId, evalPartitions);
+      evalDataTypeRanges = new HashMap<>();
+      this.evalPartitions.put(evalId, evalDataTypeRanges);
     }
 
-    final TreeSet<LongRange> rangeSetEval;
+    final TreeSet<LongRange> evalRanges;
 
-    if (evalPartitions.containsKey(dataType)) {
-      rangeSetEval = evalPartitions.get(dataType);
+    if (evalDataTypeRanges.containsKey(dataType)) {
+      evalRanges = evalDataTypeRanges.get(dataType);
     } else {
-      rangeSetEval = new TreeSet<>(LONG_RANGE_COMPARATOR);
-      evalPartitions.put(dataType, rangeSetEval);
+      evalRanges = new TreeSet<>(LONG_RANGE_COMPARATOR);
+      evalDataTypeRanges.put(dataType, evalRanges);
     }
 
     // Check the registering partition's possibility to be merged to adjacent partitions within the evaluator
     // and then merge contiguous partitions into a big partition.
-    final LongRange higherRangeEval = rangeSetEval.higher(idRange);
+    final LongRange higherRange = evalRanges.higher(idRange);
     final long endId;
 
-    if (higherRangeEval != null && higherRangeEval.getMinimumLong() == idRange.getMaximumLong() + 1) {
-      rangeSetGlobal.remove(higherRangeEval);
-      rangeSetEval.remove(higherRangeEval);
-      endId = higherRangeEval.getMaximumLong();
+    if (higherRange != null && higherRange.getMinimumLong() == idRange.getMaximumLong() + 1) {
+      globalRanges.remove(higherRange);
+      evalRanges.remove(higherRange);
+      endId = higherRange.getMaximumLong();
     } else {
       endId = idRange.getMaximumLong();
     }
 
-    final LongRange lowerRangeEval = rangeSetEval.lower(idRange);
+    final LongRange lowerRange = evalRanges.lower(idRange);
     final long startId;
 
-    if (lowerRangeEval != null && lowerRangeEval.getMaximumLong() + 1 == idRange.getMinimumLong()) {
-      rangeSetGlobal.remove(lowerRangeEval);
-      rangeSetEval.remove(lowerRangeEval);
-      startId = lowerRangeEval.getMinimumLong();
+    if (lowerRange != null && lowerRange.getMaximumLong() + 1 == idRange.getMinimumLong()) {
+      globalRanges.remove(lowerRange);
+      evalRanges.remove(lowerRange);
+      startId = lowerRange.getMinimumLong();
     } else {
       startId = idRange.getMinimumLong();
     }
 
     final LongRange mergedRange = new LongRange(startId, endId);
 
-    rangeSetGlobal.add(mergedRange);
-    rangeSetEval.add(mergedRange);
+    globalRanges.add(mergedRange);
+    evalRanges.add(mergedRange);
 
     return true;
   }
@@ -143,17 +150,17 @@ public final class PartitionManager {
    * Get the existing range set in a evaluator of a type.
    * @return Sorted set of ranges. An empty set is returned if there is no matched range.
    */
-  public synchronized Set<LongRange> getRangeSet(final String evalId, final String dataType) {
-    if (!evalDataTypeRanges.containsKey(evalId)) {
+  public synchronized Set<LongRange> getRanges(final String evalId, final String dataType) {
+    if (!evalPartitions.containsKey(evalId)) {
       return new TreeSet<>();
     }
 
-    final Map<String, TreeSet<LongRange>> mapDatatypeRange = evalDataTypeRanges.get(evalId);
-    if (!mapDatatypeRange.containsKey(dataType)) {
+    final Map<String, TreeSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
+    if (!evalDataTypeRanges.containsKey(dataType)) {
       return new TreeSet<>();
     }
 
-    return new TreeSet<>(mapDatatypeRange.get(dataType));
+    return new TreeSet<>(evalDataTypeRanges.get(dataType));
   }
 
   /**
@@ -167,36 +174,36 @@ public final class PartitionManager {
    */
   public synchronized TreeSet<LongRange> remove(final String evalId, final String dataType, final LongRange longRange) {
     // Early failure if the evaluator is empty.
-    final Map<String, TreeSet<LongRange>> evalPartitions = this.evalDataTypeRanges.get(evalId);
-    if (evalPartitions == null) {
+    final Map<String, TreeSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
+    if (evalDataTypeRanges == null) {
       return new TreeSet<>();
     }
 
     // Early failure if the evaluator does not have any data of that type.
-    final TreeSet<LongRange> evalRangeSet = evalPartitions.get(dataType);
-    if (evalRangeSet == null) {
+    final TreeSet<LongRange> evalRanges = evalDataTypeRanges.get(dataType);
+    if (evalRanges == null) {
       return new TreeSet<>();
     }
 
-    final TreeSet<LongRange> globalRanges = this.globalDataTypeRanges.get(dataType);
+    final TreeSet<LongRange> globalRanges = globalPartitions.get(dataType);
     final TreeSet<LongRange> removedRanges = new TreeSet<>(LONG_RANGE_COMPARATOR);
 
-    final Set<LongRange> insideRanges = removeInsideRanges(globalRanges, evalRangeSet, longRange);
+    final Set<LongRange> insideRanges = removeInsideRanges(globalRanges, evalRanges, longRange);
     removedRanges.addAll(insideRanges);
 
     // Remove overlapping ranges if any. Try ceilingRange first.
-    final LongRange ceilingRange = evalRangeSet.ceiling(longRange);
+    final LongRange ceilingRange = evalRanges.ceiling(longRange);
     if (ceilingRange != null) {
-      final LongRange ceilingRemoved = removeIntersectingRange(globalRanges, evalRangeSet, ceilingRange, longRange);
+      final LongRange ceilingRemoved = removeIntersectingRange(globalRanges, evalRanges, ceilingRange, longRange);
       if (ceilingRemoved != null) {
         removedRanges.add(ceilingRemoved);
       }
     }
 
     // Next try the floorRange. There is no duplicate removal because we already removed ceiling range.
-    final LongRange floorRange = evalRangeSet.floor(longRange);
+    final LongRange floorRange = evalRanges.floor(longRange);
     if (floorRange != null) {
-      final LongRange floorRemoved = removeIntersectingRange(globalRanges, evalRangeSet, floorRange, longRange);
+      final LongRange floorRemoved = removeIntersectingRange(globalRanges, evalRanges, floorRange, longRange);
       if (floorRemoved != null) {
         removedRanges.add(floorRemoved);
       }

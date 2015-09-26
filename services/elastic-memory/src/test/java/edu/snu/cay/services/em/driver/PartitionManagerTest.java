@@ -22,7 +22,6 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -69,7 +68,7 @@ public final class PartitionManagerTest {
     // Register disjoint ranges: [1, 2] [4, 5] [7, 8] ...
     final int numItems = 10;
     for (int i = 0; i < numItems; i++) {
-      partitionManager.registerPartition(evalId, dataType, 3 * i + 1, 3 * i + 2);
+      partitionManager.register(evalId, dataType, 3 * i + 1, 3 * i + 2);
     }
 
     // Removing range [0, 30] will remove all partitions.
@@ -88,7 +87,7 @@ public final class PartitionManagerTest {
     final String dataType = DATA_TYPE_PREFIX + 0;
 
     // A partition is split into two sub-partitions.
-    partitionManager.registerPartition(evalId, dataType, 0, 10);
+    partitionManager.register(evalId, dataType, 0, 10);
     final LongRange toRemove = new LongRange(3, 5);
     final Set<LongRange> removed = partitionManager.remove(evalId, dataType, toRemove);
 
@@ -112,7 +111,7 @@ public final class PartitionManagerTest {
     final String dataType = DATA_TYPE_PREFIX + 0;
 
     // Register range [2, 4]
-    partitionManager.registerPartition(evalId, dataType, 2, 4);
+    partitionManager.register(evalId, dataType, 2, 4);
 
     // Removing [1, 3] will return [2, 3] leaving [4, 4]
     final LongRange toRemove = new LongRange(1, 3);
@@ -235,12 +234,12 @@ public final class PartitionManagerTest {
 
     for (int i = 0; i < totalNumberOfAdds; i++) {
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i, 3 * i + 1));
+          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i, 3 * i + 1));
     }
 
     for (int i = 0; i < totalNumberOfAdds; i++) {
       assertFalse(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i + 1, 3 * i + 2));
+          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i + 1, 3 * i + 2));
     }
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION,
@@ -334,7 +333,7 @@ public final class PartitionManagerTest {
       final int rangeStart = (int) (initialOffset + rangeTerm * i);
       final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
+          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     // Remove disjoint ranges: [0, 1] [3, 4] [6, 7] ...
@@ -409,7 +408,7 @@ public final class PartitionManagerTest {
       final int rangeStart = (int) (initialOffset + rangeTerm * i);
       final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
+          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     // Threads with even index remove disjoint ranges [0, 1] [3, 4] [6, 7] ...
@@ -452,7 +451,7 @@ public final class PartitionManagerTest {
       final int rangeStart = (int) (initialOffset + rangeTerm * i);
       final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
+          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
@@ -502,7 +501,7 @@ public final class PartitionManagerTest {
       final int rangeStart = (int) (initialOffset + rangeTerm * i);
       final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
+          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
@@ -557,7 +556,7 @@ public final class PartitionManagerTest {
         final int itemIndex = numThreadsPerOperation * i + j;
         final int rangeStart = (int) (initialOffset + rangeTerm * itemIndex);
         final int rangeEnd = (int) (rangeStart + rangeLength - 1);
-        partitionManager.registerPartition(EVAL_ID_PREFIX + j, DATA_TYPE_PREFIX, rangeStart, rangeEnd);
+        partitionManager.register(EVAL_ID_PREFIX + j, DATA_TYPE_PREFIX, rangeStart, rangeEnd);
       }
     }
 
@@ -615,7 +614,7 @@ public final class PartitionManagerTest {
         final int itemIndex = numThreadsPerOperation * i + j;
         final int rangeStart = (int) (initialOffset + rangeTerm * itemIndex);
         final int rangeEnd = (int) (rangeStart + rangeLength - 1);
-        partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX + j, rangeStart, rangeEnd);
+        partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX + j, rangeStart, rangeEnd);
       }
     }
 
@@ -675,7 +674,7 @@ public final class PartitionManagerTest {
         final int dataTypeIndex = j % 2;
         final int rangeStart = (int) (initialOffset + rangeTerm * itemIndex);
         final int rangeEnd = (int) (rangeStart + rangeLength - 1);
-        partitionManager.registerPartition(EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
+        partitionManager.register(EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
             rangeStart, rangeEnd);
       }
     }
@@ -759,7 +758,7 @@ public final class PartitionManagerTest {
         }
 
         final int itemIndex = numThreads * i + myIndex;
-        partitionManager.registerPartition(evalId, dataType,
+        partitionManager.register(evalId, dataType,
             new LongRange(rangeTerm * itemIndex + offset, rangeTerm * itemIndex + offset + (rangeLength - 1)));
       }
       countDownLatch.countDown();
