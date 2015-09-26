@@ -213,6 +213,24 @@ public final class PartitionManager {
   }
 
   /**
+   * Move a partition to another evaluator.
+   * @param srcId Id of the source.
+   * @param destId Id of the destination.
+   * @param dataType Type of the data.
+   * @return {@true} if the move was successful.
+   */
+  public synchronized boolean move(final String srcId, final String destId, final String dataType, LongRange toMove) {
+    final TreeSet<LongRange> removed = remove(srcId, dataType, toMove);
+    for (final LongRange toRegister : removed) {
+      final boolean succeeded = register(destId, dataType, toRegister);
+      if (!succeeded) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
    * Remove ranges which target range contains whole range.
    * (e.g., [3, 4] [5, 6] when [1, 10] is requested to remove).
    * @return Ranges that are removed. An empty list is returned if there was no range to remove.
