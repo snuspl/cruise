@@ -15,23 +15,15 @@
  */
 package edu.snu.cay.services.em.msg.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.AvroLongRange;
-import edu.snu.cay.services.em.avro.CtrlMsg;
-import edu.snu.cay.services.em.avro.DataMsg;
-import edu.snu.cay.services.em.avro.RegisMsg;
-import edu.snu.cay.services.em.avro.Result;
-import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.avro.Type;
-import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.AvroUtils;
 import org.apache.commons.lang.math.LongRange;
-import org.apache.htrace.Trace;
-import org.apache.htrace.TraceInfo;
-import org.apache.htrace.TraceScope;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -103,7 +95,37 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
           .setDataType(dataType)
+          .setCtrlMsgType(CtrlMsgType.IdRange)
           .setIdRange(avroLongRangeList)
+          .build();
+
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.CtrlMsg)
+              .setSrcId(destId)
+              .setDestId(targetEvalId)
+              .setOperationId(operationId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setCtrlMsg(ctrlMsg)
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+          new Object[]{destId, dataType, targetEvalId});
+    }
+  }
+
+  @Override
+  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+                          final int numUnits, final String operationId, final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+          new Object[]{destId, dataType, targetEvalId, numUnits});
+
+      final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
+          .setDataType(dataType)
+          .setCtrlMsgType(CtrlMsgType.NumUnits)
+          .setNumUnits(numUnits)
           .build();
 
       send(destId,
@@ -150,14 +172,22 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendResultMsg(final boolean success, final String operationId, final TraceInfo parentTraceInfo) {
+  public void sendResultMsg(final boolean success, final String dataType, final Set<LongRange> idRangeSet,
+                            final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendResultMsgScope = Trace.startSpan(SEND_RESULT_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
-          new Object[]{success, operationId});
+          new Object[]{success, idRangeSet, operationId});
+
+      final List<AvroLongRange> avroLongRangeList = new LinkedList<>();
+      for (final LongRange idRange : idRangeSet) {
+        avroLongRangeList.add(AvroUtils.convertLongRange(idRange));
+      }
 
       final ResultMsg resultMsg = ResultMsg.newBuilder()
           .setResult(success ? Result.SUCCESS : Result.FAILURE)
+          .setDataType(dataType)
+          .setIdRange(avroLongRangeList)
           .build();
 
       send(driverId,
@@ -171,7 +201,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
-          new Object[]{success, operationId});
+          new Object[]{success, idRangeSet, operationId});
 
     }
   }

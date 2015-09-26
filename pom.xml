@@ -42,8 +42,8 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <reef.version>0.13.0-incubating-SNAPSHOT</reef.version>
-    <hadoop.version>2.4.0</hadoop.version>
-    <htrace.version>3.2.0-incubating</htrace.version>
+    <hadoop.version>2.6.0</hadoop.version>
+    <htrace.version>3.0.4</htrace.version>
     <mahout.version>0.9</mahout.version>
     <avro.version>1.7.7</avro.version>
     <jetty.version>6.1.26</jetty.version>
@@ -59,6 +59,7 @@
 
   <modules>
     <module>dolphin</module>
+    <module>services/dataloader</module>
     <module>services/elastic-memory</module>
     <module>services/shuffle</module>
   </modules>
@@ -112,12 +113,12 @@
       <!-- End of HADOOP -->
       <!-- HTRACE -->
       <dependency>
-        <groupId>org.apache.htrace</groupId>
+        <groupId>org.htrace</groupId>
         <artifactId>htrace-core</artifactId>
         <version>${htrace.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.htrace</groupId>
+        <groupId>org.htrace</groupId>
         <artifactId>htrace-zipkin</artifactId>
         <version>${htrace.version}</version>
       </dependency>

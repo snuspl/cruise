@@ -15,9 +15,10 @@
  */
 package edu.snu.cay.services.em.examples.simple;
 
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
-import org.apache.reef.driver.task.TaskConfigurationOptions;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import org.apache.reef.tang.annotations.Parameter;
@@ -25,12 +26,13 @@ import org.apache.reef.task.HeartBeatTriggerManager;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.logging.Logger;
 
 final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
   public static final String DATATYPE = "INTEGER";
-  private static final int ID_BASE = 100;
+  private static final int NUM_DATA = 10;
 
   private final MemoryStore memoryStore;
   private final SimpleEMTaskReady simpleEMTaskReady;
@@ -44,22 +46,20 @@ final class SimpleEMTask implements Task {
       final SimpleEMTaskReady simpleEMTaskReady,
       final HeartBeatTriggerManager heartBeatTriggerManager,
       final PartitionTracker partitionTracker,
-      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
+      final DataIdFactory<Long> dataIdFactory,
       @Parameter(Iterations.class) final int iterations,
-      @Parameter(PeriodMillis.class) final long periodMillis) {
+      @Parameter(PeriodMillis.class) final long periodMillis) throws IdGenerationException {
     this.memoryStore = memoryStore;
     this.simpleEMTaskReady = simpleEMTaskReady;
     this.heartBeatTriggerManager = heartBeatTriggerManager;
     this.iterations = iterations;
     this.periodMillis = periodMillis;
 
-    final int myIdBase = Integer.valueOf(taskId.substring(SimpleEMDriver.TASK_ID_PREFIX.length())) * ID_BASE;
-    partitionTracker.registerPartition(DATATYPE, myIdBase, myIdBase + ID_BASE - 1);
+    final List<Long> ids = dataIdFactory.getIds(NUM_DATA);
+    // Just use ids as data (data do not matter)
+    this.memoryStore.getElasticStore().putList(DATATYPE, ids, ids);
 
-    for (int index = 0; index < 10; index++) {
-      final int item = myIdBase + index * 10;
-      this.memoryStore.getElasticStore().put(DATATYPE, (long) item, item);
-    }
+    partitionTracker.registerPartition(DATATYPE, ids.get(0), ids.get(NUM_DATA - 1));
   }
 
   public byte[] call(final byte[] memento) throws InterruptedException {
@@ -68,9 +68,9 @@ final class SimpleEMTask implements Task {
     LOG.info("Before sleep, memory store contains: ");
     LOG.info(memoryStore.getElasticStore().getAll(DATATYPE).toString());
     // Should be either
-    // [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+    // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     // or
-    // [100, 110, 120, 130, 140, 150, 160, 170, 180, 190]
+    // [2^32, 2^32+1, 2^32+2, 2^32+3, 2^32+4, 2^32+5, 2^32+6, 2^32+7, 2^32+8, 2^32+9]
 
     simpleEMTaskReady.setReady(true);
     heartBeatTriggerManager.triggerHeartBeat();

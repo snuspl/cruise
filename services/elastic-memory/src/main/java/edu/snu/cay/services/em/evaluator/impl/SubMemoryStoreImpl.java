@@ -195,4 +195,38 @@ public final class SubMemoryStoreImpl implements SubMemoryStore {
       readWriteLock.writeLock().unlock();
     }
   }
+
+  @Override
+  public Set<String> getDataTypes() {
+    readWriteLock.readLock().lock();
+
+    try {
+      final Set<String> dataTypeSet = new HashSet<>(dataMap.keySet().size());
+      for (final Map.Entry<String, TreeMap<Long, Object>> entry : dataMap.entrySet()) {
+        if (!entry.getValue().isEmpty()) {
+          dataTypeSet.add(entry.getKey());
+        }
+      }
+
+      return dataTypeSet;
+
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  @Override
+  public int getNumUnits(final String dataType) {
+    readWriteLock.readLock().lock();
+
+    try {
+      if (!dataMap.containsKey(dataType)) {
+        return 0;
+      }
+      return dataMap.get(dataType).size();
+
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
 }

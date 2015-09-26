@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.shuffle.network;
 
-
 import org.apache.reef.io.network.impl.StreamingCodec;
 
 import javax.inject.Inject;
@@ -26,7 +25,7 @@ import java.util.List;
 /**
  * Codec for ShuffleControlMessage.
  */
-public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleControlMessage> {
+final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleControlMessage> {
 
   @Inject
   private ShuffleControlMessageCodec() {
@@ -58,12 +57,6 @@ public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleC
   @Override
   public void encodeToStream(final ShuffleControlMessage msg, final DataOutputStream stream) {
     try {
-      if (msg.getShuffleName() == null) {
-        stream.writeUTF("");
-      } else {
-        stream.writeUTF(msg.getShuffleName());
-      }
-
       stream.writeInt(msg.getCode());
 
       final int messageLength = msg.size();
@@ -81,12 +74,6 @@ public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleC
   @Override
   public ShuffleControlMessage decodeFromStream(final DataInputStream stream) {
     try {
-      String shuffleName = stream.readUTF();
-
-      if (shuffleName.equals("")) {
-        shuffleName = null;
-      }
-
       final int code = stream.readInt();
       final int messageLength = stream.readInt();
 
@@ -96,7 +83,7 @@ public final class ShuffleControlMessageCodec implements StreamingCodec<ShuffleC
         endPointIdList.add(stream.readUTF());
       }
 
-      return new ShuffleControlMessage(code, shuffleName, endPointIdList);
+      return new ShuffleControlMessage(code, endPointIdList);
     } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }

@@ -16,7 +16,6 @@
 package edu.snu.cay.services.shuffle.evaluator;
 
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import org.apache.reef.tang.Tang;
 import org.apache.reef.util.Optional;
 import org.junit.Before;
 import org.junit.Rule;
@@ -37,6 +36,7 @@ public final class ControlMessageSynchronizerTest {
 
   private static final Logger LOG = Logger.getLogger(ControlMessageSynchronizerTest.class.getName());
 
+  private static final long TIMEOUT = 600000;
   private static final int FIRST_MESSAGE = 0;
   private static final int SECOND_MESSAGE = 1;
   private static final int THIRD_MESSAGE = 2;
@@ -47,7 +47,7 @@ public final class ControlMessageSynchronizerTest {
 
   @Before
   public void setUp() throws Exception {
-    synchronizer = Tang.Factory.getTang().newInjector().getInstance(ControlMessageSynchronizer.class);
+    synchronizer = new ControlMessageSynchronizer();
   }
 
   /**
@@ -74,11 +74,11 @@ public final class ControlMessageSynchronizerTest {
           for (int i = 0; i < messageNum; i++) {
             final Optional<ShuffleControlMessage> controlMessage;
             if (i % 3 == 0) {
-              controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE);
+              controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE, TIMEOUT);
             } else if (i % 3 == 1) {
-              controlMessage = synchronizer.waitOnLatch(SECOND_MESSAGE);
+              controlMessage = synchronizer.waitOnLatch(SECOND_MESSAGE, TIMEOUT);
             } else {
-              controlMessage = synchronizer.waitOnLatch(THIRD_MESSAGE);
+              controlMessage = synchronizer.waitOnLatch(THIRD_MESSAGE, TIMEOUT);
             }
 
             assert controlMessage.isPresent();
@@ -100,9 +100,9 @@ public final class ControlMessageSynchronizerTest {
 
     while (waitForFinishing.getCount() != 0) {
       Thread.sleep(rand.nextInt(50) + 10);
-      synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
-      synchronizer.resetLatch(new ShuffleControlMessage(SECOND_MESSAGE, "test", null));
-      synchronizer.resetLatch(new ShuffleControlMessage(THIRD_MESSAGE, "test", null));
+      synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, null));
+      synchronizer.resetLatch(new ShuffleControlMessage(SECOND_MESSAGE, null));
+      synchronizer.resetLatch(new ShuffleControlMessage(THIRD_MESSAGE, null));
     }
 
     LOG.log(Level.INFO, "Finished");
@@ -140,13 +140,13 @@ public final class ControlMessageSynchronizerTest {
           waitForStarting.countDown();
 
           // The current thread will be notified when the latch is closed
-          synchronizer.waitOnLatch(FIRST_MESSAGE);
+          assert synchronizer.waitOnLatch(FIRST_MESSAGE, TIMEOUT).isPresent();
 
           for (int i = 0; i < 100; i++) {
-            final Optional<ShuffleControlMessage> controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE);
+            final Optional<ShuffleControlMessage> controlMessage = synchronizer.waitOnLatch(FIRST_MESSAGE, TIMEOUT);
 
             // The synchronizer returns Optional.empty if the latch was closed
-            assert !controlMessage.isPresent();
+            assert controlMessage.isPresent();
           }
 
           waitForTestingClosedState.countDown();
@@ -160,7 +160,7 @@ public final class ControlMessageSynchronizerTest {
 
           waitForLastReset.countDown();
 
-          synchronizer.waitOnLatch(FIRST_MESSAGE);
+          assert synchronizer.waitOnLatch(FIRST_MESSAGE, TIMEOUT).isPresent();
 
           waitForFinishing.countDown();
         }
@@ -174,7 +174,7 @@ public final class ControlMessageSynchronizerTest {
 
     Thread.sleep(50);
     LOG.log(Level.INFO, "Close the latch");
-    synchronizer.closeLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
+    synchronizer.closeLatch(new ShuffleControlMessage(FIRST_MESSAGE, null));
 
     waitForTestingClosedState.await();
 
@@ -187,7 +187,7 @@ public final class ControlMessageSynchronizerTest {
 
     Thread.sleep(500);
     LOG.log(Level.INFO, "Reset the latch");
-    synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, "test", null));
+    synchronizer.resetLatch(new ShuffleControlMessage(FIRST_MESSAGE, null));
 
     waitForFinishing.await();
     LOG.log(Level.INFO, "Finished");

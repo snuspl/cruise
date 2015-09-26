@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_logistic.sh -dim 3 -maxIter 20 -stepSize 0.00001 -lambda 0.1 -local true -split 4 -input sample_classification -output output_logistic
+# ./run_logistic.sh -dim 3 -maxIter 20 -stepSize 0.00001 -lambda 0.1 -local true -split 4 -input sample_classification -output output_logistic -maxNumEvalLocal 5
 
 # RUNTIME
 SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar

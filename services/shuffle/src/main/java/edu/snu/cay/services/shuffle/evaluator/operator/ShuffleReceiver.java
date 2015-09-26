@@ -15,8 +15,21 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator;
 
+import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
+import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.annotations.DefaultImplementation;
+
 /**
  * Interface for a receiver used in a Shuffle.
  */
+@DefaultImplementation(NullShuffleReceiver.class)
 public interface ShuffleReceiver<K, V> {
+
+  /**
+   * Handle a control message from Shuffle.
+   *
+   * @param message a control message
+   */
+  void onControlMessage(Message<ShuffleControlMessage> message);
+
 }

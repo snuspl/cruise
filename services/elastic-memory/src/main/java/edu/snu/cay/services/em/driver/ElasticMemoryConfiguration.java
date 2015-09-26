@@ -94,13 +94,17 @@ public final class ElasticMemoryConfiguration {
    * @return service configuration that should be passed along with a ContextConfiguration
    */
   public Configuration getServiceConfiguration() {
-    final Configuration networkConf = getNetworkConfigurationBuilder()
-        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.evaluator.ElasticMemoryMsgHandler.class)
-        .build();
-
     final Configuration nameClientConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
+        .build();
+
+    return Configurations.merge(getServiceConfigurationWithoutNameResolver(), nameClientConf);
+  }
+
+  public Configuration getServiceConfigurationWithoutNameResolver() {
+    final Configuration networkConf = getNetworkConfigurationBuilder()
+        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.evaluator.ElasticMemoryMsgHandler.class)
         .build();
 
     final Configuration serviceConf = ServiceConfiguration.CONF
@@ -112,7 +116,7 @@ public final class ElasticMemoryConfiguration {
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .build();
 
-    return Configurations.merge(networkConf, nameClientConf, serviceConf, otherConf);
+    return Configurations.merge(networkConf, serviceConf, otherConf);
   }
 
   private static JavaConfigurationBuilder getNetworkConfigurationBuilder() {

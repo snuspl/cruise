@@ -20,6 +20,7 @@ import org.apache.reef.io.network.util.Pair;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Evaluator-side interface of SubMemoryStore.
@@ -110,4 +111,19 @@ public interface SubMemoryStore {
    * @return map of data ids and the corresponding data items
    */
   <T> Map<Long, T> removeRange(String dataType, long startId, long endId);
+
+  /**
+   * Fetch all data types of items residing in this store, without duplicates.
+   *
+   * @return a set of strings that indicate the data types in this store
+   */
+  Set<String> getDataTypes();
+
+  /**
+   * Fetch the number of items associated with a certain data type.
+   *
+   * @param dataType string that represents a certain data type
+   * @return number of items associated with {@code dataType}
+   */
+  int getNumUnits(String dataType);
 }

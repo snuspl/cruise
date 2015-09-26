@@ -15,16 +15,16 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 
-import edu.snu.cay.dolphin.core.KeyValueStore;
 import edu.snu.cay.dolphin.core.UserControllerTask;
-import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -35,27 +35,38 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   private static final Logger LOG = Logger.getLogger(ClusteringPreCtrlTask.class.getName());
 
   /**
+   * Key used in Elastic Memory to put/get the centroids.
+   * TODO #168: we should find better place to put this
+   */
+  public static final String KEY_CENTROIDS = "centroids";
+
+  /**
    * Number of clusters.
    */
   private final int numberOfClusters;
 
   /**
-   * List of cluster centroids to distribute to Compute Tasks.
-   * Will be updated for each iteration.
-   */
-  private final List<Vector> centroids = new ArrayList<Vector>();
-
-  /**
    * Initial centroids passed from Compute Tasks.
    */
   private List<Vector> initialCentroids = null;
-  private final KeyValueStore keyValueStore;
+
+  /**
+   * Memory storage to put/get the data.
+   */
+  private final MemoryStore memoryStore;
+
+  /**
+   * Data identifier factory to generate id for data.
+   */
+  private final DataIdFactory<Long> dataIdFactory;
 
   @Inject
   public ClusteringPreCtrlTask(
-      final KeyValueStore keyValueStore,
+      final MemoryStore memoryStore,
+      final DataIdFactory<Long> dataIdFactory,
       @Parameter(NumberOfClusters.class) final int numberOfClusters) {
-    this.keyValueStore = keyValueStore;
+    this.memoryStore = memoryStore;
+    this.dataIdFactory = dataIdFactory;
     this.numberOfClusters = numberOfClusters;
   }
 
@@ -66,15 +77,21 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
 
   @Override
   public void cleanup() {
-
-    // pass initial centroids to the main process
-    keyValueStore.put(Centroids.class, initialCentroids);
+    /*
+     * Pass the initial centroids to the main process.
+     * Since CtrlTask is the only one to own the data, put data in LocalStore.
+     */
+    try {
+      final List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
+      memoryStore.getLocalStore().putList(KEY_CENTROIDS, ids, initialCentroids);
+    } catch (final IdGenerationException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public boolean isTerminated(final int iteration) {
     return iteration > 0;
-
   }
 
   @Override

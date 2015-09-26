@@ -223,14 +223,16 @@ public final class PartitionManagerTest {
     final int addsPerThread = 100000;
     final long rangeTerm = 3;
     final long rangeLength = 2;
+    final int initialOffset = 0;
     final int totalNumberOfAdds = numThreads * addsPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
 
+    // Register disjoint ranges: [0, 1] [3, 4] [6, 7] ...
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
       threads[index] = new RegisterThread(countDownLatch, partitionManager,
           index, numThreads, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
-          rangeTerm, rangeLength, 0);
+          rangeTerm, rangeLength, initialOffset);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -238,8 +240,7 @@ public final class PartitionManagerTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION,
-        totalNumberOfAdds,
+    assertEquals(MSG_SIZE_ASSERTION, totalNumberOfAdds,
         partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
@@ -254,18 +255,24 @@ public final class PartitionManagerTest {
     final int removesPerThread = 100000;
     final long rangeTerm = 3;
     final long rangeLength = 2;
+    final int initialOffset = 0;
     final int totalNumberOfRemoves = numThreads * removesPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
+
+    // Register disjoint ranges: [0, 1] [3, 4] [6, 7] ...
     for (int i = 0; i < totalNumberOfRemoves; i++) {
+      final int rangeStart = (int) (initialOffset + rangeTerm * i);
+      final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i, 3 * i + 1));
+          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
+    // Remove disjoint ranges: [0, 1] [3, 4] [6, 7] ...
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
       threads[index] = new RemoveThread(countDownLatch, partitionManager,
           index, numThreads, removesPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
-          rangeTerm, rangeLength, 0);
+          rangeTerm, rangeLength, initialOffset);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -288,14 +295,16 @@ public final class PartitionManagerTest {
     final int getsPerThread = 100;
     final long rangeTerm = 3;
     final long rangeLength = 2;
+    final int initialOffset = 0;
     final int totalNumberOfAdds = numThreadsPerOperation * addsPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
+      // Register disjoint ranges [0, 1] [3, 4] [6, 7] ...
       threads[2 * index] = new RegisterThread(countDownLatch, partitionManager,
           index, numThreadsPerOperation, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
-          rangeTerm, rangeLength, 0);
+          rangeTerm, rangeLength, initialOffset);
       threads[2 * index + 1]
           = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
     }
@@ -305,8 +314,7 @@ public final class PartitionManagerTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION,
-        totalNumberOfAdds,
+    assertEquals(MSG_SIZE_ASSERTION, totalNumberOfAdds,
         partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
@@ -322,18 +330,24 @@ public final class PartitionManagerTest {
     final int getsPerThread = 100;
     final long rangeTerm = 3;
     final long rangeLength = 2;
+    final int initialOffset = 0;
     final int totalNumberOfRemoves = numThreadsPerOperation * removesPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
+
+    // Register disjoint ranges [0, 1] [3, 4] [6, 7] ...
     for (int i = 0; i < totalNumberOfRemoves; i++) {
+      final int rangeStart = (int) (initialOffset + rangeTerm * i);
+      final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i, 3 * i + 1));
+          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
+    // Threads with even index remove disjoint ranges [0, 1] [3, 4] [6, 7] ...
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
       threads[2 * index] = new RemoveThread(countDownLatch, partitionManager,
           index, numThreadsPerOperation, removesPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
-          rangeTerm, rangeLength, 0);
+          rangeTerm, rangeLength, initialOffset);
       threads[2 * index + 1]
           = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
     }
@@ -358,13 +372,17 @@ public final class PartitionManagerTest {
     final int removesPerThread = addsPerThread;
     final long rangeTerm = 3;
     final long rangeLength = 2;
+    final int initialOffset = 0;
     final int totalNumberOfObjects = numThreadsPerOperation * addsPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
 
     // Start with IndexParity.ODD_INDEX objects only. (for removal)
+    // Register disjoint ranges [3, 4] [9, 10] [15, 16]...
     for (int i = 1; i < totalNumberOfObjects; i += 2) {
+      final int rangeStart = (int) (initialOffset + rangeTerm * i);
+      final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i, 3 * i + 1));
+          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
@@ -376,10 +394,10 @@ public final class PartitionManagerTest {
     for (int index = 0; index < numThreadsPerOperation; index++) {
       threads[index] = new RegisterThread(countDownLatch, partitionManager,
           index, numThreadsPerOperation, addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
-          rangeTerm, rangeLength, 0);
+          rangeTerm, rangeLength, initialOffset);
       threads[index + numThreadsPerOperation] = new RemoveThread(countDownLatch, partitionManager,
           index, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
-          rangeTerm, rangeLength, 0);
+          rangeTerm, rangeLength, initialOffset);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -387,8 +405,7 @@ public final class PartitionManagerTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION,
-        totalNumberOfObjects / 2,
+    assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
         partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
@@ -405,13 +422,17 @@ public final class PartitionManagerTest {
     final int getsPerThread = 100;
     final long rangeTerm = 3;
     final long rangeLength = 2;
+    final int initialOffset = 0;
     final int totalNumberOfObjects = numThreadsPerOperation * addsPerThread;
     final CountDownLatch countDownLatch = new CountDownLatch(3 * numThreadsPerOperation);
 
+    // Register disjoint ranges [0, 1] [3, 4] [6, 7] ...
     // Start with IndexParity.ODD_INDEX objects only. (for removal)
     for (int i = 1; i < totalNumberOfObjects; i += 2) {
+      final int rangeStart = (int) (initialOffset + rangeTerm * i);
+      final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i, 3 * i + 1));
+          partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
@@ -423,12 +444,12 @@ public final class PartitionManagerTest {
     for (int index = 0; index < numThreadsPerOperation; index++) {
       threads[3 * index] = new RegisterThread(countDownLatch, partitionManager,
           index, numThreadsPerOperation, addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
-          rangeTerm, rangeLength, 0);
+          rangeTerm, rangeLength, initialOffset);
       threads[3 * index + 1]
           = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
       threads[3 * index + 2] = new RemoveThread(countDownLatch, partitionManager,
           index, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
-          rangeTerm, rangeLength, 0);
+          rangeTerm, rangeLength, initialOffset);
     }
     TestUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -436,9 +457,191 @@ public final class PartitionManagerTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION,
-        totalNumberOfObjects / 2,
+    assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
         partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+  }
+
+  /**
+   * Testing multi-thread addition, removal, and retrieval on disjoint id ranges.
+   * This test use more than one evaluator id index.
+   * Check that the consistency of a MemoryStore is preserved when multiple threads try to
+   * add, remove, and retrieve disjoint ranges concurrently using multiple evaluator id indexes.
+   */
+  @Test
+  public void testMultithreadMultiEvaluatorAddGetRemoveDisjointRanges() throws InterruptedException {
+    final int numThreadsPerOperation = 8;
+    final int addsPerThread = 100000;
+    final int removesPerThread = addsPerThread;
+    final int getsPerThread = 100;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
+    final int initialOffset = 0;
+    final int totalNumberOfObjects = numThreadsPerOperation * addsPerThread;
+    final CountDownLatch countDownLatch = new CountDownLatch(3 * numThreadsPerOperation);
+
+    // Start with IndexParity.ODD_INDEX objects only. (for removal)
+    // Use evaluator-0 to evaluator-7, total 8 evaluator ids. (same as numThreadsPerOperation)
+    // Register disjoint ranges [0, 1] [3, 4] [6, 7] [9, 10] ...
+    for (int i = 1; i < addsPerThread; i += 2) {
+      for (int j = 0; j < numThreadsPerOperation; j++) {
+        final int itemIndex = numThreadsPerOperation * i + j;
+        final int rangeStart = (int) (initialOffset + rangeTerm * itemIndex);
+        final int rangeEnd = (int) (rangeStart + rangeLength - 1);
+        partitionManager.registerPartition(EVAL_ID_PREFIX + j, DATA_TYPE_PREFIX, rangeStart, rangeEnd);
+      }
+    }
+
+    final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
+    // If we set AddThreads and RemoveThreads to add and remove the same object,
+    // the behavior is non-deterministic and impossible to check.
+    // Thus, we partition the objects set so that AddThreads and RemoveThreads
+    // never access the same object.
+    // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
+    for (int index = 0; index < numThreadsPerOperation; index++) {
+      threads[3 * index] = new RegisterThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+          addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX,
+          rangeTerm, rangeLength, initialOffset);
+      threads[3 * index + 1]
+          = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX);
+      threads[3 * index + 2] = new RemoveThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+          removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX,
+          rangeTerm, rangeLength, initialOffset);
+    }
+    TestUtils.runConcurrently(threads);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+
+    // check that all threads have finished without falling into deadlocks or infinite loops
+    assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
+    // check that the total number of objects equal the expected number
+    int realNumberOfObjects = 0;
+    for (int index = 0; index < numThreadsPerOperation; index++) {
+      realNumberOfObjects += partitionManager.getRangeSet(EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX).size();
+    }
+    assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2, realNumberOfObjects);
+  }
+
+  /**
+   * Testing multi-thread addition, removal, and retrieval on disjoint id ranges.
+   * This test use more than one data type index.
+   * Check that the consistency of a MemoryStore is preserved when multiple threads try to
+   * add, remove, and retrieve disjoint ranges of multiple data types concurrently.
+   */
+  @Test
+  public void testMultithreadMultiDataTypeAddGetRemoveDisjointRanges() throws InterruptedException {
+    final int numThreadsPerOperation = 8;
+    final int addsPerThread = 100000;
+    final int removesPerThread = addsPerThread;
+    final int getsPerThread = 100;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
+    final int initialOffset = 0;
+    final int totalNumberOfObjects = numThreadsPerOperation * addsPerThread;
+    final CountDownLatch countDownLatch = new CountDownLatch(3 * numThreadsPerOperation);
+
+    // Start with IndexParity.ODD_INDEX objects only. (for removal)
+    // Use DATA_TYPE_0 to DATA_TYPE_7, total 8 data types. (same as numThreadsPerOperation)
+    for (int i = 1; i < addsPerThread; i += 2) {
+      for (int j = 0; j < numThreadsPerOperation; j++) {
+        final int itemIndex = numThreadsPerOperation * i + j;
+        final int rangeStart = (int) (initialOffset + rangeTerm * itemIndex);
+        final int rangeEnd = (int) (rangeStart + rangeLength - 1);
+        partitionManager.registerPartition(EVAL_ID_PREFIX, DATA_TYPE_PREFIX + j, rangeStart, rangeEnd);
+      }
+    }
+
+    final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
+    // If we set AddThreads and RemoveThreads to add and remove the same object,
+    // the behavior is non-deterministic and impossible to check.
+    // Thus, we partition the objects set so that AddThreads and RemoveThreads
+    // never access the same object.
+    // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
+    for (int index = 0; index < numThreadsPerOperation; index++) {
+      threads[3 * index] = new RegisterThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+          addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index,
+          rangeTerm, rangeLength, initialOffset);
+      threads[3 * index + 1]
+          = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index);
+      threads[3 * index + 2] = new RemoveThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+          removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index,
+          rangeTerm, rangeLength, initialOffset);
+    }
+    TestUtils.runConcurrently(threads);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+
+    // check that all threads have finished without falling into deadlocks or infinite loops
+    assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
+    // check that the total number of objects equal the expected number
+    int realNumberOfObjects = 0;
+    for (int index = 0; index < numThreadsPerOperation; index++) {
+      realNumberOfObjects += partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index).size();
+    }
+    assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2, realNumberOfObjects);
+  }
+
+  /**
+   * Testing multi-thread addition, removal, and retrieval on disjoint id ranges.
+   * This test use more than one evaluator id and data type index.
+   * Check that the consistency of a MemoryStore is preserved when multiple threads try to
+   * add, remove, and retrieve disjoint ranges of multiple data types concurrently using multiple evaluator id indexes.
+   */
+  @Test
+  public void testMultithreadMultiEvaluatorMultiDataTypeAddGetRemoveDisjointRanges() throws InterruptedException {
+    final int numThreadsPerOperation = 8;
+    final int addsPerThread = 100000;
+    final int removesPerThread = addsPerThread;
+    final int getsPerThread = 100;
+    final long rangeTerm = 3;
+    final long rangeLength = 2;
+    final int initialOffset = 0;
+    final int totalNumberOfObjects = numThreadsPerOperation * addsPerThread;
+    final CountDownLatch countDownLatch = new CountDownLatch(3 * numThreadsPerOperation);
+
+    // Start with IndexParity.ODD_INDEX objects only. (for removal)
+    // Use 4 evaluators and 2 data types, total 8 cases. (same as numThreadsPerOperation)
+    for (int i = 1; i < addsPerThread; i += 2) {
+      for (int j = 0; j < numThreadsPerOperation; j++) {
+        final int itemIndex = numThreadsPerOperation * i + j;
+        final int evalIndex = j / 2 % 4;
+        final int dataTypeIndex = j % 2;
+        final int rangeStart = (int) (initialOffset + rangeTerm * itemIndex);
+        final int rangeEnd = (int) (rangeStart + rangeLength - 1);
+        partitionManager.registerPartition(EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
+            rangeStart, rangeEnd);
+      }
+    }
+
+    final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
+    // If we set AddThreads and RemoveThreads to add and remove the same object,
+    // the behavior is non-deterministic and impossible to check.
+    // Thus, we partition the objects set so that AddThreads and RemoveThreads
+    // never access the same object.
+    // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
+    for (int index = 0; index < numThreadsPerOperation; index++) {
+      final int evalIndex = index / 2 % 4;
+      final int dataTypeIndex = index % 2;
+      threads[3 * index] = new RegisterThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+          addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
+          rangeTerm, rangeLength, initialOffset);
+      threads[3 * index + 1] = new GetThread(countDownLatch, partitionManager, getsPerThread,
+          EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex);
+      threads[3 * index + 2] = new RemoveThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+          removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
+          rangeTerm, rangeLength, initialOffset);
+    }
+    TestUtils.runConcurrently(threads);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+
+    // check that all threads have finished without falling into deadlocks or infinite loops
+    assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
+    // check that the total number of objects equal the expected number
+    int realNumberOfObjects = 0;
+    for (int i = 0; i < numThreadsPerOperation; i++) {
+      final int evalIndex = i / 2 % 4;
+      final int dataTypeIndex = i % 2;
+      realNumberOfObjects
+          += partitionManager.getRangeSet(EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex).size();
+    }
+    assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2, realNumberOfObjects);
   }
 
   private enum IndexParity {

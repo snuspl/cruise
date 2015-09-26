@@ -17,9 +17,9 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import org.apache.htrace.Trace;
-import org.apache.htrace.TraceInfo;
-import org.apache.htrace.TraceScope;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;

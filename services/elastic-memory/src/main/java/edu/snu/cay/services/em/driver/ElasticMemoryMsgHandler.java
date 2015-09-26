@@ -17,11 +17,12 @@ package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.RegisMsg;
+import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;
-import org.apache.htrace.Trace;
-import org.apache.htrace.TraceScope;
+import org.htrace.Trace;
+import org.htrace.TraceScope;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
@@ -85,6 +86,9 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
 
   private void onResultMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onResultMsgScope = Trace.startSpan(ON_RESULT_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      // TODO #160: register/remove the migrated partitions from/to PartitionManager using resultMsg.getIdRange()
+
       callbackRouter.onCompleted(msg);
     }
   }

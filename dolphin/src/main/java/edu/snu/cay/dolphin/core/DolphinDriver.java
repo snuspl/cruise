@@ -16,13 +16,21 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.groupcomm.names.*;
+import edu.snu.cay.dolphin.core.metric.HeartbeatMetricsHandler;
 import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
+import edu.snu.cay.services.dataloader.DataLoader;
+import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
+import edu.snu.cay.services.em.trace.HTraceParameters;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
+import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.RunningTask;
@@ -42,6 +50,7 @@ import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
+import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -62,11 +71,11 @@ public final class DolphinDriver {
   private static final Logger LOG = Logger.getLogger(DolphinDriver.class.getName());
 
   /**
-   * Sub-id for Compute Tasks.
+   * Sub-id for Control and Compute Tasks.
    * This object grants different IDs to each task
    * e.g. ComputeTask-0, ComputeTask-1, and so on.
    */
-  private final AtomicInteger taskId = new AtomicInteger(0);
+  private final AtomicInteger taskIdCounter = new AtomicInteger(0);
 
   /**
    * ID of the Context that goes under Controller Task.
@@ -87,6 +96,12 @@ public final class DolphinDriver {
   private final DataLoadingService dataLoadingService;
 
   /**
+   * Customized REEF DataLoader.
+   * Sends evaluator allocation requests for data loading.
+   */
+  private final DataLoader dataLoader;
+
+  /**
    * The output service.
    * Used to create an output service configuration for each context.
    */
@@ -97,6 +112,11 @@ public final class DolphinDriver {
    * Checks whether the number of evaluators configured by the data loading service can be gang scheduled.
    */
   private final SchedulabilityAnalyzer schedulabilityAnalyzer;
+
+  /**
+   * Manager of the configuration of Elastic Memory service.
+   */
+  private final ElasticMemoryConfiguration emConf;
 
   /**
    * Job to execute.
@@ -124,6 +144,8 @@ public final class DolphinDriver {
    */
   private final MetricCodec metricCodec;
 
+  private final HTraceParameters traceParameters;
+
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final UserParameters userParameters;
 
@@ -139,6 +161,7 @@ public final class DolphinDriver {
    * @param dataLoadingService manager for Data Loading configurations
    * @param outputService
    * @param schedulabilityAnalyzer
+   * @param emConf manager for Elastic Memory configurations
    * @param userJobInfo
    * @param userParameters
    * @param metricCodec
@@ -146,21 +169,27 @@ public final class DolphinDriver {
   @Inject
   private DolphinDriver(final GroupCommDriver groupCommDriver,
                         final DataLoadingService dataLoadingService,
+                        final DataLoader dataLoader,
                         final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
+                        final ElasticMemoryConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
-                        final MetricCodec metricCodec) {
+                        final MetricCodec metricCodec,
+                        final HTraceParameters traceParameters) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
+    this.dataLoader = dataLoader;
     this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
+    this.emConf = emConf;
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
     this.commGroupDriverList = new LinkedList<>();
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
     this.metricCodec = metricCodec;
+    this.traceParameters = traceParameters;
     initializeCommDriver();
   }
 
@@ -217,6 +246,32 @@ public final class DolphinDriver {
       commGroup.finalise();
       sequence++;
     }
+    taskIdCounter.set(sequence);
+  }
+
+  final class StartHandler implements EventHandler<StartTime> {
+
+    @Override
+    public void onNext(final StartTime startTime) {
+      LOG.log(Level.INFO, "StartTime: {0}", startTime);
+      dataLoader.releaseResourceRequestGate();
+    }
+  }
+
+  final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+
+    @Override
+    public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+      dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
+    }
+  }
+
+  final class EvaluatorFailedHandler implements EventHandler<FailedEvaluator> {
+
+    @Override
+    public void onNext(final FailedEvaluator failedEvaluator) {
+      dataLoader.handleDataLoadingEvalFailure(failedEvaluator);
+    }
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
@@ -234,29 +289,35 @@ public final class DolphinDriver {
         final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
         final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
         final Configuration outputServiceConf = outputService.getServiceConfiguration();
-        final Configuration keyValueServiceStoreConf = KeyValueStoreService.getServiceConfiguration();
         final Configuration metricTrackerServiceConf = MetricsCollectionService.getServiceConfiguration();
-        final Configuration finalContextConf = MetricsCollectionService.getContextConfiguration(groupCommContextConf);
-        final Configuration finalServiceConf;
+        final Configuration emContextConf = emConf.getContextConfiguration();
+        final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
+        final Configuration traceConf = traceParameters.getConfiguration();
+        final Configuration heartbeatContextConf = HeartbeatMetricsHandler.getContextConfiguration();
+        final Configuration heartbeatServiceConf = HeartbeatMetricsHandler.getServiceConfiguration();
 
+        final Configuration finalContextConf = Configurations.merge(
+            groupCommContextConf, emContextConf, heartbeatContextConf);
+
+        final Configuration finalServiceConf;
         if (dataLoadingService.isComputeContext(activeContext)) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
           ctrlTaskContextId = getContextId(groupCommContextConf);
 
-          // Add the Key-Value Store service, the Output service,
-          // the Metrics Collection service, and the Group Communication service
+          // Add the Elastic Memory service, the Output service,
+          // the Metric Collection service, and the Group Communication service
           finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, outputServiceConf,
-              keyValueServiceStoreConf, metricTrackerServiceConf);
+              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
+              outputServiceConf, traceConf, heartbeatServiceConf);
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
-          // Add the Data Parse service, the Key-Value Store service,
-          // the Output service, the Metrics Collection service, and the Group Communication service
+          // Add the Data Parse service, the Elastic Memory service,
+          // the Output service, the Metric Collection service, and the Group Communication service
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
           finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, dataParseConf, outputServiceConf,
-              keyValueServiceStoreConf, metricTrackerServiceConf);
+              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, dataParseConf, outputServiceConf,
+              metricTrackerServiceConf, traceConf, heartbeatServiceConf);
         }
 
         activeContext.submitContextAndService(finalContextConf, finalServiceConf);
@@ -362,7 +423,10 @@ public final class DolphinDriver {
     if (isCtrlTaskId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
 
-      dolphinTaskConfBuilder.bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass());
+      dolphinTaskConfBuilder
+          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+          .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
+          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(stageSequence))
@@ -377,10 +441,14 @@ public final class DolphinDriver {
     } else {
       LOG.log(Level.INFO, "Submit ComputeTask");
 
-      dolphinTaskConfBuilder.bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass());
+      final int taskId = taskIdCounter.getAndIncrement();
+      dolphinTaskConfBuilder
+          .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
+          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
       partialTaskConf = Configurations.merge(
           TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId.getAndIncrement()))
+              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId))
               .set(TaskConfiguration.TASK, ComputeTask.class)
               .build(),
           dolphinTaskConfBuilder.build(),
@@ -408,8 +476,4 @@ public final class DolphinDriver {
   private String getCmpTaskId(final int sequence) {
     return ComputeTask.TASK_ID_PREFIX + "-" + sequence;
   }
-
-
-
-
 }

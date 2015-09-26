@@ -66,6 +66,16 @@
       <groupId>org.apache.mahout</groupId>
       <artifactId>mahout-math</artifactId>
     </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>elastic-memory</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}.services</groupId>
+      <artifactId>dataloader</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
 
   <build>

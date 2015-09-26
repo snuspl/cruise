@@ -15,17 +15,20 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
+import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
-import org.apache.reef.io.data.loading.api.DataLoadingRequestBuilder;
 import org.apache.reef.io.data.output.TaskOutputServiceBuilder;
 import org.apache.reef.io.data.output.TaskOutputStreamProvider;
 import org.apache.reef.io.data.output.TaskOutputStreamProviderHDFS;
 import org.apache.reef.io.data.output.TaskOutputStreamProviderLocal;
 import org.apache.reef.io.network.group.impl.driver.GroupCommService;
+import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
+import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -68,7 +71,7 @@ public final class DolphinLauncher {
 
   private LauncherStatus run() throws InjectionException {
     return DriverLauncher.getLauncher(getRuntimeConfiguration())
-        .run(getDriverConfWithDataLoad(), dolphinParameters.getTimeout());
+        .run(getDriverConfiguration(), dolphinParameters.getTimeout());
   }
 
   private Configuration getRuntimeConfiguration() {
@@ -85,11 +88,14 @@ public final class DolphinLauncher {
         .build();
   }
 
-  private Configuration getDriverConfWithDataLoad() {
+  private Configuration getDriverConfiguration() {
     final ConfigurationModule driverConfiguration = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, dolphinParameters.getIdentifier())
+        .set(DriverConfiguration.ON_DRIVER_STARTED, DolphinDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, DolphinDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.EvaluatorFailedHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, DolphinDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_MESSAGE, DolphinDriver.ContextMessageHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, DolphinDriver.TaskCompletedHandler.class)
@@ -124,6 +130,9 @@ public final class DolphinLauncher {
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         GroupCommService.getConfiguration(),
+        ElasticMemoryConfiguration.getDriverConfiguration(),
+        NameServerConfiguration.CONF.build(),
+        LocalNameResolverConfiguration.CONF.build(),
         dolphinParameters.getDriverConf());
   }
 

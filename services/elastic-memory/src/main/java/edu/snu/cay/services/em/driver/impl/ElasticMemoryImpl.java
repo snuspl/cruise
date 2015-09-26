@@ -22,9 +22,9 @@ import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
-import org.apache.htrace.Trace;
-import org.apache.htrace.TraceInfo;
-import org.apache.htrace.TraceScope;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
@@ -89,6 +89,22 @@ public final class ElasticMemoryImpl implements ElasticMemory {
       callbackRouter.register(operatorId, callback);
 
       sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, idRangeSet,
+          operatorId, TraceInfo.fromSpan(traceScope.getSpan()));
+    }
+  }
+
+  @Override
+  public void move(final String dataType,
+                   final int numUnits,
+                   final String srcEvalId,
+                   final String destEvalId,
+                   @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
+    try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
+      final String operatorId = MOVE + "-" + Long.toString(operatorIdCounter.getAndIncrement());
+
+      callbackRouter.register(operatorId, callback);
+
+      sender.sendCtrlMsg(srcEvalId, dataType, destEvalId, numUnits,
           operatorId, TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }

@@ -20,9 +20,11 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.util.Optional;
 
 import javax.annotation.concurrent.ThreadSafe;
-import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Evaluator-side interface to synchronize threads that wait for receiving specific ShuffleControlMessages.
@@ -36,28 +38,49 @@ import java.util.Map;
 @ThreadSafe
 public final class ControlMessageSynchronizer {
 
-  private Map<Integer, ControlMessageLatch> latchMap;
-  private Map<Integer, Boolean> isLatchClosedMap;
+  /**
+   * Map of ControlMessageLatches. There is a ControlMessageLatches for
+   * a certain code in the map only when some threads are waiting the code on the latch.
+   */
+  private final Map<Integer, ControlMessageLatch> latchMap;
 
-  @Inject
-  private ControlMessageSynchronizer() {
+  /**
+   * Indicates whether a latch for a certain code is closed or not.
+   */
+  private final Map<Integer, Boolean> isLatchClosedMap;
+
+  /**
+   * Maintaining the ShuffleControlMessage which was used to close a latch.
+   */
+  private final Map<Integer, ShuffleControlMessage> closedControlMessageMap;
+
+  /**
+   * Construct a synchronizer.
+   */
+  public ControlMessageSynchronizer() {
     this.latchMap = new HashMap<>();
     this.isLatchClosedMap = new HashMap<>();
+    this.closedControlMessageMap = new HashMap<>();
   }
 
   /**
-   * Wait for another thread to reset the latch for the ShuffleControlMessage that is specified by the given code.
-   * If the latch is closed, the caller returns Optional.empty without waiting.
+   * Wait certain amount of time until another thread resets the latch
+   * for the ShuffleControlMessage that is specified by the given code.
+   * If timeout is zero, callers endlessly wait for resetting.
+   *
+   * If the latch is closed, it returns the saved control message that is used for closing the latch.
+   * It returns Optional.empty if the specified time elapsed without resetting.
    *
    * @param code a control message code
+   * @param timeout the maximum time to wait in milliseconds.
    * @return the expected ShuffleControlMessage
    */
-  public Optional<ShuffleControlMessage> waitOnLatch(final int code) {
+  public Optional<ShuffleControlMessage> waitOnLatch(final int code, final long timeout) {
     final ControlMessageLatch controlMessageLatch;
     synchronized (this) {
       final Boolean isLatchClosed = isLatchClosedMap.get(code);
       if (isLatchClosed != null && isLatchClosed) {
-        return Optional.empty();
+        return Optional.of(closedControlMessageMap.get(code));
       }
 
       if (!latchMap.containsKey(code)) {
@@ -67,7 +90,7 @@ public final class ControlMessageSynchronizer {
       controlMessageLatch = latchMap.get(code);
     }
 
-    return controlMessageLatch.waitOnLatch();
+    return controlMessageLatch.waitOnLatch(timeout);
   }
 
   /**
@@ -94,6 +117,7 @@ public final class ControlMessageSynchronizer {
     synchronized (this) {
       resetLatch(shuffleControlMessage);
       isLatchClosedMap.put(shuffleControlMessage.getCode(), true);
+      closedControlMessageMap.put(shuffleControlMessage.getCode(), shuffleControlMessage);
     }
   }
 
@@ -108,7 +132,9 @@ public final class ControlMessageSynchronizer {
       if (isLatchClosed == null || !isLatchClosed) {
         throw new IllegalStateException("You cannot reopen the latch for the code[ " + code + " ] which is not closed");
       }
+
       isLatchClosedMap.put(code, false);
+      closedControlMessageMap.remove(code);
     }
   }
 
@@ -117,12 +143,16 @@ public final class ControlMessageSynchronizer {
    */
   private final class ControlMessageLatch {
 
+    private final ReentrantLock lock;
+    private final Condition condition;
     private boolean released;
     private ShuffleControlMessage expectedControlMessage;
     private final int expectedCode;
 
     private ControlMessageLatch(final int expectedCode) {
       this.expectedCode = expectedCode;
+      this.lock = new ReentrantLock();
+      this.condition = lock.newCondition();
     }
 
     /**
@@ -131,7 +161,8 @@ public final class ControlMessageSynchronizer {
      * @param controlMessage a shuffle control message
      */
     private void release(final ShuffleControlMessage controlMessage) {
-      synchronized (this) {
+      lock.lock();
+      try {
         if (controlMessage.getCode() != expectedCode) {
           throw new IllegalArgumentException("The expected code is " + expectedCode +
               " but the latch was released with " + controlMessage.getCode());
@@ -140,27 +171,43 @@ public final class ControlMessageSynchronizer {
         if (!released) {
           expectedControlMessage = controlMessage;
           released = true;
-          notifyAll();
+          condition.signalAll();
         }
+      } finally {
+        lock.unlock();
       }
     }
 
     /**
-     * Wait for another thread to release the latch.
+     * Wait certain amount of time until another thread releases the latch.
+     * If timeout is zero, callers endlessly wait for releasing.
      *
+     * It returns Optional.empty if the specified time elapsed without releasing.
+     *
+     * @param timeout the maximum time to wait in milliseconds.
      * @return the expected ShuffleControlMessage
      */
-    private Optional<ShuffleControlMessage> waitOnLatch() {
-      synchronized (this) {
-        try {
-          while (!released) {
-            wait();
+    private Optional<ShuffleControlMessage> waitOnLatch(final long timeout) {
+      lock.lock();
+      try {
+        if (!released) {
+          try {
+            if (timeout == 0) { // wait until it is signalled
+              condition.await();
+            } else { // wait until it is signalled or the specified waiting time elapses.
+              final boolean timeElapsed = !condition.await(timeout, TimeUnit.MILLISECONDS);
+              if (timeElapsed) {
+                return Optional.empty();
+              }
+            }
+          } catch (final InterruptedException e) {
+            throw new RuntimeException(e);
           }
-        } catch (final InterruptedException e) {
-          throw new RuntimeException(e);
         }
 
-        return Optional.ofNullable(expectedControlMessage);
+        return Optional.of(expectedControlMessage);
+      } finally {
+        lock.unlock();
       }
     }
   }

@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.services.em.trace;
 
-import org.apache.htrace.Sampler;
-import org.apache.htrace.SpanReceiver;
-import org.apache.htrace.Trace;
-import org.apache.htrace.TraceScope;
+import org.htrace.Sampler;
+import org.htrace.SpanReceiver;
+import org.htrace.Trace;
+import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 
@@ -38,7 +38,7 @@ public final class HTrace {
   /**
    * We've noticed a ~200ms delay when calling startSpan for the first time.
    * Calling initialTrace here moves this delay from trace-time to Tang construction time.
-   * The reason for the delay is conjectured to be the lazy initialization at {@link org.apache.htrace.Tracer}
+   * The reason for the delay is conjectured to be the lazy initialization at {@link org.htrace.Tracer}
    */
   private void initialTrace() {
     final TraceScope traceScope = Trace.startSpan("initialTrace", Sampler.ALWAYS);
