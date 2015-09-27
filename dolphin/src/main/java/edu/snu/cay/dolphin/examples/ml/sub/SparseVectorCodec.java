@@ -26,7 +26,6 @@ import java.util.logging.Logger;
 
 /**
  * Codec for sparse vector.
- * Assumes a given vector is iterable in index order in an efficiently way.
  */
 public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Vector> {
   private static final Logger LOG = Logger.getLogger(SparseVectorCodec.class.getName());
@@ -37,10 +36,13 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
 
   @Override
   public byte[] encode(final Vector vector) {
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(vector));
-    final DataOutputStream dos = new DataOutputStream(baos);
-    encodeToStream(vector, dos);
-    return baos.toByteArray();
+    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(vector));
+         final DataOutputStream dos = new DataOutputStream(baos)) {
+      encodeToStream(vector, dos);
+      return baos.toByteArray();
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
+    }
   }
 
   @Override
@@ -59,14 +61,15 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
-
   }
 
   @Override
   public Vector decode(final byte[] bytes) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    final DataInputStream dis = new DataInputStream(bais);
-    return decodeFromStream(dis);
+    try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+      return decodeFromStream(dis);
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
+    }
   }
 
   @Override

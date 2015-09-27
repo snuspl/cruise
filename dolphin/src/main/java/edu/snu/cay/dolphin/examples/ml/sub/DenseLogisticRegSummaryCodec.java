@@ -59,21 +59,14 @@ public final class DenseLogisticRegSummaryCodec implements Codec<LogisticRegSumm
 
   @Override
   public LogisticRegSummary decode(final byte[] data) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-    final LinearModel model;
-    final int count;
-    final int posNum;
-    final int negNum;
-
-    try (final DataInputStream dais = new DataInputStream(bais)) {
-      count = dais.readInt();
-      posNum = dais.readInt();
-      negNum = dais.readInt();
-      model = denseLinearModelCodec.decodeFromStream(dais);
+    try (final DataInputStream dais = new DataInputStream(new ByteArrayInputStream(data))) {
+      final int count = dais.readInt();
+      final int posNum = dais.readInt();
+      final int negNum = dais.readInt();
+      final LinearModel model = denseLinearModelCodec.decodeFromStream(dais);
+      return new LogisticRegSummary(model, count, posNum, negNum);
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
-
-    return new LogisticRegSummary(model, count, posNum, negNum);
   }
 }

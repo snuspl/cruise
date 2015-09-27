@@ -20,10 +20,7 @@ import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.*;
 
 public final class SparseLinearModelCodec implements Codec<LinearModel>, StreamingCodec<LinearModel> {
 
@@ -36,10 +33,13 @@ public final class SparseLinearModelCodec implements Codec<LinearModel>, Streami
 
   @Override
   public byte[] encode(final LinearModel model) {
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(model));
-    final DataOutputStream dos = new DataOutputStream(baos);
-    encodeToStream(model, dos);
-    return baos.toByteArray();
+    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(model));
+         final DataOutputStream dos = new DataOutputStream(baos)) {
+      encodeToStream(model, dos);
+      return baos.toByteArray();
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
+    }
   }
 
   @Override
@@ -49,9 +49,11 @@ public final class SparseLinearModelCodec implements Codec<LinearModel>, Streami
 
   @Override
   public LinearModel decode(final byte[] bytes) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    final DataInputStream dis = new DataInputStream(bais);
-    return decodeFromStream(dis);
+    try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+      return decodeFromStream(dis);
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
+    }
   }
 
   @Override

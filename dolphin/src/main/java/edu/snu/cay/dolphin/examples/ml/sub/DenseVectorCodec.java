@@ -36,10 +36,13 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
 
   @Override
   public byte[] encode(final Vector vector) {
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(vector));
-    final DataOutputStream daos = new DataOutputStream(baos);
-    encodeToStream(vector, daos);
-    return baos.toByteArray();
+    try (final ByteArrayOutputStream baos = new ByteArrayOutputStream(getNumBytes(vector));
+         final DataOutputStream daos = new DataOutputStream(baos)) {
+      encodeToStream(vector, daos);
+      return baos.toByteArray();
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
+    }
   }
 
   @Override
@@ -60,9 +63,11 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
 
   @Override
   public Vector decode(final byte[] bytes) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    final DataInputStream dis = new DataInputStream(bais);
-    return decodeFromStream(dis);
+    try (final DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+      return decodeFromStream(dis);
+    } catch (final IOException e) {
+      throw new RuntimeException(e.getCause());
+    }
   }
 
   @Override
