@@ -15,7 +15,10 @@
  */
 package edu.snu.cay.services.em.driver;
 
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.utils.AvroUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
@@ -47,6 +50,7 @@ import static edu.snu.cay.services.em.driver.MigrationInfo.State.*;
 public final class MigrationManager {
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
   private final PartitionManager partitionManager;
+  private final ElasticMemoryCallbackRouter callbackRouter;
   private final int updateTimeoutMillis;
 
   private final ConcurrentHashMap<String, MigrationInfo> ongoingMigrations = new ConcurrentHashMap<>();
@@ -59,9 +63,11 @@ public final class MigrationManager {
   @Inject
   private MigrationManager(final InjectionFuture<ElasticMemoryMsgSender> sender,
                            final PartitionManager partitionManager,
+                           final ElasticMemoryCallbackRouter callbackRouter,
                            @Parameter(UpdateTimeoutMillis.class) final int updateTimeoutMillis) {
     this.sender = sender;
     this.partitionManager = partitionManager;
+    this.callbackRouter = callbackRouter;
     this.updateTimeoutMillis = updateTimeoutMillis;
   }
 
@@ -74,7 +80,6 @@ public final class MigrationManager {
    * @param ranges Range of the data.
    * @param traceInfo Information for Trace.
    */
-  // TODO #90: Instead of RuntimeException, handle the exception properly.
   public synchronized void startMigration(final String operationId,
                                           final String senderId,
                                           final String receiverId,
@@ -82,7 +87,7 @@ public final class MigrationManager {
                                           final Set<LongRange> ranges,
                                           final TraceInfo traceInfo) {
     if (ongoingMigrations.containsKey(operationId)) {
-      throw new RuntimeException("Already registered id : " + operationId);
+      notifyFailure(operationId, "Already registered id : " + operationId);
     } else {
       ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType));
       sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
@@ -98,7 +103,6 @@ public final class MigrationManager {
    * @param numUnits Number of units.
    * @param traceInfo Information for Trace.
    */
-  // TODO #90: Instead of RuntimeException, handle the exception properly.
   public synchronized void startMigration(final String operationId,
                                           final String senderId,
                                           final String receiverId,
@@ -106,7 +110,7 @@ public final class MigrationManager {
                                           final int numUnits,
                                           final TraceInfo traceInfo) {
     if (ongoingMigrations.containsKey(operationId)) {
-      throw new RuntimeException("Already registered id : " + operationId);
+      notifyFailure(operationId, "Already registered id : " + operationId);
     } else {
       ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType));
       sender.get().sendCtrlMsg(senderId, dataType, receiverId, numUnits, operationId, traceInfo);
@@ -120,7 +124,7 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    * @param ranges Ranges of the data.
    */
-  public synchronized void waitUpdate(final String operationId, final Set<LongRange> ranges) {
+  synchronized void waitUpdate(final String operationId, final Set<LongRange> ranges) {
     final MigrationInfo updatedInfo = checkAndUpdateState(operationId, SENDING_DATA, WAITING_UPDATE);
     updatedInfo.setRanges(ranges); // Update the range information also.
 
@@ -134,22 +138,23 @@ public final class MigrationManager {
    * @param traceInfo Trace information
    */
   public void applyUpdates(final TraceInfo traceInfo) {
-    try {
-      synchronized (this) {
-        updateCounter = new CountDownLatch(waiterIds.size());
+    synchronized (this) {
+      updateCounter = new CountDownLatch(waiterIds.size());
 
-        // Update receivers first.
-        for (final String waiterId : waiterIds) {
-          final MigrationInfo updatedInfo = checkAndUpdateState(waiterId, WAITING_UPDATE, UPDATING_RECEIVER);
-          final String receiverId = updatedInfo.getReceiverId();
-          sender.get().sendUpdateMsg(receiverId, waiterId, traceInfo);
-        }
-        waiterIds.clear();
+      // Update receivers first.
+      for (final String waiterId : waiterIds) {
+        final MigrationInfo updatedInfo = checkAndUpdateState(waiterId, WAITING_UPDATE, UPDATING_RECEIVER);
+        final String receiverId = updatedInfo.getReceiverId();
+        sender.get().sendUpdateMsg(receiverId, waiterId, traceInfo);
       }
-      // This thread blocks until all the updates are applied.
+      waiterIds.clear();
+    }
+
+    try {
+      // Blocks until all the updates are applied.
       updateCounter.await(updateTimeoutMillis, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
-      // TODO #90: Instead of runtime exception, we need to handle the failure and notify the failure via callback.
+      // TODO #90: Consider how we can deal with this exception
       new RuntimeException(e);
     }
   }
@@ -159,7 +164,7 @@ public final class MigrationManager {
    * @param operationId Identifier of the {@code move} operation
    * @param traceInfo Trace information
    */
-  public synchronized boolean movePartition(final String operationId, final TraceInfo traceInfo) {
+  synchronized boolean movePartition(final String operationId, final TraceInfo traceInfo) {
     try (final TraceScope movePartition = Trace.startSpan(MOVE_PARTITION, traceInfo)) {
       final MigrationInfo updatedInfo = checkAndUpdateState(operationId, UPDATING_RECEIVER, MOVING_PARTITION);
 
@@ -184,7 +189,7 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    * @param traceInfo Trace information
    */
-  public synchronized void updateSender(final String operationId, final TraceInfo traceInfo) {
+  synchronized void updateSender(final String operationId, final TraceInfo traceInfo) {
     final MigrationInfo updatedInfo = checkAndUpdateState(operationId, MOVING_PARTITION, UPDATING_SENDER);
 
     final String senderId = updatedInfo.getSenderId();
@@ -195,7 +200,7 @@ public final class MigrationManager {
    * Finish the migration.
    * @param operationId Identifier of {@code move} operation.
    */
-  public synchronized void finishMigration(final String operationId) {
+  synchronized void finishMigration(final String operationId) {
     checkAndUpdateState(operationId, UPDATING_SENDER, FINISHED);
     ongoingMigrations.remove(operationId);
     updateCounter.countDown();
@@ -205,12 +210,12 @@ public final class MigrationManager {
    * Check the current status and update it.
    * @return Updated migration information.
    */
-  // TODO #90: Instead of runtime exception, we need to handle the failure and notify the failure via callback.
   private synchronized MigrationInfo checkAndUpdateState(final String operationId,
                                                          final MigrationInfo.State expectedCurrentState,
                                                          final MigrationInfo.State targetState) {
     if (!ongoingMigrations.containsKey(operationId)) {
-      throw new IllegalArgumentException("Migration with id : " + operationId + " does not exist.");
+      LOG.log(Level.SEVERE, "The operation id {0} is lost.", operationId);
+      notifyFailure(operationId, "The operation id is lost.");
     }
 
     final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
@@ -223,6 +228,14 @@ public final class MigrationManager {
       migrationInfo.setState(targetState);
       return migrationInfo;
     }
+  }
+
+  /**
+   * Notify the failure to the User via callback.
+   */
+  synchronized void notifyFailure(final String operationId, final String reason) {
+    final AvroElasticMemoryMessage msg = AvroUtils.generateFailureMessage(operationId, reason);
+    callbackRouter.onFailed(msg);
   }
 
   @NamedParameter(doc = "Timeout for updating EM's state (default: 100s).", default_value = "100000")

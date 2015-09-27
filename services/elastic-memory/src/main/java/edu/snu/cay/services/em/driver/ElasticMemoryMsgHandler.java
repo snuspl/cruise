@@ -80,6 +80,10 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       onUpdateAckMsg(innerMsg);
       break;
 
+    case FailureMsg:
+      callbackRouter.onFailed(innerMsg);
+      break;
+
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
@@ -115,8 +119,6 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
         migrationManager.waitUpdate(operationId, ranges);
         break;
 
-      case FAILURE:
-        // TODO #90: We need to handle the failure and notify the failure via callback.
       default:
         throw new RuntimeException("Undefined result: " + result);
       }
@@ -140,18 +142,15 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
         if (partitionMoved) {
           migrationManager.updateSender(operationId, traceInfo);
         } else {
-          // TODO #90: Moving partition failed. We need to handle the failure and notify the failure via callback.
-          throw new RuntimeException("Move failed while migration with id " + operationId);
+          migrationManager.notifyFailure(operationId, "Move failed while migration with id " + operationId);
         }
         break;
 
-      case SENDER_UPDATED:
+      case SUCCESS:
         migrationManager.finishMigration(operationId);
         callbackRouter.onCompleted(msg);
         break;
 
-      case FAILED:
-        // TODO #90: We need to handle the failure and notify the failure via callback.
       default:
         throw new RuntimeException("Undefined result: " + updateResult);
       }

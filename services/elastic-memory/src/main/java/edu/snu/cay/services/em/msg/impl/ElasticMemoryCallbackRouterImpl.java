@@ -80,4 +80,20 @@ public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallb
       handler.onNext(msg);
     }
   }
+
+  @Override
+  public void onFailed(final AvroElasticMemoryMessage msg) {
+    if (msg.getOperationId() == null) {
+      LOG.warning("No operationId provided. Ignoring msg " + msg);
+      return;
+    }
+    final String operationId = msg.getOperationId().toString();
+
+    final EventHandler<AvroElasticMemoryMessage> handler = handlerMap.remove(operationId);
+    if (handler == null) {
+      LOG.warning("Failed to find callback for " + operationId + ". Ignoring msg " + msg);
+    } else {
+      handler.onNext(msg);
+    }
+  }
 }

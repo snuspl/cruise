@@ -95,11 +95,24 @@ public interface ElasticMemoryMsgSender {
                     final long unitEndId,
                     @Nullable final TraceInfo parentTraceInfo);
 
+  /**
+   * Send an UpdateMsg to update the Evaluators' MemoryStore.
+   */
   void sendUpdateMsg(final String destId,
                      final String operationId,
                      @Nullable final TraceInfo parentTraceInfo);
 
+  /**
+   * Send a UpdateAckMsg to notify the update result.
+   */
   void sendUpdateAckMsg(final String operationId,
                         final UpdateResult result,
                         @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Send a FailureMsg to the Driver to notify the failure of operation.
+   */
+  void sendFailureMsg(final String operationId,
+                      final String reason,
+                      @Nullable final TraceInfo parentTraceInfo);
 }

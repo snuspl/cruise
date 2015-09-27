@@ -120,7 +120,7 @@
 },
 
 /**
- * Response message from evaluators to the driver.
+ * Response message from evaluators to the driver notifying the update result.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -130,8 +130,21 @@
   [
     {
     "name": "result",
-    "type": {"type": "enum", "name": "UpdateResult", "symbols": ["SENDER_UPDATED", "RECEIVER_UPDATED", "FAILED"]}
+    "type": {"type": "enum", "name": "UpdateResult", "symbols": ["SUCCESS", "RECEIVER_UPDATED", "FAILED"]}
     }
+  ]
+},
+
+/**
+ * Message that contains failure information
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "FailureMsg",
+  "fields":
+  [
+    {"name": "reason", "type": "string"}
   ]
 },
 
@@ -147,7 +160,7 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["CtrlMsg", "DataMsg", "ResultMsg", "RegisMsg", "UpdateMsg", "UpdateAckMsg"]}},
+        "symbols": ["CtrlMsg", "DataMsg", "ResultMsg", "RegisMsg", "UpdateMsg", "UpdateAckMsg", "FailureMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
@@ -157,7 +170,8 @@
     {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
     {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null},
     {"name": "updateMsg", "type": ["null", "UpdateMsg"], "default": null},
-    {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null}
+    {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null},
+    {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null}
   ]
 }
 ]

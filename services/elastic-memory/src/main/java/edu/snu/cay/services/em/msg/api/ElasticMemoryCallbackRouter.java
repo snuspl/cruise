@@ -42,4 +42,10 @@ public interface ElasticMemoryCallbackRouter {
    * @param msg The message that indicates a completed EM operation.
    */
   void onCompleted(AvroElasticMemoryMessage msg);
+
+   /**
+   * Call the registered callback for a failed EM operation.
+   * @param msg The message that indicates a failed EM operation.
+   */
+  void onFailed(AvroElasticMemoryMessage msg);
 }

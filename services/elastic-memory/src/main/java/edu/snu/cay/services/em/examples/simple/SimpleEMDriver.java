@@ -201,7 +201,7 @@ final class SimpleEMDriver {
                 @Override
                 public void onNext(final AvroElasticMemoryMessage emMsg) {
                   synchronized (SimpleEMDriver.this) {
-                    moveSucceeded[0] = emMsg.getUpdateAckMsg().getResult().equals(UpdateResult.SENDER_UPDATED)
+                    moveSucceeded[0] = emMsg.getUpdateAckMsg().getResult().equals(UpdateResult.SUCCESS)
                         ? true : false;
                     LOG.info("Move " + emMsg.getOperationId() + (moveSucceeded[0]
                         ? " succeeded" : " " + emMsg.getUpdateAckMsg().getResult()));

@@ -247,8 +247,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       final UpdateInfo updateInfo = pendingUpdates.remove(operationId);
       if (updateInfo == null) {
-        // TODO #90: We need to handle the failure and notify the failure via callback.
-        throw new RuntimeException("Update failed for id: " + operationId);
+        sender.get().sendFailureMsg(operationId, "Update information is lost",
+            TraceInfo.fromSpan(onUpdateMsgScope.getSpan()));
+        return;
       } else {
         switch (updateInfo.getType()) {
 
@@ -263,14 +264,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
           // REMOVE is done by the sender.
           final RemoveInfo removeInfo = (RemoveInfo) updateInfo;
           applyRemove(removeInfo);
-          updateResult = UpdateResult.SENDER_UPDATED;
+          updateResult = UpdateResult.SUCCESS;
           break;
         default:
           throw new RuntimeException("Undefined Message type of UpdateInfo: " + updateInfo);
         }
       }
 
-      sendUpdateAckMsg(operationId, updateResult, onUpdateMsgScope);
+      sender.get().sendUpdateAckMsg(operationId, updateResult, TraceInfo.fromSpan(onUpdateMsgScope.getSpan()));
     }
   }
 
@@ -297,14 +298,5 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     for (final long id : removeInfo.getIds()) {
       memoryStore.getElasticStore().remove(dataType, id);
     }
-  }
-
-  /**
-   * Send the ACK message of the update operation.
-   */
-  private void sendUpdateAckMsg(final String operationId,
-                                final UpdateResult result,
-                                final TraceScope traceScope) {
-    sender.get().sendUpdateAckMsg(operationId, result, TraceInfo.fromSpan(traceScope.getSpan()));
   }
 }
