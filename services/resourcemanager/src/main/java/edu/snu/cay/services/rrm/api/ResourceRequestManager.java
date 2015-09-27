@@ -19,10 +19,9 @@ import edu.snu.cay.services.rrm.impl.ResourceRequestManagerImpl;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
-
-import javax.annotation.Nullable;
 
 /**
  * Interface for handling resource requests.
@@ -33,29 +32,46 @@ import javax.annotation.Nullable;
 public interface ResourceRequestManager {
 
   /**
-   * REEF services can use this method to request for evaluators.
+   * REEF drivers and services can use this method to request for evaluators.
    * @param requestorId Identifier of requestor
-   * @param number Number of evaluators requested
-   * @param megaBytes Memory size of evaluator
-   * @param cores Number of cores for each evaluator
+   * @param evaluatorRequest Specifies requested evaluator information
+   */
+  void request(String requestorId, EvaluatorRequest evaluatorRequest);
+
+  /**
+   * REEF drivers and services can use this method to request for evaluators.
+   * @param requestorId Identifier of requestor
+   * @param evaluatorRequest Specifies requested evaluator information
    * @param callback An application-level callback to be called
    */
-  void request(String requestorId, int number, int megaBytes, int cores,
-               @Nullable EventHandler<ActiveContext> callback);
+  void request(String requestorId, EvaluatorRequest evaluatorRequest, EventHandler<ActiveContext> callback);
 
   /**
    * Determine which component requested this evaluator.
    * Can be called after AllocatedEvaluator event occurs.
    * Users may use this method to hand over the allocated evaluator to the right service.
-   * @param allocatedEvaluator target evaluator we want to know about
-   * @return identifier of requestor which was registered by {@code request}
+   * AllocatedEvaluatorHandler in Driver may call this method.
+   * @param allocatedEvaluator Target evaluator we want to know about
+   * @return Identifier of requestor which was registered by {@code request}
    */
   String getRequestor(AllocatedEvaluator allocatedEvaluator);
 
   /**
+   * Determine which component requested this evaluator.
+   * Can be called after AllocatedEvaluator event occurs.
+   * Users may use this method to hand over the evaluator to the right service.
+   * Handlers in Driver may call this method.
+   * @param evaluatorId Target evaluatorId we want to know about
+   * @return Identifier of requestor which was registered by {@code request}
+   */
+  String getRequestor(String evaluatorId);
+
+  /**
    * Trigger callbacks previously registered by {@code request}.
    * Can be called after ActiveContext event occurs.
-   * @param activeContext target activeContext to be handled
+   * ActiveContextHandler in Driver may call this method,
+   * so user can control when to execute the preregistered callback.
+   * @param activeContext Target activeContext to be handled
    */
   void triggerCallback(ActiveContext activeContext);
 }
