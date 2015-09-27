@@ -125,6 +125,58 @@ public final class PartitionManagerTest {
   }
 
   /**
+   * Testing removal on intersecting range,
+   * where the ranges have the same ends.
+   */
+  @Test
+  public void testSameEndRangeRemove() {
+    final String evalId = EVAL_ID_PREFIX + 0;
+    final String dataType = DATA_TYPE_PREFIX + 0;
+
+    // We initially have [1, 10]
+    partitionManager.register(evalId, dataType, 1, 10);
+
+    // Three ranges: LEFT | CENTER | RIGHT
+    final LongRange left = new LongRange(1, 3);
+    final LongRange center = new LongRange(4, 6);
+    final LongRange right = new LongRange(7, 10);
+
+    // Remove LEFT ([1, 3]) from [1, 10]
+    final Set<LongRange> removedRanges1 = partitionManager.remove(evalId, dataType, left);
+
+    // Only this partition is removed
+    assertTrue(removedRanges1.contains(left));
+    assertEquals(1, removedRanges1.size());
+
+    // Remaining partitions: [4, 10]
+    assertEquals(1, partitionManager.getRangeSet(evalId, dataType).size());
+    assertTrue(partitionManager.getRangeSet(evalId, dataType).contains(new LongRange(4, 10)));
+
+    // Let's remove the other side
+
+    final Set<LongRange> rightRemoved = partitionManager.remove(evalId, dataType, right);
+
+    // Only this partition is removed
+    assertTrue(rightRemoved.contains(right));
+    assertEquals(1, rightRemoved.size());
+
+    // Remaining partitions: [4, 6]
+    assertEquals(1, partitionManager.getRangeSet(evalId, dataType).size());
+    assertTrue(partitionManager.getRangeSet(evalId, dataType).contains(new LongRange(4, 6)));
+
+    // Let's remove the remaining range with the exact ends.
+
+    final Set<LongRange> centerRemoved = partitionManager.remove(evalId, dataType, center);
+
+    // Only this partition is removed
+    assertTrue(centerRemoved.contains(center));
+    assertEquals(1, centerRemoved.size());
+
+    // Now the partition is empty.
+    assertEquals(0, partitionManager.getRangeSet(evalId, dataType).size());
+  }
+
+  /**
    * Testing multi-thread addition on contiguous id ranges.
    * Check that the partitions are properly merged
    * when multiple threads try to add contiguous ranges concurrently.

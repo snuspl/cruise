@@ -264,44 +264,62 @@ public final class PartitionManager {
                                                          final TreeSet<LongRange> evalRanges,
                                                          final LongRange from,
                                                          final LongRange target) {
-    // Remove the range temporarily.
-    evalRanges.remove(from);
-    globalRanges.remove(from);
+    // Remove the range from both global and evaluator's range sets.
+    removeRange(from, globalRanges, evalRanges);
 
     if (target.containsRange(from)) {
       // If the target range is larger, the whole range is removed.
       return from;
 
-    } else if (from.containsRange(target)) {
-      // If the original range is larger, need repartition
-      // Split the original range outside target in 2 pieces, and insert them
-      final LongRange left = new LongRange(from.getMinimumLong(), target.getMinimumLong() - 1);
-      final LongRange right = new LongRange(target.getMaximumLong() + 1, from.getMaximumLong());
-      globalRanges.add(left);
-      globalRanges.add(right);
-      evalRanges.add(left);
-      evalRanges.add(right);
-      return target;
-
-    } else if (from.getMinimumLong() < target.getMinimumLong()) {
-      // Partially overlapping ranges will remove intersection only.
-      // Reinsert the rest of the range.
-      // min(from) < min(target) < max(from) < max(target)
-      final LongRange toRemove = new LongRange(target.getMinimumLong(), from.getMaximumLong());
-      final LongRange toReInsert = new LongRange(from.getMinimumLong(), target.getMinimumLong() - 1);
-      evalRanges.add(toReInsert);
-      globalRanges.add(toReInsert);
-      return toRemove;
-
-    } else if (target.getMinimumLong() < from.getMinimumLong()) {
-      // min(target) < min(from) < max(target) < max(from)
-      final LongRange toRemove = new LongRange(from.getMinimumLong(), target.getMaximumLong());
-      final LongRange toReInsert = new LongRange(target.getMaximumLong() + 1, from.getMaximumLong());
-      evalRanges.add(toReInsert);
-      globalRanges.add(toReInsert);
-      return toRemove;
     } else {
-      throw new RuntimeException("Might be an unhandled corner case.");
+      // If two sections are overlapping, we can divide into three parts: LEFT | CENTER | RIGHT
+      // We need to remove CENTER ([centerLeft centerRight]) which is an intersection, and keep
+      // LEFT ([leftEnd (centerLeft-1)] and RIGHT ([(centerRight+1) rightEnd]) if they are not empty.
+      final long minFrom = from.getMinimumLong();
+      final long maxFrom = from.getMaximumLong();
+      final long minTarget = target.getMinimumLong();
+      final long maxTarget = target.getMaximumLong();
+
+      final long leftEnd = Math.min(minFrom, minTarget);
+      final long centerLeft = Math.max(minFrom, minTarget);
+      final long centerRight = Math.min(maxFrom, maxTarget);
+      final long endRight = Math.max(maxFrom, maxTarget);
+
+      // Keep LEFT if exists
+      if (leftEnd < centerLeft) {
+        final LongRange left = new LongRange(leftEnd, centerLeft - 1);
+        addRange(left, globalRanges, evalRanges);
+      }
+
+      // Keep RIGHT if exists
+      if (endRight > centerRight) {
+        final LongRange right = new LongRange(centerRight + 1, endRight);
+        addRange(right, globalRanges, evalRanges);
+      }
+
+      return target;
     }
+  }
+
+  /**
+   * Helper method for removing a range from both global and evaluator's range sets.
+   * For convenience, the range sets are passed via arguments to avoid additional lookup.
+   */
+  private void removeRange(final LongRange toRemove,
+                           final TreeSet<LongRange> globalRange,
+                           final TreeSet<LongRange> evalRange) {
+    globalRange.remove(toRemove);
+    evalRange.remove(toRemove);
+  }
+
+  /**
+   * Helper method for adding a range from both global and evaluator's range sets.
+   * For convenience, the range sets are passed via arguments to avoid additional lookup.
+   */
+  private void addRange(final LongRange toAdd,
+                        final TreeSet<LongRange> globalRange,
+                        final TreeSet<LongRange> evalRange) {
+    globalRange.add(toAdd);
+    evalRange.add(toAdd);
   }
 }
