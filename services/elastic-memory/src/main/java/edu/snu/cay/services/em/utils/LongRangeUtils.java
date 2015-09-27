@@ -63,4 +63,17 @@ public final class LongRangeUtils {
 
     return longRangeSet;
   }
+
+  /**
+   * Get the number of units inside the set of ranges.
+   * @param rangeSet Set of ranges.
+   * @return Number of units.
+   */
+  public static long getNumUnits(final Set<LongRange> rangeSet) {
+    long numUnits = 0;
+    for (final LongRange idRange : rangeSet) {
+      numUnits += (idRange.getMaximumLong() - idRange.getMinimumLong() + 1);
+    }
+    return numUnits;
+  }
 }
