@@ -15,7 +15,11 @@
  */
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.AvroLongRange;
+import edu.snu.cay.services.em.avro.RegisMsg;
+import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.services.em.utils.SingleMessageExtractor;
@@ -90,7 +94,7 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       final RegisMsg regisMsg = msg.getRegisMsg();
 
       // register a partition for the evaluator as specified in the message
-      partitionManager.registerPartition(msg.getSrcId().toString(),
+      partitionManager.register(msg.getSrcId().toString(),
           regisMsg.getDataType().toString(), regisMsg.getIdRange().getMin(), regisMsg.getIdRange().getMax());
     }
   }

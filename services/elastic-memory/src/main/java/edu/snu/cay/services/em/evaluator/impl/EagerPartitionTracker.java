@@ -29,7 +29,7 @@ import javax.inject.Inject;
  */
 @EvaluatorSide
 public final class EagerPartitionTracker implements PartitionTracker {
-  private static final String REGISTER_PARTITION = "registerPartition";
+  private static final String REGISTER_PARTITION = "register";
 
   private final ElasticMemoryMsgSender sender;
 

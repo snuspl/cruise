@@ -265,15 +265,15 @@ final class SimpleEMDriver {
 
           if (numToMove == length) { // Move the whole range
             partitionManager.remove(srcId, SimpleEMTask.DATATYPE, idRange);
-            partitionManager.registerPartition(destId, SimpleEMTask.DATATYPE, idRange);
+            partitionManager.register(destId, SimpleEMTask.DATATYPE, idRange);
             rangeSetToMove.add(idRange);
           } else { // Split the range and move it
             partitionManager.remove(srcId, SimpleEMTask.DATATYPE, idRange);
             final long lastIdToKeep = idRange.getMaximumLong() - numToMove;
             final LongRange rangeToKeep = new LongRange(idRange.getMinimumLong(), lastIdToKeep);
             final LongRange rangeToMove = new LongRange(lastIdToKeep + 1, idRange.getMaximumLong());
-            partitionManager.registerPartition(srcId, SimpleEMTask.DATATYPE, rangeToKeep);
-            partitionManager.registerPartition(destId, SimpleEMTask.DATATYPE, rangeToMove);
+            partitionManager.register(srcId, SimpleEMTask.DATATYPE, rangeToKeep);
+            partitionManager.register(destId, SimpleEMTask.DATATYPE, rangeToMove);
             rangeSetToMove.add(rangeToMove);
           }
 
