@@ -15,20 +15,41 @@
  */
 package edu.snu.cay.services.em.driver;
 
+import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Manager class for keeping track of partitions registered by evaluators.
+ * It handles a global view of the partitions of all Evaluators, so we can guarantee that all partitions are unique.
+ * This class is thread-safe, so many users can request to register/remove/move partitions at the same time.
  */
+@ThreadSafe
 @DriverSide
 public final class PartitionManager {
+  private static final Logger LOG = Logger.getLogger(PartitionManager.class.getName());
 
-  private final Map<String, Map<String, TreeSet<LongRange>>> evalPartitions;
+  /**
+   * This map holds the partitions of all evaluators by using data type as a key.
+   * We can easily check the uniqueness of a partition when we register it.
+   * Note that we should update the both maps when adding or removing a partition.
+   */
   private final Map<String, TreeSet<LongRange>> globalPartitions;
+
+  /**
+   * This map consists of the sub-map which holds the partitions of each evaluator.
+   * When asked to remove/move partitions, we choose the partitions based on this information.
+   * For example, let's assume that Evaluator1 has [1, 4] and Evaluator2 has [5, 8].
+   * When {@code remove[3, 6]} is requested to Evaluator1, then only [5, 6] will be removed because
+   * Evaluator2 does not have rest of the partitions.
+   * Note that we should update the both maps when adding or removing a partition.
+   */
+  private final Map<String, Map<String, TreeSet<LongRange>>> evalPartitions;
 
   /**
    * If ranges are not overlapped, we can always compare the two ranges, so the ranges
@@ -152,11 +173,14 @@ public final class PartitionManager {
    */
   public synchronized Set<LongRange> getRangeSet(final String evalId, final String dataType) {
     if (!evalPartitions.containsKey(evalId)) {
+      LOG.log(Level.WARNING, "The evaluator {0} does not exist.", evalId);
       return new TreeSet<>();
     }
 
     final Map<String, TreeSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
     if (!evalDataTypeRanges.containsKey(dataType)) {
+      LOG.log(Level.WARNING, "The evaluator {0} does not contain any data whose type is {1}.",
+          new Object[]{evalId, dataType});
       return new TreeSet<>();
     }
 
@@ -176,12 +200,15 @@ public final class PartitionManager {
     // Early failure if the evaluator is empty.
     final Map<String, TreeSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
     if (evalDataTypeRanges == null) {
+      LOG.log(Level.WARNING, "The evaluator {0} does not exist.", evalId);
       return new TreeSet<>();
     }
 
     // Early failure if the evaluator does not have any data of that type.
     final TreeSet<LongRange> evalRanges = evalDataTypeRanges.get(dataType);
     if (evalRanges == null) {
+      LOG.log(Level.WARNING, "The evaluator {0} does not contain any data whose type is {1}.",
+          new Object[]{evalId, dataType});
       return new TreeSet<>();
     }
 
@@ -238,9 +265,9 @@ public final class PartitionManager {
    * (e.g., [3, 4] [5, 6] when [1, 10] is requested to remove).
    * @return Ranges that are removed. An empty list is returned if there was no range to remove.
    */
-  private synchronized Set<LongRange> removeInsideRanges(final TreeSet<LongRange> globalRanges,
-                                                         final TreeSet<LongRange> evalRanges,
-                                                         final LongRange target) {
+  private Set<LongRange> removeInsideRanges(final TreeSet<LongRange> globalRanges,
+                                            final TreeSet<LongRange> evalRanges,
+                                            final LongRange target) {
     final long min = target.getMinimumLong();
     final long max = target.getMaximumLong();
 
@@ -260,10 +287,10 @@ public final class PartitionManager {
    * @param target Target range to remove
    * @return Deleted range. {@code null} if there is no range to delete.
    */
-  private synchronized LongRange removeIntersectingRange(final TreeSet<LongRange> globalRanges,
-                                                         final TreeSet<LongRange> evalRanges,
-                                                         final LongRange from,
-                                                         final LongRange target) {
+  private LongRange removeIntersectingRange(final TreeSet<LongRange> globalRanges,
+                                            final TreeSet<LongRange> evalRanges,
+                                            final LongRange from,
+                                            final LongRange target) {
     // Remove the range from both global and evaluator's range sets.
     removeRange(from, globalRanges, evalRanges);
 
