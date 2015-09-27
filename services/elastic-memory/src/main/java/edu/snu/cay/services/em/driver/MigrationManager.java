@@ -159,7 +159,6 @@ public final class MigrationManager {
    * @param operationId Identifier of the {@code move} operation
    * @param traceInfo Trace information
    */
-  // TODO #160: We need a clever remove(), register(), and move() operation in PartitionManager.
   public synchronized boolean movePartition(final String operationId, final TraceInfo traceInfo) {
     try (final TraceScope movePartition = Trace.startSpan(MOVE_PARTITION, traceInfo)) {
       final MigrationInfo updatedInfo = checkAndUpdateState(operationId, UPDATING_RECEIVER, MOVING_PARTITION);

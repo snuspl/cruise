@@ -109,6 +109,9 @@
   ]
 },
 
+/**
+ * Request message to update status from driver to evaluators
+ */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
