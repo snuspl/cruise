@@ -58,11 +58,12 @@ public final class PlanImpl implements Plan {
 
   @Override
   public String toString() {
-    return "PlanImpl{" +
-        "evaluatorsToAdd=" + evaluatorsToAdd +
-        ", evaluatorsToDelete=" + evaluatorsToDelete +
-        ", transferSteps=" + transferSteps +
-        '}';
+    final StringBuilder sb = new StringBuilder("PlanImpl{");
+    sb.append("evaluatorsToAdd=").append(evaluatorsToAdd);
+    sb.append(", evaluatorsToDelete=").append(evaluatorsToDelete);
+    sb.append(", transferSteps=").append(transferSteps);
+    sb.append('}');
+    return sb.toString();
   }
 
   public static PlanImpl.Builder newBuilder() {

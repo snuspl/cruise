@@ -41,9 +41,10 @@ public final class DataInfoImpl implements DataInfo {
 
   @Override
   public String toString() {
-    return "DataInfoImpl{" +
-        "dataType='" + dataType + '\'' +
-        ", numUnits=" + numUnits +
-        '}';
+    final StringBuilder sb = new StringBuilder("DataInfoImpl{");
+    sb.append("dataType='").append(dataType).append('\'');
+    sb.append(", numUnits=").append(numUnits);
+    sb.append('}');
+    return sb.toString();
   }
 }

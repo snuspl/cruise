@@ -307,12 +307,14 @@ public final class RandomOptimizer implements Optimizer {
 
     @Override
     public String toString() {
-      return "OptimizedEvaluator{" +
-          "id='" + id + '\'' +
-          ", dataAllocated=" + dataAllocated +
-          ", dataRequested=" + dataRequested +
-          ", dstTransferSteps=" + dstTransferSteps +
-          '}';
+      final StringBuilder sb = new StringBuilder("OptimizedEvaluator{");
+      sb.append("id='").append(id).append('\'');
+      sb.append(", dataType='").append(dataType).append('\'');
+      sb.append(", dstTransferSteps=").append(dstTransferSteps);
+      sb.append(", dataAllocated=").append(dataAllocated);
+      sb.append(", dataRequested=").append(dataRequested);
+      sb.append('}');
+      return sb.toString();
     }
   }
 }

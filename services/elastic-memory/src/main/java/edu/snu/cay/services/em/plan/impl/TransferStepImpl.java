@@ -49,10 +49,11 @@ public class TransferStepImpl implements TransferStep {
 
   @Override
   public String toString() {
-    return "TransferStepImpl{" +
-        "srcId='" + srcId + '\'' +
-        ", dstId='" + dstId + '\'' +
-        ", dataInfo=" + dataInfo +
-        '}';
+    final StringBuilder sb = new StringBuilder("TransferStepImpl{");
+    sb.append("srcId='").append(srcId).append('\'');
+    sb.append(", dstId='").append(dstId).append('\'');
+    sb.append(", dataInfo=").append(dataInfo);
+    sb.append('}');
+    return sb.toString();
   }
 }
