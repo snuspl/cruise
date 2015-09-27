@@ -97,10 +97,13 @@ public final class RandomOptimizer implements Optimizer {
     if (numEvaluators > activeEvaluatorsList.size()) {
       evaluatorsToDelete = new ArrayList<>(0);
       evaluatorsToAdd = getNewEvaluators(numEvaluators - activeEvaluatorsList.size()); // Add to the tail
-    } else {
+    } else if (numEvaluators < activeEvaluatorsList.size()) {
       evaluatorsToAdd = new ArrayList<>(0);
       evaluatorsToDelete = new ArrayList<>(
           activeEvaluatorsList.subList(numEvaluators, activeEvaluatorsList.size())); // Delete from the tail
+    } else {
+      evaluatorsToAdd = new ArrayList<>(0);
+      evaluatorsToDelete = new ArrayList<>(0);
     }
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder()
