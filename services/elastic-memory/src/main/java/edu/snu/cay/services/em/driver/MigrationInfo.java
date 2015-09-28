@@ -20,7 +20,11 @@ import org.apache.commons.lang.math.LongRange;
 import java.util.Collection;
 
 /**
- * Encapsulates the status of a migration.
+ * Encapsulates the status of a migration. It consists of the information of
+ * the sender, receiver, data type, and range information. Each migration has
+ * its state as described in {@link MigrationManager}.
+ * The range information is set empty initially,
+ * and updated when the data is transferred to the receiver (may be changed in #96)
  */
 final class MigrationInfo {
   /**

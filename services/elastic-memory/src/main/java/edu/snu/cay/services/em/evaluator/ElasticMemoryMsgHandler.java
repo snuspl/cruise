@@ -36,6 +36,7 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Logger;
 
 /**
@@ -55,7 +56,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
-  private final ConcurrentHashMap<CharSequence, UpdateInfo> pendingUpdates = new ConcurrentHashMap<>();
+  private final ConcurrentMap<CharSequence, UpdateInfo> pendingUpdates = new ConcurrentHashMap<>();
 
   @Inject
   private ElasticMemoryMsgHandler(final MemoryStore memoryStore,
@@ -169,6 +170,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     // the identifiers for each item are included with the item itself as an UnitIdPair
     // TODO #90: if this store doesn't contain the expected ids,
     //           then the Driver should be notified (ResultMsg.FAILURE)
+    // TODO #15: this loop may be creating a gigantic message, and may cause memory problems
     final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
     for (final Map<Long, Object> idObjectMap : idObjectMapSet) {
       for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {

@@ -84,7 +84,8 @@ public interface ElasticMemory {
   /**
    * Apply the intermediate changes in EM's states by the migration.
    * To avoid the race condition, EM requests for Users to call this method explicitly.
-   * This must be removed later to achieve better performance.
+   * But once EM allows the remote access to the data, we can remove this barrier
+   * letting EM update its state automatically.
    */
   void applyUpdates();
 

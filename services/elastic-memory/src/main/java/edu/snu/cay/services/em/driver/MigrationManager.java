@@ -31,9 +31,10 @@ import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -45,6 +46,14 @@ import static edu.snu.cay.services.em.driver.MigrationInfo.State.*;
  * Manages the status of Migrations. EM registers a migration when User called ElasticMemory.move().
  * Most state transition is done internally in EM, except applyUpdates(): the result of the migration
  * (e.g., location of partitions, MemoryStore in Evaluators) are updated only when user requests explicitly.
+ *
+ * The state of a migration changes as following:
+ *  When move() is called, the migration starts with sending the data from Sender to Receiver (SENDING_DATA).
+ *  If the data transfer finishes successfully, wait until applyUpdates() is called (WAITING_UPDATE).
+ *  When user requests applyUpdates() in EM, update the Receiver first (UPDATING_RECEIVER).
+ *  Now we can make sure the data is secure in the Receiver, so partition info can be updated (MOVING_PARTITION).
+ *  Next the Sender is updated (UPDATING_SENDER), deleting the temporary data from its MemoryStore.
+ *  Once the Sender notifies the Driver that the update completes, the migration finishes (FINISHED).
  */
 @DriverSide
 public final class MigrationManager {
@@ -53,8 +62,22 @@ public final class MigrationManager {
   private final ElasticMemoryCallbackRouter callbackRouter;
   private final int updateTimeoutMillis;
 
-  private final ConcurrentHashMap<String, MigrationInfo> ongoingMigrations = new ConcurrentHashMap<>();
+  /**
+   * This is a mapping from operation id to the {@link MigrationInfo}
+   * which consists of the current state of each migration.
+   */
+  private final Map<String, MigrationInfo> ongoingMigrations = new HashMap<>();
+
+  /**
+   * This consists of the operation ids of which finish the data transfer,
+   * and wait for applying their migration results.
+   */
   private final Set<String> waiterIds = new HashSet<>();
+
+  /**
+   * The multiple migrations could apply their changes at once.
+   * This latch is used for waiting until all the updates are complete.
+   */
   private CountDownLatch updateCounter = new CountDownLatch(0);
 
   private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
@@ -213,12 +236,17 @@ public final class MigrationManager {
   private synchronized MigrationInfo checkAndUpdateState(final String operationId,
                                                          final MigrationInfo.State expectedCurrentState,
                                                          final MigrationInfo.State targetState) {
+
+    // This failure occurs when {@finishMigration} is called more than once, which could rarely happen.
     if (!ongoingMigrations.containsKey(operationId)) {
       LOG.log(Level.SEVERE, "The operation id {0} is lost.", operationId);
       notifyFailure(operationId, "The operation id is lost.");
     }
 
     final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
+
+    // This failure occurs when the wrong type of messages arrive during the migration,
+    // so unexpected state transition is requested.
     if (migrationInfo.getState() != expectedCurrentState) {
       throw new IllegalStateException(
           new StringBuilder().append("The state should be ").append(expectedCurrentState)
