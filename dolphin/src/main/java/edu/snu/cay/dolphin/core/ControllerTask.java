@@ -16,6 +16,8 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.core.metric.*;
+import edu.snu.cay.dolphin.core.metric.avro.ControllerMsg;
+import edu.snu.cay.dolphin.core.metric.avro.IterationInfo;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterSender;
 import edu.snu.cay.dolphin.groupcomm.names.*;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
@@ -27,7 +29,6 @@ import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_SEND_DA
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_END;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_USER_CONTROLLER_TASK_START;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.CONTROLLER_TASK_USER_CONTROLLER_TASK_END;
-
 
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.exception.evaluator.NetworkException;
@@ -54,6 +55,9 @@ public final class ControllerTask implements Task {
   private final MetricsCollector metricsCollector;
   private final Set<MetricTracker> metricTrackerSet;
   private final InsertableMetricTracker insertableMetricTracker;
+  private final MetricsMessageSender metricsMessageSender;
+
+  private int iteration = 0;
 
   @Inject
   public ControllerTask(final GroupCommClient groupCommClient,
@@ -62,7 +66,8 @@ public final class ControllerTask implements Task {
                         @Parameter(CommunicationGroup.class) final String commGroupName,
                         final MetricsCollector metricsCollector,
                         @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
-                        final InsertableMetricTracker insertableMetricTracker) throws ClassNotFoundException {
+                        final InsertableMetricTracker insertableMetricTracker,
+                        final MetricsMessageSender metricsMessageSender) throws ClassNotFoundException {
     this.commGroup =
         groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.userControllerTask = userControllerTask;
@@ -71,6 +76,7 @@ public final class ControllerTask implements Task {
     this.metricsCollector = metricsCollector;
     this.metricTrackerSet = metricTrackerSet;
     this.insertableMetricTracker = insertableMetricTracker;
+    this.metricsMessageSender = metricsMessageSender;
   }
 
   @Override
@@ -80,14 +86,17 @@ public final class ControllerTask implements Task {
     userControllerTask.initialize();
     try (final MetricsCollector metricsCollector = this.metricsCollector;) {
       metricsCollector.registerTrackers(metricTrackerSet);
-      int iteration = 0;
       while (!userControllerTask.isTerminated(iteration)) {
         metricsCollector.start();
         ctrlMessageBroadcast.send(CtrlMessage.RUN);
-        sendData(iteration);
-        receiveData(iteration);
-        runUserControllerTask(iteration);
+        sendData();
+        receiveData();
+        runUserControllerTask();
         metricsCollector.stop();
+        metricsMessageSender
+            .setIterationInfo(getIterationInfo())
+            .setControllerMsg(getControllerMsg())
+            .send();
         updateTopology();
         iteration++;
       }
@@ -107,13 +116,13 @@ public final class ControllerTask implements Task {
     }
   }
 
-  private void runUserControllerTask(final int iteration) throws MetricException {
+  private void runUserControllerTask() throws MetricException {
     insertableMetricTracker.put(CONTROLLER_TASK_USER_CONTROLLER_TASK_START, System.currentTimeMillis());
     userControllerTask.run(iteration);
     insertableMetricTracker.put(CONTROLLER_TASK_USER_CONTROLLER_TASK_END, System.currentTimeMillis());
   }
 
-  private void sendData(final int iteration) throws NetworkException, InterruptedException, MetricException {
+  private void sendData() throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(CONTROLLER_TASK_SEND_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isBroadcastUsed()) {
       commGroup.getBroadcastSender(DataBroadcast.class).send(
@@ -126,7 +135,7 @@ public final class ControllerTask implements Task {
     insertableMetricTracker.put(CONTROLLER_TASK_SEND_DATA_END, System.currentTimeMillis());
   }
 
-  private void receiveData(final int iteration) throws NetworkException, InterruptedException, MetricException {
+  private void receiveData() throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(CONTROLLER_TASK_RECEIVE_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isGatherUsed()) {
       ((DataGatherReceiver)userControllerTask).receiveGatherData(iteration,
@@ -137,5 +146,33 @@ public final class ControllerTask implements Task {
           commGroup.getReduceReceiver(DataReduce.class).reduce());
     }
     insertableMetricTracker.put(CONTROLLER_TASK_RECEIVE_DATA_END, System.currentTimeMillis());
+  }
+
+  private IterationInfo getIterationInfo() {
+    final IterationInfo iterationInfo = IterationInfo.newBuilder()
+        .setIteration(iteration)
+        .setCommGroupName(commGroup.getName().getName())
+        .build();
+
+    LOG.log(Level.INFO, "iterationInfo {0}", iterationInfo);
+    return iterationInfo;
+  }
+
+  private ControllerMsg getControllerMsg() {
+    final ControllerMsg controllerMsg = ControllerMsg.newBuilder()
+        .setNumComputeTasks(getNumComputeTasks())
+        .build();
+    LOG.log(Level.INFO, "controllerMsg {0}", controllerMsg);
+    return controllerMsg;
+  }
+
+  /**
+   * A placeholder that returns a magic number (4) of compute tasks. This implementation will
+   * only work if the number of compute tasks is actually equal to the magic number.
+   *
+   * TODO #156: Use a GroupComm method to retrieve the real number of compute tasks
+   */
+  private int getNumComputeTasks() {
+    return 4;
   }
 }

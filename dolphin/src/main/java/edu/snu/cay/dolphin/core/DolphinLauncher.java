@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.dolphin.core.optimizer.OptimizationConfiguration;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import org.apache.hadoop.mapred.TextInputFormat;
@@ -127,8 +128,11 @@ public final class DolphinLauncher {
         .set(TaskOutputServiceBuilder.OUTPUT_PATH, processOutputDir(dolphinParameters.getOutputDir()))
         .build();
 
+    final Configuration optimizerConf = OptimizationConfiguration.getRandomOptimizerConfiguration();
+
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
+        optimizerConf,
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),

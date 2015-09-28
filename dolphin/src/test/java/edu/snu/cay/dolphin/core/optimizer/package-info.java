@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core;
-
-public interface OptimizeScheme {
-}
+/**
+ * Tests for classes that apply EM optimization and plan execution to the Dolphin runtime.
+ */
+package edu.snu.cay.dolphin.core.optimizer;
