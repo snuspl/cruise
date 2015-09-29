@@ -16,14 +16,13 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.driver.parameters.UpdateTimeoutMillis;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.utils.AvroUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
@@ -264,9 +263,5 @@ public final class MigrationManager {
   synchronized void notifyFailure(final String operationId, final String reason) {
     final AvroElasticMemoryMessage msg = AvroUtils.generateFailureMessage(operationId, reason);
     callbackRouter.onFailed(msg);
-  }
-
-  @NamedParameter(doc = "Timeout for updating EM's state (default: 100s).", default_value = "100000")
-  public final class UpdateTimeoutMillis implements Name<Integer> {
   }
 }
