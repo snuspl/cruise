@@ -13,26 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.examples.ml.data;
-
-import org.apache.mahout.math.Vector;
-
-import javax.inject.Inject;
-
 /**
- * Implements DistanceMeasure (Default).
+ * Classes for testing codecs, reduce functions, and other classes that support REEF group communication.
  */
-public final class EuclideanDistance implements VectorDistanceMeasure {
-
-  @Inject
-  private EuclideanDistance() {
-  }
-
-  @Override
-  public double distance(final Vector v1, final Vector v2) {
-    if (v1.size() != v2.size()) {
-      throw new IllegalArgumentException("Vector dimensions are not consistent");
-    }
-    return Math.sqrt(v1.getDistanceSquared(v2));
-  }
-}
+package edu.snu.cay.dophin.examples.ml.sub;

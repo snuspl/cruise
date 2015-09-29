@@ -21,9 +21,11 @@ import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;
 import edu.snu.cay.dolphin.examples.ml.parameters.Dimension;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
+import edu.snu.cay.dolphin.examples.ml.parameters.IsDenseVector;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
 import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.SequentialAccessSparseVector;
 import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -47,17 +49,19 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
   public LogisticRegMainCtrlTask(final OutputStreamProvider outputStreamProvider,
                                  final LinearModelConvCond convergeCondition,
                                  @Parameter(MaxIterations.class) final int maxIter,
-                                 @Parameter(Dimension.class) final int dimension) {
+                                 @Parameter(Dimension.class) final int dimension,
+                                 @Parameter(IsDenseVector.class) final boolean isDenseVector) {
     this.outputStreamProvider = outputStreamProvider;
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;
-    this.model = new LinearModel(new DenseVector(dimension + 1));
+    this.model = new LinearModel(
+        isDenseVector ? new DenseVector(dimension + 1) : new SequentialAccessSparseVector(dimension + 1));
   }
   
   @Override
   public final void run(final int iteration) {
-    LOG.log(Level.INFO, "{0}-th iteration accuracy: {1}%, new model: {2}",
-        new Object[]{iteration, accuracy * 100, model});
+    LOG.log(Level.INFO, "{0}-th iteration accuracy: {1}%", new Object[]{iteration, accuracy * 100});
+    LOG.log(Level.FINEST, "new model: {0}", model);
   }
   
   @Override

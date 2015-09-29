@@ -35,18 +35,21 @@ public final class LogisticRegParameters implements UserParameters {
   private final double lambda;
   private final int maxIterations;
   private final int dimension;
+  private final boolean isDenseVector;
 
   @Inject
   private LogisticRegParameters(@Parameter(ConvergenceThreshold.class) final double convThreshold,
                                 @Parameter(StepSize.class) final double stepSize,
                                 @Parameter(Lambda.class) final double lambda,
                                 @Parameter(Dimension.class) final int dimension,
-                                @Parameter(MaxIterations.class) final int maxIterations) {
+                                @Parameter(MaxIterations.class) final int maxIterations,
+                                @Parameter(IsDenseVector.class) final boolean isDenseVector) {
     this.convThreshold = convThreshold;
     this.stepSize = stepSize;
     this.lambda = lambda;
     this.dimension = dimension;
     this.maxIterations = maxIterations;
+    this.isDenseVector = isDenseVector;
   }
 
   @Override
@@ -59,6 +62,7 @@ public final class LogisticRegParameters implements UserParameters {
         .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
         .bindImplementation(Loss.class, LogisticLoss.class)
         .bindImplementation(Regularization.class, L2Regularization.class)
+        .bindNamedParameter(IsDenseVector.class, String.valueOf(isDenseVector))
         .build();
   }
 
@@ -84,6 +88,7 @@ public final class LogisticRegParameters implements UserParameters {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
         .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
+        .bindNamedParameter(IsDenseVector.class, String.valueOf(isDenseVector))
         .build();
   }
 
@@ -95,6 +100,7 @@ public final class LogisticRegParameters implements UserParameters {
     cl.registerShortNameOfClass(Lambda.class);
     cl.registerShortNameOfClass(MaxIterations.class);
     cl.registerShortNameOfClass(ConvergenceThreshold.class);
+    cl.registerShortNameOfClass(IsDenseVector.class);
     return cl;
   }
 }
