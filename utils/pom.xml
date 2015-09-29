@@ -34,18 +34,6 @@
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-io</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-common</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-mapreduce-client-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.mahout</groupId>
-      <artifactId>mahout-math</artifactId>
-    </dependency>
   </dependencies>
 
   <build>
