@@ -94,15 +94,15 @@ public final class OptimizationOrchestrator {
     return iterationIdToMetrics.get(iterationId);
   }
 
+  /**
+   * Runs the optimization: get an optimized Plan based on the current Evaluator parameters, then execute the plan.
+   * Optimization is skipped if the previous optimization has not finished.
+   * TODO #96: We block until the Plan execution completes. This will change when background migration is implemented.
+   */
   public void run(final Map<String, List<DataInfo>> dataInfos,
                   final Map<String, Map<String, Double>> computeMetrics,
                   final String controllerId,
                   final Map<String, Double> controllerMetrics) {
-    LOG.log(Level.INFO, "Beginning migration");
-    final Plan plan = optimizer.optimize(
-        getNodeParameters(dataInfos, computeMetrics),
-        getAvailableEvaluators(computeMetrics.size()));
-
     if (planExecutionResult.isDone()) {
       try {
         LOG.log(Level.INFO, "Previous result: " + planExecutionResult.get());
@@ -111,10 +111,17 @@ public final class OptimizationOrchestrator {
       } catch (final ExecutionException e) {
         throw new RuntimeException(e);
       }
+
+      LOG.log(Level.INFO, "Optimization start.");
+
+      final Plan plan = optimizer.optimize(
+          getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
+          getAvailableEvaluators(computeMetrics.size()));
+
       planExecutionResult = planExecutor.execute(plan);
       try {
         // TODO #96: Enable background migration
-        LOG.log(Level.INFO, "Blocking until the migration is done.");
+        LOG.log(Level.INFO, "Blocking until current plan execution is done.");
         final PlanResult result = planExecutionResult.get();
         LOG.log(Level.INFO, "Current result: " + result);
       } catch (final InterruptedException e) {
@@ -122,6 +129,11 @@ public final class OptimizationOrchestrator {
       } catch (final ExecutionException e) {
         throw new RuntimeException(e);
       }
+
+      LOG.log(Level.INFO, "Optimization complete.");
+
+    } else {
+      LOG.log(Level.INFO, "Skipping Optimization, as the previous execution has not finished.");
     }
   }
 
@@ -140,8 +152,10 @@ public final class OptimizationOrchestrator {
   }
 
   // TODO #55: Information needed for the mathematical optimization formulation should be added to EvaluatorParameters
-  private Collection<EvaluatorParameters> getNodeParameters(final Map<String, List<DataInfo>> dataInfos,
-                                                            final Map<String, Map<String, Double>> metrics) {
+  private Collection<EvaluatorParameters> getEvaluatorParameters(final Map<String, List<DataInfo>> dataInfos,
+                                                                 final Map<String, Map<String, Double>> metrics,
+                                                                 final String controllerId,
+                                                                 final Map<String, Double> controllerMetrics) {
     final List<EvaluatorParameters> evaluatorParametersList = new ArrayList<>(dataInfos.size());
     for (final String computeId : dataInfos.keySet()) {
       evaluatorParametersList.add(new EvaluatorParametersImpl(computeId, dataInfos.get(computeId)));
