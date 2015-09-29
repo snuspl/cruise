@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.utils;
+package edu.snu.cay.utils;
 
-import edu.snu.cay.services.em.avro.AvroLongRange;
+import edu.snu.cay.utils.avro.AvroLongRange;
 import org.apache.avro.io.*;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;

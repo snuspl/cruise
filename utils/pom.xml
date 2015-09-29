@@ -19,58 +19,32 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.snu.cay</groupId>
-  <artifactId>elastic-memory</artifactId>
-  <name>Elastic Memory</name>
+  <artifactId>cay-utils</artifactId>
+  <name>Cay Utils</name>
 
   <parent>
     <groupId>edu.snu.cay</groupId>
     <artifactId>cay</artifactId>
     <version>0.1-SNAPSHOT</version>
-    <relativePath>../../</relativePath>
+    <relativePath>../</relativePath>
   </parent>
 
   <dependencies>
-    <dependency>
-      <groupId>${parent.groupId}</groupId>
-      <artifactId>cay-utils</artifactId>
-      <version>${parent.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>reef-common</artifactId>
-    </dependency>
     <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-io</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>reef-runtime-local</artifactId>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>reef-runtime-yarn</artifactId>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>tang</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.reef</groupId>
-      <artifactId>wake</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.htrace</groupId>
-      <artifactId>htrace-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.htrace</groupId>
-      <artifactId>htrace-zipkin</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
+      <groupId>org.apache.mahout</groupId>
+      <artifactId>mahout-math</artifactId>
     </dependency>
   </dependencies>
 
@@ -87,11 +61,9 @@
             </goals>
             <configuration>
               <sourceDirectory>${project.basedir}/src/main/avro/</sourceDirectory>
-              <outputDirectory>${project.parent.basedir}/utils/target/generated-sources/avro/</outputDirectory>
               <outputDirectory>${project.basedir}/target/generated-sources/avro/</outputDirectory>
               <imports>
-                <import>${project.basedir}/src/main/avro/traceinfo.avsc</import>
-                <import>${project.parent.basedir}/utils/src/main/avro/datastructure.avsc</import>
+                <import>${project.basedir}/src/main/avro/datastructure.avsc</import>
               </imports>
             </configuration>
           </execution>

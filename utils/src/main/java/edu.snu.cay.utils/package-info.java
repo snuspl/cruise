@@ -16,4 +16,4 @@
 /**
  * Util classes for Elastic Memory.
  */
-package edu.snu.cay.services.em.utils;
+package edu.snu.cay.utils;

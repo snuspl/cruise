@@ -29,24 +29,9 @@
 },
 
 /**
- * Avro version of {@link org.apache.commons.lang.math.LongRange}.
- * Represents a range of longs using the min and max values.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "AvroLongRange",
-  "fields":
-  [
-    {"name": "min", "type": "long"},
-    {"name": "max", "type": "long"}
-  ]
-},
-
-/**
  * Control message that is sent from the driver to evaluators.
  * The message contains the data type to send, as well as either
- * an array of {@code AvroLongRange}s that show which identifiers to send, or
+ * an array of {@code edu.snu.cay.utils.avro.AvroLongRange}s that show which identifiers to send, or
  * simply the number of units to send.
  */
 {
@@ -57,7 +42,8 @@
   [
     {"name": "dataType", "type": "string"},
     {"name": "ctrlMsgType", "type": {"type": "enum", "name": "CtrlMsgType", "symbols": ["IdRange", "NumUnits"]}},
-    {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
+    {"name": "idRange",
+     "type": ["null", {"type": "array", "items": "edu.snu.cay.utils.avro.AvroLongRange"}], "default": null},
     {"name": "numUnits", "type": ["null", "int"], "default": null}
   ]
 },
@@ -90,7 +76,7 @@
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
     {"name": "dataType", "type": "string"},
-    {"name": "idRange", "type": {"type": "array", "items": "AvroLongRange"}}
+    {"name": "idRange", "type": {"type": "array", "items": "edu.snu.cay.utils.avro.AvroLongRange"}}
   ]
 },
 
@@ -105,7 +91,7 @@
   "fields":
   [
     {"name": "dataType", "type": "string"},
-    {"name": "idRange", "type": "AvroLongRange"}
+    {"name": "idRange", "type": "edu.snu.cay.utils.avro.AvroLongRange"}
   ]
 },
 
