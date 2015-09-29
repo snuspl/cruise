@@ -22,7 +22,6 @@ import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.services.em.trace.HTraceUtils;
 import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
-import edu.snu.cay.utils.avro.AvroLongRange;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;

@@ -87,11 +87,9 @@
             </goals>
             <configuration>
               <sourceDirectory>${project.basedir}/src/main/avro/</sourceDirectory>
-              <outputDirectory>${project.parent.basedir}/utils/target/generated-sources/avro/</outputDirectory>
               <outputDirectory>${project.basedir}/target/generated-sources/avro/</outputDirectory>
               <imports>
                 <import>${project.basedir}/src/main/avro/traceinfo.avsc</import>
-                <import>${project.parent.basedir}/utils/src/main/avro/datastructure.avsc</import>
               </imports>
             </configuration>
           </execution>

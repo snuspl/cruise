@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.services.em.driver;
 
+import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 
-import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;

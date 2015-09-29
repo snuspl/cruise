@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Util classes for Elastic Memory.
+ * Util classes for Cay.
  */
 package edu.snu.cay.utils;
