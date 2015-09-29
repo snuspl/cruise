@@ -15,14 +15,28 @@
  */
 package edu.snu.cay.services.em.evaluator;
 
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+
 /**
- * Encapsulates the information about ongoing migration in the Evaluators.
- * The updates are applied when the migration completes.
+ * Encapsulates an update of the MemoryStore's state.
+ * The data is added or removed when apply() is called.
  */
-interface UpdateInfo {
+interface Update {
+  /**
+   * Type of the Update.
+   */
   enum Type {
     ADD, REMOVE
   }
 
+  /**
+   * @return Type of the Update.
+   */
   Type getType();
+
+  /**
+   * Apply the changes to the MemoryStore.
+   * @param memoryStore MemoryStore to add/remove the data.
+   */
+  void apply(MemoryStore memoryStore);
 }

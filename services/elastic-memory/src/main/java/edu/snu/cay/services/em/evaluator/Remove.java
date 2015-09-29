@@ -15,16 +15,18 @@
  */
 package edu.snu.cay.services.em.evaluator;
 
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+
 import java.util.Collection;
 
 /**
- * Holds the information of data to remove from MemoryStore after migration completes.
+ * Implementation of Update to remove the data from MemoryStore when apply() is called.
  */
-class RemoveInfo implements UpdateInfo {
+class Remove implements Update {
   private String dataType;
   private Collection<Long> ids;
 
-  RemoveInfo(final String dataType, final Collection<Long> ids) {
+  Remove(final String dataType, final Collection<Long> ids) {
     this.dataType = dataType;
     this.ids = ids;
   }
@@ -34,11 +36,10 @@ class RemoveInfo implements UpdateInfo {
     return Type.REMOVE;
   }
 
-  String getDataType() {
-    return dataType;
-  }
-
-  Collection<Long> getIds() {
-    return ids;
+  @Override
+  public void apply(final MemoryStore memoryStore) {
+    for (final long id : ids) {
+      memoryStore.getElasticStore().remove(dataType, id);
+    }
   }
 }

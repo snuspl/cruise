@@ -56,7 +56,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
-  private final ConcurrentMap<CharSequence, UpdateInfo> pendingUpdates = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Update> pendingUpdates = new ConcurrentHashMap<>();
 
   @Inject
   private ElasticMemoryMsgHandler(final MemoryStore memoryStore,
@@ -101,10 +101,11 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       final DataMsg dataMsg = msg.getDataMsg();
       final String dataType = dataMsg.getDataType().toString();
+      final Codec codec = serializer.getCodec(dataType);
       final String operationId = msg.getOperationId().toString();
 
       // store the items in the pendingUpdates, so the items will be added later.
-      pendingUpdates.put(operationId, new AddInfo(dataType, dataMsg.getUnits()));
+      pendingUpdates.put(operationId, new Add(dataType, codec, dataMsg.getUnits()));
 
       // Compress the ranges so the number of ranges minimizes.
       final SortedSet<Long> newIds = new TreeSet<>();
@@ -186,7 +187,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     }
 
     // The items of the ids will be removed after the migration succeeds.
-    pendingUpdates.put(operationId, new RemoveInfo(dataType, ids));
+    pendingUpdates.put(operationId, new Remove(dataType, ids));
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
         operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
@@ -232,7 +233,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     }
 
     // The items of the ids will be removed after the migration succeeds.
-    pendingUpdates.put(operationId, new RemoveInfo(dataType, ids));
+    pendingUpdates.put(operationId, new Remove(dataType, ids));
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
         operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
@@ -247,58 +248,33 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final String operationId = msg.getOperationId().toString();
       final UpdateResult updateResult;
 
-      final UpdateInfo updateInfo = pendingUpdates.remove(operationId);
-      if (updateInfo == null) {
-        sender.get().sendFailureMsg(operationId, "Update information is lost",
+      final Update update = pendingUpdates.remove(operationId);
+      if (update == null) {
+        sender.get().sendFailureMsg(operationId, "The operation id " + operationId + " does not exist.",
             TraceInfo.fromSpan(onUpdateMsgScope.getSpan()));
         return;
       } else {
-        switch (updateInfo.getType()) {
+        switch (update.getType()) {
 
         case ADD:
           // ADD is done by the receiver.
-          final AddInfo addInfo = (AddInfo) updateInfo;
-          applyAdd(addInfo);
+          final Add add = (Add) update;
+          add.apply(memoryStore);
           updateResult = UpdateResult.RECEIVER_UPDATED;
           break;
 
         case REMOVE:
           // REMOVE is done by the sender.
-          final RemoveInfo removeInfo = (RemoveInfo) updateInfo;
-          applyRemove(removeInfo);
+          final Remove remove = (Remove) update;
+          remove.apply(memoryStore);
           updateResult = UpdateResult.SUCCESS;
           break;
         default:
-          throw new RuntimeException("Undefined Message type of UpdateInfo: " + updateInfo);
+          throw new RuntimeException("Undefined Message type of Update: " + update);
         }
       }
 
       sender.get().sendUpdateAckMsg(operationId, updateResult, TraceInfo.fromSpan(onUpdateMsgScope.getSpan()));
-    }
-  }
-
-  /**
-   * Adds the data to the MemoryStore.
-   */
-  private void applyAdd(final AddInfo addInfo) {
-    final String dataType = addInfo.getDataType();
-    final Codec codec = serializer.getCodec(dataType);
-
-    for (final UnitIdPair unitIdPair : addInfo.getUnitIdPairs()) {
-      final byte[] data = unitIdPair.getUnit().array();
-      final long id = unitIdPair.getId();
-      memoryStore.getElasticStore().put(dataType, id, codec.decode(data));
-    }
-  }
-
-  /**
-   * Removes the data from the MemoryStore. It is guaranteed that the data is transferred,
-   * and the Driver updated its partition status successfully.
-   */
-  private void applyRemove(final RemoveInfo removeInfo) {
-    final String dataType = removeInfo.getDataType();
-    for (final long id : removeInfo.getIds()) {
-      memoryStore.getElasticStore().remove(dataType, id);
     }
   }
 }

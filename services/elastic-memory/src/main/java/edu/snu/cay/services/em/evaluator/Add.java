@@ -16,18 +16,22 @@
 package edu.snu.cay.services.em.evaluator;
 
 import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import org.apache.reef.io.serialization.Codec;
 
 import java.util.Collection;
 
 /**
- * Holds the information of data to add to MemoryStore after migration completes.
+ * Implementation of Update to add the data from MemoryStore when apply() is called.
  */
-class AddInfo implements UpdateInfo {
+class Add implements Update {
   private final String dataType;
+  private final Codec codec;
   private final Collection<UnitIdPair> unitIdPairs;
 
-  AddInfo(final String dataType, final Collection<UnitIdPair> unitIdPairs) {
+  Add(final String dataType, final Codec codec, final Collection<UnitIdPair> unitIdPairs) {
     this.dataType = dataType;
+    this.codec = codec;
     this.unitIdPairs = unitIdPairs;
   }
 
@@ -36,11 +40,12 @@ class AddInfo implements UpdateInfo {
     return Type.ADD;
   }
 
-  String getDataType() {
-    return dataType;
-  }
-
-  Collection<UnitIdPair> getUnitIdPairs() {
-    return unitIdPairs;
+  @Override
+  public void apply(final MemoryStore memoryStore) {
+    for (final UnitIdPair unitIdPair : unitIdPairs) {
+      final byte[] data = unitIdPair.getUnit().array();
+      final long id = unitIdPair.getId();
+      memoryStore.getElasticStore().put(dataType, id, codec.decode(data));
+    }
   }
 }
