@@ -1,8 +1,3 @@
-package edu.snu.cay.services.em.utils;
-
-/**
- * Created by v-yunlee on 9/29/2015.
- */
 /*
  * Copyright (C) 2015 Seoul National University
  *
@@ -18,14 +13,11 @@ package edu.snu.cay.services.em.utils;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.utils;
 
 import org.apache.reef.io.Tuple;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Finite state machine that can be created with user defined states and transitions.
@@ -295,4 +287,3 @@ public final class StateMachine {
     }
   }
 }
-

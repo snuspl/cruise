@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 /**
- * Utility classes for shuffle service.
+ * Tests for the (trivial) Random Optimizer.
  */
-package edu.snu.cay.services.shuffle.utils;
+package edu.snu.cay.services.em.optimizer.impl;

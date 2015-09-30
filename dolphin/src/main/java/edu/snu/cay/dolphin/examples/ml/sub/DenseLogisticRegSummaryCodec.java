@@ -17,17 +17,22 @@ package edu.snu.cay.dolphin.examples.ml.sub;
 
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
 import java.io.*;
 
-public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
+/**
+ * Codec for a summary of logistic regression with a linear model that uses a dense vector as a model parameter.
+ * Internally uses {@link DenseLinearModelCodec}.
+ */
+public final class DenseLogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
+
+  private final DenseLinearModelCodec denseLinearModelCodec;
 
   @Inject
-  public LogisticRegSummaryCodec() {
+  private DenseLogisticRegSummaryCodec(final DenseLinearModelCodec denseLinearModelCodec) {
+    this.denseLinearModelCodec = denseLinearModelCodec;
   }
 
   @Override
@@ -37,16 +42,13 @@ public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
         + Integer.SIZE // posNum
         + Integer.SIZE // negNum
         + Integer.SIZE // parameter size
-        + Double.SIZE * model.getParameters().size());
+        + denseLinearModelCodec.getNumBytes(model));
 
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(summary.getCount());
       daos.writeInt(summary.getPosNum());
       daos.writeInt(summary.getNegNum());
-      daos.writeInt(model.getParameters().size());
-      for (int i = 0; i < model.getParameters().size(); i++) {
-        daos.writeDouble(model.getParameters().get(i));
-      }
+      denseLinearModelCodec.encodeToStream(model, daos);
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
@@ -57,27 +59,14 @@ public class LogisticRegSummaryCodec implements Codec<LogisticRegSummary> {
 
   @Override
   public LogisticRegSummary decode(final byte[] data) {
-    final ByteArrayInputStream bais = new ByteArrayInputStream(data);
-    final LinearModel model;
-    final int count;
-    final int posNum;
-    final int negNum;
-
-    try (final DataInputStream dais = new DataInputStream(bais)) {
-      count = dais.readInt();
-      posNum = dais.readInt();
-      negNum = dais.readInt();
-      final int vecSize = dais.readInt();
-      final Vector v = new DenseVector(vecSize);
-      for (int i = 0; i < vecSize; i++) {
-        v.set(i, dais.readDouble());
-      }
-      model = new LinearModel(v);
-
+    try (final DataInputStream dais = new DataInputStream(new ByteArrayInputStream(data))) {
+      final int count = dais.readInt();
+      final int posNum = dais.readInt();
+      final int negNum = dais.readInt();
+      final LinearModel model = denseLinearModelCodec.decodeFromStream(dais);
+      return new LogisticRegSummary(model, count, posNum, negNum);
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
     }
-
-    return new LogisticRegSummary(model, count, posNum, negNum);
   }
 }

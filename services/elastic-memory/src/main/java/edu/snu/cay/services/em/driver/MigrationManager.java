@@ -16,10 +16,11 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.FailureMsg;
+import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.parameters.UpdateTimeoutMillis;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.cay.services.em.utils.AvroUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
@@ -261,7 +262,27 @@ public final class MigrationManager {
    * Notify the failure to the User via callback.
    */
   synchronized void notifyFailure(final String operationId, final String reason) {
-    final AvroElasticMemoryMessage msg = AvroUtils.generateFailureMessage(operationId, reason);
+    final AvroElasticMemoryMessage msg = generateFailureMessage(operationId, reason);
     callbackRouter.onFailed(msg);
+  }
+
+  /**
+   * Generate a failure message. The main customer of this method is the Driver.
+   * Since the most important information is the operation id and the reason,
+   * leave the rest to be blank.
+   * TODO #139: Revisit when the avro message structure is changed.
+   * @param reason Reason of the failure
+   * @return Avro message which consists of failure information
+   */
+  private AvroElasticMemoryMessage generateFailureMessage(final String operationId, final String reason) {
+    final FailureMsg failureMsg = FailureMsg.newBuilder()
+        .setReason(reason)
+        .build();
+    return AvroElasticMemoryMessage.newBuilder()
+        .setType(Type.FailureMsg)
+        .setOperationId(operationId)
+        .setSrcId("Driver") // Should be set properly later.
+        .setDestId("")
+        .build();
   }
 }

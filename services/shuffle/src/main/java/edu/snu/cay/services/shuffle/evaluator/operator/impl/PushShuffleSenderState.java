@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator.operator.impl;
 
-import edu.snu.cay.services.shuffle.utils.StateMachine;
+import edu.snu.cay.utils.StateMachine;
 
 /**
  * States and state machine for PushShuffleSender.

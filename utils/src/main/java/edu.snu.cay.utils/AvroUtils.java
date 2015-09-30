@@ -13,16 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.utils;
+package edu.snu.cay.utils;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.AvroLongRange;
-import edu.snu.cay.services.em.avro.FailureMsg;
-import edu.snu.cay.services.em.avro.Type;
 import org.apache.avro.io.*;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
-import org.apache.commons.lang.math.LongRange;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -65,32 +60,5 @@ public final class AvroUtils {
     } catch (final IOException e) {
       throw new RuntimeException("Failed to deserialize an avro object", e);
     }
-  }
-
-  public static AvroLongRange convertLongRange(final LongRange longRange) {
-    return AvroLongRange.newBuilder()
-        .setMin(longRange.getMinimumLong())
-        .setMax(longRange.getMaximumLong())
-        .build();
-  }
-
-  /**
-   * Generate a failure message. The main customer of this method is the Driver.
-   * Since the most important information is the operation id and the reason,
-   * leave the rest to be blank.
-   * TODO #139: Revisit when the avro message structure is changed.
-   * @param reason Reason of the failure
-   * @return Avro message which consists of failure information
-   */
-  public static AvroElasticMemoryMessage generateFailureMessage(final String operationId, final String reason) {
-    final FailureMsg failureMsg = FailureMsg.newBuilder()
-        .setReason(reason)
-        .build();
-    return AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.FailureMsg)
-        .setOperationId(operationId)
-        .setSrcId("Driver") // Should be set properly later.
-        .setDestId("")
-        .build();
   }
 }

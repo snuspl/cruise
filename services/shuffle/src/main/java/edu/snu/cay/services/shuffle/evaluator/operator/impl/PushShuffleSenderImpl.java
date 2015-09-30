@@ -22,7 +22,7 @@ import edu.snu.cay.services.shuffle.evaluator.operator.TupleSender;
 import edu.snu.cay.services.shuffle.evaluator.ESControlMessageSender;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
-import edu.snu.cay.services.shuffle.utils.StateMachine;
+import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.annotations.Name;

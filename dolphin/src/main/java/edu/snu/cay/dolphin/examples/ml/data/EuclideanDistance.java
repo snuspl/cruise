@@ -25,7 +25,7 @@ import javax.inject.Inject;
 public final class EuclideanDistance implements VectorDistanceMeasure {
 
   @Inject
-  public EuclideanDistance() {
+  private EuclideanDistance() {
   }
 
   @Override
@@ -33,11 +33,6 @@ public final class EuclideanDistance implements VectorDistanceMeasure {
     if (v1.size() != v2.size()) {
       throw new IllegalArgumentException("Vector dimensions are not consistent");
     }
-
-    double distance = 0;
-    for (int i = 0; i < v1.size(); i++) {
-      distance += (v1.get(i) - v2.get(i)) * (v1.get(i) - v2.get(i));
-    }
-    return Math.sqrt(distance);
+    return Math.sqrt(v1.getDistanceSquared(v2));
   }
 }

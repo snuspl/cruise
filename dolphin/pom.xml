@@ -55,6 +55,11 @@
       <artifactId>wake</artifactId>
     </dependency>
     <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
     </dependency>
@@ -67,14 +72,14 @@
       <artifactId>mahout-math</artifactId>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>${parent.groupId}.services</groupId>
       <artifactId>elastic-memory</artifactId>
-      <version>${project.version}</version>
+      <version>${parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}.services</groupId>
+      <groupId>${parent.groupId}.services</groupId>
       <artifactId>dataloader</artifactId>
-      <version>${project.version}</version>
+      <version>${parent.version}</version>
     </dependency>
   </dependencies>
 

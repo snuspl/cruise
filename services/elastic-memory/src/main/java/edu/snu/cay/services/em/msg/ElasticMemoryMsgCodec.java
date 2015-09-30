@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.msg;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.utils.AvroUtils;
+import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;

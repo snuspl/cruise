@@ -13,7 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.services.em.plan.impl;
+
+import edu.snu.cay.services.em.plan.api.PlanResult;
+
 /**
- * Util classes for Elastic Memory.
+ * A plain-old-data implementation of PlanResult.
  */
-package edu.snu.cay.services.em.utils;
+public final class PlanResultImpl implements PlanResult {
+}
