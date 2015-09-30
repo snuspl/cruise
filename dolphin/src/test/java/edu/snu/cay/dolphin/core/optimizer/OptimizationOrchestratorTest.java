@@ -59,7 +59,7 @@ public final class OptimizationOrchestratorTest {
    */
   @Test
   public void testMultipleIterations() throws ExecutionException, InterruptedException {
-    Future<PlanResult> previousResult = OptimizationOrchestrator.INITIAL_RESULT_FUTURE;
+    Future<PlanResult> previousResult = null;
     for (int i = 0; i < 5; i++) {
       previousResult = run(i, previousResult);
     }
@@ -84,8 +84,8 @@ public final class OptimizationOrchestratorTest {
     orchestrator.receiveComputeMetrics("context-3", groupName, iteration, getComputeTaskMetrics(),
         getSingleDataInfo(4000));
 
-    assertNotEquals(OptimizationOrchestrator.INITIAL_RESULT_FUTURE, orchestrator.getPlanExecutionResult());
-
+    // All metrics received; the optimization should have run
+    assertNotEquals(previousResult, orchestrator.getPlanExecutionResult());
     return orchestrator.getPlanExecutionResult();
   }
 

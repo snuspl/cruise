@@ -22,7 +22,6 @@ import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanResult;
-import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -32,8 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,14 +49,13 @@ import java.util.logging.Logger;
  */
 public final class OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
-  static final Future<PlanResult> INITIAL_RESULT_FUTURE = new InitialResult();
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
 
   private final Map<String, MetricsReceiver> iterationIdToMetrics;
 
-  private Future<PlanResult> planExecutionResult = INITIAL_RESULT_FUTURE;
+  private Future<PlanResult> planExecutionResult;
 
   @Inject
   private OptimizationOrchestrator(final Optimizer optimizer,
@@ -99,41 +95,57 @@ public final class OptimizationOrchestrator {
    * Optimization is skipped if the previous optimization has not finished.
    * TODO #96: We block until the Plan execution completes. This will change when background migration is implemented.
    */
-  public void run(final Map<String, List<DataInfo>> dataInfos,
-                  final Map<String, Map<String, Double>> computeMetrics,
-                  final String controllerId,
-                  final Map<String, Double> controllerMetrics) {
-    if (planExecutionResult.isDone()) {
-      try {
-        LOG.log(Level.INFO, "Previous result: " + planExecutionResult.get());
-      } catch (final InterruptedException e) {
-        throw new RuntimeException(e);
-      } catch (final ExecutionException e) {
-        throw new RuntimeException(e);
-      }
+  public synchronized void run(final Map<String, List<DataInfo>> dataInfos,
+                               final Map<String, Map<String, Double>> computeMetrics,
+                               final String controllerId,
+                               final Map<String, Double> controllerMetrics) {
+    if (isPlanExecuting()) {
+      LOG.log(Level.INFO, "Skipping Optimization, as the previous plan is still executing.");
+      return;
+    }
 
-      LOG.log(Level.INFO, "Optimization start.");
+    LOG.log(Level.INFO, "Optimization start.");
+    logPreviousResult();
 
-      final Plan plan = optimizer.optimize(
-          getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
-          getAvailableEvaluators(computeMetrics.size()));
+    final Plan plan = optimizer.optimize(
+        getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
+        getAvailableEvaluators(computeMetrics.size()));
 
-      planExecutionResult = planExecutor.execute(plan);
-      try {
-        // TODO #96: Enable background migration
-        LOG.log(Level.INFO, "Blocking until current plan execution is done.");
-        final PlanResult result = planExecutionResult.get();
-        LOG.log(Level.INFO, "Current result: " + result);
-      } catch (final InterruptedException e) {
-        throw new RuntimeException(e);
-      } catch (final ExecutionException e) {
-        throw new RuntimeException(e);
-      }
+    planExecutionResult = planExecutor.execute(plan);
 
-      LOG.log(Level.INFO, "Optimization complete.");
+    // TODO #96: Enable background migration
+    blockUntilPlanIsExecuted();
 
+    LOG.log(Level.INFO, "Optimization complete.");
+  }
+
+  private boolean isPlanExecuting() {
+    return planExecutionResult != null && !planExecutionResult.isDone();
+  }
+
+  private void logPreviousResult() {
+    if (planExecutionResult == null) {
+      LOG.log(Level.INFO, "Initial optimization run.");
     } else {
-      LOG.log(Level.INFO, "Skipping Optimization, as the previous execution has not finished.");
+      try {
+        LOG.log(Level.INFO, "Previous result: {0}", planExecutionResult.get());
+      } catch (final InterruptedException e) {
+        throw new RuntimeException(e);
+      } catch (final ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private void blockUntilPlanIsExecuted() {
+    try {
+      LOG.log(Level.INFO, "Blocking until current plan execution is done.");
+      final PlanResult result = planExecutionResult.get();
+      LOG.log(Level.INFO, "Current result: {0}", result);
+    } catch (final InterruptedException e) {
+      throw new RuntimeException(e);
+    } catch (final ExecutionException e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -161,40 +173,5 @@ public final class OptimizationOrchestrator {
       evaluatorParametersList.add(new EvaluatorParametersImpl(computeId, dataInfos.get(computeId)));
     }
     return evaluatorParametersList;
-  }
-
-  /**
-   * A {@code Future<PlanResult>} to be used as a singleton for an initially assigned result
-   * (i.e., in place of null). The Future is initialized as done, and returns a singleton
-   * PlanResult.
-   */
-  private static final class InitialResult implements Future<PlanResult> {
-    private static final PlanResult INITIAL_RESULT = new PlanResultImpl();
-
-    @Override
-    public boolean cancel(final boolean mayInterruptIfRunning) {
-      return false;
-    }
-
-    @Override
-    public boolean isCancelled() {
-      return false;
-    }
-
-    @Override
-    public boolean isDone() {
-      return true;
-    }
-
-    @Override
-    public PlanResult get() throws InterruptedException, ExecutionException {
-      return INITIAL_RESULT;
-    }
-
-    @Override
-    public PlanResult get(final long timeout, final TimeUnit unit)
-        throws InterruptedException, ExecutionException, TimeoutException {
-      return INITIAL_RESULT;
-    }
   }
 }
