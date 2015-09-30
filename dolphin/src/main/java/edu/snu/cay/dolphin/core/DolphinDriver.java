@@ -28,6 +28,8 @@ import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.api.EMResouceCallbackManager;
+import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
@@ -64,6 +66,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -107,6 +110,11 @@ public final class DolphinDriver {
    * Sends evaluator allocation requests for data loading.
    */
   private final DataLoader dataLoader;
+
+  /**
+   * Elastic Memory to add, delete evaluators and move data.
+   */
+  private final ElasticMemory elasticMemory;
 
   /**
    * The output service.
@@ -163,6 +171,16 @@ public final class DolphinDriver {
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final UserParameters userParameters;
 
+  /**
+   * Map of evaluatorId to requestorId.
+   */
+  private final ConcurrentHashMap<String, String> idMap = new ConcurrentHashMap<>();
+
+  /**
+   * Manage callback of EM resource requests.
+   */
+  private final EMResouceCallbackManager emResouceCallbackManager;
+
 
   /**
    * Constructor for the Driver of a Dolphin job.
@@ -184,6 +202,7 @@ public final class DolphinDriver {
   private DolphinDriver(final GroupCommDriver groupCommDriver,
                         final DataLoadingService dataLoadingService,
                         final DataLoader dataLoader,
+                        final ElasticMemory elasticMemory,
                         final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
                         final OptimizationOrchestrator optimizationOrchestrator,
@@ -192,10 +211,12 @@ public final class DolphinDriver {
                         final UserParameters userParameters,
                         final MetricCodec metricCodec,
                         final MetricsMessageCodec metricsMessageCodec,
-                        final HTraceParameters traceParameters) {
+                        final HTraceParameters traceParameters,
+                        final EMResouceCallbackManager emResouceCallbackManager) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
     this.dataLoader = dataLoader;
+    this.elasticMemory = elasticMemory;
     this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
     this.optimizationOrchestrator = optimizationOrchestrator;
@@ -208,6 +229,7 @@ public final class DolphinDriver {
     this.metricCodec = metricCodec;
     this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
+    this.emResouceCallbackManager = emResouceCallbackManager;
     initializeCommDriver();
   }
 
@@ -280,7 +302,16 @@ public final class DolphinDriver {
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
+      if (dataLoader.isDataLoaderRequest()) {
+        idMap.put(allocatedEvaluator.getId(), DataLoader.class.getName());
+        dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
+      } else if (elasticMemory.isEMRequest()) {
+        idMap.put(allocatedEvaluator.getId(), ElasticMemory.class.getName());
+        elasticMemory.handleEvalAlloc(allocatedEvaluator);
+        allocatedEvaluator.submitContextAndService(getContextConfiguration(), getServiceConfiguration());
+      } else {
+        LOG.warning("Unknown evaluator allocated. Ignore " + allocatedEvaluator.toString());
+      }
     }
   }
 
@@ -288,8 +319,39 @@ public final class DolphinDriver {
 
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
-      dataLoader.handleDataLoadingEvalFailure(failedEvaluator);
+      final String evaluatorId = failedEvaluator.getId();
+      if (!idMap.containsKey(evaluatorId)) {
+        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + failedEvaluator.toString());
+        return;
+      }
+      final String requestorId = idMap.get(evaluatorId);
+      if (requestorId.equals(DataLoader.class.getName())) {
+        dataLoader.handleDataLoadingEvalFailure(failedEvaluator);
+      } else if (requestorId.equals(ElasticMemory.class.getName())) {
+        // Do something
+      } else {
+        LOG.warning("Unknown failed evaluator. Ignore " + failedEvaluator.toString());
+      }
     }
+  }
+
+  private Configuration getContextConfiguration() {
+    final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
+    final Configuration emContextConf = emConf.getContextConfiguration();
+    final Configuration metricsMessageContextConf = MetricsMessageSender.getContextConfiguration();
+    return Configurations.merge(groupCommContextConf, emContextConf, metricsMessageContextConf);
+  }
+
+  private Configuration getServiceConfiguration() {
+    final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
+    final Configuration outputServiceConf = outputService.getServiceConfiguration();
+    final Configuration metricTrackerServiceConf = MetricsCollectionService.getServiceConfiguration();
+    final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
+    final Configuration traceConf = traceParameters.getConfiguration();
+    final Configuration metricsMessageServiceConf = MetricsMessageSender.getServiceConfiguration();
+    return Configurations.merge(
+        userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
+        outputServiceConf, traceConf, metricsMessageServiceConf);
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
@@ -303,44 +365,37 @@ public final class DolphinDriver {
       // It would be better if the two services could go into the same context, but
       // the Data Loading API is currently constructed to add its own context before
       // allowing any other ones.
-      if (!groupCommDriver.isConfigured(activeContext)) {
-        final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
-        final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
-        final Configuration outputServiceConf = outputService.getServiceConfiguration();
-        final Configuration metricTrackerServiceConf = MetricsCollectionService.getServiceConfiguration();
-        final Configuration emContextConf = emConf.getContextConfiguration();
-        final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
-        final Configuration traceConf = traceParameters.getConfiguration();
-        final Configuration metricsMessageContextConf = MetricsMessageSender.getContextConfiguration();
-        final Configuration metricsMessageServiceConf = MetricsMessageSender.getServiceConfiguration();
+      final String evaluatorId = activeContext.getEvaluatorId();
+      if (!idMap.containsKey(evaluatorId)) {
+        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + activeContext.toString());
+        return;
+      }
+      final String requestorId = idMap.get(evaluatorId);
+      if (requestorId.equals(DataLoader.class.getName())) {
+        if (!groupCommDriver.isConfigured(activeContext)) {
+          final Configuration finalContextConf = getContextConfiguration();
+          final Configuration finalServiceConf;
+          if (dataLoadingService.isComputeContext(activeContext)) {
+            LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
+            ctrlTaskContextId = getContextId(finalContextConf);
 
-        final Configuration finalContextConf = Configurations.merge(
-            groupCommContextConf, emContextConf, metricsMessageContextConf);
+            // Add the Elastic Memory service, the Output service,
+            // the Metric Collection service, and the Group Communication service
+            finalServiceConf = getServiceConfiguration();
+          } else {
+            LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
-        final Configuration finalServiceConf;
-        if (dataLoadingService.isComputeContext(activeContext)) {
-          LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
-          ctrlTaskContextId = getContextId(groupCommContextConf);
-
-          // Add the Elastic Memory service, the Output service,
-          // the Metric Collection service, and the Group Communication service
-          finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
-              outputServiceConf, traceConf, metricsMessageServiceConf);
+            // Add the Data Parse service, the Elastic Memory service,
+            // the Output service, the Metric Collection service, and the Group Communication service
+            final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
+            finalServiceConf = Configurations.merge(getServiceConfiguration(), dataParseConf);
+          }
+          activeContext.submitContextAndService(finalContextConf, finalServiceConf);
         } else {
-          LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
-
-          // Add the Data Parse service, the Elastic Memory service,
-          // the Output service, the Metric Collection service, and the Group Communication service
-          final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
-          finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, dataParseConf, outputServiceConf,
-              metricTrackerServiceConf, traceConf, metricsMessageServiceConf);
+          submitTask(activeContext, 0);
         }
-
-        activeContext.submitContextAndService(finalContextConf, finalServiceConf);
-      } else {
-        submitTask(activeContext, 0);
+      } else if (requestorId.equals(ElasticMemory.class.getName())) {
+        emResouceCallbackManager.onCompleted(activeContext);
       }
     }
   }

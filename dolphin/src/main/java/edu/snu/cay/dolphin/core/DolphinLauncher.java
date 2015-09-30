@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.core;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationConfiguration;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.trace.HTraceParameters;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -89,7 +90,7 @@ public final class DolphinLauncher {
         .build();
   }
 
-  private Configuration getDriverConfiguration() {
+  private Configuration getDriverConfiguration() throws InjectionException {
     final ConfigurationModule driverConfiguration = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
@@ -128,11 +129,16 @@ public final class DolphinLauncher {
         .set(TaskOutputServiceBuilder.OUTPUT_PATH, processOutputDir(dolphinParameters.getOutputDir()))
         .build();
 
+    final Configuration traceConf = Tang.Factory.getTang().newInjector()
+        .getInstance(HTraceParameters.class)
+        .getConfiguration();
+
     final Configuration optimizerConf = OptimizationConfiguration.getRandomOptimizerConfiguration();
 
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         optimizerConf,
+        traceConf,
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),
