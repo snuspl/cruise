@@ -19,7 +19,6 @@ import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.services.em.trace.HTraceUtils;
-import edu.snu.cay.services.em.utils.AvroUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
@@ -90,7 +89,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       final List<AvroLongRange> avroLongRangeList = new LinkedList<>();
       for (final LongRange idRange : idRangeSet) {
-        avroLongRangeList.add(AvroUtils.convertLongRange(idRange));
+        avroLongRangeList.add(convertLongRange(idRange));
       }
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
@@ -181,7 +180,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       final List<AvroLongRange> avroLongRangeList = new LinkedList<>();
       for (final LongRange idRange : idRangeSet) {
-        avroLongRangeList.add(AvroUtils.convertLongRange(idRange));
+        avroLongRangeList.add(convertLongRange(idRange));
       }
 
       final ResultMsg resultMsg = ResultMsg.newBuilder()
@@ -233,5 +232,12 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRegisMsg",
           new Object[]{dataType, unitStartId, unitEndId});
     }
+  }
+
+  private AvroLongRange convertLongRange(final LongRange longRange) {
+    return AvroLongRange.newBuilder()
+        .setMin(longRange.getMinimumLong())
+        .setMax(longRange.getMaximumLong())
+        .build();
   }
 }

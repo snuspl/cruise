@@ -19,7 +19,7 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.RegisMsg;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.trace.HTraceUtils;
-import edu.snu.cay.services.em.utils.SingleMessageExtractor;
+import edu.snu.cay.utils.SingleMessageExtractor;
 import org.htrace.Trace;
 import org.htrace.TraceScope;
 import org.apache.reef.annotations.audience.DriverSide;

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.shuffle.utils;
+package edu.snu.cay.utils;
 
 import org.apache.reef.io.Tuple;
 
