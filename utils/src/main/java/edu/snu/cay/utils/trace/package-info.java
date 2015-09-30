@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.trace.parameters;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "ReceiverType = ZIPKIN|STDOUT", default_value = "STDOUT", short_name = "htrace_receiver_type")
-public final class ReceiverType implements Name<String> {
-}
+/**
+ * Classes for using tracing frameworks on Elastic Memory.
+ */
+package edu.snu.cay.utils.trace;

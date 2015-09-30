@@ -24,7 +24,7 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
-import edu.snu.cay.services.em.trace.HTraceParameters;
+import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.Sampler;
 import org.htrace.Trace;

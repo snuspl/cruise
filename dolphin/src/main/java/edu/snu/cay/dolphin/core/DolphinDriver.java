@@ -32,7 +32,7 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
-import edu.snu.cay.services.em.trace.HTraceParameters;
+import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;

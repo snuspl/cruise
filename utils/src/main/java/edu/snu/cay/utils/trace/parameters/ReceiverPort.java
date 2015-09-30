@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.trace.parameters;
+package edu.snu.cay.utils.trace.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Receiver Host", default_value = "localhost", short_name = "htrace_receiver_host")
-public final class ReceiverHost implements Name<String> {
+@NamedParameter(doc = "Receiver Port", default_value = "9410", short_name = "htrace_receiver_port")
+public final class ReceiverPort implements Name<Integer> {
 }
