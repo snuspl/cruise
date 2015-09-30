@@ -115,10 +115,10 @@ public final class ClassificationSparseDataParser implements DataParser<List<Row
   }
 
   /**
-   * Parses a string to a pair of an index and a value.
+   * Parses the string argument as a pair of an index and a value.
    * @param elemString a string that uses the format "index:value".
-   * @return a pair of an index and a value or {@code null} if a specified string is invalid.
-   * @throws ParseException
+   * @return a pair of an index and a value.
+   * @throws ParseException if the specified string is invalid.
    */
   private Pair<Integer, Double> parseElement(final String elemString) throws ParseException {
     try {
@@ -133,15 +133,15 @@ public final class ClassificationSparseDataParser implements DataParser<List<Row
   }
 
   /**
-   * Parses an array of strings to sparse feature vector.
+   * Parses the specified array of strings as a sparse feature vector.
    * @param split an array of strings that represent elements of feature vector.
-   * @return a feature vector or {@code null} if a specified array is invalid.
-   * @throws ParseException
+   * @return a feature vector.
+   * @throws ParseException if a string element of the specified array is invalid.
    */
   private Vector parseFeatureVector(final String[] split) throws ParseException {
     final Vector ret = new SequentialAccessSparseVector(dimension + 1, split.length); // +1 for a constant term
-    for (int i = 1; i < split.length; ++i) {
-      final Pair<Integer, Double> elementPair = parseElement(split[i]);
+    for (final String elementString : split) {
+      final Pair<Integer, Double> elementPair = parseElement(elementString);
       ret.set(elementPair.getFirst(), elementPair.getSecond());
     }
     ret.set(dimension, 1); // a constant term
