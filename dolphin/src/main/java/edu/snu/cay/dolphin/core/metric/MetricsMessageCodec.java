@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.core.metric;
 
 import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
-import edu.snu.cay.services.em.utils.AvroUtils; // TODO #175: move AvroUtils to a common module to remove EM dependency
+import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;

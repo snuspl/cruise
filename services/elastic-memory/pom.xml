@@ -18,7 +18,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>edu.snu.cay</groupId>
+  <groupId>edu.snu.cay.services</groupId>
   <artifactId>elastic-memory</artifactId>
   <name>Elastic Memory</name>
 
@@ -30,6 +30,11 @@
   </parent>
 
   <dependencies>
+    <dependency>
+      <groupId>${parent.groupId}</groupId>
+      <artifactId>cay-utils</artifactId>
+      <version>${parent.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-common</artifactId>

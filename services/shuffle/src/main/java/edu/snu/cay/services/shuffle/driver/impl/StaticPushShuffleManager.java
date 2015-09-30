@@ -25,7 +25,7 @@ import edu.snu.cay.services.shuffle.evaluator.operator.impl.PushShuffleSenderImp
 import edu.snu.cay.services.shuffle.network.ControlMessageNetworkSetup;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
 import edu.snu.cay.services.shuffle.driver.ShuffleConfigurationSerializer;
-import edu.snu.cay.services.shuffle.utils.StateMachine;
+import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Message;

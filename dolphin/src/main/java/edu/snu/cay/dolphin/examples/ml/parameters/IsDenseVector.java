@@ -13,7 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Util classes for Elastic Memory.
- */
-package edu.snu.cay.services.em.utils;
+package edu.snu.cay.dolphin.examples.ml.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "whether a type of input vector is dense or not",
+                short_name = "isDense")
+public final class IsDenseVector implements Name<Boolean> {
+}

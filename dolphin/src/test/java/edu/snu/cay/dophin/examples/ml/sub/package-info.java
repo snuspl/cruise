@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 /**
- * Utility classes for shuffle service.
+ * Classes for testing codecs, reduce functions, and other classes that support REEF group communication.
  */
-package edu.snu.cay.services.shuffle.utils;
+package edu.snu.cay.dophin.examples.ml.sub;

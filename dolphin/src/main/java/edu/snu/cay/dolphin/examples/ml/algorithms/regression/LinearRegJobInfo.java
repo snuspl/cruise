@@ -25,7 +25,7 @@ import edu.snu.cay.dolphin.examples.ml.sub.LinearRegSummaryCodec;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserJobInfo;
 import edu.snu.cay.dolphin.core.metric.GCMetricTracker;
-import edu.snu.cay.dolphin.examples.ml.sub.LinearModelCodec;
+import edu.snu.cay.dolphin.examples.ml.sub.DenseLinearModelCodec;
 
 import javax.inject.Inject;
 import java.util.LinkedList;
@@ -48,7 +48,7 @@ public final class LinearRegJobInfo implements UserJobInfo {
 
     stageInfoList.add(
         StageInfo.newBuilder(LinearRegMainCmpTask.class, LinearRegMainCtrlTask.class, CommunicationGroup.class)
-            .setBroadcast(LinearModelCodec.class)
+            .setBroadcast(DenseLinearModelCodec.class)
             .setReduce(LinearRegSummaryCodec.class, LinearRegReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
             .build());

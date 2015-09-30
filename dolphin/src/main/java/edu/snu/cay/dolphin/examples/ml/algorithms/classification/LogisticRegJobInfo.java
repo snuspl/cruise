@@ -17,15 +17,16 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
 import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
 import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
-import edu.snu.cay.dolphin.examples.ml.data.ClassificationDataParser;
+import edu.snu.cay.dolphin.examples.ml.data.ClassificationDenseDataParser;
+import edu.snu.cay.dolphin.examples.ml.data.ClassificationSparseDataParser;
 import edu.snu.cay.dolphin.examples.ml.parameters.CommunicationGroup;
-import edu.snu.cay.dolphin.examples.ml.sub.LogisticRegReduceFunction;
-import edu.snu.cay.dolphin.examples.ml.sub.LogisticRegSummaryCodec;
+import edu.snu.cay.dolphin.examples.ml.parameters.IsDenseVector;
+import edu.snu.cay.dolphin.examples.ml.sub.*;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.StageInfo;
 import edu.snu.cay.dolphin.core.UserJobInfo;
 import edu.snu.cay.dolphin.core.metric.GCMetricTracker;
-import edu.snu.cay.dolphin.examples.ml.sub.LinearModelCodec;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.LinkedList;
@@ -33,8 +34,11 @@ import java.util.List;
 
 public final class LogisticRegJobInfo implements UserJobInfo {
 
+  private final boolean isDenseVector;
+
   @Inject
-  public LogisticRegJobInfo() {
+  public LogisticRegJobInfo(@Parameter(IsDenseVector.class) final boolean isDenseVector) {
+    this.isDenseVector = isDenseVector;
   }
 
   @Override
@@ -48,8 +52,9 @@ public final class LogisticRegJobInfo implements UserJobInfo {
 
     stageInfoList.add(
         StageInfo.newBuilder(LogisticRegMainCmpTask.class, LogisticRegMainCtrlTask.class, CommunicationGroup.class)
-            .setBroadcast(LinearModelCodec.class)
-            .setReduce(LogisticRegSummaryCodec.class, LogisticRegReduceFunction.class)
+            .setBroadcast(isDenseVector ? DenseLinearModelCodec.class : SparseLinearModelCodec.class)
+            .setReduce(isDenseVector ? DenseLogisticRegSummaryCodec.class : SparseLogisticRegSummaryCodec.class,
+                LogisticRegReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
             .build());
 
@@ -58,6 +63,6 @@ public final class LogisticRegJobInfo implements UserJobInfo {
 
   @Override
   public Class<? extends DataParser> getDataParser() {
-    return ClassificationDataParser.class;
+    return isDenseVector ? ClassificationDenseDataParser.class : ClassificationSparseDataParser.class;
   }
 }
