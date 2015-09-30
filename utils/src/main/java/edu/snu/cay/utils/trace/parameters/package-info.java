@@ -16,4 +16,4 @@
 /**
  * Tracing-framework related parameter classes.
  */
-package edu.snu.cay.services.em.trace.parameters;
+package edu.snu.cay.utils.trace.parameters;

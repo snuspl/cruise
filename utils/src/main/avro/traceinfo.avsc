@@ -20,7 +20,7 @@
  * to be formed between time spans in different processes.
  */
 {
-  "namespace": "edu.snu.cay.services.em.trace",
+  "namespace": "edu.snu.cay.utils.trace",
   "type": "record",
   "name": "AvroTraceInfo",
   "fields":
