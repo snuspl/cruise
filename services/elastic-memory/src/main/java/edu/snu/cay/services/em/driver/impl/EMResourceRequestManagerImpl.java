@@ -43,7 +43,7 @@ public final class EMResourceRequestManagerImpl implements EMResourceRequestMana
    * Map of evaluatorId to callback.
    * {@code bindCallback} method will put element and {@code onCompleted} method will remove element.
    */
-  private final ConcurrentHashMap<String, EventHandler<ActiveContext>> handlerMap;
+  private final ConcurrentHashMap<String, EventHandler<ActiveContext>> evalToCallbackMap;
 
   private static final EventHandler<ActiveContext> NOOP_CALLBACK =
       new EventHandler<ActiveContext>() {
@@ -56,7 +56,7 @@ public final class EMResourceRequestManagerImpl implements EMResourceRequestMana
   @Inject
   private EMResourceRequestManagerImpl() {
     resourceCallbackQueue = new LinkedBlockingQueue<>();
-    handlerMap = new ConcurrentHashMap<>();
+    evalToCallbackMap = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -71,7 +71,7 @@ public final class EMResourceRequestManagerImpl implements EMResourceRequestMana
   /**
    * If there is remembered callback, EM has an outstanding request.
    * If given allocatedEvaluator is EM requested evaluator,
-   * put evaluatorId - callback pair in {@code handlerMap}.
+   * put evaluatorId - callback pair in {@code evalToCallbackMap}.
    */
   @Override
   public boolean bindCallback(final AllocatedEvaluator allocatedEvaluator) {
@@ -79,7 +79,7 @@ public final class EMResourceRequestManagerImpl implements EMResourceRequestMana
     if (handler == null) {
       return false;
     } else {
-      if (handlerMap.putIfAbsent(allocatedEvaluator.getId(), handler) != null) {
+      if (evalToCallbackMap.putIfAbsent(allocatedEvaluator.getId(), handler) != null) {
         LOG.warning("Failed to register callback for " + allocatedEvaluator.getId() + ". Already exists.");
       }
       return true;
@@ -88,7 +88,7 @@ public final class EMResourceRequestManagerImpl implements EMResourceRequestMana
 
   @Override
   public void onCompleted(final ActiveContext activeContext) {
-    final EventHandler<ActiveContext> handler = handlerMap.remove(activeContext.getEvaluatorId());
+    final EventHandler<ActiveContext> handler = evalToCallbackMap.remove(activeContext.getEvaluatorId());
     if (handler == null) {
       LOG.warning("Failed to find callback for " + activeContext.getEvaluatorId()
           + ". Ignoring active context " + activeContext.toString());

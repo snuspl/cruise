@@ -302,7 +302,7 @@ public final class DolphinDriver {
         evalToRequestorMap.put(allocatedEvaluator.getId(), ElasticMemory.class.getName());
         allocatedEvaluator.submitContextAndService(getContextConfiguration(), getServiceConfiguration());
       } else {
-        LOG.warning("Unknown evaluator allocated. Ignore " + allocatedEvaluator.toString());
+        LOG.warning("Unknown evaluator allocated. Ignore " + allocatedEvaluator);
         allocatedEvaluator.close();
       }
     }
@@ -315,15 +315,16 @@ public final class DolphinDriver {
       final String evaluatorId = failedEvaluator.getId();
       final String requestorId = evalToRequestorMap.get(evaluatorId);
       if (requestorId == null) {
-        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + failedEvaluator.toString());
+        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + failedEvaluator);
         return;
       }
       if (requestorId.equals(DataLoader.class.getName())) {
         dataLoader.handleDataLoadingEvalFailure(failedEvaluator);
       } else if (requestorId.equals(ElasticMemory.class.getName())) {
         // Failure handling for EM requested evaluators. We may use ElasticMemory.checkpoint to do this.
+        // TODO #114: Implement Checkpoint
       } else {
-        LOG.warning("Unknown failed evaluator. Ignore " + failedEvaluator.toString());
+        LOG.warning("Unknown failed evaluator. Ignore " + failedEvaluator);
       }
     }
   }
@@ -369,7 +370,7 @@ public final class DolphinDriver {
       final String evaluatorId = activeContext.getEvaluatorId();
       final String requestorId = evalToRequestorMap.get(evaluatorId);
       if (requestorId == null) {
-        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + activeContext.toString());
+        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + activeContext);
         activeContext.close();
         return;
       }
@@ -397,7 +398,7 @@ public final class DolphinDriver {
       } else if (requestorId.equals(ElasticMemory.class.getName())) {
         emResourceRequestManager.onCompleted(activeContext);
       } else {
-        LOG.warning("Unknown evaluator. Ignore " + activeContext.toString());
+        LOG.warning("Unknown evaluator. Ignore " + activeContext);
         activeContext.close();
       }
     }
