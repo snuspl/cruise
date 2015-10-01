@@ -91,7 +91,7 @@ public final class EMResourceRequestManagerImpl implements EMResourceRequestMana
     final EventHandler<ActiveContext> handler = evalToCallbackMap.remove(activeContext.getEvaluatorId());
     if (handler == null) {
       LOG.warning("Failed to find callback for " + activeContext.getEvaluatorId()
-          + ". Ignoring active context " + activeContext.toString());
+          + ". Ignoring active context " + activeContext);
     } else {
       handler.onNext(activeContext);
     }
