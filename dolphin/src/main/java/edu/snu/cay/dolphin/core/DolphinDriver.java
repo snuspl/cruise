@@ -28,6 +28,8 @@ import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
+import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
@@ -64,6 +66,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -163,6 +166,16 @@ public final class DolphinDriver {
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final UserParameters userParameters;
 
+  /**
+   * Map of evaluator id to component id who requested the evaluator.
+   */
+  private final ConcurrentHashMap<String, String> evalToRequestorMap = new ConcurrentHashMap<>();
+
+  /**
+   * Manage callback of EM resource requests.
+   */
+  private final EMResourceRequestManager emResourceRequestManager;
+
 
   /**
    * Constructor for the Driver of a Dolphin job.
@@ -192,7 +205,8 @@ public final class DolphinDriver {
                         final UserParameters userParameters,
                         final MetricCodec metricCodec,
                         final MetricsMessageCodec metricsMessageCodec,
-                        final HTraceParameters traceParameters) {
+                        final HTraceParameters traceParameters,
+                        final EMResourceRequestManager emResourceRequestManager) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
     this.dataLoader = dataLoader;
@@ -208,6 +222,7 @@ public final class DolphinDriver {
     this.metricCodec = metricCodec;
     this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
+    this.emResourceRequestManager = emResourceRequestManager;
     initializeCommDriver();
   }
 
@@ -280,7 +295,16 @@ public final class DolphinDriver {
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
+      if (dataLoader.isDataLoaderRequest()) {
+        evalToRequestorMap.put(allocatedEvaluator.getId(), DataLoader.class.getName());
+        dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
+      } else if (emResourceRequestManager.bindCallback(allocatedEvaluator)) {
+        evalToRequestorMap.put(allocatedEvaluator.getId(), ElasticMemory.class.getName());
+        allocatedEvaluator.submitContextAndService(getContextConfiguration(), getServiceConfiguration());
+      } else {
+        LOG.warning("Unknown evaluator allocated. Ignore " + allocatedEvaluator);
+        allocatedEvaluator.close();
+      }
     }
   }
 
@@ -288,8 +312,48 @@ public final class DolphinDriver {
 
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
-      dataLoader.handleDataLoadingEvalFailure(failedEvaluator);
+      final String evaluatorId = failedEvaluator.getId();
+      final String requestorId = evalToRequestorMap.get(evaluatorId);
+      if (requestorId == null) {
+        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + failedEvaluator);
+        return;
+      }
+      if (requestorId.equals(DataLoader.class.getName())) {
+        dataLoader.handleDataLoadingEvalFailure(failedEvaluator);
+      } else if (requestorId.equals(ElasticMemory.class.getName())) {
+        // Failure handling for EM requested evaluators. We may use ElasticMemory.checkpoint to do this.
+        // TODO #114: Implement Checkpoint
+      } else {
+        LOG.warning("Unknown failed evaluator. Ignore " + failedEvaluator);
+      }
     }
+  }
+
+  /**
+   * Gives context configuration submitted on
+   * both DataLoader requested evaluators and ElasticMemory requested evaluators.
+   */
+  private Configuration getContextConfiguration() {
+    final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
+    final Configuration emContextConf = emConf.getContextConfiguration();
+    final Configuration metricsMessageContextConf = MetricsMessageSender.getContextConfiguration();
+    return Configurations.merge(groupCommContextConf, emContextConf, metricsMessageContextConf);
+  }
+
+  /**
+   * Gives service configuration submitted on
+   * both DataLoader requested evaluators and ElasticMemory requested evaluators.
+   */
+  private Configuration getServiceConfiguration() {
+    final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
+    final Configuration outputServiceConf = outputService.getServiceConfiguration();
+    final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
+    final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
+    final Configuration traceConf = traceParameters.getConfiguration();
+    final Configuration metricsMessageServiceConf = MetricsMessageSender.getServiceConfiguration();
+    return Configurations.merge(
+        userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricCollectionServiceConf,
+        outputServiceConf, traceConf, metricsMessageServiceConf);
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
@@ -303,44 +367,39 @@ public final class DolphinDriver {
       // It would be better if the two services could go into the same context, but
       // the Data Loading API is currently constructed to add its own context before
       // allowing any other ones.
-      if (!groupCommDriver.isConfigured(activeContext)) {
-        final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
-        final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
-        final Configuration outputServiceConf = outputService.getServiceConfiguration();
-        final Configuration metricTrackerServiceConf = MetricsCollectionService.getServiceConfiguration();
-        final Configuration emContextConf = emConf.getContextConfiguration();
-        final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
-        final Configuration traceConf = traceParameters.getConfiguration();
-        final Configuration metricsMessageContextConf = MetricsMessageSender.getContextConfiguration();
-        final Configuration metricsMessageServiceConf = MetricsMessageSender.getServiceConfiguration();
+      final String evaluatorId = activeContext.getEvaluatorId();
+      final String requestorId = evalToRequestorMap.get(evaluatorId);
+      if (requestorId == null) {
+        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + activeContext);
+        activeContext.close();
+        return;
+      }
+      if (requestorId.equals(DataLoader.class.getName())) {
+        if (!groupCommDriver.isConfigured(activeContext)) {
+          final Configuration finalContextConf = getContextConfiguration();
+          final Configuration finalServiceConf;
+          if (dataLoadingService.isComputeContext(activeContext)) {
+            LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
+            ctrlTaskContextId = getContextId(finalContextConf);
 
-        final Configuration finalContextConf = Configurations.merge(
-            groupCommContextConf, emContextConf, metricsMessageContextConf);
+            // Add services for the GroupCommContext under ControllerTask
+            finalServiceConf = getServiceConfiguration();
+          } else {
+            LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
-        final Configuration finalServiceConf;
-        if (dataLoadingService.isComputeContext(activeContext)) {
-          LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
-          ctrlTaskContextId = getContextId(groupCommContextConf);
-
-          // Add the Elastic Memory service, the Output service,
-          // the Metric Collection service, and the Group Communication service
-          finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
-              outputServiceConf, traceConf, metricsMessageServiceConf);
+            // Add services for the GroupCommContext under ComputeTask
+            final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
+            finalServiceConf = Configurations.merge(getServiceConfiguration(), dataParseConf);
+          }
+          activeContext.submitContextAndService(finalContextConf, finalServiceConf);
         } else {
-          LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
-
-          // Add the Data Parse service, the Elastic Memory service,
-          // the Output service, the Metric Collection service, and the Group Communication service
-          final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
-          finalServiceConf = Configurations.merge(
-              userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, dataParseConf, outputServiceConf,
-              metricTrackerServiceConf, traceConf, metricsMessageServiceConf);
+          submitTask(activeContext, 0);
         }
-
-        activeContext.submitContextAndService(finalContextConf, finalServiceConf);
+      } else if (requestorId.equals(ElasticMemory.class.getName())) {
+        emResourceRequestManager.onCompleted(activeContext);
       } else {
-        submitTask(activeContext, 0);
+        LOG.warning("Unknown evaluator. Ignore " + activeContext);
+        activeContext.close();
       }
     }
   }

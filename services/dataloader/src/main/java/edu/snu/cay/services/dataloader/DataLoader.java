@@ -161,6 +161,19 @@ public class DataLoader {
     resourceRequestHandler.releaseResourceRequestGate();
   }
 
+  /**
+   * Driver will call this method to determine whether this evaluator was requested by DataLoader or not.
+   * Currently assumes that every request has same memory size and cores.
+   * TODO #188: Support heterogeneous evaluator requests
+   * @return true if DataLoader has requested for evaluator
+   */
+  public boolean isDataLoaderRequest() {
+    return numComputeRequestsToSubmit.get() > 0
+        || numDataRequestsToSubmit.get() > 0
+        || !failedComputeEvalConfigs.isEmpty()
+        || !failedDataEvalConfigs.isEmpty();
+  }
+
   // TODO #151: Add comments to new DataLoader APIs
   public void handleDataLoadingEvalAlloc(final AllocatedEvaluator allocatedEvaluator) {
 

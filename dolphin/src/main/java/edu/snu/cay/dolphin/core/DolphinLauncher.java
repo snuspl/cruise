@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.core;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationConfiguration;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -50,10 +51,13 @@ import java.util.logging.Logger;
 public final class DolphinLauncher {
   private static final Logger LOG = Logger.getLogger(DolphinLauncher.class.getName());
   private final DolphinParameters dolphinParameters;
+  private final HTraceParameters traceParameters;
 
   @Inject
-  private DolphinLauncher(final DolphinParameters dolphinParameters) {
+  private DolphinLauncher(final DolphinParameters dolphinParameters,
+                          final HTraceParameters traceParameters) {
     this.dolphinParameters = dolphinParameters;
+    this.traceParameters = traceParameters;
   }
 
   public static void run(final Configuration dolphinConfig) {
@@ -133,6 +137,7 @@ public final class DolphinLauncher {
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         optimizerConf,
+        traceParameters.getConfiguration(),
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),
