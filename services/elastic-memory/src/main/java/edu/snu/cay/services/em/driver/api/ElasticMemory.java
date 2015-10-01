@@ -48,7 +48,7 @@ public interface ElasticMemory {
    *
    * @param evalId identifier of the evaluator to release
    */
-  void delete(String evalId);
+  void delete(String evalId, @Nullable EventHandler<String> callback);
 
   /**
    * Resize the evaluator specified by a given identifier.
