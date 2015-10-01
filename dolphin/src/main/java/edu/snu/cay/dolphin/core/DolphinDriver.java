@@ -112,11 +112,6 @@ public final class DolphinDriver {
   private final DataLoader dataLoader;
 
   /**
-   * Elastic Memory to add, delete evaluators and move data.
-   */
-  private final ElasticMemory elasticMemory;
-
-  /**
    * The output service.
    * Used to create an output service configuration for each context.
    */
@@ -174,7 +169,7 @@ public final class DolphinDriver {
   /**
    * Map of evaluator id to component id who requested the evaluator.
    */
-  private final ConcurrentHashMap<String, String> idMap = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, String> evalToRequestorMap = new ConcurrentHashMap<>();
 
   /**
    * Manage callback of EM resource requests.
@@ -202,7 +197,6 @@ public final class DolphinDriver {
   private DolphinDriver(final GroupCommDriver groupCommDriver,
                         final DataLoadingService dataLoadingService,
                         final DataLoader dataLoader,
-                        final ElasticMemory elasticMemory,
                         final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
                         final OptimizationOrchestrator optimizationOrchestrator,
@@ -216,7 +210,6 @@ public final class DolphinDriver {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
     this.dataLoader = dataLoader;
-    this.elasticMemory = elasticMemory;
     this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
     this.optimizationOrchestrator = optimizationOrchestrator;
@@ -303,13 +296,14 @@ public final class DolphinDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       if (dataLoader.isDataLoaderRequest()) {
-        idMap.put(allocatedEvaluator.getId(), DataLoader.class.getName());
+        evalToRequestorMap.put(allocatedEvaluator.getId(), DataLoader.class.getName());
         dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
       } else if (emResourceRequestManager.bindCallback(allocatedEvaluator)) {
-        idMap.put(allocatedEvaluator.getId(), ElasticMemory.class.getName());
+        evalToRequestorMap.put(allocatedEvaluator.getId(), ElasticMemory.class.getName());
         allocatedEvaluator.submitContextAndService(getContextConfiguration(), getServiceConfiguration());
       } else {
         LOG.warning("Unknown evaluator allocated. Ignore " + allocatedEvaluator.toString());
+        allocatedEvaluator.close();
       }
     }
   }
@@ -319,7 +313,7 @@ public final class DolphinDriver {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
       final String evaluatorId = failedEvaluator.getId();
-      final String requestorId = idMap.get(evaluatorId);
+      final String requestorId = evalToRequestorMap.get(evaluatorId);
       if (requestorId == null) {
         LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + failedEvaluator.toString());
         return;
@@ -352,12 +346,12 @@ public final class DolphinDriver {
   private Configuration getServiceConfiguration() {
     final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
     final Configuration outputServiceConf = outputService.getServiceConfiguration();
-    final Configuration metricTrackerServiceConf = MetricsCollectionService.getServiceConfiguration();
+    final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
     final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
     final Configuration traceConf = traceParameters.getConfiguration();
     final Configuration metricsMessageServiceConf = MetricsMessageSender.getServiceConfiguration();
     return Configurations.merge(
-        userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
+        userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricCollectionServiceConf,
         outputServiceConf, traceConf, metricsMessageServiceConf);
   }
 
@@ -373,9 +367,10 @@ public final class DolphinDriver {
       // the Data Loading API is currently constructed to add its own context before
       // allowing any other ones.
       final String evaluatorId = activeContext.getEvaluatorId();
-      final String requestorId = idMap.get(evaluatorId);
+      final String requestorId = evalToRequestorMap.get(evaluatorId);
       if (requestorId == null) {
         LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + activeContext.toString());
+        activeContext.close();
         return;
       }
       if (requestorId.equals(DataLoader.class.getName())) {
@@ -386,14 +381,12 @@ public final class DolphinDriver {
             LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
             ctrlTaskContextId = getContextId(finalContextConf);
 
-            // Add the Elastic Memory service, the Output service,
-            // the Metric Collection service, and the Group Communication service
+            // Add services for the GroupCommContext under ControllerTask
             finalServiceConf = getServiceConfiguration();
           } else {
             LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
-            // Add the Data Parse service, the Elastic Memory service,
-            // the Output service, the Metric Collection service, and the Group Communication service
+            // Add services for the GroupCommContext under ComputeTask
             final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
             finalServiceConf = Configurations.merge(getServiceConfiguration(), dataParseConf);
           }
@@ -405,6 +398,7 @@ public final class DolphinDriver {
         emResourceRequestManager.onCompleted(activeContext);
       } else {
         LOG.warning("Unknown evaluator. Ignore " + activeContext.toString());
+        activeContext.close();
       }
     }
   }

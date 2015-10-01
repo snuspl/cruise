@@ -28,7 +28,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
 
 /**
- * A thread-safe implementation of {@code EMResourceCallbackManager}.
+ * A thread-safe implementation of {@code EMResourceRequestManager}.
+ * TODO #188: Support heterogeneous evaluator requests
  */
 public final class EMResourceRequestManagerImpl implements EMResourceRequestManager {
   private static final Logger LOG = Logger.getLogger(EMResourceRequestManagerImpl.class.getName());
