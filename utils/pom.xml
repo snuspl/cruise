@@ -34,6 +34,11 @@
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-io</artifactId>
     </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
