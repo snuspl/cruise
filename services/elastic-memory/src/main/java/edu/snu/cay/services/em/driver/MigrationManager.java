@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.parameters.UpdateTimeoutMillis;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.utils.LongRangeUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -69,6 +71,13 @@ public final class MigrationManager {
   private final Map<String, MigrationInfo> ongoingMigrations = new HashMap<>();
 
   /**
+   * This set consists of the ranges that are currently moving, which is used
+   * to determine the move() is achievable or how many units can be moved.
+   * {@link TreeSet} is used for efficiency.
+   */
+  private final TreeSet<LongRange> movingRanges = LongRangeUtils.createEmptyTreeSet();
+
+  /**
    * This consists of the operation ids of which finish the data transfer,
    * and wait for applying their migration results.
    */
@@ -95,7 +104,8 @@ public final class MigrationManager {
   }
 
   /**
-   * Register a migration info and send the message to the receiver.
+   * Start migration of the data. If the ranges cannot be moved, notify the failure via callback.
+   * Note the operationId should be unique.
    * @param operationId Identifier of the {@code move} operation.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
@@ -110,15 +120,22 @@ public final class MigrationManager {
                                           final Set<LongRange> ranges,
                                           final TraceInfo traceInfo) {
     if (ongoingMigrations.containsKey(operationId)) {
-      notifyFailure(operationId, "Already registered id : " + operationId);
+      LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
+
+    } else if (!partitionManager.isMovable(senderId, dataType, ranges, movingRanges)) {
+      notifyFailure(operationId, "The ranges are not movable.");
+      return;
+
     } else {
-      ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType));
+      movingRanges.addAll(ranges);
+      ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType, ranges));
       sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
     }
   }
 
   /**
-   * Register a migration info and send the message to the receiver. Note that the OperationId should be unique.
+   * Start migration of the data. If there is no range to move, notify the failure via callback.
+   * Note the operationId should be unique.
    * @param operationId Identifier of the {@code move} operation.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
@@ -133,10 +150,21 @@ public final class MigrationManager {
                                           final int numUnits,
                                           final TraceInfo traceInfo) {
     if (ongoingMigrations.containsKey(operationId)) {
-      notifyFailure(operationId, "Already registered id : " + operationId);
+      LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
+
     } else {
-      ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType));
-      sender.get().sendCtrlMsg(senderId, dataType, receiverId, numUnits, operationId, traceInfo);
+      final Set<LongRange> movableRanges =
+          partitionManager.getMovableRanges(senderId, dataType, numUnits, movingRanges);
+
+      // TODO #90: What would we do if there are not enough number of units, not only there is no data to move?
+      if (LongRangeUtils.getNumUnits(movableRanges) == 0) {
+        notifyFailure(operationId, "There is no range to move");
+        return;
+      }
+
+      movingRanges.addAll(movableRanges);
+      ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType, movableRanges));
+      sender.get().sendCtrlMsg(senderId, dataType, receiverId, movableRanges, operationId, traceInfo);
     }
   }
 
@@ -145,12 +173,9 @@ public final class MigrationManager {
    * until {@link edu.snu.cay.services.em.driver.api.ElasticMemory#applyUpdates()} is called.
    * We will fix this to update the states without this barrier later.
    * @param operationId Identifier of {@code move} operation.
-   * @param ranges Ranges of the data.
    */
-  synchronized void waitUpdate(final String operationId, final Set<LongRange> ranges) {
-    final MigrationInfo updatedInfo = checkAndUpdateState(operationId, SENDING_DATA, WAITING_UPDATE);
-    updatedInfo.setRanges(ranges); // Update the range information also.
-
+  synchronized void waitUpdate(final String operationId) {
+    checkAndUpdateState(operationId, SENDING_DATA, WAITING_UPDATE);
     waiterIds.add(operationId);
   }
 
@@ -177,7 +202,7 @@ public final class MigrationManager {
       // Blocks until all the updates are applied.
       updateCounter.await(updateTimeoutMillis, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
-      // TODO #90: Consider how we can deal with this exception
+      // TODO #90: Consider how EM deals with this exception
       new RuntimeException(e);
     }
   }
@@ -187,7 +212,7 @@ public final class MigrationManager {
    * @param operationId Identifier of the {@code move} operation
    * @param traceInfo Trace information
    */
-  synchronized boolean movePartition(final String operationId, final TraceInfo traceInfo) {
+  synchronized void movePartition(final String operationId, final TraceInfo traceInfo) {
     try (final TraceScope movePartition = Trace.startSpan(MOVE_PARTITION, traceInfo)) {
       final MigrationInfo updatedInfo = checkAndUpdateState(operationId, UPDATING_RECEIVER, MOVING_PARTITION);
 
@@ -196,14 +221,10 @@ public final class MigrationManager {
       final String dataType = updatedInfo.getDataType();
 
       final Collection<LongRange> ranges = updatedInfo.getRanges();
-      boolean result = true;
       for (final LongRange range : ranges) {
-        if (!partitionManager.move(senderId, receiverId, dataType, range)) {
-          LOG.log(Level.SEVERE, "Failed while moving partition in the range of {0}", range);
-          result = false;
-        }
+        partitionManager.move(senderId, receiverId, dataType, range);
+        movingRanges.remove(range);
       }
-      return result;
     }
   }
 

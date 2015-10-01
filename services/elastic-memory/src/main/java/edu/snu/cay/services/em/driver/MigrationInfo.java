@@ -37,7 +37,7 @@ final class MigrationInfo {
   private final String senderId;
   private final String receiverId;
   private final String dataType;
-  private Collection<LongRange> ranges; // Ranges are updated once the driver receives the update message.
+  private final Collection<LongRange> ranges;
   private State state = State.SENDING_DATA;
 
   /**
@@ -48,10 +48,12 @@ final class MigrationInfo {
    */
   public MigrationInfo(final String senderId,
                        final String receiverId,
-                       final String dataType) {
+                       final String dataType,
+                       final Collection<LongRange> ranges) {
     this.senderId = senderId;
     this.receiverId = receiverId;
     this.dataType = dataType;
+    this.ranges = ranges;
   }
 
   /**
@@ -81,14 +83,6 @@ final class MigrationInfo {
    */
   public Collection<LongRange> getRanges() {
     return ranges;
-  }
-
-  /**
-   * Update the data ranges.
-   * @param ranges ranges of the data that participates in this migration.
-   */
-  public void setRanges(final Collection<LongRange> ranges) {
-    this.ranges = ranges;
   }
 
   /**

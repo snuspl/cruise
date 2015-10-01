@@ -20,9 +20,7 @@ import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.services.em.trace.HTraceUtils;
-import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
-import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -107,15 +105,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       // store the items in the pendingUpdates, so the items will be added later.
       pendingUpdates.put(operationId, new Add(dataType, codec, dataMsg.getUnits()));
 
-      // Compress the ranges so the number of ranges minimizes.
-      final SortedSet<Long> newIds = new TreeSet<>();
-      for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
-        final long id = unitIdPair.getId();
-        newIds.add(id);
-      }
-      final Set<LongRange> longRangeSet = LongRangeUtils.generateDenseLongRanges(newIds);
-      sender.get().sendResultMsg(true, dataType, longRangeSet,
-          operationId, TraceInfo.fromSpan(onDataMsgScope.getSpan()));
+      sender.get().sendResultMsg(true, operationId, TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
   }
 

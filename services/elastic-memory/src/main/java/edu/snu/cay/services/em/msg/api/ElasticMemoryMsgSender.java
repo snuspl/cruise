@@ -47,20 +47,6 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a CtrlMsg that tells the Evaluator specified with {@code destId} to
-   * send {@code numUnits} units of its {@code dataType} data to the Evaluator specified with
-   * {@code targetEvalId}.
-   * The operation should be given a unique {@code operationId}.
-   * Include {@code parentTraceInfo} to continue tracing this message.
-   */
-  void sendCtrlMsg(final String destId,
-                   final String dataType,
-                   final String targetEvalId,
-                   final int numUnits,
-                   final String operationId,
-                   @Nullable final TraceInfo parentTraceInfo);
-
-  /**
    * Send a DataMsg containing {@code unitIdPairList} to the Evaluator
    * named {@code destId}, specified by the type {@code dataType}.
    * The operation should be given a unique {@code operationId}.
@@ -75,13 +61,9 @@ public interface ElasticMemoryMsgSender {
   /**
    * Send a ResultMsg to report to the Driver that the operation identified
    * by {@code operationId} has finished, with a {@code success} result.
-   * The {@code dataType} and {@code idRangeSet} that was migrated is sent
-   * together for the Driver to check and cleanup the operation.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
   void sendResultMsg(final boolean success,
-                     final String dataType,
-                     final Set<LongRange> idRangeSet,
                      final String operationId,
                      @Nullable final TraceInfo parentTraceInfo);
 

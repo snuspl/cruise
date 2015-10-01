@@ -88,9 +88,7 @@
   "name": "ResultMsg",
   "fields":
   [
-    {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
-    {"name": "dataType", "type": "string"},
-    {"name": "idRange", "type": {"type": "array", "items": "AvroLongRange"}}
+    {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}}
   ]
 },
 

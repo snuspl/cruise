@@ -118,35 +118,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
-                          final int numUnits, final String operationId, final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo)) {
-
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
-          new Object[]{destId, dataType, targetEvalId, numUnits});
-
-      final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
-          .setDataType(dataType)
-          .setCtrlMsgType(CtrlMsgType.NumUnits)
-          .setNumUnits(numUnits)
-          .build();
-
-      send(destId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.CtrlMsg)
-              .setSrcId(destId)
-              .setDestId(targetEvalId)
-              .setOperationId(operationId)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-              .setCtrlMsg(ctrlMsg)
-              .build());
-
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
-          new Object[]{destId, dataType, targetEvalId});
-    }
-  }
-
-  @Override
   public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
                           final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo)) {
@@ -175,22 +146,14 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendResultMsg(final boolean success, final String dataType, final Set<LongRange> idRangeSet,
-                            final String operationId, final TraceInfo parentTraceInfo) {
+  public void sendResultMsg(final boolean success, final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendResultMsgScope = Trace.startSpan(SEND_RESULT_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
-          new Object[]{success, idRangeSet, operationId});
-
-      final List<AvroLongRange> avroLongRangeList = new LinkedList<>();
-      for (final LongRange idRange : idRangeSet) {
-        avroLongRangeList.add(convertLongRange(idRange));
-      }
+          new Object[]{success, operationId});
 
       final ResultMsg resultMsg = ResultMsg.newBuilder()
           .setResult(success ? Result.SUCCESS : Result.FAILURE)
-          .setDataType(dataType)
-          .setIdRange(avroLongRangeList)
           .build();
 
       send(driverId,
@@ -204,7 +167,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .build());
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
-          new Object[]{success, idRangeSet, operationId});
+          new Object[]{success, operationId});
 
     }
   }
