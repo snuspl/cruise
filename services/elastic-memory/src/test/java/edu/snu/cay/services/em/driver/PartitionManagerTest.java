@@ -16,14 +16,17 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.TestUtils;
+import edu.snu.cay.utils.LongRangeUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +55,67 @@ public final class PartitionManagerTest {
       partitionManager = Tang.Factory.getTang().newInjector().getInstance(PartitionManager.class);
     } catch (final InjectionException e) {
       throw new RuntimeException("InjectionException while injecting PartitionManager", e);
+    }
+  }
+
+   /**
+   * Testing the validation logic of the PartitionManager that checks whether the range can be moved,
+   * or gets the possible ranges if user specifies the number of units to move.
+   */
+  @Test
+  public void testCheckMovableRanges() {
+    final String evalId = EVAL_ID_PREFIX;
+    final String dataType = DATA_TYPE_PREFIX;
+
+    // Situation:
+    // 1) Evaluator0 has the range0 and range1.
+    // 2) range1 is currently moving to another Evaluator.
+    final LongRange range0 = new LongRange(1, 4);
+    final LongRange range1 = new LongRange(5, 6);
+    final LongRange range2 = new LongRange(7, 8);
+
+    // Assume the two ranges are being moved. These actually are managed by MigrationManager.
+    final TreeSet<LongRange> movingRanges = LongRangeUtils.createEmptyTreeSet();
+    movingRanges.add(range1);
+
+    // Request before registered: not movable.
+    final Set<LongRange> set = new HashSet<>();
+    set.add(range0); // any range will fail since Evaluator has no range yet.
+    assertFalse(partitionManager.isMovable(evalId, dataType, set, movingRanges));
+    set.clear();
+
+    partitionManager.register(evalId, dataType, range0);
+    partitionManager.register(evalId, dataType, range1);
+
+    // Request for existing & not moving range: movable.
+    set.add(range0);
+    assertTrue(partitionManager.isMovable(evalId, dataType, set, movingRanges));
+    set.clear();
+
+    // Request for the range which overlaps the existing range: not movable.
+    set.add(new LongRange(0, 2));
+    assertFalse(partitionManager.isMovable(evalId, dataType, set, movingRanges));
+    set.clear();
+
+    // Request for not-existing range: not movable.
+    set.add(range2);
+    assertFalse(partitionManager.isMovable(evalId, dataType, set, movingRanges));
+    set.clear();
+
+    // Request for moving range: not movable.
+    set.add(range1);
+    assertFalse(partitionManager.isMovable(evalId, dataType, set, movingRanges));
+
+    // Check getMovableRange returns the largest number of movable units.
+    // Evaluator has range0(4units) and range1(2units) already. Let's add range2(2units) to the Evaluator.
+    // Then it has 8 units (4+2+2) in total, but range1(2units) is moving.
+    partitionManager.register(evalId, dataType, range2);
+    for (int numUnitToMove = 1; numUnitToMove < 10; numUnitToMove++) {
+      final long numUnit0 = range0.getMaximumLong() - range0.getMinimumLong() + 1;
+      final long numUnit1 = range1.getMaximumLong() - range1.getMinimumLong() + 1;
+      final long expected = Math.min(numUnitToMove, numUnit0 + numUnit1);
+      final Set<LongRange> result = partitionManager.getMovableRanges(evalId, dataType, numUnitToMove, movingRanges);
+      assertEquals(expected, LongRangeUtils.getNumUnits(result));
     }
   }
 

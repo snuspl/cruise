@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.driver;
 
+import edu.snu.cay.utils.LongRangeUtils;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -51,24 +52,6 @@ public final class PartitionManager {
    */
   private final Map<String, Map<String, TreeSet<LongRange>>> evalPartitions;
 
-  /**
-   * If ranges are not overlapped, we can always compare the two ranges, so the ranges
-   * are ordered in the TreeSet. On the other hand, we have to handle the overlapping
-   * ranges to guarantee the total ordering of elements.
-   */
-  private static final Comparator<LongRange> LONG_RANGE_COMPARATOR = new Comparator<LongRange>() {
-    @Override
-    public int compare(final LongRange o1, final LongRange o2) {
-      if (o1.getMaximumLong() < o2.getMinimumLong()) {
-        return -1;
-      } else if (o1.getMinimumLong() > o2.getMaximumLong()) {
-        return 1;
-      } else {
-        return 0;
-      }
-    }
-  };
-
   @Inject
   private PartitionManager() {
     this.evalPartitions = new HashMap<>();
@@ -96,7 +79,7 @@ public final class PartitionManager {
    * @return {@code true} if the partition is registered successfully, {@code false} otherwise.
    */
   public synchronized boolean register(final String evalId, final String dataType, final LongRange idRange) {
-    // Check the acceptability of a new partition into globalPartitions.
+    // Check the acceptability of a new partition into global ranges where the data type is a key
     // Early failure in this step guarantees that all ranges are unique across evaluators.
     final TreeSet<LongRange> globalRanges;
 
@@ -112,11 +95,11 @@ public final class PartitionManager {
       }
     } else {
       // Successfully registered in the global partitions.
-      globalRanges = new TreeSet<>(LONG_RANGE_COMPARATOR);
+      globalRanges = LongRangeUtils.createEmptyTreeSet();
       globalPartitions.put(dataType, globalRanges);
     }
 
-    // Check the acceptability of a new partition into evalPartitions
+    // Check the acceptability of a new partition into evalDataTypeToRanges
     final Map<String, TreeSet<LongRange>> evalDataTypeRanges;
 
     if (this.evalPartitions.containsKey(evalId)) {
@@ -131,7 +114,7 @@ public final class PartitionManager {
     if (evalDataTypeRanges.containsKey(dataType)) {
       evalRanges = evalDataTypeRanges.get(dataType);
     } else {
-      evalRanges = new TreeSet<>(LONG_RANGE_COMPARATOR);
+      evalRanges = LongRangeUtils.createEmptyTreeSet();
       evalDataTypeRanges.put(dataType, evalRanges);
     }
 
@@ -188,6 +171,93 @@ public final class PartitionManager {
   }
 
   /**
+   * Check the ranges are movable.
+   * @param srcEvalId Identifier of the evaluator who should send the data.
+   * @param dataType Type of the data.
+   * @param rangesToMove Range that is requested to move.
+   * @param movingRanges The ranges currently participating the migration, which is handled in MigrationManager.
+   * @return {@code true} if the move can be achieved. {@true false} if the ranges are already moving,
+   * or the evaluator does not hold the partitions.
+   */
+  public synchronized boolean isMovable(final String srcEvalId, final String dataType,
+                                        final Set<LongRange> rangesToMove, final TreeSet<LongRange> movingRanges) {
+    // Check the Evaluator has that type of the data.
+    if (!evalPartitions.containsKey(srcEvalId) || !evalPartitions.get(srcEvalId).containsKey(dataType)) {
+      return false;
+    } else {
+      final TreeSet<LongRange> evalRanges = evalPartitions.get(srcEvalId).get(dataType);
+      for (final LongRange range : rangesToMove) {
+        // If the range (or part of it) is moving.
+        if (movingRanges.contains(range)) {
+          return false;
+        }
+
+        // If the range does not exist
+        if (!evalRanges.contains(range)) {
+          return false;
+        } else {
+          // Because S.contains(R) does not guarantee all the units in R is in the set S, we need to double check.
+          // You may want to take a look at the Comparator in e.s.cay.utils.LongRangeUtils
+          final LongRange ceiling = evalRanges.ceiling(range);
+          if (!ceiling.containsRange(range)) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * @param srcEvalId Identifier of the evaluator who should send the data.
+   * @param dataType Type of the data.
+   * @param numUnits Number of units to move.
+   * @param movingRanges The ranges currently participating the migration, which is handled in MigrationManager.
+   * @return The set of ranges that can be moved. If the number of units are smaller than requested, move the
+   * subset.
+   */
+  public synchronized Set<LongRange> getMovableRanges(final String srcEvalId, final String dataType,
+                                                      final int numUnits, final TreeSet<LongRange> movingRanges) {
+       // Check the Evaluator has that type of the data.
+    if (!evalPartitions.containsKey(srcEvalId) || !evalPartitions.get(srcEvalId).containsKey(dataType)) {
+      LOG.log(Level.WARNING, "The evaluator {0} does not contain any data whose type is {1}.",
+          new Object[]{srcEvalId, dataType});
+      return new TreeSet<>();
+    }
+
+    final Set<LongRange> evalRanges = evalPartitions.get(srcEvalId).get(dataType);
+
+    // Filter out the ranges which overlap with the moving ranges.
+    final Set<LongRange> filteredRanges = LongRangeUtils.createEmptyTreeSet();
+    for (final LongRange range : evalRanges) {
+      if (movingRanges.contains(range)) {
+        final LongRange overlappingRange = movingRanges.ceiling(range);
+        filteredRanges.addAll(LongRangeUtils.getComplement(range, overlappingRange));
+      } else {
+        filteredRanges.add(range);
+      }
+    }
+
+    // Collect the available ranges up to numUnits.
+    final Set<LongRange> movableRanges = LongRangeUtils.createEmptyTreeSet();
+    long remaining = Math.min(numUnits, LongRangeUtils.getNumUnits(filteredRanges));
+    for (final LongRange range : filteredRanges) {
+      if (remaining == 0) {
+        break;
+      }
+
+      final long min = range.getMinimumLong();
+      final long max = range.getMaximumLong();
+      final long numToAdd = Math.min(remaining, max - min + 1);
+      final LongRange subRange = new LongRange(min, min + numToAdd - 1);
+      movableRanges.add(subRange);
+      remaining -= numToAdd;
+    }
+
+    return movableRanges;
+  }
+
+  /**
    * Remove the range from the partitions. After deleting a range, the partitions could be rearranged.
    * @param evalId Identifier of Evaluator.
    * @param dataType Type of data.
@@ -213,7 +283,7 @@ public final class PartitionManager {
     }
 
     final TreeSet<LongRange> globalRanges = globalPartitions.get(dataType);
-    final TreeSet<LongRange> removedRanges = new TreeSet<>(LONG_RANGE_COMPARATOR);
+    final TreeSet<LongRange> removedRanges = LongRangeUtils.createEmptyTreeSet();
 
     final Set<LongRange> insideRanges = removeInsideRanges(globalRanges, evalRanges, idRange);
     removedRanges.addAll(insideRanges);
