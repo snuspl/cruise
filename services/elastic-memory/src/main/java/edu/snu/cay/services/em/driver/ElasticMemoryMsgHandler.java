@@ -134,16 +134,11 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       switch (updateResult) {
 
       case RECEIVER_UPDATED:
-        // After receiver updates its state, EM guarantees that the partition can be accessed in the receiver side.
-        // So update the partition state and update the sender.
+        // After receiver updates its state, the partition is guaranteed to be accessible in the receiver.
+        // So move the partition and update the sender.
         final TraceInfo traceInfo = TraceInfo.fromSpan(onUpdateAckMsgScope.getSpan());
-        final boolean partitionMoved = migrationManager.movePartition(operationId, traceInfo);
-
-        if (partitionMoved) {
-          migrationManager.updateSender(operationId, traceInfo);
-        } else {
-          migrationManager.notifyFailure(operationId, "Move failed while migration with id " + operationId);
-        }
+        migrationManager.movePartition(operationId, traceInfo);
+        migrationManager.updateSender(operationId, traceInfo);
         break;
 
       case SUCCESS:

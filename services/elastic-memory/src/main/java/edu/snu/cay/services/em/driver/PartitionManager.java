@@ -64,7 +64,8 @@ public final class PartitionManager {
    * @param dataType Type of the data.
    * @param unitStartId Smallest unit id in the partition.
    * @param unitEndId Largest unit id in the partition.
-   * @return {@code true} if the partition is registered successfully, {@code false} otherwise.
+   * @return {@code true} if the partition was registered successfully, {@code false} there was an
+   * overlapping range.
    */
   public boolean register(final String evalId, final String dataType,
                           final long unitStartId, final long unitEndId) {
@@ -76,7 +77,8 @@ public final class PartitionManager {
    * @param evalId Identifier of the Evaluator.
    * @param dataType Type of the data.
    * @param idRange Range of id
-   * @return {@code true} if the partition is registered successfully, {@code false} otherwise.
+   * @return {@code true} if the partition was registered successfully, {@code false} there was an
+   * overlapping range.
    */
   public synchronized boolean register(final String evalId, final String dataType, final LongRange idRange) {
     // Check the acceptability of a new partition into global ranges where the data type is a key
@@ -314,20 +316,26 @@ public final class PartitionManager {
    * @param srcId Id of the source.
    * @param destId Id of the destination.
    * @param dataType Type of the data.
-   * @return {@code true} if the move was successful.
    */
-  public synchronized boolean move(final String srcId,
-                                   final String destId,
-                                   final String dataType,
-                                   final LongRange toMove) {
-    final TreeSet<LongRange> removed = remove(srcId, dataType, toMove);
-    for (final LongRange toRegister : removed) {
-      final boolean succeeded = register(destId, dataType, toRegister);
-      if (!succeeded) {
-        return false;
+  public synchronized void move(final String srcId, final String destId,
+                                final String dataType, final LongRange toMove) {
+    // 1. remove from the source.
+    final TreeSet<LongRange> removedRanges = remove(srcId, dataType, toMove);
+    // 2. register the ranges to the destination.
+    for (final LongRange toRegister : removedRanges) {
+      if (!register(destId, dataType, toRegister)) {
+        // Fails if there is an overlapping range in the destination. We may rollback the migration process,
+        // but decided to throw RuntimeException, because PartitionManager should not have allowed this to happen.
+        // TODO #90: Failure cases for Move
+        final String errorMsg = new StringBuilder()
+            .append("Failed while moving the range.")
+            .append("srcId: ").append(srcId).append(", destId: ").append(destId)
+            .append(", type: ").append(dataType).append(", range: ").append(toMove)
+            .append(". The destination seems to have ").append(toRegister).append(", which should not happen")
+            .toString();
+        throw new RuntimeException(errorMsg);
       }
     }
-    return true;
   }
 
   /**
