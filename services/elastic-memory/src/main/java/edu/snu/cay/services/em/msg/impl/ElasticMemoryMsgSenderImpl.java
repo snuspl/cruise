@@ -98,7 +98,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
           .setDataType(dataType)
-          .setCtrlMsgType(CtrlMsgType.IdRange)
           .setIdRange(avroLongRangeList)
           .build();
 
