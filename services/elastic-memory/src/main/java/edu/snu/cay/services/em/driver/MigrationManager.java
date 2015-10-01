@@ -42,8 +42,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.cay.services.em.driver.MigrationInfo.State.*;
-
 /**
  * Manages the status of Migrations. EM registers a migration when User called ElasticMemory.move().
  * Most state transition is done internally in EM, except applyUpdates(): the result of the migration
@@ -65,10 +63,10 @@ public final class MigrationManager {
   private final int updateTimeoutMillis;
 
   /**
-   * This is a mapping from operation id to the {@link MigrationInfo}
+   * This is a mapping from operation id to the {@link Migration}
    * which consists of the current state of each migration.
    */
-  private final Map<String, MigrationInfo> ongoingMigrations = new HashMap<>();
+  private final Map<String, Migration> ongoingMigrations = new HashMap<>();
 
   /**
    * This set consists of the ranges that are currently moving, which is used
@@ -128,7 +126,7 @@ public final class MigrationManager {
 
     } else {
       movingRanges.addAll(ranges);
-      ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType, ranges));
+      ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, ranges));
       sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
     }
   }
@@ -163,7 +161,7 @@ public final class MigrationManager {
       }
 
       movingRanges.addAll(movableRanges);
-      ongoingMigrations.put(operationId, new MigrationInfo(senderId, receiverId, dataType, movableRanges));
+      ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, movableRanges));
       sender.get().sendCtrlMsg(senderId, dataType, receiverId, movableRanges, operationId, traceInfo);
     }
   }
@@ -175,7 +173,7 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    */
   synchronized void waitUpdate(final String operationId) {
-    checkAndUpdateState(operationId, SENDING_DATA, WAITING_UPDATE);
+    checkAndUpdateState(operationId, Migration.SENDING_DATA, Migration.WAITING_UPDATE);
     waiterIds.add(operationId);
   }
 
@@ -191,7 +189,8 @@ public final class MigrationManager {
 
       // Update receivers first.
       for (final String waiterId : waiterIds) {
-        final MigrationInfo updatedInfo = checkAndUpdateState(waiterId, WAITING_UPDATE, UPDATING_RECEIVER);
+        final Migration updatedInfo =
+            checkAndUpdateState(waiterId, Migration.WAITING_UPDATE, Migration.UPDATING_RECEIVER);
         final String receiverId = updatedInfo.getReceiverId();
         sender.get().sendUpdateMsg(receiverId, waiterId, traceInfo);
       }
@@ -214,7 +213,8 @@ public final class MigrationManager {
    */
   synchronized void movePartition(final String operationId, final TraceInfo traceInfo) {
     try (final TraceScope movePartition = Trace.startSpan(MOVE_PARTITION, traceInfo)) {
-      final MigrationInfo updatedInfo = checkAndUpdateState(operationId, UPDATING_RECEIVER, MOVING_PARTITION);
+      final Migration updatedInfo =
+          checkAndUpdateState(operationId, Migration.UPDATING_RECEIVER, Migration.MOVING_PARTITION);
 
       final String senderId = updatedInfo.getSenderId();
       final String receiverId = updatedInfo.getReceiverId();
@@ -234,7 +234,8 @@ public final class MigrationManager {
    * @param traceInfo Trace information
    */
   synchronized void updateSender(final String operationId, final TraceInfo traceInfo) {
-    final MigrationInfo updatedInfo = checkAndUpdateState(operationId, MOVING_PARTITION, UPDATING_SENDER);
+    final Migration updatedInfo =
+        checkAndUpdateState(operationId, Migration.MOVING_PARTITION, Migration.UPDATING_SENDER);
 
     final String senderId = updatedInfo.getSenderId();
     sender.get().sendUpdateMsg(senderId, operationId, traceInfo);
@@ -245,7 +246,9 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    */
   synchronized void finishMigration(final String operationId) {
-    checkAndUpdateState(operationId, UPDATING_SENDER, FINISHED);
+    checkAndUpdateState(operationId, Migration.UPDATING_SENDER, Migration.FINISHED);
+
+
     ongoingMigrations.remove(operationId);
     updateCounter.countDown();
   }
@@ -254,56 +257,38 @@ public final class MigrationManager {
    * Check the current status and update it.
    * @return Updated migration information.
    */
-  private synchronized MigrationInfo checkAndUpdateState(final String operationId,
-                                                         final MigrationInfo.State expectedCurrentState,
-                                                         final MigrationInfo.State targetState) {
+  private synchronized Migration checkAndUpdateState(final String operationId,
+                                                         final String expectedCurrentState,
+                                                         final String targetState) {
 
-    // This failure occurs when {@finishMigration} is called more than once, which could rarely happen.
     if (!ongoingMigrations.containsKey(operationId)) {
-      LOG.log(Level.SEVERE, "The operation id {0} is lost.", operationId);
-      notifyFailure(operationId, "The operation id is lost.");
+      notifyFailure(operationId, "The operation id is lost. The last message may have arrived twice.");
     }
 
-    final MigrationInfo migrationInfo = ongoingMigrations.get(operationId);
-
+    final Migration migration = ongoingMigrations.get(operationId);
     // This failure occurs when the wrong type of messages arrive during the migration,
     // so unexpected state transition is requested.
-    if (migrationInfo.getState() != expectedCurrentState) {
-      throw new IllegalStateException(
-          new StringBuilder().append("The state should be ").append(expectedCurrentState)
-              .append(", but was ").append(migrationInfo.getState())
-              .toString());
-    } else {
-      migrationInfo.setState(targetState);
-      return migrationInfo;
-    }
+    migration.checkAndUpdate(expectedCurrentState, targetState);
+    return migration;
   }
 
   /**
    * Notify the failure to the User via callback.
+   * There are some non-nullable fields with blank value, which is not necessary for this type of message.
+   * Since we will change the message structure, they will be fixed accordingly
+   * TODO #139: Revisit when the avro message structure is changed.
    */
   synchronized void notifyFailure(final String operationId, final String reason) {
-    final AvroElasticMemoryMessage msg = generateFailureMessage(operationId, reason);
-    callbackRouter.onFailed(msg);
-  }
-
-  /**
-   * Generate a failure message. The main customer of this method is the Driver.
-   * Since the most important information is the operation id and the reason,
-   * leave the rest to be blank.
-   * TODO #139: Revisit when the avro message structure is changed.
-   * @param reason Reason of the failure
-   * @return Avro message which consists of failure information
-   */
-  private AvroElasticMemoryMessage generateFailureMessage(final String operationId, final String reason) {
     final FailureMsg failureMsg = FailureMsg.newBuilder()
         .setReason(reason)
         .build();
-    return AvroElasticMemoryMessage.newBuilder()
+    final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
         .setType(Type.FailureMsg)
+        .setFailureMsg(failureMsg)
         .setOperationId(operationId)
-        .setSrcId("Driver") // Should be set properly later.
+        .setSrcId("")
         .setDestId("")
         .build();
+    callbackRouter.onFailed(msg);
   }
 }
