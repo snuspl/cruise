@@ -164,6 +164,7 @@ public class DataLoader {
   /**
    * Driver will call this method to determine whether this evaluator was requested by DataLoader or not.
    * Currently assumes that every request has same memory size and cores.
+   * TODO #188: Support heterogeneous evaluator requests
    * @return true if DataLoader has requested for evaluator
    */
   public boolean isDataLoaderRequest() {

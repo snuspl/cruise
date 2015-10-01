@@ -28,7 +28,7 @@ import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
-import edu.snu.cay.services.em.driver.api.EMResouceCallbackManager;
+import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
@@ -172,14 +172,14 @@ public final class DolphinDriver {
   private final UserParameters userParameters;
 
   /**
-   * Map of evaluatorId to requestorId.
+   * Map of evaluator id to component id who requested the evaluator.
    */
   private final ConcurrentHashMap<String, String> idMap = new ConcurrentHashMap<>();
 
   /**
    * Manage callback of EM resource requests.
    */
-  private final EMResouceCallbackManager emResouceCallbackManager;
+  private final EMResourceRequestManager emResourceRequestManager;
 
 
   /**
@@ -212,7 +212,7 @@ public final class DolphinDriver {
                         final MetricCodec metricCodec,
                         final MetricsMessageCodec metricsMessageCodec,
                         final HTraceParameters traceParameters,
-                        final EMResouceCallbackManager emResouceCallbackManager) {
+                        final EMResourceRequestManager emResourceRequestManager) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
     this.dataLoader = dataLoader;
@@ -229,7 +229,7 @@ public final class DolphinDriver {
     this.metricCodec = metricCodec;
     this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
-    this.emResouceCallbackManager = emResouceCallbackManager;
+    this.emResourceRequestManager = emResourceRequestManager;
     initializeCommDriver();
   }
 
@@ -305,9 +305,8 @@ public final class DolphinDriver {
       if (dataLoader.isDataLoaderRequest()) {
         idMap.put(allocatedEvaluator.getId(), DataLoader.class.getName());
         dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
-      } else if (elasticMemory.isEMRequest()) {
+      } else if (emResourceRequestManager.isEMRequest(allocatedEvaluator)) {
         idMap.put(allocatedEvaluator.getId(), ElasticMemory.class.getName());
-        elasticMemory.handleEvalAlloc(allocatedEvaluator);
         allocatedEvaluator.submitContextAndService(getContextConfiguration(), getServiceConfiguration());
       } else {
         LOG.warning("Unknown evaluator allocated. Ignore " + allocatedEvaluator.toString());
@@ -320,21 +319,25 @@ public final class DolphinDriver {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
       final String evaluatorId = failedEvaluator.getId();
-      if (!idMap.containsKey(evaluatorId)) {
+      final String requestorId = idMap.get(evaluatorId);
+      if (requestorId == null) {
         LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + failedEvaluator.toString());
         return;
       }
-      final String requestorId = idMap.get(evaluatorId);
       if (requestorId.equals(DataLoader.class.getName())) {
         dataLoader.handleDataLoadingEvalFailure(failedEvaluator);
       } else if (requestorId.equals(ElasticMemory.class.getName())) {
-        // Do something
+        // Failure handling for EM requested evaluators. We may use ElasticMemory.checkpoint to do this.
       } else {
         LOG.warning("Unknown failed evaluator. Ignore " + failedEvaluator.toString());
       }
     }
   }
 
+  /**
+   * Gives context configuration submitted on
+   * both DataLoader requested evaluators and ElasticMemory requested evaluators.
+   */
   private Configuration getContextConfiguration() {
     final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
     final Configuration emContextConf = emConf.getContextConfiguration();
@@ -342,6 +345,10 @@ public final class DolphinDriver {
     return Configurations.merge(groupCommContextConf, emContextConf, metricsMessageContextConf);
   }
 
+  /**
+   * Gives service configuration submitted on
+   * both DataLoader requested evaluators and ElasticMemory requested evaluators.
+   */
   private Configuration getServiceConfiguration() {
     final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
     final Configuration outputServiceConf = outputService.getServiceConfiguration();
@@ -366,11 +373,11 @@ public final class DolphinDriver {
       // the Data Loading API is currently constructed to add its own context before
       // allowing any other ones.
       final String evaluatorId = activeContext.getEvaluatorId();
-      if (!idMap.containsKey(evaluatorId)) {
+      final String requestorId = idMap.get(evaluatorId);
+      if (requestorId == null) {
         LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + activeContext.toString());
         return;
       }
-      final String requestorId = idMap.get(evaluatorId);
       if (requestorId.equals(DataLoader.class.getName())) {
         if (!groupCommDriver.isConfigured(activeContext)) {
           final Configuration finalContextConf = getContextConfiguration();
@@ -395,7 +402,9 @@ public final class DolphinDriver {
           submitTask(activeContext, 0);
         }
       } else if (requestorId.equals(ElasticMemory.class.getName())) {
-        emResouceCallbackManager.onCompleted(activeContext);
+        emResourceRequestManager.onCompleted(activeContext);
+      } else {
+        LOG.warning("Unknown evaluator. Ignore " + activeContext.toString());
       }
     }
   }

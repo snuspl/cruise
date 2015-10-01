@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.driver.api.EMResouceCallbackManager;
+import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -24,7 +24,6 @@ import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -36,8 +35,6 @@ import org.apache.reef.wake.EventHandler;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 @DriverSide
@@ -49,14 +46,9 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final ElasticMemoryCallbackRouter callbackRouter;
 
   /**
-   * EM resource callback manager.
+   * EM resource request manager.
    */
-  private final EMResouceCallbackManager resourceCallbackManager;
-
-  /**
-   * Remember callbacks to be registered.
-   */
-  private final BlockingQueue<EventHandler<ActiveContext>> resourceCallbackQueue;
+  private final EMResourceRequestManager resourceRequestManager;
 
   private final AtomicLong operatorIdCounter = new AtomicLong();
 
@@ -64,51 +56,31 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
                             final ElasticMemoryMsgSender sender,
                             final ElasticMemoryCallbackRouter callbackRouter,
-                            final EMResouceCallbackManager resourceCallbackManager,
+                            final EMResourceRequestManager resourceRequestManager,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.requestor = requestor;
     this.sender = sender;
     this.callbackRouter = callbackRouter;
-    this.resourceCallbackManager = resourceCallbackManager;
-    this.resourceCallbackQueue = new LinkedBlockingQueue<>();
+    this.resourceRequestManager = resourceRequestManager;
   }
 
   /**
    * Request for evaluators and remember passed callback.
    * Currently assumes that every request has same memory size and cores.
+   * TODO #188: Support heterogeneous evaluator requests
    */
   @Override
-  public void add(final int number, final int megaBytes, final int cores, final EventHandler<ActiveContext> callback) {
+  public void add(final int number, final int megaBytes, final int cores,
+                  @Nullable final EventHandler<ActiveContext> callback) {
     for (int i = 0; i < number; i++) {
-      resourceCallbackQueue.add(callback);
+      resourceRequestManager.register(callback);
     }
     requestor.submit(EvaluatorRequest.newBuilder()
         .setNumber(number)
         .setMemory(megaBytes)
         .setNumberOfCores(cores)
         .build());
-  }
-
-  /**
-   * If there is remembered callback, EM has an outstanding request.
-   */
-  @Override
-  public boolean isEMRequest() {
-    return !resourceCallbackQueue.isEmpty();
-  }
-
-  /**
-   * Register remembered callback for evaluator.
-   */
-  @Override
-  public void handleEvalAlloc(final AllocatedEvaluator allocatedEvaluator) {
-    final EventHandler<ActiveContext> handler = resourceCallbackQueue.poll();
-    if (handler == null) {
-      resourceCallbackManager.register(allocatedEvaluator.getId());
-    } else {
-      resourceCallbackManager.register(allocatedEvaluator.getId(), handler);
-    }
   }
 
   // TODO #112: implement delete

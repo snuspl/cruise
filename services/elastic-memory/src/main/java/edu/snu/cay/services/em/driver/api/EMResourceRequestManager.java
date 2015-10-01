@@ -15,32 +15,35 @@
  */
 package edu.snu.cay.services.em.driver.api;
 
-import edu.snu.cay.services.em.driver.impl.EMResourceCallbackManagerImpl;
+import edu.snu.cay.services.em.driver.impl.EMResourceRequestManagerImpl;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
+
+import javax.annotation.Nullable;
 
 /**
  * Manages callbacks for EM resource requests.
  * {@code ElasticMemory} will use {@code register} method and Driver will use {@code onCompleted} method.
  */
 @DriverSide
-@DefaultImplementation(EMResourceCallbackManagerImpl.class)
-public interface EMResouceCallbackManager {
+@DefaultImplementation(EMResourceRequestManagerImpl.class)
+public interface EMResourceRequestManager {
 
   /**
-   * Register no-op callback for given evaluatorId.
-   * @param evaluatorId evaluator identifier
+   * Register callback for future allocating evaluator.
+   * @param callback an application-level callback to be called, or null if no callback is needed
    */
-  void register(String evaluatorId);
+  void register(@Nullable EventHandler<ActiveContext> callback);
 
   /**
-   * Register callback for given evaluatorId.
-   * @param evaluatorId evaluator identifier
-   * @param callback an application-level callback to be called
+   * Determine whether this evaluator was requested by ElasticMemory or not.
+   * Driver will call this method.
+   * @return true if ElasticMemory has requested for evaluator
    */
-  void register(String evaluatorId, EventHandler<ActiveContext> callback);
+  boolean isEMRequest(AllocatedEvaluator allocatedEvaluator);
 
   /**
    * Trigger registered callback for given activeContext.

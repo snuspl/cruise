@@ -20,7 +20,6 @@ import edu.snu.cay.services.em.driver.impl.ElasticMemoryImpl;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
@@ -39,22 +38,10 @@ public interface ElasticMemory {
    * @param number number of evaluators to add
    * @param megaBytes memory size of each new evaluator in MB
    * @param cores number of cores of each new evaluator
-   * @param callback an application-level callback to be called
+   * @param callback an application-level callback to be called, or null if no callback is needed
    */
-  void add(int number, int megaBytes, int cores, EventHandler<ActiveContext> callback);
-
-  /**
-   * Determine whether this evaluator was requested by ElasticMemory or not.
-   * Driver will call this method.
-   * @return true if ElasticMemory has requested for evaluator
-   */
-  boolean isEMRequest();
-
-  /**
-   * Handle allocated evaluator for ElasticMemory.
-   * @param allocatedEvaluator given allocatedEvaluator
-   */
-  void handleEvalAlloc(AllocatedEvaluator allocatedEvaluator);
+  void add(int number, int megaBytes, int cores,
+           @Nullable EventHandler<ActiveContext> callback);
 
   /**
    * Release the evaluator specified by a given identifier.

@@ -51,10 +51,13 @@ import java.util.logging.Logger;
 public final class DolphinLauncher {
   private static final Logger LOG = Logger.getLogger(DolphinLauncher.class.getName());
   private final DolphinParameters dolphinParameters;
+  private final HTraceParameters traceParameters;
 
   @Inject
-  private DolphinLauncher(final DolphinParameters dolphinParameters) {
+  private DolphinLauncher(final DolphinParameters dolphinParameters,
+                          final HTraceParameters traceParameters) {
     this.dolphinParameters = dolphinParameters;
+    this.traceParameters = traceParameters;
   }
 
   public static void run(final Configuration dolphinConfig) {
@@ -90,7 +93,7 @@ public final class DolphinLauncher {
         .build();
   }
 
-  private Configuration getDriverConfiguration() throws InjectionException {
+  private Configuration getDriverConfiguration() {
     final ConfigurationModule driverConfiguration = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(DolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
@@ -129,16 +132,12 @@ public final class DolphinLauncher {
         .set(TaskOutputServiceBuilder.OUTPUT_PATH, processOutputDir(dolphinParameters.getOutputDir()))
         .build();
 
-    final Configuration traceConf = Tang.Factory.getTang().newInjector()
-        .getInstance(HTraceParameters.class)
-        .getConfiguration();
-
     final Configuration optimizerConf = OptimizationConfiguration.getRandomOptimizerConfiguration();
 
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         optimizerConf,
-        traceConf,
+        traceParameters.getConfiguration(),
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),
