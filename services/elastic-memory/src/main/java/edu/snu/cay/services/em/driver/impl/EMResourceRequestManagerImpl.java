@@ -40,9 +40,9 @@ public final class EMResourceRequestManagerImpl implements EMResourceRequestMana
 
   /**
    * Map of evaluatorId to callback.
-   * {@code register} method will put element and {@code onCompleted} method will remove element.
+   * {@code bindCallback} method will put element and {@code onCompleted} method will remove element.
    */
-  private final ConcurrentHashMap<String, EventHandler<ActiveContext>> handlerMap = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, EventHandler<ActiveContext>> handlerMap;
 
   private static final EventHandler<ActiveContext> NOOP_CALLBACK =
       new EventHandler<ActiveContext>() {
@@ -55,6 +55,7 @@ public final class EMResourceRequestManagerImpl implements EMResourceRequestMana
   @Inject
   private EMResourceRequestManagerImpl() {
     resourceCallbackQueue = new LinkedBlockingQueue<>();
+    handlerMap = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -72,7 +73,7 @@ public final class EMResourceRequestManagerImpl implements EMResourceRequestMana
    * put evaluatorId - callback pair in {@code handlerMap}.
    */
   @Override
-  public boolean isEMRequest(final AllocatedEvaluator allocatedEvaluator) {
+  public boolean bindCallback(final AllocatedEvaluator allocatedEvaluator) {
     final EventHandler<ActiveContext> handler = resourceCallbackQueue.poll();
     if (handler == null) {
       return false;

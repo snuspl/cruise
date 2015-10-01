@@ -305,7 +305,7 @@ public final class DolphinDriver {
       if (dataLoader.isDataLoaderRequest()) {
         idMap.put(allocatedEvaluator.getId(), DataLoader.class.getName());
         dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
-      } else if (emResourceRequestManager.isEMRequest(allocatedEvaluator)) {
+      } else if (emResourceRequestManager.bindCallback(allocatedEvaluator)) {
         idMap.put(allocatedEvaluator.getId(), ElasticMemory.class.getName());
         allocatedEvaluator.submitContextAndService(getContextConfiguration(), getServiceConfiguration());
       } else {

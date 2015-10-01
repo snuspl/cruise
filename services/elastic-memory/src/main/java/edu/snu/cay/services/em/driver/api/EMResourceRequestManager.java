@@ -39,11 +39,12 @@ public interface EMResourceRequestManager {
   void register(@Nullable EventHandler<ActiveContext> callback);
 
   /**
-   * Determine whether this evaluator was requested by ElasticMemory or not.
+   * Determine whether this evaluator was requested by ElasticMemory or not,
+   * and if given allocatedEvaluator is EM requested evaluator, bind callback to it.
    * Driver will call this method.
    * @return true if ElasticMemory has requested for evaluator
    */
-  boolean isEMRequest(AllocatedEvaluator allocatedEvaluator);
+  boolean bindCallback(AllocatedEvaluator allocatedEvaluator);
 
   /**
    * Trigger registered callback for given activeContext.

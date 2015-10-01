@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.core;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationConfiguration;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
-import edu.snu.cay.services.em.trace.HTraceParameters;
+import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
