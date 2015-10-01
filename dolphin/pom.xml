@@ -77,14 +77,14 @@
       <artifactId>mahout-math</artifactId>
     </dependency>
     <dependency>
-      <groupId>${parent.groupId}.services</groupId>
+      <groupId>${project.parent.groupId}.services</groupId>
       <artifactId>elastic-memory</artifactId>
-      <version>${parent.version}</version>
+      <version>${project.parent.version}</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}.services</groupId>
       <artifactId>dataloader</artifactId>
-      <version>${parent.version}</version>
+      <version>${project.parent.version}</version>
     </dependency>
   </dependencies>
 
