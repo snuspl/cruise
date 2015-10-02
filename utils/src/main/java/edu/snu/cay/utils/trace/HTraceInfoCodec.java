@@ -13,32 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
+package edu.snu.cay.utils.trace;
 
-import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
 /**
- * Codec for MetricsMessage.
+ * Codec for AvroTraceInfo.
  * Simply uses AvroUtils to encode and decode messages.
  */
-public final class MetricsMessageCodec
-    implements Codec<MetricsMessage> {
+public final class HTraceInfoCodec
+    implements Codec<AvroTraceInfo> {
 
   @Inject
-  private MetricsMessageCodec() {
+  private HTraceInfoCodec() {
   }
 
   @Override
-  public byte[] encode(final MetricsMessage msg) {
-    return AvroUtils.toBytes(msg, MetricsMessage.class);
+  public byte[] encode(final AvroTraceInfo msg) {
+    return AvroUtils.toBytes(msg, AvroTraceInfo.class);
   }
 
   @Override
-  public MetricsMessage decode(final byte[] data) {
-    return AvroUtils.fromBytes(data, MetricsMessage.class);
+  public AvroTraceInfo decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, AvroTraceInfo.class);
   }
 }

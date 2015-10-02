@@ -31,6 +31,8 @@ import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_SEND_DATA_
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.utils.trace.HTraceInfoCodec;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
@@ -39,6 +41,9 @@ import org.apache.reef.io.network.group.api.task.GroupCommClient;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -60,6 +65,8 @@ public final class ComputeTask implements Task {
   private final Set<MetricTracker> metricTrackerSet;
   private final InsertableMetricTracker insertableMetricTracker;
   private final MetricsMessageSender metricsMessageSender;
+  private final HTraceInfoCodec hTraceInfoCodec;
+  private final UserTaskTrace userTaskTrace;
 
   private int iteration = 0;
 
@@ -72,7 +79,9 @@ public final class ComputeTask implements Task {
                      final MetricsCollector metricsCollector,
                      @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
                      final InsertableMetricTracker insertableMetricTracker,
-                     final MetricsMessageSender metricsMessageSender) throws ClassNotFoundException {
+                     final MetricsMessageSender metricsMessageSender,
+                     final HTraceInfoCodec hTraceInfoCodec,
+                     final UserTaskTrace userTaskTrace) throws ClassNotFoundException {
     this.memoryStore = memoryStore;
     this.userComputeTask = userComputeTask;
     this.taskId = taskId;
@@ -83,25 +92,29 @@ public final class ComputeTask implements Task {
     this.metricTrackerSet = metricTrackerSet;
     this.insertableMetricTracker = insertableMetricTracker;
     this.metricsMessageSender = metricsMessageSender;
+    this.hTraceInfoCodec = hTraceInfoCodec;
+    this.userTaskTrace = userTaskTrace;
   }
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, String.format("%s starting...", taskId));
+    final TraceInfo taskTraceInfo = memento == null ? null :
+        HTraceUtils.fromAvro(hTraceInfoCodec.decode(memento));
 
     userComputeTask.initialize();
     try (final MetricsCollector metricsCollector = this.metricsCollector) {
       metricsCollector.registerTrackers(metricTrackerSet);
       while (!isTerminated()) {
-        metricsCollector.start();
-        receiveData();
-        runUserComputeTask();
-        sendData();
-        metricsCollector.stop();
-        metricsMessageSender
-            .setIterationInfo(getIterationInfo())
-            .setComputeMsg(getComputeMsg())
-            .send();
+        try (final TraceScope traceScope = Trace.startSpan("iter-" + iteration, taskTraceInfo)) {
+          userTaskTrace.setParentTraceInfo(TraceInfo.fromSpan(traceScope.getSpan()));
+          metricsCollector.start();
+          receiveData();
+          runUserComputeTask();
+          sendData();
+          metricsCollector.stop();
+          sendMetrics();
+        }
         iteration++;
       }
       userComputeTask.cleanup();
@@ -144,6 +157,13 @@ public final class ComputeTask implements Task {
 
   private boolean isTerminated() throws Exception {
     return ctrlMessageBroadcast.receive() == CtrlMessage.TERMINATE;
+  }
+
+  private void sendMetrics() {
+    metricsMessageSender
+        .setIterationInfo(getIterationInfo())
+        .setComputeMsg(getComputeMsg())
+        .send();
   }
 
   private IterationInfo getIterationInfo() {
