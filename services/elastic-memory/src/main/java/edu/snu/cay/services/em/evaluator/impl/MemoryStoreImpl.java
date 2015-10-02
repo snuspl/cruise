@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.SubMemoryStore;
-import edu.snu.cay.services.em.trace.HTrace;
+import edu.snu.cay.utils.trace.HTrace;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;

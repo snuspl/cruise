@@ -16,6 +16,9 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.core.metric.*;
+import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
+import edu.snu.cay.dolphin.core.metric.avro.DataInfo;
+import edu.snu.cay.dolphin.core.metric.avro.IterationInfo;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
@@ -27,6 +30,7 @@ import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_SEND_DATA_
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_SEND_DATA_END;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
@@ -37,6 +41,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -46,21 +52,28 @@ public final class ComputeTask implements Task {
   private static final Logger LOG = Logger.getLogger(ComputeTask.class.getName());
 
   private final String taskId;
+  private final MemoryStore memoryStore;
   private final UserComputeTask userComputeTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
   private final MetricsCollector metricsCollector;
   private final Set<MetricTracker> metricTrackerSet;
   private final InsertableMetricTracker insertableMetricTracker;
+  private final MetricsMessageSender metricsMessageSender;
+
+  private int iteration = 0;
 
   @Inject
   public ComputeTask(final GroupCommClient groupCommClient,
+                     final MemoryStore memoryStore,
                      final UserComputeTask userComputeTask,
                      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                      @Parameter(CommunicationGroup.class) final String commGroupName,
                      final MetricsCollector metricsCollector,
                      @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
-                     final InsertableMetricTracker insertableMetricTracker) throws ClassNotFoundException {
+                     final InsertableMetricTracker insertableMetricTracker,
+                     final MetricsMessageSender metricsMessageSender) throws ClassNotFoundException {
+    this.memoryStore = memoryStore;
     this.userComputeTask = userComputeTask;
     this.taskId = taskId;
     this.commGroup =
@@ -69,6 +82,7 @@ public final class ComputeTask implements Task {
     this.metricsCollector = metricsCollector;
     this.metricTrackerSet = metricTrackerSet;
     this.insertableMetricTracker = insertableMetricTracker;
+    this.metricsMessageSender = metricsMessageSender;
   }
 
   @Override
@@ -78,13 +92,16 @@ public final class ComputeTask implements Task {
     userComputeTask.initialize();
     try (final MetricsCollector metricsCollector = this.metricsCollector) {
       metricsCollector.registerTrackers(metricTrackerSet);
-      int iteration = 0;
       while (!isTerminated()) {
         metricsCollector.start();
-        receiveData(iteration);
-        runUserComputeTask(iteration);
-        sendData(iteration);
+        receiveData();
+        runUserComputeTask();
+        sendData();
         metricsCollector.stop();
+        metricsMessageSender
+            .setIterationInfo(getIterationInfo())
+            .setComputeMsg(getComputeMsg())
+            .send();
         iteration++;
       }
       userComputeTask.cleanup();
@@ -93,13 +110,13 @@ public final class ComputeTask implements Task {
     return null;
   }
 
-  private void runUserComputeTask(final int iteration) throws MetricException {
+  private void runUserComputeTask() throws MetricException {
     insertableMetricTracker.put(COMPUTE_TASK_USER_COMPUTE_TASK_START, System.currentTimeMillis());
     userComputeTask.run(iteration);
     insertableMetricTracker.put(COMPUTE_TASK_USER_COMPUTE_TASK_END, System.currentTimeMillis());
   }
 
-  private void receiveData(final int iteration) throws NetworkException, InterruptedException, MetricException {
+  private void receiveData() throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(COMPUTE_TASK_RECEIVE_DATA_START, System.currentTimeMillis());
     if (userComputeTask.isBroadcastUsed()) {
       ((DataBroadcastReceiver)userComputeTask).receiveBroadcastData(iteration,
@@ -112,7 +129,7 @@ public final class ComputeTask implements Task {
     insertableMetricTracker.put(COMPUTE_TASK_RECEIVE_DATA_END, System.currentTimeMillis());
   }
 
-  private void sendData(final int iteration) throws NetworkException, InterruptedException, MetricException {
+  private void sendData() throws NetworkException, InterruptedException, MetricException {
     insertableMetricTracker.put(COMPUTE_TASK_SEND_DATA_START, System.currentTimeMillis());
     if (userComputeTask.isGatherUsed()) {
       commGroup.getGatherSender(DataGather.class).send(
@@ -127,5 +144,32 @@ public final class ComputeTask implements Task {
 
   private boolean isTerminated() throws Exception {
     return ctrlMessageBroadcast.receive() == CtrlMessage.TERMINATE;
+  }
+
+  private IterationInfo getIterationInfo() {
+    final IterationInfo iterationInfo = IterationInfo.newBuilder()
+        .setIteration(iteration)
+        .setCommGroupName(commGroup.getName().getName())
+        .build();
+
+    LOG.log(Level.INFO, "iterationInfo {0}", iterationInfo);
+    return iterationInfo;
+  }
+
+  private ComputeMsg getComputeMsg() {
+    final List<DataInfo> dataInfos = new ArrayList<>();
+    for (final String dataType : memoryStore.getElasticStore().getDataTypes()) {
+      dataInfos.add(
+          DataInfo.newBuilder()
+              .setDataType(dataType)
+              .setNumUnits(memoryStore.getElasticStore().getNumUnits(dataType))
+              .build());
+    }
+
+    final ComputeMsg computeMsg = ComputeMsg.newBuilder()
+        .setDataInfos(dataInfos)
+        .build();
+    LOG.log(Level.INFO, "computeMsg {0}", computeMsg);
+    return computeMsg;
   }
 }

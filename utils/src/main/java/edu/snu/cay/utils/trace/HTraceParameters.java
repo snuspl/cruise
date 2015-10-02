@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.trace;
+package edu.snu.cay.utils.trace;
 
-import edu.snu.cay.services.em.trace.parameters.ReceiverHost;
-import edu.snu.cay.services.em.trace.parameters.ReceiverPort;
-import edu.snu.cay.services.em.trace.parameters.ReceiverType;
+import edu.snu.cay.utils.trace.parameters.ReceiverHost;
+import edu.snu.cay.utils.trace.parameters.ReceiverPort;
+import edu.snu.cay.utils.trace.parameters.ReceiverType;
 import org.htrace.SpanReceiver;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;

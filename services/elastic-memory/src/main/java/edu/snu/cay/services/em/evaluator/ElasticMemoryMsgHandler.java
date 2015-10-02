@@ -19,7 +19,7 @@ import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
-import edu.snu.cay.services.em.trace.HTraceUtils;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;

@@ -15,8 +15,12 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.dolphin.core.metric.MetricsMessageCodec;
+import edu.snu.cay.dolphin.core.metric.MetricsMessageSender;
+import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
+import edu.snu.cay.dolphin.core.metric.avro.SrcType;
+import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.dolphin.groupcomm.names.*;
-import edu.snu.cay.dolphin.core.metric.HeartbeatMetricsHandler;
 import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
@@ -26,7 +30,9 @@ import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
-import edu.snu.cay.services.em.trace.HTraceParameters;
+import edu.snu.cay.services.em.optimizer.api.DataInfo;
+import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -53,6 +59,7 @@ import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -139,10 +146,17 @@ public final class DolphinDriver {
    */
   private final Map<String, Integer> contextToStageSequence;
 
+  private final OptimizationOrchestrator optimizationOrchestrator;
+
   /**
    * Codec for metrics.
    */
   private final MetricCodec metricCodec;
+
+  /**
+   * Codec for metrics messages.
+   */
+  private final MetricsMessageCodec metricsMessageCodec;
 
   private final HTraceParameters traceParameters;
 
@@ -172,16 +186,19 @@ public final class DolphinDriver {
                         final DataLoader dataLoader,
                         final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
+                        final OptimizationOrchestrator optimizationOrchestrator,
                         final ElasticMemoryConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
                         final MetricCodec metricCodec,
+                        final MetricsMessageCodec metricsMessageCodec,
                         final HTraceParameters traceParameters) {
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
     this.dataLoader = dataLoader;
     this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
+    this.optimizationOrchestrator = optimizationOrchestrator;
     this.emConf = emConf;
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
@@ -189,6 +206,7 @@ public final class DolphinDriver {
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
     this.metricCodec = metricCodec;
+    this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
     initializeCommDriver();
   }
@@ -293,11 +311,11 @@ public final class DolphinDriver {
         final Configuration emContextConf = emConf.getContextConfiguration();
         final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
         final Configuration traceConf = traceParameters.getConfiguration();
-        final Configuration heartbeatContextConf = HeartbeatMetricsHandler.getContextConfiguration();
-        final Configuration heartbeatServiceConf = HeartbeatMetricsHandler.getServiceConfiguration();
+        final Configuration metricsMessageContextConf = MetricsMessageSender.getContextConfiguration();
+        final Configuration metricsMessageServiceConf = MetricsMessageSender.getServiceConfiguration();
 
         final Configuration finalContextConf = Configurations.merge(
-            groupCommContextConf, emContextConf, heartbeatContextConf);
+            groupCommContextConf, emContextConf, metricsMessageContextConf);
 
         final Configuration finalServiceConf;
         if (dataLoadingService.isComputeContext(activeContext)) {
@@ -308,7 +326,7 @@ public final class DolphinDriver {
           // the Metric Collection service, and the Group Communication service
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricTrackerServiceConf,
-              outputServiceConf, traceConf, heartbeatServiceConf);
+              outputServiceConf, traceConf, metricsMessageServiceConf);
         } else {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
 
@@ -317,7 +335,7 @@ public final class DolphinDriver {
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
           finalServiceConf = Configurations.merge(
               userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, dataParseConf, outputServiceConf,
-              metricTrackerServiceConf, traceConf, heartbeatServiceConf);
+              metricTrackerServiceConf, traceConf, metricsMessageServiceConf);
         }
 
         activeContext.submitContextAndService(finalContextConf, finalServiceConf);
@@ -341,6 +359,7 @@ public final class DolphinDriver {
 
   /**
    * Receives metrics from context.
+   * TODO #172: Use NetworkConnectionService to replace the heartbeat
    */
   final class ContextMessageHandler implements EventHandler<ContextMessage> {
 
@@ -350,11 +369,38 @@ public final class DolphinDriver {
       if (message.getMessageSourceID().equals(MetricsCollectionService.class.getName())) {
 
         LOG.info("Metrics are gathered from " + message.getId());
-        final Map<String, Double> map = metricCodec.decode(message.get());
-        for (final Map.Entry<String, Double> entry : map.entrySet()) {
-          LOG.info("Metric Info: Source=" + message.getId() + " Key=" + entry.getKey() + " Value=" + entry.getValue());
+        final MetricsMessage metricsMessage = metricsMessageCodec.decode(message.get());
+
+        final SrcType srcType = metricsMessage.getSrcType();
+        if (SrcType.Compute.equals(srcType)) {
+
+          optimizationOrchestrator.receiveComputeMetrics(message.getId(),
+              metricsMessage.getIterationInfo().getCommGroupName().toString(),
+              metricsMessage.getIterationInfo().getIteration(),
+              metricCodec.decode(metricsMessage.getMetrics().array()),
+              getDataInfoFromAvro(metricsMessage.getComputeMsg().getDataInfos()));
+
+        } else if (SrcType.Controller.equals(srcType)) {
+
+          optimizationOrchestrator.receiveControllerMetrics(message.getId(),
+              metricsMessage.getIterationInfo().getCommGroupName().toString(),
+              metricsMessage.getIterationInfo().getIteration(),
+              metricCodec.decode(metricsMessage.getMetrics().array()),
+              metricsMessage.getControllerMsg().getNumComputeTasks());
+
+        } else {
+          throw new RuntimeException("Unknown SrcType " + srcType);
         }
       }
+    }
+
+    private List<DataInfo> getDataInfoFromAvro(
+        final List<edu.snu.cay.dolphin.core.metric.avro.DataInfo> avroDataInfos) {
+      final List<DataInfo> dataInfos = new ArrayList<>(avroDataInfos.size());
+      for (final edu.snu.cay.dolphin.core.metric.avro.DataInfo avroDataInfo : avroDataInfos) {
+        dataInfos.add(new DataInfoImpl(avroDataInfo.getDataType().toString(), avroDataInfo.getNumUnits()));
+      }
+      return dataInfos;
     }
   }
 

@@ -13,20 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-[
-/**
- * TraceInfo for Dapper-style tracing (e.g., using HTrace).
- * Passing this information via a message allows causal relationships
- * to be formed between time spans in different processes.
- */
-{
-  "namespace": "edu.snu.cay.services.em.trace",
-  "type": "record",
-  "name": "AvroTraceInfo",
-  "fields":
-  [
-    {"name": "traceId", "type": "long"},
-    {"name": "spanId", "type": "long"}
-  ]
+package edu.snu.cay.utils.trace.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Receiver Port", default_value = "9410", short_name = "htrace_receiver_port")
+public final class ReceiverPort implements Name<Integer> {
 }
-]

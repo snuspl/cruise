@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core;
-
-public interface Optimizer {
-  OptimizeScheme optimize();
-}
+/**
+ * Tracing-framework related parameter classes.
+ */
+package edu.snu.cay.utils.trace.parameters;

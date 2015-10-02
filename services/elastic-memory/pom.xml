@@ -31,9 +31,9 @@
 
   <dependencies>
     <dependency>
-      <groupId>${parent.groupId}</groupId>
+      <groupId>${project.parent.groupId}</groupId>
       <artifactId>cay-utils</artifactId>
-      <version>${parent.version}</version>
+      <version>${project.parent.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.reef</groupId>
@@ -64,10 +64,6 @@
       <artifactId>htrace-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.htrace</groupId>
-      <artifactId>htrace-zipkin</artifactId>
-    </dependency>
-    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <scope>test</scope>
@@ -89,7 +85,7 @@
               <sourceDirectory>${project.basedir}/src/main/avro/</sourceDirectory>
               <outputDirectory>${project.basedir}/target/generated-sources/avro/</outputDirectory>
               <imports>
-                <import>${project.basedir}/src/main/avro/traceinfo.avsc</import>
+                <import>${project.parent.basedir}/utils/src/main/avro/traceinfo.avsc</import>
               </imports>
             </configuration>
           </execution>

@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.msg.impl;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
-import edu.snu.cay.services.em.trace.HTraceUtils;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;

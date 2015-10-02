@@ -19,7 +19,7 @@ package edu.snu.cay.services.em.examples.simple;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
-import edu.snu.cay.services.em.trace.HTraceParameters;
+import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
