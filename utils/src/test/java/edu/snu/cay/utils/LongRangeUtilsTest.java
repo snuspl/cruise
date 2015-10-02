@@ -23,6 +23,9 @@ import java.util.Set;
 
 import static org.junit.Assert.*;
 
+/**
+ * Testing for the LongRange operations.
+ */
 public final class LongRangeUtilsTest {
   private static final LongRange ORIGINAL = new LongRange(2, 7);
   private static final LongRange OUTSIDE = new LongRange(0, 1);

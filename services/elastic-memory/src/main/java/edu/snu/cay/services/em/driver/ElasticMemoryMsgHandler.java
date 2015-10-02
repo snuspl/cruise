@@ -131,6 +131,7 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
         break;
 
       case SUCCESS:
+        // Finish the migration notifying the result to the client via callback.
         migrationManager.finishMigration(operationId);
         break;
 
