@@ -254,8 +254,8 @@ public class MigrationManagerTest {
      * Do nothing because this is called by Evaluator.
      */
     @Override
-    public void sendResultMsg(final boolean success, final String operationId,
-                              @Nullable final TraceInfo parentTraceInfo) {
+    public void sendDataAckMsg(final boolean success, final String operationId,
+                               @Nullable final TraceInfo parentTraceInfo) {
     }
 
     /**
@@ -291,14 +291,6 @@ public class MigrationManagerTest {
     @Override
     public void sendUpdateAckMsg(final String operationId, final UpdateResult result,
                                  @Nullable final TraceInfo parentTraceInfo) {
-    }
-
-    /**
-     * Do nothing because this is called by Evaluator.
-     */
-    @Override
-    public void sendFailureMsg(final String operationId, final String reason,
-                               @Nullable final TraceInfo parentTraceInfo) {
     }
   }
 }

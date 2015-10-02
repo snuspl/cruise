@@ -77,15 +77,15 @@
 
 /**
  * Response message that is sent from evaluator to driver.
- * The message contains the control message id.
+ * The message contains the result of the data transfer.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "ResultMsg",
+  "name": "DataAckMsg",
   "fields":
   [
-    {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}}
+    {"name": "result", "type": {"type": "enum", "name": "DataResult", "symbols": ["SUCCESS", "FAILURE"]}}
   ]
 },
 
@@ -131,15 +131,16 @@
 },
 
 /**
- * Message that contains failure information
+ * Message to notify the result of the migration.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "FailureMsg",
+  "name": "ResultMsg",
   "fields":
   [
-    {"name": "reason", "type": "string"}
+    {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
+    {"name": "msg", "type": ["null", "string"], "default": null}
   ]
 },
 
@@ -155,18 +156,19 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["CtrlMsg", "DataMsg", "ResultMsg", "RegisMsg", "UpdateMsg", "UpdateAckMsg", "FailureMsg"]}},
+        "symbols": ["CtrlMsg", "DataMsg", "DataAckMsg",
+        "RegisMsg", "UpdateMsg", "UpdateAckMsg", "ResultMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
+    {"name": "dataAckMsg", "type": ["null", "DataAckMsg"], "default": null},
     {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
     {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null},
     {"name": "updateMsg", "type": ["null", "UpdateMsg"], "default": null},
-    {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null},
-    {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null}
+    {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null}
   ]
 }
 ]

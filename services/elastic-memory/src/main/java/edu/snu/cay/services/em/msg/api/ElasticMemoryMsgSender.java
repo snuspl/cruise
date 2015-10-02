@@ -59,13 +59,13 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a ResultMsg to report to the Driver that the operation identified
-   * by {@code operationId} has finished, with a {@code success} result.
+   * Send a DataAckMsg to report to the Driver of the successful data transfer
+   * of a migration identified by {@code operationId}, with a {@code success} result.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendResultMsg(final boolean success,
-                     final String operationId,
-                     @Nullable final TraceInfo parentTraceInfo);
+  void sendDataAckMsg(final boolean success,
+                      final String operationId,
+                      @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Send a RegisMsg to the Driver to register a partition, starting with
@@ -90,11 +90,4 @@ public interface ElasticMemoryMsgSender {
   void sendUpdateAckMsg(final String operationId,
                         final UpdateResult result,
                         @Nullable final TraceInfo parentTraceInfo);
-
-  /**
-   * Send a FailureMsg to the Driver to notify the failure of operation.
-   */
-  void sendFailureMsg(final String operationId,
-                      final String reason,
-                      @Nullable final TraceInfo parentTraceInfo);
 }

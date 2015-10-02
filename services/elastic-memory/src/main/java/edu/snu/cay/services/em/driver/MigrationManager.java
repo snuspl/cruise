@@ -16,7 +16,8 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.FailureMsg;
+import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.parameters.UpdateTimeoutMillis;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
@@ -122,7 +123,6 @@ public final class MigrationManager {
 
     } else if (!partitionManager.isMovable(senderId, dataType, ranges, movingRanges)) {
       notifyFailure(operationId, "The ranges are not movable.");
-      return;
 
     } else {
       movingRanges.addAll(ranges);
@@ -202,7 +202,7 @@ public final class MigrationManager {
       updateCounter.await(updateTimeoutMillis, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
       // TODO #90: Consider how EM deals with this exception
-      new RuntimeException(e);
+      throw new RuntimeException(e);
     }
   }
 
@@ -242,14 +242,13 @@ public final class MigrationManager {
   }
 
   /**
-   * Finish the migration.
+   * Finish the migration, and notify the success via callback.
    * @param operationId Identifier of {@code move} operation.
    */
   synchronized void finishMigration(final String operationId) {
     checkAndUpdateState(operationId, Migration.UPDATING_SENDER, Migration.FINISHED);
-
-
     ongoingMigrations.remove(operationId);
+    notifySuccess(operationId);
     updateCounter.countDown();
   }
 
@@ -279,16 +278,35 @@ public final class MigrationManager {
    * TODO #139: Revisit when the avro message structure is changed.
    */
   synchronized void notifyFailure(final String operationId, final String reason) {
-    final FailureMsg failureMsg = FailureMsg.newBuilder()
-        .setReason(reason)
+    final ResultMsg resultMsg = ResultMsg.newBuilder()
+        .setResult(Result.FAILURE)
+        .setMsg(reason)
         .build();
     final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.FailureMsg)
-        .setFailureMsg(failureMsg)
+        .setType(Type.ResultMsg)
+        .setResultMsg(resultMsg)
         .setOperationId(operationId)
         .setSrcId("")
         .setDestId("")
         .build();
     callbackRouter.onFailed(msg);
+  }
+
+  /**
+   * Notify the success to the User via callback.
+   * TODO #139: Revisit when the avro message structure is changed.
+   */
+  synchronized void notifySuccess(final String operationId) {
+    final ResultMsg resultMsg = ResultMsg.newBuilder()
+        .setResult(Result.SUCCESS)
+        .build();
+    final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
+        .setType(Type.ResultMsg)
+        .setResultMsg(resultMsg)
+        .setOperationId(operationId)
+        .setSrcId("")
+        .setDestId("")
+        .build();
+    callbackRouter.onCompleted(msg);
   }
 }

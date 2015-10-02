@@ -46,7 +46,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   private static final String SEND_CTRL_MSG = "sendCtrlMsg";
   private static final String SEND_DATA_MSG = "sendDataMsg";
-  private static final String SEND_RESULT_MSG = "sendResultMsg";
+  private static final String SEND_DATA_ACK_MSG = "sendDataAckMsg";
   private static final String SEND_REGIS_MSG = "sendRegisMsg";
   private static final String SEND_UPDATE_MSG = "sendUpdateMsg";
   private static final String SEND_UPDATE_ACK_MSG = "sendUpdateAckMsg";
@@ -145,27 +145,27 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendResultMsg(final boolean success, final String operationId, final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendResultMsgScope = Trace.startSpan(SEND_RESULT_MSG, parentTraceInfo)) {
+  public void sendDataAckMsg(final boolean success, final String operationId, final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendDataAckMsgScope = Trace.startSpan(SEND_DATA_ACK_MSG, parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg",
           new Object[]{success, operationId});
 
-      final ResultMsg resultMsg = ResultMsg.newBuilder()
-          .setResult(success ? Result.SUCCESS : Result.FAILURE)
+      final DataAckMsg dataAckMsg = DataAckMsg.newBuilder()
+          .setResult(success ? DataResult.SUCCESS : DataResult.FAILURE)
           .build();
 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.ResultMsg)
+              .setType(Type.DataAckMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(driverId)
               .setOperationId(operationId)
+              .setDataAckMsg(dataAckMsg)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-              .setResultMsg(resultMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg",
           new Object[]{success, operationId});
 
     }
@@ -250,27 +250,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     }
   }
 
-  @Override
-  public void sendFailureMsg(final String operationId, final String reason, @Nullable final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendFailureMsgScope = Trace.startSpan(SEND_FAILURE_MSG, parentTraceInfo)) {
-
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg", new Object[]{operationId});
-      final FailureMsg failureMsg = FailureMsg.newBuilder()
-          .setReason(reason)
-          .build();
-      send(driverId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.FailureMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(driverId)
-              .setOperationId(operationId)
-              .setFailureMsg(failureMsg)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-              .build());
-
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg", new Object[]{operationId});
-    }
-  }
 
   private AvroLongRange convertLongRange(final LongRange longRange) {
     return AvroLongRange.newBuilder()

@@ -16,8 +16,8 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.DataResult;
 import edu.snu.cay.services.em.avro.RegisMsg;
-import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.utils.trace.HTraceUtils;
@@ -42,7 +42,7 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
   private static final String ON_REGIS_MSG = "onRegisMsg";
-  private static final String ON_RESULT_MSG = "onResultMsg";
+  private static final String ON_DATA_ACK_MSG = "onDataAckMsg";
   private static final String ON_UPDATE_ACK_MSG = "onUpdateAckMsg";
 
   private final ElasticMemoryCallbackRouter callbackRouter;
@@ -68,16 +68,12 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       onRegisMsg(innerMsg);
       break;
 
-    case ResultMsg:
-      onResultMsg(innerMsg);
+    case DataAckMsg:
+      onDataAckMsg(innerMsg);
       break;
 
     case UpdateAckMsg:
       onUpdateAckMsg(innerMsg);
-      break;
-
-    case FailureMsg:
-      callbackRouter.onFailed(innerMsg);
       break;
 
     default:
@@ -99,9 +95,10 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
     }
   }
 
-  private void onResultMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onResultMsgScope = Trace.startSpan(ON_RESULT_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final Result result = msg.getResultMsg().getResult();
+  private void onDataAckMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onDataAckMsgScope = Trace.startSpan(ON_DATA_ACK_MSG,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+      final DataResult result = msg.getDataAckMsg().getResult();
       switch (result) {
 
       case SUCCESS:
@@ -135,7 +132,6 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
 
       case SUCCESS:
         migrationManager.finishMigration(operationId);
-        callbackRouter.onCompleted(msg);
         break;
 
       default:

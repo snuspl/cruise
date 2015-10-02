@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -105,7 +106,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       // store the items in the pendingUpdates, so the items will be added later.
       pendingUpdates.put(operationId, new Add(dataType, codec, dataMsg.getUnits()));
 
-      sender.get().sendResultMsg(true, operationId, TraceInfo.fromSpan(onDataMsgScope.getSpan()));
+      sender.get().sendDataAckMsg(true, operationId, TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
   }
 
@@ -173,28 +174,27 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       final Update update = pendingUpdates.remove(operationId);
       if (update == null) {
-        sender.get().sendFailureMsg(operationId, "The operation id " + operationId + " does not exist.",
-            TraceInfo.fromSpan(onUpdateMsgScope.getSpan()));
+        LOG.log(Level.WARNING, "The update with id {0} seems already handled.", operationId);
         return;
-      } else {
-        switch (update.getType()) {
+      }
 
-        case ADD:
-          // ADD is done by the receiver.
-          final Add add = (Add) update;
-          add.apply(memoryStore);
-          updateResult = UpdateResult.RECEIVER_UPDATED;
-          break;
+      switch (update.getType()) {
 
-        case REMOVE:
-          // REMOVE is done by the sender.
-          final Remove remove = (Remove) update;
-          remove.apply(memoryStore);
-          updateResult = UpdateResult.SUCCESS;
-          break;
-        default:
-          throw new RuntimeException("Undefined Message type of Update: " + update);
-        }
+      case ADD:
+        // ADD is done by the receiver.
+        final Add add = (Add) update;
+        add.apply(memoryStore);
+        updateResult = UpdateResult.RECEIVER_UPDATED;
+        break;
+
+      case REMOVE:
+        // REMOVE is done by the sender.
+        final Remove remove = (Remove) update;
+        remove.apply(memoryStore);
+        updateResult = UpdateResult.SUCCESS;
+        break;
+      default:
+        throw new RuntimeException("Undefined Message type of Update: " + update);
       }
 
       sender.get().sendUpdateAckMsg(operationId, updateResult, TraceInfo.fromSpan(onUpdateMsgScope.getSpan()));
