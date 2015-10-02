@@ -48,10 +48,13 @@ public final class UserTaskTrace {
 
   /**
    * Called by the UserTask, to start a new span.
-   * Returns a span that descends from iteration and task spans.
+   * The UserTask must call close() on the TraceScope to record the span.
+   *
+   * The returned span descends from iteration and task spans.
    * For more information about the TraceScope returned, see {@link Trace#startSpan(String, TraceInfo)}.
+   *
    * @param description description of the span to be created
-   * @return the scope of the span
+   * @return the scope of the span, which can be recorded by calling close()
    */
   public TraceScope startSpan(final String description) {
     return Trace.startSpan(description, parentTraceInfo);
