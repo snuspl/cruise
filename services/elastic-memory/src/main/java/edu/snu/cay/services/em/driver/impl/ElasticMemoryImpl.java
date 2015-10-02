@@ -17,11 +17,13 @@ package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.MigrationManager;
+import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.driver.context.ActiveContext;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -45,20 +47,35 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final MigrationManager migrationManager;
 
   private final AtomicLong operationIdCounter = new AtomicLong();
+  /**
+   * EM resource request manager.
+   */
+  private final EMResourceRequestManager resourceRequestManager;
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
                             final ElasticMemoryCallbackRouter callbackRouter,
                             final MigrationManager migrationManager,
+                            final EMResourceRequestManager resourceRequestManager,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.requestor = requestor;
     this.callbackRouter = callbackRouter;
     this.migrationManager = migrationManager;
+    this.resourceRequestManager = resourceRequestManager;
   }
 
+  /**
+   * Request for evaluators and remember passed callback.
+   * Currently assumes that every request has same memory size and cores.
+   * TODO #188: Support heterogeneous evaluator requests
+   */
   @Override
-  public void add(final int number, final int megaBytes, final int cores) {
+  public void add(final int number, final int megaBytes, final int cores,
+                  @Nullable final EventHandler<ActiveContext> callback) {
+    for (int i = 0; i < number; i++) {
+      resourceRequestManager.register(callback);
+    }
     requestor.submit(EvaluatorRequest.newBuilder()
         .setNumber(number)
         .setMemory(megaBytes)
