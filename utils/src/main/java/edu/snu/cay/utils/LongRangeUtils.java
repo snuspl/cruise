@@ -35,6 +35,25 @@ public final class LongRangeUtils {
   }
 
   /**
+   * Comparator that is used when comparing the two long ranges.
+   * It guarantees the total order if the ranges are disjoint,
+   * but when the ranges are overlapping, the order is not determined..
+   */
+  private static final Comparator<LongRange> LONG_RANGE_COMPARATOR =
+      new Comparator<LongRange>() {
+        @Override
+        public int compare(final LongRange o1, final LongRange o2) {
+          if (o1.getMaximumLong() < o2.getMinimumLong()) {
+            return -1;
+          } else if (o1.getMinimumLong() > o2.getMaximumLong()) {
+            return 1;
+          } else {
+            return 0;
+          }
+        }
+      };
+
+  /**
    * Create an empty set to put LongRanges.
    * The ranges are ordered in the set based on the following rule:
    *   1) If max(range1) < min(range2), then range1 < range2 because all the values
@@ -45,19 +64,7 @@ public final class LongRangeUtils {
    * @return An empty set.
    */
   public static TreeSet<LongRange> createEmptyTreeSet() {
-    final Comparator<LongRange> longRangeComparator = new Comparator<LongRange>() {
-      @Override
-      public int compare(final LongRange o1, final LongRange o2) {
-        if (o1.getMaximumLong() < o2.getMinimumLong()) {
-          return -1;
-        } else if (o1.getMinimumLong() > o2.getMaximumLong()) {
-          return 1;
-        } else {
-          return 0;
-        }
-      }
-    };
-    return new TreeSet<>(longRangeComparator);
+    return new TreeSet<>(LONG_RANGE_COMPARATOR);
   }
 
   /**

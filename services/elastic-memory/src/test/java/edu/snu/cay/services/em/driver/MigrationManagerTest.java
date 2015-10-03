@@ -90,6 +90,7 @@ public class MigrationManagerTest {
     // Failure case1: There is no data registered in the evaluator (EVAL1).
     try {
       migrationManager.startMigration("op", EVAL1, EVAL0, DATA_TYPE, rangesToMove, null);
+      fail();
     } catch (final RuntimeException e) {
       // SUCCESS
     }
@@ -102,7 +103,7 @@ public class MigrationManagerTest {
       // SUCCESS
     }
 
-     // Failure case3: When the request contains the data out of range [101, 110]
+    // Failure case3: When the request contains the data out of range [101, 110]
     rangesToMove.add(new LongRange(110, 120));
     try {
       migrationManager.startMigration("op", EVAL0, EVAL1, DATA_TYPE, rangesToMove, null);

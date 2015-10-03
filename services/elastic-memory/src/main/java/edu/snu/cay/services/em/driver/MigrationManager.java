@@ -58,10 +58,13 @@ import java.util.logging.Logger;
  */
 @DriverSide
 public final class MigrationManager {
+  private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
+  private static final String MOVE_PARTITION = "move_partition";
+
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
   private final PartitionManager partitionManager;
   private final ElasticMemoryCallbackRouter callbackRouter;
-  private final int updateTimeoutMillis;
+  private final long updateTimeoutMillis;
 
   /**
    * This is a mapping from operation id to the {@link Migration}
@@ -80,7 +83,7 @@ public final class MigrationManager {
    * This consists of the operation ids of which finish the data transfer,
    * and wait for applying their migration results.
    */
-  private final Set<String> waiterIds = new HashSet<>();
+  private final Set<String> waitingOperationIds = new HashSet<>();
 
   /**
    * The multiple migrations could apply their changes at once.
@@ -88,14 +91,11 @@ public final class MigrationManager {
    */
   private CountDownLatch updateCounter = new CountDownLatch(0);
 
-  private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
-  private static final String MOVE_PARTITION = "move_partition";
-
   @Inject
   private MigrationManager(final InjectionFuture<ElasticMemoryMsgSender> sender,
                            final PartitionManager partitionManager,
                            final ElasticMemoryCallbackRouter callbackRouter,
-                           @Parameter(UpdateTimeoutMillis.class) final int updateTimeoutMillis) {
+                           @Parameter(UpdateTimeoutMillis.class) final long updateTimeoutMillis) {
     this.sender = sender;
     this.partitionManager = partitionManager;
     this.callbackRouter = callbackRouter;
@@ -174,7 +174,7 @@ public final class MigrationManager {
    */
   synchronized void waitUpdate(final String operationId) {
     checkAndUpdateState(operationId, Migration.SENDING_DATA, Migration.WAITING_UPDATE);
-    waiterIds.add(operationId);
+    waitingOperationIds.add(operationId);
   }
 
   /**
@@ -185,16 +185,16 @@ public final class MigrationManager {
    */
   public void applyUpdates(final TraceInfo traceInfo) {
     synchronized (this) {
-      updateCounter = new CountDownLatch(waiterIds.size());
+      updateCounter = new CountDownLatch(waitingOperationIds.size());
 
       // Update receivers first.
-      for (final String waiterId : waiterIds) {
+      for (final String waiterId : waitingOperationIds) {
         final Migration updatedInfo =
             checkAndUpdateState(waiterId, Migration.WAITING_UPDATE, Migration.UPDATING_RECEIVER);
         final String receiverId = updatedInfo.getReceiverId();
         sender.get().sendUpdateMsg(receiverId, waiterId, traceInfo);
       }
-      waiterIds.clear();
+      waitingOperationIds.clear();
     }
 
     try {
@@ -257,8 +257,8 @@ public final class MigrationManager {
    * @return Updated migration information.
    */
   private synchronized Migration checkAndUpdateState(final String operationId,
-                                                         final String expectedCurrentState,
-                                                         final String targetState) {
+                                                     final String expectedCurrentState,
+                                                     final String targetState) {
 
     if (!ongoingMigrations.containsKey(operationId)) {
       notifyFailure(operationId, "The operation id is lost. The last message may have arrived twice.");

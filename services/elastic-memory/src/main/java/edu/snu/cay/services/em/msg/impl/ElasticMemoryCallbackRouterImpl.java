@@ -22,6 +22,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -84,14 +85,14 @@ public final class ElasticMemoryCallbackRouterImpl implements ElasticMemoryCallb
   @Override
   public void onFailed(final AvroElasticMemoryMessage msg) {
     if (msg.getOperationId() == null) {
-      LOG.warning("No operationId provided. Ignoring msg " + msg);
+      LOG.log(Level.WARNING, "No operationId provided. Ignoring msg {0}", msg);
       return;
     }
     final String operationId = msg.getOperationId().toString();
 
     final EventHandler<AvroElasticMemoryMessage> handler = handlerMap.remove(operationId);
     if (handler == null) {
-      LOG.warning("Failed to find callback for " + operationId + ". Ignoring msg " + msg);
+      LOG.log(Level.WARNING, "Failed to find callback for {0}. Ignoring msg {1}", new Object[]{operationId, msg});
     } else {
       handler.onNext(msg);
     }

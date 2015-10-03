@@ -218,14 +218,14 @@ final class SimpleEMDriver {
             wait(periodMillis);
 
             // Number of units should not be changed until applyUpdates() is done.
-            checkNumUnit(srcId, initialSrcNumUnits);
-            checkNumUnit(destId, initialDestNumUnits);
+            checkNumUnits(srcId, initialSrcNumUnits);
+            checkNumUnits(destId, initialDestNumUnits);
 
             emService.applyUpdates();
 
             // After update, number of units should be applied accordingly.
-            checkNumUnit(srcId, initialSrcNumUnits - numToMove);
-            checkNumUnit(destId, initialDestNumUnits + numToMove);
+            checkNumUnits(srcId, initialSrcNumUnits - numToMove);
+            checkNumUnits(destId, initialDestNumUnits + numToMove);
 
             if (!moveSucceeded[0]) {
               throw new RuntimeException("Move failed on iteration " + i);
@@ -243,7 +243,7 @@ final class SimpleEMDriver {
     }
   }
 
-  private void checkNumUnit(final String evalId, final int expected) {
+  private void checkNumUnits(final String evalId, final int expected) {
     final int actual = getNumUnits(evalId);
     if (actual != expected) {
       final String msg = new StringBuilder().append(evalId).append("should have ").append(expected)

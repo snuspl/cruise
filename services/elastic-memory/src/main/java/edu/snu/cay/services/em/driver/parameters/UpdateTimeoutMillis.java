@@ -19,5 +19,5 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Timeout for updating EM's state (default: 100s).", default_value = "100000")
-public final class UpdateTimeoutMillis implements Name<Integer> {
+public final class UpdateTimeoutMillis implements Name<Long> {
 }

@@ -44,7 +44,8 @@ final class Migration {
    * Creates a new Migration when move() is requested.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
-   * @param dataType Type of data
+   * @param dataType Type of data.
+   * @param ranges Set of ranges.
    */
   public Migration(final String senderId,
                    final String receiverId,
@@ -102,7 +103,6 @@ final class Migration {
 
   /**
    * @return Ranges of the migration.
-   * Note that this field can be initially null and updated afterward.
    */
   public Collection<LongRange> getRanges() {
     return ranges;

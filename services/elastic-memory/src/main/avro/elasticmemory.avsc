@@ -44,6 +44,21 @@
 },
 
 /**
+ * A record type for evaluators to report a partition addition to the driver.
+ * The data type of the partition and its identifier range must be encoded in the message.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RegisMsg",
+  "fields":
+  [
+    {"name": "dataType", "type": "string"},
+    {"name": "idRange", "type": "AvroLongRange"}
+  ]
+},
+
+/**
  * Control message that is sent from the driver to evaluators.
  * The message contains the data type to send, as well as
  * an array of {@code AvroLongRange}s that show which identifiers to send.
@@ -86,21 +101,6 @@
   "fields":
   [
     {"name": "result", "type": {"type": "enum", "name": "DataResult", "symbols": ["SUCCESS", "FAILURE"]}}
-  ]
-},
-
-/**
- * A record type for evaluators to report a partition addition to the driver.
- * The data type of the partition and its identifier range must be encoded in the message.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "RegisMsg",
-  "fields":
-  [
-    {"name": "dataType", "type": "string"},
-    {"name": "idRange", "type": "AvroLongRange"}
   ]
 },
 
@@ -156,19 +156,19 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["CtrlMsg", "DataMsg", "DataAckMsg",
-        "RegisMsg", "UpdateMsg", "UpdateAckMsg", "ResultMsg"]}},
+        "symbols": ["RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
+        "UpdateMsg", "UpdateAckMsg", "ResultMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
+    {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
     {"name": "dataAckMsg", "type": ["null", "DataAckMsg"], "default": null},
-    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
-    {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null},
     {"name": "updateMsg", "type": ["null", "UpdateMsg"], "default": null},
-    {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null}
+    {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null},
+    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null}
   ]
 }
 ]

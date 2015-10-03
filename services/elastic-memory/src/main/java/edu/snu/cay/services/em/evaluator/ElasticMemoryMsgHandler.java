@@ -182,15 +182,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       case ADD:
         // ADD is done by the receiver.
-        final Add add = (Add) update;
-        add.apply(memoryStore);
+        update.apply(memoryStore);
         updateResult = UpdateResult.RECEIVER_UPDATED;
         break;
 
       case REMOVE:
         // REMOVE is done by the sender.
-        final Remove remove = (Remove) update;
-        remove.apply(memoryStore);
+        update.apply(memoryStore);
         updateResult = UpdateResult.SUCCESS;
         break;
       default:
