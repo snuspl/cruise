@@ -25,6 +25,7 @@ import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
+import edu.snu.cay.dolphin.parameters.StartTrace;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
@@ -34,7 +35,10 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.utils.trace.HTrace;
+import edu.snu.cay.utils.trace.HTraceInfoCodec;
 import edu.snu.cay.utils.trace.HTraceParameters;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -54,13 +58,22 @@ import org.apache.reef.io.network.group.impl.config.ReduceOperatorSpec;
 import org.apache.reef.io.network.group.impl.config.ScatterOperatorSpec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.*;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.task.Task;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.wake.time.event.StartTime;
+import org.htrace.Sampler;
+import org.htrace.Span;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.xml.bind.DatatypeConverter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -163,8 +176,12 @@ public final class DolphinDriver {
 
   private final HTraceParameters traceParameters;
 
+  private final HTraceInfoCodec hTraceInfoCodec;
+
   private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final UserParameters userParameters;
+
+  private final TraceInfo jobTraceInfo;
 
   /**
    * Map of evaluator id to component id who requested the evaluator.
@@ -206,7 +223,11 @@ public final class DolphinDriver {
                         final MetricCodec metricCodec,
                         final MetricsMessageCodec metricsMessageCodec,
                         final HTraceParameters traceParameters,
-                        final EMResourceRequestManager emResourceRequestManager) {
+                        final EMResourceRequestManager emResourceRequestManager,
+                        final HTraceInfoCodec hTraceInfoCodec,
+                        final HTrace hTrace,
+                        @Parameter(StartTrace.class) final boolean startTrace) {
+    hTrace.initialize();
     this.groupCommDriver = groupCommDriver;
     this.dataLoadingService = dataLoadingService;
     this.dataLoader = dataLoader;
@@ -223,6 +244,8 @@ public final class DolphinDriver {
     this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
     this.emResourceRequestManager = emResourceRequestManager;
+    this.hTraceInfoCodec = hTraceInfoCodec;
+    this.jobTraceInfo = startTrace ? TraceInfo.fromSpan(Trace.startSpan("job", Sampler.ALWAYS).getSpan()) : null;
     initializeCommDriver();
   }
 
@@ -527,37 +550,39 @@ public final class DolphinDriver {
     // We can now place a Controller Task on top of the contexts.
     if (isCtrlTaskId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
+      final String ctrlTaskId = getCtrlTaskId(stageSequence);
+      try (final TraceScope controllerTaskTraceScope = Trace.startSpan(ctrlTaskId, jobTraceInfo)) {
 
-      dolphinTaskConfBuilder
-          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-          .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
-          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
-      partialTaskConf = Configurations.merge(
-          TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCtrlTaskId(stageSequence))
-              .set(TaskConfiguration.TASK, ControllerTask.class)
-              .build(),
-          dolphinTaskConfBuilder.build(),
-          userParameters.getUserCtrlTaskConf());
+        dolphinTaskConfBuilder
+            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+            .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
+            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
+
+        partialTaskConf = Configurations.merge(
+            getBaseTaskConf(ctrlTaskId, ControllerTask.class, controllerTaskTraceScope.getSpan()),
+            dolphinTaskConfBuilder.build(),
+            userParameters.getUserCtrlTaskConf());
+      }
 
       // Case 2: Evaluator configured with a Group Communication context has been given,
       //         representing a Compute Task
       // We can now place a Compute Task on top of the contexts.
     } else {
       LOG.log(Level.INFO, "Submit ComputeTask");
-
       final int taskId = taskIdCounter.getAndIncrement();
-      dolphinTaskConfBuilder
-          .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
-          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-          .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
-      partialTaskConf = Configurations.merge(
-          TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, getCmpTaskId(taskId))
-              .set(TaskConfiguration.TASK, ComputeTask.class)
-              .build(),
-          dolphinTaskConfBuilder.build(),
-          userParameters.getUserCmpTaskConf());
+      final String cmpTaskId = getCmpTaskId(taskId);
+      try (final TraceScope computeTaskTraceScope = Trace.startSpan(cmpTaskId, jobTraceInfo)) {
+
+        dolphinTaskConfBuilder
+            .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
+            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
+
+        partialTaskConf = Configurations.merge(
+            getBaseTaskConf(cmpTaskId, ComputeTask.class, computeTaskTraceScope.getSpan()),
+            dolphinTaskConfBuilder.build(),
+            userParameters.getUserCmpTaskConf());
+      }
     }
 
     // add the Task to our communication group
@@ -580,5 +605,26 @@ public final class DolphinDriver {
 
   private String getCmpTaskId(final int sequence) {
     return ComputeTask.TASK_ID_PREFIX + "-" + sequence;
+  }
+
+  private Configuration getBaseTaskConf(final String identifier,
+                                        final Class<? extends Task> taskClass,
+                                        @Nullable final Span traceSpan) {
+    if (traceSpan == null) {
+
+      return TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, identifier)
+          .set(TaskConfiguration.TASK, taskClass)
+          .build();
+    } else {
+
+      return TaskConfiguration.CONF
+          .set(TaskConfiguration.IDENTIFIER, identifier)
+          .set(TaskConfiguration.TASK, taskClass)
+          .set(TaskConfiguration.MEMENTO, DatatypeConverter.printBase64Binary(
+              hTraceInfoCodec.encode(
+                  HTraceUtils.toAvro(TraceInfo.fromSpan(traceSpan)))))
+          .build();
+    }
   }
 }
