@@ -19,6 +19,7 @@ import org.apache.commons.lang.math.LongRange;
 
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -54,7 +55,7 @@ public final class LongRangeUtils {
       };
 
   /**
-   * Create an empty set to put LongRanges.
+   * Create an empty navigable set to put LongRanges.
    * The ranges are ordered in the set based on the following rule:
    *   1) If max(range1) < min(range2), then range1 < range2 because all the values
    *   in range1 is smaller than the numbers in range2.
@@ -63,7 +64,7 @@ public final class LongRangeUtils {
    *   when handling this case.
    * @return An empty set.
    */
-  public static TreeSet<LongRange> createEmptyTreeSet() {
+  public static NavigableSet<LongRange> createEmptyTreeSet() {
     return new TreeSet<>(LONG_RANGE_COMPARATOR);
   }
 
@@ -119,14 +120,13 @@ public final class LongRangeUtils {
     if (!range1.overlapsRange(range2)) {
       return null;
     } else {
-      // The intersection is either [larger min, smaller max] or [smaller max, larger min]
+      // The intersection is the [larger min, smaller max].
       final long min1 = range1.getMinimumLong();
       final long max1 = range1.getMaximumLong();
       final long min2 = range2.getMinimumLong();
       final long max2 = range2.getMaximumLong();
 
-      // LongRange does not care about the order.
-      return new LongRange(Math.min(max1, max2), Math.max(min1, min2));
+      return new LongRange(Math.max(min1, min2), Math.min(max1, max2));
     }
   }
 
@@ -134,8 +134,8 @@ public final class LongRangeUtils {
    * @return Complement of the two ranges (range1 - range2). If the range2 is inside range1, then
    * returns the two sub-ranges which is split into two.
    */
-  public static TreeSet<LongRange> getComplement(final LongRange range1, final LongRange range2) {
-    final TreeSet<LongRange> complement = LongRangeUtils.createEmptyTreeSet();
+  public static Set<LongRange> getComplement(final LongRange range1, final LongRange range2) {
+    final Set<LongRange> complement = new HashSet<>();
     if (!range1.overlapsRange(range2)) {
       complement.add(range1);
       return complement;

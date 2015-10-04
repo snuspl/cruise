@@ -40,7 +40,7 @@ public final class PartitionManager {
    * We can easily check the uniqueness of a partition when we register it.
    * Note that we should update the both maps when adding or removing a partition.
    */
-  private final Map<String, TreeSet<LongRange>> globalPartitions;
+  private final Map<String, NavigableSet<LongRange>> globalPartitions;
 
   /**
    * This map consists of the sub-map which holds the partitions of each evaluator.
@@ -50,7 +50,7 @@ public final class PartitionManager {
    * Evaluator2 does not have rest of the partitions.
    * Note that we should update the both maps when adding or removing a partition.
    */
-  private final Map<String, Map<String, TreeSet<LongRange>>> evalPartitions;
+  private final Map<String, Map<String, NavigableSet<LongRange>>> evalPartitions;
 
   @Inject
   private PartitionManager() {
@@ -83,7 +83,7 @@ public final class PartitionManager {
   public synchronized boolean register(final String evalId, final String dataType, final LongRange idRange) {
     // Check the acceptability of a new partition into global ranges where the data type is a key
     // Early failure in this step guarantees that all ranges are unique across evaluators.
-    final TreeSet<LongRange> globalRanges;
+    final NavigableSet<LongRange> globalRanges;
 
     if (globalPartitions.containsKey(dataType)) {
       globalRanges = globalPartitions.get(dataType);
@@ -102,7 +102,7 @@ public final class PartitionManager {
     }
 
     // Check the acceptability of a new partition into evalDataTypeToRanges
-    final Map<String, TreeSet<LongRange>> evalDataTypeRanges;
+    final Map<String, NavigableSet<LongRange>> evalDataTypeRanges;
 
     if (this.evalPartitions.containsKey(evalId)) {
       evalDataTypeRanges = this.evalPartitions.get(evalId);
@@ -111,7 +111,7 @@ public final class PartitionManager {
       this.evalPartitions.put(evalId, evalDataTypeRanges);
     }
 
-    final TreeSet<LongRange> evalRanges;
+    final NavigableSet<LongRange> evalRanges;
 
     if (evalDataTypeRanges.containsKey(dataType)) {
       evalRanges = evalDataTypeRanges.get(dataType);
@@ -162,7 +162,7 @@ public final class PartitionManager {
       return new TreeSet<>();
     }
 
-    final Map<String, TreeSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
+    final Map<String, NavigableSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
     if (!evalDataTypeRanges.containsKey(dataType)) {
       LOG.log(Level.WARNING, "The evaluator {0} does not contain any data whose type is {1}.",
           new Object[]{evalId, dataType});
@@ -182,12 +182,12 @@ public final class PartitionManager {
    * or the evaluator does not hold the partitions.
    */
   public synchronized boolean isMovable(final String srcEvalId, final String dataType,
-                                        final Set<LongRange> rangesToMove, final TreeSet<LongRange> movingRanges) {
+                                        final Set<LongRange> rangesToMove, final Set<LongRange> movingRanges) {
     // Check the Evaluator has that type of the data.
     if (!evalPartitions.containsKey(srcEvalId) || !evalPartitions.get(srcEvalId).containsKey(dataType)) {
       return false;
     } else {
-      final TreeSet<LongRange> evalRanges = evalPartitions.get(srcEvalId).get(dataType);
+      final NavigableSet<LongRange> evalRanges = evalPartitions.get(srcEvalId).get(dataType);
       for (final LongRange range : rangesToMove) {
         // If the range (or part of it) is moving.
         if (movingRanges.contains(range)) {
@@ -197,13 +197,13 @@ public final class PartitionManager {
         // If the range does not exist
         if (!evalRanges.contains(range)) {
           return false;
-        } else {
-          // Because S.contains(R) does not guarantee all the units in R is in the set S, we need to double check.
-          // You may want to take a look at the Comparator in e.s.cay.utils.LongRangeUtils
-          final LongRange ceiling = evalRanges.ceiling(range);
-          if (!ceiling.containsRange(range)) {
-            return false;
-          }
+        }
+
+        // Because S.contains(R) does not guarantee all the units in R is in the set S, we need to double check.
+        // You may want to take a look at the Comparator in e.s.cay.utils.LongRangeUtils
+        final LongRange ceiling = evalRanges.ceiling(range);
+        if (!ceiling.containsRange(range)) {
+          return false;
         }
       }
     }
@@ -215,11 +215,10 @@ public final class PartitionManager {
    * @param dataType Type of the data.
    * @param numUnits Number of units to move.
    * @param movingRanges The ranges currently participating the migration, which is handled in MigrationManager.
-   * @return The set of ranges that can be moved. If the number of units are smaller than requested, move the
-   * subset.
+   * @return The set of ranges that can be moved. If the evaluator has less data than requested, the subset is returned.
    */
   public synchronized Set<LongRange> getMovableRanges(final String srcEvalId, final String dataType,
-                                                      final int numUnits, final TreeSet<LongRange> movingRanges) {
+                                                      final int numUnits, final NavigableSet<LongRange> movingRanges) {
        // Check the Evaluator has that type of the data.
     if (!evalPartitions.containsKey(srcEvalId) || !evalPartitions.get(srcEvalId).containsKey(dataType)) {
       LOG.log(Level.WARNING, "The evaluator {0} does not contain any data whose type is {1}.",
@@ -263,46 +262,47 @@ public final class PartitionManager {
    * Remove the range from the partitions. After deleting a range, the partitions could be rearranged.
    * @param evalId Identifier of Evaluator.
    * @param dataType Type of data.
-   * @param idRange Range of unit ids to remove.
+   * @param toRemove Range of unit ids to remove.
    * @return Ranges that are removed from the partitions. If the entire range is not matched, part of range
    * is removed and returned. On the other hand, multiple ranges could be deleted if the range contains multiple
    * partitions. An empty set is returned if there is no intersecting range.
    */
-  public synchronized TreeSet<LongRange> remove(final String evalId, final String dataType, final LongRange idRange) {
+  public synchronized Set<LongRange> remove(final String evalId, final String dataType, final LongRange toRemove) {
     // Early failure if the evaluator is empty.
-    final Map<String, TreeSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
+    final Map<String, NavigableSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
     if (evalDataTypeRanges == null) {
       LOG.log(Level.WARNING, "The evaluator {0} does not exist.", evalId);
       return new TreeSet<>();
     }
 
     // Early failure if the evaluator does not have any data of that type.
-    final TreeSet<LongRange> evalRanges = evalDataTypeRanges.get(dataType);
+    final NavigableSet<LongRange> evalRanges = evalDataTypeRanges.get(dataType);
     if (evalRanges == null) {
       LOG.log(Level.WARNING, "The evaluator {0} does not contain any data whose type is {1}.",
           new Object[]{evalId, dataType});
       return new TreeSet<>();
     }
 
-    final TreeSet<LongRange> globalRanges = globalPartitions.get(dataType);
-    final TreeSet<LongRange> removedRanges = LongRangeUtils.createEmptyTreeSet();
+    final Set<LongRange> globalRanges = globalPartitions.get(dataType);
 
-    final Set<LongRange> insideRanges = removeInsideRanges(globalRanges, evalRanges, idRange);
+    // Remove the ranges inside the range to remove.
+    final Set<LongRange> removedRanges = LongRangeUtils.createEmptyTreeSet();
+    final Set<LongRange> insideRanges = removeInsideRanges(globalRanges, evalRanges, toRemove);
     removedRanges.addAll(insideRanges);
 
     // Remove overlapping ranges if any. Try ceilingRange first.
-    final LongRange ceilingRange = evalRanges.ceiling(idRange);
-    if (ceilingRange != null && ceilingRange.overlapsRange(idRange)) {
-      final LongRange ceilingRemoved = removeIntersectingRange(globalRanges, evalRanges, ceilingRange, idRange);
+    final LongRange ceilingRange = evalRanges.ceiling(toRemove);
+    if (ceilingRange != null && ceilingRange.overlapsRange(toRemove)) {
+      final LongRange ceilingRemoved = removeIntersectingRange(globalRanges, evalRanges, ceilingRange, toRemove);
       if (ceilingRemoved != null) {
         removedRanges.add(ceilingRemoved);
       }
     }
 
     // Next try the floorRange. There is no duplicate removal because we already removed ceiling range.
-    final LongRange floorRange = evalRanges.floor(idRange);
-    if (floorRange != null && floorRange.overlapsRange(idRange)) {
-      final LongRange floorRemoved = removeIntersectingRange(globalRanges, evalRanges, floorRange, idRange);
+    final LongRange floorRange = evalRanges.floor(toRemove);
+    if (floorRange != null && floorRange.overlapsRange(toRemove)) {
+      final LongRange floorRemoved = removeIntersectingRange(globalRanges, evalRanges, floorRange, toRemove);
       if (floorRemoved != null) {
         removedRanges.add(floorRemoved);
       }
@@ -320,7 +320,7 @@ public final class PartitionManager {
   public synchronized void move(final String srcId, final String destId,
                                 final String dataType, final LongRange toMove) {
     // 1. remove from the source.
-    final TreeSet<LongRange> removedRanges = remove(srcId, dataType, toMove);
+    final Set<LongRange> removedRanges = remove(srcId, dataType, toMove);
     // 2. register the ranges to the destination.
     for (final LongRange toRegister : removedRanges) {
       if (!register(destId, dataType, toRegister)) {
@@ -343,8 +343,8 @@ public final class PartitionManager {
    * (e.g., [3, 4] [5, 6] when [1, 10] is requested to remove).
    * @return Ranges that are removed. An empty list is returned if there was no range to remove.
    */
-  private Set<LongRange> removeInsideRanges(final TreeSet<LongRange> globalRanges,
-                                            final TreeSet<LongRange> evalRanges,
+  private Set<LongRange> removeInsideRanges(final Set<LongRange> globalRanges,
+                                            final NavigableSet<LongRange> evalRanges,
                                             final LongRange target) {
     final long min = target.getMinimumLong();
     final long max = target.getMaximumLong();
@@ -353,7 +353,7 @@ public final class PartitionManager {
         evalRanges.subSet(new LongRange(min, min), false, new LongRange(max, max), false);
 
     // Copy the ranges to avoid ConcurrentModificationException and losing references.
-    final NavigableSet<LongRange> copied = new TreeSet<>(insideRanges);
+    final Set<LongRange> copied = new TreeSet<>(insideRanges);
     evalRanges.removeAll(copied);
     globalRanges.removeAll(copied);
     return copied;
@@ -365,12 +365,13 @@ public final class PartitionManager {
    * @param target Target range to remove
    * @return Deleted range. {@code null} if there is no range to delete.
    */
-  private LongRange removeIntersectingRange(final TreeSet<LongRange> globalRanges,
-                                            final TreeSet<LongRange> evalRanges,
+  private LongRange removeIntersectingRange(final Set<LongRange> globalRanges,
+                                            final Set<LongRange> evalRanges,
                                             final LongRange from,
                                             final LongRange target) {
     // Remove the range from both global and evaluator's range sets.
-    removeRange(from, globalRanges, evalRanges);
+    globalRanges.remove(from);
+    evalRanges.remove(from);
 
     if (target.containsRange(from)) {
       // If the target range is larger, the whole range is removed.
@@ -393,38 +394,18 @@ public final class PartitionManager {
       // Keep LEFT if exists
       if (leftEnd < centerLeft) {
         final LongRange left = new LongRange(leftEnd, centerLeft - 1);
-        addRange(left, globalRanges, evalRanges);
+        globalRanges.add(left);
+        evalRanges.add(left);
       }
 
       // Keep RIGHT if exists
       if (endRight > centerRight) {
         final LongRange right = new LongRange(centerRight + 1, endRight);
-        addRange(right, globalRanges, evalRanges);
+        globalRanges.add(right);
+        evalRanges.add(right);
       }
 
       return target;
     }
-  }
-
-  /**
-   * Helper method for removing a range from both global and evaluator's range sets.
-   * For convenience, the range sets are passed via arguments to avoid additional lookup.
-   */
-  private void removeRange(final LongRange toRemove,
-                           final TreeSet<LongRange> globalRange,
-                           final TreeSet<LongRange> evalRange) {
-    globalRange.remove(toRemove);
-    evalRange.remove(toRemove);
-  }
-
-  /**
-   * Helper method for adding a range from both global and evaluator's range sets.
-   * For convenience, the range sets are passed via arguments to avoid additional lookup.
-   */
-  private void addRange(final LongRange toAdd,
-                        final TreeSet<LongRange> globalRange,
-                        final TreeSet<LongRange> evalRange) {
-    globalRange.add(toAdd);
-    evalRange.add(toAdd);
   }
 }

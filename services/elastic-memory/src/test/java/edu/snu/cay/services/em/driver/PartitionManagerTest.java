@@ -25,8 +25,8 @@ import org.junit.Test;
 
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.NavigableSet;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -75,7 +75,7 @@ public final class PartitionManagerTest {
     final LongRange range2 = new LongRange(7, 8);
 
     // Assume the two ranges are being moved. These actually are managed by MigrationManager.
-    final TreeSet<LongRange> movingRanges = LongRangeUtils.createEmptyTreeSet();
+    final NavigableSet<LongRange> movingRanges = LongRangeUtils.createEmptyTreeSet();
     movingRanges.add(range1);
 
     // Request before registered: not movable.

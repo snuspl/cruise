@@ -36,8 +36,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -75,9 +75,8 @@ public final class MigrationManager {
   /**
    * This set consists of the ranges that are currently moving, which is used
    * to determine the move() is achievable or how many units can be moved.
-   * {@link TreeSet} is used for efficiency.
    */
-  private final TreeSet<LongRange> movingRanges = LongRangeUtils.createEmptyTreeSet();
+  private final NavigableSet<LongRange> movingRanges = LongRangeUtils.createEmptyTreeSet();
 
   /**
    * This consists of the operation ids of which finish the data transfer,
@@ -154,7 +153,6 @@ public final class MigrationManager {
       final Set<LongRange> movableRanges =
           partitionManager.getMovableRanges(senderId, dataType, numUnits, movingRanges);
 
-      // TODO #90: What would we do if there are not enough number of units, not only there is no data to move?
       if (LongRangeUtils.getNumUnits(movableRanges) == 0) {
         notifyFailure(operationId, "There is no range to move");
         return;
