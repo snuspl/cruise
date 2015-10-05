@@ -176,7 +176,13 @@ public final class PartitionManager {
       LOG.log(Level.WARNING, "The evaluator {0} does not exist.", evalId);
       return new HashSet<>();
     }
-    return new HashSet<>(evalPartitions.get(evalId).keySet());
+    final Set<String> dataTypeSet = new HashSet<>(evalPartitions.get(evalId).size());
+    for (final Map.Entry<String, TreeSet<LongRange>> entry : evalPartitions.get(evalId).entrySet()) {
+      if (!entry.getValue().isEmpty()) {
+        dataTypeSet.add(entry.getKey());
+      }
+    }
+    return dataTypeSet;
   }
 
   /**
