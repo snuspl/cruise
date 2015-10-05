@@ -119,15 +119,17 @@ public final class MigrationManager {
                                           final TraceInfo traceInfo) {
     if (ongoingMigrations.containsKey(operationId)) {
       LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
-
-    } else if (!partitionManager.isMovable(senderId, dataType, ranges, movingRanges)) {
-      notifyFailure(operationId, "The ranges are not movable.");
-
-    } else {
-      movingRanges.addAll(ranges);
-      ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, ranges));
-      sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
+      return;
     }
+
+    if (!partitionManager.isMovable(senderId, dataType, ranges, movingRanges)) {
+      notifyFailure(operationId, "The ranges are not movable.");
+      return;
+    }
+
+    movingRanges.addAll(ranges);
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, ranges));
+    sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
   }
 
   /**
@@ -148,20 +150,20 @@ public final class MigrationManager {
                                           final TraceInfo traceInfo) {
     if (ongoingMigrations.containsKey(operationId)) {
       LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
-
-    } else {
-      final Set<LongRange> movableRanges =
-          partitionManager.getMovableRanges(senderId, dataType, numUnits, movingRanges);
-
-      if (LongRangeUtils.getNumUnits(movableRanges) == 0) {
-        notifyFailure(operationId, "There is no range to move");
-        return;
-      }
-
-      movingRanges.addAll(movableRanges);
-      ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, movableRanges));
-      sender.get().sendCtrlMsg(senderId, dataType, receiverId, movableRanges, operationId, traceInfo);
+      return;
     }
+
+    final Set<LongRange> movableRanges =
+        partitionManager.getMovableRanges(senderId, dataType, numUnits, movingRanges);
+
+    if (LongRangeUtils.getNumUnits(movableRanges) == 0) {
+      notifyFailure(operationId, "There is no range to move");
+      return;
+    }
+
+    movingRanges.addAll(movableRanges);
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, movableRanges));
+    sender.get().sendCtrlMsg(senderId, dataType, receiverId, movableRanges, operationId, traceInfo);
   }
 
   /**
@@ -171,7 +173,11 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    */
   synchronized void waitUpdate(final String operationId) {
-    checkAndUpdateState(operationId, Migration.SENDING_DATA, Migration.WAITING_UPDATE);
+    final Migration migration = checkAndUpdateState(operationId, Migration.SENDING_DATA, Migration.WAITING_UPDATE);
+    if (migration == null) {
+      // Ignore the migration that does not exist. Warning message is written in checkAndUpdateState().
+      return;
+    }
     waitingOperationIds.add(operationId);
   }
 
@@ -187,9 +193,14 @@ public final class MigrationManager {
 
       // Update receivers first.
       for (final String waiterId : waitingOperationIds) {
-        final Migration updatedInfo =
+        final Migration migration =
             checkAndUpdateState(waiterId, Migration.WAITING_UPDATE, Migration.UPDATING_RECEIVER);
-        final String receiverId = updatedInfo.getReceiverId();
+        if (migration == null) {
+          // Ignore the migration that does not exist. Warning message is written in checkAndUpdateState().
+          continue;
+        }
+
+        final String receiverId = migration.getReceiverId();
         sender.get().sendUpdateMsg(receiverId, waiterId, traceInfo);
       }
       waitingOperationIds.clear();
@@ -211,14 +222,18 @@ public final class MigrationManager {
    */
   synchronized void movePartition(final String operationId, final TraceInfo traceInfo) {
     try (final TraceScope movePartition = Trace.startSpan(MOVE_PARTITION, traceInfo)) {
-      final Migration updatedInfo =
+      final Migration migration =
           checkAndUpdateState(operationId, Migration.UPDATING_RECEIVER, Migration.MOVING_PARTITION);
+      if (migration == null) {
+        // Ignore the migration that does not exist. Warning message is written in checkAndUpdateState().
+        return;
+      }
 
-      final String senderId = updatedInfo.getSenderId();
-      final String receiverId = updatedInfo.getReceiverId();
-      final String dataType = updatedInfo.getDataType();
+      final String senderId = migration.getSenderId();
+      final String receiverId = migration.getReceiverId();
+      final String dataType = migration.getDataType();
 
-      final Collection<LongRange> ranges = updatedInfo.getRanges();
+      final Collection<LongRange> ranges = migration.getRanges();
       for (final LongRange range : ranges) {
         partitionManager.move(senderId, receiverId, dataType, range);
         movingRanges.remove(range);
@@ -232,10 +247,13 @@ public final class MigrationManager {
    * @param traceInfo Trace information
    */
   synchronized void updateSender(final String operationId, final TraceInfo traceInfo) {
-    final Migration updatedInfo =
-        checkAndUpdateState(operationId, Migration.MOVING_PARTITION, Migration.UPDATING_SENDER);
+    final Migration migration = checkAndUpdateState(operationId, Migration.MOVING_PARTITION, Migration.UPDATING_SENDER);
+    if (migration == null) {
+      // Ignore the migration that does not exist. Warning message is written in checkAndUpdateState().
+      return;
+    }
 
-    final String senderId = updatedInfo.getSenderId();
+    final String senderId = migration.getSenderId();
     sender.get().sendUpdateMsg(senderId, operationId, traceInfo);
   }
 
@@ -244,7 +262,12 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    */
   synchronized void finishMigration(final String operationId) {
-    checkAndUpdateState(operationId, Migration.UPDATING_SENDER, Migration.FINISHED);
+    final Migration migration = checkAndUpdateState(operationId, Migration.UPDATING_SENDER, Migration.FINISHED);
+    if (migration == null) {
+      // Ignore the migration that does not exist. Warning message is written in checkAndUpdateState().
+      return;
+    }
+
     ongoingMigrations.remove(operationId);
     notifySuccess(operationId);
     updateCounter.countDown();
@@ -252,14 +275,16 @@ public final class MigrationManager {
 
   /**
    * Check the current status and update it.
-   * @return Updated migration information.
+   * @return Updated migration information. {@code null} if the migration does not exist
+   * (the migration was not registered, or it has already been finished).
    */
   private synchronized Migration checkAndUpdateState(final String operationId,
                                                      final String expectedCurrentState,
                                                      final String targetState) {
 
     if (!ongoingMigrations.containsKey(operationId)) {
-      notifyFailure(operationId, "The operation id is lost. The last message may have arrived twice.");
+      LOG.log(Level.WARNING, "Migration with ID {0} was not registered, or it has already been finished.", operationId);
+      return null;
     }
 
     final Migration migration = ongoingMigrations.get(operationId);
