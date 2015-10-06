@@ -88,7 +88,6 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
-
   private void onRegisMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onRegisMsgScope = Trace.startSpan(ON_REGIS_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
@@ -106,15 +105,15 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
 
       final String operationId = msg.getOperationId().toString();
 
-      // Add the range information to the Migration.
+      // Add the range information to the corresponding Migration.
       final Set<LongRange> ranges = new HashSet<>();
       for (final AvroLongRange range : msg.getDataAckMsg().getIdRange()) {
         ranges.add(new LongRange(range.getMin(), range.getMax()));
       }
-      migrationManager.setMovedRange(operationId, ranges);
+      migrationManager.setMovedRanges(operationId, ranges);
 
       // Wait for the user's approval to update.
-      // Once EM can make sure there is no race condition, this synchronization barrier should be removed.
+      // Once EM allows remote access to the data, we can remove this barrier letting EM update its state automatically.
       migrationManager.waitUpdate(operationId);
     }
   }
@@ -129,13 +128,13 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
 
       case RECEIVER_UPDATED:
         // After receiver updates its state, the partition is guaranteed to be accessible in the receiver.
-        // So move the partition and update the sender.
+        // So we can move the partition and update the sender.
         final TraceInfo traceInfo = TraceInfo.fromSpan(onUpdateAckMsgScope.getSpan());
         migrationManager.movePartition(operationId, traceInfo);
         migrationManager.updateSender(operationId, traceInfo);
         break;
 
-      case SUCCESS:
+      case SENDER_UPDATED:
         // Finish the migration notifying the result to the client via callback.
         migrationManager.finishMigration(operationId);
         break;

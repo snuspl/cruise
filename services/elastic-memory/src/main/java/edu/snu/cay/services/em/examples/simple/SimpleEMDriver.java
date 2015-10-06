@@ -217,7 +217,7 @@ final class SimpleEMDriver {
           try {
             wait(periodMillis);
 
-            // Number of units should not be changed until applyUpdates() is done.
+            // Number of units should be unchanged until applyUpdates() is done.
             checkNumUnits(srcId, initialSrcNumUnits);
             checkNumUnits(destId, initialDestNumUnits);
 

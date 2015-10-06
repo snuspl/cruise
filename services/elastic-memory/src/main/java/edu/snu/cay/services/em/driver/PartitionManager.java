@@ -97,11 +97,11 @@ public final class PartitionManager {
       }
     } else {
       // Successfully registered in the global partitions.
-      globalRanges = LongRangeUtils.createEmptyTreeSet();
+      globalRanges = LongRangeUtils.createLongRangeSet();
       globalPartitions.put(dataType, globalRanges);
     }
 
-    // Check the acceptability of a new partition into evalDataTypeToRanges
+    // Check the acceptability of a new partition into evalPartitions
     final Map<String, NavigableSet<LongRange>> evalDataTypeRanges;
 
     if (this.evalPartitions.containsKey(evalId)) {
@@ -116,7 +116,7 @@ public final class PartitionManager {
     if (evalDataTypeRanges.containsKey(dataType)) {
       evalRanges = evalDataTypeRanges.get(dataType);
     } else {
-      evalRanges = LongRangeUtils.createEmptyTreeSet();
+      evalRanges = LongRangeUtils.createLongRangeSet();
       evalDataTypeRanges.put(dataType, evalRanges);
     }
 
@@ -191,7 +191,7 @@ public final class PartitionManager {
   /**
    * Check whether the ranges exist in the Evaluator. Because the ranges are sparse, we can't guarantee that
    * the actual data exist in the Evaluator even this method returns {@code true}.
-   * However, it is useful to reject the request early if any unit in the ranges does not exist in the Evaluator.
+   * This method is useful to reject the request early if any unit in the ranges does not exist in the Evaluator.
    * @param srcEvalId Identifier of the evaluator who should send the data.
    * @param dataType Type of the data.
    * @param rangesToMove Set of ranges that are requested to move.
@@ -218,12 +218,12 @@ public final class PartitionManager {
    * Remove the range from the partitions. After deleting a range, the partitions could be rearranged.
    * @param evalId Identifier of Evaluator.
    * @param dataType Type of data.
-   * @param toRemove Range of unit ids to remove.
+   * @param idRange Range of unit ids to remove.
    * @return Ranges that are removed from the partitions. If the entire range is not matched, part of range
    * is removed and returned. On the other hand, multiple ranges could be deleted if the range contains multiple
    * partitions. An empty set is returned if there is no intersecting range.
    */
-  public synchronized Set<LongRange> remove(final String evalId, final String dataType, final LongRange toRemove) {
+  public synchronized Set<LongRange> remove(final String evalId, final String dataType, final LongRange idRange) {
     // Early failure if the evaluator is empty.
     final Map<String, NavigableSet<LongRange>> evalDataTypeRanges = evalPartitions.get(evalId);
     if (evalDataTypeRanges == null) {
@@ -242,23 +242,23 @@ public final class PartitionManager {
     final Set<LongRange> globalRanges = globalPartitions.get(dataType);
 
     // Remove the ranges inside the range to remove.
-    final Set<LongRange> removedRanges = LongRangeUtils.createEmptyTreeSet();
-    final Set<LongRange> insideRanges = removeInsideRanges(globalRanges, evalRanges, toRemove);
+    final Set<LongRange> removedRanges = LongRangeUtils.createLongRangeSet();
+    final Set<LongRange> insideRanges = removeInsideRanges(globalRanges, evalRanges, idRange);
     removedRanges.addAll(insideRanges);
 
     // Remove overlapping ranges if any. Try ceilingRange first.
-    final LongRange ceilingRange = evalRanges.ceiling(toRemove);
-    if (ceilingRange != null && ceilingRange.overlapsRange(toRemove)) {
-      final LongRange ceilingRemoved = removeIntersectingRange(globalRanges, evalRanges, ceilingRange, toRemove);
+    final LongRange ceilingRange = evalRanges.ceiling(idRange);
+    if (ceilingRange != null && ceilingRange.overlapsRange(idRange)) {
+      final LongRange ceilingRemoved = removeIntersectingRange(globalRanges, evalRanges, ceilingRange, idRange);
       if (ceilingRemoved != null) {
         removedRanges.add(ceilingRemoved);
       }
     }
 
     // Next try the floorRange. There is no duplicate removal because we already removed ceiling range.
-    final LongRange floorRange = evalRanges.floor(toRemove);
-    if (floorRange != null && floorRange.overlapsRange(toRemove)) {
-      final LongRange floorRemoved = removeIntersectingRange(globalRanges, evalRanges, floorRange, toRemove);
+    final LongRange floorRange = evalRanges.floor(idRange);
+    if (floorRange != null && floorRange.overlapsRange(idRange)) {
+      final LongRange floorRemoved = removeIntersectingRange(globalRanges, evalRanges, floorRange, idRange);
       if (floorRemoved != null) {
         removedRanges.add(floorRemoved);
       }
@@ -272,6 +272,7 @@ public final class PartitionManager {
    * @param srcId Id of the source.
    * @param destId Id of the destination.
    * @param dataType Type of the data.
+   * @param toMove Range of unit ids to move.
    */
   public synchronized void move(final String srcId, final String destId,
                                 final String dataType, final LongRange toMove) {
@@ -280,8 +281,7 @@ public final class PartitionManager {
     // 2. register the ranges to the destination.
     for (final LongRange toRegister : removedRanges) {
       if (!register(destId, dataType, toRegister)) {
-        // Fails if there is an overlapping range in the destination. We may rollback the migration process,
-        // but decided to throw RuntimeException, because PartitionManager should not have allowed this to happen.
+        // Fails if there is an overlapping range in the destination, which PartitionManager should not allow.
         // TODO #90: Failure cases for Move
         final String errorMsg = new StringBuilder()
             .append("Failed while moving the range.")

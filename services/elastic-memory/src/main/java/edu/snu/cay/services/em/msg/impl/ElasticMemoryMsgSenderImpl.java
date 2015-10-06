@@ -161,7 +161,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setUnits(unitIdPairList)
           .build();
 
-      // TODO #96: Add the range information to the data msg.
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.DataMsg)

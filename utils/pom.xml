@@ -38,8 +38,8 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <scope>test</scope>
-	</dependency>
-	<dependency>
+    </dependency>
+    <dependency>
       <groupId>org.htrace</groupId>
       <artifactId>htrace-core</artifactId>
     </dependency>

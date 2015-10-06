@@ -114,7 +114,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final Codec codec = serializer.getCodec(dataType);
       final String operationId = msg.getOperationId().toString();
 
-      // TODO #96: Change the schema of DataMsg, so that we don't have to unpack the message.
       // Compress the ranges so the number of ranges minimizes.
       final SortedSet<Long> newIds = new TreeSet<>();
       for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
@@ -190,8 +189,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     // If there is no data to move, send failure message instead of sending an empty DataMsg.
     if (ids.size() == 0) {
-      sender.get().sendFailureMsg(operationId, "No data can be moved.",
-          TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+      final String myId = msg.getDestId().toString();
+      final String reason = new StringBuilder()
+          .append("No data is movable in ").append(myId)
+          .append(" of type ").append(dataType)
+          .append(". Requested ranges: ").append(Arrays.toString(ctrlMsg.getIdRange().toArray()))
+          .toString();
+      sender.get().sendFailureMsg(operationId, reason, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
       return;
     }
 
@@ -247,8 +251,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     // If there is no data to move, send failure message instead of sending an empty DataMsg.
     if (ids.size() == 0) {
-      sender.get().sendFailureMsg(operationId, "No data can be moved.",
-          TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+      final String myId = msg.getDestId().toString();
+      final String reason = new StringBuilder()
+          .append("No data is movable in ").append(myId)
+          .append(" of type ").append(dataType)
+          .append(". Requested numUnits: ").append(numUnits)
+          .toString();
+      sender.get().sendFailureMsg(operationId, reason, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
       return;
     }
 
@@ -263,7 +272,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
         operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
-
 
   /**
    * Applies the pending updates (add, remove) to the MemoryStore,
@@ -284,16 +292,16 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       switch (update.getType()) {
 
       case ADD:
-        // ADD is done by the receiver. The data is added into the MemoryStore.
+        // The receiver adds the data into its MemoryStore.
         update.apply(memoryStore);
         updateResult = UpdateResult.RECEIVER_UPDATED;
         break;
 
       case REMOVE:
-        // REMOVE is done by the sender. the data is removed from the MemoryStore.
+        // The sender removes the data from its MemoryStore.
         update.apply(memoryStore);
         movingRanges.removeAll(update.getRanges());
-        updateResult = UpdateResult.SUCCESS;
+        updateResult = UpdateResult.SENDER_UPDATED;
         break;
       default:
         throw new RuntimeException("Undefined Message type of Update: " + update);
@@ -306,7 +314,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   /**
    * Check whether the unit is moving in order to avoid the duplicate request for the ranges that are moving already.
    * @param id Identifier of unit to check.
-   * @return {@True} if the {@code id} is inside a range that is moving.
+   * @return {@code true} if the {@code id} is inside a range that is moving.
    */
   private boolean isMoving(final long id) {
     // We need to synchronize manually for using SynchronizedSet.iterator().
@@ -315,7 +323,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       while (iterator.hasNext()) {
         final LongRange range = iterator.next();
         if (range.containsLong(id)) {
-          return false;
+          return true;
         }
       }
     }

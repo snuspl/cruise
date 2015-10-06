@@ -123,6 +123,10 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     }
   }
 
+  /**
+   * Apply the updates in the Driver and Evaluators' status.
+   * It is synchronized to restrict at most one thread call this method at one time
+   */
   @Override
   public synchronized void applyUpdates() {
     try (final TraceScope traceScope = Trace.startSpan(APPLY_UPDATES)) {

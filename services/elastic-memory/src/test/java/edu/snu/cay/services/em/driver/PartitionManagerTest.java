@@ -64,8 +64,6 @@ public final class PartitionManagerTest {
     final String evalId = EVAL_ID_PREFIX;
     final String dataType = DATA_TYPE_PREFIX;
 
-    // Situation:
-    // Evaluator has the range0 and range1.
     final LongRange range0 = new LongRange(1, 4);
     final LongRange range1 = new LongRange(5, 6);
     final LongRange range2 = new LongRange(7, 8);
@@ -76,6 +74,7 @@ public final class PartitionManagerTest {
     assertFalse(partitionManager.checkRanges(evalId, dataType, set));
     set.clear();
 
+    // Evaluator has the range0 and range1.
     partitionManager.register(evalId, dataType, range0);
     partitionManager.register(evalId, dataType, range1);
 

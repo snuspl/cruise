@@ -49,6 +49,7 @@ public class MigrationManagerTest {
   private MigrationManager migrationManager;
   private ElasticMemoryMsgSender messageSender;
 
+  private static final String OP_ID = "op";
   private static final String EVAL0 = "eval0";
   private static final String EVAL1 = "eval1";
   private static final String DATA_TYPE = "dataType";
@@ -59,18 +60,18 @@ public class MigrationManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    // Initiate PartitionManager and register partitions to EVAL0.
+    // Initiate PartitionManager.
     partitionManager = Tang.Factory.getTang().newInjector().getInstance(PartitionManager.class);
-    partitionManager.register(EVAL0, DATA_TYPE, INITIAL_RANGE0);
-    partitionManager.register(EVAL1, DATA_TYPE, INITIAL_RANGE1);
 
     // If the migration fails, throw a RuntimeException
     final ElasticMemoryCallbackRouter mockedCallbackRouter = mock(ElasticMemoryCallbackRouter.class);
     doThrow(RuntimeException.class).when(mockedCallbackRouter).onFailed(any(AvroElasticMemoryMessage.class));
 
+    // Mock the message sender.
     messageSender = new MockedMsgSender();
-    final Injector injector = Tang.Factory.getTang().newInjector();
 
+    // Create a Migration Manager instance by binding the instances above.
+    final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(PartitionManager.class, partitionManager);
     injector.bindVolatileInstance(ElasticMemoryCallbackRouter.class, mockedCallbackRouter);
     injector.bindVolatileInstance(ElasticMemoryMsgSender.class, messageSender);
@@ -89,15 +90,19 @@ public class MigrationManagerTest {
 
     // Failure case1: There is no data registered in the evaluator (EVAL1).
     try {
-      migrationManager.startMigration("op", EVAL1, EVAL0, DATA_TYPE, rangesToMove, null);
+      migrationManager.startMigration(OP_ID, EVAL1, EVAL0, DATA_TYPE, rangesToMove, null);
       fail();
     } catch (final RuntimeException e) {
       // SUCCESS
     }
 
+    // Register the data to the Evaluators. EVAL0 has [0, 9] and EVAL1 has [10, 19].
+    partitionManager.register(EVAL0, DATA_TYPE, INITIAL_RANGE0);
+    partitionManager.register(EVAL1, DATA_TYPE, INITIAL_RANGE1);
+
     // Failure case2: When the evaluator does not have the data type (Undefined).
     try {
-      migrationManager.startMigration("op", EVAL0, EVAL1, "Undefined", rangesToMove, null);
+      migrationManager.startMigration(OP_ID, EVAL0, EVAL1, "Undefined", rangesToMove, null);
       fail();
     } catch (final RuntimeException e) {
       // SUCCESS
@@ -106,7 +111,7 @@ public class MigrationManagerTest {
     // Failure case3: When the request contains the data out of range [101, 110]
     rangesToMove.add(new LongRange(101, 110));
     try {
-      migrationManager.startMigration("op", EVAL0, EVAL1, DATA_TYPE, rangesToMove, null);
+      migrationManager.startMigration(OP_ID, EVAL0, EVAL1, DATA_TYPE, rangesToMove, null);
       fail();
     } catch (final RuntimeException e) {
       // SUCCESS
@@ -119,13 +124,17 @@ public class MigrationManagerTest {
    *  - EVAL0 has [0, 9] and EVAL1 has [10, 19]
    *  - 10 threads request to move the range. Each thread has an integer id.
    *  - Thread i moves the range of [2*i, 2*i+1] with operation id i.
-   *  - The sender and receiver are determined by the index.
+   *  - Senders and Receivers are determined by their indices.
    *      EVAL0 -> EVAL1 (i < 5)
    *      EVAL1 -> EVAL0 (i >= 5)
    */
   @Test
   public void testMigration() {
     try {
+      // Register the data to the Evaluators. EVAL0 has [0, 9] and EVAL1 has [10, 19].
+      partitionManager.register(EVAL0, DATA_TYPE, INITIAL_RANGE0);
+      partitionManager.register(EVAL1, DATA_TYPE, INITIAL_RANGE1);
+
       // Start migration and wait until all threads call waitUpdate().
       // This is only for testing in order to see multiple threads can update at the same time.
       // Originally, applyUpdates() only affects the migrations that are ready to update.
@@ -144,16 +153,16 @@ public class MigrationManagerTest {
 
             if (index < 5) {
               // thread0~4: EVAL0 -> EVAL1
-              migrationManager.startMigration(index + "", EVAL0, EVAL1, DATA_TYPE, rangesToMove, null);
+              migrationManager.startMigration(Integer.toString(index), EVAL0, EVAL1, DATA_TYPE, rangesToMove, null);
             } else {
               // thread5~9 EVAL1 -> EVAL0
-              migrationManager.startMigration(index + "", EVAL1, EVAL0, DATA_TYPE, rangesToMove, null);
+              migrationManager.startMigration(Integer.toString(index), EVAL1, EVAL0, DATA_TYPE, rangesToMove, null);
             }
 
-            // We call this only for testing. This is done internally when receiver notifies
+            // We call those methods manually only for testing. This is done internally when receiver notifies
             // that it received the data.
-            migrationManager.setMovedRange(index + "", rangesToMove);
-            migrationManager.waitUpdate(index + "");
+            migrationManager.setMovedRanges(Integer.toString(index), rangesToMove);
+            migrationManager.waitUpdate(Integer.toString(index));
             waitUpdateLatch.countDown();
           }
         });
@@ -178,11 +187,11 @@ public class MigrationManagerTest {
               // We check the order in the MockedMsgSender.sendUpdateMsg()
 
               // Update the receiver & get UpdateAck message.
-              migrationManager.movePartition(index + "", null);
-              migrationManager.updateSender(index + "", null);
+              migrationManager.movePartition(Integer.toString(index), null);
+              migrationManager.updateSender(Integer.toString(index), null);
 
               // Update the sender & get the UpdateAck message.
-              migrationManager.finishMigration(index + "");
+              migrationManager.finishMigration(Integer.toString(index));
             } catch (final InterruptedException e) {
               throw new RuntimeException(e);
             }
@@ -229,7 +238,6 @@ public class MigrationManagerTest {
     /**
      * Check the operation id and range matches.
      */
-    // TODO #96: Do we need to change the test?
     @Override
     public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
                             final Set<LongRange> idRangeSet, final String operationId,
@@ -245,9 +253,8 @@ public class MigrationManagerTest {
       assertTrue(idRangeSet.contains(new LongRange(2 * index, 2 * index + 1)));
     }
 
-    // TODO #96: Do we need to change the test? Use the num Units.
     @Override
-    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId, final int unitNum,
+    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId, final int numUnits,
                             final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     }
 

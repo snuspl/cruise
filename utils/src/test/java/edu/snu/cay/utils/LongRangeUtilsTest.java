@@ -98,7 +98,7 @@ public final class LongRangeUtilsTest {
   /**
    * Helper method that checks whether the range is in the scope.
    * Note that scope.contains(toCheck) does not guarantee the exact membership.
-   * You can see how the Comparator is defined in {@link LongRangeUtils#createEmptyTreeSet()}.
+   * You can see how the Comparator is defined in {@link LongRangeUtils#createLongRangeSet()}.
    * @return {@code true} if the scope contains the exact same range as toCheck.
    */
   private boolean exists(final LongRange toCheck, final Set<LongRange> scope) {

@@ -41,10 +41,10 @@ final class Migration {
   private final String dataType;
 
   /**
-   * The set of moved ranges. All the ranges are dense because Evaluators
-   * convert the ranges before sending DataAckMsg.
+   * The set of moved ranges, which is set after data is transferred.
+   * All ranges are dense because Evaluators convert the ranges before sending DataAckMsg.
    */
-  private Collection<LongRange> ranges;
+  private Collection<LongRange> movedRanges;
 
   /**
    * Creates a new Migration when move() is requested.
@@ -70,7 +70,6 @@ final class Migration {
         .addState(FINISHED, "All the migration steps are finished")
         .setInitialState(SENDING_DATA)
         .addTransition(SENDING_DATA, WAITING_UPDATE,
-            // TODO #96: We need to remove the barrier.
             "When the data is sent to the receiver, the sender and receiver both wait until apply update is called")
         .addTransition(WAITING_UPDATE, UPDATING_RECEIVER,
             "When applyUpdate() is called, apply the result of migration to the receiver first")
@@ -108,7 +107,7 @@ final class Migration {
    * @return Ranges of the migration.
    */
   public Collection<LongRange> getMovedRanges() {
-    return ranges;
+    return movedRanges;
   }
 
   /**
@@ -116,8 +115,8 @@ final class Migration {
    * included in the ranges could be smaller than requested.
    * @param movedRanges Ranges that were actually moved.
    */
-  public void setMovedRange(final Collection<LongRange> movedRanges) {
-    this.ranges = movedRanges;
+  public void setMovedRanges(final Collection<LongRange> movedRanges) {
+    this.movedRanges = movedRanges;
   }
 
   /**

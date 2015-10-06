@@ -55,16 +55,16 @@ public final class LongRangeUtils {
       };
 
   /**
-   * Create an empty navigable set to put LongRanges.
+   * Create an empty navigable set that we can put LongRanges.
    * The ranges are ordered in the set based on the following rule:
    *   1) If max(range1) < min(range2), then range1 < range2 because all the values
    *   in range1 is smaller than the numbers in range2.
    *   2) If min(range1) > max(range2), then range1 > range2.
    *   3) Otherwise, the order between two ranges are not clear. So users need more caution
    *   when handling this case.
-   * @return An empty set.
+   * @return An empty navigable set of LongRanges.
    */
-  public static NavigableSet<LongRange> createEmptyTreeSet() {
+  public static NavigableSet<LongRange> createLongRangeSet() {
     return new TreeSet<>(LONG_RANGE_COMPARATOR);
   }
 

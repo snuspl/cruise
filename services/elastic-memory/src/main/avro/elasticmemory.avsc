@@ -60,7 +60,7 @@
 
 /**
  * Control message that is sent from the driver to evaluators.
- * The message contains the data type to send, as well as
+ * The message contains the data type to send, as well as either
  * an array of {@code AvroLongRange}s that show which identifiers to send, or
  * simply the number of units to send.
  */
@@ -95,7 +95,7 @@
 
 /**
  * Response message that is sent from evaluator to driver.
- * The message contains the result of the data transfer.
+ * The message contains the ranges moved in this data transfer.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -128,13 +128,13 @@
   [
     {
     "name": "result",
-    "type": {"type": "enum", "name": "UpdateResult", "symbols": ["SUCCESS", "RECEIVER_UPDATED"]}
+    "type": {"type": "enum", "name": "UpdateResult", "symbols": ["RECEIVER_UPDATED", "SENDER_UPDATED"]}
     }
   ]
 },
 
 /**
- * Message to notify Evaluators' failure to the Driver.
+ * Message to notify failures in Evaluators to the Driver.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",

@@ -24,7 +24,6 @@ import edu.snu.cay.services.em.driver.parameters.UpdateTimeoutMillis;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.utils.AvroUtils;
-import edu.snu.cay.utils.LongRangeUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
@@ -35,12 +34,12 @@ import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -77,13 +76,7 @@ public final class MigrationManager {
   private final Map<String, Migration> ongoingMigrations = new HashMap<>();
 
   /**
-   * This set consists of the ranges that are currently moving, which is used
-   * to determine the move() is achievable or how many units can be moved.
-   */
-  private final NavigableSet<LongRange> movingRanges = LongRangeUtils.createEmptyTreeSet();
-
-  /**
-   * This consists of the operation ids of which finish the data transfer,
+   * This consists of the operation ids of which have finished the data transfer,
    * and wait for applying their migration results.
    */
   private final Set<String> waitingOperationIds = new HashSet<>();
@@ -127,11 +120,15 @@ public final class MigrationManager {
     }
 
     if (!partitionManager.checkRanges(senderId, dataType, ranges)) {
-      notifyFailure(operationId, "The ranges are not movable.");
+      final String reason = new StringBuilder()
+          .append("The requested ranges are not movable from ").append(senderId)
+          .append(" of type ").append(dataType)
+          .append(". Requested ranges: ").append(Arrays.toString(ranges.toArray()))
+          .toString();
+      notifyFailure(operationId, reason);
       return;
     }
 
-    movingRanges.addAll(ranges);
     ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType));
     sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
   }
@@ -158,7 +155,12 @@ public final class MigrationManager {
     }
 
     if (!partitionManager.checkDataType(senderId, dataType)) {
-      notifyFailure(operationId, "There is no range to move");
+      final String reason = new StringBuilder()
+          .append("No data is movable in ").append(senderId)
+          .append(" of type ").append(dataType)
+          .append(". Requested numUnits: ").append(numUnits)
+          .toString();
+      notifyFailure(operationId, reason);
       return;
     }
 
@@ -167,23 +169,23 @@ public final class MigrationManager {
   }
 
   /**
-   * Set the range information (set of ranges, number of units) after the data has been transferred.
+   * Set the range information after the data has been transferred. Since Evaluators generate dense ranges
+   * when sending DataAckMsg, we can count the number of moved units directly from the ranges.
    * @param operationId Identifier of {@code move} operation.
    * @param rangeSet Set of ranges.
    */
-  synchronized void setMovedRange(final String operationId, final Set<LongRange> rangeSet) {
+  synchronized void setMovedRanges(final String operationId, final Set<LongRange> rangeSet) {
     final Migration migration = ongoingMigrations.get(operationId);
     if (migration == null) {
       LOG.log(Level.WARNING, "Migration with ID {0} was not registered, or it has already been finished.", operationId);
       return;
     }
     migration.checkState(Migration.SENDING_DATA);
-    migration.setMovedRange(rangeSet);
+    migration.setMovedRanges(rangeSet);
   }
 
   /**
-   * Update the range information and make migrations wait
-   * until {@link edu.snu.cay.services.em.driver.api.ElasticMemory#applyUpdates()} is called.
+   * Make migrations wait until {@link edu.snu.cay.services.em.driver.api.ElasticMemory#applyUpdates()} is called.
    * We will fix this to update the states without this barrier later.
    * @param operationId Identifier of {@code move} operation.
    */
@@ -201,6 +203,9 @@ public final class MigrationManager {
    * Updates the states of the Driver and Evaluators.
    * Note that this method usually takes long (default timeout: 100s) because it blocks until
    * all waiting updates at the moment are complete.
+   * Since this method is not thread-safe, concurrent invocation could destroy the updates in progress.
+   * But currently it is okay because this method is called only in one synchronized context
+   * ({@link edu.snu.cay.services.em.driver.api.ElasticMemory#applyUpdates()}).
    * @param traceInfo Trace information
    */
   public void applyUpdates(final TraceInfo traceInfo) {
@@ -254,7 +259,6 @@ public final class MigrationManager {
       final Collection<LongRange> ranges = migration.getMovedRanges();
       for (final LongRange range : ranges) {
         partitionManager.move(senderId, receiverId, dataType, range);
-        movingRanges.remove(range);
       }
     }
   }
@@ -278,7 +282,7 @@ public final class MigrationManager {
   }
 
   /**
-   * Finish the migration, and notify the success via callback.
+   * Finish migration, and notify the success via callback.
    * @param operationId Identifier of {@code move} operation.
    */
   synchronized void finishMigration(final String operationId) {
@@ -296,9 +300,8 @@ public final class MigrationManager {
   }
 
   /**
-   * Notify the failure to the User via callback.
+   * Notify failure to the User via callback.
    * There are some non-nullable fields with blank value, which is not necessary for this type of message.
-   * Since we will change the message structure, they will be fixed accordingly
    * TODO #139: Revisit when the avro message structure is changed.
    */
   synchronized void notifyFailure(final String operationId, final String reason) {
@@ -317,10 +320,11 @@ public final class MigrationManager {
   }
 
   /**
-   * Notify the success to the User via callback.
+   * Notify success to the User via callback.
+   * There are some non-nullable fields with blank value, which is not necessary for this type of message.
    * TODO #139: Revisit when the avro message structure is changed.
    */
-  synchronized void notifySuccess(final String operationId, final Collection<LongRange> ranges) {
+  private synchronized void notifySuccess(final String operationId, final Collection<LongRange> ranges) {
     final List<AvroLongRange> avroRanges = new ArrayList<>(ranges.size());
     for (final LongRange range : ranges) {
       avroRanges.add(AvroUtils.toAvroLongRange(range));
