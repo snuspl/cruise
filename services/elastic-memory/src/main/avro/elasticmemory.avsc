@@ -61,7 +61,8 @@
 /**
  * Control message that is sent from the driver to evaluators.
  * The message contains the data type to send, as well as
- * an array of {@code AvroLongRange}s that show which identifiers to send.
+ * an array of {@code AvroLongRange}s that show which identifiers to send, or
+ * simply the number of units to send.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -70,7 +71,9 @@
   "fields":
   [
     {"name": "dataType", "type": "string"},
-    {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null}
+    {"name": "ctrlMsgType", "type": {"type": "enum", "name": "CtrlMsgType", "symbols": ["IdRange", "NumUnits"]}},
+    {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
+    {"name": "numUnits", "type": ["null", "int"], "default": null}
   ]
 },
 
@@ -100,7 +103,8 @@
   "name": "DataAckMsg",
   "fields":
   [
-    {"name": "result", "type": {"type": "enum", "name": "DataResult", "symbols": ["SUCCESS", "FAILURE"]}}
+    {"name": "result", "type": {"type": "enum", "name": "DataResult", "symbols": ["SUCCESS", "FAILURE"]}},
+    {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null}
   ]
 },
 
@@ -131,7 +135,7 @@
 },
 
 /**
- * Message to notify the result of the migration.
+ * Message to notify the result of the migration via callback.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -140,6 +144,7 @@
   "fields":
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
+    {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
     {"name": "msg", "type": ["null", "string"], "default": null}
   ]
 },

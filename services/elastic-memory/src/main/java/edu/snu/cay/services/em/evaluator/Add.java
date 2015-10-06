@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.evaluator;
 
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.io.serialization.Codec;
 
 import java.util.Collection;
@@ -28,16 +29,24 @@ class Add implements Update {
   private final String dataType;
   private final Codec codec;
   private final Collection<UnitIdPair> unitIdPairs;
+  private final Collection<LongRange> ranges;
 
-  Add(final String dataType, final Codec codec, final Collection<UnitIdPair> unitIdPairs) {
+  Add(final String dataType, final Codec codec, final Collection<UnitIdPair> unitIdPairs,
+      final Collection<LongRange> ranges) {
     this.dataType = dataType;
     this.codec = codec;
     this.unitIdPairs = unitIdPairs;
+    this.ranges = ranges;
   }
 
   @Override
   public Type getType() {
     return Type.ADD;
+  }
+
+  @Override
+  public Collection<LongRange> getRanges() {
+    return ranges;
   }
 
   @Override

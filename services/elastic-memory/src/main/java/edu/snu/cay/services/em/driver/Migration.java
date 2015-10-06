@@ -21,9 +21,10 @@ import org.apache.commons.lang.math.LongRange;
 import java.util.Collection;
 
 /**
- * Encapsulates the status of a migration. It consists of the information of
- * the sender, receiver, data type, and range information. Each migration has
- * its state as described in {@link MigrationManager}.
+ * Encapsulates the status of a migration. It consists of the sender, receiver, data type, and range information.
+ * Note that the range information is updated later because the exact range cannot be determined
+ * before checking the Evaluator' range state.
+ * Each migration has its states as described in {@link MigrationManager}.
  */
 final class Migration {
   static final String SENDING_DATA = "SENDING_DATA";
@@ -38,23 +39,25 @@ final class Migration {
   private final String senderId;
   private final String receiverId;
   private final String dataType;
-  private final Collection<LongRange> ranges;
+
+  /**
+   * The set of moved ranges. All the ranges are dense because Evaluators
+   * convert the ranges before sending DataAckMsg.
+   */
+  private Collection<LongRange> ranges;
 
   /**
    * Creates a new Migration when move() is requested.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
    * @param dataType Type of data.
-   * @param ranges Set of ranges.
    */
   public Migration(final String senderId,
                    final String receiverId,
-                   final String dataType,
-                   final Collection<LongRange> ranges) {
+                   final String dataType) {
     this.senderId = senderId;
     this.receiverId = receiverId;
     this.dataType = dataType;
-    this.ranges = ranges;
   }
 
   private StateMachine initStateMachine() {
@@ -104,8 +107,24 @@ final class Migration {
   /**
    * @return Ranges of the migration.
    */
-  public Collection<LongRange> getRanges() {
+  public Collection<LongRange> getMovedRanges() {
     return ranges;
+  }
+
+  /**
+   * Set the information of the ranges that were moved. If the evaluator has less data, the number of units
+   * included in the ranges could be smaller than requested.
+   * @param movedRanges Ranges that were actually moved.
+   */
+  public void setMovedRange(final Collection<LongRange> movedRanges) {
+    this.ranges = movedRanges;
+  }
+
+  /**
+   * Check whether the current state is in the {@code expectedCurrentState}.
+   */
+  void checkState(final String expectedCurrentState) {
+    stateMachine.checkState(expectedCurrentState);
   }
 
   /**

@@ -13,38 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator;
+package edu.snu.cay.services.em.utils;
 
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.avro.AvroLongRange;
 import org.apache.commons.lang.math.LongRange;
 
-import java.util.Collection;
-
 /**
- * Encapsulates an update of the MemoryStore's state.
- * The data is added or removed when apply() is called.
+ * Utilities for AVRO used in EM.
  */
-interface Update {
-  /**
-   * Type of the Update.
-   */
-  enum Type {
-    ADD, REMOVE
+public final class AvroUtils {
+  private AvroUtils() {
   }
 
   /**
-   * @return Type of the Update.
+   * Convert LongRange to AvroLongRange.
    */
-  Type getType();
-
-  /**
-   * @return Ranges that will be affected by this update.
-   */
-  Collection<LongRange> getRanges();
-
-  /**
-   * Apply the changes to the MemoryStore.
-   * @param memoryStore MemoryStore to add/remove the data.
-   */
-  void apply(MemoryStore memoryStore);
+  public static AvroLongRange toAvroLongRange(final LongRange longRange) {
+    return AvroLongRange.newBuilder()
+        .setMin(longRange.getMinimumLong())
+        .setMax(longRange.getMaximumLong())
+        .build();
+  }
 }

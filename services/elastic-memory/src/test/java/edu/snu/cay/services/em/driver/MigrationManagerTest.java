@@ -104,7 +104,7 @@ public class MigrationManagerTest {
     }
 
     // Failure case3: When the request contains the data out of range [101, 110]
-    rangesToMove.add(new LongRange(110, 120));
+    rangesToMove.add(new LongRange(101, 110));
     try {
       migrationManager.startMigration("op", EVAL0, EVAL1, DATA_TYPE, rangesToMove, null);
       fail();
@@ -152,6 +152,7 @@ public class MigrationManagerTest {
 
             // We call this only for testing. This is done internally when receiver notifies
             // that it received the data.
+            migrationManager.setMovedRange(index + "", rangesToMove);
             migrationManager.waitUpdate(index + "");
             waitUpdateLatch.countDown();
           }
@@ -228,6 +229,7 @@ public class MigrationManagerTest {
     /**
      * Check the operation id and range matches.
      */
+    // TODO #96: Do we need to change the test?
     @Override
     public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
                             final Set<LongRange> idRangeSet, final String operationId,
@@ -243,6 +245,12 @@ public class MigrationManagerTest {
       assertTrue(idRangeSet.contains(new LongRange(2 * index, 2 * index + 1)));
     }
 
+    // TODO #96: Do we need to change the test? Use the num Units.
+    @Override
+    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId, final int unitNum,
+                            final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    }
+
     /**
      * Do nothing because this is called by Evaluator.
      */
@@ -255,8 +263,8 @@ public class MigrationManagerTest {
      * Do nothing because this is called by Evaluator.
      */
     @Override
-    public void sendDataAckMsg(final boolean success, final String operationId,
-                               @Nullable final TraceInfo parentTraceInfo) {
+    public void sendDataAckMsg(final boolean success, final Set<LongRange> idRangeSet,
+                               final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     }
 
     /**

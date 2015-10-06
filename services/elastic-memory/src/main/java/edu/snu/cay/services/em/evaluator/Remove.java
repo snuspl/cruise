@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.evaluator;
 
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import org.apache.commons.lang.math.LongRange;
 
 import java.util.Collection;
 
@@ -24,11 +25,11 @@ import java.util.Collection;
  */
 class Remove implements Update {
   private String dataType;
-  private Collection<Long> ids;
+  private Collection<LongRange> ranges;
 
-  Remove(final String dataType, final Collection<Long> ids) {
+  Remove(final String dataType, final Collection<LongRange> ranges) {
     this.dataType = dataType;
-    this.ids = ids;
+    this.ranges = ranges;
   }
 
   @Override
@@ -37,9 +38,14 @@ class Remove implements Update {
   }
 
   @Override
+  public Collection<LongRange> getRanges() {
+    return ranges;
+  }
+
+  @Override
   public void apply(final MemoryStore memoryStore) {
-    for (final long id : ids) {
-      memoryStore.getElasticStore().remove(dataType, id);
+    for (final LongRange range : ranges) {
+      memoryStore.getElasticStore().removeRange(dataType, range.getMinimumLong(), range.getMaximumLong());
     }
   }
 }

@@ -16,12 +16,14 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.AvroLongRange;
 import edu.snu.cay.services.em.avro.DataResult;
 import edu.snu.cay.services.em.avro.RegisMsg;
 import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
+import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -30,6 +32,8 @@ import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -102,9 +106,17 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       switch (result) {
 
       case SUCCESS:
+        final String operationId = msg.getOperationId().toString();
+
+        // Add the range information to the Migration.
+        final Set<LongRange> ranges = new HashSet<>();
+        for (final AvroLongRange range : msg.getDataAckMsg().getIdRange()) {
+          ranges.add(new LongRange(range.getMin(), range.getMax()));
+        }
+        migrationManager.setMovedRange(operationId, ranges);
+
         // Wait for the user's approval to update.
         // Once EM can make sure there is no race condition, this synchronization barrier should be removed.
-        final String operationId = msg.getOperationId().toString();
         migrationManager.waitUpdate(operationId);
         break;
 

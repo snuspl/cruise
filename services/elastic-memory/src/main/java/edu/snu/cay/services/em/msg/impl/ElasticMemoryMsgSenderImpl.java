@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.msg.impl;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
+import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
@@ -31,6 +32,7 @@ import org.apache.reef.wake.IdentifierFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -93,12 +95,42 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       final List<AvroLongRange> avroLongRangeList = new LinkedList<>();
       for (final LongRange idRange : idRangeSet) {
-        avroLongRangeList.add(convertLongRange(idRange));
+        avroLongRangeList.add(AvroUtils.toAvroLongRange(idRange));
       }
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
           .setDataType(dataType)
+          .setCtrlMsgType(CtrlMsgType.IdRange)
           .setIdRange(avroLongRangeList)
+          .build();
+
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.CtrlMsg)
+              .setSrcId(destId)
+              .setDestId(targetEvalId)
+              .setOperationId(operationId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setCtrlMsg(ctrlMsg)
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+          new Object[]{destId, dataType, targetEvalId});
+    }
+  }
+
+  @Override
+  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+                          final int numUnits, final String operationId, final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendCtrlMsg",
+          new Object[]{destId, dataType, targetEvalId, numUnits});
+
+      final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
+          .setDataType(dataType)
+          .setCtrlMsgType(CtrlMsgType.NumUnits)
+          .setNumUnits(numUnits)
           .build();
 
       send(destId,
@@ -129,6 +161,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setUnits(unitIdPairList)
           .build();
 
+      // TODO #96: Add the range information to the data msg.
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.DataMsg)
@@ -145,14 +178,21 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendDataAckMsg(final boolean success, final String operationId, final TraceInfo parentTraceInfo) {
+  public void sendDataAckMsg(final boolean success, final Set<LongRange> idRangeSet,
+                             final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendDataAckMsgScope = Trace.startSpan(SEND_DATA_ACK_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg",
           new Object[]{success, operationId});
 
+      final List<AvroLongRange> avroLongRanges = new ArrayList<>(idRangeSet.size());
+      for (final LongRange range : idRangeSet) {
+        avroLongRanges.add(AvroUtils.toAvroLongRange(range));
+      }
+
       final DataAckMsg dataAckMsg = DataAckMsg.newBuilder()
           .setResult(success ? DataResult.SUCCESS : DataResult.FAILURE)
+          .setIdRange(avroLongRanges)
           .build();
 
       send(driverId,
@@ -248,13 +288,5 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateAckMsg",
           new Object[]{operationId, result});
     }
-  }
-
-
-  private AvroLongRange convertLongRange(final LongRange longRange) {
-    return AvroLongRange.newBuilder()
-        .setMin(longRange.getMinimumLong())
-        .setMax(longRange.getMaximumLong())
-        .build();
   }
 }

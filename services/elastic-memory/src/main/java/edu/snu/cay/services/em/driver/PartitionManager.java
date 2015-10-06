@@ -173,89 +173,45 @@ public final class PartitionManager {
   }
 
   /**
-   * Check the ranges are movable.
+   * Check whether the type of data exists in the Evaluator.
    * @param srcEvalId Identifier of the evaluator who should send the data.
    * @param dataType Type of the data.
-   * @param rangesToMove Range that is requested to move.
-   * @param movingRanges The ranges currently participating the migration, which is handled in MigrationManager.
-   * @return {@code true} if the move can be achieved. {@true false} if the ranges are already moving,
-   * or the evaluator does not hold the partitions.
+   * @return {@code true} if the Evaluator has data of the given type. {@code false} is returned if the
+   * Evaluator does not exist, or the Evaluator does not contain the data of the type {@code dataType}.
    */
-  public synchronized boolean isMovable(final String srcEvalId, final String dataType,
-                                        final Set<LongRange> rangesToMove, final Set<LongRange> movingRanges) {
-    // Check the Evaluator has that type of the data.
+  public synchronized boolean checkDataType(final String srcEvalId, final String dataType) {
     if (!evalPartitions.containsKey(srcEvalId) || !evalPartitions.get(srcEvalId).containsKey(dataType)) {
+      LOG.log(Level.WARNING, "The evaluator {0} does not contain any data whose type is {1}.",
+          new Object[]{srcEvalId, dataType});
       return false;
-    } else {
-      final NavigableSet<LongRange> evalRanges = evalPartitions.get(srcEvalId).get(dataType);
-      for (final LongRange range : rangesToMove) {
-        // If the range (or part of it) is moving.
-        if (movingRanges.contains(range)) {
-          return false;
-        }
-
-        // If the range does not exist
-        if (!evalRanges.contains(range)) {
-          return false;
-        }
-
-        // Because S.contains(R) does not guarantee all the units in R is in the set S, we need to double check.
-        // You may want to take a look at the Comparator in e.s.cay.utils.LongRangeUtils
-        final LongRange ceiling = evalRanges.ceiling(range);
-        if (!ceiling.containsRange(range)) {
-          return false;
-        }
-      }
     }
     return true;
   }
 
   /**
+   * Check whether the ranges exist in the Evaluator. Because the ranges are sparse, we can't guarantee that
+   * the actual data exist in the Evaluator even this method returns {@code true}.
+   * However, it is useful to reject the request early if any unit in the ranges does not exist in the Evaluator.
    * @param srcEvalId Identifier of the evaluator who should send the data.
    * @param dataType Type of the data.
-   * @param numUnits Number of units to move.
-   * @param movingRanges The ranges currently participating the migration, which is handled in MigrationManager.
-   * @return The set of ranges that can be moved. If the evaluator has less data than requested, the subset is returned.
+   * @param rangesToMove Set of ranges that are requested to move.
+   * @return {@code true} if the Evaluator could have units in the {@code rangesToMove}.
+   * {@code false} is returned if it is guaranteed that the Evaluator does not have any unit in the range.
    */
-  public synchronized Set<LongRange> getMovableRanges(final String srcEvalId, final String dataType,
-                                                      final int numUnits, final NavigableSet<LongRange> movingRanges) {
-       // Check the Evaluator has that type of the data.
-    if (!evalPartitions.containsKey(srcEvalId) || !evalPartitions.get(srcEvalId).containsKey(dataType)) {
-      LOG.log(Level.WARNING, "The evaluator {0} does not contain any data whose type is {1}.",
-          new Object[]{srcEvalId, dataType});
-      return new TreeSet<>();
+  public synchronized boolean checkRanges(final String srcEvalId, final String dataType,
+                                          final Set<LongRange> rangesToMove) {
+    if (!checkDataType(srcEvalId, dataType)) {
+      return false;
     }
 
-    final Set<LongRange> evalRanges = evalPartitions.get(srcEvalId).get(dataType);
-
-    // Filter out the ranges which overlap with the moving ranges.
-    final Set<LongRange> filteredRanges = LongRangeUtils.createEmptyTreeSet();
-    for (final LongRange range : evalRanges) {
-      if (movingRanges.contains(range)) {
-        final LongRange overlappingRange = movingRanges.ceiling(range);
-        filteredRanges.addAll(LongRangeUtils.getComplement(range, overlappingRange));
-      } else {
-        filteredRanges.add(range);
+    final NavigableSet<LongRange> evalRanges = evalPartitions.get(srcEvalId).get(dataType);
+    for (final LongRange range : rangesToMove) {
+      // If any range could exist in the Evaluator, return true immediately.
+      if (evalRanges.contains(range)) {
+        return true;
       }
     }
-
-    // Collect the available ranges up to numUnits.
-    final Set<LongRange> movableRanges = LongRangeUtils.createEmptyTreeSet();
-    long remaining = Math.min(numUnits, LongRangeUtils.getNumUnits(filteredRanges));
-    for (final LongRange range : filteredRanges) {
-      if (remaining == 0) {
-        break;
-      }
-
-      final long min = range.getMinimumLong();
-      final long max = range.getMaximumLong();
-      final long numToAdd = Math.min(remaining, max - min + 1);
-      final LongRange subRange = new LongRange(min, min + numToAdd - 1);
-      movableRanges.add(subRange);
-      remaining -= numToAdd;
-    }
-
-    return movableRanges;
+    return false;
   }
 
   /**

@@ -47,6 +47,20 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
+   * Send a CtrlMsg that tells the Evaluator specified with {@code destId} to
+   * send {@code unitNum} units of its {@code dataType} data to the Evaluator specified with
+   * {@code targetEvalId}.
+   * The operation should be given a unique {@code operationId}.
+   * Include {@code parentTraceInfo} to continue tracing this message.
+   */
+  void sendCtrlMsg(final String destId,
+                   final String dataType,
+                   final String targetEvalId,
+                   final int unitNum,
+                   final String operationId,
+                   @Nullable final TraceInfo parentTraceInfo);
+
+  /**
    * Send a DataMsg containing {@code unitIdPairList} to the Evaluator
    * named {@code destId}, specified by the type {@code dataType}.
    * The operation should be given a unique {@code operationId}.
@@ -59,11 +73,13 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a DataAckMsg to report to the Driver of the successful data transfer
-   * of a migration identified by {@code operationId}, with a {@code success} result.
+   * Send a DataAckMsg to report to the Driver the result of the migration ({@code success}).
+   * Since the actual range or the number of units might differ from the user's request,
+   * ({@code idRangeSet} is sent for the information.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
   void sendDataAckMsg(final boolean success,
+                      final Set<LongRange> idRangeSet,
                       final String operationId,
                       @Nullable final TraceInfo parentTraceInfo);
 
