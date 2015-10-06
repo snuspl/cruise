@@ -125,8 +125,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       // store the items in the pendingUpdates, so the items will be added later.
       pendingUpdates.put(operationId, new Add(dataType, codec, dataMsg.getUnits(), longRangeSet));
-      sender.get().sendDataAckMsg(true, longRangeSet, operationId,
-          TraceInfo.fromSpan(onDataMsgScope.getSpan()));
+      sender.get().sendDataAckMsg(longRangeSet, operationId, TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
   }
 
@@ -156,7 +155,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    * Create a data message using the id ranges specified in the given control message and send it.
    */
   private void onCtrlMsgIdRange(final AvroElasticMemoryMessage msg,
-                                final TraceScope onCtrlMsgScope) {
+                                final TraceScope parentTraceInfo) {
     final String operationId = msg.getOperationId().toString();
     final CtrlMsg ctrlMsg = msg.getCtrlMsg();
     final String dataType = ctrlMsg.getDataType().toString();
@@ -189,6 +188,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       }
     }
 
+    // If there is no data to move, send failure message instead of sending an empty DataMsg.
+    if (ids.size() == 0) {
+      sender.get().sendFailureMsg(operationId, "No data can be moved.",
+          TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+      return;
+    }
+
     final Set<LongRange> ranges = LongRangeUtils.generateDenseLongRanges(ids);
 
     // The items of the ids will be removed after the migration succeeds.
@@ -198,7 +204,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     movingRanges.addAll(ranges);
 
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
-        operationId, TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
+        operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
 
   /**
@@ -237,6 +243,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
         unitIdPairList.add(unitIdPair);
         ids.add(id);
       }
+    }
+
+    // If there is no data to move, send failure message instead of sending an empty DataMsg.
+    if (ids.size() == 0) {
+      sender.get().sendFailureMsg(operationId, "No data can be moved.",
+          TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+      return;
     }
 
     final Set<LongRange> ranges = LongRangeUtils.generateDenseLongRanges(ids);

@@ -17,10 +17,9 @@ package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.AvroLongRange;
-import edu.snu.cay.services.em.avro.DataResult;
+import edu.snu.cay.services.em.avro.FailureMsg;
 import edu.snu.cay.services.em.avro.RegisMsg;
 import edu.snu.cay.services.em.avro.UpdateResult;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.commons.lang.math.LongRange;
@@ -48,16 +47,14 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
   private static final String ON_REGIS_MSG = "onRegisMsg";
   private static final String ON_DATA_ACK_MSG = "onDataAckMsg";
   private static final String ON_UPDATE_ACK_MSG = "onUpdateAckMsg";
+  private static final String ON_FAILURE_MSG = "onFailureMsg";
 
-  private final ElasticMemoryCallbackRouter callbackRouter;
   private final PartitionManager partitionManager;
   private final MigrationManager migrationManager;
 
   @Inject
-  private ElasticMemoryMsgHandler(final ElasticMemoryCallbackRouter callbackRouter,
-                                  final PartitionManager partitionManager,
+  private ElasticMemoryMsgHandler(final PartitionManager partitionManager,
                                   final MigrationManager migrationManager) {
-    this.callbackRouter = callbackRouter;
     this.partitionManager = partitionManager;
     this.migrationManager = migrationManager;
   }
@@ -78,6 +75,10 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
 
     case UpdateAckMsg:
       onUpdateAckMsg(innerMsg);
+      break;
+
+    case FailureMsg:
+      onFailureMsg(innerMsg);
       break;
 
     default:
@@ -102,27 +103,19 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
   private void onDataAckMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onDataAckMsgScope = Trace.startSpan(ON_DATA_ACK_MSG,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final DataResult result = msg.getDataAckMsg().getResult();
-      switch (result) {
 
-      case SUCCESS:
-        final String operationId = msg.getOperationId().toString();
+      final String operationId = msg.getOperationId().toString();
 
-        // Add the range information to the Migration.
-        final Set<LongRange> ranges = new HashSet<>();
-        for (final AvroLongRange range : msg.getDataAckMsg().getIdRange()) {
-          ranges.add(new LongRange(range.getMin(), range.getMax()));
-        }
-        migrationManager.setMovedRange(operationId, ranges);
-
-        // Wait for the user's approval to update.
-        // Once EM can make sure there is no race condition, this synchronization barrier should be removed.
-        migrationManager.waitUpdate(operationId);
-        break;
-
-      default:
-        throw new RuntimeException("Undefined result: " + result);
+      // Add the range information to the Migration.
+      final Set<LongRange> ranges = new HashSet<>();
+      for (final AvroLongRange range : msg.getDataAckMsg().getIdRange()) {
+        ranges.add(new LongRange(range.getMin(), range.getMax()));
       }
+      migrationManager.setMovedRange(operationId, ranges);
+
+      // Wait for the user's approval to update.
+      // Once EM can make sure there is no race condition, this synchronization barrier should be removed.
+      migrationManager.waitUpdate(operationId);
     }
   }
 
@@ -150,6 +143,18 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       default:
         throw new RuntimeException("Undefined result: " + updateResult);
       }
+    }
+  }
+
+  private void onFailureMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onFailureMsgScope =
+             Trace.startSpan(ON_FAILURE_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+      final FailureMsg failureMsg = msg.getFailureMsg();
+
+      final String operationId = failureMsg.getOperationId().toString();
+      final String reason = failureMsg.getReason().toString();
+
+      migrationManager.notifyFailure(operationId, reason);
     }
   }
 }

@@ -73,13 +73,12 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a DataAckMsg to report to the Driver the result of the migration ({@code success}).
+   * Send a DataAckMsg to report to the Driver the success of data transfer.
    * Since the actual range or the number of units might differ from the user's request,
    * ({@code idRangeSet} is sent for the information.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendDataAckMsg(final boolean success,
-                      final Set<LongRange> idRangeSet,
+  void sendDataAckMsg(final Set<LongRange> idRangeSet,
                       final String operationId,
                       @Nullable final TraceInfo parentTraceInfo);
 
@@ -106,4 +105,11 @@ public interface ElasticMemoryMsgSender {
   void sendUpdateAckMsg(final String operationId,
                         final UpdateResult result,
                         @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Send a FailureMsg to notify the failure to the Driver.
+   */
+  void sendFailureMsg(final String operationId,
+                      final String reason,
+                      @Nullable final TraceInfo parentTraceInfo);
 }
