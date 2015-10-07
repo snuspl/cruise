@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.examples.simple;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.StageInfo;
 import edu.snu.cay.dolphin.core.UserJobInfo;
+import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
 import org.apache.reef.io.serialization.SerializableCodec;
 
 import javax.inject.Inject;
@@ -37,6 +38,7 @@ public class SimpleJobInfo implements UserJobInfo {
         StageInfo.newBuilder(SimpleCmpTask.class, SimpleCtrlTask.class, SimpleCommGroup.class)
             .setBroadcast(SerializableCodec.class)
             .setReduce(SerializableCodec.class, SimpleReduceFunction.class)
+            .addMetricTrackers(InsertableMetricTracker.class)
             .build());
     return stageInfoList;
   }
