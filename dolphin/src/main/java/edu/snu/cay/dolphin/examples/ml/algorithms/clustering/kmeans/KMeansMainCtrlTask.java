@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
+import edu.snu.cay.dolphin.core.UserTaskTrace;
 import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask;
 import edu.snu.cay.dolphin.examples.ml.data.VectorSum;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
@@ -26,6 +27,7 @@ import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
+import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.io.DataOutputStream;
@@ -72,6 +74,8 @@ public final class KMeansMainCtrlTask extends UserControllerTask
 
   private final OutputStreamProvider outputStreamProvider;
 
+  private final UserTaskTrace trace;
+
   /**
    * Constructs the Controller Task for k-means.
    * This class is instantiated by TANG.
@@ -85,12 +89,14 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
                             final MemoryStore memoryStore,
                             final OutputStreamProvider outputStreamProvider,
-                            @Parameter(MaxIterations.class) final int maxIterations) {
+                            @Parameter(MaxIterations.class) final int maxIterations,
+                            final UserTaskTrace trace) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;
     this.memoryStore = memoryStore;
     this.outputStreamProvider = outputStreamProvider;
     this.maxIterations = maxIterations;
+    this.trace = trace;
   }
 
   /**
@@ -105,11 +111,13 @@ public final class KMeansMainCtrlTask extends UserControllerTask
 
   @Override
   public void run(final int iteration) {
+    final TraceScope computeCentroidsScope = trace.startSpan("computeCentroids");
     for (final Integer clusterID : pointSum.keySet()) {
       final VectorSum vectorSum = pointSum.get(clusterID);
       final Vector newCentroid = vectorSum.computeVectorMean();
       centroids.set(clusterID, newCentroid);
     }
+    computeCentroidsScope.close();
 
     LOG.log(Level.INFO, "********* Centroids after {0} iterations*********", iteration);
     LOG.log(Level.INFO, "" + centroids);

@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.parameters.*;
+import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.ConfigurationBuilder;
 import org.apache.reef.tang.formats.CommandLine;
@@ -36,6 +37,8 @@ public final class DolphinConfiguration extends ConfigurationModuleBuilder {
     cl.registerShortNameOfClass(Timeout.class);
     cl.registerShortNameOfClass(InputDir.class);
     cl.registerShortNameOfClass(OutputDir.class);
+    cl.registerShortNameOfClass(StartTrace.class);
+    HTraceParameters.registerShortNames(cl);
     final ConfigurationBuilder cb = cl.getBuilder();
     cl.processCommandLine(args);
     return cb.build();

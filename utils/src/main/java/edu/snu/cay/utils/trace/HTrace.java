@@ -24,7 +24,7 @@ import javax.inject.Inject;
 
 /**
  * This class ensures that HTrace is wired up on the process.
- * The EM implementation instantiates it via Tang at each process.
+ * It should be instantiated via Tang at each process.
  * User code needs only to call Trace.startSpan(String, Sampler) to start a trace.
  */
 public final class HTrace {

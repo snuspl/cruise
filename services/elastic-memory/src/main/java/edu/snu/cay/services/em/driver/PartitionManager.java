@@ -153,6 +153,24 @@ public final class PartitionManager {
   }
 
   /**
+   * Get the set of existing data types in a evaluator.
+   * @return Set of data types. An empty set is returned if there is no data types in the evaluator.
+   */
+  public synchronized Set<String> getDataTypes(final String evalId) {
+    if (!evalPartitions.containsKey(evalId)) {
+      LOG.log(Level.WARNING, "The evaluator {0} does not exist.", evalId);
+      return new HashSet<>();
+    }
+    final Set<String> dataTypeSet = new HashSet<>(evalPartitions.get(evalId).size());
+    for (final Map.Entry<String, NavigableSet<LongRange>> entry : evalPartitions.get(evalId).entrySet()) {
+      if (!entry.getValue().isEmpty()) {
+        dataTypeSet.add(entry.getKey());
+      }
+    }
+    return dataTypeSet;
+  }
+
+  /**
    * Get the existing range set in a evaluator of a type.
    * @return Sorted set of ranges. An empty set is returned if there is no matched range.
    */

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
+import edu.snu.cay.dolphin.core.UserTaskTrace;
 import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCmpTask;
 import edu.snu.cay.dolphin.examples.ml.data.VectorSum;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
@@ -23,6 +24,7 @@ import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.VectorDistanceMeasure;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
+import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -54,6 +56,8 @@ public final class KMeansMainCmpTask extends UserComputeTask
    */
   private final MemoryStore memoryStore;
 
+  private final UserTaskTrace trace;
+
   /**
    * Constructs a single Compute Task for k-means.
    * This class is instantiated by TANG.
@@ -63,9 +67,11 @@ public final class KMeansMainCmpTask extends UserComputeTask
    */
   @Inject
   public KMeansMainCmpTask(final VectorDistanceMeasure distanceMeasure,
-                           final MemoryStore memoryStore) {
+                           final MemoryStore memoryStore,
+                           final UserTaskTrace trace) {
     this.distanceMeasure = distanceMeasure;
     this.memoryStore = memoryStore;
+    this.trace = trace;
   }
 
   @Override
@@ -73,7 +79,12 @@ public final class KMeansMainCmpTask extends UserComputeTask
 
     // Compute the nearest cluster centroid for each point
     pointSum = new HashMap<>();
+
+    final TraceScope getPointsScope = trace.startSpan("getPoints");
     final Map<?, Vector> points = memoryStore.getElasticStore().getAll(ClusteringPreCmpTask.KEY_POINTS);
+    getPointsScope.close();
+
+    final TraceScope computeCentroidsScope = trace.startSpan("computeCentroids");
     for (final Vector vector : points.values()) {
       double nearestClusterDist = Double.MAX_VALUE;
       int nearestClusterId = -1;
@@ -94,6 +105,7 @@ public final class KMeansMainCmpTask extends UserComputeTask
         pointSum.put(nearestClusterId, new VectorSum(vector, 1, true));
       }
     }
+    computeCentroidsScope.close();
   }
 
   @Override

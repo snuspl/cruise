@@ -37,6 +37,7 @@ public final class DolphinParameters {
   private final boolean onLocal;
   private final int localRuntimeMaxNumEvaluators;
   private final int timeout;
+  private final boolean startTrace;
 
   @Inject
   private DolphinParameters(@Parameter(JobIdentifier.class) final String identifier,
@@ -48,7 +49,8 @@ public final class DolphinParameters {
                             @Parameter(OutputDir.class) final String outputDir,
                             @Parameter(OnLocal.class) final boolean onLocal,
                             @Parameter(LocalRuntimeMaxNumEvaluators.class) final int localRuntimeMaxNumEvaluators,
-                            @Parameter(Timeout.class) final int timeout) {
+                            @Parameter(Timeout.class) final int timeout,
+                            @Parameter(StartTrace.class) final boolean startTrace) {
     this.identifier = identifier;
     this.userJobInfo = userJobInfo;
     this.userParameters = userParameters;
@@ -59,6 +61,7 @@ public final class DolphinParameters {
     this.onLocal = onLocal;
     this.localRuntimeMaxNumEvaluators = localRuntimeMaxNumEvaluators;
     this.timeout = timeout;
+    this.startTrace = startTrace;
   }
 
   /**
@@ -69,6 +72,7 @@ public final class DolphinParameters {
     final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(DesiredSplits.class, String.valueOf(desiredSplits))
         .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
+        .bindNamedParameter(StartTrace.class, String.valueOf(startTrace))
         .bindImplementation(UserJobInfo.class, userJobInfo.getClass())
         .bindImplementation(UserParameters.class, userParameters.getClass())
         .build();
@@ -119,5 +123,9 @@ public final class DolphinParameters {
 
   public int getTimeout() {
     return timeout;
+  }
+
+  public boolean getStartTrace() {
+    return startTrace;
   }
 }
