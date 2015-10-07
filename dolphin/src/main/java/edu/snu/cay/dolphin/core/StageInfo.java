@@ -39,6 +39,8 @@ public final class StageInfo {
   private final Optional<? extends Class<? extends Codec>> gatherCodecClassOptional;
   private final Optional<? extends Class<? extends Codec>> reduceCodecClassOptional;
   private final Optional<? extends Class<? extends Reduce.ReduceFunction>> reduceFunctionClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>> shuffleKeyCodecClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>> shuffleValueCodecClassOptional;
   private final Optional<Set<Class<? extends MetricTracker>>> metricTrackerClassSet;
 
   public static Builder newBuilder(final Class<? extends UserComputeTask> userComputeTaskClass,
@@ -55,6 +57,8 @@ public final class StageInfo {
                     final Class<? extends Codec> gatherCodecClass,
                     final Class<? extends Codec> reduceCodecClass,
                     final Class<? extends Reduce.ReduceFunction> reduceFunctionClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> shuffleKeyCodecClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> shuffleValueCodecClass,
                     final Set<Class<? extends MetricTracker>> metricTrackerClassSet) {
     this.userComputeTaskClass = userComputeTaskClass;
     this.userControllerTaskClass = userControllerTaskClass;
@@ -64,6 +68,8 @@ public final class StageInfo {
     this.gatherCodecClassOptional = Optional.ofNullable(gatherCodecClass);
     this.reduceCodecClassOptional = Optional.ofNullable(reduceCodecClass);
     this.reduceFunctionClassOptional = Optional.ofNullable(reduceFunctionClass);
+    this.shuffleKeyCodecClassOptional = Optional.ofNullable(shuffleKeyCodecClass);
+    this.shuffleValueCodecClassOptional = Optional.ofNullable(shuffleValueCodecClass);
     this.metricTrackerClassSet = Optional.ofNullable(metricTrackerClassSet);
   }
 
@@ -81,6 +87,10 @@ public final class StageInfo {
 
   public boolean isReduceUsed() {
     return reduceCodecClassOptional.isPresent();
+  }
+
+  public boolean isShuffleUsed() {
+    return shuffleKeyCodecClassOptional.isPresent();
   }
 
   public Class<? extends Codec> getBroadcastCodecClass() {
@@ -101,6 +111,14 @@ public final class StageInfo {
 
   public Class<? extends Reduce.ReduceFunction> getReduceFunctionClass() {
     return reduceFunctionClassOptional.get();
+  }
+
+  public Class<? extends org.apache.reef.wake.remote.Codec> getShuffleKeyCodecClass() {
+    return shuffleKeyCodecClassOptional.get();
+  }
+
+  public Class<? extends org.apache.reef.wake.remote.Codec> getShuffleValueCodecClass() {
+    return shuffleValueCodecClassOptional.get();
   }
 
   public Set<Class<? extends MetricTracker>> getMetricTrackerClassSet() {
@@ -127,6 +145,8 @@ public final class StageInfo {
     private Class<? extends Codec> scatterCodecClass = null;
     private Class<? extends Codec> gatherCodecClass = null;
     private Class<? extends Codec> reduceCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> shuffleKeyCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> shuffleValueCodecClass = null;
     private Class<? extends Reduce.ReduceFunction> reduceFunctionClass = null;
     private Set<Class<? extends MetricTracker>> metricTrackerSet = new HashSet<>();
 
@@ -165,6 +185,13 @@ public final class StageInfo {
       return this;
     }
 
+    public Builder setShuffle(final Class<? extends org.apache.reef.wake.remote.Codec> keyCodecClass,
+                              final Class<? extends org.apache.reef.wake.remote.Codec> valueCodecClass) {
+      this.shuffleKeyCodecClass = keyCodecClass;
+      this.shuffleValueCodecClass = valueCodecClass;
+      return this;
+    }
+
     public Builder addMetricTrackers(final Class<? extends MetricTracker>... metricTrackerClasses) {
       this.metricTrackerSet.addAll(Arrays.asList(metricTrackerClasses));
       return this;
@@ -174,7 +201,7 @@ public final class StageInfo {
     public StageInfo build() {
       return new StageInfo(userComputeTaskClass, userControllerTaskClass, commGroupName,
           broadcastCodecClass, scatterCodecClass, gatherCodecClass, reduceCodecClass, reduceFunctionClass,
-          metricTrackerSet);
+          shuffleKeyCodecClass, shuffleValueCodecClass, metricTrackerSet);
     }
   }
 }

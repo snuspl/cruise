@@ -18,6 +18,8 @@ package edu.snu.cay.dolphin.core;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationConfiguration;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
+import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
@@ -134,6 +136,10 @@ public final class DolphinLauncher {
 
     final Configuration optimizerConf = OptimizationConfiguration.getRandomOptimizerConfiguration();
 
+    final Configuration shuffleConf = ShuffleDriverConfiguration.CONF
+        .set(ShuffleDriverConfiguration.SHUFFLE_MANAGER_CLASS_NAME, StaticPushShuffleManager.class.getName())
+        .build();
+
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         optimizerConf,
@@ -142,7 +148,8 @@ public final class DolphinLauncher {
         ElasticMemoryConfiguration.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
-        dolphinParameters.getDriverConf());
+        dolphinParameters.getDriverConf(),
+        shuffleConf);
   }
 
   private String processInputDir(final String inputDir) {

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.shuffle.evaluator;
 
+import edu.snu.cay.services.shuffle.network.TupleNetworkSetup;
 import edu.snu.cay.services.shuffle.params.ShuffleParameters;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
@@ -61,6 +62,7 @@ public final class ShuffleProvider implements AutoCloseable {
   private void deserializeShuffle(final String serializedShuffle) {
     try {
       final Injector injector = rootInjector.forkInjector(confSerializer.fromString(serializedShuffle));
+      injector.getInstance(TupleNetworkSetup.class);
       final Shuffle shuffle = injector.getInstance(Shuffle.class);
       shuffleMap.put(shuffle.getShuffleDescription().getShuffleName(), shuffle);
     } catch (final Exception e) {

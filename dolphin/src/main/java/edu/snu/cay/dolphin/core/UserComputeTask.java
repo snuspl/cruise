@@ -15,10 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
-import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
-import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
-import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterReceiver;
+import edu.snu.cay.dolphin.groupcomm.interfaces.*;
 
 /**
  * Abstract class for user-defined compute tasks.
@@ -62,5 +59,9 @@ public abstract class UserComputeTask {
 
   public final boolean isScatterUsed() {
     return (this instanceof DataScatterReceiver);
+  }
+
+  public final boolean isShuffleUsed() {
+    return (this instanceof DataShuffleOperator);
   }
 }

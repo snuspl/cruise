@@ -25,6 +25,7 @@ import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
+import edu.snu.cay.dolphin.groupcomm.names.DataShuffle;
 import edu.snu.cay.dolphin.parameters.StartTrace;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import edu.snu.cay.services.dataloader.DataLoader;
@@ -35,6 +36,10 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
+import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
+import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
+import edu.snu.cay.services.shuffle.strategy.KeyShuffleStrategy;
 import edu.snu.cay.utils.trace.HTrace;
 import edu.snu.cay.utils.trace.HTraceInfoCodec;
 import edu.snu.cay.utils.trace.HTraceParameters;
@@ -62,6 +67,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.task.Task;
+import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.wake.time.event.StartTime;
@@ -113,6 +119,11 @@ public final class DolphinDriver {
   private final GroupCommDriver groupCommDriver;
 
   /**
+   * Driver that manages Shuffle settings.
+   */
+  private final ShuffleDriver shuffleDriver;
+
+  /**
    * Accessor for data loading service.
    * Can check whether a evaluator is configured with the service or not.
    */
@@ -156,6 +167,12 @@ public final class DolphinDriver {
    * Each group driver is matched to the corresponding stage.
    */
   private final List<CommunicationGroupDriver> commGroupDriverList;
+
+  /**
+   * List of optional shuffle managers.
+   * If some stages do not have a shuffle operation, corresponding optional value is set to Optional.empty().
+   */
+  private final List<Optional<StaticPushShuffleManager>> shuffleManagerList;
 
   /**
    * Map to record which stage is being executed by each evaluator which is identified by context id.
@@ -212,6 +229,7 @@ public final class DolphinDriver {
    */
   @Inject
   private DolphinDriver(final GroupCommDriver groupCommDriver,
+                        final ShuffleDriver shuffleDriver,
                         final DataLoadingService dataLoadingService,
                         final DataLoader dataLoader,
                         final OutputService outputService,
@@ -229,6 +247,7 @@ public final class DolphinDriver {
                         @Parameter(StartTrace.class) final boolean startTrace) {
     hTrace.initialize();
     this.groupCommDriver = groupCommDriver;
+    this.shuffleDriver = shuffleDriver;
     this.dataLoadingService = dataLoadingService;
     this.dataLoader = dataLoader;
     this.outputService = outputService;
@@ -238,6 +257,7 @@ public final class DolphinDriver {
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
     this.commGroupDriverList = new LinkedList<>();
+    this.shuffleManagerList = new LinkedList<>();
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
     this.metricCodec = metricCodec;
@@ -246,18 +266,19 @@ public final class DolphinDriver {
     this.emResourceRequestManager = emResourceRequestManager;
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.jobTraceInfo = startTrace ? TraceInfo.fromSpan(Trace.startSpan("job", Sampler.ALWAYS).getSpan()) : null;
-    initializeCommDriver();
+    initializeDataOperators();
   }
 
   /**
-   * Initialize the group communication driver.
+   * Initialize the data operators.
    */
-  private void initializeCommDriver() {
+  private void initializeDataOperators() {
     if (!schedulabilityAnalyzer.isSchedulable()) {
       throw new RuntimeException("Schedulabiliy analysis shows that gang scheduling of " +
           dataLoadingService.getNumberOfPartitions() + " compute tasks and 1 controller task is not possible.");
     }
 
+    int computeTaskIndex = stageInfoList.size();
     int sequence = 0;
     for (final StageInfo stageInfo : stageInfoList) {
       final int numTasks = dataLoadingService.getNumberOfPartitions() + 1;
@@ -298,6 +319,33 @@ public final class DolphinDriver {
                 .setDataCodecClass(stageInfo.getGatherCodecClass())
                 .build());
       }
+
+      final int numComputeTasks = numTasks - 1;
+      if (stageInfo.isShuffleUsed()) {
+        final List<String> computeTaskIdList = new ArrayList<>(numComputeTasks);
+
+        for (int i = 0; i < numComputeTasks; i++) {
+          computeTaskIdList.add(getCmpTaskId(computeTaskIndex));
+          computeTaskIndex++;
+        }
+
+        final StaticPushShuffleManager shuffleManager = shuffleDriver.registerShuffle(
+            ShuffleDescriptionImpl.newBuilder(DataShuffle.getShuffleName(sequence))
+                .setReceiverIdList(computeTaskIdList)
+                .setSenderIdList(computeTaskIdList)
+                .setKeyCodecClass(stageInfo.getShuffleKeyCodecClass())
+                .setValueCodecClass(stageInfo.getShuffleValueCodecClass())
+                .setShuffleStrategyClass(KeyShuffleStrategy.class)
+                .build()
+        );
+
+        shuffleManager.setPushShuffleListener(new DolphinShuffleListener(sequence));
+        shuffleManagerList.add(Optional.of(shuffleManager));
+      } else {
+        shuffleManagerList.add(Optional.<StaticPushShuffleManager>empty());
+        computeTaskIndex += numComputeTasks;
+      }
+
       commGroupDriverList.add(commGroup);
       commGroup.finalise();
       sequence++;
@@ -581,7 +629,8 @@ public final class DolphinDriver {
         partialTaskConf = Configurations.merge(
             getBaseTaskConf(cmpTaskId, ComputeTask.class, computeTaskTraceScope.getSpan()),
             dolphinTaskConfBuilder.build(),
-            userParameters.getUserCmpTaskConf());
+            userParameters.getUserCmpTaskConf(),
+            getShuffleTaskConfiguration(stageSequence, cmpTaskId));
       }
     }
 
@@ -589,6 +638,19 @@ public final class DolphinDriver {
     commGroup.addTask(partialTaskConf);
     final Configuration finalTaskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
     activeContext.submitTask(finalTaskConf);
+  }
+
+  private Configuration getShuffleTaskConfiguration(final int stageSequence, final String computeTaskId) {
+    if (!stageInfoList.get(stageSequence).isShuffleUsed()) {
+      return Tang.Factory.getTang().newConfigurationBuilder().build();
+    }
+
+    final JavaConfigurationBuilder shuffleConfBuilder = Tang.Factory.getTang()
+        .newConfigurationBuilder(shuffleManagerList.get(stageSequence).get().getShuffleConfiguration(computeTaskId));
+
+    return shuffleConfBuilder
+        .bindNamedParameter(DataShuffle.class, DataShuffle.getShuffleName(stageSequence))
+        .build();
   }
 
   private boolean isCtrlTaskId(final String id) {
