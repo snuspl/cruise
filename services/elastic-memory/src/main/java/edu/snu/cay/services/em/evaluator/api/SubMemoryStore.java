@@ -54,7 +54,8 @@ public interface SubMemoryStore {
    * @param dataType string that represents a certain data type
    * @param id global unique identifier of item
    * @param <T> actual data type
-   * @return data id and the actual data item
+   * @return a {@link Pair} of the data id and the actual data item,
+   *         or {@code null} if no item is associated with the given id
    */
   <T> Pair<Long, T> get(String dataType, long id);
 
@@ -64,7 +65,8 @@ public interface SubMemoryStore {
    *
    * @param dataType string that represents a certain data type
    * @param <T> actual data type
-   * @return map of data ids and the corresponding data items
+   * @return a map of data ids and the corresponding data items.
+   *         This map may be empty if no items of {@code dataType} are present.
    */
   <T> Map<Long, T> getAll(String dataType);
 
@@ -76,7 +78,8 @@ public interface SubMemoryStore {
    * @param startId minimum value of the ids of items to fetch
    * @param endId maximum value of the ids of items to fetch
    * @param <T> actual data type
-   * @return map of data ids and the corresponding data items
+   * @return a map of data ids and the corresponding data items.
+   *         This map may be empty if no items meet the given conditions.
    */
   <T> Map<Long, T> getRange(String dataType, long startId, long endId);
 
@@ -86,7 +89,8 @@ public interface SubMemoryStore {
    * @param dataType string that represents a certain data type
    * @param id global unique identifier of item
    * @param <T> actual data type
-   * @return data id and the actual data item
+   * @return a {@link Pair} of the data id and the actual data item,
+   *         or {@code null} if no item is associated with the given id
    */
   <T> Pair<Long, T> remove(String dataType, long id);
 
@@ -96,7 +100,8 @@ public interface SubMemoryStore {
    *
    * @param dataType string that represents a certain data type
    * @param <T> actual data type
-   * @return map of data ids and the corresponding data items
+   * @return a map of data ids and the corresponding data items.
+   *         This map may be empty if no items of {@code dataType} are present.
    */
   <T> Map<Long, T> removeAll(String dataType);
 
@@ -108,7 +113,8 @@ public interface SubMemoryStore {
    * @param startId minimum value of the ids of items to fetch
    * @param endId maximum value of the ids of items to fetch
    * @param <T> actual data type
-   * @return map of data ids and the corresponding data items
+   * @return a map of data ids and the corresponding data items.
+   *         This map may be empty if no items meet the given conditions.
    */
   <T> Map<Long, T> removeRange(String dataType, long startId, long endId);
 
