@@ -305,7 +305,7 @@ public final class DolphinDriver {
     taskIdCounter.set(sequence);
   }
 
-  final class StartHandler implements EventHandler<StartTime> {
+  public final class StartHandler implements EventHandler<StartTime> {
 
     @Override
     public void onNext(final StartTime startTime) {
@@ -314,10 +314,11 @@ public final class DolphinDriver {
     }
   }
 
-  final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+  public final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+      LOG.info("Evaluator allocated. " + allocatedEvaluator);
       if (dataLoader.isDataLoaderRequest()) {
         evalToRequestorMap.put(allocatedEvaluator.getId(), DataLoader.class.getName());
         dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
@@ -331,7 +332,7 @@ public final class DolphinDriver {
     }
   }
 
-  final class EvaluatorFailedHandler implements EventHandler<FailedEvaluator> {
+  public final class EvaluatorFailedHandler implements EventHandler<FailedEvaluator> {
 
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
@@ -379,7 +380,7 @@ public final class DolphinDriver {
         outputServiceConf, traceConf, metricsMessageServiceConf);
   }
 
-  final class ActiveContextHandler implements EventHandler<ActiveContext> {
+  public final class ActiveContextHandler implements EventHandler<ActiveContext> {
 
     @Override
     public void onNext(final ActiveContext activeContext) {
@@ -443,7 +444,7 @@ public final class DolphinDriver {
    * Receives metrics from context.
    * TODO #172: Use NetworkConnectionService to replace the heartbeat
    */
-  final class ContextMessageHandler implements EventHandler<ContextMessage> {
+  public final class ContextMessageHandler implements EventHandler<ContextMessage> {
 
     @Override
     public void onNext(final ContextMessage message) {
@@ -486,7 +487,7 @@ public final class DolphinDriver {
     }
   }
 
-  final class TaskRunningHandler implements EventHandler<RunningTask> {
+  public final class TaskRunningHandler implements EventHandler<RunningTask> {
 
     @Override
     public void onNext(final RunningTask runningTask) {
@@ -497,7 +498,7 @@ public final class DolphinDriver {
   /**
    * When a certain task completes, the following task is submitted.
    */
-  final class TaskCompletedHandler implements EventHandler<CompletedTask> {
+  public final class TaskCompletedHandler implements EventHandler<CompletedTask> {
 
     @Override
     public void onNext(final CompletedTask completedTask) {
@@ -515,7 +516,7 @@ public final class DolphinDriver {
     }
   }
 
-  final class TaskFailedHandler implements EventHandler<FailedTask> {
+  public final class TaskFailedHandler implements EventHandler<FailedTask> {
 
     @Override
     public void onNext(final FailedTask failedTask) {
