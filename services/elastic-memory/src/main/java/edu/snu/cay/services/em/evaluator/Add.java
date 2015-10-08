@@ -25,7 +25,7 @@ import java.util.Collection;
 /**
  * Implementation of Update to add the data from MemoryStore when apply() is called.
  */
-class Add implements Update {
+final class Add implements Update {
   private final String dataType;
   private final Codec codec;
   private final Collection<UnitIdPair> unitIdPairs;

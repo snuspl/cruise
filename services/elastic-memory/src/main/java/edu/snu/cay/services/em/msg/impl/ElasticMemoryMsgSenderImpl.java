@@ -217,10 +217,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       final RegisMsg regisMsg = RegisMsg.newBuilder()
           .setDataType(dataType)
-          .setIdRange(AvroLongRange.newBuilder()
-              .setMin(unitStartId)
-              .setMax(unitEndId)
-              .build())
+          .setIdRange(AvroUtils.toAvroLongRange(new LongRange(unitStartId, unitEndId)))
           .build();
 
       send(driverId,

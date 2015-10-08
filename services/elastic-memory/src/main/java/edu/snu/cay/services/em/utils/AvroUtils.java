@@ -34,4 +34,11 @@ public final class AvroUtils {
         .setMax(longRange.getMaximumLong())
         .build();
   }
+
+  /**
+   * Convert AvroLongRange to LongRange.
+   */
+  public static LongRange fromAvroLongRange(final AvroLongRange avroLongRange) {
+    return new LongRange(avroLongRange.getMin(), avroLongRange.getMax());
+  }
 }

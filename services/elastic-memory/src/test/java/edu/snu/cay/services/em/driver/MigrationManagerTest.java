@@ -60,7 +60,8 @@ public class MigrationManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    // Initiate PartitionManager.
+    // Instantiate PartitionManager to register partitions manually. That way, we can test
+    // whether the precondition checking works correctly, which is done before starting a migration.
     partitionManager = Tang.Factory.getTang().newInjector().getInstance(PartitionManager.class);
 
     // If the migration fails, throw a RuntimeException

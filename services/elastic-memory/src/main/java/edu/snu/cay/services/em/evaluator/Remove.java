@@ -23,7 +23,7 @@ import java.util.Collection;
 /**
  * Implementation of Update to remove the data from MemoryStore when apply() is called.
  */
-class Remove implements Update {
+final class Remove implements Update {
   private String dataType;
   private Collection<LongRange> ranges;
 

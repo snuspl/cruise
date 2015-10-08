@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.avro.AvroLongRange;
 import edu.snu.cay.services.em.avro.FailureMsg;
 import edu.snu.cay.services.em.avro.RegisMsg;
 import edu.snu.cay.services.em.avro.UpdateResult;
+import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.commons.lang.math.LongRange;
@@ -108,7 +109,7 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       // Add the range information to the corresponding Migration.
       final Set<LongRange> ranges = new HashSet<>();
       for (final AvroLongRange range : msg.getDataAckMsg().getIdRange()) {
-        ranges.add(new LongRange(range.getMin(), range.getMax()));
+        ranges.add(AvroUtils.fromAvroLongRange(range));
       }
       migrationManager.setMovedRanges(operationId, ranges);
 
