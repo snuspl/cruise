@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.msg.api;
 
 import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.TraceInfo;
@@ -72,17 +73,14 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a ResultMsg to report to the Driver that the operation identified
-   * by {@code operationId} has finished, with a {@code success} result.
-   * The {@code dataType} and {@code idRangeSet} that was migrated is sent
-   * together for the Driver to check and cleanup the operation.
+   * Send a DataAckMsg to report to the Driver the success of data transfer.
+   * Since the actual range or the number of units might differ from the user's request,
+   * ({@code idRangeSet} is sent for the information.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendResultMsg(final boolean success,
-                     final String dataType,
-                     final Set<LongRange> idRangeSet,
-                     final String operationId,
-                     @Nullable final TraceInfo parentTraceInfo);
+  void sendDataAckMsg(final Set<LongRange> idRangeSet,
+                      final String operationId,
+                      @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Send a RegisMsg to the Driver to register a partition, starting with
@@ -93,4 +91,25 @@ public interface ElasticMemoryMsgSender {
                     final long unitStartId,
                     final long unitEndId,
                     @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Send an UpdateMsg to update the Evaluators' MemoryStore.
+   */
+  void sendUpdateMsg(final String destId,
+                     final String operationId,
+                     @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Send a UpdateAckMsg to notify the update result.
+   */
+  void sendUpdateAckMsg(final String operationId,
+                        final UpdateResult result,
+                        @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Send a FailureMsg to notify the failure to the Driver.
+   */
+  void sendFailureMsg(final String operationId,
+                      final String reason,
+                      @Nullable final TraceInfo parentTraceInfo);
 }

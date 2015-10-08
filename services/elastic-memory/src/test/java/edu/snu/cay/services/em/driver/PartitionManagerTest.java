@@ -22,6 +22,7 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -53,6 +54,44 @@ public final class PartitionManagerTest {
     } catch (final InjectionException e) {
       throw new RuntimeException("InjectionException while injecting PartitionManager", e);
     }
+  }
+
+  /**
+   * Testing range check Partition manager does when deciding to accept or reject move() request.
+   */
+  @Test
+  public void testRangeCheck() {
+    final String evalId = EVAL_ID_PREFIX;
+    final String dataType = DATA_TYPE_PREFIX;
+
+    final LongRange range0 = new LongRange(1, 4);
+    final LongRange range1 = new LongRange(5, 6);
+    final LongRange range2 = new LongRange(7, 8);
+
+    // Check returns false because any range has not been registered yet.
+    final Set<LongRange> set = new HashSet<>();
+    set.add(range0); // any range will fail.
+    assertFalse(partitionManager.checkRanges(evalId, dataType, set));
+    set.clear();
+
+    // Evaluator has the range0 and range1.
+    partitionManager.register(evalId, dataType, range0);
+    partitionManager.register(evalId, dataType, range1);
+
+    // Check returns true for the existing range.
+    set.add(range0);
+    assertTrue(partitionManager.checkRanges(evalId, dataType, set));
+    set.clear();
+
+    // Check returns true for the range that overlaps the existing range (range0[1, 4]).
+    set.add(new LongRange(0, 2));
+    assertTrue(partitionManager.checkRanges(evalId, dataType, set));
+    set.clear();
+
+    // Check returns false for the range which does not belong to the Evaluator.
+    set.add(range2);
+    assertFalse(partitionManager.checkRanges(evalId, dataType, set));
+    set.clear();
   }
 
   /**

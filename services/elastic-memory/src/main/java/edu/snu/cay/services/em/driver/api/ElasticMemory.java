@@ -84,6 +84,14 @@ public interface ElasticMemory {
             @Nullable EventHandler<AvroElasticMemoryMessage> callback);
 
   /**
+   * Apply the intermediate changes in EM's states by the migration.
+   * To avoid race condition, EM requests for Users to call this method explicitly.
+   * But once EM allows remote access to the data, we can remove this barrier
+   * letting EM update its state automatically.
+   */
+  void applyUpdates();
+
+  /**
    * Persist the state of an evaluator into stable storage.
    *
    * @param evalId identifier of the evaluator whose state should be persisted

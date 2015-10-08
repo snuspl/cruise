@@ -16,17 +16,24 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.AvroLongRange;
+import edu.snu.cay.services.em.avro.FailureMsg;
 import edu.snu.cay.services.em.avro.RegisMsg;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
+import edu.snu.cay.services.em.avro.UpdateResult;
+import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
+import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
+import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -39,16 +46,18 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
   private static final String ON_REGIS_MSG = "onRegisMsg";
-  private static final String ON_RESULT_MSG = "onResultMsg";
+  private static final String ON_DATA_ACK_MSG = "onDataAckMsg";
+  private static final String ON_UPDATE_ACK_MSG = "onUpdateAckMsg";
+  private static final String ON_FAILURE_MSG = "onFailureMsg";
 
-  private final ElasticMemoryCallbackRouter callbackRouter;
   private final PartitionManager partitionManager;
+  private final MigrationManager migrationManager;
 
   @Inject
-  private ElasticMemoryMsgHandler(final ElasticMemoryCallbackRouter callbackRouter,
-                                  final PartitionManager partitionManager) {
-    this.callbackRouter = callbackRouter;
+  private ElasticMemoryMsgHandler(final PartitionManager partitionManager,
+                                  final MigrationManager migrationManager) {
     this.partitionManager = partitionManager;
+    this.migrationManager = migrationManager;
   }
 
   @Override
@@ -61,8 +70,16 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       onRegisMsg(innerMsg);
       break;
 
-    case ResultMsg:
-      onResultMsg(innerMsg);
+    case DataAckMsg:
+      onDataAckMsg(innerMsg);
+      break;
+
+    case UpdateAckMsg:
+      onUpdateAckMsg(innerMsg);
+      break;
+
+    case FailureMsg:
+      onFailureMsg(innerMsg);
       break;
 
     default:
@@ -83,12 +100,61 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
     }
   }
 
-  private void onResultMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onResultMsgScope = Trace.startSpan(ON_RESULT_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+  private void onDataAckMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onDataAckMsgScope = Trace.startSpan(ON_DATA_ACK_MSG,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      // TODO #160: register/remove the migrated partitions from/to PartitionManager using resultMsg.getIdRange()
+      final String operationId = msg.getOperationId().toString();
 
-      callbackRouter.onCompleted(msg);
+      // Add the range information to the corresponding Migration.
+      final Set<LongRange> ranges = new HashSet<>();
+      for (final AvroLongRange range : msg.getDataAckMsg().getIdRange()) {
+        ranges.add(AvroUtils.fromAvroLongRange(range));
+      }
+      migrationManager.setMovedRanges(operationId, ranges);
+
+      // Wait for the user's approval to update.
+      // Once EM allows remote access to the data, we can remove this barrier letting EM update its state automatically.
+      migrationManager.waitUpdate(operationId);
+    }
+  }
+
+  private void onUpdateAckMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onUpdateAckMsgScope =
+             Trace.startSpan(ON_UPDATE_ACK_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+      final UpdateResult updateResult = msg.getUpdateAckMsg().getResult();
+      final String operationId = msg.getOperationId().toString();
+
+      switch (updateResult) {
+
+      case RECEIVER_UPDATED:
+        // After receiver updates its state, the partition is guaranteed to be accessible in the receiver.
+        // So we can move the partition and update the sender.
+        final TraceInfo traceInfo = TraceInfo.fromSpan(onUpdateAckMsgScope.getSpan());
+        migrationManager.movePartition(operationId, traceInfo);
+        migrationManager.updateSender(operationId, traceInfo);
+        break;
+
+      case SENDER_UPDATED:
+        // Finish the migration notifying the result to the client via callback.
+        migrationManager.finishMigration(operationId);
+        break;
+
+      default:
+        throw new RuntimeException("Undefined result: " + updateResult);
+      }
+    }
+  }
+
+  private void onFailureMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onFailureMsgScope =
+             Trace.startSpan(ON_FAILURE_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+      final FailureMsg failureMsg = msg.getFailureMsg();
+
+      final String operationId = failureMsg.getOperationId().toString();
+      final String reason = failureMsg.getReason().toString();
+
+      migrationManager.notifyFailure(operationId, reason);
     }
   }
 }
