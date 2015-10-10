@@ -77,6 +77,10 @@
       <artifactId>mahout-math</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.ojalgo</groupId>
+      <artifactId>ojalgo</artifactId>
+    </dependency>
+    <dependency>
       <groupId>${project.parent.groupId}.services</groupId>
       <artifactId>elastic-memory</artifactId>
       <version>${project.parent.version}</version>

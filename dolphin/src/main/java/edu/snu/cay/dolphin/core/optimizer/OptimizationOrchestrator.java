@@ -170,7 +170,8 @@ public final class OptimizationOrchestrator {
                                                                  final Map<String, Double> controllerMetrics) {
     final List<EvaluatorParameters> evaluatorParametersList = new ArrayList<>(dataInfos.size());
     for (final String computeId : dataInfos.keySet()) {
-      evaluatorParametersList.add(new EvaluatorParametersImpl(computeId, dataInfos.get(computeId)));
+      evaluatorParametersList.add(
+          new EvaluatorParametersImpl(computeId, dataInfos.get(computeId), metrics.get(computeId)));
     }
     return evaluatorParametersList;
   }
