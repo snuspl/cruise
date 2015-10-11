@@ -16,11 +16,10 @@
 package edu.snu.cay.dolphin.core.optimizer;
 
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
-import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 
 import java.util.Collection;
 
-public final class Cost {
+final class Cost {
 
   private final double communicationCost;
   private final Collection<ComputeTaskCost> computeTaskCosts;
@@ -58,10 +57,6 @@ public final class Cost {
     public String toString() {
       return String.format("ComputeTaskCost{id=\"%s\", cmpCost=%f, dataInfos=%s}", id, cmpCost, dataInfos);
     }
-  }
-
-  public static CostCalculator newCalculator(final Collection<EvaluatorParameters> activeEvaluators) {
-    return new CostCalculator(activeEvaluators);
   }
 
   public double getCommunicationCost() {

@@ -25,13 +25,12 @@ import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import org.ojalgo.optimisation.Expression;
 import org.ojalgo.optimisation.ExpressionsBasedModel;
+import org.ojalgo.optimisation.Optimisation;
 import org.ojalgo.optimisation.Variable;
 
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Optimizer class based on ILP (integer linear programming)
@@ -42,7 +41,6 @@ public final class ILPSolverOptimizer implements Optimizer {
   private static final String NEW_EVALUATOR_ID_PREFIX = "newEvaluator-";
   private static final String NEW_TEMP_EVALUATOR_ID_PREFIX = "newTempEvaluator-";
   private final AtomicInteger newEvaluatorSequence = new AtomicInteger(0);
-  private final ComputeCostFactorManager computeCostFactorManager = new ComputeCostFactorManager();
   private final DataUnitsToMoveComparator ascendingComparator;
   private final DataUnitsToMoveComparator descendingComparator;
 
@@ -55,7 +53,7 @@ public final class ILPSolverOptimizer implements Optimizer {
   @Override
   public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
 
-    final Cost cost = Cost.newCalculator(activeEvaluators).calculate();
+    final Cost cost = CostCalculator.newInstance(activeEvaluators).calculate();
     final List<OptimizedEvaluator> optimizedEvaluators =
         initOptimizedEvaluators(cost, availableEvaluators - activeEvaluators.size());
 
@@ -77,10 +75,10 @@ public final class ILPSolverOptimizer implements Optimizer {
       model.addVariable(evaluator.getRequestedDataVariable());
     }
 
-    addExpressions(model, cmpCostVar, optimizedEvaluators);
+    addExpressions(model, cmpCostVar, optimizedEvaluators, availableEvaluators - 1); // -1 for excluding the ctrl task
 
-//    model.minimise();
-    System.out.println(model.minimise());
+    final Optimisation.Result result = model.minimise();
+    System.out.println(result);
 
     return generatePlan(optimizedEvaluators);
   }
@@ -120,9 +118,10 @@ public final class ILPSolverOptimizer implements Optimizer {
     return Variable.makeBinary("participate-" + id);
   }
 
-  private void addExpressions(final ExpressionsBasedModel model,
+  private static void addExpressions(final ExpressionsBasedModel model,
                                      final Variable computeCostVariable,
-                                     final List<OptimizedEvaluator> optimizedEvaluators) {
+                                     final List<OptimizedEvaluator> optimizedEvaluators,
+                                     final int availableEvaluators) {
     // C_cmp'(i): compute cost for i-th evaluator.
     // C_cmp(i): expected compute cost for i-th evaluator.
     // d'(i): allocated data units for i-th evaluator.
@@ -130,11 +129,18 @@ public final class ILPSolverOptimizer implements Optimizer {
     // p(i): indicator for the participation of evaluator i. if p(i) = 1, i-th evaluator participates next iteration.
 
     final int totalDataUnits = getSumDataUnits(optimizedEvaluators);
-    // [sum of data units] = sum(d_i)
+    final double predictedComputePerformance = predictComputePerformance(optimizedEvaluators);
+
+    // [sum of data units] = sum(d(i))
     final Expression totalDataExpression = model.addExpression("totalDataExpression").level(totalDataUnits);
+    // sum(p(i)) <= [# of available evaluators]
+    final Expression totalEvaluatorExpression =
+        model.addExpression("totalEvaluatorExpression").upper(availableEvaluators);
+    System.out.println("availableEvaluators: " + availableEvaluators);
 
     for (final OptimizedEvaluator evaluator : optimizedEvaluators) {
       totalDataExpression.setLinearFactor(evaluator.getRequestedDataVariable(), 1);
+      totalEvaluatorExpression.setLinearFactor(evaluator.getParticipateVariable(), 1);
 
       // d(i) <= p(i) * [sum of data units]
       final Expression dataExpression =
@@ -146,16 +152,15 @@ public final class ILPSolverOptimizer implements Optimizer {
       final Expression computeCostExpression =
           model.addExpression("computeCostExpression-" + evaluator.getId()).upper(0);
       final int sumDataUnits = getSumDataUnits(evaluator.getAllocatedDataInfos());
-      final double computeCostFactor;
+      final double computePerformance;
 
       if (sumDataUnits > 0) {
-        computeCostFactor = evaluator.getComputeCost() / sumDataUnits;
-        computeCostFactorManager.updateComputeCostFactor(computeCostFactor);
+        computePerformance = evaluator.getComputeCost() / sumDataUnits;
       } else {
-        computeCostFactor = computeCostFactorManager.getComputeCostFactor();
+        computePerformance = predictedComputePerformance;
       }
 
-      computeCostExpression.setLinearFactor(evaluator.getRequestedDataVariable(), computeCostFactor);
+      computeCostExpression.setLinearFactor(evaluator.getRequestedDataVariable(), computePerformance);
       computeCostExpression.setLinearFactor(computeCostVariable, -1);
     }
   }
@@ -203,8 +208,10 @@ public final class ILPSolverOptimizer implements Optimizer {
       if (evaluator.getParticipateValue() && evaluator.getId().startsWith(NEW_TEMP_EVALUATOR_ID_PREFIX)) {
         evaluator.setId(getNewEvaluatorId()); // replace temporary id with new one.
         builder.addEvaluatorToAdd(evaluator.getId());
+        System.out.println("add evaluator: " + evaluator.getId());
       } else if (!evaluator.getParticipateValue() && !evaluator.getId().startsWith(NEW_TEMP_EVALUATOR_ID_PREFIX)) {
         builder.addEvaluatorToDelete(evaluator.getId());
+        System.out.println("delete evaluator: " + evaluator.getId());
       }
     }
 
@@ -256,7 +263,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     final List<DataInfo> dataInfosToRemove = new ArrayList<>();
     final List<DataInfo> dataInfosToAdd = new ArrayList<>(1);
     final Iterator<DataInfo> dataInfoIterator = sender.getAllocatedDataInfos().iterator();
-    
+
     while (numToSend < 0 && numToReceive > 0 && dataInfoIterator.hasNext()) {
       final DataInfo dataInfo = dataInfoIterator.next();
       final DataInfo dataInfoToMove;
@@ -279,7 +286,28 @@ public final class ILPSolverOptimizer implements Optimizer {
     sender.getAllocatedDataInfos().removeAll(dataInfosToRemove);
     sender.getAllocatedDataInfos().addAll(dataInfosToAdd);
 
+    //debug
+    System.out.println(ret);
+
     return ret;
+  }
+
+  /**
+   * Predicts computing performance of new evaluators by averaging computing performance of others.
+   * @param optimizedEvaluators
+   * @return the predicted computing performance.
+   */
+  private static double predictComputePerformance(final List<OptimizedEvaluator> optimizedEvaluators) {
+    double sum = 0D;
+    int count = 0;
+    for (final OptimizedEvaluator evaluator : optimizedEvaluators) {
+      final int sumDataUnits = getSumDataUnits(evaluator.getAllocatedDataInfos());
+      if (sumDataUnits > 0) {
+        sum += evaluator.getComputeCost() / sumDataUnits;
+        ++count;
+      }
+    }
+    return sum / count;
   }
 
   private String getNewEvaluatorId() {
@@ -345,30 +373,6 @@ public final class ILPSolverOptimizer implements Optimizer {
 
     public double getComputeCost() {
       return computeCost;
-    }
-  }
-
-  /**
-   * Manager class that predicts the computing performance of new evaluators.
-   * Predicts the performance by averaging computing performance information of evaluators.
-   */
-  private static class ComputeCostFactorManager {
-    private final ReadWriteLock computeCostFactorLock = new ReentrantReadWriteLock();
-    private double computeCostFactor = 0D;
-    private long numComputeCost = 0;
-
-    public void updateComputeCostFactor(final double value) {
-      computeCostFactorLock.writeLock().lock();
-      // computes the average
-      computeCostFactor = computeCostFactor + (value - computeCostFactor) / ++numComputeCost;
-      computeCostFactorLock.writeLock().unlock();
-    }
-
-    public double getComputeCostFactor() {
-      computeCostFactorLock.readLock().lock();
-      final double ret = computeCostFactor;
-      computeCostFactorLock.readLock().unlock();
-      return ret;
     }
   }
 

@@ -27,7 +27,7 @@ final class CostCalculator {
   private final EvaluatorParameters controlTaskParameters;
   private final List<EvaluatorParameters> computeTasksParameters;
 
-  CostCalculator(final Collection<EvaluatorParameters> activeEvaluators) {
+  private CostCalculator(final Collection<EvaluatorParameters> activeEvaluators) {
     EvaluatorParameters tempControlTaskParameters = null;
     computeTasksParameters = new ArrayList<>();
     for (final EvaluatorParameters evaluatorParameters : activeEvaluators) {
@@ -43,6 +43,10 @@ final class CostCalculator {
     } else {
       throw new RuntimeException("There is no control task among active evaluators");
     }
+  }
+
+  public static CostCalculator newInstance(final Collection<EvaluatorParameters> activeEvaluators) {
+    return new CostCalculator(activeEvaluators);
   }
 
   public Cost calculate() {

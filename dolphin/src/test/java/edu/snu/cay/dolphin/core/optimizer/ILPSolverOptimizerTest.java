@@ -49,36 +49,54 @@ public final class ILPSolverOptimizerTest {
 
   @Test
   public void testOptimize() {
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(10000);
+    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(1, 10000);
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, 4);
     System.out.println(plan);
   }
 
+  @Test
+  public void testOptimizeReduceEvaluators() {
+    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(3, 10000);
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, 2);
+    System.out.println(plan);
+  }
+
   /**
-   * Generate a collection of evaluator parameters that consists of one compute task and one controller task.
-   * Assumes only one type of data.
+   * Generate a collection of evaluator parameters that consists of one controller task
+   * and the specified number of compute tasks.
+   * Assumes only one type of data and data units will be evenly distributed to compute tasks.
    * @param totalDataUnits the total number of data units.
    * @return a collection of evaluator parameters.
    */
-  private Collection<EvaluatorParameters> generateEvaluatorParameters(final int totalDataUnits) {
-    final List<EvaluatorParameters> ret = new ArrayList<>(2);
+  private Collection<EvaluatorParameters> generateEvaluatorParameters(final int numComputeTasks,
+                                                                      final int totalDataUnits) {
+    final List<EvaluatorParameters> ret = new ArrayList<>(numComputeTasks + 1);
+    final int dataUnitsPerEval = totalDataUnits / numComputeTasks;
+    double maxComputeTaskEndTime = 0D;
 
     // compute task
-    final List<DataInfo> cmpTaskDataInfos = new ArrayList<>(1);
-    cmpTaskDataInfos.add(new DataInfoImpl("testType", totalDataUnits));
+    for (int i = 0; i < numComputeTasks; ++i) {
+      final List<DataInfo> cmpTaskDataInfos = new ArrayList<>(1);
+      final int dataUnits = (i == 0) ? dataUnitsPerEval + (totalDataUnits % numComputeTasks) : dataUnitsPerEval;
 
-    final Map<String, Double> cmpTaskMetrics = new HashMap<>();
-    final double computeTaskEndTime = (random.nextDouble() + 1) * totalDataUnits;
-    System.out.println("computeTaskEndTime=" + computeTaskEndTime);
-    cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START, 0D);
-    cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END, computeTaskEndTime);
+      cmpTaskDataInfos.add(new DataInfoImpl("testType", dataUnits));
 
-    ret.add(new EvaluatorParametersImpl(ComputeTask.TASK_ID_PREFIX + 1, cmpTaskDataInfos, cmpTaskMetrics));
+      final Map<String, Double> cmpTaskMetrics = new HashMap<>();
+      final double computeTaskEndTime = (random.nextDouble() + 1) * dataUnits;
+      System.out.println(String.format("%d-th cmpTask endTime=%f", i, computeTaskEndTime));
+      if (computeTaskEndTime > maxComputeTaskEndTime) {
+        maxComputeTaskEndTime = computeTaskEndTime;
+      }
+      cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START, 0D);
+      cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END, computeTaskEndTime);
+
+      ret.add(new EvaluatorParametersImpl(ComputeTask.TASK_ID_PREFIX + i, cmpTaskDataInfos, cmpTaskMetrics));
+    }
 
     // controller task
     final Map<String, Double> metrics = new HashMap<>();
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START, 0D);
-    metrics.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END, computeTaskEndTime + random.nextInt(50));
+    metrics.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END, maxComputeTaskEndTime + random.nextInt(50));
 
     ret.add(new EvaluatorParametersImpl(ControllerTask.TASK_ID_PREFIX + 2, new ArrayList<DataInfo>(0), metrics));
 
