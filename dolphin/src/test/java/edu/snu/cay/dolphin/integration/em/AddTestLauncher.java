@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.integration.em;
 
+import edu.snu.cay.dolphin.core.DolphinDriver;
+import edu.snu.cay.dolphin.core.DolphinParameters;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationConfiguration;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
@@ -32,10 +34,10 @@ import org.apache.reef.io.network.group.impl.driver.GroupCommService;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
-import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.util.EnvironmentUtils;
@@ -46,45 +48,45 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Job launch code for Dolphin jobs.
+ * Dolphin Launcher for EM add integration test.
+ * Use NoOperationOptimizerConfiguration for optimizing
+ * and AddTestStartHandler for driver start handler.
  */
 public final class AddTestLauncher {
   private static final Logger LOG = Logger.getLogger(AddTestLauncher.class.getName());
   private final DolphinParameters dolphinParameters;
   private final HTraceParameters traceParameters;
+  private final int addEvalNumber;
+  private final int addThreadNumber;
 
   @Inject
   private AddTestLauncher(final DolphinParameters dolphinParameters,
-                          final HTraceParameters traceParameters) {
+                          final HTraceParameters traceParameters,
+                          @Parameter(AddIntegrationTest.AddEvalNumber.class) final int addEvalNumber,
+                          @Parameter(AddIntegrationTest.AddThreadNumber.class) final int addThreadNumber) {
     this.dolphinParameters = dolphinParameters;
     this.traceParameters = traceParameters;
+    this.addEvalNumber = addEvalNumber;
+    this.addThreadNumber = addThreadNumber;
   }
 
-  public static void run(final Configuration dolphinConfig) {
+  public static LauncherStatus run(final Configuration dolphinConfig) {
     LauncherStatus status;
     try {
       status = Tang.Factory.getTang()
           .newInjector(dolphinConfig)
-          .getInstance(AddTestLauncher.class)
-          .run();
+          .getInstance(AddTestLauncher.class).run();
     } catch (final Exception e) {
       status = LauncherStatus.failed(e);
     }
 
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
+    return status;
   }
 
   private LauncherStatus run() throws InjectionException {
-    return DriverLauncher.getLauncher(getRuntimeConfiguration())
+    return DriverLauncher.getLauncher(getLocalRuntimeConfiguration())
         .run(getDriverConfiguration(), dolphinParameters.getTimeout());
-  }
-
-  private Configuration getRuntimeConfiguration() {
-    return dolphinParameters.getOnLocal() ? getLocalRuntimeConfiguration() : getYarnRuntimeConfiguration();
-  }
-
-  private Configuration getYarnRuntimeConfiguration() {
-    return YarnClientConfiguration.CONF.build();
   }
 
   private Configuration getLocalRuntimeConfiguration() {
@@ -99,6 +101,7 @@ public final class AddTestLauncher {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, dolphinParameters.getIdentifier())
         .set(DriverConfiguration.ON_DRIVER_STARTED, DolphinDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, AddTestStartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, DolphinDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.EvaluatorFailedHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, DolphinDriver.ActiveContextHandler.class)
@@ -132,7 +135,12 @@ public final class AddTestLauncher {
         .set(TaskOutputServiceBuilder.OUTPUT_PATH, processOutputDir(dolphinParameters.getOutputDir()))
         .build();
 
-    final Configuration optimizerConf = OptimizationConfiguration.getRandomOptimizerConfiguration();
+    final Configuration optimizerConf = OptimizationConfiguration.getNoOperationOptimizerConfiguration();
+
+    final Configuration testConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(AddIntegrationTest.AddEvalNumber.class, Integer.toString(addEvalNumber))
+        .bindNamedParameter(AddIntegrationTest.AddThreadNumber.class, Integer.toString(addThreadNumber))
+        .build();
 
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
@@ -142,7 +150,8 @@ public final class AddTestLauncher {
         ElasticMemoryConfiguration.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
-        dolphinParameters.getDriverConf());
+        dolphinParameters.getDriverConf(),
+        testConf);
   }
 
   private String processInputDir(final String inputDir) {
