@@ -31,9 +31,12 @@ import java.io.IOException;
 import static org.junit.Assert.assertEquals;
 
 /**
- * EM add integration test.
- * Uses multi-thread to call EM add primitive.
- * Checks REEF job status and asserts whether it is completed or not.
+ * EM add integration test uses multi-thread to call EM add primitive.
+ * Checks REEF job status and asserts whether it is completed without exception or not.
+ * To implement a useful integration test, we should use DolphinDriver without changes
+ * since it is tightly related to EM add primitive.
+ * Thus this test uses DolphinDriver without any modification,
+ * and only makes some minor changes in DolphinLauncher to implement AddTestLauncher.
  * You can use any integer value for parameters of {@code run},
  * but be careful to not choose too large number to ensure that it finishes within a certain timeout.
  */
