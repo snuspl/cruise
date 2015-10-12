@@ -31,22 +31,24 @@ import org.junit.Test;
 import java.util.*;
 
 /**
- * Class for testing ILPSolverOptimizer.
+ * Class for testing {@link ILPSolverOptimizer}'s behavior.
  */
 public final class ILPSolverOptimizerTest {
 
   private ILPSolverOptimizer ilpSolverOptimizer;
   private Random random;
 
-  /**
-   * Setup ILPSolverOptimizer.
-   */
   @Before
   public void setUp() throws InjectionException {
     ilpSolverOptimizer = Tang.Factory.getTang().newInjector().getInstance(ILPSolverOptimizer.class);
     random = new Random(System.currentTimeMillis());
   }
 
+  /**
+   * Test that evaluators are added when available evaluators are increased.
+   * The number of compute tasks participating the previous execution is set to one so that evaluators should be added
+   * otherwise the communication cost of the previous execution is significantly high.
+   */
   @Test
   public void testOptimize() {
     final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(1, 10000);
@@ -54,6 +56,9 @@ public final class ILPSolverOptimizerTest {
     System.out.println(plan);
   }
 
+  /**
+   * Test that evaluators are deleted when available evaluators are reduced to half.
+   */
   @Test
   public void testOptimizeReduceEvaluators() {
     final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(3, 10000);
@@ -74,7 +79,7 @@ public final class ILPSolverOptimizerTest {
     final int dataUnitsPerEval = totalDataUnits / numComputeTasks;
     double maxComputeTaskEndTime = 0D;
 
-    // compute task
+    // generate compute tasks
     for (int i = 0; i < numComputeTasks; ++i) {
       final List<DataInfo> cmpTaskDataInfos = new ArrayList<>(1);
       final int dataUnits = (i == 0) ? dataUnitsPerEval + (totalDataUnits % numComputeTasks) : dataUnitsPerEval;
@@ -93,7 +98,7 @@ public final class ILPSolverOptimizerTest {
       ret.add(new EvaluatorParametersImpl(ComputeTask.TASK_ID_PREFIX + i, cmpTaskDataInfos, cmpTaskMetrics));
     }
 
-    // controller task
+    // generate a controller task
     final Map<String, Double> metrics = new HashMap<>();
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START, 0D);
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END, maxComputeTaskEndTime + random.nextInt(50));

@@ -19,6 +19,9 @@ import edu.snu.cay.services.em.optimizer.api.DataInfo;
 
 import java.util.Collection;
 
+/**
+ * Class for storing costs of Dolphin.
+ */
 final class Cost {
 
   private final double communicationCost;
@@ -29,6 +32,9 @@ final class Cost {
     this.computeTaskCosts = computeTaskCosts;
   }
 
+  /**
+   * Class for storing costs for {@link edu.snu.cay.dolphin.core.ComputeTask}s and their meta-information.
+   */
   public static class ComputeTaskCost {
 
     private final String id;
