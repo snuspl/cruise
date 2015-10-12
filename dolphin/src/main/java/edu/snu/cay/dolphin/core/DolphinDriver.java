@@ -17,9 +17,13 @@ package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.core.metric.MetricsMessageCodec;
 import edu.snu.cay.dolphin.core.metric.MetricsMessageSender;
+import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.dolphin.core.metric.avro.SrcType;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;
+import edu.snu.cay.dolphin.core.sync.ControllerTaskSyncRegister;
+import edu.snu.cay.dolphin.core.sync.DriverSync;
+import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.groupcomm.names.*;
 import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
@@ -61,6 +65,7 @@ import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.task.Task;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
@@ -135,6 +140,8 @@ public final class DolphinDriver {
    * Checks whether the number of evaluators configured by the data loading service can be gang scheduled.
    */
   private final SchedulabilityAnalyzer schedulabilityAnalyzer;
+
+  private final DriverSync driverSync;
 
   /**
    * Manager of the configuration of Elastic Memory service.
@@ -217,6 +224,7 @@ public final class DolphinDriver {
                         final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
                         final OptimizationOrchestrator optimizationOrchestrator,
+                        final DriverSync driverSync,
                         final ElasticMemoryConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
@@ -234,6 +242,7 @@ public final class DolphinDriver {
     this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
     this.optimizationOrchestrator = optimizationOrchestrator;
+    this.driverSync = driverSync;
     this.emConf = emConf;
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
@@ -467,8 +476,7 @@ public final class DolphinDriver {
           optimizationOrchestrator.receiveControllerMetrics(message.getId(),
               metricsMessage.getIterationInfo().getCommGroupName().toString(),
               metricsMessage.getIterationInfo().getIteration(),
-              metricCodec.decode(metricsMessage.getMetrics().array()),
-              metricsMessage.getControllerMsg().getNumComputeTasks());
+              metricCodec.decode(metricsMessage.getMetrics().array()));
 
         } else {
           throw new RuntimeException("Unknown SrcType " + srcType);
@@ -491,6 +499,7 @@ public final class DolphinDriver {
     @Override
     public void onNext(final RunningTask runningTask) {
       LOG.info(runningTask.getId() + " has started.");
+      optimizationOrchestrator.onRunningTask(runningTask);
     }
   }
 
@@ -501,14 +510,18 @@ public final class DolphinDriver {
 
     @Override
     public void onNext(final CompletedTask completedTask) {
-      LOG.info(completedTask.getId() + " has completed.");
+      final String completedTaskId = completedTask.getId();
+      LOG.log(Level.INFO, "{0} has completed.", completedTaskId);
+      optimizationOrchestrator.onCompletedTask(completedTask);
 
       final ActiveContext activeContext = completedTask.getActiveContext();
       final String contextId = activeContext.getId();
       final int nextSequence = contextToStageSequence.get(contextId) + 1;
       if (nextSequence >= stageInfoList.size()) {
         completedTask.getActiveContext().close();
-        return;
+        if (isCtrlTaskId(completedTaskId)) {
+          driverSync.onStageStop(stageInfoList.get(nextSequence - 1).getCommGroupName().getName());
+        }
       } else {
         submitTask(activeContext, nextSequence);
       }
@@ -520,22 +533,42 @@ public final class DolphinDriver {
     @Override
     public void onNext(final FailedTask failedTask) {
       LOG.info(failedTask.getId() + " has failed.");
+      optimizationOrchestrator.onFailedTask(failedTask);
     }
   }
 
   /**
-   * Execute the task of the given stage.
-   * @param activeContext
-   * @param stageSequence
+   * Submit a task for an already running Stage.
+   * @param activeContext the context to submit the task on
+   * @param iterationInfo the iteration to start the task on
    */
+  public void submitTask(final ActiveContext activeContext, final IterationInfo iterationInfo) {
+    LOG.log(Level.INFO, "iterationInfo {0}", iterationInfo);
+    final String commGroupName = iterationInfo.getCommGroupName().toString();
+    int stageSequence = 0;
+    for (final StageInfo stageInfo : stageInfoList) {
+      if (commGroupName.equals(stageInfo.getCommGroupName().getName())) {
+        submitTask(activeContext, stageSequence, iterationInfo.getIteration());
+        return;
+      }
+      stageSequence++;
+    }
+    throw new RuntimeException("Unable to find stageSequence for " + iterationInfo);
+  }
+
   private void submitTask(final ActiveContext activeContext, final int stageSequence) {
+    submitTask(activeContext, stageSequence, 0);
+  }
+
+  private void submitTask(final ActiveContext activeContext, final int stageSequence, final int iteration) {
     contextToStageSequence.put(activeContext.getId(), stageSequence);
     final StageInfo stageInfo = stageInfoList.get(stageSequence);
     final CommunicationGroupDriver commGroup = commGroupDriverList.get(stageSequence);
     final Configuration partialTaskConf;
 
     final JavaConfigurationBuilder dolphinTaskConfBuilder = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(CommunicationGroup.class, stageInfo.getCommGroupName().getName());
+        .bindNamedParameter(CommunicationGroup.class, stageInfo.getCommGroupName().getName())
+        .bindNamedParameter(Iteration.class, Integer.toString(iteration));
 
     //Set metric trackers
     if (stageInfo.getMetricTrackerClassSet() != null) {
@@ -559,11 +592,13 @@ public final class DolphinDriver {
             .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
 
         partialTaskConf = Configurations.merge(
-            getBaseTaskConf(ctrlTaskId, ControllerTask.class, controllerTaskTraceScope.getSpan()),
+            getCtrlTaskConf(ctrlTaskId, controllerTaskTraceScope.getSpan()),
             dolphinTaskConfBuilder.build(),
+            SyncNetworkSetup.getControllerTaskConfiguration(),
             userParameters.getUserCtrlTaskConf());
       }
 
+      driverSync.onStageStart(stageInfo.getCommGroupName().getName(), ctrlTaskId);
       // Case 2: Evaluator configured with a Group Communication context has been given,
       //         representing a Compute Task
       // We can now place a Compute Task on top of the contexts.
@@ -579,7 +614,7 @@ public final class DolphinDriver {
             .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
 
         partialTaskConf = Configurations.merge(
-            getBaseTaskConf(cmpTaskId, ComputeTask.class, computeTaskTraceScope.getSpan()),
+            getCmpTaskConf(cmpTaskId, computeTaskTraceScope.getSpan()),
             dolphinTaskConfBuilder.build(),
             userParameters.getUserCmpTaskConf());
       }
@@ -607,15 +642,26 @@ public final class DolphinDriver {
     return ComputeTask.TASK_ID_PREFIX + "-" + sequence;
   }
 
-  private Configuration getBaseTaskConf(final String identifier,
-                                        final Class<? extends Task> taskClass,
-                                        @Nullable final Span traceSpan) {
+  private Configuration getCtrlTaskConf(final String identifier, @Nullable final Span traceSpan) {
+    return getBaseTaskConfModule(identifier, ControllerTask.class, traceSpan)
+        .set(TaskConfiguration.ON_TASK_STARTED, ControllerTaskSyncRegister.RegisterTaskHandler.class)
+        .set(TaskConfiguration.ON_TASK_STOP, ControllerTaskSyncRegister.UnregisterTaskHandler.class)
+        .build();
+  }
+
+  private Configuration getCmpTaskConf(final String identifier, @Nullable final Span traceSpan) {
+    return getBaseTaskConfModule(identifier, ComputeTask.class, traceSpan)
+        .build();
+  }
+
+  private ConfigurationModule getBaseTaskConfModule(final String identifier,
+                                                    final Class<? extends Task> taskClass,
+                                                    @Nullable final Span traceSpan) {
     if (traceSpan == null) {
 
       return TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, identifier)
-          .set(TaskConfiguration.TASK, taskClass)
-          .build();
+          .set(TaskConfiguration.TASK, taskClass);
     } else {
 
       return TaskConfiguration.CONF
@@ -623,8 +669,7 @@ public final class DolphinDriver {
           .set(TaskConfiguration.TASK, taskClass)
           .set(TaskConfiguration.MEMENTO, DatatypeConverter.printBase64Binary(
               hTraceInfoCodec.encode(
-                  HTraceUtils.toAvro(TraceInfo.fromSpan(traceSpan)))))
-          .build();
+                  HTraceUtils.toAvro(TraceInfo.fromSpan(traceSpan)))));
     }
   }
 }

@@ -16,6 +16,8 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.core.optimizer.OptimizationConfiguration;
+import edu.snu.cay.dolphin.core.sync.DriverSyncRegister;
+import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.utils.trace.HTraceParameters;
@@ -99,6 +101,7 @@ public final class DolphinLauncher {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, dolphinParameters.getIdentifier())
         .set(DriverConfiguration.ON_DRIVER_STARTED, DolphinDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, DriverSyncRegister.RegisterDriverHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, DolphinDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.EvaluatorFailedHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, DolphinDriver.ActiveContextHandler.class)
@@ -132,12 +135,13 @@ public final class DolphinLauncher {
         .set(TaskOutputServiceBuilder.OUTPUT_PATH, processOutputDir(dolphinParameters.getOutputDir()))
         .build();
 
-    final Configuration optimizerConf = OptimizationConfiguration.getRandomOptimizerConfiguration();
+    final Configuration optimizerConf = OptimizationConfiguration.getAddOneOptimizerConfiguration();
 
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         optimizerConf,
         traceParameters.getConfiguration(),
+        SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),

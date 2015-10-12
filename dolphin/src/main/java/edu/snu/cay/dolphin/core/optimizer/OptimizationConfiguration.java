@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
+import edu.snu.cay.services.em.optimizer.impl.AddOneOptimizer;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.RandomOptimizer;
@@ -36,6 +37,13 @@ public final class OptimizationConfiguration {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(Optimizer.class, RandomOptimizer.class)
         .bindImplementation(PlanExecutor.class, LoggingPlanExecutor.class)
+        .build();
+  }
+
+  public static Configuration getAddOneOptimizerConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(Optimizer.class, AddOneOptimizer.class)
+        .bindImplementation(PlanExecutor.class, AddOnlyPlanExecutor.class)
         .build();
   }
 }

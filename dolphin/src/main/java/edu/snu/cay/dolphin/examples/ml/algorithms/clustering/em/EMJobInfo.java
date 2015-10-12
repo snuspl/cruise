@@ -50,6 +50,7 @@ public final class EMJobInfo implements UserJobInfo {
             .setBroadcast(ClusterSummaryListCodec.class)
             .setReduce(MapOfIntClusterStatsCodec.class, MapOfIntClusterStatsReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
+            .setOptimizable(true)
             .build());
 
     return stageInfoList;

@@ -15,9 +15,10 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.core.metric.avro.ControllerMsg;
-import edu.snu.cay.dolphin.core.metric.avro.IterationInfo;
+import edu.snu.cay.dolphin.core.sync.ControllerTaskSync;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataScatterSender;
 import edu.snu.cay.dolphin.groupcomm.names.*;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
@@ -57,6 +58,7 @@ public final class ControllerTask implements Task {
   private final UserControllerTask userControllerTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Sender<CtrlMessage> ctrlMessageBroadcast;
+  private final ControllerTaskSync controllerTaskSync;
   private final MetricsCollector metricsCollector;
   private final Set<MetricTracker> metricTrackerSet;
   private final InsertableMetricTracker insertableMetricTracker;
@@ -71,6 +73,7 @@ public final class ControllerTask implements Task {
                         final UserControllerTask userControllerTask,
                         @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                         @Parameter(CommunicationGroup.class) final String commGroupName,
+                        final ControllerTaskSync controllerTaskSync,
                         final MetricsCollector metricsCollector,
                         @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
                         final InsertableMetricTracker insertableMetricTracker,
@@ -82,6 +85,7 @@ public final class ControllerTask implements Task {
     this.userControllerTask = userControllerTask;
     this.taskId = taskId;
     this.ctrlMessageBroadcast = commGroup.getBroadcastSender(CtrlMsgBroadcast.class);
+    this.controllerTaskSync = controllerTaskSync;
     this.metricsCollector = metricsCollector;
     this.metricTrackerSet = metricTrackerSet;
     this.insertableMetricTracker = insertableMetricTracker;
@@ -100,6 +104,12 @@ public final class ControllerTask implements Task {
     try (final MetricsCollector metricsCollector = this.metricsCollector;) {
       metricsCollector.registerTrackers(metricTrackerSet);
       while (!userControllerTask.isTerminated(iteration)) {
+        try (final TraceScope traceScope = Trace.startSpan("pause-" + iteration, taskTraceInfo)) {
+          if (controllerTaskSync.update(getIterationInfo())) {
+            updateTopology();
+          }
+        }
+
         try (final TraceScope traceScope = Trace.startSpan("iter-" + iteration, taskTraceInfo)) {
           userTaskTrace.setParentTraceInfo(TraceInfo.fromSpan(traceScope.getSpan()));
           metricsCollector.start();
@@ -109,7 +119,6 @@ public final class ControllerTask implements Task {
           runUserControllerTask();
           metricsCollector.stop();
           sendMetrics();
-          updateTopology();
         }
         iteration++;
       }
@@ -180,19 +189,8 @@ public final class ControllerTask implements Task {
 
   private ControllerMsg getControllerMsg() {
     final ControllerMsg controllerMsg = ControllerMsg.newBuilder()
-        .setNumComputeTasks(getNumComputeTasks())
         .build();
     LOG.log(Level.INFO, "controllerMsg {0}", controllerMsg);
     return controllerMsg;
-  }
-
-  /**
-   * A placeholder that returns a magic number (4) of compute tasks. This implementation will
-   * only work if the number of compute tasks is actually equal to the magic number.
-   *
-   * TODO #156: Use a GroupComm method to retrieve the real number of compute tasks
-   */
-  private int getNumComputeTasks() {
-    return 4;
   }
 }
