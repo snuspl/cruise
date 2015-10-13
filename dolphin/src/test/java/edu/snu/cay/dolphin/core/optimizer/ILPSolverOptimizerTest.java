@@ -30,6 +30,9 @@ import org.junit.Test;
 
 import java.util.*;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 /**
  * Class for testing {@link ILPSolverOptimizer}'s behavior.
  */
@@ -50,45 +53,63 @@ public final class ILPSolverOptimizerTest {
    * otherwise the communication cost of the previous execution is significantly high.
    */
   @Test
-  public void testOptimize() {
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(1, 10000);
+  public void testIncreasedComputeTasks() {
+    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(1, new int[]{10000});
+
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, 4);
     System.out.println(plan);
+
+    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd().size() > 0);
+    assertEquals(0, plan.getEvaluatorsToDelete().size());
   }
 
   /**
    * Test that evaluators are deleted when available evaluators are reduced to half.
    */
   @Test
-  public void testOptimizeReduceEvaluators() {
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(3, 10000);
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, 2);
+  public void testHalfNumComputeTasks() {
+    final int numComputeTask = 4;
+    final Collection<EvaluatorParameters> activeEvaluators =
+        generateEvaluatorParameters(numComputeTask, new int[]{10000});
+    final int upperBoundToDelete = (int) Math.ceil((double) numComputeTask / 2);
+
+    final Plan plan =
+        ilpSolverOptimizer.optimize(activeEvaluators, numComputeTask / 2 + 1); // +1 for including the controller task
     System.out.println(plan);
+
+    assertEquals(0, plan.getEvaluatorsToAdd().size());
+    assertTrue("The number of evaluators to be deleted should be <= " + upperBoundToDelete,
+        plan.getEvaluatorsToDelete().size() <= upperBoundToDelete);
   }
 
   /**
    * Generate a collection of evaluator parameters that consists of one controller task
    * and the specified number of compute tasks.
-   * Assumes only one type of data and data units will be evenly distributed to compute tasks.
-   * @param totalDataUnits the total number of data units.
+   * For each data type, data units will be evenly distributed to compute tasks.
+   * @param numComputeTasks the number of compute tasks that participate in the execution.
+   * @param dataUnitsArray an array of the number of data units for each data type.
    * @return a collection of evaluator parameters.
    */
   private Collection<EvaluatorParameters> generateEvaluatorParameters(final int numComputeTasks,
-                                                                      final int totalDataUnits) {
+                                                                      final int[] dataUnitsArray) {
     final List<EvaluatorParameters> ret = new ArrayList<>(numComputeTasks + 1);
-    final int dataUnitsPerEval = totalDataUnits / numComputeTasks;
     double maxComputeTaskEndTime = 0D;
 
     // generate compute tasks
     for (int i = 0; i < numComputeTasks; ++i) {
       final List<DataInfo> cmpTaskDataInfos = new ArrayList<>(1);
-      final int dataUnits = (i == 0) ? dataUnitsPerEval + (totalDataUnits % numComputeTasks) : dataUnitsPerEval;
+      int sumDataUnits = 0;
 
-      cmpTaskDataInfos.add(new DataInfoImpl("testType", dataUnits));
+      for (int j = 0; j < dataUnitsArray.length; ++j) {
+        final int dataUnitsPerEval = dataUnitsArray[j] / numComputeTasks;
+        final int dataUnits = (i == 0) ? dataUnitsPerEval + (dataUnitsArray[j] % numComputeTasks) : dataUnitsPerEval;
+
+        cmpTaskDataInfos.add(new DataInfoImpl("testType-" + j, dataUnits));
+        sumDataUnits += dataUnits;
+      }
 
       final Map<String, Double> cmpTaskMetrics = new HashMap<>();
-      final double computeTaskEndTime = (random.nextDouble() + 1) * dataUnits;
-      System.out.println(String.format("%d-th cmpTask endTime=%f", i, computeTaskEndTime));
+      final double computeTaskEndTime = (random.nextDouble() + 1) * sumDataUnits;
       if (computeTaskEndTime > maxComputeTaskEndTime) {
         maxComputeTaskEndTime = computeTaskEndTime;
       }
