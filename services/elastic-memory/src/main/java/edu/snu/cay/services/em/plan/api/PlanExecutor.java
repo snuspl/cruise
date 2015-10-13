@@ -15,6 +15,9 @@
  */
 package edu.snu.cay.services.em.plan.api;
 
+import edu.snu.cay.services.em.plan.impl.LoggingPlanExecutor;
+import org.apache.reef.tang.annotations.DefaultImplementation;
+
 import java.util.concurrent.Future;
 
 /**
@@ -22,6 +25,7 @@ import java.util.concurrent.Future;
  * Plan execution returns a Future. Executors should start new thread(s) to execute within and update the Future
  * when complete.
  */
+@DefaultImplementation(LoggingPlanExecutor.class)
 public interface PlanExecutor {
 
   /**

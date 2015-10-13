@@ -15,7 +15,9 @@
  */
 package edu.snu.cay.services.em.optimizer.api;
 
+import edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Collection;
 
@@ -23,6 +25,7 @@ import java.util.Collection;
  * Given the current state of evaluators (as parameters) and available resources (as the number of available
  * evaluators), the optimizer generates an optimized plan.
  */
+@DefaultImplementation(EmptyPlanOptimizer.class)
 public interface Optimizer {
   /**
    * @param activeEvaluators all currently active evaluators and their parameters
