@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class SenderAndReceiverTask implements Task {
+public final class SenderAndReceiverTask implements Task {
 
   private static final Logger LOG = Logger.getLogger(SenderAndReceiverTask.class.getName());
 
@@ -65,7 +65,7 @@ public class SenderAndReceiverTask implements Task {
   }
 
   @Override
-  public byte[] call(byte[] bytes) throws Exception {
+  public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "A SenderAndReceiverTask is started");
     int numSentTuples = 0;
     for (int i = 0; i < numTotalIterations; i++) {
