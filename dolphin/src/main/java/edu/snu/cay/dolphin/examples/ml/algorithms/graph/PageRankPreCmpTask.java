@@ -19,10 +19,15 @@ import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
+import edu.snu.cay.utils.LongRangeUtils;
+import org.apache.commons.lang.math.LongRange;
 
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 public final class PageRankPreCmpTask extends UserComputeTask {
 
@@ -42,18 +47,36 @@ public final class PageRankPreCmpTask extends UserComputeTask {
    */
   private final MemoryStore memoryStore;
 
+  /**
+   * Partition tracker to register partitions to.
+   */
+  private final PartitionTracker partitionTracker;
+
   @Inject
   private PageRankPreCmpTask(final DataParser<Map<Integer, List<Integer>>> dataParser,
-                             final MemoryStore memoryStore) {
+                             final MemoryStore memoryStore,
+                             final PartitionTracker partitionTracker) {
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
+    this.partitionTracker = partitionTracker;
   }
 
   @Override
   public void initialize() throws ParseException {
     final Map<Integer, List<Integer>> subgraphs = dataParser.get();
+
+    // Register a minimal set of LongRange partitions. Sorting can be expensive. If the dataset is known
+    // to be sorted, the dataParser should preserve order and the initialization should skip sorting.
+    final SortedSet<Long> sortedIds = new TreeSet<>();
+    for (final Integer id : subgraphs.keySet()) {
+      sortedIds.add(id.longValue());
+    }
+    for (final LongRange range : LongRangeUtils.generateDenseLongRanges(sortedIds)) {
+      partitionTracker.registerPartition(KEY_GRAPH, range.getMinimumLong(), range.getMaximumLong());
+    }
+
     for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
-      memoryStore.getElasticStore().put(KEY_GRAPH, (long) entry.getKey(), entry.getValue());
+      memoryStore.getElasticStore().put(KEY_GRAPH, entry.getKey().longValue(), entry.getValue());
     }
   }
 
