@@ -57,7 +57,6 @@ public final class ILPSolverOptimizerTest {
     final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(1, new int[]{10000});
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, 4);
-    System.out.println(plan);
 
     assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd().size() > 0);
     assertEquals(0, plan.getEvaluatorsToDelete().size());
@@ -75,7 +74,6 @@ public final class ILPSolverOptimizerTest {
 
     final Plan plan =
         ilpSolverOptimizer.optimize(activeEvaluators, numComputeTask / 2 + 1); // +1 for including the controller task
-    System.out.println(plan);
 
     assertEquals(0, plan.getEvaluatorsToAdd().size());
     assertTrue("The number of evaluators to be deleted should be <= " + upperBoundToDelete,

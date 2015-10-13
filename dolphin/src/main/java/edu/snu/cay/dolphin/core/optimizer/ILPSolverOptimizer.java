@@ -96,7 +96,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     addExpressions(model, cmpCostVar, optimizedComputeTasks, availableEvaluators - 1); // -1 for excluding the ctrl task
 
     final Optimisation.Result result = model.minimise();
-    System.out.println(result);
+    LOG.log(Level.FINEST, "ILPSolverOptimizer Optimization Result: {0}", result);
 
     final Plan plan = generatePlan(optimizedComputeTasks);
     LOG.log(Level.FINE, "ILPSolverOptimizer Plan: {0}", plan);
@@ -180,7 +180,6 @@ public final class ILPSolverOptimizer implements Optimizer {
     // sum(p(i)) <= [# of available evaluators]
     final Expression totalComputeTasksExpression =
         model.addExpression("totalComputeTasksExpression").upper(availableComputeTasks);
-    System.out.println("availableComputeTasks: " + availableComputeTasks);
 
     for (final OptimizedComputeTask cmpTask : optimizedComputeTasks) {
       totalDataExpression.setLinearFactor(cmpTask.getRequestedDataVariable(), 1);
@@ -255,25 +254,17 @@ public final class ILPSolverOptimizer implements Optimizer {
       if (cmpTask.getParticipateValue() && cmpTask.getId().startsWith(TEMP_COMPUTE_TASK_ID_PREFIX)) {
         cmpTask.setId(getNewComputeTaskId()); // replace temporary id with new permanent one.
         builder.addEvaluatorToAdd(cmpTask.getId());
-        System.out.println("add computeTask: " + cmpTask.getId());
       } else if (!cmpTask.getParticipateValue() && !cmpTask.getId().startsWith(TEMP_COMPUTE_TASK_ID_PREFIX)) {
         builder.addEvaluatorToDelete(cmpTask.getId());
-        System.out.println("delete computeTask: " + cmpTask.getId());
       }
     }
-
-    //debug
-    System.out.println("init sender queue size=" + senderPriorityQueue.size());
-    System.out.println("init receiver queue size=" + receiverPriorityQueue.size());
 
     while (senderPriorityQueue.size() > 0) {
       // pick sender as a compute task that has the biggest amount of data units to send
       final OptimizedComputeTask sender = senderPriorityQueue.poll();
-      System.out.println("after sender popped, queue size=" + senderPriorityQueue.size());
       while (getDataUnitsToMove(sender) < 0) {
         // pick receiver as a compute task that has the biggest amount of data unit to receive.
         final OptimizedComputeTask receiver = receiverPriorityQueue.poll();
-        System.out.println("after receiver popped queue size=" + receiverPriorityQueue.size());
         builder.addTransferSteps(generateTransferStep(sender, receiver));
         if (getDataUnitsToMove(receiver) > 0) {
           receiverPriorityQueue.add(receiver);
@@ -308,7 +299,6 @@ public final class ILPSolverOptimizer implements Optimizer {
       throw new IllegalArgumentException("The number of data units to send must be < 0");
     }
     int numToReceive = getDataUnitsToMove(receiver);
-    System.out.println(String.format("numToSend=%d numToRecv=%d", numToSend, numToReceive));
 
     final List<DataInfo> dataInfosToRemove = new ArrayList<>();
     final List<DataInfo> dataInfosToAdd = new ArrayList<>(1);
@@ -335,9 +325,6 @@ public final class ILPSolverOptimizer implements Optimizer {
 
     sender.getAllocatedDataInfos().removeAll(dataInfosToRemove);
     sender.getAllocatedDataInfos().addAll(dataInfosToAdd);
-
-    //debug
-    System.out.println(ret);
 
     return ret;
   }
