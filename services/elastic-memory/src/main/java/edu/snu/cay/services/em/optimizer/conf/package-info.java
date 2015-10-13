@@ -13,20 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.plan.api;
-
-import java.util.concurrent.Future;
-
 /**
- * A plan executor interface.
- * Plan execution returns a Future. Executors should start new thread(s) to execute within and update the Future
- * when complete.
+ * Optimizer configuration.
  */
-public interface PlanExecutor {
-
-  /**
-   * @param plan to execute
-   * @return a Future that summarizes a plan execution when it has finished
-   */
-  Future<PlanResult> execute(Plan plan);
-}
+package edu.snu.cay.services.em.optimizer.conf;

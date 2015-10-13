@@ -13,20 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.plan.api;
+package edu.snu.cay.services.em.plan.conf;
 
-import java.util.concurrent.Future;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * A plan executor interface.
- * Plan execution returns a Future. Executors should start new thread(s) to execute within and update the Future
- * when complete.
- */
-public interface PlanExecutor {
-
-  /**
-   * @param plan to execute
-   * @return a Future that summarizes a plan execution when it has finished
-   */
-  Future<PlanResult> execute(Plan plan);
+@NamedParameter(doc = "Fully qualified class of the PlanExecutor",
+                short_name = "plan_executor",
+                default_value = "edu.snu.cay.services.em.plan.impl.LoggingPlanExecutor")
+public class PlanExecutorClass implements Name<String> {
 }
