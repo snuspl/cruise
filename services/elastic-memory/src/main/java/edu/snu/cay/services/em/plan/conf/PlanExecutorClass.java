@@ -21,5 +21,5 @@ import org.apache.reef.tang.annotations.NamedParameter;
 @NamedParameter(doc = "Fully qualified class of the PlanExecutor",
                 short_name = "plan_executor",
                 default_value = "edu.snu.cay.services.em.plan.impl.LoggingPlanExecutor")
-public class PlanExecutorClass implements Name<String> {
+public final class PlanExecutorClass implements Name<String> {
 }
