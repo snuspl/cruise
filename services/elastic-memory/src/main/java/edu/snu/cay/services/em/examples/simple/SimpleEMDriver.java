@@ -46,8 +46,10 @@ import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -186,6 +188,8 @@ final class SimpleEMDriver {
       String destId = secondContextId;
 
       for (int i = 0; i < iterations; i++) {
+        final CountDownLatch transferredLatch = new CountDownLatch(1);
+        final CountDownLatch finishedLatch = new CountDownLatch(1);
 
         final int initialSrcNumUnits = getNumUnits(srcId);
         final int initialDestNumUnits = getNumUnits(destId);
@@ -200,39 +204,50 @@ final class SimpleEMDriver {
               new EventHandler<AvroElasticMemoryMessage>() {
                 @Override
                 public void onNext(final AvroElasticMemoryMessage emMsg) {
-                  synchronized (SimpleEMDriver.this) {
-                    moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS)
-                        ? true : false;
-                    LOG.info("Move " + emMsg.getOperationId() + (moveSucceeded[0]
-                        ? " succeeded" : " " + emMsg.getResultMsg().getResult()));
-                    SimpleEMDriver.this.notifyAll();
-                  }
+                  LOG.log(Level.INFO, "Move {0} data transfer completed.", emMsg.getOperationId());
+                  transferredLatch.countDown();
+                }
+              },
+              new EventHandler<AvroElasticMemoryMessage>() {
+                @Override
+                public void onNext(final AvroElasticMemoryMessage emMsg) {
+                  moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS)
+                      ? true : false;
+                  LOG.log(Level.INFO, "Move {0} succeeded {1} with result {2}",
+                      new Object[]{emMsg.getOperationId(), moveSucceeded[0],
+                          emMsg.getResultMsg() == null ? "" : emMsg.getResultMsg().getResult()});
+                  finishedLatch.countDown();
                 }
               }
           );
         }
 
         // Wait for move to succeed
-        synchronized (this) {
-          try {
-            wait(periodMillis);
+        try {
+          LOG.log(Level.INFO, "Waiting for data transfers to finish on iteration {0}", i);
+          transferredLatch.await();
 
-            // Number of units should be unchanged until applyUpdates() is done.
-            checkNumUnits(srcId, initialSrcNumUnits);
-            checkNumUnits(destId, initialDestNumUnits);
+          // Number of units should be unchanged until applyUpdates() is done.
+          checkNumUnits(srcId, initialSrcNumUnits);
+          checkNumUnits(destId, initialDestNumUnits);
 
-            emService.applyUpdates();
+          LOG.log(Level.INFO, "Applying updates on iteration {0}", i);
+          emService.applyUpdates();
 
-            // After update, number of units should be applied accordingly.
-            checkNumUnits(srcId, initialSrcNumUnits - numToMove);
-            checkNumUnits(destId, initialDestNumUnits + numToMove);
+          // After update, number of units should be applied accordingly.
+          checkNumUnits(srcId, initialSrcNumUnits - numToMove);
+          checkNumUnits(destId, initialDestNumUnits + numToMove);
 
-            if (!moveSucceeded[0]) {
-              throw new RuntimeException("Move failed on iteration " + i);
-            }
-          } catch (final InterruptedException e) {
-            throw new RuntimeException("Move wait interrupted on iteration " + i, e);
+          LOG.log(Level.INFO, "Waiting for move to finish on iteration {0}", i);
+          transferredLatch.await();
+
+          if (moveSucceeded[0]) {
+            LOG.log(Level.INFO, "Move finished on iteration {0}", i);
+          } else {
+            throw new RuntimeException("Move failed on iteration " + i);
           }
+        } catch (final InterruptedException e) {
+          throw new RuntimeException("Move wait interrupted on iteration " + i, e);
         }
 
         // Swap

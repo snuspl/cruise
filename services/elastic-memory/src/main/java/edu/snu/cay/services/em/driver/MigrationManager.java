@@ -28,10 +28,12 @@ import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.EventHandler;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,6 +65,8 @@ import java.util.logging.Logger;
 public final class MigrationManager {
   private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
   private static final String MOVE_PARTITION = "move_partition";
+  private static final String TRANSFERRED_SUFFIX = "-transferred";
+  private static final String FINISHED_SUFFIX = "-finished";
 
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
   private final PartitionManager partitionManager;
@@ -107,17 +111,26 @@ public final class MigrationManager {
    * @param dataType Type of the data.
    * @param ranges Range of the data.
    * @param traceInfo Information for Trace.
+   * @param transferredCallback handler to call when data transfer is completed and the migration is waiting
+   *                            for a call to {@link #applyUpdates}, or null if no callback is needed
+   * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
    */
   public synchronized void startMigration(final String operationId,
                                           final String senderId,
                                           final String receiverId,
                                           final String dataType,
                                           final Set<LongRange> ranges,
-                                          final TraceInfo traceInfo) {
+                                          @Nullable final TraceInfo traceInfo,
+                                          @Nullable final EventHandler<AvroElasticMemoryMessage> transferredCallback,
+                                          @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     if (ongoingMigrations.containsKey(operationId)) {
       LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
       return;
     }
+
+    callbackRouter.register(operationId + TRANSFERRED_SUFFIX, transferredCallback);
+    callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType));
 
     if (!partitionManager.checkRanges(senderId, dataType, ranges)) {
       final String reason = new StringBuilder()
@@ -125,11 +138,10 @@ public final class MigrationManager {
           .append(" of type ").append(dataType)
           .append(". Requested ranges: ").append(Arrays.toString(ranges.toArray()))
           .toString();
-      notifyFailure(operationId, reason);
+      failMigration(operationId, reason);
       return;
     }
 
-    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType));
     sender.get().sendCtrlMsg(senderId, dataType, receiverId, ranges, operationId, traceInfo);
   }
 
@@ -142,17 +154,26 @@ public final class MigrationManager {
    * @param dataType Type of the data.
    * @param numUnits Number of units.
    * @param traceInfo Information for Trace.
+   * @param transferredCallback handler to call when data transfer is completed and the migration is waiting
+   *                            for a call to {@link #applyUpdates}, or null if no callback is needed
+   * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
    */
   public synchronized void startMigration(final String operationId,
                                           final String senderId,
                                           final String receiverId,
                                           final String dataType,
                                           final int numUnits,
-                                          final TraceInfo traceInfo) {
+                                          @Nullable final TraceInfo traceInfo,
+                                          @Nullable final EventHandler<AvroElasticMemoryMessage> transferredCallback,
+                                          @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     if (ongoingMigrations.containsKey(operationId)) {
       LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
       return;
     }
+
+    callbackRouter.register(operationId + TRANSFERRED_SUFFIX, transferredCallback);
+    callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType));
 
     if (!partitionManager.checkDataType(senderId, dataType)) {
       final String reason = new StringBuilder()
@@ -160,11 +181,10 @@ public final class MigrationManager {
           .append(" of type ").append(dataType)
           .append(". Requested numUnits: ").append(numUnits)
           .toString();
-      notifyFailure(operationId, reason);
+      failMigration(operationId, reason);
       return;
     }
 
-    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType));
     sender.get().sendCtrlMsg(senderId, dataType, receiverId, numUnits, operationId, traceInfo);
   }
 
@@ -197,6 +217,7 @@ public final class MigrationManager {
     }
     migration.checkAndUpdate(Migration.SENDING_DATA, Migration.WAITING_UPDATE);
     waitingOperationIds.add(operationId);
+    notifyTransferred(operationId);
   }
 
   /**
@@ -300,22 +321,61 @@ public final class MigrationManager {
   }
 
   /**
-   * Notify failure to the User via callback.
+   * Fail migration, and notify the failure via callback.
+   * @param operationId Identifier of {@code move} operation.
+   * @param reason a reason for the failure.
+   */
+  synchronized void failMigration(final String operationId, final String reason) {
+    final Migration migration = ongoingMigrations.remove(operationId);
+    if (migration == null) {
+      LOG.log(Level.WARNING,
+          "Failed migration with ID {0} was not registered, or it has already been removed.", operationId);
+    }
+    if (waitingOperationIds.contains(operationId)) {
+      notifyTransferFailure(operationId, reason);
+    }
+    notifyFailure(operationId, reason);
+    updateCounter.countDown();
+  }
+
+  /**
+   * Notify that data transfer failed to the User via callback.
    * There are some non-nullable fields with blank value, which is not necessary for this type of message.
    * TODO #139: Revisit when the avro message structure is changed.
    */
-  synchronized void notifyFailure(final String operationId, final String reason) {
+  private void notifyTransferFailure(final String moveOperationId, final String reason) {
     final ResultMsg resultMsg = ResultMsg.newBuilder()
         .setResult(Result.FAILURE)
         .setMsg(reason)
         .build();
-    final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
-        .setType(Type.ResultMsg)
-        .setResultMsg(resultMsg)
-        .setOperationId(operationId)
-        .setSrcId("")
-        .setDestId("")
+    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId + TRANSFERRED_SUFFIX, resultMsg);
+    callbackRouter.onFailed(msg);
+  }
+
+  /**
+   * Notify that data transfer completed to the User via callback.
+   * There are some non-nullable fields with blank value, which is not necessary for this type of message.
+   * TODO #139: Revisit when the avro message structure is changed.
+   */
+  private void notifyTransferred(final String moveOperationId) {
+    final ResultMsg resultMsg = ResultMsg.newBuilder()
+        .setResult(Result.SUCCESS)
         .build();
+    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId + TRANSFERRED_SUFFIX, resultMsg);
+    callbackRouter.onCompleted(msg);
+  }
+
+  /**
+   * Notify failure to the User via callback.
+   * There are some non-nullable fields with blank value, which is not necessary for this type of message.
+   * TODO #139: Revisit when the avro message structure is changed.
+   */
+  private synchronized void notifyFailure(final String moveOperationId, final String reason) {
+    final ResultMsg resultMsg = ResultMsg.newBuilder()
+        .setResult(Result.FAILURE)
+        .setMsg(reason)
+        .build();
+    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId + FINISHED_SUFFIX, resultMsg);
     callbackRouter.onFailed(msg);
   }
 
@@ -324,7 +384,7 @@ public final class MigrationManager {
    * There are some non-nullable fields with blank value, which is not necessary for this type of message.
    * TODO #139: Revisit when the avro message structure is changed.
    */
-  private synchronized void notifySuccess(final String operationId, final Collection<LongRange> ranges) {
+  private synchronized void notifySuccess(final String moveOperationId, final Collection<LongRange> ranges) {
     final List<AvroLongRange> avroRanges = new ArrayList<>(ranges.size());
     for (final LongRange range : ranges) {
       avroRanges.add(AvroUtils.toAvroLongRange(range));
@@ -334,13 +394,17 @@ public final class MigrationManager {
         .setResult(Result.SUCCESS)
         .setIdRange(avroRanges)
         .build();
-    final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
+    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId + FINISHED_SUFFIX, resultMsg);
+    callbackRouter.onCompleted(msg);
+  }
+
+  private static AvroElasticMemoryMessage getEMMessage(final String operationId, final ResultMsg resultMsg) {
+    return AvroElasticMemoryMessage.newBuilder()
         .setType(Type.ResultMsg)
         .setResultMsg(resultMsg)
         .setOperationId(operationId)
         .setSrcId("")
         .setDestId("")
         .build();
-    callbackRouter.onCompleted(msg);
   }
 }
