@@ -68,7 +68,7 @@ public final class ILPSolverOptimizer implements Optimizer {
   @Override
   public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
 
-    final Cost cost = CostCalculator.newInstance(activeEvaluators).calculate();
+    final Cost cost = CostCalculator.calculate(activeEvaluators);
     final List<OptimizedComputeTask> optimizedComputeTasks =
         initOptimizedComputeTasks(cost, availableEvaluators - activeEvaluators.size());
 

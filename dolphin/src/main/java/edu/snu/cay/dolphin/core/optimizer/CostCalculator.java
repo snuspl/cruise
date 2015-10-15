@@ -28,46 +28,58 @@ import java.util.*;
  */
 final class CostCalculator {
 
-  private final EvaluatorParameters controlTaskParameters;
-  private final List<EvaluatorParameters> computeTasksParameters;
-
-  private CostCalculator(final Collection<EvaluatorParameters> activeEvaluators) {
-    computeTasksParameters = new ArrayList<>();
-    EvaluatorParameters tempControlTaskParameters = null;
-
-    for (final EvaluatorParameters evaluatorParameters : activeEvaluators) {
-      if (evaluatorParameters.getId().startsWith(ControllerTask.TASK_ID_PREFIX)) {
-        tempControlTaskParameters = evaluatorParameters;
-      } else if (evaluatorParameters.getId().startsWith(ComputeTask.TASK_ID_PREFIX)) {
-        computeTasksParameters.add(evaluatorParameters);
-      }
-    }
-
-    if (tempControlTaskParameters != null) {
-      controlTaskParameters = tempControlTaskParameters;
-    } else {
-      throw new RuntimeException("There is no controller task among active evaluators");
-    }
+  private CostCalculator() {
   }
 
-  public static CostCalculator newInstance(final Collection<EvaluatorParameters> activeEvaluators) {
-    return new CostCalculator(activeEvaluators);
+  /**
+   * Returns the evaluator parameters for a controller task.
+   * {@link RuntimeException} will be thrown if the evaluator parameters for a controller task does not exist
+   * in the specified collection.
+   * @param evaluators a collection of {@link EvaluatorParameters}
+   * @return the evaluator parameters for a controller task
+   */
+  private static EvaluatorParameters getControllerTaskParameters(final Collection<EvaluatorParameters> evaluators) {
+    for (final EvaluatorParameters evaluator : evaluators) {
+      if (evaluator.getId().startsWith(ControllerTask.TASK_ID_PREFIX)) {
+        return evaluator;
+      }
+    }
+    throw new RuntimeException("There is no controller task among active evaluators");
+  }
+
+  /**
+   * @param evaluators a collection of {@link EvaluatorParameters}
+   * @return a collection of evaluator parameters for compute tasks
+   */
+  private static Collection<EvaluatorParameters> getComputeTaskParameters(
+      final Collection<EvaluatorParameters> evaluators) {
+    final List<EvaluatorParameters> ret = new ArrayList<>();
+    for (final EvaluatorParameters evaluator : evaluators) {
+      if (evaluator.getId().startsWith(ComputeTask.TASK_ID_PREFIX)) {
+        ret.add(evaluator);
+      }
+    }
+    return ret;
   }
 
   /**
    * Calculates costs of Dolphin.
    * @return the calculated costs
    */
-  public Cost calculate() {
-    final Collection<Cost.ComputeTaskCost> computeTaskCosts = getComputeTaskCosts();
-    final double communicationCost = getCommunicationCost(computeTaskCosts);
+  public static Cost calculate(final Collection<EvaluatorParameters> activeEvaluators) {
+    final EvaluatorParameters ctlTaskEvaluatorParameters = getControllerTaskParameters(activeEvaluators);
+    final Collection<EvaluatorParameters> cmpTasksEvaluatorParameters = getComputeTaskParameters(activeEvaluators);
+    final Collection<Cost.ComputeTaskCost> computeTaskCosts = getComputeTaskCosts(cmpTasksEvaluatorParameters);
+    final double communicationCost = getCommunicationCost(ctlTaskEvaluatorParameters, computeTaskCosts);
     return new Cost(communicationCost, computeTaskCosts);
   }
 
   /**
-   * @return a collection of costs for {@link ComputeTask}.
+   * @param computeTasksParameters a collection of evaluator parameters for compute tasks
+   * @return a collection of costs for {@link ComputeTask}s
    */
-  private Collection<Cost.ComputeTaskCost> getComputeTaskCosts() {
+  private static Collection<Cost.ComputeTaskCost> getComputeTaskCosts(
+      final Collection<EvaluatorParameters> computeTasksParameters) {
     final Collection<Cost.ComputeTaskCost> ret = new ArrayList<>();
     for (final EvaluatorParameters evaluatorParameters : computeTasksParameters) {
       ret.add(getComputeTaskCost(evaluatorParameters));
@@ -82,7 +94,7 @@ final class CostCalculator {
    * @param evaluatorParameters the evaluator parameters object for {@link ComputeTask}.
    * @return The generated compute task cost.
    */
-  private Cost.ComputeTaskCost getComputeTaskCost(final EvaluatorParameters evaluatorParameters) {
+  private static Cost.ComputeTaskCost getComputeTaskCost(final EvaluatorParameters evaluatorParameters) {
     final Map<String, Double> metrics = evaluatorParameters.getMetrics();
     final double cmpCost = metrics.get(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END) -
         metrics.get(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START);
@@ -92,7 +104,7 @@ final class CostCalculator {
   /**
    * Class for comparing two {@link edu.snu.cay.dolphin.core.optimizer.Cost.ComputeTaskCost} by compute costs.
    */
-  private class CmpCostComparator implements Comparator<Cost.ComputeTaskCost> {
+  private static class CmpCostComparator implements Comparator<Cost.ComputeTaskCost> {
     @Override
     public int compare(final Cost.ComputeTaskCost o1, final Cost.ComputeTaskCost o2) {
       return Double.compare(o1.getComputeCost(), o2.getComputeCost());
@@ -106,13 +118,14 @@ final class CostCalculator {
    * @param cmpTaskCosts a collection of costs for {@link ComputeTask}.
    * @return the calculated communication cost.
    */
-  private double getCommunicationCost(final Collection<Cost.ComputeTaskCost> cmpTaskCosts) {
+  private static double getCommunicationCost(final EvaluatorParameters controllerTaskParameters,
+                                      final Collection<Cost.ComputeTaskCost> cmpTaskCosts) {
     // find the maximum compute cost for every compute task.
     final double maxCmpCost = Collections.max(cmpTaskCosts, new CmpCostComparator()).getComputeCost();
 
     // (communication cost) = (reduce end time) - (broadcast start time) - max(compute cost for each compute task)
-    return controlTaskParameters.getMetrics().get(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END)
-        - controlTaskParameters.getMetrics().get(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START)
+    return controllerTaskParameters.getMetrics().get(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END)
+        - controllerTaskParameters.getMetrics().get(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START)
         - maxCmpCost;
   }
 }
