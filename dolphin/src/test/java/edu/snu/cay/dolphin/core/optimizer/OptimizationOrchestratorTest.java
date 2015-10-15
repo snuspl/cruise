@@ -17,8 +17,13 @@ package edu.snu.cay.dolphin.core.optimizer;
 
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
+import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.services.em.optimizer.impl.RandomOptimizer;
+import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import edu.snu.cay.services.em.plan.impl.LoggingPlanExecutor;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -48,9 +53,19 @@ public final class OptimizationOrchestratorTest {
   @Before
   public void setUp() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector(
-        OptimizationConfiguration.getRandomOptimizerConfiguration());
+        getRandomOptimizerConfiguration());
     injector.bindVolatileInstance(ElasticMemory.class, mock(ElasticMemory.class));
     orchestrator = injector.getInstance(OptimizationOrchestrator.class);
+  }
+
+  /**
+   * @return a configuration with RandomOptimizer and LoggingPlanExecutor
+   */
+  private static Configuration getRandomOptimizerConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(Optimizer.class, RandomOptimizer.class)
+        .bindImplementation(PlanExecutor.class, LoggingPlanExecutor.class)
+        .build();
   }
 
   /**
