@@ -29,6 +29,7 @@ import org.ojalgo.optimisation.Optimisation;
 import org.ojalgo.optimisation.Variable;
 
 import javax.inject.Inject;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -94,13 +95,45 @@ public final class ILPSolverOptimizer implements Optimizer {
     }
 
     addExpressions(model, cmpCostVar, optimizedComputeTasks, availableEvaluators - 1); // -1 for excluding the ctrl task
+    final int totalDataUnits = getSumDataUnits(optimizedComputeTasks);
 
     final Optimisation.Result result = model.minimise();
     LOG.log(Level.FINEST, "ILPSolverOptimizer Optimization Result: {0}", result);
 
+    makeDataUnitsInteger(optimizedComputeTasks, totalDataUnits);
+
     final Plan plan = generatePlan(optimizedComputeTasks);
     LOG.log(Level.FINE, "ILPSolverOptimizer Plan: {0}", plan);
     return plan;
+  }
+
+  /**
+   * Make data units for each compute tasks that participating the execution integer
+   * while preserving total number of data units.
+   * @param optimizedComputeTasks a list of optimized compute tasks
+   * @param totalDataUnits a total number of data units
+   */
+  private static void makeDataUnitsInteger(final List<OptimizedComputeTask> optimizedComputeTasks,
+                                           final int totalDataUnits) {
+    int sum = 0;
+    for (final OptimizedComputeTask cmpTask : optimizedComputeTasks) {
+      if (!cmpTask.getParticipateValue()) {
+        continue;
+      }
+      cmpTask.getRequestedDataVariable().setValue(
+          BigDecimal.valueOf(Math.round(cmpTask.getRequestedDataVariable().getValue().doubleValue())));
+      sum += cmpTask.getRequestedDataValue();
+    }
+    final int diff = totalDataUnits - sum;
+    for (final OptimizedComputeTask cmpTask : optimizedComputeTasks) {
+      if (!cmpTask.getParticipateValue()) {
+        continue;
+      }
+      if (cmpTask.getRequestedDataValue() + diff >= 0) {
+        cmpTask.getRequestedDataVariable().setValue(BigDecimal.valueOf(cmpTask.getRequestedDataValue() + diff));
+        return;
+      }
+    }
   }
 
   /**
@@ -118,10 +151,10 @@ public final class ILPSolverOptimizer implements Optimizer {
     // create variables for active compute tasks
     for (final Cost.ComputeTaskCost cmpTaskCost : cost.getComputeTaskCosts()) {
       // add variables for data
-      final Variable dataVar = getNewDataVariable(cmpTaskCost.getId());
+      final Variable dataVar = getNewDataVariable(cmpTaskCost.getId(), false);
 
       // create variable for the compute task's participation to the model
-      final Variable participateVar = getNewParticipateVariable(cmpTaskCost.getId());
+      final Variable participateVar = getNewParticipateVariable(cmpTaskCost.getId(), false);
 
       ret.add(new OptimizedComputeTask(
           cmpTaskCost.getId(), participateVar, dataVar, cmpTaskCost.getDataInfos(), cmpTaskCost.getComputeCost()));
@@ -130,8 +163,8 @@ public final class ILPSolverOptimizer implements Optimizer {
     // create variables for unused evaluators
     for (int i = 0; i < unusedEvaluators; ++i) {
       final String id = TEMP_COMPUTE_TASK_ID_PREFIX + i;
-      final Variable participateVar = getNewParticipateVariable(id);
-      final Variable dataVar = getNewDataVariable(id);
+      final Variable participateVar = getNewParticipateVariable(id, true);
+      final Variable dataVar = getNewDataVariable(id, true);
       ret.add(new OptimizedComputeTask(id, participateVar, dataVar));
     }
 
@@ -142,16 +175,16 @@ public final class ILPSolverOptimizer implements Optimizer {
    * @param id the evaluator id
    * @return the variable for data that the specified evaluator has.
    */
-  private static Variable getNewDataVariable(final String id) {
-    return Variable.make("data-" + id).integer(true).lower(0);
+  private static Variable getNewDataVariable(final String id, final boolean isNew) {
+    return Variable.make(String.format("data-%s-%s", isNew ? "new" : "active", id)).lower(0);
   }
 
   /**
    * @param id the evaluator id
    * @return the variable for the participation of the specified evaluator
    */
-  private static Variable getNewParticipateVariable(final String id) {
-    return Variable.makeBinary("participate-" + id);
+  private static Variable getNewParticipateVariable(final String id, final boolean isNew) {
+    return Variable.makeBinary(String.format("participate-%s-%s", isNew ? "new" : "active", id));
   }
 
   /**
@@ -251,10 +284,10 @@ public final class ILPSolverOptimizer implements Optimizer {
         continue;
       }
 
-      if (cmpTask.getParticipateValue() && cmpTask.getId().startsWith(TEMP_COMPUTE_TASK_ID_PREFIX)) {
+      if (cmpTask.getParticipateValue() && cmpTask.isNewComputeTask()) {
         cmpTask.setId(getNewComputeTaskId()); // replace temporary id with new permanent one.
         builder.addEvaluatorToAdd(cmpTask.getId());
-      } else if (!cmpTask.getParticipateValue() && !cmpTask.getId().startsWith(TEMP_COMPUTE_TASK_ID_PREFIX)) {
+      } else if (!cmpTask.getParticipateValue() && !cmpTask.isNewComputeTask()) {
         builder.addEvaluatorToDelete(cmpTask.getId());
       }
     }
@@ -268,6 +301,7 @@ public final class ILPSolverOptimizer implements Optimizer {
         builder.addTransferSteps(generateTransferStep(sender, receiver));
         if (getDataUnitsToMove(receiver) > 0) {
           receiverPriorityQueue.add(receiver);
+          break;
         }
       }
     }
@@ -360,6 +394,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     private final Variable requestedDataVariable;
     private final Collection<DataInfo> allocatedDataInfos;
     private final double computeCost;
+    private final boolean newComputeTask;
 
     OptimizedComputeTask(final String id,
                          final Variable participateVariable,
@@ -369,6 +404,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       this.requestedDataVariable = requestedDataVariable;
       this.allocatedDataInfos = new ArrayList<>(0);
       this.computeCost = 0D;
+      this.newComputeTask = true;
     }
 
     OptimizedComputeTask(final String id,
@@ -381,6 +417,11 @@ public final class ILPSolverOptimizer implements Optimizer {
       this.requestedDataVariable = requestedDataVariable;
       this.allocatedDataInfos = dataInfos;
       this.computeCost = computeCost;
+      this.newComputeTask = false;
+    }
+
+    public boolean isNewComputeTask() {
+      return newComputeTask;
     }
 
     public String getId() {
@@ -396,7 +437,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     }
 
     public boolean getParticipateValue() {
-      return participateVariable.getValue().intValue() == 1;
+      return participateVariable.getValue().intValueExact() == 1;
     }
 
     public Variable getRequestedDataVariable() {
@@ -404,7 +445,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     }
 
     public int getRequestedDataValue() {
-      return requestedDataVariable.getValue().intValue();
+      return requestedDataVariable.getValue().intValueExact();
     }
 
     public Collection<DataInfo> getAllocatedDataInfos() {
