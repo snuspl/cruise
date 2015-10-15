@@ -61,6 +61,7 @@ import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.task.Task;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
@@ -559,7 +560,7 @@ public final class DolphinDriver {
             .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
 
         partialTaskConf = Configurations.merge(
-            getBaseTaskConf(ctrlTaskId, ControllerTask.class, controllerTaskTraceScope.getSpan()),
+            getCtrlTaskConf(ctrlTaskId, controllerTaskTraceScope.getSpan()),
             dolphinTaskConfBuilder.build(),
             userParameters.getUserCtrlTaskConf());
       }
@@ -579,7 +580,7 @@ public final class DolphinDriver {
             .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
 
         partialTaskConf = Configurations.merge(
-            getBaseTaskConf(cmpTaskId, ComputeTask.class, computeTaskTraceScope.getSpan()),
+            getCmpTaskConf(cmpTaskId, computeTaskTraceScope.getSpan()),
             dolphinTaskConfBuilder.build(),
             userParameters.getUserCmpTaskConf());
       }
@@ -607,15 +608,25 @@ public final class DolphinDriver {
     return ComputeTask.TASK_ID_PREFIX + "-" + sequence;
   }
 
-  private Configuration getBaseTaskConf(final String identifier,
-                                        final Class<? extends Task> taskClass,
-                                        @Nullable final Span traceSpan) {
+  private Configuration getCtrlTaskConf(final String identifier, @Nullable final Span traceSpan) {
+    return getBaseTaskConfModule(identifier, ControllerTask.class, traceSpan)
+        .build();
+  }
+
+  private Configuration getCmpTaskConf(final String identifier, @Nullable final Span traceSpan) {
+    return getBaseTaskConfModule(identifier, ComputeTask.class, traceSpan)
+        .set(TaskConfiguration.ON_CLOSE, ComputeTask.TaskCloseHandler.class)
+        .build();
+  }
+
+  private ConfigurationModule getBaseTaskConfModule(final String identifier,
+                                                    final Class<? extends Task> taskClass,
+                                                    @Nullable final Span traceSpan) {
     if (traceSpan == null) {
 
       return TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, identifier)
-          .set(TaskConfiguration.TASK, taskClass)
-          .build();
+          .set(TaskConfiguration.TASK, taskClass);
     } else {
 
       return TaskConfiguration.CONF
@@ -623,8 +634,7 @@ public final class DolphinDriver {
           .set(TaskConfiguration.TASK, taskClass)
           .set(TaskConfiguration.MEMENTO, DatatypeConverter.printBase64Binary(
               hTraceInfoCodec.encode(
-                  HTraceUtils.toAvro(TraceInfo.fromSpan(traceSpan)))))
-          .build();
+                  HTraceUtils.toAvro(TraceInfo.fromSpan(traceSpan)))));
     }
   }
 }
