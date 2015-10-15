@@ -121,16 +121,14 @@ public final class ILPSolverOptimizer implements Optimizer {
         continue;
       }
       cmpTask.getRequestedDataVariable().setValue(
-          BigDecimal.valueOf(Math.round(cmpTask.getRequestedDataVariable().getValue().doubleValue())));
+          BigDecimal.valueOf(Math.floor(cmpTask.getRequestedDataVariable().getValue().doubleValue())));
       sum += cmpTask.getRequestedDataValue();
     }
-    final int diff = totalDataUnits - sum;
     for (final OptimizedComputeTask cmpTask : optimizedComputeTasks) {
-      if (!cmpTask.getParticipateValue()) {
-        continue;
-      }
-      if (cmpTask.getRequestedDataValue() + diff >= 0) {
-        cmpTask.getRequestedDataVariable().setValue(BigDecimal.valueOf(cmpTask.getRequestedDataValue() + diff));
+      if (cmpTask.getParticipateValue()) {
+        // (totalDataUnits - sum) must be >= 0 due to the above floor operation.
+        cmpTask.getRequestedDataVariable().setValue(
+            BigDecimal.valueOf(cmpTask.getRequestedDataValue() + (totalDataUnits - sum)));
         return;
       }
     }

@@ -44,7 +44,7 @@ public final class ILPSolverOptimizerTest {
   @Before
   public void setUp() throws InjectionException {
     ilpSolverOptimizer = Tang.Factory.getTang().newInjector().getInstance(ILPSolverOptimizer.class);
-    random = new Random(System.currentTimeMillis());
+    random = new Random();
   }
 
   /**
@@ -102,7 +102,7 @@ public final class ILPSolverOptimizerTest {
         final int dataUnitsPerEval = dataUnitsArray[j] / numComputeTasks;
         final int dataUnits = (i == 0) ? dataUnitsPerEval + (dataUnitsArray[j] % numComputeTasks) : dataUnitsPerEval;
 
-        cmpTaskDataInfos.add(new DataInfoImpl("testType-" + j, dataUnits));
+        cmpTaskDataInfos.add(new DataInfoImpl(String.format("testType-%d", j), dataUnits));
         sumDataUnits += dataUnits;
       }
 
