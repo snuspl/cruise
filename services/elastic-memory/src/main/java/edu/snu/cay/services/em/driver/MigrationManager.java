@@ -229,7 +229,7 @@ public final class MigrationManager {
    * ({@link edu.snu.cay.services.em.driver.api.ElasticMemory#applyUpdates()}).
    * @param traceInfo Trace information
    */
-  public void applyUpdates(final TraceInfo traceInfo) {
+  public void applyUpdates(@Nullable final TraceInfo traceInfo) {
     synchronized (this) {
       updateCounter = new CountDownLatch(waitingOperationIds.size());
 
@@ -263,7 +263,8 @@ public final class MigrationManager {
    * @param operationId Identifier of the {@code move} operation
    * @param traceInfo Trace information
    */
-  synchronized void movePartition(final String operationId, final TraceInfo traceInfo) {
+  synchronized void movePartition(final String operationId,
+                                  @Nullable final TraceInfo traceInfo) {
     try (final TraceScope movePartition = Trace.startSpan(MOVE_PARTITION, traceInfo)) {
       final Migration migration = ongoingMigrations.get(operationId);
       if (migration == null) {
@@ -289,7 +290,8 @@ public final class MigrationManager {
    * @param operationId Identifier of {@code move} operation.
    * @param traceInfo Trace information
    */
-  synchronized void updateSender(final String operationId, final TraceInfo traceInfo) {
+  synchronized void updateSender(final String operationId,
+                                 @Nullable final TraceInfo traceInfo) {
     final Migration migration = ongoingMigrations.get(operationId);
     if (migration == null) {
       LOG.log(Level.WARNING, "Migration with ID {0} was not registered, or it has already been finished.", operationId);
