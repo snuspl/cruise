@@ -16,10 +16,12 @@
 package edu.snu.cay.dolphin.integration.em;
 
 import edu.snu.cay.dolphin.core.DolphinConfiguration;
+import edu.snu.cay.dolphin.core.DolphinLauncher;
 import edu.snu.cay.dolphin.core.UserJobInfo;
 import edu.snu.cay.dolphin.examples.simple.SimpleJobInfo;
 import edu.snu.cay.dolphin.parameters.JobIdentifier;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.driver.parameters.DriverStartHandler;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
@@ -35,8 +37,7 @@ import static org.junit.Assert.assertEquals;
  * Checks REEF job status and asserts whether it is completed without exception or not.
  * To implement a useful integration test, we should use DolphinDriver without changes
  * since it is tightly related to EM add primitive.
- * Thus this test uses DolphinDriver without any modification,
- * and only makes some minor changes in DolphinLauncher to implement AddTestLauncher.
+ * Thus this test uses DolphinDriver without any modification.
  * You can use any integer value for parameters of {@code run},
  * but be careful to not choose too large number to ensure that it finishes within a certain timeout.
  */
@@ -50,6 +51,7 @@ public class AddIntegrationTest {
   private void run(final int addEvalNum, final int addThreadNum) {
     final String[] args = {
         "-split", "1",
+        "-local", "true",
         "-input", ClassLoader.getSystemResource("data").getPath() + "/sample",
         "-output", ClassLoader.getSystemResource("data").getPath() + "/result",
         "-maxNumEvalLocal", Integer.toString(addEvalNum + 2),
@@ -57,17 +59,18 @@ public class AddIntegrationTest {
     };
     LauncherStatus status;
     try {
-      status = AddTestLauncher.run(
+      status = DolphinLauncher.run(
           Configurations.merge(
               DolphinConfiguration.getConfiguration(args),
               Tang.Factory.getTang().newConfigurationBuilder()
                   .bindNamedParameter(JobIdentifier.class, "EM Add Integration Test")
                   .bindImplementation(UserJobInfo.class, SimpleJobInfo.class)
-                  .bindNamedParameter(AddEvalNumber.class, Integer.toString(addEvalNum))
-                  .bindNamedParameter(AddThreadNumber.class, Integer.toString(addThreadNum))
-                  .build()
-          )
-      );
+                  .build()),
+          Tang.Factory.getTang().newConfigurationBuilder()
+              .bindSetEntry(DriverStartHandler.class, AddTestStartHandler.class)
+              .bindNamedParameter(AddEvalNumber.class, Integer.toString(addEvalNum))
+              .bindNamedParameter(AddThreadNumber.class, Integer.toString(addThreadNum))
+              .build());
     } catch (IOException e) {
       status = LauncherStatus.failed(e);
     }

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.integration.em;
 
+import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.driver.context.ActiveContext;
@@ -25,6 +26,7 @@ import org.apache.reef.wake.time.event.StartTime;
 import javax.inject.Inject;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -36,20 +38,24 @@ import java.util.logging.Logger;
 public final class AddTestStartHandler implements EventHandler<StartTime> {
   private static final Logger LOG = Logger.getLogger(AddTestStartHandler.class.getName());
   private final ElasticMemory elasticMemory;
+  private final DataLoader dataLoader;
   private final int numAdd;
   private final int numThreads;
 
   @Inject
   private AddTestStartHandler(final ElasticMemory elasticMemory,
+                              final DataLoader dataLoader,
                               @Parameter(AddIntegrationTest.AddEvalNumber.class) final int numAdd,
                               @Parameter(AddIntegrationTest.AddThreadNumber.class) final int numThreads) {
     this.elasticMemory = elasticMemory;
+    this.dataLoader = dataLoader;
     this.numAdd = numAdd;
     this.numThreads = numThreads;
   }
 
   @Override
   public void onNext(final StartTime startTime) {
+    LOG.log(Level.INFO, "Add integration test allocating {0} evaluators", numAdd);
     final Runnable[] threads = new Runnable[numThreads];
     final CountDownLatch countDownLatch = new CountDownLatch(numAdd);
 
@@ -72,9 +78,9 @@ public final class AddTestStartHandler implements EventHandler<StartTime> {
     } catch (InterruptedException e) {
       addFinished = false;
     } finally {
-      LOG.info("Test result: " + addFinished);
+      LOG.log(Level.INFO, "Test result: {0} evaluators allocated", numAdd - countDownLatch.getCount());
       if (!addFinished) {
-        throw new RuntimeException("Test failed.");
+        throw new RuntimeException("Test failed");
       }
     }
   }
@@ -92,12 +98,21 @@ public final class AddTestStartHandler implements EventHandler<StartTime> {
 
     @Override
     public void run() {
+      // Wait until DataLoader receives evaluators
+      while (dataLoader.isDataLoaderRequest()) {
+        LOG.fine("Sleeping...");
+        try {
+          Thread.sleep(1000);
+        } catch (final InterruptedException e) {
+          throw new RuntimeException("Test failed", e);
+        }
+      }
       elasticMemory.add(addsPerThread, 128, 1,
           //Do nothing, close the activeContext
           new EventHandler<ActiveContext>() {
             @Override
             public void onNext(final ActiveContext activeContext) {
-              LOG.info("EM add completed. " + activeContext);
+              LOG.log(Level.INFO, "EM add completed {0}", activeContext);
               countDownLatch.countDown();
               activeContext.close();
             }

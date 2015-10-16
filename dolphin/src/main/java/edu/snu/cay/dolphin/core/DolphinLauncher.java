@@ -73,7 +73,7 @@ public final class DolphinLauncher {
       status = Tang.Factory.getTang()
           .newInjector(dolphinConfig)
           .getInstance(DolphinLauncher.class)
-          .run();
+          .launch();
     } catch (final Exception e) {
       status = LauncherStatus.failed(e);
     }
@@ -81,9 +81,25 @@ public final class DolphinLauncher {
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 
-  private LauncherStatus run() throws InjectionException {
+  public static LauncherStatus run(final Configuration dolphinConfig, final Configuration... driverConfigs) {
+    LauncherStatus status;
+    try {
+      status = Tang.Factory.getTang()
+          .newInjector(dolphinConfig)
+          .getInstance(DolphinLauncher.class)
+          .launch(driverConfigs);
+    } catch (final Exception e) {
+      status = LauncherStatus.failed(e);
+    }
+
+    LOG.log(Level.INFO, "REEF job completed: {0}", status);
+    return status;
+  }
+
+  private LauncherStatus launch(final Configuration... confs) throws InjectionException {
     return DriverLauncher.getLauncher(getRuntimeConfiguration())
-        .run(getDriverConfiguration(), dolphinParameters.getTimeout());
+        .run(Configurations.merge(getDriverConfiguration(), Configurations.merge(confs)),
+            dolphinParameters.getTimeout());
   }
 
   private Configuration getRuntimeConfiguration() {

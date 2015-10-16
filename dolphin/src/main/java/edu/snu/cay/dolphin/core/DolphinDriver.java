@@ -318,7 +318,7 @@ public final class DolphinDriver {
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      LOG.info("Evaluator allocated. " + allocatedEvaluator);
+      LOG.log(Level.INFO, "Evaluator allocated {0}", allocatedEvaluator);
       if (dataLoader.isDataLoaderRequest()) {
         evalToRequestorMap.put(allocatedEvaluator.getId(), DataLoader.class.getName());
         dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
@@ -326,7 +326,7 @@ public final class DolphinDriver {
         evalToRequestorMap.put(allocatedEvaluator.getId(), ElasticMemory.class.getName());
         allocatedEvaluator.submitContextAndService(getContextConfiguration(), getServiceConfiguration());
       } else {
-        LOG.warning("Unknown evaluator allocated. Ignore " + allocatedEvaluator);
+        LOG.log(Level.WARNING, "Unknown evaluator allocated. Ignore {0}", allocatedEvaluator);
         allocatedEvaluator.close();
       }
     }
