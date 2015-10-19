@@ -113,7 +113,7 @@ public final class ComputeTask implements Task {
     userComputeTask.initialize();
 
     final ExecutorService executor = Executors.newSingleThreadExecutor();
-    Future<?> result = executor.submit(new Runnable() {
+    final Future<?> result = executor.submit(new Runnable() {
       @Override
       public void run() {
         try (final MetricsCollector collector = metricsCollector) {
@@ -144,10 +144,10 @@ public final class ComputeTask implements Task {
     try {
       result.get();
     } catch (final ExecutionException e) {
-      if (!isClosing.get()) {
-        throw new Exception(e);
+      if (isClosing.get()) {
+        LOG.log(Level.INFO, "Task closed by TaskCloseHandler.");
       } else {
-        LOG.log(Level.INFO, "Task closed by EM.");
+        throw new Exception(e);
       }
     }
     return null;
@@ -230,9 +230,13 @@ public final class ComputeTask implements Task {
   final class TaskCloseHandler implements EventHandler<CloseEvent> {
     @Override
     public void onNext(final CloseEvent closeEvent) {
-      LOG.log(Level.INFO, "Task closing {0}", closeEvent);
-      isClosing.compareAndSet(false, true);
-      terminated.countDown();
+      if (terminated.getCount() == 0) {
+        LOG.log(Level.INFO, "Tried to close task, but already terminated.");
+      } else {
+        LOG.log(Level.INFO, "Task closing {0}", closeEvent);
+        isClosing.compareAndSet(false, true);
+        terminated.countDown();
+      }
     }
   }
 }
