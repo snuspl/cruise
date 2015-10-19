@@ -80,8 +80,6 @@ public final class DriverSync implements EventHandler<Message<AvroSyncMessage>> 
         .addState(CANCELLING, "Pause is being cancelled")
         .setInitialState(RUNNING)
         // Normal-case transitions
-        .addTransition(RUNNING, RUNNING,
-            "Running normally")
         .addTransition(RUNNING, WAITING_PAUSE_RESULT,
             "The pause request has been sent")
         .addTransition(WAITING_PAUSE_RESULT, PAUSED,
@@ -117,7 +115,8 @@ public final class DriverSync implements EventHandler<Message<AvroSyncMessage>> 
    * Driver execution handler is called only when the Controller Task is successfully paused;
    * the pause failed handler is called if the Controller Task cannot be paused.
    * @param handler the handler to execute when the Controller Task is paused
-   * @param pauseFailedHandler the cleanup handler to execute when pause is unsuccessful
+   * @param pauseFailedHandler the cleanup handler to execute when pause is unsuccessful.
+   *                           The handler's Object parameter is passed as null and should be ignored.
    * @throws InterruptedException
    */
   public synchronized void execute(final EventHandler<IterationInfo> handler,

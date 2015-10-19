@@ -44,9 +44,8 @@ import java.util.logging.Logger;
  * Orchestrates EM optimization and plan execution within the Dolphin runtime.
  *
  * The OptimizationOrchestrator keeps track of the number of tasks active within the
- * Dolphin runtime, via the
- *
- * The OptimizationOrchestrator keeps track of received messages, for each
+ * Dolphin runtime, via the onRunningTask/onCompletedTask/onFailedTask calls.
+ * It keeps track of received messages, for each
  * (comm group, iteration) pair, by creating an instance of MetricsReceiver.
  * When all metrics are received for a (comm group, iteration), the optimizer is
  * called, and the resulting Plan is executed.
