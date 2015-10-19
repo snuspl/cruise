@@ -154,7 +154,7 @@ public final class SubMemoryStoreTest {
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
         subMemoryStore.removeAll(DATA_TYPE).size());
     // check that removeAll works as expected
-    assertNull(MSG_REMOVE_ALL_ASSERTION, subMemoryStore.getAll(DATA_TYPE));
+    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, subMemoryStore.getAll(DATA_TYPE).size());
   }
 
   @Test
@@ -196,7 +196,7 @@ public final class SubMemoryStoreTest {
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects,
         subMemoryStore.removeAll(DATA_TYPE).size());
     // check that removeAll works as expected
-    assertNull(MSG_REMOVE_ALL_ASSERTION, subMemoryStore.getAll(DATA_TYPE));
+    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, subMemoryStore.getAll(DATA_TYPE).size());
   }
 
   @Test
@@ -293,7 +293,7 @@ public final class SubMemoryStoreTest {
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
         subMemoryStore.removeAll(DATA_TYPE).size());
     // check that removeAll works as expected
-    assertNull(MSG_REMOVE_ALL_ASSERTION, subMemoryStore.getAll(DATA_TYPE));
+    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, subMemoryStore.getAll(DATA_TYPE).size());
   }
 
   private enum IndexParity {

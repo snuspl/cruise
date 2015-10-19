@@ -19,7 +19,7 @@
  * and the iteration number.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.metric.avro",
+  "namespace": "edu.snu.cay.dolphin.core.avro",
   "type": "record",
   "name": "IterationInfo",
   "fields":
@@ -52,9 +52,7 @@
   "type": "record",
   "name": "ControllerMsg",
   "fields":
-  [
-    {"name": "numComputeTasks", "type": "int"}
-  ]
+  []
 },
 
 /**
@@ -83,10 +81,69 @@
   [
     {"name": "srcType", "type": {"type": "enum", "name": "SrcType",
         "symbols": ["Compute", "Controller"]}},
-    {"name": "iterationInfo", "type": "IterationInfo"},
+    {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.core.avro.IterationInfo"},
     {"name": "metrics", "type": "bytes"},
     {"name": "controllerMsg", "type": ["null", "ControllerMsg"], "default": null},
     {"name": "computeMsg", "type": ["null", "ComputeMsg"], "default": null}
+  ]
+},
+
+/**
+ * Request a pause.
+ * Driver -> Controller Task.
+ */
+{
+  "namespace": "edu.snu.cay.dolphin.core.sync.avro",
+  "type": "record",
+  "name": "PauseRequest",
+  "fields":
+  []
+},
+
+/**
+ * Confirm a pause has taken place. This message will be sent directly before an iteration.
+ * Controller Task -> Driver.
+ */
+{
+  "namespace": "edu.snu.cay.dolphin.core.sync.avro",
+  "type": "record",
+  "name": "PauseResult",
+  "fields":
+  [
+    {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.core.avro.IterationInfo"}
+  ]
+},
+
+/**
+ * Notify that a paused iteration may resume.
+ * Driver -> Controller Task.
+ */
+{
+  "namespace": "edu.snu.cay.dolphin.core.sync.avro",
+  "type": "record",
+  "name": "ResumeRequest",
+  "fields":
+  [
+    {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.core.avro.IterationInfo"}
+  ]
+},
+
+/**
+ * The message protocol used to synchronize between Driver and Controller Task execution.
+ * The protocol guarantees that a Driver-side function can execute while the Controller Task waits (or is "paused")
+ * before an iteration.
+ */
+{
+  "namespace": "edu.snu.cay.dolphin.core.sync.avro",
+  "type": "record",
+  "name": "AvroSyncMessage",
+  "fields":
+  [
+    {"name": "type", "type": {"type": "enum", "name": "Type",
+        "symbols": ["PauseRequest", "PauseResult", "ResumeRequest"]}},
+    {"name": "pauseRequest", "type": ["null", "PauseRequest"], "default": null},
+    {"name": "pauseResult", "type": ["null", "PauseResult"], "default": null},
+    {"name": "resumeRequest", "type": ["null", "ResumeRequest"], "default": null}
   ]
 }
 ]

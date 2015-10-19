@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
 import edu.snu.cay.dolphin.core.metric.avro.DataInfo;
-import edu.snu.cay.dolphin.core.metric.avro.IterationInfo;
 import edu.snu.cay.dolphin.groupcomm.interfaces.*;
 import edu.snu.cay.dolphin.groupcomm.names.*;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_EXCHANGE_SHUFFLE_DATA_START;
@@ -79,7 +79,7 @@ public final class ComputeTask implements Task {
   private final UserTaskTrace userTaskTrace;
 
   private final Queue<Tuple> receivedTupleList;
-  private int iteration = 0;
+  private int iteration;
 
   @Inject
   public ComputeTask(final GroupCommClient groupCommClient,
@@ -89,6 +89,7 @@ public final class ComputeTask implements Task {
                      final UserComputeTask userComputeTask,
                      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                      @Parameter(CommunicationGroup.class) final String commGroupName,
+                     @Parameter(Iteration.class) final int startIteration,
                      final MetricsCollector metricsCollector,
                      @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
                      final InsertableMetricTracker insertableMetricTracker,
@@ -101,6 +102,7 @@ public final class ComputeTask implements Task {
     this.taskId = taskId;
     this.commGroup =
         groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
+    this.iteration = startIteration;
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
 
     // TODO #223: Use ShuffleProvider's method to check the shuffle is used or not

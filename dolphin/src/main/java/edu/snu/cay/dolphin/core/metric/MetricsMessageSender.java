@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.core.metric;
 
+import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
 import edu.snu.cay.dolphin.core.metric.avro.ControllerMsg;
-import edu.snu.cay.dolphin.core.metric.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.dolphin.core.metric.avro.SrcType;
 import org.apache.avro.AvroRuntimeException;

@@ -118,7 +118,7 @@ public final class SubMemoryStoreImpl implements SubMemoryStore {
 
     try {
       if (!dataMap.containsKey(dataType)) {
-        return null;
+        return new TreeMap<>();
       }
       return (Map<Long, T>)dataMap.get(dataType).clone();
 
@@ -133,7 +133,7 @@ public final class SubMemoryStoreImpl implements SubMemoryStore {
 
     try {
       if (!dataMap.containsKey(dataType)) {
-        return null;
+        return new TreeMap<>();
       }
       return new TreeMap<>((SortedMap<Long, T>)dataMap.get(dataType).subMap(startId, true, endId, true));
 
@@ -169,7 +169,7 @@ public final class SubMemoryStoreImpl implements SubMemoryStore {
 
     try {
       if (!dataMap.containsKey(dataType)) {
-        return null;
+        return new TreeMap<>();
       }
       return (Map<Long, T>)dataMap.remove(dataType);
 
@@ -184,7 +184,7 @@ public final class SubMemoryStoreImpl implements SubMemoryStore {
 
     try {
       if (!dataMap.containsKey(dataType)) {
-        return null;
+        return new TreeMap<>();
       }
       final TreeMap<Long, T> subMap =
           new TreeMap<>((SortedMap<Long, T>)dataMap.get(dataType).subMap(startId, true, endId, true));

@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.msg.impl;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
+import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
@@ -29,7 +30,9 @@ import org.apache.reef.io.network.Connection;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -45,8 +48,11 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   private static final String SEND_CTRL_MSG = "sendCtrlMsg";
   private static final String SEND_DATA_MSG = "sendDataMsg";
-  private static final String SEND_RESULT_MSG = "sendResultMsg";
+  private static final String SEND_DATA_ACK_MSG = "sendDataAckMsg";
   private static final String SEND_REGIS_MSG = "sendRegisMsg";
+  private static final String SEND_UPDATE_MSG = "sendUpdateMsg";
+  private static final String SEND_UPDATE_ACK_MSG = "sendUpdateAckMsg";
+  private static final String SEND_FAILURE_MSG = "sendFailureMsg";
 
   private final EMNetworkSetup emNetworkSetup;
   private final IdentifierFactory identifierFactory;
@@ -89,7 +95,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       final List<AvroLongRange> avroLongRangeList = new LinkedList<>();
       for (final LongRange idRange : idRangeSet) {
-        avroLongRangeList.add(convertLongRange(idRange));
+        avroLongRangeList.add(AvroUtils.toAvroLongRange(idRange));
       }
 
       final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
@@ -171,36 +177,32 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendResultMsg(final boolean success, final String dataType, final Set<LongRange> idRangeSet,
-                            final String operationId, final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendResultMsgScope = Trace.startSpan(SEND_RESULT_MSG, parentTraceInfo)) {
+  public void sendDataAckMsg(final Set<LongRange> idRangeSet,
+                             final String operationId, final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendDataAckMsgScope = Trace.startSpan(SEND_DATA_ACK_MSG, parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
-          new Object[]{success, idRangeSet, operationId});
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg", new Object[]{operationId});
 
-      final List<AvroLongRange> avroLongRangeList = new LinkedList<>();
-      for (final LongRange idRange : idRangeSet) {
-        avroLongRangeList.add(convertLongRange(idRange));
+      final List<AvroLongRange> avroLongRanges = new ArrayList<>(idRangeSet.size());
+      for (final LongRange range : idRangeSet) {
+        avroLongRanges.add(AvroUtils.toAvroLongRange(range));
       }
 
-      final ResultMsg resultMsg = ResultMsg.newBuilder()
-          .setResult(success ? Result.SUCCESS : Result.FAILURE)
-          .setDataType(dataType)
-          .setIdRange(avroLongRangeList)
+      final DataAckMsg dataAckMsg = DataAckMsg.newBuilder()
+          .setIdRange(avroLongRanges)
           .build();
 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.ResultMsg)
+              .setType(Type.DataAckMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(driverId)
               .setOperationId(operationId)
+              .setDataAckMsg(dataAckMsg)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-              .setResultMsg(resultMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendResultMsg",
-          new Object[]{success, idRangeSet, operationId});
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg", new Object[]{operationId});
 
     }
   }
@@ -215,10 +217,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       final RegisMsg regisMsg = RegisMsg.newBuilder()
           .setDataType(dataType)
-          .setIdRange(AvroLongRange.newBuilder()
-              .setMin(unitStartId)
-              .setMax(unitEndId)
-              .build())
+          .setIdRange(AvroUtils.toAvroLongRange(new LongRange(unitStartId, unitEndId)))
           .build();
 
       send(driverId,
@@ -234,10 +233,80 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     }
   }
 
-  private AvroLongRange convertLongRange(final LongRange longRange) {
-    return AvroLongRange.newBuilder()
-        .setMin(longRange.getMinimumLong())
-        .setMax(longRange.getMaximumLong())
-        .build();
+  @Override
+  public void sendUpdateMsg(final String destId, final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendUpdateMsgScope = Trace.startSpan(SEND_UPDATE_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateMsg",
+          new Object[]{destId});
+
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.UpdateMsg)
+              .setSrcId(driverId)
+              .setDestId(destId)
+              .setOperationId(operationId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateMsg",
+          new Object[]{});
+    }
+  }
+
+  @Override
+  public void sendUpdateAckMsg(final String operationId,
+                               final UpdateResult result,
+                               @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendUpdateAckMsgScope = Trace.startSpan(SEND_UPDATE_ACK_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateAckMsg",
+          new Object[]{operationId, result});
+
+      final UpdateAckMsg updateAckMsg =
+          UpdateAckMsg.newBuilder()
+              .setResult(result)
+              .build();
+
+      send(driverId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.UpdateAckMsg)
+              .setSrcId(emNetworkSetup.getMyId().toString())
+              .setDestId(driverId)
+              .setOperationId(operationId)
+              .setUpdateAckMsg(updateAckMsg)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateAckMsg",
+          new Object[]{operationId, result});
+    }
+  }
+
+  @Override
+  public void sendFailureMsg(final String operationId, final String reason, @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendFailureMsgScope = Trace.startSpan(SEND_FAILURE_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",
+          new Object[]{operationId, reason});
+
+      final FailureMsg failureMsg =
+          FailureMsg.newBuilder()
+              .setOperationId(operationId)
+              .setReason(reason)
+              .build();
+      send(driverId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.FailureMsg)
+              .setSrcId(emNetworkSetup.getMyId().toString())
+              .setDestId(driverId)
+              .setOperationId(operationId)
+              .setFailureMsg(failureMsg)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendFailureMsg",
+          new Object[]{operationId, reason});
+    }
   }
 }

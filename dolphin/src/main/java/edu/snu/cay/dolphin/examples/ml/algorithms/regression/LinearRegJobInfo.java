@@ -51,6 +51,7 @@ public final class LinearRegJobInfo implements UserJobInfo {
             .setBroadcast(DenseLinearModelCodec.class)
             .setReduce(LinearRegSummaryCodec.class, LinearRegReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
+            .setOptimizable(true)
             .build());
 
     return stageInfoList;

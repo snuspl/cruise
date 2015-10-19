@@ -27,12 +27,7 @@ import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -167,7 +162,7 @@ public final class RandomOptimizer implements Optimizer {
 
   private EvaluatorParameters getNewEvaluator() {
     return new EvaluatorParametersImpl("newRandomOptimizerNode-" + newEvaluatorId.getAndIncrement(),
-        new ArrayList<DataInfo>(0));
+        new ArrayList<DataInfo>(0), new HashMap<String, Double>(0));
   }
 
   private static Collection<String> getDataTypes(final Collection<EvaluatorParameters> evaluators) {

@@ -44,6 +44,21 @@
 },
 
 /**
+ * A record type for evaluators to report a partition addition to the driver.
+ * The data type of the partition and its identifier range must be encoded in the message.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RegisMsg",
+  "fields":
+  [
+    {"name": "dataType", "type": "string"},
+    {"name": "idRange", "type": "AvroLongRange"}
+  ]
+},
+
+/**
  * Control message that is sent from the driver to evaluators.
  * The message contains the data type to send, as well as either
  * an array of {@code AvroLongRange}s that show which identifiers to send, or
@@ -80,7 +95,60 @@
 
 /**
  * Response message that is sent from evaluator to driver.
- * The message contains the control message id.
+ * The message contains the ranges moved in this data transfer.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "DataAckMsg",
+  "fields":
+  [
+    {"name": "idRange", "type": {"type": "array", "items": "AvroLongRange"}}
+  ]
+},
+
+/**
+ * Request message to update status from driver to evaluators
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "UpdateMsg",
+  "fields": []
+},
+
+/**
+ * Response message from evaluators to the driver notifying the update result.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "UpdateAckMsg",
+  "fields":
+  [
+    {
+    "name": "result",
+    "type": {"type": "enum", "name": "UpdateResult", "symbols": ["RECEIVER_UPDATED", "SENDER_UPDATED"]}
+    }
+  ]
+},
+
+/**
+ * Message to notify failures in Evaluators to the Driver.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "FailureMsg",
+  "fields":
+  [
+    { "name": "operationId", "type": "string" },
+    { "name": "reason", "type": "string" }
+  ]
+},
+
+/**
+ * Message to notify the result of the migration via callback.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -89,23 +157,8 @@
   "fields":
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
-    {"name": "dataType", "type": "string"},
-    {"name": "idRange", "type": {"type": "array", "items": "AvroLongRange"}}
-  ]
-},
-
-/**
- * A record type for evaluators to report a partition addition to the driver.
- * The data type of the partition and its identifier range must be encoded in the message.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "RegisMsg",
-  "fields":
-  [
-    {"name": "dataType", "type": "string"},
-    {"name": "idRange", "type": "AvroLongRange"}
+    {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
+    {"name": "msg", "type": ["null", "string"], "default": null}
   ]
 },
 
@@ -121,15 +174,20 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["CtrlMsg", "DataMsg", "ResultMsg", "RegisMsg"]}},
+        "symbols": ["RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
+        "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
+    {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
-    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
-    {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null}
+    {"name": "dataAckMsg", "type": ["null", "DataAckMsg"], "default": null},
+    {"name": "updateMsg", "type": ["null", "UpdateMsg"], "default": null},
+    {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null},
+    {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
+    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null}
   ]
 }
 ]

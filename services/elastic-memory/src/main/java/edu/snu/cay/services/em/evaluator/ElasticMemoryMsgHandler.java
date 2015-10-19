@@ -19,8 +19,8 @@ import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
-import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.LongRangeUtils;
+import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.Trace;
@@ -35,6 +35,9 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -48,10 +51,22 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
   private static final String ON_DATA_MSG = "onDataMsg";
   private static final String ON_CTRL_MSG = "onCtrlMsg";
+  private static final String ON_UPDATE_MSG = "onUpdateMsg";
 
   private final MemoryStore memoryStore;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
+
+  /**
+   * Keep the information for applying the updates after the data is transferred.
+   * This allows the data to be accessible while the migration is going on.
+   */
+  private final ConcurrentMap<String, Update> pendingUpdates = new ConcurrentHashMap<>();
+
+  /**
+   * Keep the moving ranges, so we don't include the units to the migration if they are already moving.
+   */
+  private final Set<LongRange> movingRanges = Collections.synchronizedSet(new HashSet<LongRange>());
 
   @Inject
   private ElasticMemoryMsgHandler(final MemoryStore memoryStore,
@@ -76,12 +91,17 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       onCtrlMsg(innerMsg);
       break;
 
+    case UpdateMsg:
+      onUpdateMsg(innerMsg);
+      break;
+
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
 
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
+
 
   /**
    * Puts the data message contents into own memory store.
@@ -91,20 +111,20 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       final DataMsg dataMsg = msg.getDataMsg();
       final String dataType = dataMsg.getDataType().toString();
-      final Codec codec = serializer.getCodec(dataMsg.getDataType().toString());
+      final Codec codec = serializer.getCodec(dataType);
+      final String operationId = msg.getOperationId().toString();
 
-      // extract data items from the message and store them in my memory store
+      // Compress the ranges so the number of ranges minimizes.
       final SortedSet<Long> newIds = new TreeSet<>();
       for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
-        final byte[] data = unitIdPair.getUnit().array();
         final long id = unitIdPair.getId();
         newIds.add(id);
-        memoryStore.getElasticStore().put(dataType, id, codec.decode(data));
       }
-
       final Set<LongRange> longRangeSet = LongRangeUtils.generateDenseLongRanges(newIds);
-      sender.get().sendResultMsg(true, dataType, longRangeSet,
-          msg.getOperationId().toString(), TraceInfo.fromSpan(onDataMsgScope.getSpan()));
+
+      // store the items in the pendingUpdates, so the items will be added later.
+      pendingUpdates.put(operationId, new Add(dataType, codec, dataMsg.getUnits(), longRangeSet));
+      sender.get().sendDataAckMsg(longRangeSet, operationId, TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
   }
 
@@ -114,7 +134,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    */
   private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onCtrlMsgScope = Trace.startSpan(ON_CTRL_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-
       final CtrlMsgType ctrlMsgType = msg.getCtrlMsg().getCtrlMsgType();
       switch (ctrlMsgType) {
       case IdRange:
@@ -136,39 +155,60 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    */
   private void onCtrlMsgIdRange(final AvroElasticMemoryMessage msg,
                                 final TraceScope parentTraceInfo) {
+    final String operationId = msg.getOperationId().toString();
     final CtrlMsg ctrlMsg = msg.getCtrlMsg();
     final String dataType = ctrlMsg.getDataType().toString();
     final Codec codec = serializer.getCodec(dataType);
 
-    // extract all data items from my memory store that correspond to
-    // the control message's id specification
-    final Set<Map<Long, Object>> idObjectMapSet = new HashSet<>();
-    int numObject = 0;
-    for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
-      final Map<Long, Object> idObjectMap =
-          memoryStore.getElasticStore().removeRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
-      numObject += idObjectMap.size();
-      idObjectMapSet.add(idObjectMap);
-    }
-
     // pack the extracted items into a single list for message transmission
     // the identifiers for each item are included with the item itself as an UnitIdPair
-    // TODO #90: if this store doesn't contain the expected ids,
-    //           then the Driver should be notified (ResultMsg.FAILURE)
-    final List<UnitIdPair> unitIdPairList = new ArrayList<>(numObject);
-    for (final Map<Long, Object> idObjectMap : idObjectMapSet) {
-      for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
-        final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-            .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
-            .setId(idObject.getKey())
-            .build();
+    final List<UnitIdPair> unitIdPairList = new ArrayList<>();
 
-        unitIdPairList.add(unitIdPair);
+    // keep the ids of the items to be deleted later
+    final SortedSet<Long> ids = new TreeSet<>();
+
+    // extract all data items from my memory store that correspond to
+    // the control message's id specification
+    // TODO #15: this loop may be creating a gigantic message, and may cause memory problems
+    for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
+      final Map<Long, Object> idObjectMap =
+          memoryStore.getElasticStore().getRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
+      for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
+        final long id = idObject.getKey();
+        if (!isMoving(id)) {
+          // Include the units only if they are not moving already.
+          final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+              .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
+              .setId(id)
+              .build();
+          unitIdPairList.add(unitIdPair);
+          ids.add(id);
+        }
       }
     }
 
+    // If there is no data to move, send failure message instead of sending an empty DataMsg.
+    if (ids.size() == 0) {
+      final String myId = msg.getDestId().toString();
+      final String reason = new StringBuilder()
+          .append("No data is movable in ").append(myId)
+          .append(" of type ").append(dataType)
+          .append(". Requested ranges: ").append(Arrays.toString(ctrlMsg.getIdRange().toArray()))
+          .toString();
+      sender.get().sendFailureMsg(operationId, reason, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+      return;
+    }
+
+    final Set<LongRange> ranges = LongRangeUtils.generateDenseLongRanges(ids);
+
+    // The items of the ids will be removed after the migration succeeds.
+    pendingUpdates.put(operationId, new Remove(dataType, ranges));
+
+    // Keep the moving ranges to avoid duplicate request, before the data is removed from the MemoryStore.
+    movingRanges.addAll(ranges);
+
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
-        msg.getOperationId().toString(), TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+        operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
 
   /**
@@ -177,6 +217,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    */
   private void onCtrlMsgNumUnits(final AvroElasticMemoryMessage msg,
                                  final TraceScope parentTraceInfo) {
+    final String operationId = msg.getOperationId().toString();
     final CtrlMsg ctrlMsg = msg.getCtrlMsg();
     final String dataType = ctrlMsg.getDataType().toString();
     final Codec codec = serializer.getCodec(dataType);
@@ -187,28 +228,105 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final Map<Long, Object> dataMap = memoryStore.getElasticStore().getAll(dataType);
     final List<UnitIdPair> unitIdPairList = new ArrayList<>(Math.min(numUnits, dataMap.size()));
 
+    // keep the ids of the items to be deleted later
+    final SortedSet<Long> ids = new TreeSet<>();
+
     // TODO #15: this loop may be creating a gigantic message, and may cause memory problems
-    // TODO #90: if the number of units requested is greater than this memory store's capacity,
-    //           then the Driver should be notified (ResultMsg.FAILURE)
     for (final Map.Entry<Long, Object> entry : dataMap.entrySet()) {
       if (unitIdPairList.size() >= numUnits) {
         break;
       }
 
-      final Long key = entry.getKey();
-      final Object value = entry.getValue();
-
-      // remove items one by one until the required number of items has been removed
-      memoryStore.getElasticStore().remove(dataType, key);
-
-      final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-          .setUnit(ByteBuffer.wrap(codec.encode(value)))
-          .setId(key)
-          .build();
-      unitIdPairList.add(unitIdPair);
+      final Long id = entry.getKey();
+      if (!isMoving(id)) {
+        // Include the units only if they are not moving already.
+        final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+            .setUnit(ByteBuffer.wrap(codec.encode(entry.getValue())))
+            .setId(id)
+            .build();
+        unitIdPairList.add(unitIdPair);
+        ids.add(id);
+      }
     }
 
+    // If there is no data to move, send failure message instead of sending an empty DataMsg.
+    if (ids.size() == 0) {
+      final String myId = msg.getDestId().toString();
+      final String reason = new StringBuilder()
+          .append("No data is movable in ").append(myId)
+          .append(" of type ").append(dataType)
+          .append(". Requested numUnits: ").append(numUnits)
+          .toString();
+      sender.get().sendFailureMsg(operationId, reason, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+      return;
+    }
+
+    final Set<LongRange> ranges = LongRangeUtils.generateDenseLongRanges(ids);
+
+    // The items of the ids will be removed after the migration succeeds.
+    pendingUpdates.put(operationId, new Remove(dataType, ranges));
+
+    // Keep the moving ranges to avoid duplicate request, before the data is removed from the MemoryStore.
+    movingRanges.addAll(ranges);
+
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
-        msg.getOperationId().toString(), TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+        operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+  }
+
+  /**
+   * Applies the pending updates (add, remove) to the MemoryStore,
+   * and send the ACK message to the Driver.
+   */
+  private void onUpdateMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onUpdateMsgScope =
+             Trace.startSpan(ON_UPDATE_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+      final String operationId = msg.getOperationId().toString();
+      final UpdateResult updateResult;
+
+      final Update update = pendingUpdates.remove(operationId);
+      if (update == null) {
+        LOG.log(Level.WARNING, "The update with id {0} seems already handled.", operationId);
+        return;
+      }
+
+      switch (update.getType()) {
+
+      case ADD:
+        // The receiver adds the data into its MemoryStore.
+        update.apply(memoryStore);
+        updateResult = UpdateResult.RECEIVER_UPDATED;
+        break;
+
+      case REMOVE:
+        // The sender removes the data from its MemoryStore.
+        update.apply(memoryStore);
+        movingRanges.removeAll(update.getRanges());
+        updateResult = UpdateResult.SENDER_UPDATED;
+        break;
+      default:
+        throw new RuntimeException("Undefined Message type of Update: " + update);
+      }
+
+      sender.get().sendUpdateAckMsg(operationId, updateResult, TraceInfo.fromSpan(onUpdateMsgScope.getSpan()));
+    }
+  }
+
+  /**
+   * Check whether the unit is moving in order to avoid the duplicate request for the ranges that are moving already.
+   * @param id Identifier of unit to check.
+   * @return {@code true} if the {@code id} is inside a range that is moving.
+   */
+  private boolean isMoving(final long id) {
+    // We need to synchronize manually for using SynchronizedSet.iterator().
+    synchronized (movingRanges) {
+      final Iterator<LongRange> iterator = movingRanges.iterator();
+      while (iterator.hasNext()) {
+        final LongRange range = iterator.next();
+        if (range.containsLong(id)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }

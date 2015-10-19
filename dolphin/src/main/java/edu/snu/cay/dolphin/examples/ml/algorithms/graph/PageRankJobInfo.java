@@ -51,6 +51,7 @@ public final class PageRankJobInfo implements UserJobInfo {
             .setBroadcast(PageRankCodec.class)
             .setReduce(PageRankSummaryCodec.class, PageRankReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
+            .setOptimizable(true)
             .build());
 
     return stageInfoList;

@@ -24,6 +24,7 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
+import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.commons.lang.math.LongRange;
 import org.htrace.Sampler;
@@ -44,10 +45,11 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -186,109 +188,88 @@ final class SimpleEMDriver {
       String destId = secondContextId;
 
       for (int i = 0; i < iterations; i++) {
+        final CountDownLatch transferredLatch = new CountDownLatch(1);
+        final CountDownLatch finishedLatch = new CountDownLatch(1);
 
-        final Set<LongRange> srcRangeSet = partitionManager.getRangeSet(srcId, SimpleEMTask.DATATYPE);
+        final int initialSrcNumUnits = getNumUnits(srcId);
+        final int initialDestNumUnits = getNumUnits(destId);
+        final int numToMove = initialSrcNumUnits / 2;
 
-        final long numToMove = getNumUnits(srcRangeSet) / 2;
         LOG.info("Move partitions of total size " + numToMove + " from " + srcId + " to " + destId);
-
-        final Set<LongRange> rangeSetToMove = getRangeSetToMove(srcId, destId, srcRangeSet, numToMove);
-        for (final LongRange range : rangeSetToMove) {
-          LOG.info("- " + range + ", size: " + (range.getMaximumLong() - range.getMinimumLong() + 1));
-        }
 
         final boolean[] moveSucceeded = {false};
 
         try (final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS)) {
-          emService.move(SimpleEMTask.DATATYPE, rangeSetToMove, srcId, destId,
+          emService.move(SimpleEMTask.DATATYPE, numToMove, srcId, destId,
               new EventHandler<AvroElasticMemoryMessage>() {
                 @Override
                 public void onNext(final AvroElasticMemoryMessage emMsg) {
-                  synchronized (SimpleEMDriver.this) {
-                    moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS) ? true : false;
-                    LOG.info("Move " + emMsg.getOperationId() +
-                        (moveSucceeded[0] ? " succeeded" : " failed"));
-                    SimpleEMDriver.this.notifyAll();
-                  }
+                  LOG.log(Level.INFO, "Move {0} data transfer completed.", emMsg.getOperationId());
+                  transferredLatch.countDown();
+                }
+              },
+              new EventHandler<AvroElasticMemoryMessage>() {
+                @Override
+                public void onNext(final AvroElasticMemoryMessage emMsg) {
+                  moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS)
+                      ? true : false;
+                  LOG.log(Level.INFO, "Move {0} succeeded {1} with result {2}",
+                      new Object[]{emMsg.getOperationId(), moveSucceeded[0],
+                          emMsg.getResultMsg() == null ? "" : emMsg.getResultMsg().getResult()});
+                  finishedLatch.countDown();
                 }
               }
           );
+        }
+
+        // Wait for move to succeed
+        try {
+          LOG.log(Level.INFO, "Waiting for data transfers to finish on iteration {0}", i);
+          transferredLatch.await();
+
+          // Number of units should be unchanged until applyUpdates() is done.
+          checkNumUnits(srcId, initialSrcNumUnits);
+          checkNumUnits(destId, initialDestNumUnits);
+
+          LOG.log(Level.INFO, "Applying updates on iteration {0}", i);
+          emService.applyUpdates();
+
+          // After update, number of units should be applied accordingly.
+          checkNumUnits(srcId, initialSrcNumUnits - numToMove);
+          checkNumUnits(destId, initialDestNumUnits + numToMove);
+
+          LOG.log(Level.INFO, "Waiting for move to finish on iteration {0}", i);
+          transferredLatch.await();
+
+          if (moveSucceeded[0]) {
+            LOG.log(Level.INFO, "Move finished on iteration {0}", i);
+          } else {
+            throw new RuntimeException("Move failed on iteration " + i);
+          }
+        } catch (final InterruptedException e) {
+          throw new RuntimeException("Move wait interrupted on iteration " + i, e);
         }
 
         // Swap
         final String tmpContextId = srcId;
         srcId = destId;
         destId = tmpContextId;
-
-        // Wait for move to succeed
-        synchronized (this) {
-          try {
-            wait(periodMillis);
-            if (!moveSucceeded[0]) {
-              throw new RuntimeException("Move failed on iteration " + i);
-            }
-          } catch (final InterruptedException e) {
-            throw new RuntimeException("Move wait interrupted on iteration " + i, e);
-          }
-        }
       }
     }
+  }
 
-    private long getNumUnits(final Set<LongRange> rangeSet) {
-      long numUnits = 0;
-      for (final LongRange idRange : rangeSet) {
-        numUnits += (idRange.getMaximumLong() - idRange.getMinimumLong() + 1);
-      }
-      return numUnits;
+  private void checkNumUnits(final String evalId, final int expected) {
+    final int actual = getNumUnits(evalId);
+    if (actual != expected) {
+      final String msg = new StringBuilder().append(evalId).append("should have ").append(expected)
+          .append(", but has ").append(actual).append(" units").toString();
+      throw new RuntimeException(msg);
     }
+  }
 
-    /**
-     * Get RangeSet to move, and in the process splitting and registering
-     * the partitions across src and dest via the partitionManager.
-     *
-     * For example, to move partitions of total size 2 from a src with a single partition [1, 3],
-     * this method will unregister [1, 3] then split up and register [3, 3] at src and [1, 2] at dst.
-     * It will return the set with [1, 2].
-     */
-    private Set<LongRange> getRangeSetToMove(final String srcId, final String destId,
-                                             final Set<LongRange> currentRangeSet, final long totalToMove) {
-      try (final TraceScope getRangeTraceScope = Trace.startSpan("getRangeSetToMove", Sampler.ALWAYS)) {
-
-        final Set<LongRange> rangeSetToMove = new HashSet<>();
-        long remaining = totalToMove;
-
-        for (final LongRange idRange : currentRangeSet) {
-          final long length = idRange.getMaximumLong() - idRange.getMinimumLong() + 1;
-          final long numToMove = remaining > length ? length : remaining;
-          remaining -= numToMove;
-
-          if (numToMove == length) { // Move the whole range
-            partitionManager.remove(srcId, SimpleEMTask.DATATYPE, idRange);
-            partitionManager.register(destId, SimpleEMTask.DATATYPE, idRange);
-            rangeSetToMove.add(idRange);
-          } else { // Split the range and move it
-            partitionManager.remove(srcId, SimpleEMTask.DATATYPE, idRange);
-            final long lastIdToKeep = idRange.getMaximumLong() - numToMove;
-            final LongRange rangeToKeep = new LongRange(idRange.getMinimumLong(), lastIdToKeep);
-            final LongRange rangeToMove = new LongRange(lastIdToKeep + 1, idRange.getMaximumLong());
-            partitionManager.register(srcId, SimpleEMTask.DATATYPE, rangeToKeep);
-            partitionManager.register(destId, SimpleEMTask.DATATYPE, rangeToMove);
-            rangeSetToMove.add(rangeToMove);
-          }
-
-          if (remaining == 0) {
-            break;
-          }
-        }
-
-        if (remaining > 0) {
-          LOG.warning("Tried to move partitions of total size " + totalToMove +
-              ", but only found " + (totalToMove - remaining) + " partitions to move");
-        }
-
-        return rangeSetToMove;
-
-      }
-    }
+  private int getNumUnits(final String evalId) {
+    final Set<LongRange> rangeSet = partitionManager.getRangeSet(evalId, SimpleEMTask.DATATYPE);
+    final int numUnits = (int) LongRangeUtils.getNumUnits(rangeSet);
+    return numUnits;
   }
 }

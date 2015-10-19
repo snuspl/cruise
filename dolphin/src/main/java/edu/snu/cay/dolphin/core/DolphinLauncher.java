@@ -15,11 +15,14 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import edu.snu.cay.dolphin.core.optimizer.OptimizationConfiguration;
+import edu.snu.cay.dolphin.core.sync.DriverSyncRegister;
+import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
+import edu.snu.cay.services.em.optimizer.conf.OptimizerParameters;
+import edu.snu.cay.services.em.plan.conf.PlanExecutorParameters;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
@@ -54,12 +57,18 @@ public final class DolphinLauncher {
   private static final Logger LOG = Logger.getLogger(DolphinLauncher.class.getName());
   private final DolphinParameters dolphinParameters;
   private final HTraceParameters traceParameters;
+  private final OptimizerParameters optimizerParameters;
+  private final PlanExecutorParameters planExecutorParameters;
 
   @Inject
   private DolphinLauncher(final DolphinParameters dolphinParameters,
-                          final HTraceParameters traceParameters) {
+                          final HTraceParameters traceParameters,
+                          final OptimizerParameters optimizerParameters,
+                          final PlanExecutorParameters planExecutorParameters) {
     this.dolphinParameters = dolphinParameters;
     this.traceParameters = traceParameters;
+    this.optimizerParameters = optimizerParameters;
+    this.planExecutorParameters = planExecutorParameters;
   }
 
   public static void run(final Configuration dolphinConfig) {
@@ -101,6 +110,7 @@ public final class DolphinLauncher {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, dolphinParameters.getIdentifier())
         .set(DriverConfiguration.ON_DRIVER_STARTED, DolphinDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STARTED, DriverSyncRegister.RegisterDriverHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, DolphinDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.EvaluatorFailedHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, DolphinDriver.ActiveContextHandler.class)
@@ -134,16 +144,16 @@ public final class DolphinLauncher {
         .set(TaskOutputServiceBuilder.OUTPUT_PATH, processOutputDir(dolphinParameters.getOutputDir()))
         .build();
 
-    final Configuration optimizerConf = OptimizationConfiguration.getRandomOptimizerConfiguration();
-
     final Configuration shuffleConf = ShuffleDriverConfiguration.CONF
         .set(ShuffleDriverConfiguration.SHUFFLE_MANAGER_CLASS_NAME, StaticPushShuffleManager.class.getName())
         .build();
 
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
-        optimizerConf,
+        optimizerParameters.getConfiguration(),
+        planExecutorParameters.getConfiguration(),
         traceParameters.getConfiguration(),
+        SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),

@@ -33,6 +33,7 @@ public final class StageInfo {
   private final Class<? extends UserComputeTask> userComputeTaskClass;
   private final Class<? extends UserControllerTask> userControllerTaskClass;
   private final Class<? extends Name<String>> commGroupName;
+  private final boolean optimizable;
 
   private final Optional<? extends Class<? extends Codec>> broadcastCodecClassOptional;
   private final Optional<? extends Class<? extends Codec>> scatterCodecClassOptional;
@@ -52,6 +53,7 @@ public final class StageInfo {
   private StageInfo(final Class<? extends UserComputeTask> userComputeTaskClass,
                     final Class<? extends UserControllerTask> userControllerTaskClass,
                     final Class<? extends Name<String>> communicationGroup,
+                    final boolean optimizable,
                     final Class<? extends Codec> broadcastCodecClass,
                     final Class<? extends Codec> scatterCodecClass,
                     final Class<? extends Codec> gatherCodecClass,
@@ -63,6 +65,7 @@ public final class StageInfo {
     this.userComputeTaskClass = userComputeTaskClass;
     this.userControllerTaskClass = userControllerTaskClass;
     this.commGroupName = communicationGroup;
+    this.optimizable = optimizable;
     this.broadcastCodecClassOptional = Optional.ofNullable(broadcastCodecClass);
     this.scatterCodecClassOptional = Optional.ofNullable(scatterCodecClass);
     this.gatherCodecClassOptional = Optional.ofNullable(gatherCodecClass);
@@ -91,6 +94,10 @@ public final class StageInfo {
 
   public boolean isShuffleUsed() {
     return shuffleKeyCodecClassOptional.isPresent() && shuffleValueCodecClassOptional.isPresent();
+  }
+
+  public boolean isOptimizable() {
+    return optimizable;
   }
 
   public Class<? extends Codec> getBroadcastCodecClass() {
@@ -141,6 +148,7 @@ public final class StageInfo {
     private Class<? extends UserComputeTask> userComputeTaskClass;
     private Class<? extends UserControllerTask> userControllerTaskClass;
     private Class<? extends Name<String>> commGroupName;
+    private boolean optimizable;
     private Class<? extends Codec> broadcastCodecClass = null;
     private Class<? extends Codec> scatterCodecClass = null;
     private Class<? extends Codec> gatherCodecClass = null;
@@ -161,6 +169,12 @@ public final class StageInfo {
       this.userComputeTaskClass = userComputeTaskClass;
       this.userControllerTaskClass = userControllerTaskClass;
       this.commGroupName = communicationGroup;
+      this.optimizable = false;
+    }
+
+    public Builder setOptimizable(final boolean optimizable) {
+      this.optimizable = optimizable;
+      return this;
     }
 
     public Builder setBroadcast(final Class<? extends Codec> codecClass) {
@@ -199,7 +213,7 @@ public final class StageInfo {
 
     @Override
     public StageInfo build() {
-      return new StageInfo(userComputeTaskClass, userControllerTaskClass, commGroupName,
+      return new StageInfo(userComputeTaskClass, userControllerTaskClass, commGroupName, optimizable,
           broadcastCodecClass, scatterCodecClass, gatherCodecClass, reduceCodecClass, reduceFunctionClass,
           shuffleKeyCodecClass, shuffleValueCodecClass, metricTrackerSet);
     }

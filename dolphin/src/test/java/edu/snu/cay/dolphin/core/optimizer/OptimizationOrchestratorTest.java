@@ -15,10 +15,21 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
+import edu.snu.cay.dolphin.core.StageInfo;
+import edu.snu.cay.dolphin.core.UserJobInfo;
+import edu.snu.cay.dolphin.examples.simple.SimpleCmpTask;
+import edu.snu.cay.dolphin.examples.simple.SimpleCommGroup;
+import edu.snu.cay.dolphin.examples.simple.SimpleCtrlTask;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
+import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.services.em.optimizer.impl.RandomOptimizer;
+import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import edu.snu.cay.services.em.plan.impl.LoggingPlanExecutor;
+import org.apache.reef.driver.task.RunningTask;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -31,10 +42,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Test the orchestrator.
@@ -48,9 +62,29 @@ public final class OptimizationOrchestratorTest {
   @Before
   public void setUp() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector(
-        OptimizationConfiguration.getRandomOptimizerConfiguration());
+        getRandomOptimizerConfiguration());
     injector.bindVolatileInstance(ElasticMemory.class, mock(ElasticMemory.class));
+
+    final List<StageInfo> stageInfoList = new ArrayList<>(1);
+    stageInfoList.add(
+        StageInfo.newBuilder(SimpleCmpTask.class, SimpleCtrlTask.class, SimpleCommGroup.class)
+            .setOptimizable(true)
+            .build());
+    final UserJobInfo mockUserJobInfo = mock(UserJobInfo.class);
+    when(mockUserJobInfo.getStageInfoList()).thenReturn(stageInfoList);
+    injector.bindVolatileInstance(UserJobInfo.class, mockUserJobInfo);
+
     orchestrator = injector.getInstance(OptimizationOrchestrator.class);
+  }
+
+  /**
+   * @return a configuration with RandomOptimizer and LoggingPlanExecutor
+   */
+  private static Configuration getRandomOptimizerConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(Optimizer.class, RandomOptimizer.class)
+        .bindImplementation(PlanExecutor.class, LoggingPlanExecutor.class)
+        .build();
   }
 
   /**
@@ -58,7 +92,12 @@ public final class OptimizationOrchestratorTest {
    * across multiple iterations.
    */
   @Test
-  public void testMultipleIterations() throws ExecutionException, InterruptedException {
+  public void testMultipleIterations() throws ExecutionException, InterruptedException, TimeoutException {
+    // Start five running tasks (1 controller + 4 compute)
+    for (int i = 0; i < 5; i++) {
+      orchestrator.onRunningTask(mock(RunningTask.class));
+    }
+
     Future<PlanResult> previousResult = null;
     for (int i = 0; i < 5; i++) {
       previousResult = run(i, previousResult);
@@ -66,8 +105,8 @@ public final class OptimizationOrchestratorTest {
   }
 
   private Future<PlanResult> run(final int iteration, final Future<PlanResult> previousResult)
-      throws ExecutionException, InterruptedException {
-    final String groupName = "testGroup";
+      throws ExecutionException, InterruptedException, TimeoutException {
+    final String groupName = SimpleCommGroup.class.getName();
 
     assertEquals(previousResult, orchestrator.getPlanExecutionResult());
     orchestrator.receiveComputeMetrics("context-0", groupName, iteration, getComputeTaskMetrics(),
@@ -76,7 +115,7 @@ public final class OptimizationOrchestratorTest {
     orchestrator.receiveComputeMetrics("context-1", groupName, iteration, getComputeTaskMetrics(),
         getSingleDataInfo(2000));
     assertEquals(previousResult, orchestrator.getPlanExecutionResult());
-    orchestrator.receiveControllerMetrics("context-controller", groupName, iteration, getControllerTaskMetrics(), 4);
+    orchestrator.receiveControllerMetrics("context-controller", groupName, iteration, getControllerTaskMetrics());
     assertEquals(previousResult, orchestrator.getPlanExecutionResult());
     orchestrator.receiveComputeMetrics("context-2", groupName, iteration, getComputeTaskMetrics(),
         getSingleDataInfo(3000));
@@ -85,6 +124,7 @@ public final class OptimizationOrchestratorTest {
         getSingleDataInfo(4000));
 
     // All metrics received; the optimization should have run
+    orchestrator.getPlanExecutionResult().get(1, TimeUnit.SECONDS);
     assertNotEquals(previousResult, orchestrator.getPlanExecutionResult());
     return orchestrator.getPlanExecutionResult();
   }
