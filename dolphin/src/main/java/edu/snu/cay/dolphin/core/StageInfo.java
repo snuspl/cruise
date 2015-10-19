@@ -90,7 +90,7 @@ public final class StageInfo {
   }
 
   public boolean isShuffleUsed() {
-    return shuffleKeyCodecClassOptional.isPresent();
+    return shuffleKeyCodecClassOptional.isPresent() && shuffleValueCodecClassOptional.isPresent();
   }
 
   public Class<? extends Codec> getBroadcastCodecClass() {

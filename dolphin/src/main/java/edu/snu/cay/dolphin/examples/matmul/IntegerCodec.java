@@ -34,7 +34,7 @@ public final class IntegerCodec implements Codec<Integer>, org.apache.reef.io.se
 
   @Override
   public byte[] encode(final Integer integer) {
-    final ByteBuffer byteBuffer = ByteBuffer.allocate(4);
+    final ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.SIZE / Byte.SIZE);
     byteBuffer.putInt(integer);
     return byteBuffer.array();
   }

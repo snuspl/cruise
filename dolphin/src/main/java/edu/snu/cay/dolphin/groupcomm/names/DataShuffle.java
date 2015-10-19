@@ -20,16 +20,4 @@ import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Name for the shuffle in a certain stage", default_value = "SHUFFLE_IS_NOT_USED")
 public final class DataShuffle implements Name<String> {
-  public static final String PREFIX = "DOLPHIN_SHUFFLE_";
-
-  public static String getShuffleName(final int sequence) {
-    return PREFIX + sequence;
-  }
-
-  public static boolean isShuffleUsed(final String shuffleName) {
-    return shuffleName.startsWith(PREFIX);
-  }
-
-  private DataShuffle() {
-  }
 }

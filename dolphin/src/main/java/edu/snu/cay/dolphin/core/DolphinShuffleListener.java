@@ -31,12 +31,12 @@ final class DolphinShuffleListener  implements PushShuffleListener {
 
   @Override
   public void onIterationCompleted(final int numCompletedIterations) {
-    LOG.log(Level.INFO, "[Shuffle] {0}th stage : {1} th iteration is completed",
+    LOG.log(Level.INFO, "[Shuffle] {0}-th stage : {1}-th iteration is completed",
         new Object[]{stageSequence, numCompletedIterations});
   }
 
   @Override
   public void onFinished() {
-    LOG.log(Level.INFO, "[Shuffle] {0}th stage is finished", stageSequence);
+    LOG.log(Level.INFO, "[Shuffle] {0}-th stage is finished", stageSequence);
   }
 }

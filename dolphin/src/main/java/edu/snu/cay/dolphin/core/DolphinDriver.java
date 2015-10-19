@@ -97,6 +97,9 @@ import java.util.logging.Logger;
  */
 @Unit
 public final class DolphinDriver {
+
+  public static final String DOLPHIN_SHUFFLE_PREFIX = "DOLPHIN_SHUFFLE_PREFIX_";
+
   private static final Logger LOG = Logger.getLogger(DolphinDriver.class.getName());
 
   /**
@@ -330,14 +333,13 @@ public final class DolphinDriver {
         }
 
         final StaticPushShuffleManager shuffleManager = shuffleDriver.registerShuffle(
-            ShuffleDescriptionImpl.newBuilder(DataShuffle.getShuffleName(sequence))
+            ShuffleDescriptionImpl.newBuilder(getShuffleName(sequence))
                 .setReceiverIdList(computeTaskIdList)
                 .setSenderIdList(computeTaskIdList)
                 .setKeyCodecClass(stageInfo.getShuffleKeyCodecClass())
                 .setValueCodecClass(stageInfo.getShuffleValueCodecClass())
                 .setShuffleStrategyClass(KeyShuffleStrategy.class)
-                .build()
-        );
+                .build());
 
         shuffleManager.setPushShuffleListener(new DolphinShuffleListener(sequence));
         shuffleManagerList.add(Optional.of(shuffleManager));
@@ -641,15 +643,14 @@ public final class DolphinDriver {
   }
 
   private Configuration getShuffleTaskConfiguration(final int stageSequence, final String computeTaskId) {
-    if (!stageInfoList.get(stageSequence).isShuffleUsed()) {
-      return Tang.Factory.getTang().newConfigurationBuilder().build();
+    final JavaConfigurationBuilder shuffleConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
+    if (stageInfoList.get(stageSequence).isShuffleUsed()) {
+      shuffleConfBuilder.addConfiguration(
+          shuffleManagerList.get(stageSequence).get().getShuffleConfiguration(computeTaskId));
     }
 
-    final JavaConfigurationBuilder shuffleConfBuilder = Tang.Factory.getTang()
-        .newConfigurationBuilder(shuffleManagerList.get(stageSequence).get().getShuffleConfiguration(computeTaskId));
-
     return shuffleConfBuilder
-        .bindNamedParameter(DataShuffle.class, DataShuffle.getShuffleName(stageSequence))
+        .bindNamedParameter(DataShuffle.class, getShuffleName(stageSequence))
         .build();
   }
 
@@ -688,5 +689,9 @@ public final class DolphinDriver {
                   HTraceUtils.toAvro(TraceInfo.fromSpan(traceSpan)))))
           .build();
     }
+  }
+
+  private String getShuffleName(final int stageSequence) {
+    return DOLPHIN_SHUFFLE_PREFIX + stageSequence;
   }
 }

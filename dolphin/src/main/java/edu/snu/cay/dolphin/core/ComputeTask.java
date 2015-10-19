@@ -78,7 +78,7 @@ public final class ComputeTask implements Task {
   private final HTraceInfoCodec hTraceInfoCodec;
   private final UserTaskTrace userTaskTrace;
 
-  private final List<Tuple> receivedTupleList;
+  private final Queue<Tuple> receivedTupleList;
   private int iteration = 0;
 
   @Inject
@@ -103,9 +103,10 @@ public final class ComputeTask implements Task {
         groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
 
-    if (DataShuffle.isShuffleUsed(shuffleName)) {
+    // TODO #223: Use ShuffleProvider's method to check the shuffle is used or not
+    if (shuffleName.startsWith(DolphinDriver.DOLPHIN_SHUFFLE_PREFIX)) {
       this.shuffleSender = shuffleProvider.getShuffle(shuffleName).getSender();
-      this.receivedTupleList = new ArrayList<>();
+      this.receivedTupleList = new ConcurrentLinkedQueue<>();
       final PushShuffleReceiver shuffleReceiver = shuffleProvider.getShuffle(shuffleName).getReceiver();
       shuffleReceiver.registerDataListener(new ShuffleDataReceiver());
     } else {
@@ -174,9 +175,15 @@ public final class ComputeTask implements Task {
     if (userComputeTask.isShuffleUsed()) {
       shuffleSender.sendTuple(((DataShuffleOperator) userComputeTask).sendShuffleData(iteration));
       shuffleSender.complete();
-      ((DataShuffleOperator)userComputeTask).receiveShuffleData(iteration, receivedTupleList);
+      ((DataShuffleOperator)userComputeTask).receiveShuffleData(iteration, getAndClearReceivedTupleList());
     }
     insertableMetricTracker.put(COMPUTE_TASK_EXCHANGE_SHUFFLE_DATA_END, System.currentTimeMillis());
+  }
+
+  private List<Tuple> getAndClearReceivedTupleList() {
+    final List<Tuple> tupleList = new ArrayList<>(receivedTupleList);
+    receivedTupleList.clear();
+    return tupleList;
   }
 
   private void sendData() throws NetworkException, InterruptedException, MetricException {
@@ -232,24 +239,16 @@ public final class ComputeTask implements Task {
 
   private final class ShuffleDataReceiver implements PushDataListener {
 
-    private final Queue<Tuple> tuplesForEachIteration;
-
-    private ShuffleDataReceiver() {
-      this.tuplesForEachIteration = new ConcurrentLinkedQueue<>();
-    }
-
     @Override
     public void onTupleMessage(final Message message) {
       for (final Object tuple : message.getData()) {
-        tuplesForEachIteration.add((Tuple) tuple);
+        receivedTupleList.add((Tuple) tuple);
       }
     }
 
     @Override
     public void onComplete() {
-      receivedTupleList.clear();
-      receivedTupleList.addAll(tuplesForEachIteration);
-      tuplesForEachIteration.clear();
+      LOG.log(Level.INFO, "An shuffle iteration was completed");
     }
 
     @Override

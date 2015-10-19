@@ -21,7 +21,9 @@ import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataShuffleOperator;
 import org.apache.commons.io.FileUtils;
+import org.apache.mahout.math.DenseMatrix;
 import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.io.Tuple;
 import org.apache.reef.tang.annotations.Parameter;
@@ -47,7 +49,7 @@ public final class MatrixMulCmpTask extends UserComputeTask
   /**
    * The small matrix which consists of ordered row vectors.
    */
-  private final List<Vector> smallMatrix;
+  private final Matrix smallMatrix;
 
   @Inject
   private MatrixMulCmpTask(final DataParser<List<IndexedVector>> dataParser,
@@ -67,27 +69,35 @@ public final class MatrixMulCmpTask extends UserComputeTask
     }
   }
 
-  private List<Vector> parseRawSmallMatrix(final String rawSmallMatrix) {
-    final List<Vector> matrix = new LinkedList<>();
-    for (final String row : rawSmallMatrix.split("\n")) {
+  private Matrix parseRawSmallMatrix(final String rawSmallMatrix) {
+
+    final List<double[]> rows = new LinkedList<>();
+    for (final String row : rawSmallMatrix.split(System.getProperty("line.separator"))) {
       if (row.startsWith("#") || row.length() == 0) {
         continue;
       }
 
       final String[] split = row.split("\\s+");
       final int numColumns = split.length - 1;
-      final Vector rowVector = new DenseVector(numColumns);
+      final double[] rowVector = new double[numColumns];
 
       try {
         for (int i = 0; i < numColumns; i++) {
-          rowVector.set(i, Double.valueOf(split[i + 1]));
+          rowVector[i] = Double.valueOf(split[i + 1]);
         }
       } catch (final NumberFormatException e) {
         throw new RuntimeException(e);
       }
-      matrix.add(rowVector);
+      rows.add(rowVector);
     }
-    return matrix;
+
+    final double[][] rawData = new double[rows.size()][];
+    int index = 0;
+    for (final double[] row : rows) {
+      rawData[index++] = row;
+    }
+
+    return new DenseMatrix(rawData);
   }
 
   @Override
@@ -132,7 +142,7 @@ public final class MatrixMulCmpTask extends UserComputeTask
 
   @Override
   public List<IndexedVector> sendReduceData(final int iteration) {
-    final List<IndexedVector> columnsOfResultMatrix = new LinkedList<>();
+    final List<IndexedVector> columnsOfResultMatrix = new ArrayList<>(elementsOfLargeMatrix.size());
 
     // Send columns of the result matrix
     for (final Integer column : elementsOfLargeMatrix.keySet()) {
@@ -160,7 +170,7 @@ public final class MatrixMulCmpTask extends UserComputeTask
     final int size = columnVector.size();
     final Vector multipliedVector = new DenseVector(size);
     for (int i = 0; i < size; i++) {
-      multipliedVector.set(i, smallMatrix.get(i).dot(columnVector));
+      multipliedVector.set(i, smallMatrix.viewRow(i).dot(columnVector));
     }
 
     return multipliedVector;

@@ -48,12 +48,7 @@ public final class MatrixMulCtrlTask extends UserControllerTask implements DataR
     Collections.sort(data, new Comparator<IndexedVector>() {
       @Override
       public int compare(final IndexedVector o1, final IndexedVector o2) {
-        if (o1.getIndex() > o2.getIndex()) {
-          return 1;
-        } else if (o1.getIndex() < o2.getIndex()) {
-          return -1;
-        }
-        return 0;
+        return o1.getIndex() - o2.getIndex();
       }
     });
 
