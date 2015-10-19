@@ -91,7 +91,7 @@ public class MigrationManagerTest {
 
     // Failure case1: There is no data registered in the evaluator (EVAL1).
     try {
-      migrationManager.startMigration(OP_ID, EVAL1, EVAL0, DATA_TYPE, rangesToMove, null);
+      migrationManager.startMigration(OP_ID, EVAL1, EVAL0, DATA_TYPE, rangesToMove, null, null, null);
       fail();
     } catch (final RuntimeException e) {
       // SUCCESS
@@ -103,7 +103,7 @@ public class MigrationManagerTest {
 
     // Failure case2: When the evaluator does not have the data type (Undefined).
     try {
-      migrationManager.startMigration(OP_ID, EVAL0, EVAL1, "Undefined", rangesToMove, null);
+      migrationManager.startMigration(OP_ID, EVAL0, EVAL1, "Undefined", rangesToMove, null, null, null);
       fail();
     } catch (final RuntimeException e) {
       // SUCCESS
@@ -112,7 +112,7 @@ public class MigrationManagerTest {
     // Failure case3: When the request contains the data out of range [101, 110]
     rangesToMove.add(new LongRange(101, 110));
     try {
-      migrationManager.startMigration(OP_ID, EVAL0, EVAL1, DATA_TYPE, rangesToMove, null);
+      migrationManager.startMigration(OP_ID, EVAL0, EVAL1, DATA_TYPE, rangesToMove, null, null, null);
       fail();
     } catch (final RuntimeException e) {
       // SUCCESS
@@ -154,10 +154,12 @@ public class MigrationManagerTest {
 
             if (index < 5) {
               // thread0~4: EVAL0 -> EVAL1
-              migrationManager.startMigration(Integer.toString(index), EVAL0, EVAL1, DATA_TYPE, rangesToMove, null);
+              migrationManager.startMigration(Integer.toString(index), EVAL0, EVAL1, DATA_TYPE, rangesToMove,
+                  null, null, null);
             } else {
               // thread5~9 EVAL1 -> EVAL0
-              migrationManager.startMigration(Integer.toString(index), EVAL1, EVAL0, DATA_TYPE, rangesToMove, null);
+              migrationManager.startMigration(Integer.toString(index), EVAL1, EVAL0, DATA_TYPE, rangesToMove,
+                  null, null, null);
             }
 
             // We call those methods manually only for testing. This is done internally when receiver notifies
