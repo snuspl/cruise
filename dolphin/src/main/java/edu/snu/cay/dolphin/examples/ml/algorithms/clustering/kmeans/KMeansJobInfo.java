@@ -50,6 +50,7 @@ public final class KMeansJobInfo implements UserJobInfo {
             .setBroadcast(CentroidListCodec.class)
             .setReduce(MapOfIntVSumCodec.class, MapOfIntVSumReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
+            .setOptimizable(true)
             .build());
 
     return stageInfoList;

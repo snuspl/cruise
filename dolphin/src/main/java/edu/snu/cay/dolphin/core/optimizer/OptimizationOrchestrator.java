@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
+import edu.snu.cay.dolphin.core.StageInfo;
+import edu.snu.cay.dolphin.core.UserJobInfo;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
@@ -22,6 +24,9 @@ import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.task.FailedTask;
+import org.apache.reef.driver.task.RunningTask;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -31,37 +36,40 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Orchestrates EM optimization and plan execution within the Dolphin runtime.
- * The OptimizationOrchestrator keeps track of received messages, for each
+ *
+ * The OptimizationOrchestrator keeps track of the number of tasks active within the
+ * Dolphin runtime, via the onRunningTask/onCompletedTask/onFailedTask calls.
+ * It keeps track of received messages, for each
  * (comm group, iteration) pair, by creating an instance of MetricsReceiver.
  * When all metrics are received for a (comm group, iteration), the optimizer is
  * called, and the resulting Plan is executed.
- *
- * TODO #96: Enable background migration
- * This orchestrator blocks while running a Plan execution. When background migration
- * is implemented, the orchestrator should run Plan execution in the background to hide the
- * Plan execution time.
- *
  */
 public final class OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
+  private final List<StageInfo> stageInfoList;
 
   private final Map<String, MetricsReceiver> iterationIdToMetrics;
+
+  private final AtomicInteger numTasks = new AtomicInteger(0);
 
   private Future<PlanResult> planExecutionResult;
 
   @Inject
   private OptimizationOrchestrator(final Optimizer optimizer,
-                                   final PlanExecutor planExecutor) {
+                                   final PlanExecutor planExecutor,
+                                   final UserJobInfo userJobInfo) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
+    this.stageInfoList = userJobInfo.getStageInfoList();
 
     this.iterationIdToMetrics = new HashMap<>();
   }
@@ -77,17 +85,26 @@ public final class OptimizationOrchestrator {
   public synchronized void receiveControllerMetrics(final String contextId,
                                                     final String groupName,
                                                     final int iteration,
-                                                    final Map<String, Double> metrics,
-                                                    final int numComputeTasks) {
-    getIterationMetrics(groupName, iteration).addController(contextId, metrics, numComputeTasks);
+                                                    final Map<String, Double> metrics) {
+    getIterationMetrics(groupName, iteration).addController(contextId, metrics);
   }
 
   private MetricsReceiver getIterationMetrics(final String groupName, final int iteration) {
     final String iterationId = groupName + iteration;
     if (!iterationIdToMetrics.containsKey(iterationId)) {
-      iterationIdToMetrics.put(iterationId, new MetricsReceiver(this));
+      iterationIdToMetrics.put(iterationId,
+          new MetricsReceiver(this, isOptimizable(groupName), numTasks.get()));
     }
     return iterationIdToMetrics.get(iterationId);
+  }
+
+  private boolean isOptimizable(final String groupName) {
+    for (final StageInfo stageInfo : stageInfoList) {
+      if (groupName.equals(stageInfo.getCommGroupName().getName())) {
+        return stageInfo.isOptimizable();
+      }
+    }
+    throw new RuntimeException("Unknown group " + groupName);
   }
 
   /**
@@ -113,9 +130,6 @@ public final class OptimizationOrchestrator {
 
     planExecutionResult = planExecutor.execute(plan);
 
-    // TODO #96: Enable background migration
-    blockUntilPlanIsExecuted();
-
     LOG.log(Level.INFO, "Optimization complete.");
   }
 
@@ -134,18 +148,6 @@ public final class OptimizationOrchestrator {
       } catch (final ExecutionException e) {
         throw new RuntimeException(e);
       }
-    }
-  }
-
-  private void blockUntilPlanIsExecuted() {
-    try {
-      LOG.log(Level.INFO, "Blocking until current plan execution is done.");
-      final PlanResult result = planExecutionResult.get();
-      LOG.log(Level.INFO, "Current result: {0}", result);
-    } catch (final InterruptedException e) {
-      throw new RuntimeException(e);
-    } catch (final ExecutionException e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -174,5 +176,32 @@ public final class OptimizationOrchestrator {
           new EvaluatorParametersImpl(computeId, dataInfos.get(computeId), metrics.get(computeId)));
     }
     return evaluatorParametersList;
+  }
+
+  /**
+   * Keeps track of the number of tasks by incrementing on running.
+   * Also passes the event on to the Plan Executor.
+   * @param task
+   */
+  public void onRunningTask(final RunningTask task) {
+    numTasks.incrementAndGet();
+    planExecutor.onRunningTask(task);
+  }
+
+  /**
+   * Keeps track of the number of tasks by decrementing on completion.
+   * @param task the completed task
+   */
+  public void onCompletedTask(final CompletedTask task) {
+    numTasks.decrementAndGet();
+  }
+
+  /**
+   * Dolphin does not yet handle task failures. We throw a RuntimeException to
+   * fail early.
+   * @param task the failed task
+   */
+  public void onFailedTask(final FailedTask task) {
+    throw new RuntimeException("Aborting. Task failed: " + task);
   }
 }

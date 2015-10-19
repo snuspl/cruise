@@ -53,22 +53,31 @@ final class MetricsReceiver {
   private Map<String, Double> controllerMetrics;
 
   /**
-   * The number of compute tasks that should be received.
-   * This value is set when the *controller task* reports the number of compute tasks in the communication group.
+   * Whether this iteration can be optimized.
    */
-  private int numComputeTasks = Integer.MAX_VALUE;
+  private boolean optimizable;
 
   /**
-   * The number of compute task metrics that have been received.
-   * Optimization is started when this value reaches numComputeTasks.
+   * The number of tasks for which metrics should be received.
+   * This value is set at construction time, at the beginning of the iteration.
    */
-  private int numComputeTasksReceived = 0;
+  private final int numTasks;
+
+  /**
+   * The number of task metrics that have been received.
+   * Optimization is started when this value reaches numTasks.
+   */
+  private int numTasksReceived = 0;
 
   /**
    * @param optimizationOrchestrator the optimization orchestrator that instantiates this instance
    */
-  public MetricsReceiver(final OptimizationOrchestrator optimizationOrchestrator) {
+  public MetricsReceiver(final OptimizationOrchestrator optimizationOrchestrator,
+                         final boolean optimizable,
+                         final int numTasks) {
     this.optimizationOrchestrator = optimizationOrchestrator;
+    this.optimizable = optimizable;
+    this.numTasks = numTasks;
     this.computeIdToMetrics = new HashMap<>();
     this.computeIdToDataInfos = new HashMap<>();
   }
@@ -78,28 +87,29 @@ final class MetricsReceiver {
                                       final List<DataInfo> dataInfos) {
     computeIdToMetrics.put(contextId, metrics);
     computeIdToDataInfos.put(contextId, dataInfos);
-    numComputeTasksReceived++;
-    LOG.log(Level.INFO, "numComputeTasksReceived " + numComputeTasksReceived);
+    numTasksReceived++;
+    LOG.log(Level.FINE, "numTasksReceived {0}", numTasksReceived);
 
-    if (isReceivedAll()) {
-      optimizationOrchestrator.run(computeIdToDataInfos, computeIdToMetrics, controllerId, controllerMetrics);
-    }
+    checkAndRunOptimization();
   }
 
   public synchronized void addController(final String contextId,
-                                         final Map<String, Double> metrics,
-                                         final int reportedNumComputeTasks) {
+                                         final Map<String, Double> metrics) {
     this.controllerId = contextId;
     this.controllerMetrics = metrics;
-    this.numComputeTasks = reportedNumComputeTasks;
-    LOG.log(Level.INFO, "numComputeTasks " + numComputeTasks);
+    numTasksReceived++;
+    LOG.log(Level.FINE, "numTasksReceived {0}", numTasksReceived);
 
-    if (isReceivedAll()) {
-      optimizationOrchestrator.run(computeIdToDataInfos, computeIdToMetrics, controllerId, controllerMetrics);
-    }
+    checkAndRunOptimization();
   }
 
-  private boolean isReceivedAll() {
-    return numComputeTasksReceived == numComputeTasks;
+  private void checkAndRunOptimization() {
+    if (numTasksReceived == numTasks) {
+      if (optimizable) {
+        optimizationOrchestrator.run(computeIdToDataInfos, computeIdToMetrics, controllerId, controllerMetrics);
+      } else {
+        LOG.log(Level.INFO, "{0} tasks received, but skipping because not optimizable.", numTasks);
+      }
+    }
   }
 }
