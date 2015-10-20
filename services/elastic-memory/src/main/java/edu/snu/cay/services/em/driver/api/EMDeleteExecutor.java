@@ -21,7 +21,20 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
 
+/**
+ * An object which handles EM delete request.
+ * EM cannot release an evaluator alone since EM does not know what contexts, services, and tasks
+ * are submitted on the evaluator and thus cannot handle closing events of them.
+ * Therefore, EM user should define their own EMDeleteExecutor
+ * which takes care of components on the evaluator and cleanly release it.
+ */
 @DefaultImplementation(EMDeleteExecutorImpl.class)
 public interface EMDeleteExecutor {
+
+  /**
+   * Execute EM delete operation.
+   * @param evalId identifier of the evaluator to release
+   * @param callback an application-level callback to be called, or null if no callback is needed
+   */
   void execute(String evalId, @Nullable EventHandler<String> callback);
 }

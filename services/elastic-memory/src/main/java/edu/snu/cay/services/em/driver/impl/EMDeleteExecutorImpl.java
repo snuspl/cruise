@@ -21,6 +21,9 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
 
+/**
+ * Default implementation of EMDeleteExecutor.
+ */
 public class EMDeleteExecutorImpl implements EMDeleteExecutor {
 
   @Override

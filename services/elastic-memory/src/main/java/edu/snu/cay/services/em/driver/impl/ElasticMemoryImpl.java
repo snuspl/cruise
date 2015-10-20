@@ -89,7 +89,10 @@ public final class ElasticMemoryImpl implements ElasticMemory {
         .build());
   }
 
-  // TODO #112: implement delete
+  /**
+   * Removes partitions registered to deleting evalId.
+   * After that, EMDeleteExecutor handles the actual deleting request.
+   */
   @Override
   public void delete(final String evalId, @Nullable final EventHandler<String> callback) {
     final Set<String> dataTypeSet = partitionManager.getDataTypes(evalId);
