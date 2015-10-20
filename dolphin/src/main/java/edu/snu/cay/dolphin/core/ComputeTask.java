@@ -40,7 +40,10 @@ import org.apache.reef.io.network.group.api.task.CommunicationGroupClient;
 import org.apache.reef.io.network.group.api.task.GroupCommClient;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.task.Task;
+import org.apache.reef.task.events.CloseEvent;
+import org.apache.reef.wake.EventHandler;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -49,9 +52,12 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@Unit
 public final class ComputeTask implements Task {
   public static final String TASK_ID_PREFIX = "CmpTask";
   private static final Logger LOG = Logger.getLogger(ComputeTask.class.getName());
@@ -68,6 +74,8 @@ public final class ComputeTask implements Task {
   private final HTraceInfoCodec hTraceInfoCodec;
   private final UserTaskTrace userTaskTrace;
 
+  private final CountDownLatch terminated = new CountDownLatch(1);
+  private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private int iteration;
 
   @Inject
@@ -105,23 +113,45 @@ public final class ComputeTask implements Task {
         HTraceUtils.fromAvro(hTraceInfoCodec.decode(memento));
 
     userComputeTask.initialize();
-    try (final MetricsCollector metricsCollector = this.metricsCollector) {
-      metricsCollector.registerTrackers(metricTrackerSet);
-      while (!isTerminated()) {
-        try (final TraceScope traceScope = Trace.startSpan("iter-" + iteration, taskTraceInfo)) {
-          userTaskTrace.setParentTraceInfo(TraceInfo.fromSpan(traceScope.getSpan()));
-          metricsCollector.start();
-          receiveData();
-          runUserComputeTask();
-          sendData();
-          metricsCollector.stop();
-          sendMetrics();
-        }
-        iteration++;
-      }
-      userComputeTask.cleanup();
-    }
 
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final Future<?> result = executor.submit(new Runnable() {
+      @Override
+      public void run() {
+        try (final MetricsCollector collector = metricsCollector) {
+          collector.registerTrackers(metricTrackerSet);
+          while (!isTerminated()) {
+            try (final TraceScope traceScope = Trace.startSpan("iter-" + iteration, taskTraceInfo)) {
+              userTaskTrace.setParentTraceInfo(TraceInfo.fromSpan(traceScope.getSpan()));
+              collector.start();
+              receiveData();
+              runUserComputeTask();
+              sendData();
+              collector.stop();
+              sendMetrics();
+            }
+            iteration++;
+          }
+          userComputeTask.cleanup();
+        } catch (final Exception e) {
+          throw new RuntimeException(e);
+        } finally {
+          terminated.countDown();
+        }
+      }
+    });
+
+    terminated.await();
+    executor.shutdownNow();
+    try {
+      result.get();
+    } catch (final ExecutionException e) {
+      if (isClosing.get()) {
+        LOG.log(Level.INFO, "Task closed by TaskCloseHandler.");
+      } else {
+        throw new Exception(e);
+      }
+    }
     return null;
   }
 
@@ -193,5 +223,22 @@ public final class ComputeTask implements Task {
         .build();
     LOG.log(Level.INFO, "computeMsg {0}", computeMsg);
     return computeMsg;
+  }
+
+  /**
+   * Handler for task close event.
+   * Stop this running task without noise.
+   */
+  final class TaskCloseHandler implements EventHandler<CloseEvent> {
+    @Override
+    public void onNext(final CloseEvent closeEvent) {
+      if (terminated.getCount() == 0) {
+        LOG.log(Level.INFO, "Tried to close task, but already terminated.");
+      } else {
+        LOG.log(Level.INFO, "Task closing {0}", closeEvent);
+        isClosing.compareAndSet(false, true);
+        terminated.countDown();
+      }
+    }
   }
 }
