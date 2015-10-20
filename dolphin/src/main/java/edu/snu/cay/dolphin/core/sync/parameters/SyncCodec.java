@@ -13,27 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.optimizer.api;
+package edu.snu.cay.dolphin.core.sync.parameters;
 
-import java.util.Collection;
-import java.util.Map;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.wake.remote.Codec;
 
-/**
- * The current state of an evaluator, represented as a set of input parameters for an optimizer.
- */
-public interface EvaluatorParameters {
-  /**
-   * @return the evaluator's context ID
-   */
-  String getId();
-
-  /**
-   * @return information about all data on the evaluator
-   */
-  Collection<DataInfo> getDataInfos();
-
-  /**
-   * @return metrics about previous execution on the evaluator
-   */
-  Map<String, Double> getMetrics();
+@NamedParameter(doc = "Network connection service codec for Sync")
+public final class SyncCodec implements Name<Codec<?>> {
 }

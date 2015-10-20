@@ -154,7 +154,7 @@ final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticM
       final String operationId = failureMsg.getOperationId().toString();
       final String reason = failureMsg.getReason().toString();
 
-      migrationManager.notifyFailure(operationId, reason);
+      migrationManager.failMigration(operationId, reason);
     }
   }
 }

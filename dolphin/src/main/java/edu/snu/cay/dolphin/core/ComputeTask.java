@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
 import edu.snu.cay.dolphin.core.metric.avro.DataInfo;
-import edu.snu.cay.dolphin.core.metric.avro.IterationInfo;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
@@ -74,9 +74,9 @@ public final class ComputeTask implements Task {
   private final HTraceInfoCodec hTraceInfoCodec;
   private final UserTaskTrace userTaskTrace;
 
-  private int iteration = 0;
   private final CountDownLatch terminated = new CountDownLatch(1);
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
+  private int iteration;
 
   @Inject
   public ComputeTask(final GroupCommClient groupCommClient,
@@ -84,6 +84,7 @@ public final class ComputeTask implements Task {
                      final UserComputeTask userComputeTask,
                      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                      @Parameter(CommunicationGroup.class) final String commGroupName,
+                     @Parameter(Iteration.class) final int startIteration,
                      final MetricsCollector metricsCollector,
                      @Parameter(MetricTrackers.class) final Set<MetricTracker> metricTrackerSet,
                      final InsertableMetricTracker insertableMetricTracker,
@@ -95,6 +96,7 @@ public final class ComputeTask implements Task {
     this.taskId = taskId;
     this.commGroup =
         groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
+    this.iteration = startIteration;
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
     this.metricsCollector = metricsCollector;
     this.metricTrackerSet = metricTrackerSet;

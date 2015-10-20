@@ -56,6 +56,7 @@ public final class LogisticRegJobInfo implements UserJobInfo {
             .setReduce(isDenseVector ? DenseLogisticRegSummaryCodec.class : SparseLogisticRegSummaryCodec.class,
                 LogisticRegReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
+            .setOptimizable(true)
             .build());
 
     return stageInfoList;

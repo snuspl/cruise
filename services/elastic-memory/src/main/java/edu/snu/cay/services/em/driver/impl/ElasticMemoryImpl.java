@@ -19,7 +19,6 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.MigrationManager;
 import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
-import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
@@ -43,7 +42,6 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private static final String APPLY_UPDATES = "apply_updates";
 
   private final EvaluatorRequestor requestor;
-  private final ElasticMemoryCallbackRouter callbackRouter;
   private final MigrationManager migrationManager;
 
   private final AtomicLong operationIdCounter = new AtomicLong();
@@ -54,13 +52,11 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
-                            final ElasticMemoryCallbackRouter callbackRouter,
                             final MigrationManager migrationManager,
                             final EMResourceRequestManager resourceRequestManager,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.requestor = requestor;
-    this.callbackRouter = callbackRouter;
     this.migrationManager = migrationManager;
     this.resourceRequestManager = resourceRequestManager;
   }
@@ -100,12 +96,13 @@ public final class ElasticMemoryImpl implements ElasticMemory {
                    final Set<LongRange> idRangeSet,
                    final String srcEvalId,
                    final String destEvalId,
-                   @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
+                   @Nullable final EventHandler<AvroElasticMemoryMessage> transferredCallback,
+                   @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      callbackRouter.register(operationId, callback);
-      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, idRangeSet, traceInfo);
+      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, idRangeSet, traceInfo,
+          transferredCallback, finishedCallback);
     }
   }
 
@@ -114,12 +111,13 @@ public final class ElasticMemoryImpl implements ElasticMemory {
                    final int numUnits,
                    final String srcEvalId,
                    final String destEvalId,
-                   @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
+                   @Nullable final EventHandler<AvroElasticMemoryMessage> transferredCallback,
+                   @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      callbackRouter.register(operationId, callback);
-      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, numUnits, traceInfo);
+      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, numUnits, traceInfo,
+          transferredCallback, finishedCallback);
     }
   }
 

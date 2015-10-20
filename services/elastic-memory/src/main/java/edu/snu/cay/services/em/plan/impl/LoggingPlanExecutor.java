@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import org.apache.reef.driver.task.RunningTask;
 
 import javax.inject.Inject;
 import java.util.concurrent.Callable;
@@ -63,5 +64,10 @@ public final class LoggingPlanExecutor implements PlanExecutor {
         return new PlanResultImpl();
       }
     });
+  }
+
+  @Override
+  public void onRunningTask(final RunningTask task) {
+    LOG.log(Level.INFO, "RunningTask {0}", task);
   }
 }

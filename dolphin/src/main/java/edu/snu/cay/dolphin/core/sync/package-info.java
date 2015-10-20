@@ -13,27 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.optimizer.api;
-
-import java.util.Collection;
-import java.util.Map;
-
 /**
- * The current state of an evaluator, represented as a set of input parameters for an optimizer.
+ * Implements a protocol to synchronize between Driver and Controller Task execution.
+ * The protocol guarantees that a Driver-side function can execute while the Controller Task waits (or is "paused")
+ * before an iteration. The Controller Task is then notified that a synchronized Driver-side execution has taken place.
  */
-public interface EvaluatorParameters {
-  /**
-   * @return the evaluator's context ID
-   */
-  String getId();
-
-  /**
-   * @return information about all data on the evaluator
-   */
-  Collection<DataInfo> getDataInfos();
-
-  /**
-   * @return metrics about previous execution on the evaluator
-   */
-  Map<String, Double> getMetrics();
-}
+package edu.snu.cay.dolphin.core.sync;
