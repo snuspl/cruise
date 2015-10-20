@@ -413,7 +413,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       this.id = id;
       this.participateVariable = participateVariable;
       this.requestedDataVariable = requestedDataVariable;
-      this.allocatedDataInfos = dataInfos;
+      this.allocatedDataInfos = new ArrayList<>(dataInfos);
       this.computeCost = computeCost;
       this.newComputeTask = false;
     }
