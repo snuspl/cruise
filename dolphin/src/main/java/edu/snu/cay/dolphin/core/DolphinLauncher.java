@@ -67,20 +67,6 @@ public final class DolphinLauncher {
     this.planExecutorParameters = planExecutorParameters;
   }
 
-  public static void run(final Configuration dolphinConfig) {
-    LauncherStatus status;
-    try {
-      status = Tang.Factory.getTang()
-          .newInjector(dolphinConfig)
-          .getInstance(DolphinLauncher.class)
-          .launch();
-    } catch (final Exception e) {
-      status = LauncherStatus.failed(e);
-    }
-
-    LOG.log(Level.INFO, "REEF job completed: {0}", status);
-  }
-
   public static LauncherStatus run(final Configuration dolphinConfig, final Configuration... driverConfigs) {
     LauncherStatus status;
     try {
