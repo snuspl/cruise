@@ -68,13 +68,13 @@ public final class ILPSolverOptimizerTest {
    */
   @Test
   public void testHalfNumComputeTasks() {
-    final int numComputeTask = 4;
+    final int numComputeTasks = 4;
     final Collection<EvaluatorParameters> activeEvaluators =
-        generateEvaluatorParameters(4, new int[][]{{2500}, {2500}, {2500}, {2500}});
-    final int upperBoundToDelete = (int) Math.ceil((double) numComputeTask / 2);
+        generateEvaluatorParameters(numComputeTasks, new int[][]{{2500}, {2500}, {2500}, {2500}});
+    final int upperBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan =
-        ilpSolverOptimizer.optimize(activeEvaluators, numComputeTask / 2 + 1); // +1 for including the controller task
+        ilpSolverOptimizer.optimize(activeEvaluators, numComputeTasks / 2 + 1); // +1 for including the controller task
 
     assertEquals(0, plan.getEvaluatorsToAdd().size());
     assertTrue("The number of evaluators to be deleted should be <= " + upperBoundToDelete,
@@ -87,7 +87,7 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testTwoSenderAndOneReceiver() {
     final int numComputeTasks = 2;
-    final int availableEvaluators = 4; // add one more compute task
+    final int availableEvaluators = 4; // +1 for adding one more compute task and +1 for including the controller task
     final Collection<EvaluatorParameters> activeEvaluators =
         generateEvaluatorParameters(numComputeTasks, new int[][]{{1300}, {900}});
 
