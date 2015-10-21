@@ -41,7 +41,7 @@ import static org.junit.Assert.assertEquals;
  * You can use any integer value for parameters of {@code run},
  * but be careful to not choose too large number to ensure that it finishes within a certain timeout.
  */
-public class AddIntegrationTest {
+public final class AddIntegrationTest {
 
   @Test
   public void runTest() {
