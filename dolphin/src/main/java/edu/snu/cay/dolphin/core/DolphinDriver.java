@@ -257,7 +257,7 @@ public final class DolphinDriver {
     this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
     this.emResourceRequestManager = emResourceRequestManager;
-    this.closingContexts = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+    this.closingContexts = Collections.synchronizedSet(new HashSet<String>());
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.jobTraceInfo = startTrace ? TraceInfo.fromSpan(Trace.startSpan("job", Sampler.ALWAYS).getSpan()) : null;
     initializeCommDriver();
@@ -664,7 +664,7 @@ public final class DolphinDriver {
         // Given active context should have a runningTask in a normal case, because our job is paused.
         // Evaluator without corresponding runningTask implies error.
         LOG.log(Level.SEVERE,
-            "Trying to remove active context {0} which does not have a running task", activeContextId);
+            "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
       } else {
         final int currentSequence = contextToStageSequence.get(runningTask.getActiveContext().getId());
         final CommunicationGroupDriverImpl commGroup
