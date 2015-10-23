@@ -22,10 +22,12 @@ import edu.snu.cay.dolphin.examples.simple.SimpleJobInfo;
 import edu.snu.cay.dolphin.parameters.JobIdentifier;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.driver.parameters.DriverStartHandler;
+import org.apache.reef.driver.parameters.EvaluatorAllocatedHandlers;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.wake.time.Clock;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -57,6 +59,7 @@ public final class AddIntegrationTest {
         "-maxNumEvalLocal", Integer.toString(addEvalNum + 2),
         "-timeout", "120000"
     };
+
     LauncherStatus status;
     try {
       status = DolphinLauncher.run(
@@ -67,13 +70,16 @@ public final class AddIntegrationTest {
                   .bindImplementation(UserJobInfo.class, SimpleJobInfo.class)
                   .build()),
           Tang.Factory.getTang().newConfigurationBuilder()
-              .bindSetEntry(DriverStartHandler.class, AddTestStartHandler.class)
+              .bindSetEntry(DriverStartHandler.class, AddTestHandlers.AddTestStartHandler.class)
+              .bindSetEntry(EvaluatorAllocatedHandlers.class, AddTestHandlers.AddTestEvaluatorAllocatedHandler.class)
+              .bindSetEntry(Clock.StopHandler.class, AddTestHandlers.AddTestDriverStopHandler.class)
               .bindNamedParameter(AddEvalNumber.class, Integer.toString(addEvalNum))
               .bindNamedParameter(AddThreadNumber.class, Integer.toString(addThreadNum))
               .build());
     } catch (IOException e) {
       status = LauncherStatus.failed(e);
     }
+
     assertEquals(LauncherStatus.COMPLETED, status);
   }
 
