@@ -663,7 +663,7 @@ public final class DolphinDriver {
       if (runningTask == null) {
         // Given active context should have a runningTask in a normal case, because our job is paused.
         // Evaluator without corresponding runningTask implies error.
-        LOG.log(Level.SEVERE,
+        LOG.log(Level.WARNING,
             "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
       } else {
         final int currentSequence = contextToStageSequence.get(runningTask.getActiveContext().getId());

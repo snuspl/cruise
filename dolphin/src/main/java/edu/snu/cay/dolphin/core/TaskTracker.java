@@ -69,7 +69,10 @@ public final class TaskTracker {
   }
 
   /**
-   * Retrieves memoed RunningTask. It is not safe to use this method when ControllerTask is not paused.
+   * Retrieves memoed RunningTask.
+   * It is not safe to use this method when ControllerTask is not paused.
+   * If dolphin job was not paused and retrieved running task was already completed or failed,
+   * using this method may caused unexpected errors.
    * @param activeContextId
    * @return RunningTask object corresponding to the activeContextId
    */
