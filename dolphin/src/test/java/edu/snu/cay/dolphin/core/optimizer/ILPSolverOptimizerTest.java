@@ -135,6 +135,7 @@ public final class ILPSolverOptimizerTest {
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
+    checkPlan(activeEvaluators, plan, availableEvaluators);
     assertEquals(1, plan.getEvaluatorsToAdd().size());
     assertEquals(0, plan.getEvaluatorsToDelete().size());
   }

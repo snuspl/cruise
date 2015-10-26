@@ -72,13 +72,13 @@ public final class PlanValidationUtils {
 
   /**
    * Generates the collection of evaluator parameters after applying the specified plan.
-   * Assumes each evaluator id is unique in the specified collection of evaluator parameters.
+   * Each evaluator id should be unique in the specified collection of evaluator parameters.
    * @param activeEvaluators the collection of evaluator parameters to which the plan is applied
    * @param plan the plan that is applied to the specified collection of evaluator parameters
    * @return the collection of evaluator parameters after applying the specified plan
    */
-  public static Collection<EvaluatorParameters> applyPlan(final Collection<EvaluatorParameters> activeEvaluators,
-                                                          final Plan plan) {
+  private static Collection<EvaluatorParameters> applyPlan(final Collection<EvaluatorParameters> activeEvaluators,
+                                                           final Plan plan) {
     final Map<String, EvaluatorParameters> evaluatorMap = new HashMap<>();
 
     // add existing evaluators
