@@ -76,7 +76,7 @@ public final class AddIntegrationTest {
               .bindNamedParameter(AddEvalNumber.class, Integer.toString(addEvalNum))
               .bindNamedParameter(AddThreadNumber.class, Integer.toString(addThreadNum))
               .build());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       status = LauncherStatus.failed(e);
     }
 
