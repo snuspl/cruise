@@ -37,7 +37,7 @@ public final class MatrixMulJobInfo implements UserJobInfo {
     final List<StageInfo> stageInfoList = new LinkedList<>();
     stageInfoList.add(
         StageInfo.newBuilder(MatrixMulCmpTask.class, MatrixMulCtrlTask.class, MatrixMulCommGroup.class)
-            .setShuffle(IntegerCodec.class, IndexedElementCodec.class)
+            .setPreRunShuffle(IntegerCodec.class, IndexedElementCodec.class)
             .setReduce(IndexedVectorListCodec.class, MatrixMulReduceFunction.class)
             .addMetricTrackers(InsertableMetricTracker.class, TimeMetricTracker.class, GCMetricTracker.class)
             .build()

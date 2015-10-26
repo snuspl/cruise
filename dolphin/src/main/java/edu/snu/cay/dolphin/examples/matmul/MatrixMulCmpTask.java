@@ -19,7 +19,7 @@ import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
-import edu.snu.cay.dolphin.groupcomm.interfaces.DataShuffleOperator;
+import edu.snu.cay.dolphin.groupcomm.interfaces.DataPreRunShuffleOperator;
 import org.apache.commons.io.FileUtils;
 import org.apache.mahout.math.DenseMatrix;
 import org.apache.mahout.math.DenseVector;
@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.util.*;
 
 public final class MatrixMulCmpTask extends UserComputeTask
-    implements DataReduceSender<List<IndexedVector>>, DataShuffleOperator<Integer, IndexedElement> {
+    implements DataReduceSender<List<IndexedVector>>, DataPreRunShuffleOperator<Integer, IndexedElement> {
 
   /**
    * Provides indexed row vectors of the large matrix.
@@ -50,6 +50,8 @@ public final class MatrixMulCmpTask extends UserComputeTask
    * The small matrix which consists of ordered row vectors.
    */
   private final Matrix smallMatrix;
+
+  private List<IndexedVector> columnsOfResultMatrix;
 
   @Inject
   private MatrixMulCmpTask(final DataParser<List<IndexedVector>> dataParser,
@@ -101,12 +103,7 @@ public final class MatrixMulCmpTask extends UserComputeTask
   }
 
   @Override
-  public void run(final int iteration) {
-    // no-op
-  }
-
-  @Override
-  public List<Tuple<Integer, IndexedElement>> sendShuffleData(final int iteration) {
+  public List<Tuple<Integer, IndexedElement>> sendPreRunShuffleData(final int iteration) {
     final List<Tuple<Integer, IndexedElement>> tupleList = new LinkedList<>();
     try {
       for (final IndexedVector rowOfLargeMatrix : dataParser.get()) {
@@ -126,9 +123,24 @@ public final class MatrixMulCmpTask extends UserComputeTask
   }
 
   @Override
-  public void receiveShuffleData(final int iteration, final List<Tuple<Integer, IndexedElement>> tuples) {
+  public void receivePreRunShuffleData(final int iteration, final List<Tuple<Integer, IndexedElement>> tuples) {
     for (final Tuple<Integer, IndexedElement> tuple : tuples) {
       processIndexedElement(tuple.getKey(), tuple.getValue());
+    }
+  }
+
+  @Override
+  public void run(final int iteration) {
+    columnsOfResultMatrix = new ArrayList<>(elementsOfLargeMatrix.size());
+
+    // Send columns of the result matrix
+    for (final Integer column : elementsOfLargeMatrix.keySet()) {
+      // Create columns of large matrix using indexed elements
+      final Vector columnVectorOfLargeMatrix = getColumnVector(elementsOfLargeMatrix.get(column));
+
+      // Calculated columns of the result matrix
+      final Vector columnVectorOfResultMatrix = getColumnOfResultMatrix(columnVectorOfLargeMatrix);
+      columnsOfResultMatrix.add(new IndexedVector(column, columnVectorOfResultMatrix));
     }
   }
 
@@ -142,18 +154,6 @@ public final class MatrixMulCmpTask extends UserComputeTask
 
   @Override
   public List<IndexedVector> sendReduceData(final int iteration) {
-    final List<IndexedVector> columnsOfResultMatrix = new ArrayList<>(elementsOfLargeMatrix.size());
-
-    // Send columns of the result matrix
-    for (final Integer column : elementsOfLargeMatrix.keySet()) {
-      // Create columns of large matrix using indexed elements
-      final Vector columnVectorOfLargeMatrix = getColumnVector(elementsOfLargeMatrix.get(column));
-
-      // Calculated columns of the result matrix
-      final Vector columnVectorOfResultMatrix = getColumnOfResultMatrix(columnVectorOfLargeMatrix);
-      columnsOfResultMatrix.add(new IndexedVector(column, columnVectorOfResultMatrix));
-    }
-
     return columnsOfResultMatrix;
   }
 

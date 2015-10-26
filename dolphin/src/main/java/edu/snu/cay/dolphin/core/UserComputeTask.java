@@ -61,7 +61,11 @@ public abstract class UserComputeTask {
     return (this instanceof DataScatterReceiver);
   }
 
-  public final boolean isShuffleUsed() {
-    return (this instanceof DataShuffleOperator);
+  public final boolean isPreRunShuffleUsed() {
+    return (this instanceof DataPreRunShuffleOperator);
+  }
+
+  public final boolean isPostRunShuffleUsed() {
+    return (this instanceof DataPostRunShuffleOperator);
   }
 }

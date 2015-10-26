@@ -40,8 +40,14 @@ public final class StageInfo {
   private final Optional<? extends Class<? extends Codec>> gatherCodecClassOptional;
   private final Optional<? extends Class<? extends Codec>> reduceCodecClassOptional;
   private final Optional<? extends Class<? extends Reduce.ReduceFunction>> reduceFunctionClassOptional;
-  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>> shuffleKeyCodecClassOptional;
-  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>> shuffleValueCodecClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>>
+      preRunShuffleKeyCodecClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>>
+      preRunShuffleValueCodecClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>>
+      postRunShuffleKeyCodecClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>>
+      postRunShuffleValueCodecClassOptional;
   private final Optional<Set<Class<? extends MetricTracker>>> metricTrackerClassSet;
 
   public static Builder newBuilder(final Class<? extends UserComputeTask> userComputeTaskClass,
@@ -59,8 +65,10 @@ public final class StageInfo {
                     final Class<? extends Codec> gatherCodecClass,
                     final Class<? extends Codec> reduceCodecClass,
                     final Class<? extends Reduce.ReduceFunction> reduceFunctionClass,
-                    final Class<? extends org.apache.reef.wake.remote.Codec> shuffleKeyCodecClass,
-                    final Class<? extends org.apache.reef.wake.remote.Codec> shuffleValueCodecClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> preRunShuffleKeyCodecClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> preRunShuffleValueCodecClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> postRunShuffleKeyCodecClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> postRunShuffleValueCodecClass,
                     final Set<Class<? extends MetricTracker>> metricTrackerClassSet) {
     this.userComputeTaskClass = userComputeTaskClass;
     this.userControllerTaskClass = userControllerTaskClass;
@@ -71,8 +79,10 @@ public final class StageInfo {
     this.gatherCodecClassOptional = Optional.ofNullable(gatherCodecClass);
     this.reduceCodecClassOptional = Optional.ofNullable(reduceCodecClass);
     this.reduceFunctionClassOptional = Optional.ofNullable(reduceFunctionClass);
-    this.shuffleKeyCodecClassOptional = Optional.ofNullable(shuffleKeyCodecClass);
-    this.shuffleValueCodecClassOptional = Optional.ofNullable(shuffleValueCodecClass);
+    this.preRunShuffleKeyCodecClassOptional = Optional.ofNullable(preRunShuffleKeyCodecClass);
+    this.preRunShuffleValueCodecClassOptional = Optional.ofNullable(preRunShuffleValueCodecClass);
+    this.postRunShuffleKeyCodecClassOptional = Optional.ofNullable(postRunShuffleKeyCodecClass);
+    this.postRunShuffleValueCodecClassOptional = Optional.ofNullable(postRunShuffleValueCodecClass);
     this.metricTrackerClassSet = Optional.ofNullable(metricTrackerClassSet);
   }
 
@@ -92,8 +102,12 @@ public final class StageInfo {
     return reduceCodecClassOptional.isPresent();
   }
 
-  public boolean isShuffleUsed() {
-    return shuffleKeyCodecClassOptional.isPresent() && shuffleValueCodecClassOptional.isPresent();
+  public boolean isPreRunShuffleUsed() {
+    return preRunShuffleKeyCodecClassOptional.isPresent() && preRunShuffleValueCodecClassOptional.isPresent();
+  }
+
+  public boolean isPostRunShuffleUsed() {
+    return postRunShuffleKeyCodecClassOptional.isPresent() && postRunShuffleValueCodecClassOptional.isPresent();
   }
 
   public boolean isOptimizable() {
@@ -120,12 +134,20 @@ public final class StageInfo {
     return reduceFunctionClassOptional.get();
   }
 
-  public Class<? extends org.apache.reef.wake.remote.Codec> getShuffleKeyCodecClass() {
-    return shuffleKeyCodecClassOptional.get();
+  public Class<? extends org.apache.reef.wake.remote.Codec> getPreRunShuffleKeyCodecClass() {
+    return preRunShuffleKeyCodecClassOptional.get();
   }
 
-  public Class<? extends org.apache.reef.wake.remote.Codec> getShuffleValueCodecClass() {
-    return shuffleValueCodecClassOptional.get();
+  public Class<? extends org.apache.reef.wake.remote.Codec> getPreRunShuffleValueCodecClass() {
+    return preRunShuffleValueCodecClassOptional.get();
+  }
+
+  public Class<? extends org.apache.reef.wake.remote.Codec> getPostRunShuffleKeyCodecClass() {
+    return postRunShuffleKeyCodecClassOptional.get();
+  }
+
+  public Class<? extends org.apache.reef.wake.remote.Codec> getPostRunShuffleValueCodecClass() {
+    return postRunShuffleValueCodecClassOptional.get();
   }
 
   public Set<Class<? extends MetricTracker>> getMetricTrackerClassSet() {
@@ -153,8 +175,10 @@ public final class StageInfo {
     private Class<? extends Codec> scatterCodecClass = null;
     private Class<? extends Codec> gatherCodecClass = null;
     private Class<? extends Codec> reduceCodecClass = null;
-    private Class<? extends org.apache.reef.wake.remote.Codec> shuffleKeyCodecClass = null;
-    private Class<? extends org.apache.reef.wake.remote.Codec> shuffleValueCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> preRunShuffleKeyCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> preRunShuffleValueCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> postRunShuffleKeyCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> postRunShuffleValueCodecClass = null;
     private Class<? extends Reduce.ReduceFunction> reduceFunctionClass = null;
     private Set<Class<? extends MetricTracker>> metricTrackerSet = new HashSet<>();
 
@@ -199,10 +223,17 @@ public final class StageInfo {
       return this;
     }
 
-    public Builder setShuffle(final Class<? extends org.apache.reef.wake.remote.Codec> keyCodecClass,
+    public Builder setPreRunShuffle(final Class<? extends org.apache.reef.wake.remote.Codec> keyCodecClass,
                               final Class<? extends org.apache.reef.wake.remote.Codec> valueCodecClass) {
-      this.shuffleKeyCodecClass = keyCodecClass;
-      this.shuffleValueCodecClass = valueCodecClass;
+      this.preRunShuffleKeyCodecClass = keyCodecClass;
+      this.preRunShuffleValueCodecClass = valueCodecClass;
+      return this;
+    }
+
+    public Builder setPostRunShuffle(final Class<? extends org.apache.reef.wake.remote.Codec> keyCodecClass,
+                              final Class<? extends org.apache.reef.wake.remote.Codec> valueCodecClass) {
+      this.postRunShuffleKeyCodecClass = keyCodecClass;
+      this.postRunShuffleValueCodecClass = valueCodecClass;
       return this;
     }
 
@@ -215,7 +246,8 @@ public final class StageInfo {
     public StageInfo build() {
       return new StageInfo(userComputeTaskClass, userControllerTaskClass, commGroupName, optimizable,
           broadcastCodecClass, scatterCodecClass, gatherCodecClass, reduceCodecClass, reduceFunctionClass,
-          shuffleKeyCodecClass, shuffleValueCodecClass, metricTrackerSet);
+          preRunShuffleKeyCodecClass, preRunShuffleValueCodecClass, postRunShuffleKeyCodecClass,
+          postRunShuffleValueCodecClass, metricTrackerSet);
     }
   }
 }

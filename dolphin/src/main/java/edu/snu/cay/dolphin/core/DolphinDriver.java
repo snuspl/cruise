@@ -29,7 +29,7 @@ import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
 import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.metric.MetricTrackers;
-import edu.snu.cay.dolphin.groupcomm.names.DataShuffle;
+import edu.snu.cay.dolphin.groupcomm.names.DataPreRunShuffle;
 import edu.snu.cay.dolphin.parameters.StartTrace;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import edu.snu.cay.services.dataloader.DataLoader;
@@ -74,6 +74,7 @@ import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.task.Task;
 import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.remote.Codec;
 import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.wake.time.event.StartTime;
 import org.htrace.Sampler;
@@ -103,7 +104,9 @@ import java.util.logging.Logger;
 @Unit
 public final class DolphinDriver {
 
-  public static final String DOLPHIN_SHUFFLE_PREFIX = "DOLPHIN_SHUFFLE_PREFIX_";
+  public static final String DOLPHIN_PRE_RUN_SHUFFLE_PREFIX = "DOLPHIN_PRE_RUN_SHUFFLE_PREFIX";
+
+  public static final String DOLPHIN_POST_RUN_SHUFFLE_PREFIX = "DOLPHIN_POST_RUN_SHUFFLE_PREFIX";
 
   private static final Logger LOG = Logger.getLogger(DolphinDriver.class.getName());
 
@@ -179,10 +182,16 @@ public final class DolphinDriver {
   private final List<CommunicationGroupDriver> commGroupDriverList;
 
   /**
-   * List of optional shuffle managers.
-   * If some stages do not have a shuffle operation, corresponding optional value is set to Optional.empty().
+   * List of optional shuffle managers that manage pre-run shuffles.
+   * If some stages do not have a pre-run shuffle operation, corresponding optional value is set to Optional.empty().
    */
-  private final List<Optional<StaticPushShuffleManager>> shuffleManagerList;
+  private final List<Optional<StaticPushShuffleManager>> preRunShuffleManagerList;
+
+  /**
+   * List of optional shuffle managers that manage post-run shuffles.
+   * If some stages do not have a post-run shuffle operation, corresponding optional value is set to Optional.empty().
+   */
+  private final List<Optional<StaticPushShuffleManager>> postRunShuffleManagerList;
 
   /**
    * Map to record which stage is being executed by each evaluator which is identified by context id.
@@ -269,7 +278,8 @@ public final class DolphinDriver {
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
     this.commGroupDriverList = new LinkedList<>();
-    this.shuffleManagerList = new LinkedList<>();
+    this.preRunShuffleManagerList = new LinkedList<>();
+    this.postRunShuffleManagerList = new LinkedList<>();
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
     this.metricCodec = metricCodec;
@@ -333,7 +343,9 @@ public final class DolphinDriver {
       }
 
       final int numComputeTasks = numTasks - 1;
-      if (stageInfo.isShuffleUsed()) {
+
+      // The names of shuffle senders and receivers should be defined first.
+      if (stageInfo.isPreRunShuffleUsed() || stageInfo.isPostRunShuffleUsed()) {
         final List<String> computeTaskIdList = new ArrayList<>(numComputeTasks);
 
         for (int i = 0; i < numComputeTasks; i++) {
@@ -341,19 +353,28 @@ public final class DolphinDriver {
           computeTaskIndex++;
         }
 
-        final StaticPushShuffleManager shuffleManager = shuffleDriver.registerShuffle(
-            ShuffleDescriptionImpl.newBuilder(getShuffleName(sequence))
-                .setReceiverIdList(computeTaskIdList)
-                .setSenderIdList(computeTaskIdList)
-                .setKeyCodecClass(stageInfo.getShuffleKeyCodecClass())
-                .setValueCodecClass(stageInfo.getShuffleValueCodecClass())
-                .setShuffleStrategyClass(KeyShuffleStrategy.class)
-                .build());
+        if (stageInfo.isPreRunShuffleUsed()) {
+          final StaticPushShuffleManager shuffleManager = registerPushShuffleManager(
+              getPreRunShuffleName(sequence), sequence, computeTaskIdList, stageInfo.getPreRunShuffleKeyCodecClass(),
+              stageInfo.getPreRunShuffleValueCodecClass());
 
-        shuffleManager.setPushShuffleListener(new DolphinShuffleListener(sequence));
-        shuffleManagerList.add(Optional.of(shuffleManager));
+          shuffleManager.setPushShuffleListener(new DolphinShuffleListener(sequence));
+          preRunShuffleManagerList.add(Optional.of(shuffleManager));
+        } else {
+          preRunShuffleManagerList.add(Optional.<StaticPushShuffleManager>empty());
+        }
+
+        if (stageInfo.isPostRunShuffleUsed()) {
+          final StaticPushShuffleManager shuffleManager = registerPushShuffleManager(
+              getPostRunShuffleName(sequence), sequence, computeTaskIdList, stageInfo.getPostRunShuffleKeyCodecClass(),
+              stageInfo.getPostRunShuffleValueCodecClass());
+
+          shuffleManager.setPushShuffleListener(new DolphinShuffleListener(sequence));
+          postRunShuffleManagerList.add(Optional.of(shuffleManager));
+        } else {
+          postRunShuffleManagerList.add(Optional.<StaticPushShuffleManager>empty());
+        }
       } else {
-        shuffleManagerList.add(Optional.<StaticPushShuffleManager>empty());
         computeTaskIndex += numComputeTasks;
       }
 
@@ -362,6 +383,22 @@ public final class DolphinDriver {
       sequence++;
     }
     taskIdCounter.set(sequence);
+  }
+
+  private StaticPushShuffleManager registerPushShuffleManager(
+      final String shuffleName, final int sequence, final List<String> computeTaskIdList,
+      final Class<? extends Codec> keyCodecClass, final Class<? extends Codec> valueCodecClass) {
+    final StaticPushShuffleManager shuffleManager = shuffleDriver.registerShuffle(
+        ShuffleDescriptionImpl.newBuilder(shuffleName)
+            .setReceiverIdList(computeTaskIdList)
+            .setSenderIdList(computeTaskIdList)
+            .setKeyCodecClass(keyCodecClass)
+            .setValueCodecClass(valueCodecClass)
+            .setShuffleStrategyClass(KeyShuffleStrategy.class)
+            .build());
+
+    shuffleManager.setPushShuffleListener(new DolphinShuffleListener(sequence));
+    return shuffleManager;
   }
 
   final class StartHandler implements EventHandler<StartTime> {
@@ -679,14 +716,19 @@ public final class DolphinDriver {
 
   private Configuration getShuffleTaskConfiguration(final int stageSequence, final String computeTaskId) {
     final JavaConfigurationBuilder shuffleConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
-    if (stageInfoList.get(stageSequence).isShuffleUsed()) {
+    if (stageInfoList.get(stageSequence).isPreRunShuffleUsed()) {
       shuffleConfBuilder.addConfiguration(
-          shuffleManagerList.get(stageSequence).get().getShuffleConfiguration(computeTaskId));
+          preRunShuffleManagerList.get(stageSequence).get().getShuffleConfiguration(computeTaskId));
+      shuffleConfBuilder.bindNamedParameter(DataPreRunShuffle.class, getPreRunShuffleName(stageSequence));
     }
 
-    return shuffleConfBuilder
-        .bindNamedParameter(DataShuffle.class, getShuffleName(stageSequence))
-        .build();
+    if (stageInfoList.get(stageSequence).isPostRunShuffleUsed()) {
+      shuffleConfBuilder.addConfiguration(
+          postRunShuffleManagerList.get(stageSequence).get().getShuffleConfiguration(computeTaskId));
+      shuffleConfBuilder.bindNamedParameter(DataPostRunShuffle.class, getPostRunShuffleName(stageSequence));
+    }
+
+    return shuffleConfBuilder.build();
   }
 
   private boolean isCtrlTaskId(final String id) {
@@ -737,7 +779,11 @@ public final class DolphinDriver {
     }
   }
 
-  private String getShuffleName(final int stageSequence) {
-    return DOLPHIN_SHUFFLE_PREFIX + stageSequence;
+  private String getPreRunShuffleName(final int stageSequence) {
+    return DOLPHIN_PRE_RUN_SHUFFLE_PREFIX + stageSequence;
+  }
+
+  private String getPostRunShuffleName(final int stageSequence) {
+    return DOLPHIN_POST_RUN_SHUFFLE_PREFIX + stageSequence;
   }
 }

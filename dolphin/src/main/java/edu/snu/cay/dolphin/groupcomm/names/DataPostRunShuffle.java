@@ -18,6 +18,6 @@ package edu.snu.cay.dolphin.groupcomm.names;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Name for the shuffle in a certain stage", default_value = "SHUFFLE_IS_NOT_USED")
-public final class DataShuffle implements Name<String> {
+@NamedParameter(doc = "Name for the shuffle that will be executed after run", default_value = "##DEFAULT_VALUE##")
+public final class DataPostRunShuffle implements Name<String> {
 }

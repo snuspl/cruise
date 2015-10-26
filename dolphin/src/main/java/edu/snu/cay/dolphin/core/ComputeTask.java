@@ -21,18 +21,19 @@ import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
 import edu.snu.cay.dolphin.core.metric.avro.DataInfo;
 import edu.snu.cay.dolphin.groupcomm.interfaces.*;
 import edu.snu.cay.dolphin.groupcomm.names.*;
-import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_EXCHANGE_SHUFFLE_DATA_START;
-import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_EXCHANGE_SHUFFLE_DATA_END;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_EXCHANGE_PRE_RUN_SHUFFLE_DATA_START;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_EXCHANGE_PRE_RUN_SHUFFLE_DATA_END;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_EXCHANGE_POST_RUN_SHUFFLE_DATA_START;
+import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_EXCHANGE_POST_RUN_SHUFFLE_DATA_END;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_RECEIVE_DATA_START;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_RECEIVE_DATA_END;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_SEND_DATA_START;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_SEND_DATA_END;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START;
 import static edu.snu.cay.dolphin.core.DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END;
-import edu.snu.cay.dolphin.groupcomm.names.DataShuffle;
+import edu.snu.cay.dolphin.groupcomm.names.DataPreRunShuffle;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleProvider;
-import edu.snu.cay.services.shuffle.evaluator.operator.PushDataListener;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
 import edu.snu.cay.utils.trace.HTraceInfoCodec;
@@ -40,7 +41,6 @@ import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.Tuple;
-import org.apache.reef.io.network.Message;
 import org.apache.reef.io.network.group.api.operators.Broadcast;
 import org.apache.reef.io.network.group.api.task.CommunicationGroupClient;
 import org.apache.reef.io.network.group.api.task.GroupCommClient;
@@ -75,7 +75,8 @@ public final class ComputeTask implements Task {
   private final UserComputeTask userComputeTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
-  private final PushShuffleSender shuffleSender;
+  private final PushShuffleSender preRunShuffleSender;
+  private final PushShuffleSender postRunShuffleSender;
   private final MetricsCollector metricsCollector;
   private final Set<MetricTracker> metricTrackerSet;
   private final InsertableMetricTracker insertableMetricTracker;
@@ -83,7 +84,7 @@ public final class ComputeTask implements Task {
   private final HTraceInfoCodec hTraceInfoCodec;
   private final UserTaskTrace userTaskTrace;
 
-  private final Queue<Tuple> receivedTupleList;
+  private final Queue<Tuple> receivedTupleQueue;
   private final CountDownLatch terminated = new CountDownLatch(1);
   private final AtomicBoolean isClosing = new AtomicBoolean(false);
   private int iteration;
@@ -91,7 +92,8 @@ public final class ComputeTask implements Task {
   @Inject
   public ComputeTask(final GroupCommClient groupCommClient,
                      final ShuffleProvider shuffleProvider,
-                     @Parameter(DataShuffle.class) final String shuffleName,
+                     @Parameter(DataPreRunShuffle.class) final String preRunShuffleName,
+                     @Parameter(DataPostRunShuffle.class) final String postRunShuffleName,
                      final MemoryStore memoryStore,
                      final UserComputeTask userComputeTask,
                      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
@@ -111,16 +113,20 @@ public final class ComputeTask implements Task {
         groupCommClient.getCommunicationGroup((Class<? extends Name<String>>) Class.forName(commGroupName));
     this.iteration = startIteration;
     this.ctrlMessageBroadcast = commGroup.getBroadcastReceiver(CtrlMsgBroadcast.class);
+    this.receivedTupleQueue = new ConcurrentLinkedQueue<>();
 
     // TODO #223: Use ShuffleProvider's method to check the shuffle is used or not
-    if (shuffleName.startsWith(DolphinDriver.DOLPHIN_SHUFFLE_PREFIX)) {
-      this.shuffleSender = shuffleProvider.getShuffle(shuffleName).getSender();
-      this.receivedTupleList = new ConcurrentLinkedQueue<>();
-      final PushShuffleReceiver shuffleReceiver = shuffleProvider.getShuffle(shuffleName).getReceiver();
-      shuffleReceiver.registerDataListener(new ShuffleDataReceiver());
+    if (preRunShuffleName.startsWith(DolphinDriver.DOLPHIN_PRE_RUN_SHUFFLE_PREFIX)) {
+      this.preRunShuffleSender = setReceiverAndGetShuffleSender(preRunShuffleName);
     } else {
-      this.shuffleSender = null;
-      this.receivedTupleList = null;
+      this.preRunShuffleSender = null;
+    }
+
+    // TODO #223: Use ShuffleProvider's method to check the shuffle is used or not
+    if (postRunShuffleName.startsWith(DolphinDriver.DOLPHIN_POST_RUN_SHUFFLE_PREFIX)) {
+      this.postRunShuffleSender = setReceiverAndGetShuffleSender(postRunShuffleName);
+    } else {
+      this.postRunShuffleSender = null;
     }
 
     this.metricsCollector = metricsCollector;
@@ -129,6 +135,13 @@ public final class ComputeTask implements Task {
     this.metricsMessageSender = metricsMessageSender;
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.userTaskTrace = userTaskTrace;
+  }
+
+  private PushShuffleSender setReceiverAndGetShuffleSender(final String shuffleName) {
+    final PushShuffleSender sender  = shuffleProvider.getShuffle(shuffleName).getSender();
+    final PushShuffleReceiver shuffleReceiver = shuffleProvider.getShuffle(shuffleName).getReceiver();
+    shuffleReceiver.registerDataListener(new ShuffleDataReceiver(receivedTupleQueue));
+    return sender;
   }
 
   @Override
@@ -150,8 +163,9 @@ public final class ComputeTask implements Task {
               userTaskTrace.setParentTraceInfo(TraceInfo.fromSpan(traceScope.getSpan()));
               collector.start();
               receiveData();
+              exchangePreRunShuffleData();
               runUserComputeTask();
-              exchangeShuffleData();
+              exchangePostRunShuffleData();
               sendData();
               collector.stop();
               sendMetrics();
@@ -202,19 +216,31 @@ public final class ComputeTask implements Task {
     insertableMetricTracker.put(COMPUTE_TASK_RECEIVE_DATA_END, System.currentTimeMillis());
   }
 
-  private void exchangeShuffleData() throws MetricException {
-    insertableMetricTracker.put(COMPUTE_TASK_EXCHANGE_SHUFFLE_DATA_START, System.currentTimeMillis());
-    if (userComputeTask.isShuffleUsed()) {
-      shuffleSender.sendTuple(((DataShuffleOperator) userComputeTask).sendShuffleData(iteration));
-      shuffleSender.complete();
-      ((DataShuffleOperator)userComputeTask).receiveShuffleData(iteration, getAndClearReceivedTupleList());
+  private void exchangePreRunShuffleData() throws MetricException {
+    insertableMetricTracker.put(COMPUTE_TASK_EXCHANGE_PRE_RUN_SHUFFLE_DATA_START, System.currentTimeMillis());
+    if (userComputeTask.isPreRunShuffleUsed()) {
+      preRunShuffleSender.sendTuple(((DataPreRunShuffleOperator) userComputeTask).sendPreRunShuffleData(iteration));
+      preRunShuffleSender.complete();
+      ((DataPreRunShuffleOperator)userComputeTask)
+          .receivePreRunShuffleData(iteration, getAndClearReceivedTupleList());
     }
-    insertableMetricTracker.put(COMPUTE_TASK_EXCHANGE_SHUFFLE_DATA_END, System.currentTimeMillis());
+    insertableMetricTracker.put(COMPUTE_TASK_EXCHANGE_PRE_RUN_SHUFFLE_DATA_END, System.currentTimeMillis());
+  }
+
+  private void exchangePostRunShuffleData() throws MetricException {
+    insertableMetricTracker.put(COMPUTE_TASK_EXCHANGE_POST_RUN_SHUFFLE_DATA_START, System.currentTimeMillis());
+    if (userComputeTask.isPostRunShuffleUsed()) {
+      postRunShuffleSender.sendTuple(((DataPostRunShuffleOperator) userComputeTask).sendPostRunShuffleData(iteration));
+      postRunShuffleSender.complete();
+      ((DataPostRunShuffleOperator)userComputeTask)
+          .receivePostRunShuffleData(iteration, getAndClearReceivedTupleList());
+    }
+    insertableMetricTracker.put(COMPUTE_TASK_EXCHANGE_POST_RUN_SHUFFLE_DATA_END, System.currentTimeMillis());
   }
 
   private List<Tuple> getAndClearReceivedTupleList() {
-    final List<Tuple> tupleList = new ArrayList<>(receivedTupleList);
-    receivedTupleList.clear();
+    final List<Tuple> tupleList = new ArrayList<>(receivedTupleQueue);
+    receivedTupleQueue.clear();
     return tupleList;
   }
 
@@ -267,25 +293,6 @@ public final class ComputeTask implements Task {
         .build();
     LOG.log(Level.INFO, "computeMsg {0}", computeMsg);
     return computeMsg;
-  }
-
-  private final class ShuffleDataReceiver implements PushDataListener {
-
-    @Override
-    public void onTupleMessage(final Message message) {
-      for (final Object tuple : message.getData()) {
-        receivedTupleList.add((Tuple) tuple);
-      }
-    }
-
-    @Override
-    public void onComplete() {
-      LOG.log(Level.INFO, "An shuffle iteration was completed");
-    }
-
-    @Override
-    public void onShutdown() {
-    }
   }
 
   /**

@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.groupcomm.interfaces;
+package edu.snu.cay.dolphin.groupcomm.names;
 
-import org.apache.reef.io.Tuple;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-import java.util.List;
 
-public interface DataShuffleOperator<K, V> {
-  List<Tuple<K, V>> sendShuffleData(int iteration);
-
-  void receiveShuffleData(int iteration, List<Tuple<K, V>> tupleList);
+@NamedParameter(doc = "Name for the shuffle that will be executed before run", default_value = "##DEFAULT_VALUE##")
+public final class DataPreRunShuffle implements Name<String> {
 }
