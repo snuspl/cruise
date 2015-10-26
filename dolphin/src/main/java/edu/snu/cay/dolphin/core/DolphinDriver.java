@@ -714,6 +714,7 @@ public final class DolphinDriver {
 
   private Configuration getCmpTaskConf(final String identifier, @Nullable final Span traceSpan) {
     return getBaseTaskConfModule(identifier, ComputeTask.class, traceSpan)
+        .set(TaskConfiguration.ON_CLOSE, ComputeTask.TaskCloseHandler.class)
         .build();
   }
 

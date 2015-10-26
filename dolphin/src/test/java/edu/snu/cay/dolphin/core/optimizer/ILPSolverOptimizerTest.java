@@ -54,7 +54,8 @@ public final class ILPSolverOptimizerTest {
    */
   @Test
   public void testIncreasedComputeTasks() {
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(1, new int[]{10000});
+    final Collection<EvaluatorParameters> activeEvaluators =
+        generateEvaluatorParameters(1, new int[][]{{10000}});
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, 4);
 
@@ -67,13 +68,13 @@ public final class ILPSolverOptimizerTest {
    */
   @Test
   public void testHalfNumComputeTasks() {
-    final int numComputeTask = 4;
+    final int numComputeTasks = 4;
     final Collection<EvaluatorParameters> activeEvaluators =
-        generateEvaluatorParameters(numComputeTask, new int[]{10000});
-    final int upperBoundToDelete = (int) Math.ceil((double) numComputeTask / 2);
+        generateEvaluatorParameters(numComputeTasks, new int[][]{{2500}, {2500}, {2500}, {2500}});
+    final int upperBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan =
-        ilpSolverOptimizer.optimize(activeEvaluators, numComputeTask / 2 + 1); // +1 for including the controller task
+        ilpSolverOptimizer.optimize(activeEvaluators, numComputeTasks / 2 + 1); // +1 for including the controller task
 
     assertEquals(0, plan.getEvaluatorsToAdd().size());
     assertTrue("The number of evaluators to be deleted should be <= " + upperBoundToDelete,
@@ -81,27 +82,45 @@ public final class ILPSolverOptimizerTest {
   }
 
   /**
+   * Test that two compute tasks send data to a new generated compute task.
+   */
+  @Test
+  public void testTwoSenderAndOneReceiver() {
+    final int numComputeTasks = 2;
+    final int availableEvaluators = 4; // +1 for adding one more compute task and +1 for including the controller task
+    final Collection<EvaluatorParameters> activeEvaluators =
+        generateEvaluatorParameters(numComputeTasks, new int[][]{{1300}, {900}});
+
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+
+    assertEquals(1, plan.getEvaluatorsToAdd().size());
+    assertEquals(0, plan.getEvaluatorsToDelete().size());
+  }
+
+  /**
    * Generate a collection of evaluator parameters that consists of one controller task
    * and the specified number of compute tasks.
-   * For each data type, data units will be evenly distributed to compute tasks.
    * @param numComputeTasks the number of compute tasks that participate in the execution.
-   * @param dataUnitsArray an array of the number of data units for each data type.
+   * @param dataUnitsArray a two dimension array whose column contains the number of data units for each data type
+   *                       and whose row contains data units for each task.
    * @return a collection of evaluator parameters.
    */
   private Collection<EvaluatorParameters> generateEvaluatorParameters(final int numComputeTasks,
-                                                                      final int[] dataUnitsArray) {
+                                                                      final int[][] dataUnitsArray) {
     final List<EvaluatorParameters> ret = new ArrayList<>(numComputeTasks + 1);
     double maxComputeTaskEndTime = 0D;
+
+    if (numComputeTasks != dataUnitsArray.length) {
+      throw new IllegalArgumentException("# of compute task should be equal to # of rows of data units array");
+    }
 
     // generate compute tasks
     for (int i = 0; i < numComputeTasks; ++i) {
       final List<DataInfo> cmpTaskDataInfos = new ArrayList<>(1);
       int sumDataUnits = 0;
 
-      for (int j = 0; j < dataUnitsArray.length; ++j) {
-        final int dataUnitsPerEval = dataUnitsArray[j] / numComputeTasks;
-        final int dataUnits = (i == 0) ? dataUnitsPerEval + (dataUnitsArray[j] % numComputeTasks) : dataUnitsPerEval;
-
+      for (int j = 0; j < dataUnitsArray[i].length; ++j) {
+        final int dataUnits = dataUnitsArray[i][j];
         cmpTaskDataInfos.add(new DataInfoImpl(String.format("testType-%d", j), dataUnits));
         sumDataUnits += dataUnits;
       }
