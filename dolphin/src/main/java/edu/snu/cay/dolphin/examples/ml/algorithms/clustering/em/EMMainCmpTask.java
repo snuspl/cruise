@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em;
 
-import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCmpTask;
+import edu.snu.cay.dolphin.examples.ml.data.ClusteringDataType;
 import edu.snu.cay.dolphin.examples.ml.data.ClusterStats;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
@@ -48,6 +48,8 @@ public final class EMMainCmpTask extends UserComputeTask
    */
   private final boolean isCovarianceDiagonal;
 
+  private final String dataType;
+
   /**
    * Memory storage to put/get the data.
    */
@@ -62,8 +64,10 @@ public final class EMMainCmpTask extends UserComputeTask
    */
   @Inject
   public EMMainCmpTask(
+      @Parameter(ClusteringDataType.class) final String dataType,
       final MemoryStore memoryStore,
       @Parameter(IsCovarianceShared.class) final boolean isCovarianceDiagonal) {
+    this.dataType = dataType;
     this.memoryStore = memoryStore;
     this.isCovarianceDiagonal = isCovarianceDiagonal;
   }
@@ -74,7 +78,7 @@ public final class EMMainCmpTask extends UserComputeTask
     final int numClusters = clusterSummaries.size();
 
     // Compute the partial statistics of each cluster
-    final Map<?, Vector> points = memoryStore.getElasticStore().getAll(ClusteringPreCmpTask.KEY_POINTS);
+    final Map<?, Vector> points = memoryStore.getElasticStore().getAll(dataType);
     for (final Vector vector : points.values()) {
       final int dimension = vector.size();
       Matrix outProd = null;

@@ -33,4 +33,32 @@ public final class Row {
   public Vector getFeature() {
     return feature;
   }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    final Row row = (Row) o;
+
+    if (Double.compare(row.output, output) != 0) {
+      return false;
+    }
+    return feature.equals(row.feature);
+
+  }
+
+  @Override
+  public int hashCode() {
+    int result;
+    long temp;
+    temp = Double.doubleToLongBits(output);
+    result = (int) (temp ^ (temp >>> 32));
+    result = 31 * result + feature.hashCode();
+    return result;
+  }
 }

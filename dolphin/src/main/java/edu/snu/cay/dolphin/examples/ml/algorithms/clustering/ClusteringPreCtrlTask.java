@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 
 import edu.snu.cay.dolphin.core.UserControllerTask;
+import edu.snu.cay.dolphin.examples.ml.data.CentroidsDataType;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -36,9 +37,8 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
 
   /**
    * Key used in Elastic Memory to put/get the centroids.
-   * TODO #168: we should find better place to put this
    */
-  public static final String KEY_CENTROIDS = "centroids";
+  private final String centroidsDataType;
 
   /**
    * Number of clusters.
@@ -62,9 +62,11 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
 
   @Inject
   public ClusteringPreCtrlTask(
+      @Parameter(CentroidsDataType.class) final String centroidsDataType,
       final MemoryStore memoryStore,
       final DataIdFactory<Long> dataIdFactory,
       @Parameter(NumberOfClusters.class) final int numberOfClusters) {
+    this.centroidsDataType = centroidsDataType;
     this.memoryStore = memoryStore;
     this.dataIdFactory = dataIdFactory;
     this.numberOfClusters = numberOfClusters;
@@ -83,7 +85,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
      */
     try {
       final List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
-      memoryStore.getLocalStore().putList(KEY_CENTROIDS, ids, initialCentroids);
+      memoryStore.getLocalStore().putList(centroidsDataType, ids, initialCentroids);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }

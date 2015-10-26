@@ -18,11 +18,13 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.regression;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.UserComputeTask;
+import edu.snu.cay.dolphin.examples.ml.data.RowDataType;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -31,9 +33,8 @@ public final class LinearRegPreCmpTask extends UserComputeTask {
 
   /**
    * Key used in Elastic Memory to put/get the data.
-   * TODO #168: we should find better place to put this
    */
-  public static final String KEY_ROWS = "rows";
+  private final String dataType;
 
   private final DataParser<List<Row>> dataParser;
   private final MemoryStore memoryStore;
@@ -41,10 +42,12 @@ public final class LinearRegPreCmpTask extends UserComputeTask {
   private final DataIdFactory<Long> dataIdFactory;
 
   @Inject
-  private LinearRegPreCmpTask(final DataParser<List<Row>> dataParser,
+  private LinearRegPreCmpTask(@Parameter(RowDataType.class) final String dataType,
+                              final DataParser<List<Row>> dataParser,
                               final MemoryStore memoryStore,
                               final PartitionTracker partitionTracker,
                               final DataIdFactory<Long> dataIdFactory) {
+    this.dataType = dataType;
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
     this.partitionTracker = partitionTracker;
@@ -56,8 +59,8 @@ public final class LinearRegPreCmpTask extends UserComputeTask {
     final List<Row> rows = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(rows.size());
-      partitionTracker.registerPartition(KEY_ROWS, ids.get(0), ids.get(ids.size() - 1));
-      memoryStore.getElasticStore().putList(KEY_ROWS, ids, rows);
+      partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
+      memoryStore.getElasticStore().putList(dataType, ids, rows);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }

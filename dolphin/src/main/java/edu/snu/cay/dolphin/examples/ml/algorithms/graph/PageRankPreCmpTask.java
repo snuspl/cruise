@@ -18,10 +18,12 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.graph;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.UserComputeTask;
+import edu.snu.cay.dolphin.examples.ml.data.AdjacencyListDataType;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import edu.snu.cay.utils.LongRangeUtils;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -33,9 +35,8 @@ public final class PageRankPreCmpTask extends UserComputeTask {
 
   /**
    * Key used in Elastic Memory to put/get the data.
-   * TODO #168: we should find better place to put this
    */
-  public static final String KEY_GRAPH = "graph";
+  public final String dataType;
 
   /**
    * Adjacency list data parser.
@@ -53,9 +54,11 @@ public final class PageRankPreCmpTask extends UserComputeTask {
   private final PartitionTracker partitionTracker;
 
   @Inject
-  private PageRankPreCmpTask(final DataParser<Map<Integer, List<Integer>>> dataParser,
+  private PageRankPreCmpTask(@Parameter(AdjacencyListDataType.class) final String dataType,
+                             final DataParser<Map<Integer, List<Integer>>> dataParser,
                              final MemoryStore memoryStore,
                              final PartitionTracker partitionTracker) {
+    this.dataType = dataType;
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
     this.partitionTracker = partitionTracker;
@@ -72,11 +75,11 @@ public final class PageRankPreCmpTask extends UserComputeTask {
       sortedIds.add(id.longValue());
     }
     for (final LongRange range : LongRangeUtils.generateDenseLongRanges(sortedIds)) {
-      partitionTracker.registerPartition(KEY_GRAPH, range.getMinimumLong(), range.getMaximumLong());
+      partitionTracker.registerPartition(dataType, range.getMinimumLong(), range.getMaximumLong());
     }
 
     for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
-      memoryStore.getElasticStore().put(KEY_GRAPH, entry.getKey().longValue(), entry.getValue());
+      memoryStore.getElasticStore().put(dataType, entry.getKey().longValue(), entry.getValue());
     }
   }
 

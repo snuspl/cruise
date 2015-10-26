@@ -16,11 +16,13 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
 import edu.snu.cay.dolphin.core.UserParameters;
+import edu.snu.cay.dolphin.examples.ml.data.RowSerializer;
 import edu.snu.cay.dolphin.examples.ml.loss.LogisticLoss;
 import edu.snu.cay.dolphin.examples.ml.loss.Loss;
 import edu.snu.cay.dolphin.examples.ml.parameters.*;
 import edu.snu.cay.dolphin.examples.ml.regularization.L2Regularization;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
+import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.ConfigurationBuilder;
 import org.apache.reef.tang.Tang;
@@ -70,6 +72,8 @@ public final class LogisticRegParameters implements UserParameters {
   public Configuration getServiceConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(Dimension.class, String.valueOf(dimension))
+        .bindImplementation(Serializer.class, RowSerializer.class)
+        .bindNamedParameter(IsDenseVector.class, String.valueOf(isDenseVector))
         .build();
   }
 
@@ -88,7 +92,6 @@ public final class LogisticRegParameters implements UserParameters {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
         .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
-        .bindNamedParameter(IsDenseVector.class, String.valueOf(isDenseVector))
         .build();
   }
 
