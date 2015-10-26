@@ -230,6 +230,8 @@
               <exclude>**/target/**</exclude>
               <!-- REEF run files -->
               <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
+              <!-- Output files -->
+              <exclude>**/output*/**</exclude>
             </excludes>
           </configuration>
           <dependencies>
