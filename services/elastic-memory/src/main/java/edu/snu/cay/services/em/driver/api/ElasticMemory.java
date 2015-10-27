@@ -48,7 +48,7 @@ public interface ElasticMemory {
    * @param evalId identifier of the evaluator to release
    * @param callback an application-level callback to be called, or null if no callback is needed
    */
-  void delete(String evalId, @Nullable EventHandler<String> callback);
+  void delete(String evalId, @Nullable EventHandler<AvroElasticMemoryMessage> callback);
 
   /**
    * Resize the evaluator specified by a given identifier.

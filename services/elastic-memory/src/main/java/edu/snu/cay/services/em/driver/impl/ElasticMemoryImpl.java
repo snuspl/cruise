@@ -16,6 +16,9 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.avro.ResultMsg;
+import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.MigrationManager;
 import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
@@ -92,14 +95,25 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   /**
    * Removes partitions registered to deleting evalId.
    * After that, EMDeleteExecutor handles the actual deleting request.
+   * TODO #205: Reconsider using of Avro message in EM's callback
    */
   @Override
-  public void delete(final String evalId, @Nullable final EventHandler<String> callback) {
+  public void delete(final String evalId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
     final Set<String> dataTypeSet = partitionManager.getDataTypes(evalId);
     for (final String dataType : dataTypeSet) {
       final Set<LongRange> rangeSet = partitionManager.getRangeSet(evalId, dataType);
-      for (final LongRange range : rangeSet) {
-        partitionManager.remove(evalId, dataType, range);
+      // Deletion fails when the evaluator has remaining data
+      if (!rangeSet.isEmpty()) {
+        if (callback != null) {
+          final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.ResultMsg)
+              .setResultMsg(ResultMsg.newBuilder().setResult(Result.FAILURE).build())
+              .setSrcId(evalId)
+              .setDestId("")
+              .build();
+          callback.onNext(msg);
+        }
+        return;
       }
     }
     deleteExecutor.get().execute(evalId, callback);

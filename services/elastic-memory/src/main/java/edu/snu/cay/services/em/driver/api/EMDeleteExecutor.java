@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.driver.api;
 
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.impl.EMDeleteExecutorImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
@@ -36,5 +37,5 @@ public interface EMDeleteExecutor {
    * @param evalId identifier of the evaluator to release
    * @param callback an application-level callback to be called, or null if no callback is needed
    */
-  void execute(String evalId, @Nullable EventHandler<String> callback);
+  void execute(String evalId, @Nullable EventHandler<AvroElasticMemoryMessage> callback);
 }
