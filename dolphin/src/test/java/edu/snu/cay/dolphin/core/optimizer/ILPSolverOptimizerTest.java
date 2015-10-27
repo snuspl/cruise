@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import java.util.*;
 
+import static edu.snu.cay.dolphin.core.optimizer.PlanValidationUtils.checkPlan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -54,11 +55,14 @@ public final class ILPSolverOptimizerTest {
    */
   @Test
   public void testIncreasedComputeTasks() {
-    final Collection<EvaluatorParameters> activeEvaluators =
-        generateEvaluatorParameters(1, new int[][]{{10000}});
+    final int numComputeTasks = 1;
+    final int availableEvaluators = 4;
+    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
+        numComputeTasks, new int[][]{{10000}});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, 4);
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
+    checkPlan(activeEvaluators, plan, availableEvaluators);
     assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd().size() > 0);
     assertEquals(0, plan.getEvaluatorsToDelete().size());
   }
@@ -69,16 +73,54 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testHalfNumComputeTasks() {
     final int numComputeTasks = 4;
-    final Collection<EvaluatorParameters> activeEvaluators =
-        generateEvaluatorParameters(numComputeTasks, new int[][]{{2500}, {2500}, {2500}, {2500}});
-    final int upperBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
+    final int availableEvaluators = numComputeTasks / 2 + 1; // +1 for including the controller task
+    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
+        numComputeTasks, new int[][]{{2500}, {2500}, {2500}, {2500}});
+    final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan =
-        ilpSolverOptimizer.optimize(activeEvaluators, numComputeTasks / 2 + 1); // +1 for including the controller task
+        ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
+    checkPlan(activeEvaluators, plan, availableEvaluators);
     assertEquals(0, plan.getEvaluatorsToAdd().size());
-    assertTrue("The number of evaluators to be deleted should be <= " + upperBoundToDelete,
-        plan.getEvaluatorsToDelete().size() <= upperBoundToDelete);
+    assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
+        plan.getEvaluatorsToDelete().size() >= lowerBoundToDelete);
+  }
+
+  /**
+   * Test that evaluators are added when available evaluators are doubled with multiple types of data.
+   */
+  @Test
+  public void testDoubleComputeTasksWithMultipleDataTypes() {
+    final int numComputeTasks = 3;
+    final int availableEvaluators = numComputeTasks * 2 + 1;
+    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
+        numComputeTasks, new int[][]{{4000, 1000}, {2000, 2000}, {5000, 2000}});
+
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+
+    checkPlan(activeEvaluators, plan, availableEvaluators);
+    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd().size() > 0);
+    assertEquals(0, plan.getEvaluatorsToDelete().size());
+  }
+
+  /**
+   * Test that evaluators are deleted when available evaluators are reduce to half with multiple types of data.
+   */
+  @Test
+  public void testHalfComputeTasksWithMultipleDataTypes() {
+    final int numComputeTasks = 5;
+    final int availableEvaluators = numComputeTasks / 2 + 1;
+    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
+        numComputeTasks, new int[][]{{2000, 500}, {3000, 1000}, {3000, 1000}, {2500, 2000}, {2500, 2000}});
+    final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
+
+    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+
+    checkPlan(activeEvaluators, plan, availableEvaluators);
+    assertEquals(0, plan.getEvaluatorsToAdd().size());
+    assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
+        plan.getEvaluatorsToDelete().size() >= lowerBoundToDelete);
   }
 
   /**
@@ -93,6 +135,7 @@ public final class ILPSolverOptimizerTest {
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
+    checkPlan(activeEvaluators, plan, availableEvaluators);
     assertEquals(1, plan.getEvaluatorsToAdd().size());
     assertEquals(0, plan.getEvaluatorsToDelete().size());
   }
