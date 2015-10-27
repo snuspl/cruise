@@ -78,6 +78,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       conn.open();
       conn.write(msg);
     } catch (final NetworkException ex) {
+      // TODO #90: Revisit how to react to network failures. This can bubble up to the PlanExecutor.
       throw new RuntimeException("NetworkException", ex);
     }
 
