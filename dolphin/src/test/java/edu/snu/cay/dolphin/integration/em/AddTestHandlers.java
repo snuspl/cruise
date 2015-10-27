@@ -83,6 +83,8 @@ final class AddTestHandlers {
       final Runnable[] threads = new Runnable[numThreads + 1];
 
       // Evenly distribute numAdd requests to numThreads threads.
+      // We spawn these separate threads for calling EM.add() because this thread may be blocking other
+      // EventHandler<StartTime> threads from running.
       final int addsPerThread = numAdd / numThreads;
       int remainder = numAdd % numThreads;
       for (int i = 0; i < numThreads; i++) {
@@ -94,6 +96,8 @@ final class AddTestHandlers {
         }
       }
 
+      // The CountdownLatch.await() calls must be independent of REEF events,
+      // thus we create a separate thread for this instead of putting this code in an event handler.
       threads[numThreads] = new Runnable() {
         @Override
         public void run() {
@@ -108,9 +112,15 @@ final class AddTestHandlers {
                   "Test failed. %d/%d evaluators allocated, %d/%d callbacks triggered.",
                   numAdd - allocationCounter.getCount(), numAdd, numAdd - callbackCounter.getCount(), numAdd));
             }
+
           } catch (final InterruptedException e) {
+            // An exception throw from this thread does not affect the REEF job;
+            // we throw this later at the driver stop handler.
             runtimeException = new RuntimeException("Test failed.", e);
+
           } finally {
+            // ActiveContexts are closed all at once to prevent early termination of this REEF job,
+            // which leads to the shutdown of this thread.
             for (final ActiveContext activeContext : activeContextSet) {
               activeContext.close();
             }
@@ -182,7 +192,7 @@ final class AddTestHandlers {
    * Driver close handler.
    * Make test fails by throwing runtime exception if there was some problem.
    */
-  final class AddTestDriverStopHandler implements EventHandler<StopTime> {
+  final class AddTestStopHandler implements EventHandler<StopTime> {
 
     @Override
     public void onNext(final StopTime stopTime) {

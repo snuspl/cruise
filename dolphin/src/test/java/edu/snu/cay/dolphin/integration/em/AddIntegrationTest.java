@@ -72,7 +72,7 @@ public final class AddIntegrationTest {
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindSetEntry(DriverStartHandler.class, AddTestHandlers.AddTestStartHandler.class)
               .bindSetEntry(EvaluatorAllocatedHandlers.class, AddTestHandlers.AddTestEvaluatorAllocatedHandler.class)
-              .bindSetEntry(Clock.StopHandler.class, AddTestHandlers.AddTestDriverStopHandler.class)
+              .bindSetEntry(Clock.StopHandler.class, AddTestHandlers.AddTestStopHandler.class)
               .bindNamedParameter(AddEvalNumber.class, Integer.toString(addEvalNum))
               .bindNamedParameter(AddThreadNumber.class, Integer.toString(addThreadNum))
               .build());
