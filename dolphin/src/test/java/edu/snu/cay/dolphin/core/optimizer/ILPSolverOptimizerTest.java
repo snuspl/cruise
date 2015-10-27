@@ -76,15 +76,15 @@ public final class ILPSolverOptimizerTest {
     final int availableEvaluators = numComputeTasks / 2 + 1; // +1 for including the controller task
     final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
         numComputeTasks, new int[][]{{2500}, {2500}, {2500}, {2500}});
-    final int upperBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
+    final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan =
         ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
     checkPlan(activeEvaluators, plan, availableEvaluators);
     assertEquals(0, plan.getEvaluatorsToAdd().size());
-    assertTrue("The number of evaluators to be deleted should be <= " + upperBoundToDelete,
-        plan.getEvaluatorsToDelete().size() <= upperBoundToDelete);
+    assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
+        plan.getEvaluatorsToDelete().size() >= lowerBoundToDelete);
   }
 
   /**
@@ -113,14 +113,14 @@ public final class ILPSolverOptimizerTest {
     final int availableEvaluators = numComputeTasks / 2 + 1;
     final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
         numComputeTasks, new int[][]{{2000, 500}, {3000, 1000}, {3000, 1000}, {2500, 2000}, {2500, 2000}});
-    final int upperBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
+    final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
     checkPlan(activeEvaluators, plan, availableEvaluators);
     assertEquals(0, plan.getEvaluatorsToAdd().size());
-    assertTrue("The number of evaluators to be deleted should be <= " + upperBoundToDelete,
-        plan.getEvaluatorsToDelete().size() <= upperBoundToDelete);
+    assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
+        plan.getEvaluatorsToDelete().size() >= lowerBoundToDelete);
   }
 
   /**
