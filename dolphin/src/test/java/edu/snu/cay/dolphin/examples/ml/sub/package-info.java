@@ -16,4 +16,4 @@
 /**
  * Classes for testing codecs, reduce functions, and other classes that support REEF group communication.
  */
-package edu.snu.cay.dophin.examples.ml.sub;
+package edu.snu.cay.dolphin.examples.ml.sub;
