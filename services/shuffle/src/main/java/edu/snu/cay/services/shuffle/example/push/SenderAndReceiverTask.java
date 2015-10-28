@@ -62,6 +62,7 @@ public final class SenderAndReceiverTask implements Task {
     this.numTotalIterations = numTotalIterations;
     this.totalNumReceivedTuples = new AtomicInteger();
     this.numCompletedIterations = new AtomicInteger();
+    this.isFinished = false;
   }
 
   @Override

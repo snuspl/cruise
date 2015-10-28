@@ -55,6 +55,7 @@ public final class ReceiverTask implements Task {
     shuffleReceiver.registerDataListener(new DataReceiver());
     this.totalNumReceivedTuples = new AtomicInteger();
     this.numTotalIterations = numTotalIterations;
+    this.isFinished = false;
   }
 
   @Override

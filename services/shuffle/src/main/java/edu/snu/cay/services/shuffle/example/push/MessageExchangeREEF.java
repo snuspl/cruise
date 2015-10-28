@@ -38,6 +38,7 @@ import java.util.logging.Logger;
  * Message exchanging example using push-based shuffle.
  *
  * SenderTasks send random number of tuples to ReceiverTasks during certain number of iterations.
+ * SenederAndReceiverTasks simultaneously works as SenderTask and ReceiverTask.
  * A user can set the number of iterations.
  * Each iteration, receivers should receive tuples that are sent in the same iteration.
  *

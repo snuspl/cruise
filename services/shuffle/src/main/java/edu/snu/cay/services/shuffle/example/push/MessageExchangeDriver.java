@@ -75,15 +75,15 @@ public final class MessageExchangeDriver {
   private final LocalAddressProvider localAddressProvider;
   private final NameServer nameServer;
 
-  private final int totalNumSenders;
-  private final int totalNumReceivers;
+  private final int totalNumOnlySenders;
+  private final int totalNumOnlyReceivers;
   private final int totalNumSendersAndReceivers;
   private final int numTotalIterations;
 
   @Inject
   private MessageExchangeDriver(
-      @Parameter(MessageExchangeParameters.SenderNumber.class) final int senderNumber,
-      @Parameter(MessageExchangeParameters.ReceiverNumber.class) final int receiverNumber,
+      @Parameter(MessageExchangeParameters.SenderNumber.class) final int onlySenderNumber,
+      @Parameter(MessageExchangeParameters.ReceiverNumber.class) final int onlyReceiverNumber,
       @Parameter(MessageExchangeParameters.SenderAndReceiverNumber.class) final int senderAndReceiverNumber,
       final EvaluatorRequestor evaluatorRequestor,
       final ShuffleDriver shuffleDriver,
@@ -93,7 +93,7 @@ public final class MessageExchangeDriver {
       @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations,
       @Parameter(MessageExchangeParameters.ShutdownIterationNum.class) final int numShutdownIterations) {
     LOG.log(Level.INFO, "The Driver is instantiated. sender num: {0}, receiver num: {1}, sender and receiver num : {2}",
-        new Object[]{senderNumber, receiverNumber, senderAndReceiverNumber});
+        new Object[]{onlySenderNumber, onlyReceiverNumber, senderAndReceiverNumber});
     this.numAllocatedEvaluators = new AtomicInteger();
     this.numCompletedTasks = new AtomicInteger();
     this.totalNumSentTuples = new AtomicInteger();
@@ -101,18 +101,18 @@ public final class MessageExchangeDriver {
     this.evaluatorRequestor = evaluatorRequestor;
     this.localAddressProvider = localAddressProvider;
     this.nameServer = nameServer;
-    this.totalNumSenders = senderNumber;
-    this.totalNumReceivers = receiverNumber;
+    this.totalNumOnlySenders = onlySenderNumber;
+    this.totalNumOnlyReceivers = onlyReceiverNumber;
     this.totalNumSendersAndReceivers = senderAndReceiverNumber;
     this.numTotalIterations = numTotalIterations;
-    final List<String> senderIdList = new ArrayList<>(senderNumber);
-    final List<String> receiverIdList = new ArrayList<>(receiverNumber);
+    final List<String> senderIdList = new ArrayList<>(onlySenderNumber + senderAndReceiverNumber);
+    final List<String> receiverIdList = new ArrayList<>(onlyReceiverNumber + senderAndReceiverNumber);
 
-    for (int i = 0; i < senderNumber; i++) {
+    for (int i = 0; i < onlySenderNumber; i++) {
       senderIdList.add(SENDER_PREFIX + i);
     }
 
-    for (int i = 0; i < receiverNumber; i++) {
+    for (int i = 0; i < onlyReceiverNumber; i++) {
       receiverIdList.add(RECEIVER_PREFIX + i);
     }
 
@@ -140,7 +140,7 @@ public final class MessageExchangeDriver {
     @Override
     public void onNext(final StartTime value) {
       evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(totalNumSenders + totalNumReceivers + totalNumSendersAndReceivers)
+          .setNumber(totalNumOnlySenders + totalNumOnlyReceivers + totalNumSendersAndReceivers)
           .setMemory(128)
           .setNumberOfCores(1)
           .build());
@@ -170,8 +170,8 @@ public final class MessageExchangeDriver {
       } else if (taskId.startsWith(SENDER_AND_RECEIVER_PREFIX)) {
         final int numSentTuples = byteBuffer.getInt();
         final int numReceivedTuples = byteBuffer.getInt();
-        LOG.log(Level.INFO, "{0} completed. It sent {1} tuples", new Object[]{taskId, numSentTuples});
-        LOG.log(Level.INFO, "{0} completed. It received {1} tuples", new Object[]{taskId, numReceivedTuples});
+        LOG.log(Level.INFO, "{0} completed. It sent {1} tuples and received {2} tuples",
+            new Object[]{taskId, numSentTuples, numReceivedTuples});
         totalNumSentTuples.addAndGet(numSentTuples);
         totalNumReceivedTuples.addAndGet(numReceivedTuples);
 
@@ -179,7 +179,8 @@ public final class MessageExchangeDriver {
         throw new RuntimeException("Unknown task identifier " + taskId);
       }
 
-      if (numCompletedTasks.incrementAndGet() == totalNumSenders + totalNumReceivers + totalNumSendersAndReceivers) {
+      if (numCompletedTasks.incrementAndGet() ==
+          totalNumOnlySenders + totalNumOnlyReceivers + totalNumSendersAndReceivers) {
         LOG.log(Level.INFO, "Total sent tuple number : {0}, total received tuple number : {1}",
             new Object[]{totalNumSentTuples.get(), totalNumReceivedTuples.get()});
         if (totalNumSentTuples.get() != totalNumReceivedTuples.get()) {
@@ -218,23 +219,23 @@ public final class MessageExchangeDriver {
       final Configuration iterationConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(MessageExchangeParameters.TotalIterationNum.class, Integer.toString(numTotalIterations))
           .build();
-      if (number < totalNumSenders) { // SenderTask
+      if (number < totalNumOnlySenders) { // SenderTask
         endPointId = SENDER_PREFIX + number;
         taskId = endPointId + TASK_POSTFIX;
         taskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, SenderTask.class)
             .build(), iterationConf);
-      } else if (number < totalNumSenders + totalNumReceivers) { // ReceiverTask
-        endPointId = RECEIVER_PREFIX + (number - totalNumSenders);
+      } else if (number < totalNumOnlySenders + totalNumOnlyReceivers) { // ReceiverTask
+        endPointId = RECEIVER_PREFIX + (number - totalNumOnlySenders);
         taskId = endPointId + TASK_POSTFIX;
         taskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
             .build(), iterationConf);
-      } else if (number < totalNumSenders + totalNumReceivers + totalNumSendersAndReceivers) {
+      } else if (number < totalNumOnlySenders + totalNumOnlyReceivers + totalNumSendersAndReceivers) {
         // SenderAndReceiverTask
-        endPointId = SENDER_AND_RECEIVER_PREFIX + (number - totalNumSenders - totalNumReceivers);
+        endPointId = SENDER_AND_RECEIVER_PREFIX + (number - totalNumOnlySenders - totalNumOnlyReceivers);
         taskId = endPointId + TASK_POSTFIX;
         taskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
