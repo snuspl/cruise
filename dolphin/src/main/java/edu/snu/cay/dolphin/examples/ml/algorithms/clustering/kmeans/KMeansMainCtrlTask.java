@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
 import edu.snu.cay.dolphin.core.UserTaskTrace;
-import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask;
+import edu.snu.cay.dolphin.examples.ml.data.CentroidsDataType;
 import edu.snu.cay.dolphin.examples.ml.data.VectorSum;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
@@ -68,6 +68,11 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   private List<Vector> centroids = new ArrayList<>();
 
   /**
+   * Key used in Elastic Memory to put/get the centroids.
+   */
+  private final String centroidsDataType;
+
+  /**
    * Memory storage to put/get the data.
    */
   private final MemoryStore memoryStore;
@@ -87,12 +92,14 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    */
   @Inject
   public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
+                            @Parameter(CentroidsDataType.class) final String centroidsDataType,
                             final MemoryStore memoryStore,
                             final OutputStreamProvider outputStreamProvider,
                             @Parameter(MaxIterations.class) final int maxIterations,
                             final UserTaskTrace trace) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;
+    this.centroidsDataType = centroidsDataType;
     this.memoryStore = memoryStore;
     this.outputStreamProvider = outputStreamProvider;
     this.maxIterations = maxIterations;
@@ -105,7 +112,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    */
   @Override
   public void initialize() {
-    final Map<?, Vector> centroidsMap = memoryStore.getLocalStore().removeAll(ClusteringPreCtrlTask.KEY_CENTROIDS);
+    final Map<?, Vector> centroidsMap = memoryStore.getLocalStore().removeAll(centroidsDataType);
     centroids.addAll(centroidsMap.values());
   }
 

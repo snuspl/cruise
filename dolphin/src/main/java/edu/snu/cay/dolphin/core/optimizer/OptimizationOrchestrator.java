@@ -110,7 +110,6 @@ public final class OptimizationOrchestrator {
   /**
    * Runs the optimization: get an optimized Plan based on the current Evaluator parameters, then execute the plan.
    * Optimization is skipped if the previous optimization has not finished.
-   * TODO #96: We block until the Plan execution completes. This will change when background migration is implemented.
    */
   public synchronized void run(final Map<String, List<DataInfo>> dataInfos,
                                final Map<String, Map<String, Double>> computeMetrics,
