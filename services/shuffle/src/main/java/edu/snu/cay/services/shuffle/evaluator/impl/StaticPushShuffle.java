@@ -23,6 +23,7 @@ import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.ShuffleSender;
 import edu.snu.cay.services.shuffle.network.ControlMessageNetworkSetup;
 import edu.snu.cay.services.shuffle.network.ShuffleControlMessage;
+import edu.snu.cay.services.shuffle.network.TupleNetworkSetup;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
@@ -45,6 +46,7 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private static final Logger LOG = Logger.getLogger(StaticPushShuffle.class.getName());
 
   private final ControlMessageNetworkSetup controlMessageNetworkSetup;
+  private final TupleNetworkSetup<K, V> tupleNetworkSetup;
   private final ShuffleDescription shuffleDescription;
 
   private final ShuffleReceiver<K, V> shuffleReceiver;
@@ -54,11 +56,13 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   private StaticPushShuffle(
       final ShuffleDescription shuffleDescription,
       final ShuffleOperatorProvider<K, V> operatorProvider,
-      final ControlMessageNetworkSetup controlMessageNetworkSetup) {
+      final ControlMessageNetworkSetup controlMessageNetworkSetup,
+      final TupleNetworkSetup<K, V> tupleNetworkSetup) {
 
     controlMessageNetworkSetup
         .setControlMessageHandlerAndLinkListener(new ControlMessageHandler(), new ControlLinkListener());
     this.controlMessageNetworkSetup = controlMessageNetworkSetup;
+    this.tupleNetworkSetup = tupleNetworkSetup;
     this.shuffleDescription = shuffleDescription;
     this.shuffleReceiver = operatorProvider.getReceiver();
     this.shuffleSender = operatorProvider.getSender();
@@ -94,6 +98,7 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
   @Override
   public void close() {
     controlMessageNetworkSetup.close();
+    tupleNetworkSetup.close();
   }
 
   private final class ControlMessageHandler implements EventHandler<Message<ShuffleControlMessage>> {
