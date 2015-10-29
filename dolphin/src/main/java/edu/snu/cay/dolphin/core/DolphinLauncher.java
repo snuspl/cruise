@@ -19,6 +19,8 @@ import edu.snu.cay.dolphin.core.sync.DriverSyncRegister;
 import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
+import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerParameters;
 import edu.snu.cay.services.em.plan.conf.PlanExecutorParameters;
 import edu.snu.cay.utils.trace.HTraceParameters;
@@ -144,6 +146,10 @@ public final class DolphinLauncher {
         .set(TaskOutputServiceBuilder.OUTPUT_PATH, processOutputDir(dolphinParameters.getOutputDir()))
         .build();
 
+    final Configuration shuffleConf = ShuffleDriverConfiguration.CONF
+        .set(ShuffleDriverConfiguration.SHUFFLE_MANAGER_CLASS_NAME, StaticPushShuffleManager.class.getName())
+        .build();
+
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         optimizerParameters.getConfiguration(),
@@ -154,7 +160,8 @@ public final class DolphinLauncher {
         ElasticMemoryConfiguration.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
-        dolphinParameters.getDriverConf());
+        dolphinParameters.getDriverConf(),
+        shuffleConf);
   }
 
   private String processInputDir(final String inputDir) {
