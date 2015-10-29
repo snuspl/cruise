@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dophin.examples.ml.sub;
+package edu.snu.cay.dolphin.examples.ml.sub;
 
-import edu.snu.cay.dolphin.examples.ml.sub.SparseVectorCodec;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.mahout.math.SequentialAccessSparseVector;
 import org.apache.mahout.math.Vector;

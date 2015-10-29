@@ -40,6 +40,14 @@ public final class StageInfo {
   private final Optional<? extends Class<? extends Codec>> gatherCodecClassOptional;
   private final Optional<? extends Class<? extends Codec>> reduceCodecClassOptional;
   private final Optional<? extends Class<? extends Reduce.ReduceFunction>> reduceFunctionClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>>
+      preRunShuffleKeyCodecClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>>
+      preRunShuffleValueCodecClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>>
+      postRunShuffleKeyCodecClassOptional;
+  private final Optional<? extends Class<? extends org.apache.reef.wake.remote.Codec>>
+      postRunShuffleValueCodecClassOptional;
   private final Optional<Set<Class<? extends MetricTracker>>> metricTrackerClassSet;
 
   public static Builder newBuilder(final Class<? extends UserComputeTask> userComputeTaskClass,
@@ -57,6 +65,10 @@ public final class StageInfo {
                     final Class<? extends Codec> gatherCodecClass,
                     final Class<? extends Codec> reduceCodecClass,
                     final Class<? extends Reduce.ReduceFunction> reduceFunctionClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> preRunShuffleKeyCodecClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> preRunShuffleValueCodecClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> postRunShuffleKeyCodecClass,
+                    final Class<? extends org.apache.reef.wake.remote.Codec> postRunShuffleValueCodecClass,
                     final Set<Class<? extends MetricTracker>> metricTrackerClassSet) {
     this.userComputeTaskClass = userComputeTaskClass;
     this.userControllerTaskClass = userControllerTaskClass;
@@ -67,6 +79,10 @@ public final class StageInfo {
     this.gatherCodecClassOptional = Optional.ofNullable(gatherCodecClass);
     this.reduceCodecClassOptional = Optional.ofNullable(reduceCodecClass);
     this.reduceFunctionClassOptional = Optional.ofNullable(reduceFunctionClass);
+    this.preRunShuffleKeyCodecClassOptional = Optional.ofNullable(preRunShuffleKeyCodecClass);
+    this.preRunShuffleValueCodecClassOptional = Optional.ofNullable(preRunShuffleValueCodecClass);
+    this.postRunShuffleKeyCodecClassOptional = Optional.ofNullable(postRunShuffleKeyCodecClass);
+    this.postRunShuffleValueCodecClassOptional = Optional.ofNullable(postRunShuffleValueCodecClass);
     this.metricTrackerClassSet = Optional.ofNullable(metricTrackerClassSet);
   }
 
@@ -84,6 +100,14 @@ public final class StageInfo {
 
   public boolean isReduceUsed() {
     return reduceCodecClassOptional.isPresent();
+  }
+
+  public boolean isPreRunShuffleUsed() {
+    return preRunShuffleKeyCodecClassOptional.isPresent() && preRunShuffleValueCodecClassOptional.isPresent();
+  }
+
+  public boolean isPostRunShuffleUsed() {
+    return postRunShuffleKeyCodecClassOptional.isPresent() && postRunShuffleValueCodecClassOptional.isPresent();
   }
 
   public boolean isOptimizable() {
@@ -108,6 +132,22 @@ public final class StageInfo {
 
   public Class<? extends Reduce.ReduceFunction> getReduceFunctionClass() {
     return reduceFunctionClassOptional.get();
+  }
+
+  public Class<? extends org.apache.reef.wake.remote.Codec> getPreRunShuffleKeyCodecClass() {
+    return preRunShuffleKeyCodecClassOptional.get();
+  }
+
+  public Class<? extends org.apache.reef.wake.remote.Codec> getPreRunShuffleValueCodecClass() {
+    return preRunShuffleValueCodecClassOptional.get();
+  }
+
+  public Class<? extends org.apache.reef.wake.remote.Codec> getPostRunShuffleKeyCodecClass() {
+    return postRunShuffleKeyCodecClassOptional.get();
+  }
+
+  public Class<? extends org.apache.reef.wake.remote.Codec> getPostRunShuffleValueCodecClass() {
+    return postRunShuffleValueCodecClassOptional.get();
   }
 
   public Set<Class<? extends MetricTracker>> getMetricTrackerClassSet() {
@@ -135,6 +175,10 @@ public final class StageInfo {
     private Class<? extends Codec> scatterCodecClass = null;
     private Class<? extends Codec> gatherCodecClass = null;
     private Class<? extends Codec> reduceCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> preRunShuffleKeyCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> preRunShuffleValueCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> postRunShuffleKeyCodecClass = null;
+    private Class<? extends org.apache.reef.wake.remote.Codec> postRunShuffleValueCodecClass = null;
     private Class<? extends Reduce.ReduceFunction> reduceFunctionClass = null;
     private Set<Class<? extends MetricTracker>> metricTrackerSet = new HashSet<>();
 
@@ -179,6 +223,20 @@ public final class StageInfo {
       return this;
     }
 
+    public Builder setPreRunShuffle(final Class<? extends org.apache.reef.wake.remote.Codec> keyCodecClass,
+                              final Class<? extends org.apache.reef.wake.remote.Codec> valueCodecClass) {
+      this.preRunShuffleKeyCodecClass = keyCodecClass;
+      this.preRunShuffleValueCodecClass = valueCodecClass;
+      return this;
+    }
+
+    public Builder setPostRunShuffle(final Class<? extends org.apache.reef.wake.remote.Codec> keyCodecClass,
+                              final Class<? extends org.apache.reef.wake.remote.Codec> valueCodecClass) {
+      this.postRunShuffleKeyCodecClass = keyCodecClass;
+      this.postRunShuffleValueCodecClass = valueCodecClass;
+      return this;
+    }
+
     public Builder addMetricTrackers(final Class<? extends MetricTracker>... metricTrackerClasses) {
       this.metricTrackerSet.addAll(Arrays.asList(metricTrackerClasses));
       return this;
@@ -188,7 +246,8 @@ public final class StageInfo {
     public StageInfo build() {
       return new StageInfo(userComputeTaskClass, userControllerTaskClass, commGroupName, optimizable,
           broadcastCodecClass, scatterCodecClass, gatherCodecClass, reduceCodecClass, reduceFunctionClass,
-          metricTrackerSet);
+          preRunShuffleKeyCodecClass, preRunShuffleValueCodecClass, postRunShuffleKeyCodecClass,
+          postRunShuffleValueCodecClass, metricTrackerSet);
     }
   }
 }

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.TestUtils;
+import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.services.em.evaluator.api.SubMemoryStore;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,7 +63,7 @@ public final class SubMemoryStoreTest {
       threads[index] = new PutThread(
           countDownLatch, subMemoryStore, index, numThreads, putsPerThread, 1, IndexParity.ALL_INDEX);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -94,7 +94,7 @@ public final class SubMemoryStoreTest {
       threads[index] = new RemoveThread(
           countDownLatch, subMemoryStore, index, numThreads, removesPerThread, 1, IndexParity.ALL_INDEX);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -143,7 +143,7 @@ public final class SubMemoryStoreTest {
       threads[2 * index + 1] = new RemoveThread(countDownLatch, subMemoryStore, index,
           numThreadPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.ODD_INDEX);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -185,7 +185,7 @@ public final class SubMemoryStoreTest {
           index, numThreadsPerOperation, itemsPerThread / itemsPerPut, itemsPerPut, IndexParity.ALL_INDEX);
       threads[2 * index + 1] = new GetThread(countDownLatch, subMemoryStore, getsPerThread, totalNumberOfObjects);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -231,7 +231,7 @@ public final class SubMemoryStoreTest {
           index, numThreadsPerOperation, itemsPerThread / itemsPerRemove, itemsPerRemove, IndexParity.ALL_INDEX);
       threads[2 * index + 1] = new GetThread(countDownLatch, subMemoryStore, getsPerThread, totalNumberOfObjects);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -282,7 +282,7 @@ public final class SubMemoryStoreTest {
           numThreadsPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.ODD_INDEX);
       threads[3 * index + 2] = new GetThread(countDownLatch, subMemoryStore, getsPerThread, totalNumberOfObjects);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops

@@ -41,6 +41,7 @@ public final class ReceiverTask implements Task {
   private final AtomicInteger totalNumReceivedTuples;
   private final AtomicInteger numCompletedIterations;
   private final int numTotalIterations;
+  private boolean isFinished;
 
   @Inject
   private ReceiverTask(
@@ -54,19 +55,29 @@ public final class ReceiverTask implements Task {
     shuffleReceiver.registerDataListener(new DataReceiver());
     this.totalNumReceivedTuples = new AtomicInteger();
     this.numTotalIterations = numTotalIterations;
+    this.isFinished = false;
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "A ReceiverTask is started");
     synchronized (this) {
-      this.wait();
+      if (!isFinished) {
+        this.wait();
+      }
     }
 
     shuffleProvider.close();
     final ByteBuffer byteBuffer = ByteBuffer.allocate(4);
     byteBuffer.putInt(totalNumReceivedTuples.get());
     return byteBuffer.array();
+  }
+
+  private void notifyReceiverFinished() {
+    synchronized (this) {
+      isFinished = true;
+      this.notify();
+    }
   }
 
   private final class DataReceiver implements PushDataListener<Integer, Integer> {
@@ -87,18 +98,14 @@ public final class ReceiverTask implements Task {
       LOG.log(Level.INFO, "{0} th iteration completed", numIterations);
       if (numIterations == numTotalIterations) {
         LOG.log(Level.INFO, "The final iteration was completed");
-        synchronized (ReceiverTask.this) {
-          ReceiverTask.this.notify();
-        }
+        notifyReceiverFinished();
       }
     }
 
     @Override
     public void onShutdown() {
       LOG.log(Level.INFO, "The receiver was shutdown by the manager");
-      synchronized (ReceiverTask.this) {
-        ReceiverTask.this.notify();
-      }
+      notifyReceiverFinished();
     }
   }
 }

@@ -33,15 +33,22 @@ public final class MessageExchangeParameters {
   /**
    * Number of tasks that work as sender.
    */
-  @NamedParameter(short_name = "sender_num", default_value = "8")
+  @NamedParameter(short_name = "sender_num", default_value = "3")
   public static final class SenderNumber implements Name<Integer> {
   }
 
   /**
    * Number of tasks that work as receiver.
    */
-  @NamedParameter(short_name = "receiver_num", default_value = "8")
+  @NamedParameter(short_name = "receiver_num", default_value = "3")
   public static final class ReceiverNumber implements Name<Integer> {
+  }
+
+  /**
+   * Number of tasks that work as sender and receiver.
+   */
+  @NamedParameter(short_name = "sender_and_receiver_num", default_value = "3")
+  public static final class SenderAndReceiverNumber implements Name<Integer> {
   }
 
   /**
