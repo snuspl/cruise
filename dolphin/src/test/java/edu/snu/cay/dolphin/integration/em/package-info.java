@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Classes for testing codecs, reduce functions, and other classes that support REEF group communication.
+ * EM integration test package.
  */
-package edu.snu.cay.dophin.examples.ml.sub;
+package edu.snu.cay.dolphin.integration.em;

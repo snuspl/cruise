@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.TestUtils;
+import edu.snu.cay.utils.ThreadUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -250,8 +250,8 @@ public final class PartitionManagerTest {
       );
     }
 
-    TestUtils.runConcurrently(threads0);
-    TestUtils.runConcurrently(threads1);
+    ThreadUtils.runConcurrently(threads0);
+    ThreadUtils.runConcurrently(threads1);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -301,8 +301,8 @@ public final class PartitionManagerTest {
           rangeTerm, rangeLength, 1);
     }
 
-    TestUtils.runConcurrently(threads0);
-    TestUtils.runConcurrently(threads1);
+    ThreadUtils.runConcurrently(threads0);
+    ThreadUtils.runConcurrently(threads1);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -361,7 +361,7 @@ public final class PartitionManagerTest {
           index / dupFactor, effectiveThreads, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, 0);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -394,7 +394,7 @@ public final class PartitionManagerTest {
           index, numThreads, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -434,7 +434,7 @@ public final class PartitionManagerTest {
           index, numThreads, removesPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -468,7 +468,7 @@ public final class PartitionManagerTest {
       threads[2 * index + 1]
           = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -511,7 +511,7 @@ public final class PartitionManagerTest {
       threads[2 * index + 1]
           = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -559,7 +559,7 @@ public final class PartitionManagerTest {
           index, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -611,7 +611,7 @@ public final class PartitionManagerTest {
           index, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -667,7 +667,7 @@ public final class PartitionManagerTest {
           removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -725,7 +725,7 @@ public final class PartitionManagerTest {
           removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index,
           rangeTerm, rangeLength, initialOffset);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
@@ -788,7 +788,7 @@ public final class PartitionManagerTest {
           removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
           rangeTerm, rangeLength, initialOffset);
     }
-    TestUtils.runConcurrently(threads);
+    ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
