@@ -13,50 +13,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dophin.examples.ml.sub;
+package edu.snu.cay.dolphin.examples.ml.sub;
 
-import edu.snu.cay.dolphin.examples.ml.data.Row;
-import edu.snu.cay.dolphin.examples.ml.sub.SparseRowCodec;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.SequentialAccessSparseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
-/**
- * Test Codec for row with a sparse vector.
- */
-public final class SparseRowCodecTest {
+public final class IntegerListCodecTest {
 
-  private SparseRowCodec sparseRowCodec;
+  private IntegerListCodec integerListCodec;
   private Random random;
 
   @Before
   public void setUp() throws InjectionException {
-    this.sparseRowCodec = Tang.Factory.getTang().newInjector().getInstance(SparseRowCodec.class);
+    this.integerListCodec = Tang.Factory.getTang().newInjector().getInstance(IntegerListCodec.class);
     this.random = RandomUtils.getRandom();
   }
 
-  private Row generateSparseRow(final int cardinality, final int size) {
-    final double output = random.nextDouble();
-
-    final Vector feature = new SequentialAccessSparseVector(cardinality, size);
-    for (int i = 0; i < size; ++i) {
-      feature.set(random.nextInt(feature.size()), random.nextGaussian());
+  private List<Integer> generateIntegerList(final int size) {
+    final List<Integer> integerList = new ArrayList<Integer>(size);
+    for (int i = 0; i < size; i++) {
+      integerList.add(random.nextInt());
     }
-
-    return new Row(output, feature);
+    return integerList;
   }
 
   @Test
-  public void testSparseRowCodec() {
-    final Row row = generateSparseRow(30, 4);
-    assertEquals(row, sparseRowCodec.decode(sparseRowCodec.encode(row)));
+  public void testIntegerListCodec() {
+    final List<Integer> integerList = generateIntegerList(50);
+    assertEquals(integerList, integerListCodec.decode(integerListCodec.encode(integerList)));
   }
 }

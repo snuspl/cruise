@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dophin.examples.ml.sub;
+package edu.snu.cay.dolphin.examples.ml.sub;
 
 import edu.snu.cay.dolphin.examples.ml.data.Row;
-import edu.snu.cay.dolphin.examples.ml.sub.DenseRowCodec;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.DenseVector;
+import org.apache.mahout.math.SequentialAccessSparseVector;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -30,34 +29,33 @@ import java.util.Random;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test Codec for row with a dense vector.
+ * Test Codec for row with a sparse vector.
  */
-public final class DenseRowCodecTest {
+public final class SparseRowCodecTest {
 
-  private DenseRowCodec denseRowCodec;
+  private SparseRowCodec sparseRowCodec;
   private Random random;
 
   @Before
   public void setUp() throws InjectionException {
-    this.denseRowCodec = Tang.Factory.getTang().newInjector().getInstance(DenseRowCodec.class);
+    this.sparseRowCodec = Tang.Factory.getTang().newInjector().getInstance(SparseRowCodec.class);
     this.random = RandomUtils.getRandom();
   }
 
-  private Row generateDenseRow(final int featureSize) {
+  private Row generateSparseRow(final int cardinality, final int size) {
     final double output = random.nextDouble();
 
-    final double[] featureArray = new double[featureSize];
-    for (int i = 0; i < featureSize; i++) {
-      featureArray[i] = random.nextDouble();
+    final Vector feature = new SequentialAccessSparseVector(cardinality, size);
+    for (int i = 0; i < size; ++i) {
+      feature.set(random.nextInt(feature.size()), random.nextGaussian());
     }
-    final Vector feature = new DenseVector(featureArray);
 
     return new Row(output, feature);
   }
 
   @Test
-  public void testDenseRowCodec() {
-    final Row row = generateDenseRow(50);
-    assertEquals(row, denseRowCodec.decode(denseRowCodec.encode(row)));
+  public void testSparseRowCodec() {
+    final Row row = generateSparseRow(30, 4);
+    assertEquals(row, sparseRowCodec.decode(sparseRowCodec.encode(row)));
   }
 }
