@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 
 /**
  * Dolphin task tracker on driver side.
- * REEF event handlers will use this class to memo {@code RunningTask} objects.
+ * REEF event handlers will use this class to collect {@code RunningTask} objects.
  * Does not guarantee safeness of using {@code getRunningTask} when dolphin job is running.
  */
 public final class TaskTracker {
@@ -69,7 +69,7 @@ public final class TaskTracker {
   }
 
   /**
-   * Retrieves memoed RunningTask.
+   * Retrieves collected RunningTask.
    * It is not safe to use this method when ControllerTask is not paused.
    * If dolphin job was not paused and retrieved running task was already completed or failed,
    * using this method may caused unexpected errors.
