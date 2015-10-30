@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_em.sh -numCls 3 -convThr 0.01 -maxIter 20 -local true -split 4 -input sample_cluster -output output_em -maxNumEvalLocal 5
+# ./run_matmul.sh -local true -split 4 -input sample_matmul_lg -small_matrix sample_matmul_sm -output output_matmul -maxNumEvalLocal 5
 
 # RUNTIME
 SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
@@ -25,8 +25,8 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-EM=edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em.EMREEF
+MATMUL=edu.snu.cay.dolphin.examples.matmul.MatrixMulREEF
 
-CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $EM $*"
+CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $MATMUL $*"
 echo $CMD
 $CMD # 2> /dev/null

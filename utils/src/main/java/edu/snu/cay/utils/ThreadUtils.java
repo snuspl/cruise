@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em;
+package edu.snu.cay.utils;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class TestUtils {
+public final class ThreadUtils {
 
   /**
    * Should not be instantiated.
    */
-  private TestUtils() {
+  private ThreadUtils() {
   }
 
   /**

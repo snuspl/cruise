@@ -15,10 +15,14 @@
  */
 package edu.snu.cay.services.shuffle.example.push;
 
+
 import edu.snu.cay.services.shuffle.evaluator.Shuffle;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleProvider;
+import edu.snu.cay.services.shuffle.evaluator.operator.PushDataListener;
+import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleReceiver;
 import edu.snu.cay.services.shuffle.evaluator.operator.PushShuffleSender;
 import org.apache.reef.io.Tuple;
+import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
@@ -27,37 +31,43 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * Send tuples to ReceiverTasks.
- */
-public final class SenderTask implements Task {
+public final class SenderAndReceiverTask implements Task {
 
-  private static final Logger LOG = Logger.getLogger(SenderTask.class.getName());
+  private static final Logger LOG = Logger.getLogger(SenderAndReceiverTask.class.getName());
 
   private final ShuffleProvider shuffleProvider;
   private final PushShuffleSender<Integer, Integer> shuffleSender;
-  private final int totalNumReceivers;
   private final int numTotalIterations;
+  private final int totalNumReceivers;
+  private final AtomicInteger totalNumReceivedTuples;
+  private final AtomicInteger numCompletedIterations;
+  private boolean isFinished;
 
   @Inject
-  private SenderTask(
+  private SenderAndReceiverTask(
       final ShuffleProvider shuffleProvider,
       @Parameter(MessageExchangeParameters.TotalIterationNum.class) final int numTotalIterations) {
     this.shuffleProvider = shuffleProvider;
-    final Shuffle<Integer, Integer> shuffle = shuffleProvider
-        .getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
+    final Shuffle<Integer, Integer> shuffle = shuffleProvider.
+        getShuffle(MessageExchangeDriver.MESSAGE_EXCHANGE_SHUFFLE_NAME);
     this.shuffleSender = shuffle.getSender();
     this.totalNumReceivers = shuffle.getShuffleDescription().getReceiverIdList().size();
+    final PushShuffleReceiver<Integer, Integer> shuffleReceiver = shuffle.getReceiver();
+    shuffleReceiver.registerDataListener(new DataReceiver());
+
     this.numTotalIterations = numTotalIterations;
+    this.totalNumReceivedTuples = new AtomicInteger();
+    this.numCompletedIterations = new AtomicInteger();
+    this.isFinished = false;
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
-    LOG.log(Level.INFO, "A SenderTask is started");
-
+    LOG.log(Level.INFO, "A SenderAndReceiverTask is started");
     int numSentTuples = 0;
     for (int i = 0; i < numTotalIterations; i++) {
       for (int j = 0; j < MessageExchangeDriver.NETWORK_MESSAGE_NUMBER_IN_ONE_ITERATION; j++) {
@@ -75,12 +85,25 @@ public final class SenderTask implements Task {
       }
     }
 
+    synchronized (this) {
+      if (!isFinished) {
+        this.wait();
+      }
+    }
+
     shuffleProvider.close();
-    final ByteBuffer byteBuffer = ByteBuffer.allocate(4);
+    final ByteBuffer byteBuffer = ByteBuffer.allocate(8);
     byteBuffer.putInt(numSentTuples);
+    byteBuffer.putInt(totalNumReceivedTuples.get());
     return byteBuffer.array();
   }
 
+  private void notifyReceiverFinished() {
+    synchronized (this) {
+      isFinished = true;
+      this.notify();
+    }
+  }
 
   private List<Tuple<Integer, Integer>> generateRandomTuples() {
     final Random rand = new Random();
@@ -91,5 +114,34 @@ public final class SenderTask implements Task {
     }
 
     return randomTupleList;
+  }
+
+  private final class DataReceiver implements PushDataListener<Integer, Integer> {
+
+    @Override
+    public void onTupleMessage(final Message<Tuple<Integer, Integer>> message) {
+      for (final Tuple<Integer, Integer> tuple : message.getData()) {
+        final int numArrivedTuples = totalNumReceivedTuples.incrementAndGet();
+        if (numArrivedTuples % 10000 == 0) {
+          LOG.log(Level.INFO, "{0} tuples arrived", numArrivedTuples);
+        }
+      }
+    }
+
+    @Override
+    public void onComplete() {
+      final int numIterations = numCompletedIterations.incrementAndGet();
+      LOG.log(Level.INFO, "{0} th iteration completed", numIterations);
+      if (numIterations == numTotalIterations) {
+        LOG.log(Level.INFO, "The final iteration was completed");
+        notifyReceiverFinished();
+      }
+    }
+
+    @Override
+    public void onShutdown() {
+      LOG.log(Level.INFO, "The receiver was shutdown by the manager");
+      notifyReceiverFinished();
+    }
   }
 }

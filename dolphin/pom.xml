@@ -90,6 +90,11 @@
       <artifactId>dataloader</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
+    <dependency>
+      <groupId>${project.groupId}.services</groupId>
+      <artifactId>shuffle</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
   </dependencies>
 
   <build>

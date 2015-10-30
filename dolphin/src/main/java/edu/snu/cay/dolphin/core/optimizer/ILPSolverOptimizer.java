@@ -338,11 +338,12 @@ public final class ILPSolverOptimizer implements Optimizer {
 
     while (numToSend < 0 && numToReceive > 0 && dataInfoIterator.hasNext()) {
       final DataInfo dataInfo = dataInfoIterator.next();
+      final int numToMove = Math.min(-numToSend, numToReceive);
       final DataInfo dataInfoToMove;
 
-      if (numToReceive < dataInfo.getNumUnits()) {
-        dataInfoToMove = new DataInfoImpl(dataInfo.getDataType(), numToReceive);
-        dataInfosToAdd.add(new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits() - numToReceive));
+      if (numToMove < dataInfo.getNumUnits()) {
+        dataInfoToMove = new DataInfoImpl(dataInfo.getDataType(), numToMove);
+        dataInfosToAdd.add(new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits() - numToMove));
       } else {
         dataInfoToMove = dataInfo;
       }
@@ -413,7 +414,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       this.id = id;
       this.participateVariable = participateVariable;
       this.requestedDataVariable = requestedDataVariable;
-      this.allocatedDataInfos = dataInfos;
+      this.allocatedDataInfos = new ArrayList<>(dataInfos);
       this.computeCost = computeCost;
       this.newComputeTask = false;
     }
