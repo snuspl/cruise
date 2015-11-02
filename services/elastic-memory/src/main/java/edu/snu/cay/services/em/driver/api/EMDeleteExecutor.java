@@ -20,8 +20,6 @@ import edu.snu.cay.services.em.driver.impl.EMDeleteExecutorImpl;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.wake.EventHandler;
 
-import javax.annotation.Nullable;
-
 /**
  * An object which handles EM delete request.
  * EM cannot release an evaluator alone since EM does not know what contexts, services, and tasks
@@ -35,7 +33,7 @@ public interface EMDeleteExecutor {
   /**
    * Execute EM delete operation.
    * @param evalId identifier of the evaluator to release
-   * @param callback an application-level callback to be called, or null if no callback is needed
+   * @param callback an application-level callback to be called
    */
-  void execute(String evalId, @Nullable EventHandler<AvroElasticMemoryMessage> callback);
+  void execute(String evalId, EventHandler<AvroElasticMemoryMessage> callback);
 }

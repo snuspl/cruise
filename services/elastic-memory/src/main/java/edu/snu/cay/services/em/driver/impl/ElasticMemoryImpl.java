@@ -116,7 +116,17 @@ public final class ElasticMemoryImpl implements ElasticMemory {
         return;
       }
     }
-    deleteExecutor.get().execute(evalId, callback);
+
+    if (callback == null) {
+      deleteExecutor.get().execute(evalId, new EventHandler<AvroElasticMemoryMessage>() {
+        @Override
+        public void onNext(final AvroElasticMemoryMessage msg) {
+
+        }
+      });
+    } else {
+      deleteExecutor.get().execute(evalId, callback);
+    }
   }
 
   // TODO #113: implement resize

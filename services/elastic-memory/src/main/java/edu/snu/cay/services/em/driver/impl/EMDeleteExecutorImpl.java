@@ -19,15 +19,13 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import org.apache.reef.wake.EventHandler;
 
-import javax.annotation.Nullable;
-
 /**
  * Default implementation of EMDeleteExecutor.
  */
 public final class EMDeleteExecutorImpl implements EMDeleteExecutor {
 
   @Override
-  public void execute(final String activeContextId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
+  public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
     throw new UnsupportedOperationException();
   }
 }

@@ -751,7 +751,7 @@ public final class DolphinDriver {
   final class TaskRemover implements EMDeleteExecutor {
 
     @Override
-    public void execute(final String activeContextId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
+    public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
       final RunningTask runningTask = taskTracker.getRunningTask(activeContextId);
       if (runningTask == null) {
         // Given active context should have a runningTask in a normal case, because our job is paused.
@@ -767,15 +767,13 @@ public final class DolphinDriver {
         // Memo this context to release it after the task is completed
         closingContexts.add(activeContextId);
         runningTask.close();
-        if (callback != null) {
-          // TODO #205: Reconsider using of Avro message in EM's callback
-          callback.onNext(AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.ResultMsg)
-              .setResultMsg(ResultMsg.newBuilder().setResult(Result.SUCCESS).build())
-              .setSrcId(activeContextId)
-              .setDestId("")
-              .build());
-        }
+        // TODO #205: Reconsider using of Avro message in EM's callback
+        callback.onNext(AvroElasticMemoryMessage.newBuilder()
+            .setType(Type.ResultMsg)
+            .setResultMsg(ResultMsg.newBuilder().setResult(Result.SUCCESS).build())
+            .setSrcId(activeContextId)
+            .setDestId("")
+            .build());
       }
     }
   }
