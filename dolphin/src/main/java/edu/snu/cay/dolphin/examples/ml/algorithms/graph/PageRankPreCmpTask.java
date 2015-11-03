@@ -36,7 +36,7 @@ public final class PageRankPreCmpTask extends UserComputeTask {
   /**
    * Key used in Elastic Memory to put/get the data.
    */
-  public final String dataType;
+  private final String dataType;
 
   /**
    * Adjacency list data parser.

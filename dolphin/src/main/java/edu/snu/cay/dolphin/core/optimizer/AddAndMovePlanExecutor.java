@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.core.optimizer;
 import edu.snu.cay.dolphin.core.DolphinDriver;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.sync.DriverSync;
+import edu.snu.cay.dolphin.parameters.EvaluatorSize;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.plan.api.Plan;
@@ -28,6 +29,7 @@ import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -53,12 +55,15 @@ import java.util.logging.Logger;
  *
  * This Executor should eventually be replaced with a more complete executor that includes deleting
  * Evaluators that are no longer needed.
+ *
+ * TODO #90: This Executor needs to properly handle failure cases that are propagated here.
  */
 public final class AddAndMovePlanExecutor implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(AddAndMovePlanExecutor.class.getName());
   private final ElasticMemory elasticMemory;
   private final DriverSync driverSync;
   private final InjectionFuture<DolphinDriver> dolphinDriver;
+  private final int evalSize;
 
   private final ExecutorService mainExecutor = Executors.newSingleThreadExecutor();
 
@@ -67,10 +72,12 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
   @Inject
   private AddAndMovePlanExecutor(final ElasticMemory elasticMemory,
                                  final DriverSync driverSync,
-                                 final InjectionFuture<DolphinDriver> dolphinDriver) {
+                                 final InjectionFuture<DolphinDriver> dolphinDriver,
+                                 @Parameter(EvaluatorSize.class) final int evalSize) {
     this.elasticMemory = elasticMemory;
     this.driverSync = driverSync;
     this.dolphinDriver = dolphinDriver;
+    this.evalSize = evalSize;
   }
 
   /**
@@ -103,7 +110,7 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
 
         for (final String evaluatorToAdd : plan.getEvaluatorsToAdd()) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
-          elasticMemory.add(1, 512, 1, new ContextActiveHandler());
+          elasticMemory.add(1, evalSize, 1, new ContextActiveHandler());
         }
         executingPlan.awaitActiveContexts();
 
@@ -172,7 +179,7 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("DataTransferred " + msg + " received, but no executingPlan available.");
       }
-      executingPlan.onDataTransferred(msg);
+      executingPlan.onDataTransferred();
     }
   }
 
@@ -276,7 +283,7 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
     private ExecutingPlan(final Plan plan, final DolphinDriver dolphinDriver) {
       this.pendingTaskSubmissions = new ConcurrentHashMap<>();
       this.planEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd());
-      this.activeContexts = new ArrayList<>();
+      this.activeContexts = new ArrayList<>(plan.getEvaluatorsToAdd().size());
       this.planEvaluatorIdsToContexts = new ConcurrentHashMap<>();
       this.runningTasks = new ConcurrentHashMap<>();
       this.activeContextLatch = new CountDownLatch(plan.getEvaluatorsToAdd().size());
@@ -287,8 +294,12 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
       this.dolphinDriver = dolphinDriver;
     }
 
-    public void awaitActiveContexts() throws InterruptedException {
-      activeContextLatch.await();
+    public void awaitActiveContexts() {
+      try {
+        activeContextLatch.await();
+      } catch (final InterruptedException e) {
+        throw new RuntimeException(e);
+      }
       activeContexts.addAll(pendingTaskSubmissions.values());
 
       for (int i = 0; i < activeContexts.size(); i++) {
@@ -301,6 +312,16 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
       activeContextLatch.countDown();
     }
 
+    /**
+     * Translates a temporary context ID used in the plan to an addressable context ID.
+     * This is done by keeping track of the IDs of newly created active contexts.
+     *
+     * If the param is recognized as a temporary ID then its newly created context's ID is returned.
+     * If not, the context ID is already addressable, so it is returned as-is.
+     *
+     * @param planContextId context ID supplied by the plan
+     * @return an addressable context ID
+     */
     public String getActualContextId(final String planContextId) {
       return planEvaluatorIdsToContexts.containsKey(planContextId) ?
           planEvaluatorIdsToContexts.get(planContextId).getId() : planContextId;
@@ -314,7 +335,7 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
       }
     }
 
-    public void onDataTransferred(final AvroElasticMemoryMessage msg) {
+    public void onDataTransferred() {
       dataTransferLatch.countDown();
     }
 
@@ -346,15 +367,14 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
     public Collection<RunningTask> awaitRunningTasks() {
       try {
         runningTaskLatch.await();
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         throw new RuntimeException(e);
       }
       return runningTasks.values();
     }
 
     public void onRunningTask(final RunningTask task) {
-      final ActiveContext context = pendingTaskSubmissions.get(task.getActiveContext().getId());
-      if (context != null) {
+      if (pendingTaskSubmissions.containsKey(task.getActiveContext().getId())) {
         runningTasks.put(task.getId(), task);
         runningTaskLatch.countDown();
       }
@@ -363,7 +383,7 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
     public void awaitSynchronizedExecution() {
       try {
         synchronizedExecutionLatch.await();
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         throw new RuntimeException(e);
       }
     }

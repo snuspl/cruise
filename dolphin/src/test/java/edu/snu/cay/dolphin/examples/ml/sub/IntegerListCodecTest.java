@@ -39,7 +39,7 @@ public final class IntegerListCodecTest {
   }
 
   private List<Integer> generateIntegerList(final int size) {
-    final List<Integer> integerList = new ArrayList<Integer>(size);
+    final List<Integer> integerList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       integerList.add(random.nextInt());
     }
