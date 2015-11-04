@@ -16,11 +16,13 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.graph;
 
 import edu.snu.cay.dolphin.core.ParseException;
+import edu.snu.cay.dolphin.examples.ml.data.AdjacencyListDataType;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.PageRankSummary;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -36,6 +38,11 @@ import java.util.Map;
  */
 public class PageRankMainCmpTask extends UserComputeTask
     implements DataReduceSender<PageRankSummary>, DataBroadcastReceiver<Map<Integer, Double>> {
+
+  /**
+   * Key used in Elastic Memory to put/get the data.
+   */
+  private final String dataType;
 
   /**
    * Memory storage to put/get the data.
@@ -55,10 +62,13 @@ public class PageRankMainCmpTask extends UserComputeTask
   /**
    * Constructs a single Compute Task for PageRank.
    * This class is instantiated by TANG.
+   * @param dataType
    * @param memoryStore
    */
   @Inject
-  public PageRankMainCmpTask(final MemoryStore memoryStore) {
+  public PageRankMainCmpTask(@Parameter(AdjacencyListDataType.class) final String dataType,
+                             final MemoryStore memoryStore) {
+    this.dataType = dataType;
     this.memoryStore = memoryStore;
   }
 
@@ -68,7 +78,7 @@ public class PageRankMainCmpTask extends UserComputeTask
    */
   @Override
   public void initialize() throws ParseException {
-    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(PageRankPreCmpTask.KEY_GRAPH);
+    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(dataType);
     // Map of current rank
     rank = new HashMap<>();
     for (final Long key : subgraphs.keySet()) {
@@ -79,7 +89,7 @@ public class PageRankMainCmpTask extends UserComputeTask
   @Override
   public final void run(final int iteration) {
     increment.clear();
-    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(PageRankPreCmpTask.KEY_GRAPH);
+    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(dataType);
     for (final Map.Entry<Long, List<Integer>> entry : subgraphs.entrySet()) {
       final Integer nodeId = entry.getKey().intValue();
       final List<Integer> outList = entry.getValue();

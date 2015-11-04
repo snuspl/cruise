@@ -15,8 +15,10 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em;
 
+import edu.snu.cay.dolphin.examples.ml.data.ClusteringSerializer;
 import edu.snu.cay.dolphin.examples.ml.parameters.*;
 import edu.snu.cay.dolphin.core.UserParameters;
+import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.ConfigurationBuilder;
 import org.apache.reef.tang.Tang;
@@ -59,6 +61,7 @@ public final class EMParameters implements UserParameters {
   @Override
   public Configuration getServiceConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(Serializer.class, ClusteringSerializer.class)
         .build();
   }
 

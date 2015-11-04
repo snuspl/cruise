@@ -71,6 +71,7 @@ public final class DolphinParameters {
   public Configuration getDriverConf() {
     final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(DesiredSplits.class, String.valueOf(desiredSplits))
+        .bindNamedParameter(EvaluatorSize.class, String.valueOf(evalSize))
         .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
         .bindNamedParameter(StartTrace.class, String.valueOf(startTrace))
         .bindImplementation(UserJobInfo.class, userJobInfo.getClass())

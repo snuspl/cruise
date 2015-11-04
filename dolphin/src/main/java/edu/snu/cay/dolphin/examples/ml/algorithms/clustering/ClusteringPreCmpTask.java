@@ -18,6 +18,7 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserComputeTask;
+import edu.snu.cay.dolphin.examples.ml.data.ClusteringDataType;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -36,15 +37,14 @@ public final class ClusteringPreCmpTask extends UserComputeTask
     implements DataGatherSender<List<Vector>> {
 
   /**
-   * Key used in Elastic Memory to put/get the data.
-   * TODO #168: we should find better place to put this
-   */
-  public static final String KEY_POINTS = "points";
-
-  /**
    * Number of clusters.
    */
   private final int numberOfClusters;
+
+  /**
+   * Type used in Elastic Memory to put/get the data.
+   */
+  private final String dataType;
 
   /**
    * Points read from input data to work on.
@@ -74,11 +74,13 @@ public final class ClusteringPreCmpTask extends UserComputeTask
 
   @Inject
   public ClusteringPreCmpTask(
+      @Parameter(ClusteringDataType.class) final String dataType,
       final DataParser<List<Vector>> dataParser,
       final MemoryStore memoryStore,
       final PartitionTracker partitionTracker,
       final DataIdFactory<Long> dataIdFactory,
       @Parameter(NumberOfClusters.class) final int numberOfClusters) {
+    this.dataType = dataType;
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
     this.partitionTracker = partitionTracker;
@@ -91,8 +93,8 @@ public final class ClusteringPreCmpTask extends UserComputeTask
     points = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(points.size());
-      partitionTracker.registerPartition(KEY_POINTS, ids.get(0), ids.get(ids.size() - 1));
-      memoryStore.getElasticStore().putList(KEY_POINTS, ids, points);
+      partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
+      memoryStore.getElasticStore().putList(dataType, ids, points);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }
