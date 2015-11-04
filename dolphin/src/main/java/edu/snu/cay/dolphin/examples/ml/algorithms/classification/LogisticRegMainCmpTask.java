@@ -19,6 +19,7 @@ import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
+import edu.snu.cay.dolphin.examples.ml.data.RowDataType;
 import edu.snu.cay.dolphin.examples.ml.loss.Loss;
 import edu.snu.cay.dolphin.examples.ml.parameters.StepSize;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
@@ -38,6 +39,7 @@ public class LogisticRegMainCmpTask extends UserComputeTask
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
+  private final String dataType;
   private final MemoryStore memoryStore;
   private LinearModel model;
   private int posNum = 0;
@@ -47,10 +49,12 @@ public class LogisticRegMainCmpTask extends UserComputeTask
   public LogisticRegMainCmpTask(@Parameter(StepSize.class) final double stepSize,
                                 final Loss loss,
                                 final Regularization regularization,
+                                @Parameter(RowDataType.class) final String dataType,
                                 final MemoryStore memoryStore) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
+    this.dataType = dataType;
     this.memoryStore = memoryStore;
   }
 
@@ -60,7 +64,7 @@ public class LogisticRegMainCmpTask extends UserComputeTask
     // measure accuracy
     posNum = 0;
     negNum = 0;
-    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(LogisticRegPreCmpTask.KEY_ROWS);
+    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(dataType);
     for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());

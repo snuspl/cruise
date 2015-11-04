@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
 import edu.snu.cay.dolphin.core.UserTaskTrace;
-import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCmpTask;
+import edu.snu.cay.dolphin.examples.ml.data.ClusteringDataType;
 import edu.snu.cay.dolphin.examples.ml.data.VectorSum;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
@@ -24,6 +24,7 @@ import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.VectorDistanceMeasure;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
+import org.apache.reef.tang.annotations.Parameter;
 import org.htrace.TraceScope;
 
 import javax.inject.Inject;
@@ -51,6 +52,8 @@ public final class KMeansMainCmpTask extends UserComputeTask
    */
   private final VectorDistanceMeasure distanceMeasure;
 
+  private final String dataType;
+
   /**
    * Memory storage to put/get the data.
    */
@@ -67,9 +70,11 @@ public final class KMeansMainCmpTask extends UserComputeTask
    */
   @Inject
   public KMeansMainCmpTask(final VectorDistanceMeasure distanceMeasure,
+                           @Parameter(ClusteringDataType.class) final String dataType,
                            final MemoryStore memoryStore,
                            final UserTaskTrace trace) {
     this.distanceMeasure = distanceMeasure;
+    this.dataType = dataType;
     this.memoryStore = memoryStore;
     this.trace = trace;
   }
@@ -81,7 +86,7 @@ public final class KMeansMainCmpTask extends UserComputeTask
     pointSum = new HashMap<>();
 
     final TraceScope getPointsScope = trace.startSpan("getPoints");
-    final Map<?, Vector> points = memoryStore.getElasticStore().getAll(ClusteringPreCmpTask.KEY_POINTS);
+    final Map<?, Vector> points = memoryStore.getElasticStore().getAll(dataType);
     getPointsScope.close();
 
     final TraceScope computeCentroidsScope = trace.startSpan("computeCentroids");

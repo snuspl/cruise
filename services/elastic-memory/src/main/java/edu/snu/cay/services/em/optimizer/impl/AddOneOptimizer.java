@@ -15,22 +15,26 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
+import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
+import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
+import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
 import java.util.Collection;
 
 /**
  * An Optimizer that simply adds one new Evaluator for each optimize call.
+ * It then moves half the units from the first Evaluator to the new Evaluator.
  * It skips until callsToSkip is reached, after which it runs until maxCallsToMake is reached.
  *
  * This Optimizer can be used to drive AddOnlyPlanExecutor for testing purposes.
  */
 public final class AddOneOptimizer implements Optimizer {
-  private final int maxCallsToMake = 3;
+  private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
   private final int callsToSkip = 0;
@@ -53,8 +57,17 @@ public final class AddOneOptimizer implements Optimizer {
 
     final String evaluatorToAdd = "new-" + callsMade;
     callsMade++;
+
+    final EvaluatorParameters srcEvaluator = activeEvaluators.iterator().next();
+    final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
+    final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
+
+    final TransferStep transferStep = new TransferStepImpl(
+        srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
+
     return PlanImpl.newBuilder()
         .addEvaluatorToAdd(evaluatorToAdd)
+        .addTransferStep(transferStep)
         .build();
   }
 }

@@ -15,10 +15,12 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
+import edu.snu.cay.dolphin.examples.ml.data.ClusteringSerializer;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.core.UserParameters;
 import edu.snu.cay.dolphin.examples.ml.parameters.ConvergenceThreshold;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
+import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.ConfigurationBuilder;
 import org.apache.reef.tang.Tang;
@@ -53,6 +55,7 @@ public final class KMeansParameters implements UserParameters {
   @Override
   public Configuration getServiceConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(Serializer.class, ClusteringSerializer.class)
         .build();
   }
 

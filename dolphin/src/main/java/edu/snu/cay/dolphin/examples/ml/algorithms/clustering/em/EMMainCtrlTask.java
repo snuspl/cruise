@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em;
 
-import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreCtrlTask;
+import edu.snu.cay.dolphin.examples.ml.data.CentroidsDataType;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.core.UserControllerTask;
@@ -81,6 +81,11 @@ public final class EMMainCtrlTask extends UserControllerTask
   private final boolean isCovarianceShared;
 
   /**
+   * Key used in Elastic Memory to put/get the centroids.
+   */
+  private final String centroidsDataType;
+
+  /**
    * Memory storage to put/get the data.
    */
   private final MemoryStore memoryStore;
@@ -99,12 +104,14 @@ public final class EMMainCtrlTask extends UserControllerTask
    */
   @Inject
   public EMMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
+                        @Parameter(CentroidsDataType.class) final String centroidsDataType,
                         final MemoryStore memoryStore,
                         final OutputStreamProvider outputStreamProvider,
                         @Parameter(MaxIterations.class) final int maxIterations,
                         @Parameter(IsCovarianceShared.class) final boolean isCovarianceShared) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;
+    this.centroidsDataType = centroidsDataType;
     this.memoryStore = memoryStore;
     this.outputStreamProvider = outputStreamProvider;
     this.maxIterations = maxIterations;
@@ -119,7 +126,7 @@ public final class EMMainCtrlTask extends UserControllerTask
   public void initialize() {
 
     // Load the initial centroids from the previous stage
-    final Map<?, Vector> centroidsMap = memoryStore.getLocalStore().removeAll(ClusteringPreCtrlTask.KEY_CENTROIDS);
+    final Map<?, Vector> centroidsMap = memoryStore.getLocalStore().removeAll(centroidsDataType);
     centroids.addAll(centroidsMap.values());
 
     // Initialize cluster summaries
