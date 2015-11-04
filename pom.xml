@@ -63,6 +63,7 @@
     <module>dolphin</module>
     <module>services/dataloader</module>
     <module>services/elastic-memory</module>
+    <module>services/resourcemanager</module>
     <module>services/shuffle</module>
     <module>utils</module>
   </modules>
