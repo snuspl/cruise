@@ -26,6 +26,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The {@link UserComputeTask} for SleepREEF.
@@ -34,16 +36,17 @@ import java.util.List;
  * and then sleeps for that amount of time using {@link Thread#sleep(long)}.
  */
 public final class SleepCmpTask extends UserComputeTask implements DataReduceSender<Integer> {
+  private static final Logger LOG = Logger.getLogger(SleepCmpTask.class.getName());
 
   private final int initialWorkload;
-  private final float computationSpeed;
+  private final long computationSpeed;
   private final MemoryStore memoryStore;
   private final PartitionTracker partitionTracker;
   private final DataIdFactory<Long> dataIdFactory;
 
   @Inject
   private SleepCmpTask(@Parameter(SleepParameters.InitialWorkload.class) final int initialWorkload,
-                       @Parameter(SleepParameters.ComputationSpeed.class) final float computationSpeed,
+                       @Parameter(SleepParameters.ComputationRate.class) final long computationSpeed,
                        final MemoryStore memoryStore,
                        final PartitionTracker partitionTracker,
                        final DataIdFactory<Long> dataIdFactory) {
@@ -83,13 +86,19 @@ public final class SleepCmpTask extends UserComputeTask implements DataReduceSen
   @Override
   public void run(final int iteration) {
     final int workload = memoryStore.getElasticStore().getNumUnits(SleepParameters.KEY);
-    final long sleepTime = (long)(workload * computationSpeed);
+    final long sleepTime = workload * computationSpeed;
+    LOG.log(Level.INFO, "iteration start: {0}, workload: {1}, computationRate: {2}, sleepTime: {3}",
+        new Object[]{iteration, workload, computationSpeed, sleepTime});
 
     try {
       Thread.sleep(sleepTime);
     } catch (final InterruptedException e) {
       throw new RuntimeException("InterruptedException during sleeping", e);
     }
+
+    final int finWorkload = memoryStore.getElasticStore().getNumUnits(SleepParameters.KEY);
+    LOG.log(Level.INFO, "iteration finish: {0}, finWorkload: {1}",
+        new Object[]{iteration, finWorkload});
   }
 
   @Override
