@@ -23,6 +23,7 @@ import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerParameters;
 import edu.snu.cay.services.em.plan.conf.PlanExecutorParameters;
+import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
@@ -116,6 +117,7 @@ public final class DolphinLauncher {
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, DolphinDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.EvaluatorFailedHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, DolphinDriver.ActiveContextHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, DolphinDriver.FailedContextHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_MESSAGE, DolphinDriver.ContextMessageHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, DolphinDriver.TaskCompletedHandler.class)
         .set(DriverConfiguration.ON_TASK_RUNNING, DolphinDriver.TaskRunningHandler.class)
@@ -161,6 +163,9 @@ public final class DolphinLauncher {
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         dolphinParameters.getDriverConf(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(EMDeleteExecutor.class, DolphinDriver.TaskRemover.class)
+            .build(),
         shuffleConf);
   }
 

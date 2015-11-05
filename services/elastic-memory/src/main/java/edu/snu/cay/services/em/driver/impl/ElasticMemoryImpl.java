@@ -16,13 +16,19 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.avro.ResultMsg;
+import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.MigrationManager;
+import edu.snu.cay.services.em.driver.PartitionManager;
+import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.tang.InjectionFuture;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -50,15 +56,22 @@ public final class ElasticMemoryImpl implements ElasticMemory {
    */
   private final EMResourceRequestManager resourceRequestManager;
 
+  private final InjectionFuture<EMDeleteExecutor> deleteExecutor;
+  private final PartitionManager partitionManager;
+
   @Inject
   private ElasticMemoryImpl(final EvaluatorRequestor requestor,
                             final MigrationManager migrationManager,
                             final EMResourceRequestManager resourceRequestManager,
+                            final InjectionFuture<EMDeleteExecutor> deleteExecutor,
+                            final PartitionManager partitionManager,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.requestor = requestor;
     this.migrationManager = migrationManager;
     this.resourceRequestManager = resourceRequestManager;
+    this.deleteExecutor = deleteExecutor;
+    this.partitionManager = partitionManager;
   }
 
   /**
@@ -79,10 +92,41 @@ public final class ElasticMemoryImpl implements ElasticMemory {
         .build());
   }
 
-  // TODO #112: implement delete
+  /**
+   * Removes partitions registered to deleting evalId.
+   * After that, EMDeleteExecutor handles the actual deleting request.
+   * TODO #205: Reconsider using of Avro message in EM's callback
+   */
   @Override
-  public void delete(final String evalId) {
-    throw new NotImplementedException();
+  public void delete(final String evalId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
+    final Set<String> dataTypeSet = partitionManager.getDataTypes(evalId);
+    for (final String dataType : dataTypeSet) {
+      final Set<LongRange> rangeSet = partitionManager.getRangeSet(evalId, dataType);
+      // Deletion fails when the evaluator has remaining data
+      if (!rangeSet.isEmpty()) {
+        if (callback != null) {
+          final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.ResultMsg)
+              .setResultMsg(ResultMsg.newBuilder().setResult(Result.FAILURE).build())
+              .setSrcId(evalId)
+              .setDestId("")
+              .build();
+          callback.onNext(msg);
+        }
+        return;
+      }
+    }
+
+    if (callback == null) {
+      deleteExecutor.get().execute(evalId, new EventHandler<AvroElasticMemoryMessage>() {
+        @Override
+        public void onNext(final AvroElasticMemoryMessage msg) {
+
+        }
+      });
+    } else {
+      deleteExecutor.get().execute(evalId, callback);
+    }
   }
 
   // TODO #113: implement resize

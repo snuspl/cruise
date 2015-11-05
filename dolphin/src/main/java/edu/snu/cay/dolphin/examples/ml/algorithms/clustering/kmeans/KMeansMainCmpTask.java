@@ -64,7 +64,6 @@ public final class KMeansMainCmpTask extends UserComputeTask
   /**
    * Constructs a single Compute Task for k-means.
    * This class is instantiated by TANG.
-   * @param dataParser
    * @param memoryStore Memory storage to put/get the data
    * @param distanceMeasure distance measure to use to compute distances between points
    */

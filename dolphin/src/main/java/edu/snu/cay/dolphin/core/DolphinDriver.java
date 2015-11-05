@@ -33,7 +33,12 @@ import edu.snu.cay.dolphin.groupcomm.names.DataPreRunShuffle;
 import edu.snu.cay.dolphin.parameters.StartTrace;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
 import edu.snu.cay.services.dataloader.DataLoader;
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.avro.ResultMsg;
+import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -50,12 +55,10 @@ import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextMessage;
+import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
-import org.apache.reef.driver.task.CompletedTask;
-import org.apache.reef.driver.task.FailedTask;
-import org.apache.reef.driver.task.RunningTask;
-import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.driver.task.*;
 import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.data.output.OutputService;
@@ -65,6 +68,7 @@ import org.apache.reef.io.network.group.impl.config.BroadcastOperatorSpec;
 import org.apache.reef.io.network.group.impl.config.GatherOperatorSpec;
 import org.apache.reef.io.network.group.impl.config.ReduceOperatorSpec;
 import org.apache.reef.io.network.group.impl.config.ScatterOperatorSpec;
+import org.apache.reef.io.network.group.impl.driver.CommunicationGroupDriverImpl;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Parameter;
@@ -86,11 +90,7 @@ import org.htrace.TraceScope;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.xml.bind.DatatypeConverter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -159,6 +159,8 @@ public final class DolphinDriver {
   private final SchedulabilityAnalyzer schedulabilityAnalyzer;
 
   private final DriverSync driverSync;
+
+  private final TaskTracker taskTracker;
 
   /**
    * Manager of the configuration of Elastic Memory service.
@@ -229,6 +231,10 @@ public final class DolphinDriver {
    */
   private final EMResourceRequestManager emResourceRequestManager;
 
+  /**
+   * Set of ActiveContext ids on state closing, used to determine whether a task is requested to be closed or not.
+   */
+  private final Set<String> closingContexts;
 
   /**
    * Constructor for the Driver of a Dolphin job.
@@ -255,6 +261,7 @@ public final class DolphinDriver {
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
                         final OptimizationOrchestrator optimizationOrchestrator,
                         final DriverSync driverSync,
+                        final TaskTracker taskTracker,
                         final ElasticMemoryConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
@@ -274,6 +281,7 @@ public final class DolphinDriver {
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
     this.optimizationOrchestrator = optimizationOrchestrator;
     this.driverSync = driverSync;
+    this.taskTracker = taskTracker;
     this.emConf = emConf;
     this.userJobInfo = userJobInfo;
     this.stageInfoList = userJobInfo.getStageInfoList();
@@ -286,6 +294,7 @@ public final class DolphinDriver {
     this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
     this.emResourceRequestManager = emResourceRequestManager;
+    this.closingContexts = Collections.synchronizedSet(new HashSet<String>());
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.jobTraceInfo = startTrace ? TraceInfo.fromSpan(Trace.startSpan("job", Sampler.ALWAYS).getSpan()) : null;
     initializeDataOperators();
@@ -524,6 +533,15 @@ public final class DolphinDriver {
     }
   }
 
+  final class FailedContextHandler implements EventHandler<FailedContext> {
+
+    @Override
+    public void onNext(final FailedContext failedContext) {
+      LOG.log(Level.INFO, "{0} has failed.", failedContext);
+      taskTracker.onFailedContext(failedContext);
+    }
+  }
+
   /**
    * Return the ID of the given Context.
    */
@@ -588,6 +606,7 @@ public final class DolphinDriver {
     public void onNext(final RunningTask runningTask) {
       LOG.info(runningTask.getId() + " has started.");
       optimizationOrchestrator.onRunningTask(runningTask);
+      taskTracker.onRunningTask(runningTask);
     }
   }
 
@@ -601,9 +620,17 @@ public final class DolphinDriver {
       final String completedTaskId = completedTask.getId();
       LOG.log(Level.INFO, "{0} has completed.", completedTaskId);
       optimizationOrchestrator.onCompletedTask(completedTask);
+      taskTracker.onCompletedTask(completedTask);
 
       final ActiveContext activeContext = completedTask.getActiveContext();
       final String contextId = activeContext.getId();
+
+      if (closingContexts.remove(contextId)) {
+        // close the context and release the container as requested
+        activeContext.close();
+        return;
+      }
+
       final int nextSequence = contextToStageSequence.get(contextId) + 1;
       if (nextSequence >= stageInfoList.size()) {
         completedTask.getActiveContext().close();
@@ -622,6 +649,7 @@ public final class DolphinDriver {
     public void onNext(final FailedTask failedTask) {
       LOG.info(failedTask.getId() + " has failed.");
       optimizationOrchestrator.onFailedTask(failedTask);
+      taskTracker.onFailedTask(failedTask);
     }
   }
 
@@ -713,6 +741,41 @@ public final class DolphinDriver {
     commGroup.addTask(partialTaskConf);
     final Configuration finalTaskConf = groupCommDriver.getTaskConfiguration(partialTaskConf);
     activeContext.submitTask(finalTaskConf);
+  }
+
+  /**
+   * EMDeleteExecutor implementation for Dolphin.
+   * Dolphin uses group communication, so remove the task from group communication before closing it.
+   * Assumes that EM delete is only called during {@code ControllerTaskSync.PAUSED} state.
+   */
+  final class TaskRemover implements EMDeleteExecutor {
+
+    @Override
+    public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
+      final RunningTask runningTask = taskTracker.getRunningTask(activeContextId);
+      if (runningTask == null) {
+        // Given active context should have a runningTask in a normal case, because our job is paused.
+        // Evaluator without corresponding runningTask implies error.
+        LOG.log(Level.WARNING,
+            "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
+      } else {
+        final int currentSequence = contextToStageSequence.get(runningTask.getActiveContext().getId());
+        final CommunicationGroupDriverImpl commGroup
+            = (CommunicationGroupDriverImpl) commGroupDriverList.get(currentSequence);
+        commGroup.failTask(runningTask.getId());
+        commGroup.removeTask(runningTask.getId());
+        // Memo this context to release it after the task is completed
+        closingContexts.add(activeContextId);
+        runningTask.close();
+        // TODO #205: Reconsider using of Avro message in EM's callback
+        callback.onNext(AvroElasticMemoryMessage.newBuilder()
+            .setType(Type.ResultMsg)
+            .setResultMsg(ResultMsg.newBuilder().setResult(Result.SUCCESS).build())
+            .setSrcId(activeContextId)
+            .setDestId("")
+            .build());
+      }
+    }
   }
 
   private Configuration getShuffleTaskConfiguration(final int stageSequence, final String computeTaskId) {
