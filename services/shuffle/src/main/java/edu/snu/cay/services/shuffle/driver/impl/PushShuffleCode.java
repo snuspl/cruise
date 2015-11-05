@@ -98,6 +98,34 @@ public final class PushShuffleCode {
   public static final int RECEIVER_FINISHED = 10;
 
   /**
+   * Notify that sender needs to update ShuffleDescription.
+   *
+   * The manager to the sender.
+   */
+  public static final int SENDER_DESCRIPTION_UPDATE = 11;
+
+  /**
+   * Notify that receiver needs to update ShuffleDescription.
+   *
+   * The manager to the receiver.
+   */
+  public static final int RECEIVER_DESCRIPTION_UPDATE = 12;
+
+  /**
+   * Notify that sender is updated.
+   *
+   * The sender to the manager.
+   */
+  public static final int SENDER_UPDATED = 13;
+
+  /**
+   * Notify that receiver is updated.
+   *
+   * The receiver to the manager.
+   */
+  public static final int RECEIVER_UPDATED = 14;
+
+  /**
    * Empty private constructor to prohibit instantiation of utility class.
    */
   private PushShuffleCode() {

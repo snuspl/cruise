@@ -47,6 +47,9 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
 
   private static final Logger LOG = Logger.getLogger(PushShuffleReceiverImpl.class.getName());
 
+  private static final String ADD_SENDER_PREFIX = "ADDSENDER-";
+  private static final String REMOVE_SENDER_PREFIX = "REMOVESENDER-";
+
   /**
    * ControlMessageSender which sends control messages to the manager.
    */
@@ -55,7 +58,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private final ControlMessageSynchronizer synchronizer;
   private final long receiverTimeout;
   private final AtomicInteger completedSenderCount;
-  private final int totalNumSenders;
+  private int totalNumSenders;
   private final Map<String, StateMachine> senderStateMachineMap;
   private final StateMachine stateMachine;
 
@@ -96,9 +99,13 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   public void onControlMessage(final Message<ShuffleControlMessage> message) {
     final ShuffleControlMessage controlMessage = message.getData().iterator().next();
     switch (controlMessage.getCode()) {
-    // Control messages from the manager.
+      // Control messages from the manager.
     case PushShuffleCode.RECEIVER_CAN_RECEIVE:
       synchronizer.closeLatch(controlMessage);
+      break;
+
+    case PushShuffleCode.RECEIVER_DESCRIPTION_UPDATE:
+      onReceiverUpdated(controlMessage);
       break;
 
     case PushShuffleCode.RECEIVER_SHUTDOWN:
@@ -159,6 +166,25 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
       dataListener.onComplete();
     }
   }
+
+  private void onReceiverUpdated(final ShuffleControlMessage controlMessage) {
+    for (int i = 0; i < controlMessage.size(); i++) {
+      final String updateMessage = controlMessage.get(i);
+      if (updateMessage.startsWith(ADD_SENDER_PREFIX)) {
+        totalNumSenders++;
+        final StateMachine newSenderStateMachine = PushShuffleSenderState.createStateMachine();
+        newSenderStateMachine.setState(PushShuffleSenderState.SENDING);
+        senderStateMachineMap.put(updateMessage.substring(ADD_SENDER_PREFIX.length()), newSenderStateMachine);
+
+      } else if (updateMessage.startsWith(REMOVE_SENDER_PREFIX)) {
+        totalNumSenders--;
+        senderStateMachineMap.remove(updateMessage.substring(REMOVE_SENDER_PREFIX.length()));
+      }
+    }
+
+    controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_UPDATED);
+  }
+
 
   private final class TupleMessageHandler implements EventHandler<Message<Tuple<K, V>>> {
 

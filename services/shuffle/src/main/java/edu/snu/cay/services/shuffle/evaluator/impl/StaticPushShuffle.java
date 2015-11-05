@@ -111,6 +111,7 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
       // Control messages to senders.
       case PushShuffleCode.SENDER_CAN_SEND:
       case PushShuffleCode.SENDER_SHUTDOWN:
+      case PushShuffleCode.SENDER_DESCRIPTION_UPDATE:
         shuffleSender.onControlMessage(message);
         break;
 
@@ -118,6 +119,7 @@ public final class StaticPushShuffle<K, V> implements Shuffle<K, V> {
       case PushShuffleCode.SENDER_COMPLETED:
       case PushShuffleCode.RECEIVER_CAN_RECEIVE:
       case PushShuffleCode.RECEIVER_SHUTDOWN:
+      case PushShuffleCode.RECEIVER_DESCRIPTION_UPDATE:
         shuffleReceiver.onControlMessage(message);
         break;
 

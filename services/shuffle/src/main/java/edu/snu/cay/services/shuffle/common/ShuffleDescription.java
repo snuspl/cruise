@@ -58,4 +58,9 @@ public interface ShuffleDescription {
    */
   List<String> getReceiverIdList();
 
+  void addSender(String senderId);
+  void removeSender(String senderId);
+  void addReceiver(String receiverId);
+  void removeReceiver(String receiverId);
+
 }

@@ -35,10 +35,7 @@ import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -141,6 +138,12 @@ public final class StaticPushShuffleManager implements ShuffleManager {
       case PushShuffleCode.RECEIVER_FINISHED:
         stateManager.onReceiverFinished(endPointId);
         break;
+      case PushShuffleCode.SENDER_UPDATED:
+        stateManager.onSenderUpdated();
+        break;
+      case PushShuffleCode.RECEIVER_UPDATED:
+        stateManager.onReceiverUpdated();
+        break;
       default:
         throw new IllegalStateException("Unknown code " + controlMessage.getCode() + " from " + endPointId);
       }
@@ -149,6 +152,26 @@ public final class StaticPushShuffleManager implements ShuffleManager {
 
   public synchronized void setPushShuffleListener(final PushShuffleListener pushShuffleListener) {
     this.pushShuffleListener = pushShuffleListener;
+  }
+
+  public synchronized void addSender(final String senderId) {
+    shuffleDescription.addSender(senderId);
+    stateManager.addSender(senderId);
+  }
+
+  public synchronized void removeSender(final String senderId) {
+    shuffleDescription.removeSender(senderId);
+    stateManager.removeSender(senderId);
+  }
+
+  public synchronized void addReceiver(final String receiverId) {
+    shuffleDescription.addReceiver(receiverId);
+    stateManager.addReceiver(receiverId);
+  }
+
+  public synchronized void removeReceiver(final String receiverId) {
+    shuffleDescription.removeReceiver(receiverId);
+    stateManager.removeReceiver(receiverId);
   }
 
   private final class ControlLinkListener implements LinkListener<Message<ShuffleControlMessage>> {
@@ -181,11 +204,17 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private static final String CAN_SEND = "CAN_SEND";
     private static final String RECEIVERS_COMPLETED = "RECEIVERS_COMPLETED";
     private static final String FINISHED = "FINISHED";
+    private static final String READY = "READY";
+
+    private static final String ADD_SENDER_PREFIX = "ADDSENDER-";
+    private static final String REMOVE_SENDER_PREFIX = "REMOVESENDER-";
+    private static final String ADD_RECEIVER_PREFIX = "ADDRECEIVER-";
+    private static final String REMOVE_RECEIVER_PREFIX = "REMOVERECEIVER-";
 
     private boolean initialized;
     private boolean shutdown;
-    private final int totalNumSenders;
-    private final int totalNumReceivers;
+    private int totalNumSenders;
+    private int totalNumReceivers;
     private Map<String, StateMachine> receiverStateMachineMap;
     private final List<String> initializedSenderIdList;
     private int numInitializedReceivers;
@@ -194,6 +223,19 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private int numFinishedSenders;
     private int numFinishedReceivers;
     private int numCompletedIterations;
+    private boolean isDescriptionUpdated;
+    private boolean isFirstIteration;
+    private List<String> descriptionUpdateList;
+
+    private List<String> newSenderIdList;
+    private List<String> newReceiverIdList;
+    private List<String> removeSenderIdList;
+    private List<String> removeReceiverIdList;
+    private int numUpdatedSenders;
+    private int numUpdatedReceivers;
+    private int numNewInitializedSenders;
+    private int numNewInitializedReceivers;
+
 
     private StateMachine stateMachine;
 
@@ -212,6 +254,7 @@ public final class StaticPushShuffleManager implements ShuffleManager {
           .addState(CAN_SEND, "Prepared senders can send data to receivers")
           .addState(RECEIVERS_COMPLETED, "All receivers were completed to receive data from senders in an iteration")
           .addState(FINISHED, "All senders and receivers were finished")
+          .addState(READY, "Wait for all senders and receivers are updated")
           .setInitialState(INIT)
           .addTransition(INIT, CAN_SEND,
               "When RECEIVER_INITIALIZED messages arrived from all receivers."
@@ -220,11 +263,22 @@ public final class StaticPushShuffleManager implements ShuffleManager {
               "When RECEIVER_COMPLETED messages arrived from all receivers." +
                   " It broadcasts ALL_RECEIVERS_COMPLETED messages to all receivers.")
           .addTransition(RECEIVERS_COMPLETED, CAN_SEND,
-              "When RECEIVER_READIED messages arrived from all receivers"
+              "When RECEIVER_READIED messages arrived from all receivers and ShuffleDescription is not changed."
+                  + " It broadcasts SENDER_CAN_SEND messages to all senders.")
+          .addTransition(RECEIVERS_COMPLETED, READY,
+              "When RECEIVER_READIED messages arrived from all receivers and ShuffleDescription is changed."
+                  + "It broadcasts SENDER_DESCRIPTION_UPDATE messages to all senders and "
+                  + "RECEIVER_DESCRIPTION_UPDATE messages to all receivers")
+          .addTransition(READY, CAN_SEND,
+              "When all senders and receivers are updated and new senders or receivers are initialized."
                   + " It broadcasts SENDER_CAN_SEND messages to all senders.")
           .addTransition(RECEIVERS_COMPLETED, FINISHED,
               "If shutdown() method was called before.")
           .build();
+
+      this.isDescriptionUpdated = false;
+      this.isFirstIteration = true;
+      this.newReceiverIdList = new ArrayList<>();
     }
 
     private synchronized void shutdown() {
@@ -242,10 +296,17 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     }
 
     private synchronized void onSenderInitialized(final String senderId) {
-      if (initialized) {
-        sendSenderCanSendMessage(senderId);
+      if (isFirstIteration) {
+        if (initialized) {
+          sendSenderCanSendMessage(senderId);
+        } else {
+          initializedSenderIdList.add(senderId);
+        }
       } else {
-        initializedSenderIdList.add(senderId);
+        numNewInitializedSenders++;
+        if (isAllSendersAndReceiversUpdated() && isAllNewSendersAndReceiversInitialized()) {
+          onAllSendersAndReceiversUpdated();
+        }
       }
     }
 
@@ -259,11 +320,18 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     }
 
     private synchronized void onReceiverInitialized(final String receiverId) {
-      stateMachine.checkState(INIT);
-      receiverStateMachineMap.get(receiverId).checkState(PushShuffleReceiverState.RECEIVING);
-      LOG.log(Level.FINE, "A receiver is initialized " + receiverId);
-      numInitializedReceivers++;
-      broadcastIfAllReceiversAreInitialized();
+      if (isFirstIteration) {
+        stateMachine.checkState(INIT);
+        receiverStateMachineMap.get(receiverId).checkState(PushShuffleReceiverState.RECEIVING);
+        LOG.log(Level.FINE, "A receiver is initialized " + receiverId);
+        numInitializedReceivers++;
+        broadcastIfAllReceiversAreInitialized();
+      } else {
+        numNewInitializedReceivers++;
+        if (isAllSendersAndReceiversUpdated() && isAllNewSendersAndReceiversInitialized()) {
+          onAllSendersAndReceiversUpdated();
+        }
+      }
     }
 
     private void broadcastIfAllReceiversAreInitialized() {
@@ -290,6 +358,18 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         numCompletedReceivers = 0;
         stateMachine.checkAndSetState(CAN_SEND, RECEIVERS_COMPLETED);
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
+
+        isFirstIteration = false;
+        isDescriptionUpdated = false;
+        descriptionUpdateList = new ArrayList<>();
+        numUpdatedSenders = 0;
+        numUpdatedReceivers = 0;
+        numNewInitializedSenders = 0;
+        numNewInitializedReceivers = 0;
+        newSenderIdList = new ArrayList<>();
+        newReceiverIdList = new ArrayList<>();
+        removeSenderIdList = new ArrayList<>();
+        removeReceiverIdList = new ArrayList<>();
         pushShuffleListener.onIterationCompleted(++numCompletedIterations);
         if (shutdown) {
           shutdownAllSendersAndReceivers();
@@ -311,12 +391,49 @@ public final class StaticPushShuffleManager implements ShuffleManager {
 
       LOG.log(Level.FINE, "A receiver " + receiverId + " is ready to receive data.");
 
-      if (numReadiedReceivers == totalNumReceivers) {
+      if (numReadiedReceivers == totalNumReceivers - newReceiverIdList.size()) {
         numReadiedReceivers = 0;
-        LOG.log(Level.INFO, "Broadcast to all senders that they can send data to receivers.");
-        stateMachine.checkAndSetState(RECEIVERS_COMPLETED, CAN_SEND);
-        broadcastToSenders(PushShuffleCode.SENDER_CAN_SEND);
+
+        if (!isDescriptionUpdated) {
+          LOG.log(Level.INFO, "Broadcast to all senders that they can send data to receivers.");
+          stateMachine.checkAndSetState(RECEIVERS_COMPLETED, CAN_SEND);
+          broadcastToSenders(PushShuffleCode.SENDER_CAN_SEND);
+        } else {
+          stateMachine.checkAndSetState(RECEIVERS_COMPLETED, READY);
+          broadcastDescriptionToSendersAndReceivers(descriptionUpdateList);
+        }
       }
+    }
+
+    private synchronized void onSenderUpdated() {
+      numUpdatedSenders++;
+
+      if (isAllSendersAndReceiversUpdated() && isAllNewSendersAndReceiversInitialized()) {
+        onAllSendersAndReceiversUpdated();
+      }
+    }
+
+    private synchronized void onReceiverUpdated() {
+      numUpdatedReceivers++;
+
+      if (isAllSendersAndReceiversUpdated() && isAllNewSendersAndReceiversInitialized()) {
+        onAllSendersAndReceiversUpdated();
+      }
+    }
+
+    private boolean isAllSendersAndReceiversUpdated() {
+      return numUpdatedSenders == totalNumSenders - newSenderIdList.size()
+          && numUpdatedReceivers == totalNumReceivers - newReceiverIdList.size();
+    }
+
+    private boolean isAllNewSendersAndReceiversInitialized() {
+      return newSenderIdList.size() == numNewInitializedSenders
+          && newReceiverIdList.size() == numNewInitializedReceivers;
+    }
+
+    private synchronized void onAllSendersAndReceiversUpdated() {
+      stateMachine.checkAndSetState(READY, CAN_SEND);
+      broadcastToSenders(PushShuffleCode.SENDER_CAN_SEND);
     }
 
     private synchronized void onReceiverFinished(final String receiverId) {
@@ -360,6 +477,58 @@ public final class StaticPushShuffleManager implements ShuffleManager {
           // cannot open connection to receiver
           // TODO #67: failure handling.
           throw new RuntimeException(e);
+        }
+      }
+    }
+
+    private void addSender(final String senderId) {
+      totalNumSenders++;
+      newSenderIdList.add(senderId);
+      descriptionUpdateList.add(ADD_SENDER_PREFIX + senderId);
+      isDescriptionUpdated = true;
+    }
+
+    private void removeSender(final String senderId) {
+      totalNumSenders--;
+      removeSenderIdList.add(senderId);
+      initializedSenderIdList.remove(senderId);
+      descriptionUpdateList.add(REMOVE_SENDER_PREFIX + senderId);
+      isDescriptionUpdated = true;
+    }
+
+    private void addReceiver(final String receiverId) {
+      totalNumReceivers++;
+      newReceiverIdList.add(receiverId);
+      descriptionUpdateList.add(ADD_RECEIVER_PREFIX + receiverId);
+      receiverStateMachineMap.put(receiverId, PushShuffleReceiverState.createStateMachine());
+      isDescriptionUpdated = true;
+    }
+
+    private void removeReceiver(final String receiverId) {
+      totalNumReceivers--;
+      removeReceiverIdList.add(receiverId);
+      descriptionUpdateList.add(REMOVE_RECEIVER_PREFIX + receiverId);
+      receiverStateMachineMap.remove(receiverId);
+      isDescriptionUpdated = true;
+    }
+
+    private void sendDescription(final String endPointId, final int code, final List<String> updateList) {
+      try {
+        controlMessageSender.send(endPointId, code, updateList);
+      } catch (final NetworkException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    private void broadcastDescriptionToSendersAndReceivers(final List<String> updateList) {
+      for (final String senderId : shuffleDescription.getSenderIdList()) {
+        if (!newSenderIdList.contains(senderId) && !removeSenderIdList.contains(senderId)) {
+          sendDescription(senderId, PushShuffleCode.SENDER_DESCRIPTION_UPDATE, updateList);
+        }
+      }
+      for (final String receiverId : shuffleDescription.getReceiverIdList()) {
+        if (!newReceiverIdList.contains(receiverId) && !removeReceiverIdList.contains(receiverId)) {
+          sendDescription(receiverId, PushShuffleCode.RECEIVER_DESCRIPTION_UPDATE, updateList);
         }
       }
     }
