@@ -15,7 +15,7 @@
 # name: sample_sleep_conf
 # description: a sample configuration file for SleepREEF
 # The first column represents the initial number of data units (workload) given to an evaluator.
-# The second column is the computation speed of an evaluator (ms per data unit).
+# The second column is the computation rate of an evaluator (ms per data unit).
 # When the number of evaluators start to exceed the number of lines, default values are assigned (see SleepParameters).
 
 50 50

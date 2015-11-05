@@ -35,7 +35,7 @@ import java.io.*;
  *
  * <p>
  *   The user must provide a configuration file that specifies the
- *   initial workloads and computation speeds of evaluators. This file
+ *   initial workloads and computation rates of evaluators. This file
  *   is read and parsed at the driver. The driver then binds these
  *   values to named parameters and submits them when creating tasks.
  *   The configuration file does not necessarily have to
@@ -48,7 +48,7 @@ import java.io.*;
  * <p>
  *   Following is an example of a configuration file.
  *   The first column represents the initial number of data units (workload) given to an evaluator.
- *   The second column is the computation speed of an evaluator (ms per data unit).
+ *   The second column is the computation rate of an evaluator (ms per data unit).
  *   When the number of evaluators start to exceed the number of lines,
  *   the default values (0, 1.0) are assigned.
  * </p>
@@ -165,7 +165,7 @@ public final class SleepParameters implements UserParameters {
   @Override
   public Configuration getUserCmpTaskConf() {
     final String initialWorkloadStr;
-    final String computationSpeedStr;
+    final String computationRateStr;
 
     final String str = readLineFromFile();
     if (str == null) {
@@ -181,16 +181,16 @@ public final class SleepParameters implements UserParameters {
         throw new RuntimeException(String.format("Initial workload is negative %d", initialWorkload));
       }
 
-      computationSpeedStr = args[1];
-      final long computationSpeed = Long.parseLong(computationSpeedStr);
-      if (computationSpeed < 0) {
-        throw new RuntimeException(String.format("Computation speed is negative %d", computationSpeed));
+      computationRateStr = args[1];
+      final long computationRate = Long.parseLong(computationRateStr);
+      if (computationRate < 0) {
+        throw new RuntimeException(String.format("Computation rate is negative %d", computationRate));
       }
     }
 
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(InitialWorkload.class, initialWorkloadStr)
-        .bindNamedParameter(ComputationRate.class, computationSpeedStr)
+        .bindNamedParameter(ComputationRate.class, computationRateStr)
         .build();
   }
 

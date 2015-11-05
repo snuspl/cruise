@@ -24,7 +24,7 @@ import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 
 /**
- * Run a synthetic example that creates evaluators with virtual workloads and computation speeds to simulate
+ * Run a synthetic example that creates evaluators with virtual workloads and computation rates to simulate
  * a real data-driven application.
  */
 public final class SleepREEF {

@@ -32,26 +32,26 @@ import java.util.logging.Logger;
 /**
  * The {@link UserComputeTask} for SleepREEF.
  * Retrieves the number of data units it is currently holding, from {@link MemoryStore},
- * multiplies that value with its computation speed,
+ * multiplies that value with its computation rate,
  * and then sleeps for that amount of time using {@link Thread#sleep(long)}.
  */
 public final class SleepCmpTask extends UserComputeTask implements DataReduceSender<Integer> {
   private static final Logger LOG = Logger.getLogger(SleepCmpTask.class.getName());
 
   private final int initialWorkload;
-  private final long computationSpeed;
+  private final long computationRate;
   private final MemoryStore memoryStore;
   private final PartitionTracker partitionTracker;
   private final DataIdFactory<Long> dataIdFactory;
 
   @Inject
   private SleepCmpTask(@Parameter(SleepParameters.InitialWorkload.class) final int initialWorkload,
-                       @Parameter(SleepParameters.ComputationRate.class) final long computationSpeed,
+                       @Parameter(SleepParameters.ComputationRate.class) final long computationRate,
                        final MemoryStore memoryStore,
                        final PartitionTracker partitionTracker,
                        final DataIdFactory<Long> dataIdFactory) {
     this.initialWorkload = initialWorkload;
-    this.computationSpeed = computationSpeed;
+    this.computationRate = computationRate;
     this.memoryStore = memoryStore;
     this.partitionTracker = partitionTracker;
     this.dataIdFactory = dataIdFactory;
@@ -86,9 +86,9 @@ public final class SleepCmpTask extends UserComputeTask implements DataReduceSen
   @Override
   public void run(final int iteration) {
     final int workload = memoryStore.getElasticStore().getNumUnits(SleepParameters.KEY);
-    final long sleepTime = workload * computationSpeed;
+    final long sleepTime = workload * computationRate;
     LOG.log(Level.INFO, "iteration start: {0}, workload: {1}, computationRate: {2}, sleepTime: {3}",
-        new Object[]{iteration, workload, computationSpeed, sleepTime});
+        new Object[]{iteration, workload, computationRate, sleepTime});
 
     try {
       Thread.sleep(sleepTime);
