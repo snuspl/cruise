@@ -24,6 +24,7 @@ import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.dolphin.core.sync.ControllerTaskSyncRegister;
 import edu.snu.cay.dolphin.core.sync.DriverSync;
 import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
+import edu.snu.cay.dolphin.groupcomm.conf.GroupCommParameters;
 import edu.snu.cay.dolphin.groupcomm.names.*;
 import edu.snu.cay.dolphin.core.metric.MetricCodec;
 import edu.snu.cay.dolphin.core.metric.MetricTracker;
@@ -128,6 +129,11 @@ public final class DolphinDriver {
    * Driver that manages Group Communication settings.
    */
   private final GroupCommDriver groupCommDriver;
+
+  /**
+   * Parameters used for creating Communication Groups.
+   */
+  private final GroupCommParameters groupCommParameters;
 
   /**
    * Driver that manages Shuffle settings.
@@ -254,6 +260,7 @@ public final class DolphinDriver {
    */
   @Inject
   private DolphinDriver(final GroupCommDriver groupCommDriver,
+                        final GroupCommParameters groupCommParameters,
                         final ShuffleDriver shuffleDriver,
                         final DataLoadingService dataLoadingService,
                         final DataLoader dataLoader,
@@ -274,6 +281,7 @@ public final class DolphinDriver {
                         @Parameter(StartTrace.class) final boolean startTrace) {
     hTrace.initialize();
     this.groupCommDriver = groupCommDriver;
+    this.groupCommParameters = groupCommParameters;
     this.shuffleDriver = shuffleDriver;
     this.dataLoadingService = dataLoadingService;
     this.dataLoader = dataLoader;
@@ -314,8 +322,12 @@ public final class DolphinDriver {
     for (final StageInfo stageInfo : stageInfoList) {
       final int numTasks = dataLoadingService.getNumberOfPartitions() + 1;
       LOG.log(Level.INFO, "Initializing CommunicationGroupDriver with numTasks " + numTasks);
+      // TODO #000: Change this to specify a configurable topology
       final CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
-          stageInfo.getCommGroupName(), numTasks);
+          stageInfo.getCommGroupName(),
+          groupCommParameters.getTopologyClass(),
+          numTasks,
+          groupCommParameters.getFanOut());
       commGroup.addBroadcast(CtrlMsgBroadcast.class,
           BroadcastOperatorSpec.newBuilder()
               .setSenderId(getCtrlTaskId(sequence))

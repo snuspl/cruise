@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.dolphin.core.sync.DriverSyncRegister;
 import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
+import edu.snu.cay.dolphin.groupcomm.conf.GroupCommParameters;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
@@ -60,16 +61,19 @@ public final class DolphinLauncher {
   private final HTraceParameters traceParameters;
   private final OptimizerParameters optimizerParameters;
   private final PlanExecutorParameters planExecutorParameters;
+  private final GroupCommParameters groupCommParameters;
 
   @Inject
   private DolphinLauncher(final DolphinParameters dolphinParameters,
                           final HTraceParameters traceParameters,
                           final OptimizerParameters optimizerParameters,
-                          final PlanExecutorParameters planExecutorParameters) {
+                          final PlanExecutorParameters planExecutorParameters,
+                          final GroupCommParameters groupCommParameters) {
     this.dolphinParameters = dolphinParameters;
     this.traceParameters = traceParameters;
     this.optimizerParameters = optimizerParameters;
     this.planExecutorParameters = planExecutorParameters;
+    this.groupCommParameters = groupCommParameters;
   }
 
   public static LauncherStatus run(final Configuration dolphinConfig, final Configuration... driverConfigs) {
@@ -157,6 +161,7 @@ public final class DolphinLauncher {
         optimizerParameters.getConfiguration(),
         planExecutorParameters.getConfiguration(),
         traceParameters.getConfiguration(),
+        groupCommParameters.getConfiguration(),
         SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
