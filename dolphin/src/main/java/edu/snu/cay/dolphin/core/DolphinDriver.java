@@ -322,7 +322,6 @@ public final class DolphinDriver {
     for (final StageInfo stageInfo : stageInfoList) {
       final int numTasks = dataLoadingService.getNumberOfPartitions() + 1;
       LOG.log(Level.INFO, "Initializing CommunicationGroupDriver with numTasks " + numTasks);
-      // TODO #000: Change this to specify a configurable topology
       final CommunicationGroupDriver commGroup = groupCommDriver.newCommunicationGroup(
           stageInfo.getCommGroupName(),
           groupCommParameters.getTopologyClass(),
