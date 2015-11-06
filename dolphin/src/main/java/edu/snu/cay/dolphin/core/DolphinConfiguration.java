@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.dolphin.groupcomm.conf.GroupCommParameters;
 import edu.snu.cay.dolphin.parameters.*;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerParameters;
 import edu.snu.cay.services.em.plan.conf.PlanExecutorParameters;
@@ -43,6 +44,7 @@ public final class DolphinConfiguration extends ConfigurationModuleBuilder {
     HTraceParameters.registerShortNames(cl);
     OptimizerParameters.registerShortNames(cl);
     PlanExecutorParameters.registerShortNames(cl);
+    GroupCommParameters.registerShortNames(cl);
     final ConfigurationBuilder cb = cl.getBuilder();
     cl.processCommandLine(args);
     return cb.build();
