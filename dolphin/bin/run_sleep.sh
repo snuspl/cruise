@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_sleep.sh -local true -split 3 -input sample -conf sample_sleep_conf -output output -serializedObject 1 -encodeRate 5 -decodeRate 5 -maxIter 10 -timeout 90000 -maxNumEvalLocal 5 -optimizer edu.snu.cay.services.em.optimizer.impl.AddOneOptimizer -plan_executor edu.snu.cay.dolphin.core.optimizer.AddAndMovePlanExecutor
+# ./run_sleep.sh -local true -split 3 -input sample -conf sample_sleep_conf -output output -serializedObject 1 -encodeRate 5 -decodeRate 5 -maxIter 10 -timeout 90000 -maxNumEvalLocal 5 -optimizer edu.snu.cay.services.em.optimizer.impl.AddOneOptimizer -plan_executor edu.snu.cay.dolphin.core.optimizer.DefaultPlanExecutor
 
 # RUNTIME
 SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar

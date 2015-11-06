@@ -47,19 +47,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A Plan Executor that only executes the "add and move" portion of a Plan.
+ * A Plan Executor that executes a Plan.
  * It immediately adds Evaluators with the appropriate contexts via ElasticMemory.
  * It then makes use of DriverSync to guarantee the following happen between Task iterations.
  *   Execute moves according to the plan, by making use of the EM.move callbacks.
  *   Submit Tasks that are added to GroupCommunication Topologies (ensures GroupComm is correctly synchronized).
- *
- * This Executor should eventually be replaced with a more complete executor that includes deleting
- * Evaluators that are no longer needed.
+ *   Delete Evaluators that are no longer needed.
  *
  * TODO #90: This Executor needs to properly handle failure cases that are propagated here.
  */
-public final class AddAndMovePlanExecutor implements PlanExecutor {
-  private static final Logger LOG = Logger.getLogger(AddAndMovePlanExecutor.class.getName());
+public final class DefaultPlanExecutor implements PlanExecutor {
+  private static final Logger LOG = Logger.getLogger(DefaultPlanExecutor.class.getName());
   private final ElasticMemory elasticMemory;
   private final DriverSync driverSync;
   private final InjectionFuture<DolphinDriver> dolphinDriver;
@@ -70,10 +68,10 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
   private ExecutingPlan executingPlan;
 
   @Inject
-  private AddAndMovePlanExecutor(final ElasticMemory elasticMemory,
-                                 final DriverSync driverSync,
-                                 final InjectionFuture<DolphinDriver> dolphinDriver,
-                                 @Parameter(EvaluatorSize.class) final int evalSize) {
+  private DefaultPlanExecutor(final ElasticMemory elasticMemory,
+                              final DriverSync driverSync,
+                              final InjectionFuture<DolphinDriver> dolphinDriver,
+                              @Parameter(EvaluatorSize.class) final int evalSize) {
     this.elasticMemory = elasticMemory;
     this.driverSync = driverSync;
     this.dolphinDriver = dolphinDriver;
@@ -106,7 +104,7 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
         if (plan.getEvaluatorsToAdd().isEmpty() && plan.getTransferSteps().isEmpty()) {
           return new PlanResultImpl();
         }
-        executingPlan = new ExecutingPlan(plan, dolphinDriver.get());
+        executingPlan = new ExecutingPlan(plan);
 
         for (final String evaluatorToAdd : plan.getEvaluatorsToAdd()) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
@@ -225,13 +223,22 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
       executingPlan.awaitMoves();
 
       LOG.log(Level.INFO, "moves finished, submitting tasks.");
-      executingPlan.submitTasks(iterationInfo);
+      for (final ActiveContext context : executingPlan.getContextsToSubmit()) {
+        dolphinDriver.get().submitTask(context, iterationInfo);
+      }
+      LOG.log(Level.INFO, "deleting evaluators.");
+      for (final String evaluatorId : executingPlan.getEvaluatorsToDelete()) {
+        elasticMemory.delete(evaluatorId, new DeletedHandler());
+      }
+
       LOG.log(Level.INFO, "Waiting for RunningTasks.");
       final Collection<RunningTask> addedTasks = executingPlan.awaitRunningTasks();
-
       for (final RunningTask task : addedTasks) {
         LOG.log(Level.INFO, "Newly added task {0}", task);
       }
+      LOG.log(Level.INFO, "Waiting for Deleted Evaluators.");
+      executingPlan.awaitDeletes();
+
       executingPlan.onSynchronizedExecutionCompleted();
     }
   }
@@ -254,6 +261,21 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
     }
   }
 
+
+  /**
+   * This handler is registered as the callback to ElasticMemory.delete().
+   */
+  private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
+    @Override
+    public void onNext(final AvroElasticMemoryMessage msg) {
+      LOG.log(Level.INFO, "Received new Evaluators Deleted {0}.", msg);
+      if (executingPlan == null) {
+        throw new RuntimeException("Evaluators deleted " + msg + " received, but no executingPlan available.");
+      }
+      executingPlan.onDeleted();
+    }
+  }
+
   /**
    * Encapsulates a single executing plan and its state.
    * By referencing the current executing plan Callback handlers are implemented as stateless.
@@ -269,29 +291,31 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
    */
   private static final class ExecutingPlan {
     private final ConcurrentMap<String, ActiveContext> pendingTaskSubmissions;
-    private final List<String> planEvaluatorIds;
+    private final List<String> addEvaluatorIds;
     private final List<ActiveContext> activeContexts;
-    private final ConcurrentMap<String, ActiveContext> planEvaluatorIdsToContexts;
+    private final ConcurrentMap<String, ActiveContext> addEvaluatorIdsToContexts;
     private final ConcurrentMap<String, RunningTask> runningTasks;
+    private final List<String> deleteEvaluatorsIds;
     private final CountDownLatch activeContextLatch;
     private final CountDownLatch dataTransferLatch;
     private final CountDownLatch moveLatch;
     private final CountDownLatch runningTaskLatch;
+    private final CountDownLatch deleteLatch;
     private final CountDownLatch synchronizedExecutionLatch;
-    private final DolphinDriver dolphinDriver;
 
-    private ExecutingPlan(final Plan plan, final DolphinDriver dolphinDriver) {
+    private ExecutingPlan(final Plan plan) {
       this.pendingTaskSubmissions = new ConcurrentHashMap<>();
-      this.planEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd());
+      this.addEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd());
       this.activeContexts = new ArrayList<>(plan.getEvaluatorsToAdd().size());
-      this.planEvaluatorIdsToContexts = new ConcurrentHashMap<>();
+      this.addEvaluatorIdsToContexts = new ConcurrentHashMap<>();
       this.runningTasks = new ConcurrentHashMap<>();
+      this.deleteEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete());
       this.activeContextLatch = new CountDownLatch(plan.getEvaluatorsToAdd().size());
       this.dataTransferLatch = new CountDownLatch(plan.getTransferSteps().size());
       this.moveLatch = new CountDownLatch(plan.getTransferSteps().size());
       this.runningTaskLatch = new CountDownLatch(plan.getEvaluatorsToAdd().size());
+      this.deleteLatch = new CountDownLatch(plan.getEvaluatorsToDelete().size());
       this.synchronizedExecutionLatch = new CountDownLatch(1);
-      this.dolphinDriver = dolphinDriver;
     }
 
     public void awaitActiveContexts() {
@@ -303,7 +327,7 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
       activeContexts.addAll(pendingTaskSubmissions.values());
 
       for (int i = 0; i < activeContexts.size(); i++) {
-        planEvaluatorIdsToContexts.put(planEvaluatorIds.get(i), activeContexts.get(i));
+        addEvaluatorIdsToContexts.put(addEvaluatorIds.get(i), activeContexts.get(i));
       }
     }
 
@@ -323,8 +347,8 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
      * @return an addressable context ID
      */
     public String getActualContextId(final String planContextId) {
-      return planEvaluatorIdsToContexts.containsKey(planContextId) ?
-          planEvaluatorIdsToContexts.get(planContextId).getId() : planContextId;
+      return addEvaluatorIdsToContexts.containsKey(planContextId) ?
+          addEvaluatorIdsToContexts.get(planContextId).getId() : planContextId;
     }
 
     public void awaitDataTransfers() {
@@ -358,10 +382,8 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
       }
     }
 
-    public void submitTasks(final IterationInfo iterationInfo) {
-      for (final ActiveContext context : activeContexts) {
-        dolphinDriver.submitTask(context, iterationInfo);
-      }
+    public Collection<ActiveContext> getContextsToSubmit() {
+      return activeContexts;
     }
 
     public Collection<RunningTask> awaitRunningTasks() {
@@ -378,6 +400,22 @@ public final class AddAndMovePlanExecutor implements PlanExecutor {
         runningTasks.put(task.getId(), task);
         runningTaskLatch.countDown();
       }
+    }
+
+    public Collection<String> getEvaluatorsToDelete() {
+      return deleteEvaluatorsIds;
+    }
+
+    public void awaitDeletes() {
+      try {
+        deleteLatch.await();
+      } catch (final InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    public void onDeleted() {
+      deleteLatch.countDown();
     }
 
     public void awaitSynchronizedExecution() {

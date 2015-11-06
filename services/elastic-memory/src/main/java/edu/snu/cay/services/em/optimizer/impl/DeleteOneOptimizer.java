@@ -25,15 +25,17 @@ import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.Iterator;
 
 /**
- * An Optimizer that simply adds one new Evaluator for each optimize call.
- * It then moves half the units from the first Evaluator to the new Evaluator.
+ * An Optimizer that simply deletes one new Evaluator for each optimize call.
+ * The plan transfers all the units from the soon-to-be-deleted Evaluator to a random Evaluator,
+ * then removes the Evaluator.
  * It skips until callsToSkip is reached, after which it runs until maxCallsToMake is reached.
  *
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
-public final class AddOneOptimizer implements Optimizer {
+public final class DeleteOneOptimizer implements Optimizer {
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -41,7 +43,7 @@ public final class AddOneOptimizer implements Optimizer {
   private int callsSkipped = 0;
 
   @Inject
-  private AddOneOptimizer() {
+  private DeleteOneOptimizer() {
   }
 
   @Override
@@ -55,18 +57,20 @@ public final class AddOneOptimizer implements Optimizer {
       return PlanImpl.newBuilder().build();
     }
 
-    final String evaluatorToAdd = "new-" + callsMade;
-    callsMade++;
-
-    final EvaluatorParameters srcEvaluator = activeEvaluators.iterator().next();
-    final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
-    final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
+    final Iterator<EvaluatorParameters> evaluatorIterator = activeEvaluators.iterator();
+    final EvaluatorParameters evaluatorToDelete = evaluatorIterator.next();
+    final EvaluatorParameters dstEvaluator = evaluatorIterator.next();
+    final DataInfo dataInfo = evaluatorToDelete.getDataInfos().iterator().next();
 
     final TransferStep transferStep = new TransferStepImpl(
-        srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
+        evaluatorToDelete.getId(),
+        dstEvaluator.getId(),
+        new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits()));
+
+    callsMade++;
 
     return PlanImpl.newBuilder()
-        .addEvaluatorToAdd(evaluatorToAdd)
+        .addEvaluatorToDelete(evaluatorToDelete.getId())
         .addTransferStep(transferStep)
         .build();
   }
