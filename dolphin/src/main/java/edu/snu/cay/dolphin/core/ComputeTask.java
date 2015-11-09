@@ -274,7 +274,7 @@ public final class ComputeTask implements Task {
         .setCommGroupName(commGroup.getName().getName())
         .build();
 
-    LOG.log(Level.INFO, "iterationInfo {0}", iterationInfo);
+    LOG.log(Level.FINE, "iterationInfo {0}", iterationInfo);
     return iterationInfo;
   }
 
@@ -291,7 +291,7 @@ public final class ComputeTask implements Task {
     final ComputeMsg computeMsg = ComputeMsg.newBuilder()
         .setDataInfos(dataInfos)
         .build();
-    LOG.log(Level.INFO, "computeMsg {0}", computeMsg);
+    LOG.log(Level.FINE, "computeMsg {0}", computeMsg);
     return computeMsg;
   }
 

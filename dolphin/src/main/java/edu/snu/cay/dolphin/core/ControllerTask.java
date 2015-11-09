@@ -183,14 +183,14 @@ public final class ControllerTask implements Task {
         .setCommGroupName(commGroup.getName().getName())
         .build();
 
-    LOG.log(Level.INFO, "iterationInfo {0}", iterationInfo);
+    LOG.log(Level.FINE, "iterationInfo {0}", iterationInfo);
     return iterationInfo;
   }
 
   private ControllerMsg getControllerMsg() {
     final ControllerMsg controllerMsg = ControllerMsg.newBuilder()
         .build();
-    LOG.log(Level.INFO, "controllerMsg {0}", controllerMsg);
+    LOG.log(Level.FINE, "controllerMsg {0}", controllerMsg);
     return controllerMsg;
   }
 }
