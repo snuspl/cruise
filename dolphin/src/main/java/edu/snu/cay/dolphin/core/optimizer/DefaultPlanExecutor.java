@@ -20,6 +20,7 @@ import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.sync.DriverSync;
 import edu.snu.cay.dolphin.parameters.EvaluatorSize;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
@@ -101,7 +102,9 @@ public final class DefaultPlanExecutor implements PlanExecutor {
        */
       @Override
       public PlanResult call() throws Exception {
-        if (plan.getEvaluatorsToAdd().isEmpty() && plan.getTransferSteps().isEmpty()) {
+        if (plan.getEvaluatorsToAdd().isEmpty() &&
+            plan.getTransferSteps().isEmpty() &&
+            plan.getEvaluatorsToDelete().isEmpty()) {
           return new PlanResultImpl();
         }
         executingPlan = new ExecutingPlan(plan);
@@ -174,6 +177,9 @@ public final class DefaultPlanExecutor implements PlanExecutor {
     @Override
     public void onNext(final AvroElasticMemoryMessage msg) {
       LOG.log(Level.INFO, "Received new DataTransferred {0}.", msg);
+      if (msg.getResultMsg().getResult() == Result.FAILURE) {
+        LOG.log(Level.WARNING, "Data transfer failed because {0}", msg.getResultMsg().getMsg());
+      }
       if (executingPlan == null) {
         throw new RuntimeException("DataTransferred " + msg + " received, but no executingPlan available.");
       }
@@ -188,6 +194,9 @@ public final class DefaultPlanExecutor implements PlanExecutor {
     @Override
     public void onNext(final AvroElasticMemoryMessage msg) {
       LOG.log(Level.INFO, "Received new MoveFinished {0}.", msg);
+      if (msg.getResultMsg().getResult() == Result.FAILURE) {
+        LOG.log(Level.WARNING, "Move failed because {0}", msg.getResultMsg().getMsg());
+      }
       if (executingPlan == null) {
         throw new RuntimeException("MoveFinished " + msg + " received, but no executingPlan available.");
       }
@@ -268,7 +277,10 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
     @Override
     public void onNext(final AvroElasticMemoryMessage msg) {
-      LOG.log(Level.INFO, "Received new Evaluators Deleted {0}.", msg);
+      LOG.log(Level.INFO, "Received new Evaluators Deleted {0}", msg);
+      if (msg.getResultMsg().getResult() == Result.FAILURE) {
+        LOG.log(Level.WARNING, "Evaluator delete failed for evaluator {0}", msg.getSrcId());
+      }
       if (executingPlan == null) {
         throw new RuntimeException("Evaluators deleted " + msg + " received, but no executingPlan available.");
       }
