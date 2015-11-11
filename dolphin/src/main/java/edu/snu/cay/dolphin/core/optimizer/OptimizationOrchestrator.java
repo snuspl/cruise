@@ -127,9 +127,9 @@ public final class OptimizationOrchestrator {
         getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
         getAvailableEvaluators(computeMetrics.size()));
 
-    planExecutionResult = planExecutor.execute(plan);
+    LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
 
-    LOG.log(Level.INFO, "Optimization complete.");
+    planExecutionResult = planExecutor.execute(plan);
   }
 
   private boolean isPlanExecuting() {
