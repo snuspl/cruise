@@ -87,7 +87,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
    * 1. Create and assign an executingPlan
    * 2. Call ElasticMemory.add(), wait for active contexts
    * 3. Call ElasticMemory.move(), wait for data transfers to complete
-   * 4. Call DriverSync.execute(), wait for execution to complete
+   * 4. Call DriverSync.execute() which executes {@link SynchronizedExecutionHandler}, wait for execution to complete
    * 5. Clear executingPlan and return
    *
    * @param plan to execute
@@ -208,9 +208,12 @@ public final class DefaultPlanExecutor implements PlanExecutor {
    * This handler is registered as the first callback to DriverSync.execute().
    *
    * Runs the following steps, before an iteration (while the Tasks are paused):
-   * 1. Call ElasticMemory.applyUpdates(), wait for moves to complete
-   * 2. Submit tasks, wait for all tasks to start running
-   * 3. Notify completed execution
+   * 1. Call ElasticMemory.applyUpdates()
+   * 2. Wait for moves to complete
+   * 3. Submit tasks
+   * 4. Delete evaluators
+   * 5. Wait for all tasks to start running and all deletions to complete
+   * 6. Notify completed execution
    *
    */
   private final class SynchronizedExecutionHandler implements EventHandler<IterationInfo> {
@@ -298,8 +301,9 @@ public final class DefaultPlanExecutor implements PlanExecutor {
    * [Begin Synchronized Execution]
    * 3. Wait until all Moves are complete (moveLatch)
    * 4. Wait until all Task submissions have completed as RunningTasks (runningTaskLatch)
+   * 5. Wait until all Evaluators have been deleted (deleteLatch)
    * [End Synchronized Execution]
-   * 5. Wait until the Synchronized Execution completes (synchronizedExecutionLatch)
+   * 6. Wait until the Synchronized Execution completes (synchronizedExecutionLatch)
    */
   private static final class ExecutingPlan {
     private final ConcurrentMap<String, ActiveContext> pendingTaskSubmissions;
