@@ -26,7 +26,8 @@ import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -59,9 +60,21 @@ public final class DeleteOneOptimizer implements Optimizer {
       return PlanImpl.newBuilder().build();
     }
 
-    final Iterator<EvaluatorParameters> evaluatorIterator = activeEvaluators.iterator();
-    final EvaluatorParameters evaluatorToDelete = evaluatorIterator.next();
-    final EvaluatorParameters dstEvaluator = evaluatorIterator.next();
+    // Sort evaluators by ID, to select evaluators in a consistent order across job executions
+    final List<EvaluatorParameters> evaluators = new ArrayList<>(activeEvaluators);
+    Collections.sort(evaluators, new Comparator<EvaluatorParameters>() {
+      @Override
+      public int compare(final EvaluatorParameters o1, final EvaluatorParameters o2) {
+        return o1.getId().compareTo(o2.getId());
+      }
+    });
+
+    if (evaluators.size() < 2) {
+      throw new RuntimeException("Cannot delete, because not enough evaluators " + evaluators.size());
+    }
+
+    final EvaluatorParameters evaluatorToDelete = evaluators.get(0);
+    final EvaluatorParameters dstEvaluator = evaluators.get(1);
 
     final List<TransferStep> transferSteps = new ArrayList<>();
     for (final DataInfo dataInfo : evaluatorToDelete.getDataInfos()) {
