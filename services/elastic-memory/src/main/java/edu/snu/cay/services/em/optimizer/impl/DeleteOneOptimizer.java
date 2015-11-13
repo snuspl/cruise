@@ -24,8 +24,10 @@ import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * An Optimizer that simply deletes one new Evaluator for each optimize call.
@@ -60,18 +62,20 @@ public final class DeleteOneOptimizer implements Optimizer {
     final Iterator<EvaluatorParameters> evaluatorIterator = activeEvaluators.iterator();
     final EvaluatorParameters evaluatorToDelete = evaluatorIterator.next();
     final EvaluatorParameters dstEvaluator = evaluatorIterator.next();
-    final DataInfo dataInfo = evaluatorToDelete.getDataInfos().iterator().next();
 
-    final TransferStep transferStep = new TransferStepImpl(
-        evaluatorToDelete.getId(),
-        dstEvaluator.getId(),
-        new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits()));
+    final List<TransferStep> transferSteps = new ArrayList<>();
+    for (final DataInfo dataInfo : evaluatorToDelete.getDataInfos()) {
+      transferSteps.add(new TransferStepImpl(
+          evaluatorToDelete.getId(),
+          dstEvaluator.getId(),
+          new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits())));
+    }
 
     callsMade++;
 
     return PlanImpl.newBuilder()
         .addEvaluatorToDelete(evaluatorToDelete.getId())
-        .addTransferStep(transferStep)
+        .addTransferSteps(transferSteps)
         .build();
   }
 }
