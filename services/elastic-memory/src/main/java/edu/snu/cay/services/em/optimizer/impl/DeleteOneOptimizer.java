@@ -24,16 +24,21 @@ import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
- * An Optimizer that simply adds one new Evaluator for each optimize call.
- * It then moves half the units from the first Evaluator to the new Evaluator.
+ * An Optimizer that simply deletes one new Evaluator for each optimize call.
+ * The plan transfers all the units from the soon-to-be-deleted Evaluator to a random Evaluator,
+ * then removes the Evaluator.
  * It skips until callsToSkip is reached, after which it runs until maxCallsToMake is reached.
  *
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
-public final class AddOneOptimizer implements Optimizer {
+public final class DeleteOneOptimizer implements Optimizer {
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -41,7 +46,7 @@ public final class AddOneOptimizer implements Optimizer {
   private int callsSkipped = 0;
 
   @Inject
-  private AddOneOptimizer() {
+  private DeleteOneOptimizer() {
   }
 
   @Override
@@ -55,19 +60,35 @@ public final class AddOneOptimizer implements Optimizer {
       return PlanImpl.newBuilder().build();
     }
 
-    final String evaluatorToAdd = "new-" + callsMade;
+    // Sort evaluators by ID, to select evaluators in a consistent order across job executions
+    final List<EvaluatorParameters> evaluators = new ArrayList<>(activeEvaluators);
+    Collections.sort(evaluators, new Comparator<EvaluatorParameters>() {
+      @Override
+      public int compare(final EvaluatorParameters o1, final EvaluatorParameters o2) {
+        return o1.getId().compareTo(o2.getId());
+      }
+    });
+
+    if (evaluators.size() < 2) {
+      throw new RuntimeException("Cannot delete, because not enough evaluators " + evaluators.size());
+    }
+
+    final EvaluatorParameters evaluatorToDelete = evaluators.get(0);
+    final EvaluatorParameters dstEvaluator = evaluators.get(1);
+
+    final List<TransferStep> transferSteps = new ArrayList<>();
+    for (final DataInfo dataInfo : evaluatorToDelete.getDataInfos()) {
+      transferSteps.add(new TransferStepImpl(
+          evaluatorToDelete.getId(),
+          dstEvaluator.getId(),
+          new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits())));
+    }
+
     callsMade++;
 
-    final EvaluatorParameters srcEvaluator = activeEvaluators.iterator().next();
-    final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
-    final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
-
-    final TransferStep transferStep = new TransferStepImpl(
-        srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
-
     return PlanImpl.newBuilder()
-        .addEvaluatorToAdd(evaluatorToAdd)
-        .addTransferStep(transferStep)
+        .addEvaluatorToDelete(evaluatorToDelete.getId())
+        .addTransferSteps(transferSteps)
         .build();
   }
 }
