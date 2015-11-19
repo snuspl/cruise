@@ -643,11 +643,13 @@ public final class DolphinDriver {
       }
 
       final int nextSequence = contextToStageSequence.get(contextId) + 1;
+
+      if (isCtrlTaskContextId(contextId)) {
+        driverSync.onStageStop(stageInfoList.get(nextSequence - 1).getCommGroupName().getName());
+      }
+
       if (nextSequence >= stageInfoList.size()) {
         completedTask.getActiveContext().close();
-        if (isCtrlTaskId(completedTaskId)) {
-          driverSync.onStageStop(stageInfoList.get(nextSequence - 1).getCommGroupName().getName());
-        }
       } else {
         submitTask(activeContext, nextSequence);
       }
@@ -708,7 +710,7 @@ public final class DolphinDriver {
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task
     // We can now place a Controller Task on top of the contexts.
-    if (isCtrlTaskId(activeContext.getId())) {
+    if (isCtrlTaskContextId(activeContext.getId())) {
       LOG.log(Level.INFO, "Submit ControllerTask");
       final String ctrlTaskId = getCtrlTaskId(stageSequence);
       try (final TraceScope controllerTaskTraceScope = Trace.startSpan(ctrlTaskId, jobTraceInfo)) {
@@ -806,7 +808,7 @@ public final class DolphinDriver {
     return shuffleConfBuilder.build();
   }
 
-  private boolean isCtrlTaskId(final String id) {
+  private boolean isCtrlTaskContextId(final String id) {
     if (ctrlTaskContextId == null) {
       return false;
     } else {
