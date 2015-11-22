@@ -133,7 +133,9 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         stateManager.onReceiverInitialized(endPointId);
         break;
       case PushShuffleCode.RECEIVER_COMPLETED:
-        stateManager.onReceiverCompleted(endPointId);
+        // TODO #278: Get the number of received tuples without using string
+        final int numReceivedTuples = Integer.parseInt(controlMessage.get(0));
+        stateManager.onReceiverCompleted(endPointId, numReceivedTuples);
         break;
       case PushShuffleCode.RECEIVER_READIED:
         stateManager.onReceiverReadied(endPointId);
@@ -194,6 +196,8 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     private int numFinishedSenders;
     private int numFinishedReceivers;
     private int numCompletedIterations;
+    private int numReceivedTuplesInIteration;
+    private long iterationStartTime;
 
     private StateMachine stateMachine;
 
@@ -274,14 +278,16 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         for (final String senderId : initializedSenderIdList) {
           sendSenderCanSendMessage(senderId);
         }
+        iterationStartTime = System.currentTimeMillis();
       }
     }
 
-    private synchronized void onReceiverCompleted(final String receiverId) {
+    private synchronized void onReceiverCompleted(final String receiverId, final int numReceivedTuples) {
       stateMachine.checkState(CAN_SEND);
       receiverStateMachineMap.get(receiverId)
           .checkAndSetState(PushShuffleReceiverState.RECEIVING, PushShuffleReceiverState.COMPLETED);
 
+      numReceivedTuplesInIteration += numReceivedTuples;
       numCompletedReceivers++;
 
       LOG.log(Level.FINE, "A receiver " + receiverId + " was completed to receive data.");
@@ -290,7 +296,12 @@ public final class StaticPushShuffleManager implements ShuffleManager {
         numCompletedReceivers = 0;
         stateMachine.checkAndSetState(CAN_SEND, RECEIVERS_COMPLETED);
         LOG.log(Level.INFO, "All receivers were completed to receive data.");
-        pushShuffleListener.onIterationCompleted(++numCompletedIterations);
+        final long prevStartTime = iterationStartTime;
+        iterationStartTime = System.currentTimeMillis();
+        final IterationInfo info = new IterationInfo(++numCompletedIterations, numReceivedTuplesInIteration,
+            iterationStartTime - prevStartTime);
+        numReceivedTuplesInIteration = 0;
+        pushShuffleListener.onIterationCompleted(info);
         if (shutdown) {
           shutdownAllSendersAndReceivers();
         } else {

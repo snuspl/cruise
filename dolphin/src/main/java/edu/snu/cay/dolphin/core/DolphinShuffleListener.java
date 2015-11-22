@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.services.shuffle.driver.impl.IterationInfo;
 import edu.snu.cay.services.shuffle.driver.impl.PushShuffleListener;
 
 import java.util.logging.Level;
@@ -30,9 +31,9 @@ final class DolphinShuffleListener  implements PushShuffleListener {
   }
 
   @Override
-  public void onIterationCompleted(final int numCompletedIterations) {
+  public void onIterationCompleted(final IterationInfo info) {
     LOG.log(Level.INFO, "[Shuffle] {0}-th stage : {1}-th iteration is completed",
-        new Object[]{stageSequence, numCompletedIterations});
+        new Object[]{stageSequence, info.getNumCompletedIterations()});
   }
 
   @Override

@@ -16,9 +16,11 @@
 
 package edu.snu.cay.services.shuffle.example.push;
 
+import edu.snu.cay.services.shuffle.driver.impl.IterationInfo;
 import edu.snu.cay.services.shuffle.driver.impl.PushShuffleListener;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -33,18 +35,28 @@ final class SimplePushShuffleListener implements PushShuffleListener {
   private final StaticPushShuffleManager shuffleManager;
   private final boolean shutdown;
   private final int numShutdownIteration;
+  private final AtomicInteger numTotalReceivedTuples;
 
   SimplePushShuffleListener(final StaticPushShuffleManager shuffleManager,
       final boolean shutdown, final int numShutdownIteration) {
     this.shuffleManager = shuffleManager;
     this.shutdown = shutdown;
     this.numShutdownIteration = numShutdownIteration;
+    this.numTotalReceivedTuples = new AtomicInteger();
   }
 
   @Override
-  public void onIterationCompleted(final int numCompletedIterations) {
+  public void onIterationCompleted(final IterationInfo info) {
+    final int numCompletedIterations = info.getNumCompletedIterations();
+    final int numReceivedTuples = info.getNumReceivedTuples();
+    final double elapsedTimeInSec = info.getElapsedTime() / 1000.0;
+    numTotalReceivedTuples.addAndGet(info.getNumReceivedTuples());
+    final double tuplesPerSec = numReceivedTuples / elapsedTimeInSec;
+    LOG.log(Level.INFO, "{0} tuples were received in {1}-th iteration during {2} sec ({3} tuples / sec). Total : {4}",
+        new Object[]{numReceivedTuples, numCompletedIterations, elapsedTimeInSec,
+            tuplesPerSec, numTotalReceivedTuples.get()});
     if (shutdown && numCompletedIterations == numShutdownIteration) {
-      LOG.log(Level.INFO, "Shut down the manager after the {0}th iteration was completed", numCompletedIterations);
+      LOG.log(Level.INFO, "Shut down the manager after the {0}-th iteration was completed.", numCompletedIterations);
       shuffleManager.shutdown();
     }
   }
