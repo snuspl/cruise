@@ -44,6 +44,11 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
 
   private static final Logger LOG = Logger.getLogger(PushShuffleSenderImpl.class.getName());
 
+  private static final String ADD_SENDER_PREFIX = "ADDSENDER-";
+  private static final String REMOVE_SENDER_PREFIX = "REMOVESENDER-";
+  private static final String ADD_RECEIVER_PREFIX = "ADDRECEIVER-";
+  private static final String REMOVE_RECEIVER_PREFIX = "REMOVERECEIVER-";
+
   private final ShuffleDescription shuffleDescription;
   /**
    * TupleSender which sends tuples to proper receivers.
@@ -85,6 +90,10 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
       synchronizer.closeLatch(controlMessage);
       break;
 
+    case PushShuffleCode.SENDER_DESCRIPTION_UPDATE:
+      onSenderUpdated(controlMessage);
+      break;
+
     case PushShuffleCode.SENDER_SHUTDOWN:
       shutdown = true;
       // forcibly close the latch for SENDER_CAN_SEND to shutdown the sender.
@@ -95,6 +104,23 @@ public final class PushShuffleSenderImpl<K, V> implements PushShuffleSender<K, V
       throw new RuntimeException("Unknown code [ " + controlMessage.getCode() + " ] from " + message.getDestId());
     }
   }
+
+  private void onSenderUpdated(final ShuffleControlMessage controlMessage) {
+    for (int i = 0; i < controlMessage.size(); i++) {
+      final String updateMessage = controlMessage.get(i);
+      if (updateMessage.startsWith(ADD_SENDER_PREFIX)) {
+        shuffleDescription.addSender(updateMessage.substring(ADD_SENDER_PREFIX.length()));
+      } else if (updateMessage.startsWith(REMOVE_SENDER_PREFIX)) {
+        shuffleDescription.removeSender(updateMessage.substring(REMOVE_SENDER_PREFIX.length()));
+      } else if (updateMessage.startsWith(ADD_RECEIVER_PREFIX)) {
+        shuffleDescription.addReceiver(updateMessage.substring(ADD_RECEIVER_PREFIX.length()));
+      } else if (updateMessage.startsWith(REMOVE_RECEIVER_PREFIX)) {
+        shuffleDescription.removeReceiver(updateMessage.substring(REMOVE_RECEIVER_PREFIX.length()));
+      }
+    }
+    controlMessageSender.sendToManager(PushShuffleCode.SENDER_UPDATED);
+  }
+
 
   private final class TupleLinkListener implements LinkListener<Message<Tuple<K, V>>> {
 

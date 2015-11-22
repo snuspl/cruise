@@ -113,6 +113,27 @@ public final class ShuffleDescriptionImpl implements ShuffleDescription {
     return receiverIdList;
   }
 
+  @Override
+  public void addSender(final String senderId) {
+    senderIdList.add(senderId);
+  }
+
+  @Override
+  public void removeSender(final String senderId) {
+    senderIdList.remove(senderId);
+  }
+
+  @Override
+  public void addReceiver(final String receiverId) {
+    receiverIdList.add(receiverId);
+  }
+
+  @Override
+  public void removeReceiver(final String receiverId) {
+    receiverIdList.remove(receiverId);
+  }
+
+
   /**
    * @param shuffleName the name of shuffle
    * @return a builder for a ShuffleDescriptionImpl

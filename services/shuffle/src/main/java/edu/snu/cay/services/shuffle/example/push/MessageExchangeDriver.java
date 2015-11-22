@@ -17,6 +17,7 @@ package edu.snu.cay.services.shuffle.example.push;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
+import edu.snu.cay.services.shuffle.driver.impl.PushShuffleListener;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleContextStopHandler;
 import edu.snu.cay.services.shuffle.strategy.KeyShuffleStrategy;
@@ -45,6 +46,7 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -75,10 +77,15 @@ public final class MessageExchangeDriver {
   private final LocalAddressProvider localAddressProvider;
   private final NameServer nameServer;
 
-  private final int totalNumOnlySenders;
-  private final int totalNumOnlyReceivers;
+  private int totalNumOnlySenders;
+  private int totalNumOnlyReceivers;
   private final int totalNumSendersAndReceivers;
   private final int numTotalIterations;
+  private final boolean shutdown;
+  private final int numShutdownIterations;
+
+  private CountDownLatch countDownLatch;
+  private AllocatedEvaluator newAllocatedEvaluator;
 
   @Inject
   private MessageExchangeDriver(
@@ -131,8 +138,10 @@ public final class MessageExchangeDriver {
             .build()
     );
 
-    this.shuffleManager.setPushShuffleListener(
-        new SimplePushShuffleListener(shuffleManager, shutdown, numShutdownIterations));
+    this.shutdown = shutdown;
+    this.numShutdownIterations = numShutdownIterations;
+
+    this.shuffleManager.setPushShuffleListener(new SimplePushShuffleListener());
   }
 
   public final class StartHandler implements EventHandler<StartTime> {
@@ -226,6 +235,7 @@ public final class MessageExchangeDriver {
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, SenderTask.class)
             .build(), iterationConf);
+        submitContextAndServiceAndTask(allocatedEvaluator, endPointId, taskConf);
       } else if (number < totalNumOnlySenders + totalNumOnlyReceivers) { // ReceiverTask
         endPointId = RECEIVER_PREFIX + (number - totalNumOnlySenders);
         taskId = endPointId + TASK_POSTFIX;
@@ -233,6 +243,7 @@ public final class MessageExchangeDriver {
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
             .build(), iterationConf);
+        submitContextAndServiceAndTask(allocatedEvaluator, endPointId, taskConf);
       } else if (number < totalNumOnlySenders + totalNumOnlyReceivers + totalNumSendersAndReceivers) {
         // SenderAndReceiverTask
         endPointId = SENDER_AND_RECEIVER_PREFIX + (number - totalNumOnlySenders - totalNumOnlyReceivers);
@@ -241,15 +252,95 @@ public final class MessageExchangeDriver {
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, SenderAndReceiverTask.class)
             .build(), iterationConf);
+        submitContextAndServiceAndTask(allocatedEvaluator, endPointId, taskConf);
       } else {
-        throw new RuntimeException("Too many allocated evaluators");
+        newAllocatedEvaluator = allocatedEvaluator;
+        countDownLatch.countDown();
+      }
+    }
+  }
+
+  private void submitContextAndServiceAndTask(final AllocatedEvaluator allocatedEvaluator,
+                                              final String endPointId, final Configuration taskConf) {
+    allocatedEvaluator.submitContextAndServiceAndTask(
+        getContextConfiguration(endPointId),
+        getServiceConfiguration(),
+        taskConf
+    );
+  }
+
+  final class SimplePushShuffleListener implements PushShuffleListener {
+    @Override
+    public void onIterationCompleted(final int numCompletedIterations) {
+      if (numCompletedIterations == 1) {
+        countDownLatch = new CountDownLatch(1);
+        evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
+            .setNumber(1)
+            .setMemory(128)
+            .setNumberOfCores(1)
+            .build());
+        try {
+          countDownLatch.await();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+
+        final AllocatedEvaluator allocatedEvaluator = newAllocatedEvaluator;
+        final String endPointId = SENDER_PREFIX + totalNumOnlySenders;
+        final String taskId = endPointId + TASK_POSTFIX;
+        final Configuration iterationConf = Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(MessageExchangeParameters.TotalIterationNum.class,
+                Integer.toString(numTotalIterations - numCompletedIterations))
+            .build();
+
+        final Configuration taskConf = Configurations.merge(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, taskId)
+            .set(TaskConfiguration.TASK, SenderTask.class)
+            .build(), iterationConf);
+
+        shuffleManager.addSender(endPointId);
+        submitContextAndServiceAndTask(allocatedEvaluator, endPointId, taskConf);
+        totalNumOnlySenders++;
       }
 
-      allocatedEvaluator.submitContextAndServiceAndTask(
-          getContextConfiguration(endPointId),
-          getServiceConfiguration(),
-          taskConf
-      );
+      if (numCompletedIterations == 2) {
+        countDownLatch = new CountDownLatch(1);
+        evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
+            .setNumber(1)
+            .setMemory(128)
+            .setNumberOfCores(1)
+            .build());
+        try {
+          countDownLatch.await();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+
+        final AllocatedEvaluator allocatedEvaluator = newAllocatedEvaluator;
+        final String endPointId = RECEIVER_PREFIX + totalNumOnlyReceivers;
+        final String taskId = endPointId + TASK_POSTFIX;
+        final Configuration iterationConf = Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(MessageExchangeParameters.TotalIterationNum.class,
+                Integer.toString(numTotalIterations - numCompletedIterations))
+            .build();
+        final Configuration taskConf = Configurations.merge(TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, taskId)
+            .set(TaskConfiguration.TASK, ReceiverTask.class)
+            .build(), iterationConf);
+        shuffleManager.addReceiver(endPointId);
+        submitContextAndServiceAndTask(allocatedEvaluator, endPointId, taskConf);
+        totalNumOnlyReceivers++;
+      }
+
+      if (shutdown && numCompletedIterations == numShutdownIterations) {
+        LOG.log(Level.INFO, "Shut down the manager after the {0}th iteration was completed", numCompletedIterations);
+        shuffleManager.shutdown();
+      }
+    }
+
+    @Override
+    public void onFinished() {
+      LOG.log(Level.INFO, "The manager is finished.");
     }
   }
 }
