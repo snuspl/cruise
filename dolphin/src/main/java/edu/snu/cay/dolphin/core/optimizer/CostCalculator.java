@@ -15,8 +15,6 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
-import edu.snu.cay.dolphin.core.ComputeTask;
-import edu.snu.cay.dolphin.core.ControllerTask;
 import edu.snu.cay.dolphin.core.DolphinMetricKeys;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 
@@ -32,45 +30,23 @@ final class CostCalculator {
   }
 
   /**
-   * Extracts the evaluator parameter for a controller task and evaluator parameters for compute tasks.
-   * {@link RuntimeException} will be thrown if the evaluator parameters for a controller task does not exist
-   * in the specified collection.
-   * @param evaluators a collection of {@link EvaluatorParameters}
-   * @return the DolphinTaskParameters having evaluator parameters for a controller task and compute tasks
-   */
-  private static DolphinTaskParameters getDolphinTaskParameters(final Collection<EvaluatorParameters> evaluators) {
-    EvaluatorParameters controllerTask = null;
-    final List<EvaluatorParameters> computeTasks = new ArrayList<>(evaluators.size() - 1);
-    for (final EvaluatorParameters evaluator : evaluators) {
-      if (evaluator.getId().startsWith(ControllerTask.TASK_ID_PREFIX)) {
-        controllerTask = evaluator;
-      } else if (evaluator.getId().startsWith(ComputeTask.TASK_ID_PREFIX)) {
-        computeTasks.add(evaluator);
-      }
-    }
-
-    if (controllerTask == null) {
-      throw new RuntimeException("There is no controller task among active evaluators");
-    }
-    return new DolphinTaskParameters(controllerTask, computeTasks);
-  }
-
-  /**
    * Calculates costs of Dolphin.
    * @return the calculated costs
    */
-  public static Cost calculate(final Collection<EvaluatorParameters> activeEvaluators) {
-    final DolphinTaskParameters dolphinTaskParams = getDolphinTaskParameters(activeEvaluators);
+  public static Cost calculate(final Collection<EvaluatorParameters> activeEvaluators,
+                               final Map<String, Double> ctrlTaskMetrics) {
+    final DolphinTaskParameters dolphinTaskParams =
+        new DolphinTaskParameters(ctrlTaskMetrics, activeEvaluators);
     final Collection<Cost.ComputeTaskCost> computeTaskCosts =
         getComputeTaskCosts(dolphinTaskParams.getComputeTasksParameters());
     final double communicationCost =
-        getCommunicationCost(dolphinTaskParams.getControllerTaskParameters(), computeTaskCosts);
+        getCommunicationCost(dolphinTaskParams.getControllerTaskMetrics(), computeTaskCosts);
     return new Cost(communicationCost, computeTaskCosts);
   }
 
   /**
    * @param computeTasksParameters a collection of evaluator parameters for compute tasks
-   * @return a collection of costs for {@link ComputeTask}s
+   * @return a collection of costs for {@link edu.snu.cay.dolphin.core.ComputeTask}s
    */
   private static Collection<Cost.ComputeTaskCost> getComputeTaskCosts(
       final Collection<EvaluatorParameters> computeTasksParameters) {
@@ -84,8 +60,8 @@ final class CostCalculator {
   /**
    * Generates {@link edu.snu.cay.dolphin.core.optimizer.Cost.ComputeTaskCost} by calculating compute cost and using
    * this metadata.
-   * Assumes that the specified evaluator parameters object is for {@link ComputeTask}.
-   * @param evaluatorParameters the evaluator parameters object for {@link ComputeTask}.
+   * Assumes that the specified evaluator parameters object is for {@link edu.snu.cay.dolphin.core.ComputeTask}.
+   * @param evaluatorParameters the evaluator parameters object for {@link edu.snu.cay.dolphin.core.ComputeTask}.
    * @return The generated compute task cost.
    */
   private static Cost.ComputeTaskCost getComputeTaskCost(final EvaluatorParameters evaluatorParameters) {
@@ -107,19 +83,21 @@ final class CostCalculator {
 
   /**
    * Computes a communication cost for the previous execution.
-   * The communication cost is calculated by subtracting the maximum compute cost among {@link ComputeTask}s
-   * from the elapsed time between when the controller task started to broadcast and when it finished reduce operation.
-   * @param cmpTaskCosts a collection of costs for {@link ComputeTask}.
+   * The communication cost is calculated by subtracting the maximum compute cost among
+   * {@link edu.snu.cay.dolphin.core.ComputeTask}s from the elapsed time between when the
+   * controller task started to broadcast and when it finished reduce operation.
+   * @param controllerTaskMetrics dolphin metrics collected by {@link edu.snu.cay.dolphin.core.ControllerTask}.
+   * @param cmpTaskCosts a collection of costs for {@link edu.snu.cay.dolphin.core.ComputeTask}.
    * @return the calculated communication cost.
    */
-  private static double getCommunicationCost(final EvaluatorParameters controllerTaskParameters,
+  private static double getCommunicationCost(final Map<String, Double> controllerTaskMetrics,
                                              final Collection<Cost.ComputeTaskCost> cmpTaskCosts) {
     // find the maximum compute cost for every compute task.
     final double maxCmpCost = Collections.max(cmpTaskCosts, new CmpCostComparator()).getComputeCost();
 
     // (communication cost) = (reduce end time) - (broadcast start time) - max(compute cost for each compute task)
-    return controllerTaskParameters.getMetrics().get(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END)
-        - controllerTaskParameters.getMetrics().get(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START)
+    return controllerTaskMetrics.get(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END)
+        - controllerTaskMetrics.get(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START)
         - maxCmpCost;
   }
 
@@ -127,17 +105,17 @@ final class CostCalculator {
    * Class having extracted evaluators for a controller task and compute tasks.
    */
   private static class DolphinTaskParameters {
-    private final EvaluatorParameters controllerTaskParameters;
+    private final Map<String, Double> controllerTaskMetrics;
     private final Collection<EvaluatorParameters> computeTasksParameters;
 
-    public DolphinTaskParameters(final EvaluatorParameters controllerTaskParameters,
+    public DolphinTaskParameters(final Map<String, Double> controllerTaskMetrics,
                                  final Collection<EvaluatorParameters> computeTasksParameters) {
-      this.controllerTaskParameters = controllerTaskParameters;
+      this.controllerTaskMetrics = controllerTaskMetrics;
       this.computeTasksParameters = computeTasksParameters;
     }
 
-    public EvaluatorParameters getControllerTaskParameters() {
-      return controllerTaskParameters;
+    public Map<String, Double> getControllerTaskMetrics() {
+      return controllerTaskMetrics;
     }
 
     public Collection<EvaluatorParameters> getComputeTasksParameters() {

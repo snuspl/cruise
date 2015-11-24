@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.optimizer.api;
 import edu.snu.cay.services.em.plan.api.Plan;
 
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * Given the current state of evaluators (as parameters) and available resources (as the number of available
@@ -25,11 +26,14 @@ import java.util.Collection;
  */
 public interface Optimizer {
   /**
-   * @param activeEvaluators all currently active evaluators and their parameters
+   * @param activeEvaluators all currently active evaluators and their parameters, excluding the controller task
    * @param availableEvaluators the total number of evaluators available for optimization.
    *     If availableEvaluators < activeEvaluators.size(), the optimized plan must delete evaluators.
    *     If availableEvaluators > activeEvaluators.size(), the optimized plan may add evaluators.
+   * @param ctrlTaskMetrics metrics collected by the controller task
    * @return the optimized plan
    */
-  Plan optimize(Collection<EvaluatorParameters> activeEvaluators, int availableEvaluators);
+  Plan optimize(Collection<EvaluatorParameters> activeEvaluators,
+                int availableEvaluators,
+                Map<String, Double> ctrlTaskMetrics);
 }

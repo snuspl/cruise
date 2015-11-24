@@ -16,13 +16,13 @@
 package edu.snu.cay.dolphin.core.optimizer;
 
 import edu.snu.cay.dolphin.core.ComputeTask;
-import edu.snu.cay.dolphin.core.ControllerTask;
 import edu.snu.cay.dolphin.core.DolphinMetricKeys;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -57,12 +57,13 @@ public final class ILPSolverOptimizerTest {
   public void testIncreasedComputeTasks() {
     final int numComputeTasks = 1;
     final int availableEvaluators = 4;
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
+    final Pair<Collection<EvaluatorParameters>, Map<String, Double>> activeEvaluators = generateEvaluatorParameters(
         numComputeTasks, new int[][]{{10000}});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = ilpSolverOptimizer.optimize(
+        activeEvaluators.getFirst(), availableEvaluators, activeEvaluators.getSecond());
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators.getFirst(), plan, availableEvaluators);
     assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd().size() > 0);
     assertEquals(0, plan.getEvaluatorsToDelete().size());
   }
@@ -73,15 +74,15 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testHalfNumComputeTasks() {
     final int numComputeTasks = 4;
-    final int availableEvaluators = numComputeTasks / 2 + 1; // +1 for including the controller task
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
+    final int availableEvaluators = numComputeTasks / 2;
+    final Pair<Collection<EvaluatorParameters>, Map<String, Double>> activeEvaluators = generateEvaluatorParameters(
         numComputeTasks, new int[][]{{2500}, {2500}, {2500}, {2500}});
     final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan =
-        ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+        ilpSolverOptimizer.optimize(activeEvaluators.getFirst(), availableEvaluators, activeEvaluators.getSecond());
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators.getFirst(), plan, availableEvaluators);
     assertEquals(0, plan.getEvaluatorsToAdd().size());
     assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
         plan.getEvaluatorsToDelete().size() >= lowerBoundToDelete);
@@ -93,13 +94,14 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testDoubleComputeTasksWithMultipleDataTypes() {
     final int numComputeTasks = 3;
-    final int availableEvaluators = numComputeTasks * 2 + 1;
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
+    final int availableEvaluators = numComputeTasks * 2;
+    final Pair<Collection<EvaluatorParameters>, Map<String, Double>> activeEvaluators = generateEvaluatorParameters(
         numComputeTasks, new int[][]{{4000, 1000}, {2000, 2000}, {5000, 2000}});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = ilpSolverOptimizer.optimize(
+        activeEvaluators.getFirst(), availableEvaluators, activeEvaluators.getSecond());
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators.getFirst(), plan, availableEvaluators);
     assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd().size() > 0);
     assertEquals(0, plan.getEvaluatorsToDelete().size());
   }
@@ -110,14 +112,15 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testHalfComputeTasksWithMultipleDataTypes() {
     final int numComputeTasks = 5;
-    final int availableEvaluators = numComputeTasks / 2 + 1;
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
+    final int availableEvaluators = numComputeTasks / 2;
+    final Pair<Collection<EvaluatorParameters>, Map<String, Double>> activeEvaluators = generateEvaluatorParameters(
         numComputeTasks, new int[][]{{2000, 500}, {3000, 1000}, {3000, 1000}, {2500, 2000}, {2500, 2000}});
     final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = ilpSolverOptimizer.optimize(
+        activeEvaluators.getFirst(), availableEvaluators, activeEvaluators.getSecond());
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators.getFirst(), plan, availableEvaluators);
     assertEquals(0, plan.getEvaluatorsToAdd().size());
     assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
         plan.getEvaluatorsToDelete().size() >= lowerBoundToDelete);
@@ -129,28 +132,29 @@ public final class ILPSolverOptimizerTest {
   @Test
   public void testTwoSenderAndOneReceiver() {
     final int numComputeTasks = 2;
-    final int availableEvaluators = 4; // +1 for adding one more compute task and +1 for including the controller task
-    final Collection<EvaluatorParameters> activeEvaluators =
+    final int availableEvaluators = 3; // +1 for adding one more compute task
+    final Pair<Collection<EvaluatorParameters>, Map<String, Double>> activeEvaluators =
         generateEvaluatorParameters(numComputeTasks, new int[][]{{1300}, {900}});
 
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = ilpSolverOptimizer.optimize(
+        activeEvaluators.getFirst(), availableEvaluators, activeEvaluators.getSecond());
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
+    checkPlan(activeEvaluators.getFirst(), plan, availableEvaluators);
     assertEquals(1, plan.getEvaluatorsToAdd().size());
     assertEquals(0, plan.getEvaluatorsToDelete().size());
   }
 
   /**
-   * Generate a collection of evaluator parameters that consists of one controller task
-   * and the specified number of compute tasks.
+   * Generate a collection of evaluator parameters that consists of the specified number of compute tasks,
+   * and a map of metrics collected by the controller task.
    * @param numComputeTasks the number of compute tasks that participate in the execution.
    * @param dataUnitsArray a two dimension array whose column contains the number of data units for each data type
    *                       and whose row contains data units for each task.
-   * @return a collection of evaluator parameters.
+   * @return a collection of evaluator parameters and a map of metrics gathered at the controller task.
    */
-  private Collection<EvaluatorParameters> generateEvaluatorParameters(final int numComputeTasks,
-                                                                      final int[][] dataUnitsArray) {
-    final List<EvaluatorParameters> ret = new ArrayList<>(numComputeTasks + 1);
+  private Pair<Collection<EvaluatorParameters>, Map<String, Double>> generateEvaluatorParameters(
+      final int numComputeTasks, final int[][] dataUnitsArray) {
+    final Collection<EvaluatorParameters> ret = new ArrayList<>(numComputeTasks);
     double maxComputeTaskEndTime = 0D;
 
     if (numComputeTasks != dataUnitsArray.length) {
@@ -184,8 +188,6 @@ public final class ILPSolverOptimizerTest {
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START, 0D);
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END, maxComputeTaskEndTime + random.nextInt(50));
 
-    ret.add(new EvaluatorParametersImpl(ControllerTask.TASK_ID_PREFIX + 2, new ArrayList<DataInfo>(0), metrics));
-
-    return ret;
+    return new Pair<>(ret, metrics);
   }
 }

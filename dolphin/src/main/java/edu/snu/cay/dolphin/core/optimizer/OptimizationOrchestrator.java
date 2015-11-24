@@ -125,7 +125,8 @@ public final class OptimizationOrchestrator {
 
     final Plan plan = optimizer.optimize(
         getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
-        getAvailableEvaluators(computeMetrics.size()));
+        getAvailableEvaluators(computeMetrics.size()),
+        controllerMetrics);
 
     LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
 
