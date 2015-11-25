@@ -33,6 +33,7 @@ import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
   private final int totalNumSenders;
   private final Map<String, StateMachine> senderStateMachineMap;
   private final StateMachine stateMachine;
+  private final AtomicInteger numReceivedTuplesInIteration;
 
   private boolean shutdown;
   private PushDataListener<K, V> dataListener;
@@ -73,6 +75,7 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     this.synchronizer = new ControlMessageSynchronizer();
     this.receiverTimeout = receiverTimeout;
     this.completedSenderCount = new AtomicInteger();
+    this.numReceivedTuplesInIteration = new AtomicInteger();
 
     final List<String> senderIdList = shuffleDescription.getSenderIdList();
     this.totalNumSenders = senderIdList.size();
@@ -135,7 +138,12 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
       senderStateMachine.checkAndSetState(PushShuffleSenderState.COMPLETED, PushShuffleSenderState.SENDING);
     }
 
-    controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_COMPLETED);
+    // TODO #278: Send the number of received tuples without using string
+    final String numReceivedTuples = String.valueOf(numReceivedTuplesInIteration.get());
+    final List<String> data = new ArrayList<>(1);
+    data.add(numReceivedTuples);
+    controlMessageSender.sendToManager(PushShuffleCode.RECEIVER_COMPLETED, data);
+    numReceivedTuplesInIteration.set(0);
 
     final Optional<ShuffleControlMessage> message = synchronizer.waitOnLatch(
         PushShuffleCode.RECEIVER_CAN_RECEIVE, receiverTimeout);
@@ -165,6 +173,10 @@ public final class PushShuffleReceiverImpl<K, V> implements PushShuffleReceiver<
     @Override
     public void onNext(final Message<Tuple<K, V>> tupleMessage) {
       stateMachine.checkState(PushShuffleReceiverState.RECEIVING);
+      for (final Tuple<K, V> tuple : tupleMessage.getData()) {
+        numReceivedTuplesInIteration.incrementAndGet();
+      }
+
       dataListener.onTupleMessage(tupleMessage);
     }
   }

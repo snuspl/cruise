@@ -27,7 +27,7 @@ public interface PushShuffleListener {
   /**
    * Handle the case when a iteration is finished.
    */
-  void onIterationCompleted(int numCompletedIterations);
+  void onIterationCompleted(IterationInfo info);
 
   /**
    * Handle the case when the manager is finished.

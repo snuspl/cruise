@@ -26,8 +26,9 @@ public class DefaultPushShuffleListener implements PushShuffleListener {
   private static final Logger LOG = Logger.getLogger(DefaultPushShuffleListener.class.getName());
 
   @Override
-  public void onIterationCompleted(final int numCompletedIterations) {
-    LOG.log(Level.INFO, "{0}th iteration is completed.", numCompletedIterations);
+  public void onIterationCompleted(final IterationInfo info) {
+    LOG.log(Level.INFO, "{0}th iteration is completed, {1} tuples were received.",
+        new Object[]{info.getNumCompletedIterations(), info.getNumReceivedTuples()});
   }
 
   @Override
