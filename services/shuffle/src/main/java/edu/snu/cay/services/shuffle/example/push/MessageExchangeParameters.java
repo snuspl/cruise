@@ -54,7 +54,7 @@ public final class MessageExchangeParameters {
   /**
    * Number of milliseconds to wait for the job to complete.
    */
-  @NamedParameter(short_name = "timeout", default_value = "60000")
+  @NamedParameter(short_name = "timeout", default_value = "600000")
   public static final class Timeout implements Name<Long> {
   }
 

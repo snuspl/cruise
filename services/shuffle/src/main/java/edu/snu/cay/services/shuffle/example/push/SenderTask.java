@@ -81,7 +81,6 @@ public final class SenderTask implements Task {
     return byteBuffer.array();
   }
 
-
   private List<Tuple<Integer, Integer>> generateRandomTuples() {
     final Random rand = new Random();
     final List<Tuple<Integer, Integer>> randomTupleList = new ArrayList<>();

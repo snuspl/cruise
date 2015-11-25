@@ -72,6 +72,7 @@ public final class MessageExchangeREEF {
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(MessageExchangeDriver.class))
         .set(DriverConfiguration.ON_DRIVER_STARTED, MessageExchangeDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, MessageExchangeDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_TASK_RUNNING, MessageExchangeDriver.RunningTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, MessageExchangeDriver.TaskCompletedHandler.class)
         .build();
 

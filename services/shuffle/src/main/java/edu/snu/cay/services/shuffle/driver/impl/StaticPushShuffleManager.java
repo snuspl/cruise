@@ -174,6 +174,10 @@ public final class StaticPushShuffleManager implements ShuffleManager {
     stateManager.removeReceiver(receiverId);
   }
 
+  public void send(final String endPointId, final int code) throws NetworkException {
+    controlMessageSender.send(endPointId, code);
+  }
+
   private final class ControlLinkListener implements LinkListener<Message<ShuffleControlMessage>> {
 
     @Override

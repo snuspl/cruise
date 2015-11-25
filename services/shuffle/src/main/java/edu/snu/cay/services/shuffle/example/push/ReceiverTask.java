@@ -73,7 +73,8 @@ public final class ReceiverTask implements Task {
     return byteBuffer.array();
   }
 
-  private void notifyReceiverFinished() {
+
+  public void notifyReceiverFinished() {
     synchronized (this) {
       isFinished = true;
       this.notify();

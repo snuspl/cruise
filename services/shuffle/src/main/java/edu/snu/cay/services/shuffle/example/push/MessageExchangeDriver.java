@@ -17,6 +17,7 @@ package edu.snu.cay.services.shuffle.example.push;
 
 import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
+import edu.snu.cay.services.shuffle.driver.impl.PushShuffleCode;
 import edu.snu.cay.services.shuffle.driver.impl.PushShuffleListener;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
 import edu.snu.cay.services.shuffle.evaluator.ShuffleContextStopHandler;
@@ -27,6 +28,7 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.CompletedTask;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.evaluator.context.parameters.Services;
 import org.apache.reef.io.network.impl.NetworkConnectionServiceImpl;
@@ -86,6 +88,9 @@ public final class MessageExchangeDriver {
 
   private CountDownLatch countDownLatch;
   private AllocatedEvaluator newAllocatedEvaluator;
+
+  // private RunningTask s0 = null;
+  private RunningTask r0 = null;
 
   @Inject
   private MessageExchangeDriver(
@@ -163,6 +168,7 @@ public final class MessageExchangeDriver {
 
     @Override
     public void onNext(final CompletedTask completedTask) {
+      countDownLatch.countDown();
       completedTask.getActiveContext().close();
       final String taskId = completedTask.getId();
       final ByteBuffer byteBuffer = ByteBuffer.wrap(completedTask.get());
@@ -242,6 +248,7 @@ public final class MessageExchangeDriver {
         taskConf = Configurations.merge(TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, taskId)
             .set(TaskConfiguration.TASK, ReceiverTask.class)
+            .set(TaskConfiguration.ON_CLOSE, ReceiverCloser.class)
             .build(), iterationConf);
         submitContextAndServiceAndTask(allocatedEvaluator, endPointId, taskConf);
       } else if (number < totalNumOnlySenders + totalNumOnlyReceivers + totalNumSendersAndReceivers) {
@@ -256,6 +263,20 @@ public final class MessageExchangeDriver {
       } else {
         newAllocatedEvaluator = allocatedEvaluator;
         countDownLatch.countDown();
+      }
+    }
+  }
+
+
+  public final class RunningTaskHandler implements EventHandler<RunningTask> {
+    @Override
+    public void onNext(final RunningTask runningTask) {
+      if (runningTask.getId().equals(SENDER_PREFIX + 0 + TASK_POSTFIX)) {
+        LOG.log(Level.INFO, "XXX");
+        // s0 = runningTask;
+      } else if (runningTask.getId().equals(RECEIVER_PREFIX + 0 + TASK_POSTFIX)) {
+        LOG.log(Level.INFO, "YYY");
+        r0 = runningTask;
       }
     }
   }
@@ -331,6 +352,23 @@ public final class MessageExchangeDriver {
         submitContextAndServiceAndTask(allocatedEvaluator, endPointId, taskConf);
         totalNumOnlyReceivers++;
       }
+
+      if (numCompletedIterations == 3) {
+        countDownLatch = new CountDownLatch(2);
+        r0.close();
+
+        try {
+          shuffleManager.send(SENDER_PREFIX + 0, PushShuffleCode.SENDER_SHUTDOWN);
+          countDownLatch.await();
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+        LOG.log(Level.INFO, "LATCHDONE");
+
+        shuffleManager.removeReceiver(RECEIVER_PREFIX + 0);
+        shuffleManager.removeSender(SENDER_PREFIX + 0);
+      }
+
 
       if (shutdown && numCompletedIterations == numShutdownIterations) {
         LOG.log(Level.INFO, "Shut down the manager after the {0}th iteration was completed", numCompletedIterations);
