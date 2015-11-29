@@ -24,58 +24,20 @@ import javax.inject.Inject;
 /**
  * The EM {@link Serializer} for SleepREEF.
  * No meaningful data is passed between evaluators.
- * Serialization cost is simulated by sleeping ({@link Thread#sleep(long)}),
- * and network communication cost is indirectly altered by adjusting
- * the size of serialized objects.
  */
 public final class SleepSerializer implements Serializer {
 
   private final SleepCodec sleepCodec;
-  private final int serializedObjectSize;
-  private final long encodeRate;
-  private final long decodeRate;
 
   @Inject
-  private SleepSerializer(@Parameter(SleepParameters.SerializedObjectSize.class) final int serializedObjectSize,
-                          @Parameter(SleepParameters.EncodeRate.class) final long encodeRate,
-                          @Parameter(SleepParameters.DecodeRate.class) final long decodeRate) {
-    this.sleepCodec = new SleepCodec();
-    this.serializedObjectSize = serializedObjectSize;
-    this.encodeRate = encodeRate;
-    this.decodeRate = decodeRate;
+  private SleepSerializer(@Parameter(SleepParameters.EMSerializedObjectSize.class) final int serializedObjectSize,
+                          @Parameter(SleepParameters.EMEncodeRate.class) final long encodeRate,
+                          @Parameter(SleepParameters.EMDecodeRate.class) final long decodeRate) {
+    this.sleepCodec = new SleepCodec(serializedObjectSize, encodeRate, decodeRate);
   }
 
   @Override
   public Codec getCodec(final String name) {
     return sleepCodec;
-  }
-
-  private final class SleepCodec implements Codec<Object> {
-
-    private final Object object;
-
-    private SleepCodec() {
-      this.object = new Object();
-    }
-
-    @Override
-    public byte[] encode(final Object o) {
-      try {
-        Thread.sleep(encodeRate);
-      } catch (final InterruptedException e) {
-        throw new RuntimeException("InterruptedException while encode-sleeping", e);
-      }
-      return new byte[serializedObjectSize];
-    }
-
-    @Override
-    public Object decode(final byte[] bytes) {
-      try {
-        Thread.sleep(decodeRate);
-      } catch (final InterruptedException e) {
-        throw new RuntimeException("InterruptedException while decode-sleeping", e);
-      }
-      return object;
-    }
   }
 }

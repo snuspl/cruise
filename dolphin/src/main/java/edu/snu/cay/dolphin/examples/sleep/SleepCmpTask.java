@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.examples.sleep;
 
 import edu.snu.cay.dolphin.core.UserComputeTask;
+import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -35,7 +36,8 @@ import java.util.logging.Logger;
  * multiplies that value with its computation rate,
  * and then sleeps for that amount of time using {@link Thread#sleep(long)}.
  */
-public final class SleepCmpTask extends UserComputeTask implements DataReduceSender<Integer> {
+public final class SleepCmpTask extends UserComputeTask
+    implements DataReduceSender<Object>, DataBroadcastReceiver<Object> {
   private static final Logger LOG = Logger.getLogger(SleepCmpTask.class.getName());
 
   private final int initialWorkload;
@@ -43,6 +45,7 @@ public final class SleepCmpTask extends UserComputeTask implements DataReduceSen
   private final MemoryStore memoryStore;
   private final PartitionTracker partitionTracker;
   private final DataIdFactory<Long> dataIdFactory;
+  private final Object reduceObject;
 
   @Inject
   private SleepCmpTask(@Parameter(SleepParameters.InitialWorkload.class) final int initialWorkload,
@@ -55,6 +58,7 @@ public final class SleepCmpTask extends UserComputeTask implements DataReduceSen
     this.memoryStore = memoryStore;
     this.partitionTracker = partitionTracker;
     this.dataIdFactory = dataIdFactory;
+    this.reduceObject = new Object();
   }
 
   @Override
@@ -102,7 +106,13 @@ public final class SleepCmpTask extends UserComputeTask implements DataReduceSen
   }
 
   @Override
-  public Integer sendReduceData(final int iteration) {
-    return 1;
+  public Object sendReduceData(final int iteration) {
+    LOG.log(Level.FINE, "Sending {0} on iteration {1}", new Object[]{reduceObject, iteration});
+    return reduceObject;
+  }
+
+  @Override
+  public void receiveBroadcastData(final int iteration, final Object data) {
+    LOG.log(Level.FINE, "Received {0} on iteration {1}", new Object[]{data, iteration});
   }
 }

@@ -20,8 +20,6 @@ import edu.snu.cay.dolphin.core.StageInfo;
 import edu.snu.cay.dolphin.core.UserJobInfo;
 import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
 import edu.snu.cay.dolphin.examples.simple.SimpleDataParser;
-import edu.snu.cay.dolphin.examples.simple.SimpleReduceFunction;
-import org.apache.reef.io.serialization.SerializableCodec;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -29,7 +27,8 @@ import java.util.List;
 
 /**
  * The {@link UserJobInfo} for SleepREEF.
- * This consists of a single Reduce stage that is optimizable.
+ * This consists of a single stage that is optimizable.
+ * Broadcast and Reduce are used to synchronize {@link SleepCtrlTask} and {@link SleepCmpTask}s.
  * The data parser is a dummy; input data is not actually used.
  */
 public final class SleepJobInfo implements UserJobInfo {
@@ -44,7 +43,8 @@ public final class SleepJobInfo implements UserJobInfo {
     stageInfoList.add(
         StageInfo.newBuilder(SleepCmpTask.class, SleepCtrlTask.class, SleepCommGroup.class)
             .addMetricTrackers(InsertableMetricTracker.class)
-            .setReduce(SerializableCodec.class, SimpleReduceFunction.class)
+            .setBroadcast(SleepCodec.class)
+            .setReduce(SleepCodec.class, SleepReduceFunction.class)
             .setOptimizable(true)
             .build());
     return stageInfoList;

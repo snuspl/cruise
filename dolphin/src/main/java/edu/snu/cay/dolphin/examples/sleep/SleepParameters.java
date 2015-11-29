@@ -50,15 +50,15 @@ import java.io.*;
  *   The first column represents the initial number of data units (workload) given to an evaluator.
  *   The second column is the computation rate of an evaluator (ms per data unit).
  *   When the number of evaluators start to exceed the number of lines,
- *   the default values (0, 1.0) are assigned.
+ *   the default values (0, 50) are assigned.
  * </p>
  *
  * <pre>{@code
- *   100 10
- *   200 5
- *   300 8
- *   0 10
- *   0 12
+ *   75 52
+ *   120 53
+ *   30 49
+ *   0 50
+ *   0 51
  * }</pre>
  */
 public final class SleepParameters implements UserParameters {
@@ -70,19 +70,28 @@ public final class SleepParameters implements UserParameters {
   private final int encodedObjectSize;
   private final long encodeRate;
   private final long decodeRate;
+  private final int emEncodedObjectSize;
+  private final long emEncodeRate;
+  private final long emDecodeRate;
   private BufferedReader bufferedReader;
 
   @Inject
   private SleepParameters(@Parameter(ConfigurationFilePath.class) final String confFilePath,
                           @Parameter(MaxIterations.class) final int maxIterations,
-                          @Parameter(SerializedObjectSize.class) final int encodedObjectSize,
-                          @Parameter(EncodeRate.class) final long encodeRate,
-                          @Parameter(DecodeRate.class) final long decodeRate) {
+                          @Parameter(GCSerializedObjectSize.class) final int encodedObjectSize,
+                          @Parameter(GCEncodeRate.class) final long encodeRate,
+                          @Parameter(GCDecodeRate.class) final long decodeRate,
+                          @Parameter(EMSerializedObjectSize.class) final int emEncodedObjectSize,
+                          @Parameter(EMEncodeRate.class) final long emEncodeRate,
+                          @Parameter(EMDecodeRate.class) final long emDecodeRate) {
     this.confFile = new File(confFilePath);
     this.maxIterations = maxIterations;
     this.encodedObjectSize = encodedObjectSize;
     this.encodeRate = encodeRate;
     this.decodeRate = decodeRate;
+    this.emEncodedObjectSize = emEncodedObjectSize;
+    this.emEncodeRate = emEncodeRate;
+    this.emDecodeRate = emDecodeRate;
   }
 
   /**
@@ -95,9 +104,12 @@ public final class SleepParameters implements UserParameters {
         .bindSetEntry(DriverLocalFiles.class, confFile.getAbsolutePath())
         .bindNamedParameter(ConfigurationFilePath.class, String.format("reef/local/%s", confFile.getName()))
         .bindNamedParameter(MaxIterations.class, Integer.toString(maxIterations))
-        .bindNamedParameter(SerializedObjectSize.class, Integer.toString(encodedObjectSize))
-        .bindNamedParameter(EncodeRate.class, Long.toString(encodeRate))
-        .bindNamedParameter(DecodeRate.class, Long.toString(decodeRate))
+        .bindNamedParameter(GCSerializedObjectSize.class, Integer.toString(encodedObjectSize))
+        .bindNamedParameter(GCEncodeRate.class, Long.toString(encodeRate))
+        .bindNamedParameter(GCDecodeRate.class, Long.toString(decodeRate))
+        .bindNamedParameter(EMSerializedObjectSize.class, Integer.toString(emEncodedObjectSize))
+        .bindNamedParameter(EMEncodeRate.class, Long.toString(emEncodeRate))
+        .bindNamedParameter(EMDecodeRate.class, Long.toString(emDecodeRate))
         .build();
   }
 
@@ -108,9 +120,12 @@ public final class SleepParameters implements UserParameters {
   public Configuration getServiceConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(Serializer.class, SleepSerializer.class)
-        .bindNamedParameter(SerializedObjectSize.class, Integer.toString(encodedObjectSize))
-        .bindNamedParameter(EncodeRate.class, Long.toString(encodeRate))
-        .bindNamedParameter(DecodeRate.class, Long.toString(decodeRate))
+        .bindNamedParameter(GCSerializedObjectSize.class, Integer.toString(encodedObjectSize))
+        .bindNamedParameter(GCEncodeRate.class, Long.toString(encodeRate))
+        .bindNamedParameter(GCDecodeRate.class, Long.toString(decodeRate))
+        .bindNamedParameter(EMSerializedObjectSize.class, Integer.toString(emEncodedObjectSize))
+        .bindNamedParameter(EMEncodeRate.class, Long.toString(emEncodeRate))
+        .bindNamedParameter(EMDecodeRate.class, Long.toString(emDecodeRate))
         .build();
   }
 
@@ -212,9 +227,12 @@ public final class SleepParameters implements UserParameters {
     final CommandLine cl = new CommandLine(cb);
     cl.registerShortNameOfClass(ConfigurationFilePath.class);
     cl.registerShortNameOfClass(MaxIterations.class);
-    cl.registerShortNameOfClass(SerializedObjectSize.class);
-    cl.registerShortNameOfClass(EncodeRate.class);
-    cl.registerShortNameOfClass(DecodeRate.class);
+    cl.registerShortNameOfClass(GCSerializedObjectSize.class);
+    cl.registerShortNameOfClass(GCEncodeRate.class);
+    cl.registerShortNameOfClass(GCDecodeRate.class);
+    cl.registerShortNameOfClass(EMSerializedObjectSize.class);
+    cl.registerShortNameOfClass(EMEncodeRate.class);
+    cl.registerShortNameOfClass(EMDecodeRate.class);
     return cl;
   }
 
@@ -226,25 +244,43 @@ public final class SleepParameters implements UserParameters {
   final class InitialWorkload implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "the computation rate of an evaluator, milliseconds per data unit", default_value = "1")
+  @NamedParameter(doc = "the computation rate of an evaluator, milliseconds per data unit", default_value = "50")
   final class ComputationRate implements Name<Long> {
   }
 
-  @NamedParameter(doc = "number of bytes of a single object in its serialized form",
-                  short_name = "serializedObject",
+  @NamedParameter(doc = "number of bytes of a single object in its serialized form for group communication",
+                  short_name = "gcSerializedObject",
                   default_value = "0")
-  final class SerializedObjectSize implements Name<Integer> {
+  final class GCSerializedObjectSize implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "the encode rate of an evaluator, milliseconds per data unit",
-                  short_name = "encodeRate",
+  @NamedParameter(doc = "the encode rate of an evaluator for group communication, milliseconds per data unit",
+                  short_name = "gcEncodeRate",
                   default_value = "0")
-  final class EncodeRate implements Name<Long> {
+  final class GCEncodeRate implements Name<Long> {
   }
 
-  @NamedParameter(doc = "the decode rate of an evaluator, milliseconds per data unit",
-                  short_name = "decodeRate",
+  @NamedParameter(doc = "the decode rate of an evaluator for group communication, milliseconds per data unit",
+                  short_name = "gcDecodeRate",
                   default_value = "0")
-  final class DecodeRate implements Name<Long> {
+  final class GCDecodeRate implements Name<Long> {
+  }
+
+  @NamedParameter(doc = "number of bytes of a single object in its serialized form for elastic memory",
+                  short_name = "emSerializedObject",
+                  default_value = "0")
+  final class EMSerializedObjectSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "the encode rate of an evaluator for elastic memory, milliseconds per data unit",
+                  short_name = "emEncodeRate",
+                  default_value = "0")
+  final class EMEncodeRate implements Name<Long> {
+  }
+
+  @NamedParameter(doc = "the decode rate of an evaluator for elastic memory, milliseconds per data unit",
+                  short_name = "emDecodeRate",
+                  default_value = "0")
+  final class EMDecodeRate implements Name<Long> {
   }
 }

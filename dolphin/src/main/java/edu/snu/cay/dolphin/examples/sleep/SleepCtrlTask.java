@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.examples.sleep;
 
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
+import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -28,14 +29,17 @@ import java.util.logging.Logger;
  * The {@link UserControllerTask} for SleepREEF.
  * Does not do any significant computation; simply prints log message for each iteration.
  */
-public final class SleepCtrlTask extends UserControllerTask implements DataReduceReceiver<Integer> {
+public final class SleepCtrlTask extends UserControllerTask
+    implements DataReduceReceiver<Object>, DataBroadcastSender<Object> {
   private static final Logger LOG = Logger.getLogger(SleepCtrlTask.class.getName());
 
   private final int maxIterations;
+  private final Object broadcastObject;
 
   @Inject
   private SleepCtrlTask(@Parameter(MaxIterations.class) final int maxIterations) {
     this.maxIterations = maxIterations;
+    this.broadcastObject = new Object();
   }
 
   @Override
@@ -49,7 +53,13 @@ public final class SleepCtrlTask extends UserControllerTask implements DataReduc
   }
 
   @Override
-  public void receiveReduceData(final int iteration, final Integer data) {
-    LOG.log(Level.INFO, "Received {0} for iteration {1}", new Object[]{data, iteration});
+  public void receiveReduceData(final int iteration, final Object data) {
+    LOG.log(Level.FINE, "Received {0} for iteration {1}", new Object[]{data, iteration});
+  }
+
+  @Override
+  public Object sendBroadcastData(final int iteration) {
+    LOG.log(Level.FINE, "Sending {0} for iteration {1}", new Object[]{broadcastObject, iteration});
+    return broadcastObject;
   }
 }
