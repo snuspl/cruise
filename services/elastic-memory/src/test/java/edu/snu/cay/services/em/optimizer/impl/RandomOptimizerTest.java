@@ -49,7 +49,7 @@ public final class RandomOptimizerTest {
     final int numEvaluators = 10;
     final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
 
-    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators);
+    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators, null);
 
     assertEquals(0, plan.getEvaluatorsToAdd().size());
     assertEquals(0, plan.getEvaluatorsToDelete().size());
@@ -67,7 +67,7 @@ public final class RandomOptimizerTest {
     final int numEvaluators = 10;
     final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
 
-    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators / 2);
+    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators / 2, null);
 
     assertEquals(0, plan.getEvaluatorsToAdd().size());
     assertEquals(numEvaluators / 2, plan.getEvaluatorsToDelete().size());
@@ -85,7 +85,7 @@ public final class RandomOptimizerTest {
     final int numEvaluators = 10;
     final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
 
-    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 2);
+    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 2, null);
 
     assertEquals(numEvaluators, plan.getEvaluatorsToAdd().size());
     assertEquals(0, plan.getEvaluatorsToDelete().size());
@@ -103,7 +103,7 @@ public final class RandomOptimizerTest {
     final int numEvaluators = 10;
     final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
 
-    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 3 / 2);
+    final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 3 / 2, null);
 
     assertNotNull(plan.getEvaluatorsToAdd());
     assertNotNull(plan.getEvaluatorsToDelete());
@@ -134,12 +134,12 @@ public final class RandomOptimizerTest {
     dataInfo2.add(new DataInfoImpl("dataTypeB", 500));
     evaluators.add(new EvaluatorParametersImpl("2", dataInfo2, new HashMap<String, Double>(0)));
 
-    final Plan sameNumEvaluatorsPlan = randomOptimizer.optimize(evaluators, evaluators.size());
+    final Plan sameNumEvaluatorsPlan = randomOptimizer.optimize(evaluators, evaluators.size(), null);
 
     assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToAdd().size());
     assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToDelete().size());
 
-    final Plan singleEvaluatorPlan = randomOptimizer.optimize(evaluators, 1);
+    final Plan singleEvaluatorPlan = randomOptimizer.optimize(evaluators, 1, null);
 
     assertEquals(0, singleEvaluatorPlan.getEvaluatorsToAdd().size());
     assertEquals(1, singleEvaluatorPlan.getEvaluatorsToDelete().size());

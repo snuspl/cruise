@@ -67,9 +67,11 @@ public final class ILPSolverOptimizer implements Optimizer {
   }
 
   @Override
-  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators,
+                       final int availableEvaluators,
+                       final Map<String, Double> ctrlTaskMetrics) {
 
-    final Cost cost = CostCalculator.calculate(activeEvaluators);
+    final Cost cost = CostCalculator.calculate(activeEvaluators, ctrlTaskMetrics);
     final List<OptimizedComputeTask> optimizedComputeTasks =
         initOptimizedComputeTasks(cost, availableEvaluators - activeEvaluators.size());
 
@@ -94,7 +96,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       model.addVariable(cmpTask.getRequestedDataVariable()); // without weight for being excluded in objective function.
     }
 
-    addExpressions(model, cmpCostVar, optimizedComputeTasks, availableEvaluators - 1); // -1 for excluding the ctrl task
+    addExpressions(model, cmpCostVar, optimizedComputeTasks, availableEvaluators);
     final int totalDataUnits = getSumDataUnits(optimizedComputeTasks);
 
     final Optimisation.Result result = model.minimise();

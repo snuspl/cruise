@@ -25,6 +25,7 @@ import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * An Optimizer that simply adds one new Evaluator for each optimize call.
@@ -45,7 +46,9 @@ public final class AddOneOptimizer implements Optimizer {
   }
 
   @Override
-  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators,
+                       final int availableEvaluators,
+                       final Map<String, Double> ctrlTaskMetrics) {
     if (callsSkipped < callsToSkip) {
       callsSkipped++;
       return PlanImpl.newBuilder().build();

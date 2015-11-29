@@ -83,7 +83,8 @@ public final class RandomOptimizer implements Optimizer {
 
   @Override
   public Plan optimize(final Collection<EvaluatorParameters> activeEvaluatorsCollection,
-                       final int availableEvaluators) {
+                       final int availableEvaluators,
+                       final Map<String, Double> ctrlTaskMetrics) {
     if (availableEvaluators <= 0) {
       throw new IllegalArgumentException("availableEvaluators " + availableEvaluators + " must be > 0");
     }
