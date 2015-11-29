@@ -27,7 +27,7 @@ import java.util.Map;
 public interface Optimizer {
   /**
    * @param activeEvaluators all currently active evaluators and their parameters, excluding the controller task
-   * @param availableEvaluators the total number of evaluators available for optimization.
+   * @param availableEvaluators the total number of evaluators available for optimization, excluding the controller task
    *     If availableEvaluators < activeEvaluators.size(), the optimized plan must delete evaluators.
    *     If availableEvaluators > activeEvaluators.size(), the optimized plan may add evaluators.
    * @param ctrlTaskMetrics metrics collected by the controller task
