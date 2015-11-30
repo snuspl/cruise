@@ -61,7 +61,14 @@ public final class ILPSolverOptimizer implements Optimizer {
   private final AtomicInteger newComputeTaskSequence = new AtomicInteger(0);
   private final DataUnitsToMoveComparator ascendingComparator;
   private final DataUnitsToMoveComparator descendingComparator;
-  private final InjectionFuture<DolphinDriver> dolphinDriver;
+  private String ctrlTaskContextId;
+  private InjectionFuture<DolphinDriver> dolphinDriver;
+
+  ILPSolverOptimizer(final String ctrlTaskContextId) {
+    this.ascendingComparator = new DataUnitsToMoveComparator();
+    this.descendingComparator = new DataUnitsToMoveComparator(DataUnitsToMoveComparator.Order.DESCENDING);
+    this.ctrlTaskContextId = ctrlTaskContextId;
+  }
 
   @Inject
   private ILPSolverOptimizer(final InjectionFuture<DolphinDriver> dolphinDriver) {
@@ -70,10 +77,14 @@ public final class ILPSolverOptimizer implements Optimizer {
     this.dolphinDriver = dolphinDriver;
   }
 
+
   @Override
   public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+    if (ctrlTaskContextId == null) {
+      initializeCtrlTaskContextId();
+    }
 
-    final Cost cost = CostCalculator.calculate(activeEvaluators, dolphinDriver.get().getCtrlTaskContextId());
+    final Cost cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId);
     final List<OptimizedComputeTask> optimizedComputeTasks =
         initOptimizedComputeTasks(cost, availableEvaluators - activeEvaluators.size());
 
@@ -136,6 +147,17 @@ public final class ILPSolverOptimizer implements Optimizer {
         return;
       }
     }
+  }
+
+  /**
+   * Use {@code dolphinDriver} to check the context id of the ctrl task.
+   */
+  private void initializeCtrlTaskContextId() {
+    if (dolphinDriver == null) {
+      throw new RuntimeException("Cannot resolve ctrlTaskContextId because InjectionFuture<DolphinDriver> is null");
+    }
+
+    ctrlTaskContextId = dolphinDriver.get().getCtrlTaskContextId();
   }
 
   /**

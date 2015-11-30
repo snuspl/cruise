@@ -23,8 +23,6 @@ import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -33,18 +31,18 @@ import java.util.*;
 import static edu.snu.cay.dolphin.core.optimizer.PlanValidationUtils.checkPlan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
 /**
  * Class for testing {@link ILPSolverOptimizer}'s behavior.
  */
 public final class ILPSolverOptimizerTest {
 
+  private final String ctrlTaskId = ControllerTask.TASK_ID_PREFIX + 2;
   private ILPSolverOptimizer ilpSolverOptimizer;
   private Random random;
 
   @Before
-  public void setUp() throws InjectionException {
-    ilpSolverOptimizer = Tang.Factory.getTang().newInjector().getInstance(ILPSolverOptimizer.class);
+  public void setUp() {
+    ilpSolverOptimizer = new ILPSolverOptimizer(ctrlTaskId);
     random = new Random();
   }
 
@@ -184,7 +182,7 @@ public final class ILPSolverOptimizerTest {
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START, 0D);
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END, maxComputeTaskEndTime + random.nextInt(50));
 
-    ret.add(new EvaluatorParametersImpl(ControllerTask.TASK_ID_PREFIX + 2, new ArrayList<DataInfo>(0), metrics));
+    ret.add(new EvaluatorParametersImpl(ctrlTaskId, new ArrayList<DataInfo>(0), metrics));
 
     return ret;
   }
