@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
+import edu.snu.cay.dolphin.core.DolphinDriver;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -23,6 +24,7 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
+import org.apache.reef.tang.InjectionFuture;
 import org.ojalgo.optimisation.Expression;
 import org.ojalgo.optimisation.ExpressionsBasedModel;
 import org.ojalgo.optimisation.Optimisation;
@@ -59,17 +61,19 @@ public final class ILPSolverOptimizer implements Optimizer {
   private final AtomicInteger newComputeTaskSequence = new AtomicInteger(0);
   private final DataUnitsToMoveComparator ascendingComparator;
   private final DataUnitsToMoveComparator descendingComparator;
+  private final InjectionFuture<DolphinDriver> dolphinDriver;
 
   @Inject
-  private ILPSolverOptimizer() {
+  private ILPSolverOptimizer(final InjectionFuture<DolphinDriver> dolphinDriver) {
     this.ascendingComparator = new DataUnitsToMoveComparator();
     this.descendingComparator = new DataUnitsToMoveComparator(DataUnitsToMoveComparator.Order.DESCENDING);
+    this.dolphinDriver = dolphinDriver;
   }
 
   @Override
   public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
 
-    final Cost cost = CostCalculator.calculate(activeEvaluators);
+    final Cost cost = CostCalculator.calculate(activeEvaluators, dolphinDriver.get().getCtrlTaskContextId());
     final List<OptimizedComputeTask> optimizedComputeTasks =
         initOptimizedComputeTasks(cost, availableEvaluators - activeEvaluators.size());
 

@@ -58,7 +58,19 @@ public final class AddOneOptimizer implements Optimizer {
     final String evaluatorToAdd = "new-" + callsMade;
     callsMade++;
 
-    final EvaluatorParameters srcEvaluator = activeEvaluators.iterator().next();
+    EvaluatorParameters srcEvaluator = null;
+    for (final EvaluatorParameters evaluator : activeEvaluators) {
+      if (!evaluator.getDataInfos().isEmpty()) {
+        srcEvaluator = evaluator;
+        break;
+      }
+    }
+
+    // no evaluator has data; do nothing for now
+    if (srcEvaluator == null) {
+      return PlanImpl.newBuilder().build();
+    }
+
     final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
     final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
 
