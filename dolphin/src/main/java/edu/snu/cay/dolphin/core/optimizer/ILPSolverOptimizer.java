@@ -25,6 +25,7 @@ import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.util.Optional;
 import org.ojalgo.optimisation.Expression;
 import org.ojalgo.optimisation.ExpressionsBasedModel;
 import org.ojalgo.optimisation.Optimisation;
@@ -84,9 +85,13 @@ public final class ILPSolverOptimizer implements Optimizer {
       initializeCtrlTaskContextId();
     }
 
-    final Cost cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId);
+    final Optional<Cost> cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId);
+    if (!cost.isPresent()) {
+      return PlanImpl.newBuilder().build();
+    }
+
     final List<OptimizedComputeTask> optimizedComputeTasks =
-        initOptimizedComputeTasks(cost, availableEvaluators - activeEvaluators.size());
+        initOptimizedComputeTasks(cost.get(), availableEvaluators - activeEvaluators.size());
 
     // create ILP model for optimization
     // C_cmp: expected compute cost
@@ -100,7 +105,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     // s.t. C_comm = (C_comm' / #_active') * #_active = (C_comm' / #_active') * sum(p(i))
     final ExpressionsBasedModel model = new ExpressionsBasedModel();
     final Variable cmpCostVar = Variable.make("computeCost");
-    final double commCostWeight = cost.getCommunicationCost() / cost.getComputeTaskCosts().size();
+    final double commCostWeight = cost.get().getCommunicationCost() / cost.get().getComputeTaskCosts().size();
 
     model.addVariable(cmpCostVar.weight(1.0));
 
