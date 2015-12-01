@@ -32,34 +32,31 @@ import javax.inject.Inject;
 final class SleepCodec implements Codec<Object> {
 
   private final Object object;
-  private final int serializedObjectSize;
-  private final long encodeRate;
-  private final long decodeRate;
+  private final long encodeTime;
+  private final long decodeTime;
 
   @Inject
-  SleepCodec(@Parameter(SleepParameters.GCSerializedObjectSize.class) final int serializedObjectSize,
-             @Parameter(SleepParameters.GCEncodeRate.class) final long encodeRate,
-             @Parameter(SleepParameters.GCDecodeRate.class) final long decodeRate) {
+  SleepCodec(@Parameter(SleepParameters.GCEncodeTime.class) final long encodeTime,
+             @Parameter(SleepParameters.GCDecodeTime.class) final long decodeTime) {
     this.object = new Object();
-    this.serializedObjectSize = serializedObjectSize;
-    this.encodeRate = encodeRate;
-    this.decodeRate = decodeRate;
+    this.encodeTime = encodeTime;
+    this.decodeTime = decodeTime;
   }
 
   @Override
   public byte[] encode(final Object o) {
     try {
-      Thread.sleep(encodeRate);
+      Thread.sleep(encodeTime);
     } catch (final InterruptedException e) {
       throw new RuntimeException("InterruptedException while encode-sleeping", e);
     }
-    return new byte[serializedObjectSize];
+    return new byte[1];
   }
 
   @Override
   public Object decode(final byte[] bytes) {
     try {
-      Thread.sleep(decodeRate);
+      Thread.sleep(decodeTime);
     } catch (final InterruptedException e) {
       throw new RuntimeException("InterruptedException while decode-sleeping", e);
     }

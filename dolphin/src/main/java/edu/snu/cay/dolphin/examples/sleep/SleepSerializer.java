@@ -30,10 +30,9 @@ public final class SleepSerializer implements Serializer {
   private final SleepCodec sleepCodec;
 
   @Inject
-  private SleepSerializer(@Parameter(SleepParameters.EMSerializedObjectSize.class) final int serializedObjectSize,
-                          @Parameter(SleepParameters.EMEncodeRate.class) final long encodeRate,
+  private SleepSerializer(@Parameter(SleepParameters.EMEncodeRate.class) final long encodeRate,
                           @Parameter(SleepParameters.EMDecodeRate.class) final long decodeRate) {
-    this.sleepCodec = new SleepCodec(serializedObjectSize, encodeRate, decodeRate);
+    this.sleepCodec = new SleepCodec(encodeRate, decodeRate);
   }
 
   @Override

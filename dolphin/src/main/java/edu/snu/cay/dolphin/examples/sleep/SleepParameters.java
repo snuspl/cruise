@@ -67,10 +67,8 @@ public final class SleepParameters implements UserParameters {
 
   private final File confFile;
   private final int maxIterations;
-  private final int encodedObjectSize;
-  private final long encodeRate;
-  private final long decodeRate;
-  private final int emEncodedObjectSize;
+  private final long gcEncodeTime;
+  private final long gcDecodeTime;
   private final long emEncodeRate;
   private final long emDecodeRate;
   private BufferedReader bufferedReader;
@@ -78,18 +76,14 @@ public final class SleepParameters implements UserParameters {
   @Inject
   private SleepParameters(@Parameter(ConfigurationFilePath.class) final String confFilePath,
                           @Parameter(MaxIterations.class) final int maxIterations,
-                          @Parameter(GCSerializedObjectSize.class) final int encodedObjectSize,
-                          @Parameter(GCEncodeRate.class) final long encodeRate,
-                          @Parameter(GCDecodeRate.class) final long decodeRate,
-                          @Parameter(EMSerializedObjectSize.class) final int emEncodedObjectSize,
+                          @Parameter(GCEncodeTime.class) final long gcEncodeTime,
+                          @Parameter(GCDecodeTime.class) final long gcDecodeTime,
                           @Parameter(EMEncodeRate.class) final long emEncodeRate,
                           @Parameter(EMDecodeRate.class) final long emDecodeRate) {
     this.confFile = new File(confFilePath);
     this.maxIterations = maxIterations;
-    this.encodedObjectSize = encodedObjectSize;
-    this.encodeRate = encodeRate;
-    this.decodeRate = decodeRate;
-    this.emEncodedObjectSize = emEncodedObjectSize;
+    this.gcEncodeTime = gcEncodeTime;
+    this.gcDecodeTime = gcDecodeTime;
     this.emEncodeRate = emEncodeRate;
     this.emDecodeRate = emDecodeRate;
   }
@@ -104,10 +98,8 @@ public final class SleepParameters implements UserParameters {
         .bindSetEntry(DriverLocalFiles.class, confFile.getAbsolutePath())
         .bindNamedParameter(ConfigurationFilePath.class, String.format("reef/local/%s", confFile.getName()))
         .bindNamedParameter(MaxIterations.class, Integer.toString(maxIterations))
-        .bindNamedParameter(GCSerializedObjectSize.class, Integer.toString(encodedObjectSize))
-        .bindNamedParameter(GCEncodeRate.class, Long.toString(encodeRate))
-        .bindNamedParameter(GCDecodeRate.class, Long.toString(decodeRate))
-        .bindNamedParameter(EMSerializedObjectSize.class, Integer.toString(emEncodedObjectSize))
+        .bindNamedParameter(GCEncodeTime.class, Long.toString(gcEncodeTime))
+        .bindNamedParameter(GCDecodeTime.class, Long.toString(gcDecodeTime))
         .bindNamedParameter(EMEncodeRate.class, Long.toString(emEncodeRate))
         .bindNamedParameter(EMDecodeRate.class, Long.toString(emDecodeRate))
         .build();
@@ -120,10 +112,8 @@ public final class SleepParameters implements UserParameters {
   public Configuration getServiceConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(Serializer.class, SleepSerializer.class)
-        .bindNamedParameter(GCSerializedObjectSize.class, Integer.toString(encodedObjectSize))
-        .bindNamedParameter(GCEncodeRate.class, Long.toString(encodeRate))
-        .bindNamedParameter(GCDecodeRate.class, Long.toString(decodeRate))
-        .bindNamedParameter(EMSerializedObjectSize.class, Integer.toString(emEncodedObjectSize))
+        .bindNamedParameter(GCEncodeTime.class, Long.toString(gcEncodeTime))
+        .bindNamedParameter(GCDecodeTime.class, Long.toString(gcDecodeTime))
         .bindNamedParameter(EMEncodeRate.class, Long.toString(emEncodeRate))
         .bindNamedParameter(EMDecodeRate.class, Long.toString(emDecodeRate))
         .build();
@@ -227,10 +217,8 @@ public final class SleepParameters implements UserParameters {
     final CommandLine cl = new CommandLine(cb);
     cl.registerShortNameOfClass(ConfigurationFilePath.class);
     cl.registerShortNameOfClass(MaxIterations.class);
-    cl.registerShortNameOfClass(GCSerializedObjectSize.class);
-    cl.registerShortNameOfClass(GCEncodeRate.class);
-    cl.registerShortNameOfClass(GCDecodeRate.class);
-    cl.registerShortNameOfClass(EMSerializedObjectSize.class);
+    cl.registerShortNameOfClass(GCEncodeTime.class);
+    cl.registerShortNameOfClass(GCDecodeTime.class);
     cl.registerShortNameOfClass(EMEncodeRate.class);
     cl.registerShortNameOfClass(EMDecodeRate.class);
     return cl;
@@ -248,28 +236,16 @@ public final class SleepParameters implements UserParameters {
   final class ComputationRate implements Name<Long> {
   }
 
-  @NamedParameter(doc = "number of bytes of a single object in its serialized form for group communication",
-                  short_name = "gcSerializedObject",
+  @NamedParameter(doc = "time required to encode data per operation/iteration for group communication, milliseconds",
+                  short_name = "gcEncodeTime",
                   default_value = "0")
-  final class GCSerializedObjectSize implements Name<Integer> {
+  final class GCEncodeTime implements Name<Long> {
   }
 
-  @NamedParameter(doc = "the encode rate of an evaluator for group communication, milliseconds per data unit",
-                  short_name = "gcEncodeRate",
+  @NamedParameter(doc = "time required to decode data per operation/iteration for group communication, milliseconds",
+                  short_name = "gcDecodeTime",
                   default_value = "0")
-  final class GCEncodeRate implements Name<Long> {
-  }
-
-  @NamedParameter(doc = "the decode rate of an evaluator for group communication, milliseconds per data unit",
-                  short_name = "gcDecodeRate",
-                  default_value = "0")
-  final class GCDecodeRate implements Name<Long> {
-  }
-
-  @NamedParameter(doc = "number of bytes of a single object in its serialized form for elastic memory",
-                  short_name = "emSerializedObject",
-                  default_value = "0")
-  final class EMSerializedObjectSize implements Name<Integer> {
+  final class GCDecodeTime implements Name<Long> {
   }
 
   @NamedParameter(doc = "the encode rate of an evaluator for elastic memory, milliseconds per data unit",

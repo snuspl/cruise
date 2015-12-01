@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_sleep.sh -local true -split 3 -input sample -conf sample_sleep_conf -output output -gcSerializedObject 1 -gcEncodeRate 2 -gcDecodeRate 3 -emSerializedObject 4 -emEncodeRate 5 -emDecodeRate 6 -maxIter 10 -timeout 120000 -maxNumEvalLocal 5 -optimizer edu.snu.cay.services.em.optimizer.impl.AddOneOptimizer -plan_executor edu.snu.cay.dolphin.core.optimizer.DefaultPlanExecutor
+# ./run_sleep.sh -local true -split 3 -input sample -conf sample_sleep_conf -output output -gcEncodeTime 200 -gcDecodeTime 200 -emEncodeRate 5 -emDecodeRate 5 -maxIter 10 -timeout 120000 -maxNumEvalLocal 5 -optimizer edu.snu.cay.services.em.optimizer.impl.AddOneOptimizer -plan_executor edu.snu.cay.dolphin.core.optimizer.DefaultPlanExecutor
 
 # RUNTIME
 SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
