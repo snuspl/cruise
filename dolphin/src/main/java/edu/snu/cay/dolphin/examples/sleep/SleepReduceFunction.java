@@ -15,28 +15,24 @@
  */
 package edu.snu.cay.dolphin.examples.sleep;
 
-import edu.snu.cay.services.em.serialize.Serializer;
-import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.io.network.group.api.operators.Reduce;
 
 import javax.inject.Inject;
 
 /**
- * The EM {@link Serializer} for SleepREEF.
- * No meaningful data is passed between evaluators.
+ * An irrelevant reduce function used for {@link SleepREEF}.
  */
-public final class SleepSerializer implements Serializer {
+public class SleepReduceFunction implements Reduce.ReduceFunction<Object> {
 
-  private final SleepCodec sleepCodec;
+  private final Object object;
 
   @Inject
-  private SleepSerializer(@Parameter(SleepParameters.EMEncodeRate.class) final long encodeRate,
-                          @Parameter(SleepParameters.EMDecodeRate.class) final long decodeRate) {
-    this.sleepCodec = new SleepCodec(encodeRate, decodeRate);
+  public SleepReduceFunction() {
+    this.object = new Object();
   }
 
   @Override
-  public Codec getCodec(final String name) {
-    return sleepCodec;
+  public final Object apply(final Iterable<Object> dataList) {
+    return object;
   }
 }
