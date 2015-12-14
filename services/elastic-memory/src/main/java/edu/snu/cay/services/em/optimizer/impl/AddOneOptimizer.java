@@ -66,9 +66,11 @@ public final class AddOneOptimizer implements Optimizer {
       }
     }
 
-    // no evaluator has data; do nothing for now
+    // no evaluator has data; simply add a new evaluator with no new data to work on
     if (srcEvaluator == null) {
-      return PlanImpl.newBuilder().build();
+      return PlanImpl.newBuilder()
+          .addEvaluatorToAdd(evaluatorToAdd)
+          .build();
     }
 
     final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();

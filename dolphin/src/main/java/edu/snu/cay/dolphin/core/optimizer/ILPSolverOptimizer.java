@@ -87,6 +87,7 @@ public final class ILPSolverOptimizer implements Optimizer {
 
     final Optional<Cost> cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId);
     if (!cost.isPresent()) {
+      LOG.log(Level.WARNING, "No controller task present at the moment. Returning empty plan.");
       return PlanImpl.newBuilder().build();
     }
 
@@ -158,10 +159,6 @@ public final class ILPSolverOptimizer implements Optimizer {
    * Use {@code dolphinDriver} to check the context id of the ctrl task.
    */
   private void initializeCtrlTaskContextId() {
-    if (dolphinDriver == null) {
-      throw new RuntimeException("Cannot resolve ctrlTaskContextId because InjectionFuture<DolphinDriver> is null");
-    }
-
     ctrlTaskContextId = dolphinDriver.get().getCtrlTaskContextId();
   }
 
