@@ -31,11 +31,13 @@ import org.apache.reef.driver.task.RunningTask;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -57,9 +59,11 @@ public final class OptimizationOrchestrator {
   private final PlanExecutor planExecutor;
   private final List<StageInfo> stageInfoList;
 
-  private final Map<String, MetricsReceiver> iterationIdToMetrics;
+  private final ConcurrentMap<String, MetricsReceiver> iterationIdToMetrics;
 
   private final AtomicInteger numTasks = new AtomicInteger(0);
+
+  private final AtomicBoolean generatingOptimizationPlan = new AtomicBoolean(false);
 
   private Future<PlanResult> planExecutionResult;
 
@@ -71,10 +75,10 @@ public final class OptimizationOrchestrator {
     this.planExecutor = planExecutor;
     this.stageInfoList = userJobInfo.getStageInfoList();
 
-    this.iterationIdToMetrics = new HashMap<>();
+    this.iterationIdToMetrics = new ConcurrentHashMap<>();
   }
 
-  public synchronized void receiveComputeMetrics(final String contextId,
+  public void receiveComputeMetrics(final String contextId,
                                                  final String groupName,
                                                  final int iteration,
                                                  final Map<String, Double> metrics,
@@ -82,7 +86,7 @@ public final class OptimizationOrchestrator {
     getIterationMetrics(groupName, iteration).addCompute(contextId, metrics, dataInfos);
   }
 
-  public synchronized void receiveControllerMetrics(final String contextId,
+  public void receiveControllerMetrics(final String contextId,
                                                     final String groupName,
                                                     final int iteration,
                                                     final Map<String, Double> metrics) {
@@ -91,11 +95,16 @@ public final class OptimizationOrchestrator {
 
   private MetricsReceiver getIterationMetrics(final String groupName, final int iteration) {
     final String iterationId = groupName + iteration;
-    if (!iterationIdToMetrics.containsKey(iterationId)) {
-      iterationIdToMetrics.put(iterationId,
+    final MetricsReceiver metricsReceiver = iterationIdToMetrics.get(iterationId);
+    if (metricsReceiver != null) {
+      return metricsReceiver;
+
+    } else {
+      // only one MetricsReceiver must exist for each iterationId
+      iterationIdToMetrics.putIfAbsent(iterationId,
           new MetricsReceiver(this, isOptimizable(groupName), numTasks.get()));
+      return iterationIdToMetrics.get(iterationId);
     }
-    return iterationIdToMetrics.get(iterationId);
   }
 
   private boolean isOptimizable(final String groupName) {
@@ -111,12 +120,17 @@ public final class OptimizationOrchestrator {
    * Runs the optimization: get an optimized Plan based on the current Evaluator parameters, then execute the plan.
    * Optimization is skipped if the previous optimization has not finished.
    */
-  public synchronized void run(final Map<String, List<DataInfo>> dataInfos,
+  public void run(final Map<String, List<DataInfo>> dataInfos,
                                final Map<String, Map<String, Double>> computeMetrics,
                                final String controllerId,
                                final Map<String, Double> controllerMetrics) {
     if (isPlanExecuting()) {
       LOG.log(Level.INFO, "Skipping Optimization, as the previous plan is still executing.");
+      return;
+    }
+
+    if (!generatingOptimizationPlan.compareAndSet(false, true)) {
+      LOG.log(Level.INFO, "Skipping Optimization, because some other thread is currently doing it");
       return;
     }
 
@@ -130,6 +144,7 @@ public final class OptimizationOrchestrator {
     LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
 
     planExecutionResult = planExecutor.execute(plan);
+    generatingOptimizationPlan.set(false);
   }
 
   private boolean isPlanExecuting() {

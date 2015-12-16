@@ -20,6 +20,8 @@ import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -70,6 +72,11 @@ final class MetricsReceiver {
   private int numTasksReceived = 0;
 
   /**
+   * A thread pool for running optimizations.
+   */
+  private final ExecutorService executor;
+
+  /**
    * @param optimizationOrchestrator the optimization orchestrator that instantiates this instance
    */
   public MetricsReceiver(final OptimizationOrchestrator optimizationOrchestrator,
@@ -80,6 +87,7 @@ final class MetricsReceiver {
     this.numTasks = numTasks;
     this.computeIdToMetrics = new HashMap<>();
     this.computeIdToDataInfos = new HashMap<>();
+    this.executor = Executors.newSingleThreadExecutor();
   }
 
   public synchronized void addCompute(final String contextId,
@@ -106,7 +114,14 @@ final class MetricsReceiver {
   private void checkAndRunOptimization() {
     if (numTasksReceived == numTasks) {
       if (optimizable) {
-        optimizationOrchestrator.run(computeIdToDataInfos, computeIdToMetrics, controllerId, controllerMetrics);
+        executor.execute(new Runnable() {
+          @Override
+          public void run() {
+            optimizationOrchestrator.run(computeIdToDataInfos, computeIdToMetrics, controllerId, controllerMetrics);
+          }
+        });
+        executor.shutdown();
+
       } else {
         LOG.log(Level.INFO, "{0} tasks received, but skipping because not optimizable.", numTasks);
       }
