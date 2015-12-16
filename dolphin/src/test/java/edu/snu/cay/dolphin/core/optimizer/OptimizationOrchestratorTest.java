@@ -123,7 +123,10 @@ public final class OptimizationOrchestratorTest {
     orchestrator.receiveComputeMetrics("context-3", groupName, iteration, getComputeTaskMetrics(),
         getSingleDataInfo(4000));
 
-    // All metrics received; the optimization should have run
+    // All metrics have been received, so optimization should have been triggered but
+    // optimization is run on a separate thread;
+    // we need to wait a bit for that the thread to finish its job.
+    Thread.sleep(1000);
     orchestrator.getPlanExecutionResult().get(1, TimeUnit.SECONDS);
     assertNotEquals(previousResult, orchestrator.getPlanExecutionResult());
     return orchestrator.getPlanExecutionResult();
