@@ -816,6 +816,10 @@ public final class DolphinDriver {
     }
   }
 
+  public String getCtrlTaskContextId() {
+    return this.ctrlTaskContextId;
+  }
+
   private String getCtrlTaskId(final int sequence) {
     return ControllerTask.TASK_ID_PREFIX + "-" + sequence;
   }

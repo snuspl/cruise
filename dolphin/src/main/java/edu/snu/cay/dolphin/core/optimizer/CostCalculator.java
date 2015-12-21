@@ -15,62 +15,71 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
-import edu.snu.cay.dolphin.core.ComputeTask;
-import edu.snu.cay.dolphin.core.ControllerTask;
 import edu.snu.cay.dolphin.core.DolphinMetricKeys;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
+import org.apache.reef.util.Optional;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Class for calculating costs of Dolphin.
  * Assumes that only one controller task exists.
  */
 final class CostCalculator {
+  private static final Logger LOG = Logger.getLogger(CostCalculator.class.getName());
 
   private CostCalculator() {
   }
 
   /**
    * Extracts the evaluator parameter for a controller task and evaluator parameters for compute tasks.
-   * {@link RuntimeException} will be thrown if the evaluator parameters for a controller task does not exist
-   * in the specified collection.
    * @param evaluators a collection of {@link EvaluatorParameters}
-   * @return the DolphinTaskParameters having evaluator parameters for a controller task and compute tasks
+   * @param ctrlEvalId identifier that represents the evaluator of the controller task (most likely context id)
+   * @return the DolphinTaskParameters having evaluator parameters for a controller task and compute tasks.
+   *    Evaluator parameters for the controller task may be {@code null} if they are not present.
    */
-  private static DolphinTaskParameters getDolphinTaskParameters(final Collection<EvaluatorParameters> evaluators) {
+  private static DolphinTaskParameters getDolphinTaskParameters(final Collection<EvaluatorParameters> evaluators,
+                                                                final String ctrlEvalId) {
     EvaluatorParameters controllerTask = null;
     final List<EvaluatorParameters> computeTasks = new ArrayList<>(evaluators.size() - 1);
     for (final EvaluatorParameters evaluator : evaluators) {
-      if (evaluator.getId().startsWith(ControllerTask.TASK_ID_PREFIX)) {
+      if (evaluator.getId().equals(ctrlEvalId)) {
         controllerTask = evaluator;
-      } else if (evaluator.getId().startsWith(ComputeTask.TASK_ID_PREFIX)) {
+      } else {
         computeTasks.add(evaluator);
       }
     }
 
     if (controllerTask == null) {
-      throw new RuntimeException("There is no controller task among active evaluators");
+      LOG.log(Level.WARNING, "There is no controller task among active evaluators.");
     }
     return new DolphinTaskParameters(controllerTask, computeTasks);
   }
 
   /**
    * Calculates costs of Dolphin.
-   * @return the calculated costs
+   * @return the calculated costs, or {@code Optional.empty()} if cost is uncomputable
    */
-  public static Cost calculate(final Collection<EvaluatorParameters> activeEvaluators) {
-    final DolphinTaskParameters dolphinTaskParams = getDolphinTaskParameters(activeEvaluators);
+  public static Optional<Cost> calculate(final Collection<EvaluatorParameters> activeEvaluators,
+                                         final String ctrlEvalId) {
+    final DolphinTaskParameters dolphinTaskParams = getDolphinTaskParameters(activeEvaluators, ctrlEvalId);
+    if (dolphinTaskParams.controllerTaskParameters == null) {
+      // no controller task; cannot calculate cost
+      return Optional.empty();
+    }
+
     final Collection<Cost.ComputeTaskCost> computeTaskCosts =
         getComputeTaskCosts(dolphinTaskParams.getComputeTasksParameters());
     final double communicationCost =
         getCommunicationCost(dolphinTaskParams.getControllerTaskParameters(), computeTaskCosts);
-    return new Cost(communicationCost, computeTaskCosts);
+    return Optional.of(new Cost(communicationCost, computeTaskCosts));
   }
 
   /**
    * @param computeTasksParameters a collection of evaluator parameters for compute tasks
-   * @return a collection of costs for {@link ComputeTask}s
+   * @return a collection of costs for {@link edu.snu.cay.dolphin.core.ComputeTask}s
    */
   private static Collection<Cost.ComputeTaskCost> getComputeTaskCosts(
       final Collection<EvaluatorParameters> computeTasksParameters) {
@@ -84,8 +93,8 @@ final class CostCalculator {
   /**
    * Generates {@link edu.snu.cay.dolphin.core.optimizer.Cost.ComputeTaskCost} by calculating compute cost and using
    * this metadata.
-   * Assumes that the specified evaluator parameters object is for {@link ComputeTask}.
-   * @param evaluatorParameters the evaluator parameters object for {@link ComputeTask}.
+   * Assumes that the specified evaluator parameters object is for {@link edu.snu.cay.dolphin.core.ComputeTask}.
+   * @param evaluatorParameters the evaluator parameters object for {@link edu.snu.cay.dolphin.core.ComputeTask}.
    * @return The generated compute task cost.
    */
   private static Cost.ComputeTaskCost getComputeTaskCost(final EvaluatorParameters evaluatorParameters) {
@@ -107,9 +116,10 @@ final class CostCalculator {
 
   /**
    * Computes a communication cost for the previous execution.
-   * The communication cost is calculated by subtracting the maximum compute cost among {@link ComputeTask}s
-   * from the elapsed time between when the controller task started to broadcast and when it finished reduce operation.
-   * @param cmpTaskCosts a collection of costs for {@link ComputeTask}.
+   * The communication cost is calculated by subtracting the maximum compute cost among
+   * {@link edu.snu.cay.dolphin.core.ComputeTask}s from the elapsed time between
+   * when the controller task started to broadcast and when it finished reduce operation.
+   * @param cmpTaskCosts a collection of costs for {@link edu.snu.cay.dolphin.core.ComputeTask}.
    * @return the calculated communication cost.
    */
   private static double getCommunicationCost(final EvaluatorParameters controllerTaskParameters,
