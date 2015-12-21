@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.Vector;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.io.Serializable;

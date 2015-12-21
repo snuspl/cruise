@@ -27,7 +27,7 @@ public class LinearRegSummary {
   }
 
   public void plus(final LinearRegSummary summary) {
-    this.model.setParameters(this.model.getParameters().plus(summary.getModel().getParameters()));
+    this.model.getParameters().add(summary.getModel().getParameters());
     this.count += summary.count;
     this.loss += summary.loss;
   }

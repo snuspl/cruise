@@ -24,8 +24,8 @@ import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.examples.ml.parameters.IsDenseVector;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.SequentialAccessSparseVector;
+import no.uib.cipr.matrix.DenseVector;
+import no.uib.cipr.matrix.sparse.SparseVector;
 import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -55,20 +55,20 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;
     this.model = new LinearModel(
-        isDenseVector ? new DenseVector(dimension + 1) : new SequentialAccessSparseVector(dimension + 1));
+        isDenseVector ? new DenseVector(dimension + 1) : new SparseVector(dimension + 1));
   }
-  
+
   @Override
   public final void run(final int iteration) {
     LOG.log(Level.INFO, "{0}-th iteration accuracy: {1}%", new Object[]{iteration, accuracy * 100});
     LOG.log(Level.FINEST, "new model: {0}", model);
   }
-  
+
   @Override
   public final LinearModel sendBroadcastData(final int iteration) {
     return model;
   }
-  
+
   @Override
   public final boolean isTerminated(final int iteration) {
     return convergeCondition.checkConvergence(model) || iteration >= maxIter;
@@ -77,8 +77,8 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
   @Override
   public void receiveReduceData(final int iteration, final LogisticRegSummary summary) {
     this.accuracy = ((double) summary.getPosNum()) / (summary.getPosNum() + summary.getNegNum());
-    this.model = new LinearModel(summary.getModel().getParameters()
-        .times(1.0 / summary.getCount()));
+    summary.getModel().getParameters().scale(1.0 / summary.getCount());
+    this.model = summary.getModel();
   }
 
   @Override

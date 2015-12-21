@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.DenseVector;
+import no.uib.cipr.matrix.Vector;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 
@@ -47,7 +47,7 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
 
   @Override
   public void encodeToStream(final Vector vector, final DataOutputStream daos) {
-    if (!vector.isDense()) {
+    if (!(vector instanceof DenseVector)) {
       LOG.warning("the given vector is not dense.");
     }
 
@@ -85,7 +85,7 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
   }
 
   public int getNumBytes(final Vector vector) {
-    if (!vector.isDense()) {
+    if (!(vector instanceof DenseVector)) {
       LOG.warning("the given vector is not dense.");
     }
     return Integer.SIZE + Double.SIZE * vector.size();

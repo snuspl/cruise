@@ -16,9 +16,9 @@
 package edu.snu.cay.dolphin.examples.ml.sub;
 
 import edu.snu.cay.dolphin.examples.ml.data.Row;
+import no.uib.cipr.matrix.Vector;
+import no.uib.cipr.matrix.sparse.SparseVector;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.SequentialAccessSparseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -45,7 +45,7 @@ public final class SparseRowCodecTest {
   private Row generateSparseRow(final int cardinality, final int size) {
     final double output = random.nextDouble();
 
-    final Vector feature = new SequentialAccessSparseVector(cardinality, size);
+    final Vector feature = new SparseVector(cardinality, size);
     for (int i = 0; i < size; ++i) {
       feature.set(random.nextInt(feature.size()), random.nextGaussian());
     }

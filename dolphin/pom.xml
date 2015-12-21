@@ -81,6 +81,10 @@
       <artifactId>ojalgo</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.googlecode.matrix-toolkits-java</groupId>
+      <artifactId>mtj</artifactId>
+    </dependency>
+    <dependency>
       <groupId>${project.parent.groupId}.services</groupId>
       <artifactId>elastic-memory</artifactId>
       <version>${project.parent.version}</version>

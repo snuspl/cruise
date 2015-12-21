@@ -15,8 +15,9 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
-import org.apache.mahout.math.SequentialAccessSparseVector;
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.Vector;
+import no.uib.cipr.matrix.VectorEntry;
+import no.uib.cipr.matrix.sparse.SparseVector;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 
@@ -47,14 +48,14 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
 
   @Override
   public void encodeToStream(final Vector vector, final DataOutputStream dos) {
-    if (vector.isDense()) {
+    if (!(vector instanceof SparseVector)) {
       LOG.warning("the given vector is not sparse.");
     }
 
     try {
       dos.writeInt(vector.size());
-      dos.writeInt(vector.getNumNonZeroElements());
-      for (final Vector.Element element : vector.nonZeroes()) {
+      dos.writeInt(((SparseVector)vector).getUsed());
+      for (final VectorEntry element : vector) {
         dos.writeInt(element.index());
         dos.writeDouble(element.get());
       }
@@ -77,7 +78,7 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     try {
       final int size = dis.readInt();
       final int numNonZeros = dis.readInt();
-      final Vector vector = new SequentialAccessSparseVector(size, numNonZeros);
+      final Vector vector = new SparseVector(size, numNonZeros);
       for (int i = 0; i < numNonZeros; ++i) {
         final int index = dis.readInt();
         final double value = dis.readDouble();
@@ -90,9 +91,9 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
   }
 
   public int getNumBytes(final Vector vector) {
-    if (vector.isDense()) {
+    if (!(vector instanceof SparseVector)) {
       LOG.warning("the given vector is not sparse.");
     }
-    return 2 * Integer.SIZE + (Integer.SIZE + Double.SIZE) * vector.getNumNonZeroElements();
+    return 2 * Integer.SIZE + (Integer.SIZE + Double.SIZE) * ((SparseVector)vector).getUsed();
   }
 }

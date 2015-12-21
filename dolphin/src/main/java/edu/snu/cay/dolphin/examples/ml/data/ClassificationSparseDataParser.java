@@ -18,10 +18,10 @@ package edu.snu.cay.dolphin.examples.ml.data;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.examples.ml.parameters.Dimension;
+import no.uib.cipr.matrix.Vector;
+import no.uib.cipr.matrix.sparse.SparseVector;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.mahout.math.SequentialAccessSparseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -139,7 +139,7 @@ public final class ClassificationSparseDataParser implements DataParser<List<Row
    * @throws ParseException if a string element of the specified array is invalid.
    */
   private Vector parseFeatureVector(final String[] split) throws ParseException {
-    final Vector ret = new SequentialAccessSparseVector(dimension + 1, split.length); // +1 for a constant term
+    final Vector ret = new SparseVector(dimension + 1, split.length); // +1 for a constant term
     for (final String elementString : split) {
       final Pair<Integer, Double> elementPair = parseElement(elementString);
       ret.set(elementPair.getFirst(), elementPair.getSecond());
