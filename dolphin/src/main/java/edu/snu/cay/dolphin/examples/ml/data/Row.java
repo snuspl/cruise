@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.Vector;
 
 public final class Row {
   private final double output;
@@ -48,7 +48,11 @@ public final class Row {
     if (Double.compare(row.output, output) != 0) {
       return false;
     }
-    return feature.equals(row.feature);
+    if (feature.size() != row.feature.size()) {
+      return false;
+    }
+    final Vector diff = feature.copy().add(-1, row.feature);
+    return diff.norm(Vector.Norm.One) == 0.0;
 
   }
 

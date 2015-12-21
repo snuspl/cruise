@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.loss;
 
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.Vector;
 
 import javax.inject.Inject;
 
@@ -40,6 +40,6 @@ public final class LogisticLoss implements Loss {
     final double exponent = -predict * output;
     final double maxExponent = Math.max(exponent, 0);
     final double logSumExp = maxExponent + Math.log(Math.exp(-maxExponent) + Math.exp(exponent - maxExponent));
-    return feature.times(output * (Math.exp(-logSumExp) - 1));
+    return feature.copy().scale(output * (Math.exp(-logSumExp) - 1));
   }
 }

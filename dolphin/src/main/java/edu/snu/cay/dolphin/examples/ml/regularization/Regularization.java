@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.examples.ml.regularization;
 
 import edu.snu.cay.dolphin.examples.ml.data.Model;
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.Vector;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**

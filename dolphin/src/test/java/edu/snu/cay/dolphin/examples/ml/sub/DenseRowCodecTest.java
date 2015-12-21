@@ -16,9 +16,9 @@
 package edu.snu.cay.dolphin.examples.ml.sub;
 
 import edu.snu.cay.dolphin.examples.ml.data.Row;
+import no.uib.cipr.matrix.DenseVector;
+import no.uib.cipr.matrix.Vector;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;

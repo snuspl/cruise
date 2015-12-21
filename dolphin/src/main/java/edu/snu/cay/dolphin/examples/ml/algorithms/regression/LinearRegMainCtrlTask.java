@@ -23,7 +23,7 @@ import edu.snu.cay.dolphin.examples.ml.converge.LinearModelConvCond;
 import edu.snu.cay.dolphin.examples.ml.data.LinearRegSummary;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
-import org.apache.mahout.math.DenseVector;
+import no.uib.cipr.matrix.DenseVector;
 import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -73,8 +73,8 @@ public class LinearRegMainCtrlTask extends UserControllerTask
   @Override
   public void receiveReduceData(final int iteration, final LinearRegSummary sgdSummary) {
     this.lossSum = sgdSummary.getLoss();
-    this.model = new LinearModel(sgdSummary.getModel().getParameters()
-        .times(1.0 / sgdSummary.getCount()));
+    sgdSummary.getModel().getParameters().scale(1.0 / sgdSummary.getCount());
+    this.model = sgdSummary.getModel();
   }
 
   @Override

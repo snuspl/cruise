@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.loss;
 
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.Vector;
 
 import javax.inject.Inject;
 
@@ -35,6 +35,6 @@ public final class HingeLoss implements Loss {
 
   @Override
   public Vector gradient(final Vector feature, final double predict, final double output) {
-    return feature.times(predict * output >= 1 ? 0 : -output);
+    return feature.copy().scale(predict * output >= 1 ? 0 : -output);
   }
 }

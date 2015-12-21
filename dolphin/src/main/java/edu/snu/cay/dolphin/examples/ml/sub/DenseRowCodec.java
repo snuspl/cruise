@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.examples.ml.sub;
 
 import edu.snu.cay.dolphin.examples.ml.data.Row;
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.Vector;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 

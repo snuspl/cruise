@@ -26,7 +26,7 @@ import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -72,8 +72,8 @@ public class LinearRegMainCmpTask extends UserComputeTask
     for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final Vector input = row.getFeature();
-      final Vector gradient = loss.gradient(input, model.predict(input), output).plus(regularization.gradient(model));
-      model.setParameters(model.getParameters().minus(gradient.times(stepSize)));
+      final Vector gradient = loss.gradient(input, model.predict(input), output).add(regularization.gradient(model));
+      model.getParameters().add(-stepSize, gradient);
     }
   }
 

@@ -15,7 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
-import org.apache.mahout.math.Vector;
+import no.uib.cipr.matrix.Vector;
+import no.uib.cipr.matrix.VectorEntry;
 
 public final class LinearModel implements Model {
   private Vector parameters;
@@ -35,7 +36,7 @@ public final class LinearModel implements Model {
 
   @Override
   public double predict(final Vector point) {
-    return parameters.dot(point);
+    return point.dot(parameters);
   }
 
   @SuppressWarnings("boxing")
@@ -43,7 +44,7 @@ public final class LinearModel implements Model {
   public String toString() {
     final StringBuffer buffer = new StringBuffer();
     boolean addPlus = false;
-    for (final Vector.Element element : parameters.nonZeroes()) {
+    for (final VectorEntry element : parameters) {
       if (addPlus) {
         buffer.append(" + ");
       }

@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
+import no.uib.cipr.matrix.Vector;
+import no.uib.cipr.matrix.sparse.SparseVector;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.SequentialAccessSparseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -39,7 +39,7 @@ public final class SparseVectorCodecTest {
   }
 
   private Vector generateSparseVector(final int cardinality, final int size) {
-    final Vector ret = new SequentialAccessSparseVector(cardinality, size);
+    final Vector ret = new SparseVector(cardinality, size);
     for (int i = 0; i < size; ++i) {
       ret.set(random.nextInt(ret.size()), random.nextGaussian());
     }
@@ -49,6 +49,9 @@ public final class SparseVectorCodecTest {
   @Test
   public void testSparseVectorCodec() {
     final Vector sparseVectorInput = generateSparseVector(30, 4);
-    assertEquals(sparseVectorInput, sparseVectorCodec.decode(sparseVectorCodec.encode(sparseVectorInput)));
+    final Vector sparseVectorOutput = sparseVectorCodec.decode(sparseVectorCodec.encode(sparseVectorInput));
+    assertEquals(sparseVectorInput.size(), sparseVectorOutput.size());
+    final Vector diff = sparseVectorInput.copy().add(-1, sparseVectorOutput);
+    assertEquals(diff.norm(Vector.Norm.One), 0.0, 0.0);
   }
 }
