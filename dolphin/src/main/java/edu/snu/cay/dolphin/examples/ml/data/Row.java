@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
-import org.apache.mahout.math.Vector;
+import edu.snu.cay.dolphin.breeze.Vector;
 
 public final class Row {
   private final double output;

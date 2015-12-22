@@ -13,28 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.examples.ml.loss;
-
-import edu.snu.cay.dolphin.breeze.Vector;
-
-import javax.inject.Inject;
-
 /**
- * Represents the regularize for linear regression (least mean squares).
+ * Java-wrapped breeze package.
  */
-public final class SquareLoss implements Loss {
-
-  @Inject
-  public SquareLoss() {
-  }
-
-  @Override
-  public double loss(final double predict, final double output) {
-    return Math.pow(predict - output, 2) / 2;
-  }
-
-  @Override
-  public Vector gradient(final Vector feature, final double predict, final double output) {
-    return feature.scale(predict - output);
-  }
-}
+package edu.snu.cay.dolphin.breeze;

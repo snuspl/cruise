@@ -53,6 +53,7 @@
     <checkstyle.version>6.6</checkstyle.version>
     <mockito.version>1.10.19</mockito.version>
     <ojalgo.version>37.1</ojalgo.version>
+    <breeze.version>0.11.2</breeze.version>
   </properties>
 
   <prerequisites>
@@ -151,6 +152,11 @@
         <groupId>org.ojalgo</groupId>
         <artifactId>ojalgo</artifactId>
         <version>${ojalgo.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.scalanlp</groupId>
+        <artifactId>breeze_2.10</artifactId>
+        <version>${breeze.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

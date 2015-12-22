@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
+import edu.snu.cay.dolphin.breeze.Vector;
+import edu.snu.cay.dolphin.breeze.VectorFactory;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.examples.ml.parameters.Dimension;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -41,14 +41,17 @@ public final class ClassificationDenseDataParser implements DataParser<List<Row>
   private final int negativeLabel = -1;
   private final int dimension;
   private final DataSet<LongWritable, Text> dataSet;
+  private final VectorFactory vectorFactory;
   private List<Row> result;
   private ParseException parseException;
 
   @Inject
   public ClassificationDenseDataParser(@Parameter(Dimension.class) final int dimension,
-                                       final DataSet<LongWritable, Text> dataSet) {
+                                       final DataSet<LongWritable, Text> dataSet,
+                                       final VectorFactory vectorFactory) {
     this.dimension = dimension;
     this.dataSet = dataSet;
+    this.vectorFactory = vectorFactory;
   }
 
   @Override
@@ -85,7 +88,7 @@ public final class ClassificationDenseDataParser implements DataParser<List<Row>
       }
 
       final int output;
-      final Vector feature = new DenseVector(split.length);
+      final Vector feature = vectorFactory.newDenseVector(split.length);
       try {
         output = Integer.valueOf(split[dimension]);
         if (output != positiveLabel && output != negativeLabel) {

@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Vector;
+import edu.snu.cay.dolphin.breeze.Vector;
+import edu.snu.cay.dolphin.breeze.VectorFactory;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 
@@ -29,9 +29,11 @@ import java.util.logging.Logger;
  */
 public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vector> {
   private static final Logger LOG = Logger.getLogger(DenseVectorCodec.class.getName());
+  private final VectorFactory vectorFactory;
 
   @Inject
-  private DenseVectorCodec() {
+  private DenseVectorCodec(final VectorFactory vectorFactory) {
+    this.vectorFactory = vectorFactory;
   }
 
   @Override
@@ -52,8 +54,8 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
     }
 
     try {
-      daos.writeInt(vector.size());
-      for (int i = 0; i < vector.size(); i++) {
+      daos.writeInt(vector.length());
+      for (int i = 0; i < vector.length(); i++) {
         daos.writeDouble(vector.get(i));
       }
     } catch (final IOException e) {
@@ -74,7 +76,7 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
   public Vector decodeFromStream(final DataInputStream dais) {
     try {
       final int vecSize = dais.readInt();
-      final Vector vector = new DenseVector(vecSize);
+      final Vector vector = vectorFactory.newDenseVector(vecSize);
       for (int i = 0; i < vecSize; i++) {
         vector.set(i, dais.readDouble());
       }
@@ -88,6 +90,6 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
     if (!vector.isDense()) {
       LOG.warning("the given vector is not dense.");
     }
-    return Integer.SIZE + Double.SIZE * vector.size();
+    return Integer.SIZE + Double.SIZE * vector.length();
   }
 }

@@ -29,7 +29,7 @@ public class LogisticRegSummary {
   }
 
   public void plus(final LogisticRegSummary summary) {
-    this.model.setParameters(this.model.getParameters().plus(summary.getModel().getParameters()));
+    this.model.setParameters(this.model.getParameters().add(summary.getModel().getParameters()));
     this.count += summary.count;
     this.posNum += summary.posNum;
     this.negNum += summary.negNum;

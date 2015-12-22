@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
+import edu.snu.cay.dolphin.breeze.Vector;
+import edu.snu.cay.dolphin.breeze.VectorFactory;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.examples.ml.parameters.Dimension;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.mahout.math.SequentialAccessSparseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -49,14 +49,17 @@ public final class ClassificationSparseDataParser implements DataParser<List<Row
   private final int negativeLabel = -1;
   private final int dimension;
   private final DataSet<LongWritable, Text> dataSet;
+  private final VectorFactory vectorFactory;
   private List<Row> result;
   private ParseException parseException;
 
   @Inject
   public ClassificationSparseDataParser(@Parameter(Dimension.class) final int dimension,
-                                        final DataSet<LongWritable, Text> dataSet) {
+                                        final DataSet<LongWritable, Text> dataSet,
+                                        final VectorFactory vectorFactory) {
     this.dimension = dimension;
     this.dataSet = dataSet;
+    this.vectorFactory = vectorFactory;
   }
 
   @Override
@@ -139,7 +142,7 @@ public final class ClassificationSparseDataParser implements DataParser<List<Row
    * @throws ParseException if a string element of the specified array is invalid.
    */
   private Vector parseFeatureVector(final String[] split) throws ParseException {
-    final Vector ret = new SequentialAccessSparseVector(dimension + 1, split.length); // +1 for a constant term
+    final Vector ret = vectorFactory.newSparseVector(dimension + 1); // +1 for a constant term
     for (final String elementString : split) {
       final Pair<Integer, Double> elementPair = parseElement(elementString);
       ret.set(elementPair.getFirst(), elementPair.getSecond());

@@ -15,19 +15,21 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
+import edu.snu.cay.dolphin.breeze.Vector;
+import edu.snu.cay.dolphin.breeze.VectorFactory;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.data.LinearRegSummary;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.io.serialization.Codec;
 
 import javax.inject.Inject;
 import java.io.*;
 
 public class LinearRegSummaryCodec implements Codec<LinearRegSummary> {
+  private final VectorFactory vectorFactory;
 
   @Inject
-  public LinearRegSummaryCodec() {
+  public LinearRegSummaryCodec(final VectorFactory vectorFactory) {
+    this.vectorFactory = vectorFactory;
   }
 
   @Override
@@ -36,14 +38,14 @@ public class LinearRegSummaryCodec implements Codec<LinearRegSummary> {
     final ByteArrayOutputStream baos = new ByteArrayOutputStream(Integer.SIZE // count
         + Double.SIZE // loss
         + Integer.SIZE // parameter size
-        + Double.SIZE * model.getParameters().size());
+        + Double.SIZE * model.getParameters().length());
 
     try (final DataOutputStream daos = new DataOutputStream(baos)) {
       daos.writeInt(sgdSummary.getCount());
       daos.writeDouble(sgdSummary.getLoss());
-      daos.writeInt(model.getParameters().size());
+      daos.writeInt(model.getParameters().length());
 
-      for (int i = 0; i < model.getParameters().size(); i++) {
+      for (int i = 0; i < model.getParameters().length(); i++) {
         daos.writeDouble(model.getParameters().get(i));
       }
 
@@ -65,7 +67,7 @@ public class LinearRegSummaryCodec implements Codec<LinearRegSummary> {
       count = dais.readInt();
       loss = dais.readDouble();
       final int vecSize = dais.readInt();
-      final Vector v = new DenseVector(vecSize);
+      final Vector v = vectorFactory.newDenseVector(vecSize);
       for (int i = 0; i < vecSize; i++) {
         v.set(i, dais.readDouble());
       }

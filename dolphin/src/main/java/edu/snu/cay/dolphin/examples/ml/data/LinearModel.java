@@ -15,7 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
-import org.apache.mahout.math.Vector;
+import edu.snu.cay.dolphin.breeze.Vector;
+import edu.snu.cay.dolphin.breeze.VectorEntry;
 
 public final class LinearModel implements Model {
   private Vector parameters;
@@ -43,13 +44,13 @@ public final class LinearModel implements Model {
   public String toString() {
     final StringBuffer buffer = new StringBuffer();
     boolean addPlus = false;
-    for (final Vector.Element element : parameters.nonZeroes()) {
+    for (final VectorEntry element : parameters) {
       if (addPlus) {
         buffer.append(" + ");
       }
-      buffer.append(String.format("%e", element.get()));
+      buffer.append(String.format("%e", element.value()));
       final int index = element.index();
-      if (index != parameters.size() - 1) {  // not constant term
+      if (index != parameters.activeSize() - 1) {  // not constant term
         buffer.append(String.format(" * x%d", index + 1));
       }
       addPlus = true;

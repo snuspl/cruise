@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.examples.ml.regularization;
 
+import edu.snu.cay.dolphin.breeze.Vector;
 import edu.snu.cay.dolphin.examples.ml.parameters.Lambda;
 import edu.snu.cay.dolphin.examples.ml.data.Model;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -35,11 +35,11 @@ public final class L2Regularization implements Regularization {
 
   @Override
   public double regularize(final Model model) {
-    return lambda * model.getParameters().getLengthSquared() / 2;
+    return lambda * model.getParameters().dot(model.getParameters()) / 2;
   }
 
   @Override
   public Vector gradient(final Model model) {
-    return model.getParameters().times(lambda);
+    return model.getParameters().scale(lambda);
   }
 }

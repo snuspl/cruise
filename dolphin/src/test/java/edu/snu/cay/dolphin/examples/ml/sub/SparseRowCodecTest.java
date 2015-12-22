@@ -15,10 +15,11 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
+import edu.snu.cay.dolphin.breeze.Vector;
+import edu.snu.cay.dolphin.breeze.VectorFactory;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.SequentialAccessSparseVector;
-import org.apache.mahout.math.Vector;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -35,19 +36,22 @@ public final class SparseRowCodecTest {
 
   private SparseRowCodec sparseRowCodec;
   private Random random;
+  private VectorFactory vectorFactory;
 
   @Before
   public void setUp() throws InjectionException {
-    this.sparseRowCodec = Tang.Factory.getTang().newInjector().getInstance(SparseRowCodec.class);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    this.sparseRowCodec = injector.getInstance(SparseRowCodec.class);
     this.random = RandomUtils.getRandom();
+    this.vectorFactory = injector.getInstance(VectorFactory.class);
   }
 
   private Row generateSparseRow(final int cardinality, final int size) {
     final double output = random.nextDouble();
 
-    final Vector feature = new SequentialAccessSparseVector(cardinality, size);
+    final Vector feature = vectorFactory.newSparseVector(cardinality);
     for (int i = 0; i < size; ++i) {
-      feature.set(random.nextInt(feature.size()), random.nextGaussian());
+      feature.set(random.nextInt(feature.length()), random.nextGaussian());
     }
 
     return new Row(output, feature);

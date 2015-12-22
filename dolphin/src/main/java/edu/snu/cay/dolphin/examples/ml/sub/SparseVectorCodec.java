@@ -15,8 +15,9 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
-import org.apache.mahout.math.SequentialAccessSparseVector;
-import org.apache.mahout.math.Vector;
+import edu.snu.cay.dolphin.breeze.Vector;
+import edu.snu.cay.dolphin.breeze.VectorEntry;
+import edu.snu.cay.dolphin.breeze.VectorFactory;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 
@@ -29,9 +30,11 @@ import java.util.logging.Logger;
  */
 public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Vector> {
   private static final Logger LOG = Logger.getLogger(SparseVectorCodec.class.getName());
+  private final VectorFactory vectorFactory;
 
   @Inject
-  private SparseVectorCodec() {
+  private SparseVectorCodec(final VectorFactory vectorFactory) {
+    this.vectorFactory = vectorFactory;
   }
 
   @Override
@@ -52,11 +55,11 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     }
 
     try {
-      dos.writeInt(vector.size());
-      dos.writeInt(vector.getNumNonZeroElements());
-      for (final Vector.Element element : vector.nonZeroes()) {
+      dos.writeInt(vector.length());
+      dos.writeInt(vector.activeSize());
+      for (final VectorEntry element : vector) {
         dos.writeInt(element.index());
-        dos.writeDouble(element.get());
+        dos.writeDouble(element.value());
       }
     } catch (final IOException e) {
       throw new RuntimeException(e.getCause());
@@ -77,7 +80,7 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     try {
       final int size = dis.readInt();
       final int numNonZeros = dis.readInt();
-      final Vector vector = new SequentialAccessSparseVector(size, numNonZeros);
+      final Vector vector = vectorFactory.newSparseVector(size);
       for (int i = 0; i < numNonZeros; ++i) {
         final int index = dis.readInt();
         final double value = dis.readDouble();
@@ -93,6 +96,6 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     if (vector.isDense()) {
       LOG.warning("the given vector is not sparse.");
     }
-    return 2 * Integer.SIZE + (Integer.SIZE + Double.SIZE) * vector.getNumNonZeroElements();
+    return 2 * Integer.SIZE + (Integer.SIZE + Double.SIZE) * vector.activeSize();
   }
 }
