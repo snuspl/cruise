@@ -61,7 +61,13 @@ public final class DeleteOneOptimizer implements Optimizer {
     }
 
     // Sort evaluators by ID, to select evaluators in a consistent order across job executions
-    final List<EvaluatorParameters> evaluators = new ArrayList<>(activeEvaluators);
+    final List<EvaluatorParameters> evaluators = new ArrayList<>(activeEvaluators.size());
+    for (final EvaluatorParameters evaluator : activeEvaluators) {
+      // only add evaluators that have data to move
+      if (!evaluator.getDataInfos().isEmpty()) {
+        evaluators.add(evaluator);
+      }
+    }
     Collections.sort(evaluators, new Comparator<EvaluatorParameters>() {
       @Override
       public int compare(final EvaluatorParameters o1, final EvaluatorParameters o2) {

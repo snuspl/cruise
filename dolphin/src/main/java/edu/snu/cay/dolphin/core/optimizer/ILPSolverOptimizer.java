@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
+import edu.snu.cay.dolphin.core.DolphinDriver;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -23,6 +24,8 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
+import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.util.Optional;
 import org.ojalgo.optimisation.Expression;
 import org.ojalgo.optimisation.ExpressionsBasedModel;
 import org.ojalgo.optimisation.Optimisation;
@@ -59,19 +62,37 @@ public final class ILPSolverOptimizer implements Optimizer {
   private final AtomicInteger newComputeTaskSequence = new AtomicInteger(0);
   private final DataUnitsToMoveComparator ascendingComparator;
   private final DataUnitsToMoveComparator descendingComparator;
+  private String ctrlTaskContextId;
+  private InjectionFuture<DolphinDriver> dolphinDriver;
 
-  @Inject
-  private ILPSolverOptimizer() {
+  ILPSolverOptimizer(final String ctrlTaskContextId) {
     this.ascendingComparator = new DataUnitsToMoveComparator();
     this.descendingComparator = new DataUnitsToMoveComparator(DataUnitsToMoveComparator.Order.DESCENDING);
+    this.ctrlTaskContextId = ctrlTaskContextId;
   }
+
+  @Inject
+  private ILPSolverOptimizer(final InjectionFuture<DolphinDriver> dolphinDriver) {
+    this.ascendingComparator = new DataUnitsToMoveComparator();
+    this.descendingComparator = new DataUnitsToMoveComparator(DataUnitsToMoveComparator.Order.DESCENDING);
+    this.dolphinDriver = dolphinDriver;
+  }
+
 
   @Override
   public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+    if (ctrlTaskContextId == null) {
+      initializeCtrlTaskContextId();
+    }
 
-    final Cost cost = CostCalculator.calculate(activeEvaluators);
+    final Optional<Cost> cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId);
+    if (!cost.isPresent()) {
+      LOG.log(Level.WARNING, "No controller task present at the moment. Returning empty plan.");
+      return PlanImpl.newBuilder().build();
+    }
+
     final List<OptimizedComputeTask> optimizedComputeTasks =
-        initOptimizedComputeTasks(cost, availableEvaluators - activeEvaluators.size());
+        initOptimizedComputeTasks(cost.get(), availableEvaluators - activeEvaluators.size());
 
     // create ILP model for optimization
     // C_cmp: expected compute cost
@@ -85,7 +106,7 @@ public final class ILPSolverOptimizer implements Optimizer {
     // s.t. C_comm = (C_comm' / #_active') * #_active = (C_comm' / #_active') * sum(p(i))
     final ExpressionsBasedModel model = new ExpressionsBasedModel();
     final Variable cmpCostVar = Variable.make("computeCost");
-    final double commCostWeight = cost.getCommunicationCost() / cost.getComputeTaskCosts().size();
+    final double commCostWeight = cost.get().getCommunicationCost() / cost.get().getComputeTaskCosts().size();
 
     model.addVariable(cmpCostVar.weight(1.0));
 
@@ -132,6 +153,13 @@ public final class ILPSolverOptimizer implements Optimizer {
         return;
       }
     }
+  }
+
+  /**
+   * Use {@code dolphinDriver} to check the context id of the ctrl task.
+   */
+  private void initializeCtrlTaskContextId() {
+    ctrlTaskContextId = dolphinDriver.get().getCtrlTaskContextId();
   }
 
   /**
