@@ -64,6 +64,14 @@ public final class OptimizationOrchestrator {
 
   private final ExecutorService optimizationThreadPool;
 
+  /**
+   * The {@link Future} returned from the most recent {@code optimizationThreadPool.submit(Runnable)} call.
+   * Note that this does not necessarily refer to a thread that is doing actual optimization
+   * ({@link Optimizer#optimize(Collection, int)}).
+   * This field is currently being used only for testing purposes.
+   */
+  private Future optimizationAttemptResult;
+
   private Future<PlanResult> planExecutionResult;
 
   @Inject
@@ -125,7 +133,7 @@ public final class OptimizationOrchestrator {
                   final String controllerId,
                   final Map<String, Double> controllerMetrics) {
 
-    optimizationThreadPool.submit(new Runnable() {
+    optimizationAttemptResult = optimizationThreadPool.submit(new Runnable() {
       @Override
       public void run() {
         if (isPlanExecuting()) {
@@ -169,6 +177,10 @@ public final class OptimizationOrchestrator {
         throw new RuntimeException(e);
       }
     }
+  }
+
+  Future getOptimizationAttemptResult() {
+    return optimizationAttemptResult;
   }
 
   Future<PlanResult> getPlanExecutionResult() {
