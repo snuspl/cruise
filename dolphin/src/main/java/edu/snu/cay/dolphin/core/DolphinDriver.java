@@ -488,12 +488,13 @@ public final class DolphinDriver {
     final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
     final Configuration outputServiceConf = outputService.getServiceConfiguration();
     final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
+    final Configuration workloadServiceConf = WorkloadQuota.getServiceConfiguration();
     final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
     final Configuration traceConf = traceParameters.getConfiguration();
     final Configuration metricsMessageServiceConf = MetricsMessageSender.getServiceConfiguration();
     return Configurations.merge(
-        userParameters.getServiceConf(), groupCommServiceConf, emServiceConf, metricCollectionServiceConf,
-        outputServiceConf, traceConf, metricsMessageServiceConf);
+        userParameters.getServiceConf(), groupCommServiceConf, workloadServiceConf, emServiceConf,
+        metricCollectionServiceConf, outputServiceConf, traceConf, metricsMessageServiceConf);
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
