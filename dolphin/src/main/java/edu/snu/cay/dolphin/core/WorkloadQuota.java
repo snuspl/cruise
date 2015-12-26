@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 /**
  * A class for representing a workload quota assigned to each evaluator to process in iterations.
  * Each ComputeTask maintain its own local quota.
- * It can be updated by ControllerTask and retrieved by ComputeTasks.
+ * It can be updated by ControllerTask and retrieved by local ComputeTask.
  */
 @EvaluatorSide
 public final class WorkloadQuota {
@@ -69,7 +69,7 @@ public final class WorkloadQuota {
 
   /**
    * UserComputeTask gets own workload quota when starting an iteration.
-   * @return
+   * @return a workload map assigned to this task
    */
   public Map<String, Set<LongRange>> getAll() {
     return typeToRanges;
@@ -78,12 +78,16 @@ public final class WorkloadQuota {
   /**
    * UserComputeTask gets own workload quota of specific type when starting an iteration.
    * @param dataType
-   * @return
+   * @return a range set of dataType
    */
   public Set<LongRange> get(final String dataType) {
     return typeToRanges.get(dataType);
   }
 
+  /**
+   * Returns the service configuration for the Workload Quota.
+   * @return service configuration for the Workload Quota
+   */
   public static Configuration getServiceConfiguration() {
     return ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, WorkloadQuota.class)
