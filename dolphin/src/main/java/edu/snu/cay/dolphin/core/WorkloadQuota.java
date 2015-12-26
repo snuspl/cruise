@@ -72,7 +72,7 @@ public final class WorkloadQuota {
    * @return a workload map assigned to this task
    */
   public Map<String, Set<LongRange>> getAll() {
-    return typeToRanges;
+    return Collections.unmodifiableMap(typeToRanges);
   }
 
   /**
@@ -81,7 +81,11 @@ public final class WorkloadQuota {
    * @return a range set of dataType
    */
   public Set<LongRange> get(final String dataType) {
-    return typeToRanges.get(dataType);
+    final Set<LongRange> rangeset = typeToRanges.get(dataType);
+    if (rangeset == null)
+      return new HashSet<>();
+    else
+      return Collections.unmodifiableSet(rangeset);
   }
 
   /**

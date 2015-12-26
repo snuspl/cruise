@@ -76,11 +76,6 @@ public class LogisticRegMainCmpTask extends UserComputeTask
 
     final Set<LongRange> ranges = workloadQuota.get(dataType);
 
-    if (ranges == null) {
-      LOG.log(Level.INFO, "No {0} type data assigned to this task", dataType);
-      return;
-    }
-
     for (final LongRange range : ranges) {
       final Map<?, Row> rows = memoryStore.getElasticStore().getRange(dataType,
           range.getMinimumLong(), range.getMaximumLong());
