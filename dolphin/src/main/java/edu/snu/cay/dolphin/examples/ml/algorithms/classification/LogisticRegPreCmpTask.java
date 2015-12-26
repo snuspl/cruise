@@ -25,10 +25,11 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.List;
+import java.util.*;
 
 public final class LogisticRegPreCmpTask extends UserComputeTask {
 
@@ -59,7 +60,11 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
     final List<Row> rows = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(rows.size());
-      workloadQuota.register(dataType, ids.get(0), ids.get(ids.size() - 1));
+      final Map<String, Set<LongRange>> workloadMap = new HashMap<>();
+      final Set<LongRange> rangeSet = new HashSet<>();
+      rangeSet.add(new LongRange(ids.get(0).longValue(), ids.size() - 1));
+      workloadMap.put(dataType, rangeSet);
+      workloadQuota.initialize(workloadMap);
       partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
       memoryStore.getElasticStore().putList(dataType, ids, rows);
     } catch (final IdGenerationException e) {

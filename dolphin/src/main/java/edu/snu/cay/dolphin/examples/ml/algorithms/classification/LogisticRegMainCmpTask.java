@@ -34,13 +34,9 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class LogisticRegMainCmpTask extends UserComputeTask
     implements DataReduceSender<LogisticRegSummary>, DataBroadcastReceiver<LinearModel> {
-
-  private static final Logger LOG = Logger.getLogger(LogisticRegMainCmpTask.class.getName());
 
   private double stepSize;
   private final Loss loss;

@@ -22,10 +22,9 @@ import org.apache.reef.tang.Configuration;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A class for representing a workload quota assigned to each evaluator to process in iterations.
@@ -34,37 +33,36 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 public final class WorkloadQuota {
-  private static final Logger LOG = Logger.getLogger(WorkloadQuota.class.getName());
+
+  private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   /**
    * Typed data ids, which represent a workload quota assigned to a single computeTask.
    */
-  private final Map<String, Set<LongRange>> typeToRanges;
-
-  private final ReadWriteLock readWriteLock;
+  private final ConcurrentMap<String, Set<LongRange>> typeToRanges;
 
   @Inject
   public WorkloadQuota() {
-    this.typeToRanges = new HashMap<>();
-    this.readWriteLock = new ReentrantReadWriteLock(true);
+    this.typeToRanges = new ConcurrentHashMap<>();
   }
 
   /**
    * PreComputeTask initializes a local workload quota.
+   * Put all entries of {@code workloadMap} into {@code typeToRanges}
+   * The initialization can be done only once.
+   * @param workloadMap initially assigned to this task
+   * @return true when successfully initialized
    */
-  public void register(final String dataType, final long startId, final long endId) {
-    readWriteLock.writeLock().lock();
-    final Set<LongRange> rangeSet = typeToRanges.get(dataType);
-    if (rangeSet == null) {
-      final Set<LongRange> freshSet = new HashSet<>();
-      freshSet.add(new LongRange(startId, endId));
-      typeToRanges.put(dataType, freshSet);
-      LOG.log(Level.INFO, "Create and put a range set of {0} type into typeToRanges.", dataType);
-    } else {
-      rangeSet.add(new LongRange(startId, endId));
+  public boolean initialize(final Map<String, Set<LongRange>> workloadMap) {
+    if (workloadMap == null) {
+      return false;
     }
-    LOG.log(Level.INFO, "Add a range[{0}, {1}) to a set of {2} type", new Object[]{startId, endId, dataType});
-    readWriteLock.writeLock().unlock();
+    if (!initialized.compareAndSet(false, true)) {
+      return false;
+    }
+
+    typeToRanges.putAll(workloadMap);
+    return true;
   }
 
   /**
@@ -82,10 +80,11 @@ public final class WorkloadQuota {
    */
   public Set<LongRange> get(final String dataType) {
     final Set<LongRange> rangeset = typeToRanges.get(dataType);
-    if (rangeset == null)
+    if (rangeset == null) {
       return new HashSet<>();
-    else
+    } else {
       return Collections.unmodifiableSet(rangeset);
+    }
   }
 
   /**
