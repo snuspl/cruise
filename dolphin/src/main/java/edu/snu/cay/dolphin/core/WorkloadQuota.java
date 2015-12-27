@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A class for representing a workload quota assigned to each evaluator to process in iterations.
- * Each ComputeTask maintain its own local quota.
+ * Each ComputeTask maintains its own local quota.
  * It can be updated by ControllerTask and retrieved by local ComputeTask.
  */
 @EvaluatorSide
@@ -37,7 +37,7 @@ public final class WorkloadQuota {
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   /**
-   * Typed data ids, which represent a workload quota assigned to a single computeTask.
+   * Typed data ids, which represent a workload quota assigned to a single ComputeTask.
    */
   private final ConcurrentMap<String, Set<LongRange>> typeToRanges;
 
@@ -47,8 +47,8 @@ public final class WorkloadQuota {
   }
 
   /**
-   * PreComputeTask initializes a local workload quota.
-   * Put all entries of {@code workloadMap} into {@code typeToRanges}
+   * ControllerTask or PreComputeTask initializes a local workload quota.
+   * Put all entries of {@code workloadMap} into {@code typeToRanges}.
    * The initialization can be done only once.
    * @param workloadMap initially assigned to this task
    * @return true when successfully initialized
@@ -75,7 +75,7 @@ public final class WorkloadQuota {
 
   /**
    * UserComputeTask gets own workload quota of specific type when starting an iteration.
-   * @param dataType
+   * @param dataType a type of data
    * @return a range set of dataType
    */
   public Set<LongRange> get(final String dataType) {

@@ -60,11 +60,14 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
     final List<Row> rows = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(rows.size());
+
+      // Below code assume that dataIdFactory returns consecutive ids
       final Map<String, Set<LongRange>> workloadMap = new HashMap<>();
       final Set<LongRange> rangeSet = new HashSet<>();
       rangeSet.add(new LongRange(ids.get(0).longValue(), ids.size() - 1));
       workloadMap.put(dataType, rangeSet);
       workloadQuota.initialize(workloadMap);
+
       partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
       memoryStore.getElasticStore().putList(dataType, ids, rows);
     } catch (final IdGenerationException e) {
