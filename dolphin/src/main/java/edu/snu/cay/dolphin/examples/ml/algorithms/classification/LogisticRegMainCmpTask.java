@@ -26,7 +26,6 @@ import edu.snu.cay.dolphin.examples.ml.parameters.StepSize;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -41,7 +40,6 @@ public class LogisticRegMainCmpTask extends UserComputeTask
   private final Regularization regularization;
   private final String dataType;
   private final WorkloadPartition workloadPartition;
-  private final MemoryStore memoryStore;
   private LinearModel model;
   private int posNum = 0;
   private int negNum = 0;
@@ -51,14 +49,12 @@ public class LogisticRegMainCmpTask extends UserComputeTask
                                 final Loss loss,
                                 final Regularization regularization,
                                 @Parameter(RowDataType.class) final String dataType,
-                                final WorkloadPartition workloadPartition,
-                                final MemoryStore memoryStore) {
+                                final WorkloadPartition workloadPartition) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
     this.dataType = dataType;
     this.workloadPartition = workloadPartition;
-    this.memoryStore = memoryStore;
   }
 
   @Override
