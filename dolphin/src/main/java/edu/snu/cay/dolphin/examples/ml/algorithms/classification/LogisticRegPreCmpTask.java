@@ -66,8 +66,8 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
       final Set<LongRange> rangeSet = new HashSet<>();
       rangeSet.add(new LongRange(ids.get(0).longValue(), ids.size() - 1));
       workloadMap.put(dataType, rangeSet);
-      workloadPartition.initialize(workloadMap);
 
+      workloadPartition.initialize(workloadMap);
       partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
       memoryStore.getElasticStore().putList(dataType, ids, rows);
     } catch (final IdGenerationException e) {

@@ -37,7 +37,7 @@ public final class WorkloadPartition {
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   /**
-   * Typed data ids, which represent a workload quota assigned to a single ComputeTask.
+   * Typed data ids, which represent a workload partition assigned to a single ComputeTask.
    */
   private final ConcurrentMap<String, Set<LongRange>> typeToRanges;
 
@@ -47,9 +47,9 @@ public final class WorkloadPartition {
   }
 
   /**
-   * ControllerTask or PreComputeTask initializes a local workload quota.
    * Put all entries of {@code workloadMap} into {@code typeToRanges}.
    * The initialization can be done only once.
+   * ControllerTask or PreComputeTask initializes a local workload partition.
    * @param workloadMap initially assigned to this task
    * @return true when successfully initialized
    */
@@ -66,30 +66,40 @@ public final class WorkloadPartition {
   }
 
   /**
-   * UserComputeTask gets own workload quota when starting an iteration.
-   * @return a workload map assigned to this task
+   * Returns all data types that this workload partition holds.
+   * UserComputeTask invokes the method to get the data types that it has to process, when starting an iteration.
+   * @return a set of types composing workload partition
    */
-  public Map<String, Set<LongRange>> getAll() {
-    return Collections.unmodifiableMap(typeToRanges);
-  }
-
-  /**
-   * UserComputeTask gets own workload quota of specific type when starting an iteration.
-   * @param dataType a type of data
-   * @return a range set of dataType
-   */
-  public Set<LongRange> get(final String dataType) {
-    final Set<LongRange> rangeset = typeToRanges.get(dataType);
-    if (rangeset == null) {
+  public Set<String> getDataTypes() {
+    if (!initialized.get()) {
       return new HashSet<>();
     } else {
-      return Collections.unmodifiableSet(rangeset);
+      return Collections.unmodifiableSet(typeToRanges.keySet());
     }
   }
 
   /**
-   * Returns the service configuration for the Workload Quota.
-   * @return service configuration for the Workload Quota
+   * Returns workload partition of specific type.
+   * UserComputeTask invokes the method to retrieve the workload partition, when starting an iteration.
+   * @param dataType a type of data
+   * @return a range set of dataType
+   */
+  public Set<LongRange> get(final String dataType) {
+    if (!initialized.get()) {
+      return new HashSet<>();
+    }
+
+    final Set<LongRange> rangeSet = typeToRanges.get(dataType);
+    if (rangeSet == null) {
+      return new HashSet<>();
+    } else {
+      return Collections.unmodifiableSet(rangeSet);
+    }
+  }
+
+  /**
+   * Returns the service configuration for the Workload Partition.
+   * @return service configuration for the Workload Partition
    */
   public static Configuration getServiceConfiguration() {
     return ServiceConfiguration.CONF
