@@ -72,7 +72,7 @@ public final class WorkloadPartition {
   /**
    * Returns all data types that this workload partition holds.
    * UserComputeTask invokes the method to get the data types that it has to process, when starting an iteration.
-   * @return a set of types composing workload partition
+   * @return an iterator of a set of types composing workload partition
    */
   public Iterator<String> getDataTypes() {
     if (!initialized.get()) {
@@ -86,7 +86,7 @@ public final class WorkloadPartition {
    * Returns workload partition of specific type.
    * UserComputeTask invokes the method to retrieve the workload partition, when starting an iteration.
    * @param dataType a type of data
-   * @return a range set of dataType
+   * @return an iterator of a range set of {@code dataType}
    */
   public Iterator<LongRange> getRanges(final String dataType) {
     if (!initialized.get()) {
@@ -116,10 +116,10 @@ public final class WorkloadPartition {
 
   /**
    * Fetch all data of a certain data type assigned to the task.
-   * The returned map is a shallow copy of the internal data structure of {@code memoryStore}.
+   * The returned map is a aggregated result shallow copy of the internal data structure of {@code memoryStore}.
    * @param dataType string that represents a certain data type
    * @param <T> actual data type
-   * @return a map of data ids and the corresponding data items, retrieved from {@code memorystore}
+   * @return a map of data ids and the corresponding data items, retrieved from {@code memoryStore}
    */
   public <T> Map<Long, T> getAllData(final String dataType) {
     final Set<LongRange> ranges = typeToRanges.get(dataType);
