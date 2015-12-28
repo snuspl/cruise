@@ -27,13 +27,11 @@ import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Map;
-import java.util.Set;
 
 public class LogisticRegMainCmpTask extends UserComputeTask
     implements DataReduceSender<LogisticRegSummary>, DataBroadcastReceiver<LinearModel> {
@@ -70,28 +68,24 @@ public class LogisticRegMainCmpTask extends UserComputeTask
     posNum = 0;
     negNum = 0;
 
-    final Set<LongRange> ranges = workloadPartition.get(dataType);
+    final Map<?, Row> rows = workloadPartition.getAllData(dataType);
 
-    for (final LongRange range : ranges) {
-      final Map<?, Row> rows = memoryStore.getElasticStore().getRange(dataType,
-          range.getMinimumLong(), range.getMaximumLong());
-      for (final Row row : rows.values()) {
-        final double output = row.getOutput();
-        final double predict = model.predict(row.getFeature());
-        if (output * predict > 0) {
-          posNum++;
-        } else {
-          negNum++;
-        }
+    for (final Row row : rows.values()) {
+      final double output = row.getOutput();
+      final double predict = model.predict(row.getFeature());
+      if (output * predict > 0) {
+        posNum++;
+      } else {
+        negNum++;
       }
+    }
 
-      // optimize
-      for (final Row row : rows.values()) {
-        final double output = row.getOutput();
-        final Vector input = row.getFeature();
-        final Vector gradient = loss.gradient(input, model.predict(input), output).plus(regularization.gradient(model));
-        model.setParameters(model.getParameters().minus(gradient.times(stepSize)));
-      }
+    // optimize
+    for (final Row row : rows.values()) {
+      final double output = row.getOutput();
+      final Vector input = row.getFeature();
+      final Vector gradient = loss.gradient(input, model.predict(input), output).plus(regularization.gradient(model));
+      model.setParameters(model.getParameters().minus(gradient.times(stepSize)));
     }
   }
 

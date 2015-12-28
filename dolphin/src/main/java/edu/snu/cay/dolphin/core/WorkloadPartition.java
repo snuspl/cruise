@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.core;
 
 import com.google.common.collect.Iterators;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
@@ -41,9 +42,11 @@ public final class WorkloadPartition {
    * Typed data ids, which represent a workload partition assigned to a single ComputeTask.
    */
   private final ConcurrentMap<String, Set<LongRange>> typeToRanges;
+  private final MemoryStore memoryStore;
 
   @Inject
-  public WorkloadPartition() {
+  public WorkloadPartition(final MemoryStore memoryStore) {
+    this.memoryStore = memoryStore;
     this.typeToRanges = new ConcurrentHashMap<>();
   }
 
@@ -96,6 +99,26 @@ public final class WorkloadPartition {
     } else {
       return new HashSet<>(rangeSet).iterator();
     }
+  }
+
+  /**
+   * Fetch all data of a certain data type assigned to the task.
+   * The returned map is a shallow copy of the internal data structure of {@code memoryStore}.
+   * @param dataType string that represents a certain data type
+   * @param <T> actual data type
+   * @return a map of data ids and the corresponding data items, retrieved from {@code memorystore}
+   */
+  public <T> Map<Long, T> getAllData(final String dataType) {
+    final Set<LongRange> ranges = typeToRanges.get(dataType);
+    final Map<Long, T> dataMap = new HashMap<>();
+
+    for (final LongRange range : ranges) {
+      final Map<Long, T> rangeData = memoryStore.getElasticStore().getRange(dataType,
+          range.getMinimumLong(), range.getMaximumLong());
+      dataMap.putAll(rangeData);
+    }
+
+    return dataMap;
   }
 
   /**
