@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import com.google.common.collect.Iterators;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
@@ -27,8 +28,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * A class for representing a workload quota assigned to each evaluator to process in iterations.
- * Each ComputeTask maintains its own local quota.
+ * A class for representing a workload partition assigned to each evaluator to process in iterations.
+ * Each ComputeTask maintains its own local partition.
  * It can be updated by ControllerTask and retrieved by local ComputeTask.
  */
 @EvaluatorSide
@@ -70,11 +71,11 @@ public final class WorkloadPartition {
    * UserComputeTask invokes the method to get the data types that it has to process, when starting an iteration.
    * @return a set of types composing workload partition
    */
-  public Set<String> getDataTypes() {
+  public Iterator<String> getDataTypes() {
     if (!initialized.get()) {
-      return new HashSet<>();
+      return Iterators.emptyIterator();
     } else {
-      return Collections.unmodifiableSet(typeToRanges.keySet());
+      return new HashSet<>(typeToRanges.keySet()).iterator();
     }
   }
 
@@ -84,16 +85,16 @@ public final class WorkloadPartition {
    * @param dataType a type of data
    * @return a range set of dataType
    */
-  public Set<LongRange> get(final String dataType) {
+  public Iterator<LongRange> getRanges(final String dataType) {
     if (!initialized.get()) {
-      return new HashSet<>();
+      return Iterators.emptyIterator();
     }
 
     final Set<LongRange> rangeSet = typeToRanges.get(dataType);
     if (rangeSet == null) {
-      return new HashSet<>();
+      return Iterators.emptyIterator();
     } else {
-      return Collections.unmodifiableSet(rangeSet);
+      return new HashSet<>(rangeSet).iterator();
     }
   }
 
