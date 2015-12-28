@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
 import edu.snu.cay.dolphin.core.UserComputeTask;
-import edu.snu.cay.dolphin.core.WorkloadQuota;
+import edu.snu.cay.dolphin.core.WorkloadPartition;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
@@ -42,7 +42,7 @@ public class LogisticRegMainCmpTask extends UserComputeTask
   private final Loss loss;
   private final Regularization regularization;
   private final String dataType;
-  private final WorkloadQuota workloadQuota;
+  private final WorkloadPartition workloadPartition;
   private final MemoryStore memoryStore;
   private LinearModel model;
   private int posNum = 0;
@@ -53,13 +53,13 @@ public class LogisticRegMainCmpTask extends UserComputeTask
                                 final Loss loss,
                                 final Regularization regularization,
                                 @Parameter(RowDataType.class) final String dataType,
-                                final WorkloadQuota workloadQuota,
+                                final WorkloadPartition workloadPartition,
                                 final MemoryStore memoryStore) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
     this.dataType = dataType;
-    this.workloadQuota = workloadQuota;
+    this.workloadPartition = workloadPartition;
     this.memoryStore = memoryStore;
   }
 
@@ -70,7 +70,7 @@ public class LogisticRegMainCmpTask extends UserComputeTask
     posNum = 0;
     negNum = 0;
 
-    final Set<LongRange> ranges = workloadQuota.get(dataType);
+    final Set<LongRange> ranges = workloadPartition.get(dataType);
 
     for (final LongRange range : ranges) {
       final Map<?, Row> rows = memoryStore.getElasticStore().getRange(dataType,

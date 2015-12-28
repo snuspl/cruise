@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * It can be updated by ControllerTask and retrieved by local ComputeTask.
  */
 @EvaluatorSide
-public final class WorkloadQuota {
+public final class WorkloadPartition {
 
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
@@ -42,7 +42,7 @@ public final class WorkloadQuota {
   private final ConcurrentMap<String, Set<LongRange>> typeToRanges;
 
   @Inject
-  public WorkloadQuota() {
+  public WorkloadPartition() {
     this.typeToRanges = new ConcurrentHashMap<>();
   }
 
@@ -93,7 +93,7 @@ public final class WorkloadQuota {
    */
   public static Configuration getServiceConfiguration() {
     return ServiceConfiguration.CONF
-        .set(ServiceConfiguration.SERVICES, WorkloadQuota.class)
+        .set(ServiceConfiguration.SERVICES, WorkloadPartition.class)
         .build();
   }
 }

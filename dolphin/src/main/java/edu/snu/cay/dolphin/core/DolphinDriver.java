@@ -488,7 +488,7 @@ public final class DolphinDriver {
     final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
     final Configuration outputServiceConf = outputService.getServiceConfiguration();
     final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
-    final Configuration workloadServiceConf = WorkloadQuota.getServiceConfiguration();
+    final Configuration workloadServiceConf = WorkloadPartition.getServiceConfiguration();
     final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
     final Configuration traceConf = traceParameters.getConfiguration();
     final Configuration metricsMessageServiceConf = MetricsMessageSender.getServiceConfiguration();

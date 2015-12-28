@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.UserComputeTask;
-import edu.snu.cay.dolphin.core.WorkloadQuota;
+import edu.snu.cay.dolphin.core.WorkloadPartition;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
 import edu.snu.cay.dolphin.examples.ml.data.RowDataType;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -35,7 +35,7 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
 
   private final String dataType;
   private final DataParser<List<Row>> dataParser;
-  private final WorkloadQuota workloadQuota;
+  private final WorkloadPartition workloadPartition;
   private final MemoryStore memoryStore;
   private final PartitionTracker partitionTracker;
   private final DataIdFactory<Long> dataIdFactory;
@@ -43,13 +43,13 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
   @Inject
   private LogisticRegPreCmpTask(@Parameter(RowDataType.class) final String dataType,
                                 final DataParser<List<Row>> dataParser,
-                                final WorkloadQuota workloadQuota,
+                                final WorkloadPartition workloadPartition,
                                 final MemoryStore memoryStore,
                                 final PartitionTracker partitionTracker,
                                 final DataIdFactory<Long> dataIdFactory) {
     this.dataType = dataType;
     this.dataParser = dataParser;
-    this.workloadQuota = workloadQuota;
+    this.workloadPartition = workloadPartition;
     this.memoryStore = memoryStore;
     this.partitionTracker = partitionTracker;
     this.dataIdFactory = dataIdFactory;
@@ -66,7 +66,7 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
       final Set<LongRange> rangeSet = new HashSet<>();
       rangeSet.add(new LongRange(ids.get(0).longValue(), ids.size() - 1));
       workloadMap.put(dataType, rangeSet);
-      workloadQuota.initialize(workloadMap);
+      workloadPartition.initialize(workloadMap);
 
       partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
       memoryStore.getElasticStore().putList(dataType, ids, rows);
