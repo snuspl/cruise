@@ -71,7 +71,7 @@ public final class WorkloadPartition {
   /**
    * Returns all data types that this workload partition holds.
    * UserComputeTask invokes the method to get the data types that it has to process, when starting an iteration.
-   * @return a set of types composing workload partition
+   * @return a set of types composing this workload partition
    */
   public Set<String> getDataTypes() {
 
@@ -103,7 +103,7 @@ public final class WorkloadPartition {
 
   /**
    * Fetch all data of a certain data type assigned to the task.
-   * The returned map is a aggregated result shallow copy of the internal data structure of {@code memoryStore}.
+   * The returned map is an aggregated result of shallow copies of the internal data structure in {@code memoryStore}.
    * @param dataType string that represents a certain data type
    * @param <T> actual data type
    * @return a map of data ids and the corresponding data items, retrieved from {@code memoryStore}
