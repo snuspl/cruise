@@ -101,19 +101,6 @@ public final class WorkloadPartition {
   }
 
   /**
-   * Returns whole workload partition assigned to the task.
-   * UserComputeTask invokes the method to retrieve the workload partition, when starting an iteration.
-   * @return an iterator of an entry set of a data type and corresponding range sets
-   */
-  public Iterator<Map.Entry<String, Set<LongRange>>> getAll() {
-    if (!initialized.get()) {
-      return Collections.emptyIterator();
-    }
-
-    return new HashSet<>(typeToRanges.entrySet()).iterator();
-  }
-
-  /**
    * Fetch all data of a certain data type assigned to the task.
    * The returned map is a aggregated result shallow copy of the internal data structure of {@code memoryStore}.
    * @param dataType string that represents a certain data type
