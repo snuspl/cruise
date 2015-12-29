@@ -81,7 +81,7 @@ public final class WorkloadPartition {
 
     // return a deep copy of keySet
     final Set dataTypeSet = new HashSet<>();
-    for (String dataType : typeToRanges.keySet()) {
+    for (final String dataType : typeToRanges.keySet()) {
       dataTypeSet.add(new String(dataType));
     }
     return dataTypeSet;
