@@ -47,7 +47,7 @@ public class LinearModelConvEuclidean implements  LinearModelConvCond {
   }
 
   public final double distance(final Vector v1, final Vector v2) {
-    // After #294 is resolved, this method will use EuclideanDistance.distance()
+    // TODO #294: After #294 is resolved, this method will use EuclideanDistance.distance()
     final Vector diff = v1.sub(v2);
     return Math.sqrt(diff.dot(diff));
   }

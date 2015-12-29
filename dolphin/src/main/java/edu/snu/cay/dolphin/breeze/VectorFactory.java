@@ -28,6 +28,7 @@ import javax.inject.Inject;
  */
 public final class VectorFactory {
 
+  // If we want to use Scala object(singleton) in Java, we should use $ sign.
   private static final ClassTag TAG = ClassTag$.MODULE$.Double();
   private static final Zero ZERO = Zero$.MODULE$.forClass(Double.TYPE);
 
@@ -35,10 +36,20 @@ public final class VectorFactory {
   private VectorFactory() {
   }
 
+  /**
+   * Creates a dense vector with specified length.
+   * @param length vector length
+   * @return created vector
+   */
   public DenseVector newDenseVector(final int length) {
     return new DenseVector(new breeze.linalg.DenseVector<Double>(length, TAG));
   }
 
+  /**
+   * Creates a dense vector with given values.
+   * @param data elements of a vector
+   * @return created vector
+   */
   public DenseVector newDenseVector(final double[] data) {
     final breeze.linalg.DenseVector dv = new breeze.linalg.DenseVector(data.length, TAG);
     for (int i = 0; i < data.length; i++) {
@@ -47,10 +58,22 @@ public final class VectorFactory {
     return new DenseVector(dv);
   }
 
+  /**
+   * Creates a sparse vector with specified length.
+   * @param length vector length
+   * @return created vector
+   */
   public SparseVector newSparseVector(final int length) {
     return new SparseVector(new breeze.linalg.SparseVector(new SparseArray(length, TAG, ZERO), ZERO));
   }
 
+  /**
+   * Creates a sparse vector with given indices, values, and length.
+   * @param index indices of vector elements
+   * @param data elements of a vector
+   * @param length vector length
+   * @return created vector
+   */
   public SparseVector newSparseVector(final int[] index, final double[] data, final int length) {
     assert (index.length == data.length);
     final breeze.linalg.SparseVector sv = new breeze.linalg.SparseVector(new SparseArray(length, TAG, ZERO), ZERO);

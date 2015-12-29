@@ -22,6 +22,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
+/**
+ * This tests vector operations.
+ */
 public final class VectorOpsTest {
 
   private VectorFactory factory;
@@ -35,6 +38,9 @@ public final class VectorOpsTest {
     }
   }
 
+  /**
+   * Tests dense vector operations work well as intended.
+   */
   @Test
   public void testDenseVector() {
     final double[] value1 = {0.1, 0.2, 0.3, 0.4, 0.5};
@@ -62,6 +68,9 @@ public final class VectorOpsTest {
     assertEquals(addScaleVec, vec1);
   }
 
+  /**
+   * Tests sparse vector operations work well as intended.
+   */
   @Test
   public void testSparseVector() {
     final int[] index1 = {0, 1, 2, 3, 4};

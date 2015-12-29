@@ -22,96 +22,96 @@ public interface Vector extends Iterable<VectorEntry> {
 
   /**
    * Returns the number of elements in vector.
-   * @return
+   * @return number of elements
    */
   int length();
 
   /**
    * Returns the number of active elements in vector.
-   * @return
+   * @return number of active elements
    */
   int activeSize();
 
   /**
    * Returns true if the vector is dense, false if sparse.
-   * @return
+   * @return true if the vector is dense, false if sparse
    */
   boolean isDense();
 
   /**
    * Gets an element specified by given index.
    * @param index an index in range [0, length)
-   * @return
+   * @return element specified by given index
    */
   double get(int index);
 
   /**
    * Sets an element to given value.
    * @param index an index in range [0, length)
-   * @param value
+   * @param value value to be set
    */
   void set(int index, double value);
 
   /**
    * Returns a new vector same as this one.
-   * @return
+   * @return copied new vector
    */
   Vector copy();
 
   /**
    * Element-wise vector addition (in place).
-   * @param vector
-   * @return
+   * @param vector operand vector
+   * @return operation result
    */
   Vector addi(Vector vector);
 
   /**
    * Element-wise vector addition.
-   * @param vector
-   * @return
+   * @param vector operand vector
+   * @return operation result
    */
   Vector add(Vector vector);
 
   /**
    * Element-wise vector subtraction (in place).
-   * @param vector
-   * @return
+   * @param vector operand vector
+   * @return operation result
    */
   Vector subi(Vector vector);
 
   /**
    * Element-wise vector subtraction.
-   * @param vector
-   * @return
+   * @param vector operand vector
+   * @return operation result
    */
   Vector sub(Vector vector);
 
   /**
    * Multiplies a scala to all elements (in place).
-   * @param value
-   * @return
+   * @param value operand scala
+   * @return operation result
    */
   Vector scalei(double value);
 
   /**
    * Multiplies a scala to all elements.
-   * @param value
-   * @return
+   * @param value operand scala
+   * @return operation result
    */
   Vector scale(double value);
 
   /**
    * In place axpy (y += a * x) operation.
-   * @param value
-   * @param vector
-   * @return
+   * @param value operand a
+   * @param vector operand x
+   * @return operation result
    */
   Vector axpy(double value, Vector vector);
 
   /**
    * Computes inner product.
-   * @param vector
-   * @return
+   * @param vector operand vector
+   * @return operation result
    */
   double dot(Vector vector);
 }

@@ -22,13 +22,13 @@ public interface VectorEntry {
 
   /**
    * Returns the index of this element.
-   * @return
+   * @return index
    */
   int index();
 
   /**
    * Returns the value of this element.
-   * @return
+   * @return value
    */
   double value();
 }

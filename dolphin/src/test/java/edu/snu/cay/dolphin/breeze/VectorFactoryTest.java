@@ -22,6 +22,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
+/**
+ * This tests {@link VectorFactory}.
+ */
 public final class VectorFactoryTest {
 
   private VectorFactory factory;
@@ -35,8 +38,11 @@ public final class VectorFactoryTest {
     }
   }
 
+  /**
+   * Tests {@link VectorFactory} creates {@link DenseVector} as intended.
+   */
   @Test
-  public void testDense() {
+  public void testDenseVector() {
     final double[] value = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
     final Vector vec1 = factory.newDenseVector(10);
     final Vector vec2 = factory.newDenseVector(value);
@@ -50,8 +56,11 @@ public final class VectorFactoryTest {
     }
   }
 
+  /**
+   * Tests {@link VectorFactory} creates {@link SparseVector} as intended.
+   */
   @Test
-  public void testSparseZeros() {
+  public void testSparseVector() {
     final int[] index = {1, 3, 5, 7};
     final double[] value = {0.1, 0.2, 0.3, 0.4};
     final Vector vec1 = factory.newSparseVector(10);

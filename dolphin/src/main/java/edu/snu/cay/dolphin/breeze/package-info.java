@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Java-wrapped breeze package.
+ * Breeze Java wrapper package.
  */
 package edu.snu.cay.dolphin.breeze;
