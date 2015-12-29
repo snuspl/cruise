@@ -71,32 +71,38 @@ public final class WorkloadPartition {
   /**
    * Returns all data types that this workload partition holds.
    * UserComputeTask invokes the method to get the data types that it has to process, when starting an iteration.
-   * @return an iterator of a set of types composing workload partition
+   * @return a set of types composing workload partition
    */
-  public Iterator<String> getDataTypes() {
+  public Set<String> getDataTypes() {
+
     if (!initialized.get()) {
-      return Collections.emptyIterator();
-    } else {
-      return new HashSet<>(typeToRanges.keySet()).iterator();
+      return Collections.emptySet();
     }
+
+    // return a deep copy of keySet
+    final Set dataTypeSet = new HashSet<>();
+    for (String dataType : typeToRanges.keySet()) {
+      dataTypeSet.add(new String(dataType));
+    }
+    return dataTypeSet;
   }
 
   /**
    * Returns workload partition of specific type.
    * UserComputeTask invokes the method to retrieve the workload partition, when starting an iteration.
    * @param dataType a type of data
-   * @return an iterator of a range set of {@code dataType}
+   * @return a range set of {@code dataType}
    */
-  public Iterator<LongRange> getRanges(final String dataType) {
+  public Set<LongRange> getRanges(final String dataType) {
     if (!initialized.get()) {
-      return Collections.emptyIterator();
+      return Collections.emptySet();
     }
 
     final Set<LongRange> rangeSet = typeToRanges.get(dataType);
     if (rangeSet == null) {
-      return Collections.emptyIterator();
+      return Collections.emptySet();
     } else {
-      return new HashSet<>(rangeSet).iterator();
+      return Collections.unmodifiableSet(rangeSet);
     }
   }
 
