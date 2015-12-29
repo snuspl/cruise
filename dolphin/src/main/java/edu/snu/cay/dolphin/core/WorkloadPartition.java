@@ -117,10 +117,12 @@ public final class WorkloadPartition {
     final Set<LongRange> ranges = typeToRanges.get(dataType);
     final Map<Long, T> dataMap = new HashMap<>();
 
-    for (final LongRange range : ranges) {
-      final Map<Long, T> rangeData = memoryStore.getElasticStore().getRange(dataType,
-          range.getMinimumLong(), range.getMaximumLong());
-      dataMap.putAll(rangeData);
+    if (ranges != null) {
+      for (final LongRange range : ranges) {
+        final Map<Long, T> rangeData = memoryStore.getElasticStore().getRange(dataType,
+            range.getMinimumLong(), range.getMaximumLong());
+        dataMap.putAll(rangeData);
+      }
     }
 
     return dataMap;
