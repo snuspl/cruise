@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import com.google.common.collect.Iterators;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -76,7 +75,7 @@ public final class WorkloadPartition {
    */
   public Iterator<String> getDataTypes() {
     if (!initialized.get()) {
-      return Iterators.emptyIterator();
+      return Collections.emptyIterator();
     } else {
       return new HashSet<>(typeToRanges.keySet()).iterator();
     }
@@ -90,12 +89,12 @@ public final class WorkloadPartition {
    */
   public Iterator<LongRange> getRanges(final String dataType) {
     if (!initialized.get()) {
-      return Iterators.emptyIterator();
+      return Collections.emptyIterator();
     }
 
     final Set<LongRange> rangeSet = typeToRanges.get(dataType);
     if (rangeSet == null) {
-      return Iterators.emptyIterator();
+      return Collections.emptyIterator();
     } else {
       return new HashSet<>(rangeSet).iterator();
     }
@@ -108,7 +107,7 @@ public final class WorkloadPartition {
    */
   public Iterator<Map.Entry<String, Set<LongRange>>> getAll() {
     if (!initialized.get()) {
-      return Iterators.emptyIterator();
+      return Collections.emptyIterator();
     }
 
     return new HashSet<>(typeToRanges.entrySet()).iterator();
