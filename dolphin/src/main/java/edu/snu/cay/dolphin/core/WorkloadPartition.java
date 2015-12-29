@@ -77,14 +77,9 @@ public final class WorkloadPartition {
 
     if (!initialized.get()) {
       return Collections.emptySet();
+    } else {
+      return Collections.unmodifiableSet(typeToRanges.keySet());
     }
-
-    // return a deep copy of keySet
-    final Set dataTypeSet = new HashSet<>();
-    for (final String dataType : typeToRanges.keySet()) {
-      dataTypeSet.add(new String(dataType));
-    }
-    return dataTypeSet;
   }
 
   /**
