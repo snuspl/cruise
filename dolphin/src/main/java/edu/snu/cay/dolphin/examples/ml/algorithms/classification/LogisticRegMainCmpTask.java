@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
 import edu.snu.cay.dolphin.core.UserComputeTask;
+import edu.snu.cay.dolphin.core.WorkloadPartition;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
@@ -25,7 +26,6 @@ import edu.snu.cay.dolphin.examples.ml.parameters.StepSize;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -35,12 +35,11 @@ import java.util.Map;
 public class LogisticRegMainCmpTask extends UserComputeTask
     implements DataReduceSender<LogisticRegSummary>, DataBroadcastReceiver<LinearModel> {
 
-
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
   private final String dataType;
-  private final MemoryStore memoryStore;
+  private final WorkloadPartition workloadPartition;
   private LinearModel model;
   private int posNum = 0;
   private int negNum = 0;
@@ -50,12 +49,12 @@ public class LogisticRegMainCmpTask extends UserComputeTask
                                 final Loss loss,
                                 final Regularization regularization,
                                 @Parameter(RowDataType.class) final String dataType,
-                                final MemoryStore memoryStore) {
+                                final WorkloadPartition workloadPartition) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
     this.dataType = dataType;
-    this.memoryStore = memoryStore;
+    this.workloadPartition = workloadPartition;
   }
 
   @Override
@@ -64,7 +63,9 @@ public class LogisticRegMainCmpTask extends UserComputeTask
     // measure accuracy
     posNum = 0;
     negNum = 0;
-    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(dataType);
+
+    final Map<?, Row> rows = workloadPartition.getAllData(dataType);
+
     for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());
