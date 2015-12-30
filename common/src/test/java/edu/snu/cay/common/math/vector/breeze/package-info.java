@@ -13,28 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.examples.ml.loss;
-
-import edu.snu.cay.common.math.vector.Vector;
-
-import javax.inject.Inject;
-
 /**
- * Represents regularize function for hinge regularize (mainly used in Support Vector Machines).
+ * Tests for java-wrapped breeze classes.
  */
-public final class HingeLoss implements Loss {
-
-  @Inject
-  public HingeLoss() {
-  }
-
-  @Override
-  public double loss(final double predict, final double output) {
-    return Math.max(0, 1 - output * predict);
-  }
-
-  @Override
-  public Vector gradient(final Vector feature, final double predict, final double output) {
-    return feature.scale(predict * output >= 1 ? 0 : -output);
-  }
-}
+package edu.snu.cay.common.math.vector.breeze;

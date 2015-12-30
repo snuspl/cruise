@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.loss;
 
-import org.apache.mahout.math.Vector;
+import edu.snu.cay.common.math.vector.Vector;
 
 import javax.inject.Inject;
 
@@ -35,6 +35,6 @@ public final class SquareLoss implements Loss {
 
   @Override
   public Vector gradient(final Vector feature, final double predict, final double output) {
-    return feature.times(predict - output);
+    return feature.scale(predict - output);
   }
 }

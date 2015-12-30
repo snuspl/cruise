@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
+import edu.snu.cay.common.math.vector.Vector;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.core.WorkloadPartition;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
@@ -26,7 +27,6 @@ import edu.snu.cay.dolphin.examples.ml.parameters.StepSize;
 import edu.snu.cay.dolphin.examples.ml.regularization.Regularization;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -80,8 +80,8 @@ public class LogisticRegMainCmpTask extends UserComputeTask
     for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final Vector input = row.getFeature();
-      final Vector gradient = loss.gradient(input, model.predict(input), output).plus(regularization.gradient(model));
-      model.setParameters(model.getParameters().minus(gradient.times(stepSize)));
+      final Vector gradient = loss.gradient(input, model.predict(input), output).add(regularization.gradient(model));
+      model.setParameters(model.getParameters().sub(gradient.scale(stepSize)));
     }
   }
 

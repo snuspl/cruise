@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
+import edu.snu.cay.common.math.vector.Vector;
+import edu.snu.cay.common.math.vector.VectorFactory;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.examples.ml.parameters.Dimension;
 import edu.snu.cay.dolphin.core.DataParser;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
@@ -39,15 +39,18 @@ public final class RegressionDataParser implements DataParser<List<Row>> {
   private final AtomicInteger count = new AtomicInteger(0);
   private final int dimension;
   private final DataSet<LongWritable, Text> dataSet;
+  private final VectorFactory vectorFactory;
   private List<Row> result;
   private ParseException parseException;
 
   @Inject
   public RegressionDataParser(
       @Parameter(Dimension.class) final int dimension,
-      final DataSet<LongWritable, Text> dataSet) {
+      final DataSet<LongWritable, Text> dataSet,
+      final VectorFactory vectorFactory) {
     this.dimension = dimension;
     this.dataSet = dataSet;
+    this.vectorFactory = vectorFactory;
   }
 
   @Override
@@ -83,7 +86,7 @@ public final class RegressionDataParser implements DataParser<List<Row>> {
       }
 
       final double output;
-      final Vector feature = new DenseVector(split.length);
+      final Vector feature = vectorFactory.newDenseVector(split.length);
       try {
         output = Double.valueOf(split[dimension]);
         for (int i = 0; i < dimension; i++) {

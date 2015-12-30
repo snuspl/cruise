@@ -15,10 +15,11 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
+import edu.snu.cay.common.math.vector.Vector;
+import edu.snu.cay.common.math.vector.VectorFactory;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.Vector;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -35,11 +36,14 @@ public final class DenseRowCodecTest {
 
   private DenseRowCodec denseRowCodec;
   private Random random;
+  private VectorFactory vectorFactory;
 
   @Before
   public void setUp() throws InjectionException {
-    this.denseRowCodec = Tang.Factory.getTang().newInjector().getInstance(DenseRowCodec.class);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    this.denseRowCodec = injector.getInstance(DenseRowCodec.class);
     this.random = RandomUtils.getRandom();
+    this.vectorFactory = injector.getInstance(VectorFactory.class);
   }
 
   private Row generateDenseRow(final int featureSize) {
@@ -49,7 +53,7 @@ public final class DenseRowCodecTest {
     for (int i = 0; i < featureSize; i++) {
       featureArray[i] = random.nextDouble();
     }
-    final Vector feature = new DenseVector(featureArray);
+    final Vector feature = vectorFactory.newDenseVector(featureArray);
 
     return new Row(output, feature);
   }

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
+import edu.snu.cay.common.math.vector.VectorFactory;
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.converge.LinearModelConvCond;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
@@ -24,8 +25,6 @@ import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.examples.ml.parameters.IsDenseVector;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
-import org.apache.mahout.math.DenseVector;
-import org.apache.mahout.math.SequentialAccessSparseVector;
 import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -48,6 +47,7 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
   @Inject
   public LogisticRegMainCtrlTask(final OutputStreamProvider outputStreamProvider,
                                  final LinearModelConvCond convergeCondition,
+                                 final VectorFactory vectorFactory,
                                  @Parameter(MaxIterations.class) final int maxIter,
                                  @Parameter(Dimension.class) final int dimension,
                                  @Parameter(IsDenseVector.class) final boolean isDenseVector) {
@@ -55,7 +55,7 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;
     this.model = new LinearModel(
-        isDenseVector ? new DenseVector(dimension + 1) : new SequentialAccessSparseVector(dimension + 1));
+        isDenseVector ? vectorFactory.newDenseVector(dimension + 1) : vectorFactory.newSparseVector(dimension + 1));
   }
   
   @Override
@@ -78,7 +78,7 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
   public void receiveReduceData(final int iteration, final LogisticRegSummary summary) {
     this.accuracy = ((double) summary.getPosNum()) / (summary.getPosNum() + summary.getNegNum());
     this.model = new LinearModel(summary.getModel().getParameters()
-        .times(1.0 / summary.getCount()));
+        .scale(1.0 / summary.getCount()));
   }
 
   @Override

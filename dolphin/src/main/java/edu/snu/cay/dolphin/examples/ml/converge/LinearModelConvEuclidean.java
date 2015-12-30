@@ -15,10 +15,9 @@
  */
 package edu.snu.cay.dolphin.examples.ml.converge;
 
+import edu.snu.cay.common.math.vector.Vector;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
-import edu.snu.cay.dolphin.examples.ml.data.EuclideanDistance;
 import edu.snu.cay.dolphin.examples.ml.parameters.ConvergenceThreshold;
-import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -31,20 +30,16 @@ import javax.inject.Inject;
 public class LinearModelConvEuclidean implements  LinearModelConvCond {
   private LinearModel oldModel;
   private final double convergenceThreshold;
-  private final EuclideanDistance euclideanDistance;
 
   @Inject
-  public LinearModelConvEuclidean(
-      final EuclideanDistance euclideanDistance,
-      @Parameter(ConvergenceThreshold.class) final double convergenceThreshold) {
-    this.euclideanDistance = euclideanDistance;
+  public LinearModelConvEuclidean(@Parameter(ConvergenceThreshold.class) final double convergenceThreshold) {
     this.convergenceThreshold = convergenceThreshold;
   }
 
   @Override
   public final boolean checkConvergence(final LinearModel model) {
     if (oldModel == null) {
-      oldModel = new LinearModel(model.getParameters().clone());
+      oldModel = new LinearModel(model.getParameters().copy());
       return false;
     } else {
       return distance(oldModel.getParameters(), model.getParameters()) < convergenceThreshold;
@@ -52,6 +47,8 @@ public class LinearModelConvEuclidean implements  LinearModelConvCond {
   }
 
   public final double distance(final Vector v1, final Vector v2) {
-    return euclideanDistance.distance(v1, v2);
+    // TODO #294: After #294 is resolved, this method will use EuclideanDistance.distance()
+    final Vector diff = v1.sub(v2);
+    return Math.sqrt(diff.dot(diff));
   }
 }

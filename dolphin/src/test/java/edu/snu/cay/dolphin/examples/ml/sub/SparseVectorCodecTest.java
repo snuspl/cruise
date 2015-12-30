@@ -15,9 +15,10 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
+import edu.snu.cay.common.math.vector.Vector;
+import edu.snu.cay.common.math.vector.VectorFactory;
 import org.apache.mahout.common.RandomUtils;
-import org.apache.mahout.math.SequentialAccessSparseVector;
-import org.apache.mahout.math.Vector;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -31,17 +32,20 @@ public final class SparseVectorCodecTest {
 
   private SparseVectorCodec sparseVectorCodec;
   private Random random;
+  private VectorFactory vectorFactory;
 
   @Before
   public void setUp() throws InjectionException {
-    this.sparseVectorCodec = Tang.Factory.getTang().newInjector().getInstance(SparseVectorCodec.class);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    this.sparseVectorCodec = injector.getInstance(SparseVectorCodec.class);
     this.random = RandomUtils.getRandom();
+    this.vectorFactory = injector.getInstance(VectorFactory.class);
   }
 
   private Vector generateSparseVector(final int cardinality, final int size) {
-    final Vector ret = new SequentialAccessSparseVector(cardinality, size);
+    final Vector ret = vectorFactory.newSparseVector(cardinality);
     for (int i = 0; i < size; ++i) {
-      ret.set(random.nextInt(ret.size()), random.nextGaussian());
+      ret.set(random.nextInt(ret.length()), random.nextGaussian());
     }
     return ret;
   }

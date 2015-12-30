@@ -13,28 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.examples.ml.loss;
-
-import edu.snu.cay.common.math.vector.Vector;
-
-import javax.inject.Inject;
+package edu.snu.cay.common.math.vector;
 
 /**
- * Represents regularize function for hinge regularize (mainly used in Support Vector Machines).
+ * Class for vector iteration.
  */
-public final class HingeLoss implements Loss {
+public interface VectorEntry {
 
-  @Inject
-  public HingeLoss() {
-  }
+  /**
+   * Returns the index of this element.
+   * @return index
+   */
+  int index();
 
-  @Override
-  public double loss(final double predict, final double output) {
-    return Math.max(0, 1 - output * predict);
-  }
-
-  @Override
-  public Vector gradient(final Vector feature, final double predict, final double output) {
-    return feature.scale(predict * output >= 1 ? 0 : -output);
-  }
+  /**
+   * Returns the value of this element.
+   * @return value
+   */
+  double value();
 }

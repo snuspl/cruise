@@ -81,6 +81,11 @@
       <artifactId>ojalgo</artifactId>
     </dependency>
     <dependency>
+      <groupId>${project.parent.groupId}</groupId>
+      <artifactId>cay-common</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
       <groupId>${project.parent.groupId}.services</groupId>
       <artifactId>elastic-memory</artifactId>
       <version>${project.parent.version}</version>
