@@ -18,21 +18,24 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.UserComputeTask;
+import edu.snu.cay.dolphin.core.WorkloadPartition;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
 import edu.snu.cay.dolphin.examples.ml.data.RowDataType;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.List;
+import java.util.*;
 
 public final class LogisticRegPreCmpTask extends UserComputeTask {
 
   private final String dataType;
   private final DataParser<List<Row>> dataParser;
+  private final WorkloadPartition workloadPartition;
   private final MemoryStore memoryStore;
   private final PartitionTracker partitionTracker;
   private final DataIdFactory<Long> dataIdFactory;
@@ -40,11 +43,13 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
   @Inject
   private LogisticRegPreCmpTask(@Parameter(RowDataType.class) final String dataType,
                                 final DataParser<List<Row>> dataParser,
+                                final WorkloadPartition workloadPartition,
                                 final MemoryStore memoryStore,
                                 final PartitionTracker partitionTracker,
                                 final DataIdFactory<Long> dataIdFactory) {
     this.dataType = dataType;
     this.dataParser = dataParser;
+    this.workloadPartition = workloadPartition;
     this.memoryStore = memoryStore;
     this.partitionTracker = partitionTracker;
     this.dataIdFactory = dataIdFactory;
@@ -55,6 +60,14 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
     final List<Row> rows = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(rows.size());
+
+      // Below code assume that dataIdFactory returns consecutive ids
+      final Map<String, Set<LongRange>> workloadMap = new HashMap<>();
+      final Set<LongRange> rangeSet = new HashSet<>();
+      rangeSet.add(new LongRange(ids.get(0).longValue(), ids.size() - 1));
+      workloadMap.put(dataType, rangeSet);
+
+      workloadPartition.initialize(workloadMap);
       partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
       memoryStore.getElasticStore().putList(dataType, ids, rows);
     } catch (final IdGenerationException e) {
