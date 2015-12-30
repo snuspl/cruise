@@ -31,11 +31,10 @@ import org.apache.reef.driver.task.RunningTask;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -57,9 +56,21 @@ public final class OptimizationOrchestrator {
   private final PlanExecutor planExecutor;
   private final List<StageInfo> stageInfoList;
 
-  private final Map<String, MetricsReceiver> iterationIdToMetrics;
+  private final ConcurrentMap<String, MetricsReceiver> iterationIdToMetrics;
 
   private final AtomicInteger numTasks = new AtomicInteger(0);
+
+  private final AtomicBoolean generatingOptimizationPlan = new AtomicBoolean(false);
+
+  private final ExecutorService optimizationThreadPool;
+
+  /**
+   * The {@link Future} returned from the most recent {@code optimizationThreadPool.submit(Runnable)} call.
+   * Note that this does not necessarily refer to a thread that is doing actual optimization
+   * ({@link Optimizer#optimize(Collection, int)}).
+   * This field is currently being used only for testing purposes.
+   */
+  private Future optimizationAttemptResult;
 
   private Future<PlanResult> planExecutionResult;
 
@@ -71,31 +82,54 @@ public final class OptimizationOrchestrator {
     this.planExecutor = planExecutor;
     this.stageInfoList = userJobInfo.getStageInfoList();
 
-    this.iterationIdToMetrics = new HashMap<>();
+    this.iterationIdToMetrics = new ConcurrentHashMap<>();
+    this.optimizationThreadPool = Executors.newSingleThreadExecutor();
   }
 
-  public synchronized void receiveComputeMetrics(final String contextId,
-                                                 final String groupName,
-                                                 final int iteration,
-                                                 final Map<String, Double> metrics,
-                                                 final List<DataInfo> dataInfos) {
+  /**
+   * Hand a set of metrics from a certain compute task to this orchestrator.
+   *
+   * @param contextId the id of the context below the compute task, from which the metrics were generated
+   * @param groupName name of the communication group that the compute task is in
+   * @param iteration the iteration the metrics were generated
+   * @param metrics the set of metrics to give
+   * @param dataInfos list of {@link DataInfo}s of the compute task
+   */
+  public void receiveComputeMetrics(final String contextId,
+                                    final String groupName,
+                                    final int iteration,
+                                    final Map<String, Double> metrics,
+                                    final List<DataInfo> dataInfos) {
     getIterationMetrics(groupName, iteration).addCompute(contextId, metrics, dataInfos);
   }
 
-  public synchronized void receiveControllerMetrics(final String contextId,
-                                                    final String groupName,
-                                                    final int iteration,
-                                                    final Map<String, Double> metrics) {
+  /**
+   * Hand a set of metrics from the controller task to this orchestrator.
+   *
+   * @param contextId the id of the context below the controller task, from which the metrics were generated
+   * @param groupName name of the communication group that the controller task is in
+   * @param iteration the iteration the metrics were generated
+   * @param metrics the set of metrics to give
+   */
+  public void receiveControllerMetrics(final String contextId,
+                                       final String groupName,
+                                       final int iteration,
+                                       final Map<String, Double> metrics) {
     getIterationMetrics(groupName, iteration).addController(contextId, metrics);
   }
 
   private MetricsReceiver getIterationMetrics(final String groupName, final int iteration) {
     final String iterationId = groupName + iteration;
-    if (!iterationIdToMetrics.containsKey(iterationId)) {
-      iterationIdToMetrics.put(iterationId,
+    final MetricsReceiver metricsReceiver = iterationIdToMetrics.get(iterationId);
+    if (metricsReceiver != null) {
+      return metricsReceiver;
+
+    } else {
+      // only one MetricsReceiver must exist for each iterationId
+      iterationIdToMetrics.putIfAbsent(iterationId,
           new MetricsReceiver(this, isOptimizable(groupName), numTasks.get()));
+      return iterationIdToMetrics.get(iterationId);
     }
-    return iterationIdToMetrics.get(iterationId);
   }
 
   private boolean isOptimizable(final String groupName) {
@@ -111,25 +145,36 @@ public final class OptimizationOrchestrator {
    * Runs the optimization: get an optimized Plan based on the current Evaluator parameters, then execute the plan.
    * Optimization is skipped if the previous optimization has not finished.
    */
-  public synchronized void run(final Map<String, List<DataInfo>> dataInfos,
-                               final Map<String, Map<String, Double>> computeMetrics,
-                               final String controllerId,
-                               final Map<String, Double> controllerMetrics) {
+  public void run(final Map<String, List<DataInfo>> dataInfos,
+                  final Map<String, Map<String, Double>> computeMetrics,
+                  final String controllerId,
+                  final Map<String, Double> controllerMetrics) {
     if (isPlanExecuting()) {
       LOG.log(Level.INFO, "Skipping Optimization, as the previous plan is still executing.");
       return;
     }
 
-    LOG.log(Level.INFO, "Optimization start.");
-    logPreviousResult();
+    if (!generatingOptimizationPlan.compareAndSet(false, true)) {
+      LOG.log(Level.INFO, "Skipping Optimization, because some other thread is currently doing it");
+      return;
+    }
 
-    final Plan plan = optimizer.optimize(
-        getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
-        getAvailableEvaluators(computeMetrics.size() + 1)); // +1 for the controller
+    optimizationAttemptResult = optimizationThreadPool.submit(new Runnable() {
+      @Override
+      public void run() {
+        LOG.log(Level.INFO, "Optimization start.");
+        logPreviousResult();
 
-    LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
+        final Plan plan = optimizer.optimize(
+            getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
+            getAvailableEvaluators(computeMetrics.size() + 1));
 
-    planExecutionResult = planExecutor.execute(plan);
+        LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
+
+        planExecutionResult = planExecutor.execute(plan);
+        generatingOptimizationPlan.set(false);
+      }
+    });
   }
 
   private boolean isPlanExecuting() {
@@ -148,6 +193,15 @@ public final class OptimizationOrchestrator {
         throw new RuntimeException(e);
       }
     }
+  }
+
+  /**
+   * Returns the {@link Future} returned from the most recent {@code optimizationThreadPool.submit(Runnable)} call,
+   * which is not necessarily the {@link Future} of the thread that is doing actual optimization.
+   * This method is currently being used only for testing purposes.
+   */
+  Future getOptimizationAttemptResult() {
+    return optimizationAttemptResult;
   }
 
   Future<PlanResult> getPlanExecutionResult() {
