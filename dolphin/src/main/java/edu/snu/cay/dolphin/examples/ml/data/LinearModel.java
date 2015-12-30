@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
-import edu.snu.cay.common.math.vector.breeze.Vector;
-import edu.snu.cay.common.math.vector.breeze.VectorEntry;
+import edu.snu.cay.common.math.vector.Vector;
+import edu.snu.cay.common.math.vector.VectorEntry;
 
 public final class LinearModel implements Model {
   private Vector parameters;

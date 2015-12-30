@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.regression;
 
-import edu.snu.cay.common.math.vector.breeze.Vector;
+import edu.snu.cay.common.math.vector.Vector;
 import edu.snu.cay.dolphin.examples.ml.data.RowDataType;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.core.UserComputeTask;

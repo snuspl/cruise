@@ -13,22 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.math.vector.breeze;
-
 /**
- * Class for vector iteration.
+ * Common vector classes.
  */
-public interface VectorEntry {
-
-  /**
-   * Returns the index of this element.
-   * @return index
-   */
-  int index();
-
-  /**
-   * Returns the value of this element.
-   * @return value
-   */
-  double value();
-}
+package edu.snu.cay.common.math.vector;

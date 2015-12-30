@@ -17,6 +17,8 @@ package edu.snu.cay.common.math.vector.breeze;
 
 import breeze.linalg.NumericOps;
 import breeze.linalg.package$;
+import edu.snu.cay.common.math.vector.Vector;
+import edu.snu.cay.common.math.vector.VectorEntry;
 import scala.Tuple2;
 import scala.collection.JavaConversions;
 

@@ -18,6 +18,7 @@ package edu.snu.cay.common.math.vector.breeze;
 import breeze.collection.mutable.SparseArray;
 import breeze.storage.Zero;
 import breeze.storage.Zero$;
+import edu.snu.cay.common.math.vector.VectorFactory;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 
@@ -26,14 +27,14 @@ import javax.inject.Inject;
 /**
  * Factory class for breeze based vector.
  */
-public final class VectorFactory {
+public final class DefaultVectorFactory implements VectorFactory {
 
   // If we want to use Scala object(singleton) in Java, we should use $ sign.
   private static final ClassTag TAG = ClassTag$.MODULE$.Double();
   private static final Zero ZERO = Zero$.MODULE$.forClass(Double.TYPE);
 
   @Inject
-  private VectorFactory() {
+  private DefaultVectorFactory() {
   }
 
   /**
@@ -41,6 +42,7 @@ public final class VectorFactory {
    * @param length vector length
    * @return created vector
    */
+  @Override
   public DenseVector newDenseVector(final int length) {
     return new DenseVector(new breeze.linalg.DenseVector<Double>(length, TAG));
   }
@@ -50,6 +52,7 @@ public final class VectorFactory {
    * @param data elements of a vector
    * @return created vector
    */
+  @Override
   public DenseVector newDenseVector(final double[] data) {
     final breeze.linalg.DenseVector dv = new breeze.linalg.DenseVector(data.length, TAG);
     for (int i = 0; i < data.length; i++) {
@@ -63,6 +66,7 @@ public final class VectorFactory {
    * @param length vector length
    * @return created vector
    */
+  @Override
   public SparseVector newSparseVector(final int length) {
     return new SparseVector(new breeze.linalg.SparseVector(new SparseArray(length, TAG, ZERO), ZERO));
   }
@@ -74,6 +78,7 @@ public final class VectorFactory {
    * @param length vector length
    * @return created vector
    */
+  @Override
   public SparseVector newSparseVector(final int[] index, final double[] data, final int length) {
     assert (index.length == data.length);
     final breeze.linalg.SparseVector sv = new breeze.linalg.SparseVector(new SparseArray(length, TAG, ZERO), ZERO);

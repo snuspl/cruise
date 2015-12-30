@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.common.math.vector.breeze;
 
+import edu.snu.cay.common.math.vector.*;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -23,7 +24,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 /**
- * This tests {@link VectorFactory}.
+ * This tests {@link DefaultVectorFactory}.
  */
 public final class VectorFactoryTest {
 
@@ -32,14 +33,14 @@ public final class VectorFactoryTest {
   @Before
   public void setUp() {
     try {
-      factory = Tang.Factory.getTang().newInjector().getInstance(VectorFactory.class);
+      factory = Tang.Factory.getTang().newInjector().getInstance(DefaultVectorFactory.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
   }
 
   /**
-   * Tests {@link VectorFactory} creates {@link DenseVector} as intended.
+   * Tests {@link DefaultVectorFactory} creates {@link DenseVector} as intended.
    */
   @Test
   public void testDenseVector() {
@@ -57,7 +58,7 @@ public final class VectorFactoryTest {
   }
 
   /**
-   * Tests {@link VectorFactory} creates {@link SparseVector} as intended.
+   * Tests {@link DefaultVectorFactory} creates {@link SparseVector} as intended.
    */
   @Test
   public void testSparseVector() {

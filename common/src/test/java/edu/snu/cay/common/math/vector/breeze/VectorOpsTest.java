@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.common.math.vector.breeze;
 
+import edu.snu.cay.common.math.vector.Vector;
+import edu.snu.cay.common.math.vector.VectorFactory;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;

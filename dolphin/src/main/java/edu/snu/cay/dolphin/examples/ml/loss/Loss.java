@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.loss;
 
-import edu.snu.cay.common.math.vector.breeze.Vector;
+import edu.snu.cay.common.math.vector.Vector;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
