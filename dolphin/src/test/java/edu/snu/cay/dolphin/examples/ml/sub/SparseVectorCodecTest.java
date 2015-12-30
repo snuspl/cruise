@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
-import edu.snu.cay.dolphin.breeze.Vector;
-import edu.snu.cay.dolphin.breeze.VectorFactory;
+import edu.snu.cay.common.math.vector.breeze.Vector;
+import edu.snu.cay.common.math.vector.breeze.VectorFactory;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;

@@ -66,6 +66,7 @@
     <module>services/elastic-memory</module>
     <module>services/shuffle</module>
     <module>utils</module>
+    <module>common</module>
   </modules>
 
   <dependencyManagement>

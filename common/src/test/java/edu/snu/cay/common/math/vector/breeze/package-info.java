@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Breeze Java wrapper package.
+ * Tests for java-wrapped breeze classes.
  */
-package edu.snu.cay.dolphin.breeze;
+package edu.snu.cay.common.math.vector.breeze;

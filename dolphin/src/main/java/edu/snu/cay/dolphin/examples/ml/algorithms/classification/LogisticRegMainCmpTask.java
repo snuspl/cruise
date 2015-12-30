@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
-import edu.snu.cay.dolphin.breeze.Vector;
+import edu.snu.cay.common.math.vector.breeze.Vector;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;

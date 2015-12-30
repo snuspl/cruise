@@ -81,8 +81,9 @@
       <artifactId>ojalgo</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.scalanlp</groupId>
-      <artifactId>breeze_2.10</artifactId>
+      <groupId>${project.parent.groupId}</groupId>
+      <artifactId>cay-common</artifactId>
+      <version>${project.parent.version}</version>
     </dependency>
     <dependency>
       <groupId>${project.parent.groupId}.services</groupId>

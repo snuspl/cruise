@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.breeze;
+package edu.snu.cay.common.math.vector.breeze;
 
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.breeze;
+package edu.snu.cay.common.math.vector.breeze;
 
 /**
  * Interface for vector whose elements are {@code double} values.

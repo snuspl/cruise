@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.breeze;
+package edu.snu.cay.common.math.vector.breeze;
 
 import breeze.collection.mutable.SparseArray;
 import breeze.storage.Zero;

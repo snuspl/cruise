@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.dolphin.examples.ml.sub;
 
-import edu.snu.cay.dolphin.breeze.Vector;
-import edu.snu.cay.dolphin.breeze.VectorEntry;
-import edu.snu.cay.dolphin.breeze.VectorFactory;
+import edu.snu.cay.common.math.vector.breeze.Vector;
+import edu.snu.cay.common.math.vector.breeze.VectorEntry;
+import edu.snu.cay.common.math.vector.breeze.VectorFactory;
 import org.apache.reef.io.network.impl.StreamingCodec;
 import org.apache.reef.io.serialization.Codec;
 

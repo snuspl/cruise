@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
-import edu.snu.cay.dolphin.breeze.Vector;
-import edu.snu.cay.dolphin.breeze.VectorFactory;
+import edu.snu.cay.common.math.vector.breeze.Vector;
+import edu.snu.cay.common.math.vector.breeze.VectorFactory;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.examples.ml.parameters.Dimension;

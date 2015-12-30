@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.regression;
 
-import edu.snu.cay.dolphin.breeze.VectorFactory;
+import edu.snu.cay.common.math.vector.breeze.VectorFactory;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.parameters.Dimension;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
