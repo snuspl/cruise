@@ -41,6 +41,9 @@ import java.util.logging.Logger;
  * Similar to {@link ILPSolverOptimizer}, this class assumes that
  * there is a single controller task and several compute tasks,
  * and that data is homogeneous (all data types are treated the same).
+ * Computation unit costs for new evaluators are set to the
+ * average value of computation unit costs for all existing evaluators.
+ *
  * This optimizer also assumes that there are no cases where
  * addition and deletion occurs at the same time. In other words,
  * stragglers can get deleted, but are not replaced with a new evaluator
@@ -73,11 +76,13 @@ import java.util.logging.Logger;
  * </p>
  */
 public final class ILPQuickOptimizer implements Optimizer {
-  private static final Logger LOG = Logger.getLogger(ILPSolverOptimizer.class.getName());
+  private static final Logger LOG = Logger.getLogger(ILPQuickOptimizer.class.getName());
   private static final String NEW_COMPUTE_TASK_ID_PREFIX = "newComputeTask-";
 
   /**
    * Comparator to sort {@link OptimizedEvaluator}s put in a priority queue, by their inverse computation unit costs.
+   * {@link OptimizedEvaluator}s with greater inverse computation unit costs (i.e. quicker evaluators)
+   * are put at the front (descending order).
    */
   private static final Comparator<OptimizedEvaluator> COMP_UNIT_COST_INV_COMPARATOR =
       new Comparator<OptimizedEvaluator>() {
@@ -95,6 +100,7 @@ public final class ILPQuickOptimizer implements Optimizer {
 
   /**
    * Comparator to sort {@link OptimizedEvaluator}s put in a priority queue, by their number of units to move.
+   * {@link OptimizedEvaluator}s with more units to move are put at the front (descending order).
    */
   private static final Comparator<OptimizedEvaluator> NUM_UNITS_TO_MOVE_COMPARATOR =
       new Comparator<OptimizedEvaluator>() {
@@ -155,6 +161,7 @@ public final class ILPQuickOptimizer implements Optimizer {
     final int numCurrEvals = cost.get().getComputeTaskCosts().size();
     final double commCostWeight = cost.get().getCommunicationCost() / numCurrEvals; // corresponds to 'k'
     final double expectedCompUnitCostInv = numCurrEvals / compUnitCostSum; // expected compUnitCostInv for new evals
+    // assumption: compUnitCost for a new eval == average of compUnitCost for existing evals
 
     final Pair<Integer, Double> numOptimalEvalsPair = getNumOptimalEvals(
         optimizedEvalQueue, availableEvaluators, commCostWeight, expectedCompUnitCostInv, numUnitsTotal);
