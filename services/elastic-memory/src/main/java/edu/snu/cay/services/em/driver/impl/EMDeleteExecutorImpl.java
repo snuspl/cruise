@@ -19,10 +19,17 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import org.apache.reef.wake.EventHandler;
 
+import javax.inject.Inject;
+
 /**
  * Default implementation of EMDeleteExecutor.
  */
 public final class EMDeleteExecutorImpl implements EMDeleteExecutor {
+
+  @Inject
+  private EMDeleteExecutorImpl() {
+
+  }
 
   @Override
   public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
