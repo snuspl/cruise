@@ -150,6 +150,7 @@ public final class ComputeTask implements Task {
     final TraceInfo taskTraceInfo = memento == null ? null :
         HTraceUtils.fromAvro(hTraceInfoCodec.decode(memento));
 
+    initializeGroupCommOperators();
     userComputeTask.initialize();
 
     final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -195,6 +196,21 @@ public final class ComputeTask implements Task {
 
     shuffleProvider.close();
     return null;
+  }
+
+  private void initializeGroupCommOperators() {
+    if (userComputeTask.isBroadcastUsed()) {
+      commGroup.getBroadcastReceiver(DataBroadcast.class);
+    }
+    if (userComputeTask.isScatterUsed()) {
+      commGroup.getScatterReceiver(DataScatter.class);
+    }
+    if (userComputeTask.isGatherUsed()) {
+      commGroup.getGatherSender(DataGather.class);
+    }
+    if (userComputeTask.isReduceUsed()) {
+      commGroup.getReduceSender(DataReduce.class);
+    }
   }
 
   private void runUserComputeTask() throws MetricException {

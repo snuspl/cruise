@@ -100,6 +100,7 @@ public final class ControllerTask implements Task {
     final TraceInfo taskTraceInfo = memento == null ? null :
         HTraceUtils.fromAvro(hTraceInfoCodec.decode(memento));
 
+    initializeGroupCommOperators();
     userControllerTask.initialize();
     try (final MetricsCollector metricsCollector = this.metricsCollector;) {
       metricsCollector.registerTrackers(metricTrackerSet);
@@ -135,6 +136,21 @@ public final class ControllerTask implements Task {
   private void updateTopology() {
     if (commGroup.getTopologyChanges().exist()) {
       commGroup.updateTopology();
+    }
+  }
+
+  private void initializeGroupCommOperators() {
+    if (userControllerTask.isBroadcastUsed()) {
+      commGroup.getBroadcastSender(DataBroadcast.class);
+    }
+    if (userControllerTask.isScatterUsed()) {
+      commGroup.getScatterSender(DataScatter.class);
+    }
+    if (userControllerTask.isGatherUsed()) {
+      commGroup.getGatherReceiver(DataGather.class);
+    }
+    if (userControllerTask.isReduceUsed()) {
+      commGroup.getReduceReceiver(DataReduce.class);
     }
   }
 
