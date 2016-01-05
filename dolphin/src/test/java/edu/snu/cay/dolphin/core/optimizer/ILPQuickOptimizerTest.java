@@ -113,13 +113,18 @@ public final class ILPQuickOptimizerTest {
    * An empty plan should be returned.
    */
   @Test
-  public void testWrongCtrlTaskId() {
-    final ILPSolverOptimizer wrongCtrlIlpSolverOptimizer = new ILPSolverOptimizer("##WRONG_CONTROLLER_TASK_ID##");
+  public void testWrongCtrlTaskId() throws InjectionException {
+    final CtrlTaskContextIdFetcher mockFetcher = mock(CtrlTaskContextIdFetcher.class);
+    when(mockFetcher.getCtrlTaskContextId()).thenReturn(Optional.of("##WRONG_CONTROLLER_TASK_ID##"));
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(CtrlTaskContextIdFetcher.class, mockFetcher);
+
+    final ILPQuickOptimizer wrongCtrlIlpQuickerOptimizer = injector.getInstance(ILPQuickOptimizer.class);
     final int availableEvaluators = 4;
     final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
         new int[][]{{100, 50}, {100, 100}}, 50D);
 
-    final Plan plan = wrongCtrlIlpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
+    final Plan plan = wrongCtrlIlpQuickerOptimizer.optimize(activeEvaluators, availableEvaluators);
 
     checkPlan(activeEvaluators, plan, availableEvaluators);
     assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd().size());
