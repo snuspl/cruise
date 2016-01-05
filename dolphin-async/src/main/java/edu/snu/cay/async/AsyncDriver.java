@@ -164,7 +164,6 @@ final class AsyncDriver {
         final Configuration taskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex)
             .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
-            .set(TaskConfiguration.ON_CLOSE, AsyncWorkerTask.TaskCloseHandler.class)
             .build();
 
         activeContext.submitTask(Configurations.merge(taskConf, workerConf));
