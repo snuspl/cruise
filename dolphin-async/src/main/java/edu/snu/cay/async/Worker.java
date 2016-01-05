@@ -51,7 +51,7 @@ public interface Worker {
   void run();
 
   /**
-   * Post-run method executed after the constructor but before {@code run}, exactly once.
+   * Post-run method executed after {@code run} but before worker termination, exactly once.
    */
   void cleanup();
 }

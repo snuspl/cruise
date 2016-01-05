@@ -44,8 +44,8 @@ final class AsyncWorkerTask implements Task {
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
-                         @Parameter(AsyncParameters.Iterations.class) final int maxIterations,
-                         final Worker worker) {
+                          @Parameter(AsyncParameters.Iterations.class) final int maxIterations,
+                          final Worker worker) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
     this.worker = worker;

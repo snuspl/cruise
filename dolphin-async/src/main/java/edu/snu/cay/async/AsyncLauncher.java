@@ -68,7 +68,9 @@ public final class AsyncLauncher {
    * @param args command line arguments
    * @param asyncConfiguration job configuration of this application
    */
-  public static void launch(final String jobName, final String[] args, final AsyncConfiguration asyncConfiguration) {
+  public static LauncherStatus launch(final String jobName,
+                                      final String[] args,
+                                      final AsyncConfiguration asyncConfiguration) {
     try {
       // parse command line arguments
       final Configuration commandLineConf = parseCommandLine(args, asyncConfiguration.getWorkerParameterClassList());
@@ -107,9 +109,12 @@ public final class AsyncLauncher {
           Configurations.merge(parameterServerConf, serializedWorkerConf, driverConf),
           timeout);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
+      return status;
 
     } catch (final Exception e) {
-      LOG.log(Level.INFO, "REEF job completed: {0}", LauncherStatus.failed(e));
+      final LauncherStatus status = LauncherStatus.failed(e);
+      LOG.log(Level.INFO, "REEF job completed: {0}", status);
+      return status;
     }
   }
 
