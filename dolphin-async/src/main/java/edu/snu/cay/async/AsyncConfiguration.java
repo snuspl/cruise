@@ -38,20 +38,20 @@ public final class AsyncConfiguration {
   private final Class<? extends Codec> keyCodecClass;
   private final Class<? extends Codec> preValueCodecClass;
   private final Class<? extends Codec> valueCodecClass;
-  private final List<Class<? extends Name<?>>> workerParameterClassList;
+  private final List<Class<? extends Name<?>>> parameterClassList;
 
   private AsyncConfiguration(final Class<? extends Worker> workerClass,
                              final Class<? extends ParameterUpdater> updaterClass,
                              final Class<? extends Codec> keyCodecClass,
                              final Class<? extends Codec> preValueCodecClass,
                              final Class<? extends Codec> valueCodecClass,
-                             final List<Class<? extends Name<?>>> workerParameterClassList) {
+                             final List<Class<? extends Name<?>>> parameterClassList) {
     this.workerClass = workerClass;
     this.updaterClass = updaterClass;
     this.keyCodecClass = keyCodecClass;
     this.preValueCodecClass = preValueCodecClass;
     this.valueCodecClass = valueCodecClass;
-    this.workerParameterClassList = workerParameterClassList;
+    this.parameterClassList = parameterClassList;
   }
 
   public Class<? extends Worker> getWorkerClass() {
@@ -74,8 +74,8 @@ public final class AsyncConfiguration {
     return valueCodecClass;
   }
 
-  public List<Class<? extends Name<?>>> getWorkerParameterClassList() {
-    return workerParameterClassList;
+  public List<Class<? extends Name<?>>> getParameterClassList() {
+    return parameterClassList;
   }
 
   public static Builder newBuilder() {
@@ -88,7 +88,7 @@ public final class AsyncConfiguration {
     private Class<? extends Codec> keyCodecClass = SerializableCodec.class;
     private Class<? extends Codec> preValueCodecClass = SerializableCodec.class;
     private Class<? extends Codec> valueCodecClass = SerializableCodec.class;
-    private List<Class<? extends Name<?>>> workerParameterClassList = new LinkedList<>();
+    private List<Class<? extends Name<?>>> parameterClassList = new LinkedList<>();
 
     public Builder setWorkerClass(final Class<? extends Worker> workerClass) {
       this.workerClass = workerClass;
@@ -115,8 +115,8 @@ public final class AsyncConfiguration {
       return this;
     }
 
-    public Builder addWorkerParameterClass(final Class<? extends Name<?>> workerParameterClass) {
-      this.workerParameterClassList.add(workerParameterClass);
+    public Builder addParameterClass(final Class<? extends Name<?>> parameterClass) {
+      this.parameterClassList.add(parameterClass);
       return this;
     }
 
@@ -131,7 +131,7 @@ public final class AsyncConfiguration {
       }
 
       return new AsyncConfiguration(workerClass, updaterClass,
-          keyCodecClass, preValueCodecClass, valueCodecClass, workerParameterClassList);
+          keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList);
     }
   }
 }

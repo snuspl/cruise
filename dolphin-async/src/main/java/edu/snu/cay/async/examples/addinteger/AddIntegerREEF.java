@@ -35,7 +35,7 @@ public final class AddIntegerREEF {
     AsyncLauncher.launch("AddIntegerREEF", args, AsyncConfiguration.newBuilder()
         .setWorkerClass(AddIntegerWorker.class)
         .setUpdaterClass(AddIntegerUpdater.class)
-        .addWorkerParameterClass(AddIntegerParameter.class)
+        .addParameterClass(AddIntegerParameter.class)
         .build());
   }
 

@@ -51,7 +51,11 @@ import java.util.logging.Logger;
 public final class AsyncLauncher {
   private static final Logger LOG = Logger.getLogger(AsyncLauncher.class.getName());
 
-  @NamedParameter(doc = "configuration for workers serialized as a string")
+  @NamedParameter(doc = "configuration for parameters, serialized as a string")
+  final class SerializedParameterConfiguration implements Name<String> {
+  }
+
+  @NamedParameter(doc = "configuration for worker class, serialized as a string")
   final class SerializedWorkerConfiguration implements Name<String> {
   }
 
@@ -73,7 +77,7 @@ public final class AsyncLauncher {
                                       final AsyncConfiguration asyncConfiguration) {
     try {
       // parse command line arguments
-      final Configuration commandLineConf = parseCommandLine(args, asyncConfiguration.getWorkerParameterClassList());
+      final Configuration commandLineConf = parseCommandLine(args, asyncConfiguration.getParameterClassList());
       final Injector commandLineInjector = Tang.Factory.getTang().newInjector(commandLineConf);
 
       // local or yarn runtime
@@ -94,11 +98,12 @@ public final class AsyncLauncher {
       // worker-specific configurations
       final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
       // pass the worker class implementation as well as all command line arguments
-      final Configuration workerConf = Tang.Factory.getTang().newConfigurationBuilder(commandLineConf)
+      final Configuration workerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Worker.class, asyncConfiguration.getWorkerClass())
           .build();
       final Configuration serializedWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(SerializedWorkerConfiguration.class, confSerializer.toString(workerConf))
+          .bindNamedParameter(SerializedParameterConfiguration.class, confSerializer.toString(commandLineConf))
           .build();
 
       // driver-side configurations
@@ -120,7 +125,7 @@ public final class AsyncLauncher {
 
   private static Configuration parseCommandLine(
       final String[] args,
-      final List<Class<? extends Name<?>>> workerParameterClassArray) throws IOException {
+      final List<Class<? extends Name<?>>> parameterClassList) throws IOException {
     final JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
     // add all basic parameters
@@ -133,7 +138,7 @@ public final class AsyncLauncher {
     cl.registerShortNameOfClass(Iterations.class);
 
     // also add any additional parameters specified by user
-    for (final Class<? extends Name<?>> workerParameterClass : workerParameterClassArray) {
+    for (final Class<? extends Name<?>> workerParameterClass : parameterClassList) {
       cl.registerShortNameOfClass(workerParameterClass);
     }
 

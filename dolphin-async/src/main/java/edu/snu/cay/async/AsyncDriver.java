@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.async;
 
+import edu.snu.cay.async.AsyncLauncher.*;
 import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -88,6 +89,7 @@ final class AsyncDriver {
    * Configuration that should be passed to each {@link AsyncWorkerTask}.
    */
   private final Configuration workerConf;
+  private final Configuration paramConf;
 
   /**
    * ActiveContext object of the evaluator housing the parameter server.
@@ -98,7 +100,8 @@ final class AsyncDriver {
   private AsyncDriver(final DataLoadingService dataLoadingService,
                       final DataLoader dataLoader,
                       final ParameterServerDriver psDriver,
-                      @Parameter(AsyncLauncher.SerializedWorkerConfiguration.class) final String serializedWorkerConf,
+                      @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
+                      @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
                       final ConfigurationSerializer configurationSerializer) throws IOException {
     this.dataLoadingService = dataLoadingService;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
@@ -107,6 +110,7 @@ final class AsyncDriver {
     this.runningWorkerContextCount = new AtomicInteger(0);
     this.completedOrFailedEvalCount = new AtomicInteger(0);
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
+    this.paramConf = configurationSerializer.fromString(serializedParamConf);
   }
 
   final class StartHandler implements EventHandler<StartTime> {
@@ -155,7 +159,7 @@ final class AsyncDriver {
             psDriver.getContextConfiguration());
         final Configuration serviceConf = psDriver.getServerServiceConfiguration();
 
-        activeContext.submitContextAndService(contextConf, serviceConf);
+        activeContext.submitContextAndService(contextConf, Configurations.merge(serviceConf, paramConf));
 
       // Case 3: Two contexts on worker-side evaluator
       } else if (activeContext.getId().startsWith(WORKER_CONTEXT)) {
@@ -166,7 +170,7 @@ final class AsyncDriver {
             .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
             .build();
 
-        activeContext.submitTask(Configurations.merge(taskConf, workerConf));
+        activeContext.submitTask(Configurations.merge(taskConf, workerConf, paramConf));
 
       // Case 4: Two contexts on server-side evaluator
       } else if (activeContext.getId().equals(SERVER_CONTEXT)) {
