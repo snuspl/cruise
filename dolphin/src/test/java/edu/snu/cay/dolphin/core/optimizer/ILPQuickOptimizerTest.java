@@ -17,12 +17,17 @@ package edu.snu.cay.dolphin.core.optimizer;
 
 import edu.snu.cay.dolphin.core.ComputeTask;
 import edu.snu.cay.dolphin.core.ControllerTask;
+import edu.snu.cay.dolphin.core.CtrlTaskContextIdFetcher;
 import edu.snu.cay.dolphin.core.DolphinMetricKeys;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,6 +36,7 @@ import java.util.*;
 import static edu.snu.cay.dolphin.core.optimizer.PlanValidationUtils.checkPlan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.*;
 
 /**
  * Class for testing {@link ILPQuickOptimizer}'s behavior.
@@ -41,8 +47,12 @@ public final class ILPQuickOptimizerTest {
   private ILPQuickOptimizer ilpQuickOptimizer;
 
   @Before
-  public void setUp() {
-    ilpQuickOptimizer = new ILPQuickOptimizer(ctrlTaskId);
+  public void setUp() throws InjectionException {
+    final CtrlTaskContextIdFetcher mockFetcher = mock(CtrlTaskContextIdFetcher.class);
+    when(mockFetcher.getCtrlTaskContextId()).thenReturn(Optional.of(ctrlTaskId));
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(CtrlTaskContextIdFetcher.class, mockFetcher);
+    ilpQuickOptimizer = injector.getInstance(ILPQuickOptimizer.class);
   }
 
   /**

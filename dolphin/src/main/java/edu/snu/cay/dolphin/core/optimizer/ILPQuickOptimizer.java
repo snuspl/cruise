@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
-import edu.snu.cay.dolphin.core.DolphinDriver;
+import edu.snu.cay.dolphin.core.CtrlTaskContextIdFetcher;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -26,7 +26,6 @@ import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 import edu.snu.cay.utils.Tuple3;
 import org.apache.reef.io.network.util.Pair;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
@@ -112,36 +111,28 @@ public final class ILPQuickOptimizer implements Optimizer {
         }
       };
 
-  private final InjectionFuture<DolphinDriver> dolphinDriver;
 
-  private String ctrlTaskContextId;
-
+  private final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher;
 
   /**
    * Constructor to be used during a real application run.
-   * A {@link DolphinDriver} instance must be present.
+   * A {@link edu.snu.cay.dolphin.core.DolphinDriver} instance must be present.
    */
   @Inject
-  private ILPQuickOptimizer(final InjectionFuture<DolphinDriver> dolphinDriver) {
-    this.dolphinDriver = dolphinDriver;
-  }
-
-  /**
-   * Constructor used for testing; no {@link DolphinDriver} objects are given.
-   */
-  ILPQuickOptimizer(final String ctrlTaskContextId) {
-    this.ctrlTaskContextId = ctrlTaskContextId;
-    this.dolphinDriver = null;
+  private ILPQuickOptimizer(final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher) {
+    this.ctrlTaskContextIdFetcher = ctrlTaskContextIdFetcher;
   }
 
   @Override
   public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
-    if (ctrlTaskContextId == null) {
-      initializeCtrlTaskContextId();
+    final Optional<String> ctrlTaskContextId = ctrlTaskContextIdFetcher.getCtrlTaskContextId();
+    if (!ctrlTaskContextId.isPresent()) {
+      LOG.log(Level.WARNING, "Controller task is unidentifiable at the moment. Returning empty plan.");
+      return PlanImpl.newBuilder().build();
     }
 
     // Step 1: Process metrics into meaningful values
-    final Optional<Cost> cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId);
+    final Optional<Cost> cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId.get());
     if (!cost.isPresent()) {
       LOG.log(Level.WARNING, "No controller task present at the moment. Returning empty plan.");
       return PlanImpl.newBuilder().build();
@@ -177,13 +168,6 @@ public final class ILPQuickOptimizer implements Optimizer {
     generateTransferSteps(evalSet, planBuilder);
 
     return planBuilder.build();
-  }
-
-  /**
-   * Use {@code dolphinDriver} to check the context id of the ctrl task.
-   */
-  private void initializeCtrlTaskContextId() {
-    ctrlTaskContextId = dolphinDriver.get().getCtrlTaskContextId();
   }
 
   /**
