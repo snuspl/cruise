@@ -160,7 +160,9 @@ public final class AsyncLauncher {
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.ON_DRIVER_STARTED, AsyncDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AsyncDriver.AllocatedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, AsyncDriver.FailedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, AsyncDriver.ActiveContextHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, AsyncDriver.FailedContextHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, AsyncDriver.CompletedTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, AsyncDriver.FailedTaskHandler.class);
 

@@ -20,7 +20,9 @@ import edu.snu.cay.services.ps.driver.ParameterServerDriver;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
+import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
@@ -78,9 +80,9 @@ final class AsyncDriver {
   private final AtomicInteger runningWorkerContextCount;
 
   /**
-   * Number of workers that have either completed or failed.
+   * Number of evaluators that have completed or failed.
    */
-  private final AtomicInteger closedWorkerCount;
+  private final AtomicInteger completedOrFailedEvalCount;
 
   /**
    * Configuration that should be passed to each {@link AsyncWorkerTask}.
@@ -103,7 +105,7 @@ final class AsyncDriver {
     this.dataLoader = dataLoader;
     this.psDriver = psDriver;
     this.runningWorkerContextCount = new AtomicInteger(0);
-    this.closedWorkerCount = new AtomicInteger(0);
+    this.completedOrFailedEvalCount = new AtomicInteger(0);
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
   }
 
@@ -170,6 +172,8 @@ final class AsyncDriver {
       // Case 4: Two contexts on server-side evaluator
       } else if (activeContext.getId().equals(SERVER_CONTEXT)) {
         LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
+        completedOrFailedEvalCount.incrementAndGet();
+        // although this evaluator is not 'completed' yet, we add it beforehand so that it closes if all workers finish
         serverContext = activeContext;
 
       } else {
@@ -179,17 +183,30 @@ final class AsyncDriver {
     }
   }
 
+  final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
+    @Override
+    public void onNext(final FailedEvaluator failedEvaluator) {
+      checkShutdown();
+    }
+  }
+
+  final class FailedContextHandler implements EventHandler<FailedContext> {
+    @Override
+    public void onNext(final FailedContext failedContext) {
+      checkShutdown();
+    }
+  }
+
   final class FailedTaskHandler implements EventHandler<FailedTask> {
     @Override
     public void onNext(final FailedTask failedTask) {
       if (failedTask.getActiveContext().isPresent()) {
         failedTask.getActiveContext().get().close();
+      } else {
+        LOG.log(Level.WARNING, "FailedTask {0} has no parent context", failedTask);
       }
 
-      if (closedWorkerCount.incrementAndGet() == initWorkerCount && serverContext != null) {
-        // shut down the server when all tasks have completed or failed
-        serverContext.close();
-      }
+      checkShutdown();
     }
   }
 
@@ -197,11 +214,13 @@ final class AsyncDriver {
     @Override
     public void onNext(final CompletedTask completedTask) {
       completedTask.getActiveContext().close();
+      checkShutdown();
+    }
+  }
 
-      if (closedWorkerCount.incrementAndGet() == initWorkerCount && serverContext != null) {
-        // shut down the server when all tasks have completed or failed
-        serverContext.close();
-      }
+  private void checkShutdown() {
+    if (completedOrFailedEvalCount.incrementAndGet() == initWorkerCount + 1 && serverContext != null) {
+      serverContext.close();
     }
   }
 }
