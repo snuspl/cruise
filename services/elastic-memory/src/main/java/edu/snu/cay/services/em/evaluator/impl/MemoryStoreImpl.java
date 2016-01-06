@@ -46,11 +46,6 @@ public final class MemoryStoreImpl implements MemoryStore {
   }
 
   @Override
-  public SubMemoryStore getElasticStore() {
-    return this.elasticStore;
-  }
-
-  @Override
   public <T> void put(final String dataType, final long id, final T value) {
     elasticStore.put(dataType, id, value);
   }

@@ -94,7 +94,7 @@ public final class ClusteringPreCmpTask extends UserComputeTask
     try {
       final List<Long> ids = dataIdFactory.getIds(points.size());
       partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
-      memoryStore.getElasticStore().putList(dataType, ids, points);
+      memoryStore.putList(dataType, ids, points);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }

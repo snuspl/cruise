@@ -30,12 +30,6 @@ import java.util.Set;
 public interface MemoryStore {
 
   /**
-   * Returns a {@code SubMemoryStore} which stores movable data that
-   * may be migrated around evaluators for job optimization.
-   */
-  SubMemoryStore getElasticStore();
-
-    /**
    * Register a data item of a certain data type to this store.
    *
    * @param dataType string that represents a certain data type

@@ -280,11 +280,11 @@ public final class ComputeTask implements Task {
 
   private ComputeMsg getComputeMsg() {
     final List<DataInfo> dataInfos = new ArrayList<>();
-    for (final String dataType : memoryStore.getElasticStore().getDataTypes()) {
+    for (final String dataType : memoryStore.getDataTypes()) {
       dataInfos.add(
           DataInfo.newBuilder()
               .setDataType(dataType)
-              .setNumUnits(memoryStore.getElasticStore().getNumUnits(dataType))
+              .setNumUnits(memoryStore.getNumUnits(dataType))
               .build());
     }
 

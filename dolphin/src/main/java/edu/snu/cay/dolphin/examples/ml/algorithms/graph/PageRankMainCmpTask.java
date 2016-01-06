@@ -78,7 +78,7 @@ public class PageRankMainCmpTask extends UserComputeTask
    */
   @Override
   public void initialize() throws ParseException {
-    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(dataType);
+    final Map<Long, List<Integer>> subgraphs = memoryStore.getAll(dataType);
     // Map of current rank
     rank = new HashMap<>();
     for (final Long key : subgraphs.keySet()) {
@@ -89,7 +89,7 @@ public class PageRankMainCmpTask extends UserComputeTask
   @Override
   public final void run(final int iteration) {
     increment.clear();
-    final Map<Long, List<Integer>> subgraphs = memoryStore.getElasticStore().getAll(dataType);
+    final Map<Long, List<Integer>> subgraphs = memoryStore.getAll(dataType);
     for (final Map.Entry<Long, List<Integer>> entry : subgraphs.entrySet()) {
       final Integer nodeId = entry.getKey().intValue();
       final List<Integer> outList = entry.getValue();

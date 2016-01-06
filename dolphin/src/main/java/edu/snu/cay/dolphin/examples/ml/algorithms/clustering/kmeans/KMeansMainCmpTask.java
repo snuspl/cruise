@@ -85,7 +85,7 @@ public final class KMeansMainCmpTask extends UserComputeTask
     pointSum = new HashMap<>();
 
     final TraceScope getPointsScope = trace.startSpan("getPoints");
-    final Map<?, Vector> points = memoryStore.getElasticStore().getAll(dataType);
+    final Map<?, Vector> points = memoryStore.getAll(dataType);
     getPointsScope.close();
 
     final TraceScope computeCentroidsScope = trace.startSpan("computeCentroids");

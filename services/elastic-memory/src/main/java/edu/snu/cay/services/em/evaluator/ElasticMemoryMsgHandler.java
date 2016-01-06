@@ -172,7 +172,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     // TODO #15: this loop may be creating a gigantic message, and may cause memory problems
     for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
       final Map<Long, Object> idObjectMap =
-          memoryStore.getElasticStore().getRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
+          memoryStore.getRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
       for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
         final long id = idObject.getKey();
         if (!isMoving(id)) {
@@ -225,7 +225,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     // fetch all items of the given data type from my memory store
     // TODO #15: this clones the entire map of the given data type, and may cause memory problems
-    final Map<Long, Object> dataMap = memoryStore.getElasticStore().getAll(dataType);
+    final Map<Long, Object> dataMap = memoryStore.getAll(dataType);
     final List<UnitIdPair> unitIdPairList = new ArrayList<>(Math.min(numUnits, dataMap.size()));
 
     // keep the ids of the items to be deleted later
