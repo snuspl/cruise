@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.examples.ml.data;
+package edu.snu.cay.dolphin.examples.ml.key;
 
 import edu.snu.cay.dolphin.core.Key;
 import org.apache.mahout.math.Vector;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 
 import java.util.List;
 
-public final class CentroidsDataType implements Key<List<Vector>> {
+public final class Centroids implements Key<List<Vector>> {
 }

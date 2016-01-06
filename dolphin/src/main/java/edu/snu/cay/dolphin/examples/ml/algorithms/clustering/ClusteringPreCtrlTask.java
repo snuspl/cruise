@@ -17,7 +17,7 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 
 import edu.snu.cay.dolphin.core.KeyValueStore;
 import edu.snu.cay.dolphin.core.UserControllerTask;
-import edu.snu.cay.dolphin.examples.ml.data.CentroidsDataType;
+import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
 import org.apache.mahout.math.Vector;
@@ -67,7 +67,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
      * Pass the initial centroids to the main process.
      * Since CtrlTask is the only one to own the data, put data in LocalStore.
      */
-     keyValueStore.put(CentroidsDataType.class, initialCentroids);
+     keyValueStore.put(Centroids.class, initialCentroids);
   }
 
   @Override
