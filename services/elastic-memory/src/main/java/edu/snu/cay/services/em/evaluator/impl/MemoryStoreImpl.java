@@ -19,8 +19,12 @@ import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.SubMemoryStore;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.io.network.util.Pair;
 
 import javax.inject.Inject;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Provides elastic {@code SubMemoryStore} that use {@code SubMemoryStoreImpl} implementation.
@@ -44,5 +48,55 @@ public final class MemoryStoreImpl implements MemoryStore {
   @Override
   public SubMemoryStore getElasticStore() {
     return this.elasticStore;
+  }
+
+  @Override
+  public <T> void put(final String dataType, final long id, final T value) {
+    elasticStore.put(dataType, id, value);
+  }
+
+  @Override
+  public <T> void putList(final String dataType, final List<Long> ids, final List<T> values) {
+    elasticStore.putList(dataType, ids, values);
+  }
+
+  @Override
+  public <T> Pair<Long, T> get(final String dataType, final long id) {
+    return elasticStore.get(dataType, id);
+  }
+
+  @Override
+  public <T> Map<Long, T> getAll(final String dataType) {
+    return elasticStore.getAll(dataType);
+  }
+
+  @Override
+  public <T> Map<Long, T> getRange(final String dataType, final long startId, final long endId) {
+    return elasticStore.getRange(dataType, startId, endId);
+  }
+
+  @Override
+  public <T> Pair<Long, T> remove(final String dataType, final long id) {
+    return elasticStore.remove(dataType, id);
+  }
+
+  @Override
+  public <T> Map<Long, T> removeAll(final String dataType) {
+    return elasticStore.removeAll(dataType);
+  }
+
+  @Override
+  public <T> Map<Long, T> removeRange(final String dataType, final long startId, final long endId) {
+    return elasticStore.removeRange(dataType, startId, endId);
+  }
+
+  @Override
+  public Set<String> getDataTypes() {
+    return elasticStore.getDataTypes();
+  }
+
+  @Override
+  public int getNumUnits(final String dataType) {
+    return elasticStore.getNumUnits(dataType);
   }
 }
