@@ -20,14 +20,11 @@ import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 
-import java.util.logging.Logger;
-
 /**
- * Key-value store service used to pass the current stage's result to the next stage
+ * Key-value store service used to pass the current stage's result to the next stage.
  * Should be inserted alongside a context.
  */
 public final class KeyValueStoreService {
-  private static final Logger LOG = Logger.getLogger(KeyValueStoreService.class.getName());
 
   /**
    * Should not be instantiated.
@@ -35,6 +32,10 @@ public final class KeyValueStoreService {
   private KeyValueStoreService() {
   }
 
+  /**
+   * Provides a service configuration for the KeyValueStore service.
+   * @return service configuration
+   */
   public static Configuration getServiceConfiguration() {
     final Configuration partialServiceConf = ServiceConfiguration.CONF
         .set(ServiceConfiguration.SERVICES, KeyValueStore.class)

@@ -26,15 +26,26 @@ public final class KeyValueStore {
   private final HashMap<Class<? extends Key>, Object> hashMap;
 
   @Inject
-  public KeyValueStore() {
+  private KeyValueStore() {
     hashMap = new HashMap<>();
   }
 
+  /**
+   * Put a data item that maps to certain {@code key} to this store.
+   * @param key a key of mapping
+   * @param value a value of mapping
+   * @param <T> a type of value
+   */
   public <T> void put(final Class<? extends Key<T>> key, final T value) {
     hashMap.put(key, value);
   }
 
-  @SuppressWarnings("unchecked")
+  /**
+   * Get a data item mapping to {@code key} from this store.
+   * @param key a key of mapping
+   * @param <T> a type of value
+   * @return
+   */
   public <T> T get(final Class<? extends Key<T>> key) {
     return (T) hashMap.get(key);
   }

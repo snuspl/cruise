@@ -20,5 +20,8 @@ import org.apache.mahout.math.Vector;
 
 import java.util.List;
 
+/**
+ * A class that implements Key that can be used as a key of mapping for KeyValueStore.
+ */
 public final class Centroids implements Key<List<Vector>> {
 }
