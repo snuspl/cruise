@@ -15,9 +15,12 @@
  */
 package edu.snu.cay.dolphin.examples.ml.data;
 
+import edu.snu.cay.dolphin.core.Key;
+import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Centroids data type for EM Local Store", default_value = "centroids")
-public final class CentroidsDataType implements Name<String> {
+import java.util.List;
+
+public final class CentroidsDataType implements Key<List<Vector>> {
 }
