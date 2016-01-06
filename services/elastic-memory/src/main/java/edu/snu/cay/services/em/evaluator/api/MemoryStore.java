@@ -18,16 +18,11 @@ package edu.snu.cay.services.em.evaluator.api;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 /**
- * Evaluator-side interface of MemoryStore, which provides two SubMemoryStores: local and elastic.
+ * Evaluator-side interface of MemoryStore, which provides key-value style SubMemoryStore,
+ * whose data can be moved around the evaluator.
  */
 @EvaluatorSide
 public interface MemoryStore {
-
-  /**
-   * Returns a {@code SubMemoryStore} which stores local data that
-   * should not be moved to other evaluators.
-   */
-  SubMemoryStore getLocalStore();
 
   /**
    * Returns a {@code SubMemoryStore} which stores movable data that

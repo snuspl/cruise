@@ -23,19 +23,11 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import javax.inject.Inject;
 
 /**
- * Provides local and elastic {@code SubMemoryStore}s that use the same implementation, {@code SubMemoryStoreImpl}.
+ * Provides elastic {@code SubMemoryStore} that use {@code SubMemoryStoreImpl} implementation.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
 @EvaluatorSide
 public final class MemoryStoreImpl implements MemoryStore {
-
-  /**
-   * In-memory storage for data that needs to be maintained in this particular evaluator.
-   * This store does not necessarily prevent remote access from other evaluators.
-   * For example, this store's data could be replicated elsewhere.
-   * Nonetheless, data of this store will not be removed by the system.
-   */
-  private final SubMemoryStore localStore;
 
   /**
    * In-memory storage for data that can moved to other evaluators by the system.
@@ -46,13 +38,7 @@ public final class MemoryStoreImpl implements MemoryStore {
   @Inject
   private MemoryStoreImpl(final HTrace hTrace) {
     hTrace.initialize();
-    this.localStore = new SubMemoryStoreImpl();
     this.elasticStore = new SubMemoryStoreImpl();
-  }
-
-  @Override
-  public SubMemoryStore getLocalStore() {
-    return this.localStore;
   }
 
   @Override
