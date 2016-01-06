@@ -67,7 +67,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
      * Pass the initial centroids to the main process.
      * Since CtrlTask is the only one to own the data, put data in LocalStore.
      */
-     keyValueStore.put(Centroids.class, initialCentroids);
+    keyValueStore.put(Centroids.class, initialCentroids);
   }
 
   @Override
