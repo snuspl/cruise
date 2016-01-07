@@ -472,8 +472,8 @@ public final class MemoryStoreTest {
 }
 
 /**
- * Mocked span receiver, which is required to instantiate HTrace.
- * In this test, eventually the instantiated HTrace is injected into a constructor of MemoryStore.
+ * Mocked span receiver that implements SpanReceiver, which is required to instantiate HTrace.
+ * In this test, the instantiated HTrace is eventually used to instantiate MemoryStore.
  */
 final class MockedSpanReceiver implements SpanReceiver {
 

@@ -20,7 +20,7 @@ import javax.inject.Inject;
 import java.util.HashMap;
 
 /**
- * Simple Key-value store used by key-value store service.
+ * Simple Key-value store.
  */
 public final class KeyValueStore {
   private final HashMap<Class<? extends Key>, Object> hashMap;
@@ -44,7 +44,7 @@ public final class KeyValueStore {
    * Get a data item mapping to {@code key} from this store.
    * @param key a key of mapping
    * @param <T> a type of value
-   * @return
+   * @return a data item, which is a value of mapping
    */
   public <T> T get(final Class<? extends Key<T>> key) {
     return (T) hashMap.get(key);

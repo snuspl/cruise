@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Evaluator-side interface of MemoryStore, which provides a key-value style store,
+ * Interface that provides a key-value style store,
  * whose data can be moved around the evaluators by the system.
  */
 @EvaluatorSide
@@ -120,7 +120,7 @@ public interface MemoryStore {
   <T> Map<Long, T> removeRange(String dataType, long startId, long endId);
 
   /**
-   * Fetch all data types of items residing in this store, without duplicates.
+   * Fetch all data types of items residing in this store.
    *
    * @return a set of strings that indicate the data types in this store
    */

@@ -57,6 +57,7 @@ public final class MemoryStoreImpl implements MemoryStore {
     readWriteLock = new ReentrantReadWriteLock(true);
   }
 
+  @Override
   public <T> void put(final String dataType, final long id, final T value) {
     readWriteLock.writeLock().lock();
 
