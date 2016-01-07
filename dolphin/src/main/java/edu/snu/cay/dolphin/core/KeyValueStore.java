@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.core;
 
-
 import javax.inject.Inject;
 import java.util.HashMap;
 

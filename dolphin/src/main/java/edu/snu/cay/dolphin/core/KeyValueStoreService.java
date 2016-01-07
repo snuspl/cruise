@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.core;
 
-
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
