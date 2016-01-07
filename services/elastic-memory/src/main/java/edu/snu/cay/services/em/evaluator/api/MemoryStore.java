@@ -23,8 +23,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Evaluator-side interface of MemoryStore, which provides key-value style SubMemoryStore,
- * whose data can be moved around the evaluator.
+ * Evaluator-side interface of MemoryStore, which provides a key-value style store,
+ * whose data can be moved around the evaluator by the system.
+ * The store can grow or shrink, depending on the status of this evaluator.
  */
 @EvaluatorSide
 public interface MemoryStore {
