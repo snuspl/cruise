@@ -16,10 +16,19 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.utils.ThreadUtils;
-import edu.snu.cay.services.em.evaluator.api.SubMemoryStore;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.htrace.HTraceConfiguration;
+import org.htrace.Span;
+import org.htrace.SpanReceiver;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.inject.Inject;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,20 +39,26 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.*;
 
 /**
- * Test class for checking the thread safeness of SubMemoryStore.
+ * Test class for checking the thread safeness of MemoryStore.
  */
-public final class SubMemoryStoreTest {
+public final class MemoryStoreTest {
 
   private static final String DATA_TYPE = "DATA_TYPE";
   private static final String MSG_SIZE_ASSERTION = "size of final memory store";
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_REMOVE_ALL_ASSERTION = "getAll() after removeAll()";
 
-  private SubMemoryStore subMemoryStore;
+  private MemoryStore memoryStore;
 
   @Before
-  public void setUp() {
-    subMemoryStore = new SubMemoryStoreImpl();
+  public void setUp() throws InjectionException {
+    final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(SpanReceiver.class, MockedSpanReceiver.class)
+        .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .build();
+
+    final Injector injector = Tang.Factory.getTang().newInjector(conf);
+    memoryStore = injector.getInstance(MemoryStore.class);
   }
 
   /**
@@ -61,7 +76,7 @@ public final class SubMemoryStoreTest {
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
       threads[index] = new PutThread(
-          countDownLatch, subMemoryStore, index, numThreads, putsPerThread, 1, IndexParity.ALL_INDEX);
+          countDownLatch, memoryStore, index, numThreads, putsPerThread, 1, IndexParity.ALL_INDEX);
     }
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -70,7 +85,7 @@ public final class SubMemoryStoreTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects,
-        subMemoryStore.getAll(DATA_TYPE).size());
+        memoryStore.getAll(DATA_TYPE).size());
   }
 
   /**
@@ -86,13 +101,13 @@ public final class SubMemoryStoreTest {
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
 
     for (int i = 0; i < totalNumberOfObjects; i++) {
-      subMemoryStore.put(DATA_TYPE, i, i);
+      memoryStore.put(DATA_TYPE, i, i);
     }
 
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
       threads[index] = new RemoveThread(
-          countDownLatch, subMemoryStore, index, numThreads, removesPerThread, 1, IndexParity.ALL_INDEX);
+          countDownLatch, memoryStore, index, numThreads, removesPerThread, 1, IndexParity.ALL_INDEX);
     }
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -100,7 +115,7 @@ public final class SubMemoryStoreTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION, 0, subMemoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_SIZE_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
   }
 
   @Test
@@ -128,7 +143,7 @@ public final class SubMemoryStoreTest {
       if (i / numThreadPerOperation / itemsPerPutOrRemove % 2 == 0) {
         continue;
       }
-      subMemoryStore.put(DATA_TYPE, i, i);
+      memoryStore.put(DATA_TYPE, i, i);
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadPerOperation];
@@ -138,9 +153,9 @@ public final class SubMemoryStoreTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadPerOperation; index++) {
-      threads[2 * index] = new PutThread(countDownLatch, subMemoryStore, index,
+      threads[2 * index] = new PutThread(countDownLatch, memoryStore, index,
           numThreadPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.EVEN_INDEX);
-      threads[2 * index + 1] = new RemoveThread(countDownLatch, subMemoryStore, index,
+      threads[2 * index + 1] = new RemoveThread(countDownLatch, memoryStore, index,
           numThreadPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.ODD_INDEX);
     }
     ThreadUtils.runConcurrently(threads);
@@ -150,11 +165,11 @@ public final class SubMemoryStoreTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        subMemoryStore.getAll(DATA_TYPE).size());
+        memoryStore.getAll(DATA_TYPE).size());
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        subMemoryStore.removeAll(DATA_TYPE).size());
+        memoryStore.removeAll(DATA_TYPE).size());
     // check that removeAll works as expected
-    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, subMemoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
   }
 
   @Test
@@ -181,9 +196,9 @@ public final class SubMemoryStoreTest {
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[2 * index] = new PutThread(countDownLatch, subMemoryStore,
+      threads[2 * index] = new PutThread(countDownLatch, memoryStore,
           index, numThreadsPerOperation, itemsPerThread / itemsPerPut, itemsPerPut, IndexParity.ALL_INDEX);
-      threads[2 * index + 1] = new GetThread(countDownLatch, subMemoryStore, getsPerThread, totalNumberOfObjects);
+      threads[2 * index + 1] = new GetThread(countDownLatch, memoryStore, getsPerThread, totalNumberOfObjects);
     }
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -192,11 +207,11 @@ public final class SubMemoryStoreTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects,
-        subMemoryStore.getAll(DATA_TYPE).size());
+        memoryStore.getAll(DATA_TYPE).size());
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects,
-        subMemoryStore.removeAll(DATA_TYPE).size());
+        memoryStore.removeAll(DATA_TYPE).size());
     // check that removeAll works as expected
-    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, subMemoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
   }
 
   @Test
@@ -222,14 +237,14 @@ public final class SubMemoryStoreTest {
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
 
     for (int i = 0; i < totalNumberOfObjects; i++) {
-      subMemoryStore.put(DATA_TYPE, i, i);
+      memoryStore.put(DATA_TYPE, i, i);
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[2 * index] = new RemoveThread(countDownLatch, subMemoryStore,
+      threads[2 * index] = new RemoveThread(countDownLatch, memoryStore,
           index, numThreadsPerOperation, itemsPerThread / itemsPerRemove, itemsPerRemove, IndexParity.ALL_INDEX);
-      threads[2 * index + 1] = new GetThread(countDownLatch, subMemoryStore, getsPerThread, totalNumberOfObjects);
+      threads[2 * index + 1] = new GetThread(countDownLatch, memoryStore, getsPerThread, totalNumberOfObjects);
     }
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -237,7 +252,7 @@ public final class SubMemoryStoreTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION, 0, subMemoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_SIZE_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
   }
 
   @Test
@@ -266,7 +281,7 @@ public final class SubMemoryStoreTest {
       if (i / numThreadsPerOperation / itemsPerPutOrRemove % 2 == 0) {
         continue;
       }
-      subMemoryStore.put(DATA_TYPE, i, i);
+      memoryStore.put(DATA_TYPE, i, i);
     }
 
     final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
@@ -276,11 +291,11 @@ public final class SubMemoryStoreTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[3 * index] = new PutThread(countDownLatch, subMemoryStore, index,
+      threads[3 * index] = new PutThread(countDownLatch, memoryStore, index,
           numThreadsPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.EVEN_INDEX);
-      threads[3 * index + 1] = new RemoveThread(countDownLatch, subMemoryStore, index,
+      threads[3 * index + 1] = new RemoveThread(countDownLatch, memoryStore, index,
           numThreadsPerOperation, itemsPerThread / itemsPerPutOrRemove, itemsPerPutOrRemove, IndexParity.ODD_INDEX);
-      threads[3 * index + 2] = new GetThread(countDownLatch, subMemoryStore, getsPerThread, totalNumberOfObjects);
+      threads[3 * index + 2] = new GetThread(countDownLatch, memoryStore, getsPerThread, totalNumberOfObjects);
     }
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -289,11 +304,11 @@ public final class SubMemoryStoreTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        subMemoryStore.getAll(DATA_TYPE).size());
+        memoryStore.getAll(DATA_TYPE).size());
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        subMemoryStore.removeAll(DATA_TYPE).size());
+        memoryStore.removeAll(DATA_TYPE).size());
     // check that removeAll works as expected
-    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, subMemoryStore.getAll(DATA_TYPE).size());
+    assertEquals(MSG_REMOVE_ALL_ASSERTION, 0, memoryStore.getAll(DATA_TYPE).size());
   }
 
   private enum IndexParity {
@@ -302,7 +317,7 @@ public final class SubMemoryStoreTest {
 
   final class PutThread implements Runnable {
     private final CountDownLatch countDownLatch;
-    private final SubMemoryStore subMemoryStore;
+    private final MemoryStore memoryStore;
     private final int myIndex;
     private final int numThreads;
     private final int putsPerThread;
@@ -310,11 +325,11 @@ public final class SubMemoryStoreTest {
     private final IndexParity indexParity;
 
     PutThread(final CountDownLatch countDownLatch,
-              final SubMemoryStore subMemoryStore,
+              final MemoryStore memoryStore,
               final int myIndex, final int numThreads, final int putsPerThread, final int itemsPerPut,
               final IndexParity indexParity) {
       this.countDownLatch = countDownLatch;
-      this.subMemoryStore = subMemoryStore;
+      this.memoryStore = memoryStore;
       this.myIndex = myIndex;
       this.numThreads = numThreads;
       this.putsPerThread = putsPerThread;
@@ -334,7 +349,7 @@ public final class SubMemoryStoreTest {
 
         if (itemsPerPut == 1) {
           final int itemIndex = numThreads * i + myIndex;
-          subMemoryStore.put(DATA_TYPE, itemIndex, i);
+          memoryStore.put(DATA_TYPE, itemIndex, i);
         } else {
           final int itemStartIndex = (numThreads * i + myIndex) * itemsPerPut;
           final List<Long> ids = new ArrayList<>(itemsPerPut);
@@ -343,7 +358,7 @@ public final class SubMemoryStoreTest {
             ids.add((long)itemIndex);
             values.add(itemIndex);
           }
-          subMemoryStore.putList(DATA_TYPE, ids, values);
+          memoryStore.putList(DATA_TYPE, ids, values);
         }
       }
 
@@ -353,7 +368,7 @@ public final class SubMemoryStoreTest {
 
   final class RemoveThread implements Runnable {
     private final CountDownLatch countDownLatch;
-    private final SubMemoryStore subMemoryStore;
+    private final MemoryStore memoryStore;
     private final int myIndex;
     private final int numThreads;
     private final int removesPerThread;
@@ -361,11 +376,11 @@ public final class SubMemoryStoreTest {
     private final IndexParity indexParity;
 
     RemoveThread(final CountDownLatch countDownLatch,
-                 final SubMemoryStore subMemoryStore,
+                 final MemoryStore memoryStore,
                  final int myIndex, final int numThreads, final int removesPerThread, final int itemsPerRemove,
                  final IndexParity indexParity) {
       this.countDownLatch = countDownLatch;
-      this.subMemoryStore = subMemoryStore;
+      this.memoryStore = memoryStore;
       this.myIndex = myIndex;
       this.numThreads = numThreads;
       this.removesPerThread = removesPerThread;
@@ -385,11 +400,11 @@ public final class SubMemoryStoreTest {
 
         if (itemsPerRemove == 1) {
           final int itemIndex = numThreads * i + myIndex;
-          subMemoryStore.remove(DATA_TYPE, itemIndex);
+          memoryStore.remove(DATA_TYPE, itemIndex);
         } else {
           final int itemStartIndex = (numThreads * i + myIndex) * itemsPerRemove;
           final int itemEndIndex = itemStartIndex + itemsPerRemove - 1;
-          subMemoryStore.removeRange(DATA_TYPE, itemStartIndex, itemEndIndex);
+          memoryStore.removeRange(DATA_TYPE, itemStartIndex, itemEndIndex);
         }
       }
 
@@ -399,17 +414,17 @@ public final class SubMemoryStoreTest {
 
   final class GetThread implements Runnable {
     private final CountDownLatch countDownLatch;
-    private final SubMemoryStore subMemoryStore;
+    private final MemoryStore memoryStore;
     private final int getsPerThread;
     private final int totalNumberOfObjects;
     private final Random random;
 
     GetThread(final CountDownLatch countDownLatch,
-              final SubMemoryStore subMemoryStore,
+              final MemoryStore memoryStore,
               final int getsPerThread,
               final int totalNumberOfObjects) {
       this.countDownLatch = countDownLatch;
-      this.subMemoryStore = subMemoryStore;
+      this.memoryStore = memoryStore;
       this.getsPerThread = getsPerThread;
       this.totalNumberOfObjects = totalNumberOfObjects;
       this.random = new Random();
@@ -420,13 +435,13 @@ public final class SubMemoryStoreTest {
       for (int i = 0; i < getsPerThread; i++) {
         final int getMethod = random.nextInt(3);
         if (getMethod == 0) {
-          subMemoryStore.get(DATA_TYPE, random.nextInt(totalNumberOfObjects));
+          memoryStore.get(DATA_TYPE, random.nextInt(totalNumberOfObjects));
 
         } else if (getMethod == 1) {
           final int startId = random.nextInt(totalNumberOfObjects);
           final int endId = random.nextInt(totalNumberOfObjects - startId) + startId;
 
-          final Map<Long, Object> subMap = subMemoryStore.getRange(DATA_TYPE, startId, endId);
+          final Map<Long, Object> subMap = memoryStore.getRange(DATA_TYPE, startId, endId);
           if (subMap == null) {
             continue;
           }
@@ -438,7 +453,7 @@ public final class SubMemoryStoreTest {
           }
 
         } else {
-          final Map<Long, Object> allMap = subMemoryStore.getAll(DATA_TYPE);
+          final Map<Long, Object> allMap = memoryStore.getAll(DATA_TYPE);
           if (allMap == null) {
             continue;
           }
@@ -453,5 +468,28 @@ public final class SubMemoryStoreTest {
 
       countDownLatch.countDown();
     }
+  }
+}
+
+final class MockedSpanReceiver implements SpanReceiver {
+
+  @Inject
+  private MockedSpanReceiver() {
+
+  }
+
+  @Override
+  public void configure(final HTraceConfiguration hTraceConfiguration) {
+
+  }
+
+  @Override
+  public void receiveSpan(final Span span) {
+
+  }
+
+  @Override
+  public void close() throws IOException {
+
   }
 }
