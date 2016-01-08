@@ -19,7 +19,8 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import org.apache.reef.util.Optional;
 
 /**
- * Simple helper class of Dolphin for fetching the string identifier of the context that is below the ctrl task.
+ * Simple helper class of Dolphin for storing and fetching
+ * the string identifier of the context that is below the ctrl task.
  */
 @DefaultImplementation(CtrlTaskContextIdFetcherImpl.class)
 public interface CtrlTaskContextIdFetcher {
@@ -28,4 +29,9 @@ public interface CtrlTaskContextIdFetcher {
    * @return the identifier of the context below the ctrl task, or {@code Optional.empty()} if the id is not present
    */
   Optional<String> getCtrlTaskContextId();
+
+  /**
+   * Set the context id to be the parameter {@code ctrlTaskContextId}.
+   */
+  void setCtrlTaskContextId(String ctrlTaskContextId);
 }

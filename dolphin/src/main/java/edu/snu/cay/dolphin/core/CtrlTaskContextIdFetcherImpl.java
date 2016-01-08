@@ -15,25 +15,27 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 
 /**
  * Default implementation of {@link CtrlTaskContextIdFetcher}.
- * Uses a {@link InjectionFuture} to fetch the id, in case any injection loops are present.
  */
 public final class CtrlTaskContextIdFetcherImpl implements CtrlTaskContextIdFetcher {
 
-  private final InjectionFuture<DolphinDriver> dolphinDriver;
+  private String ctrlTaskContextId;
 
   @Inject
-  private CtrlTaskContextIdFetcherImpl(final InjectionFuture<DolphinDriver> dolphinDriver) {
-    this.dolphinDriver = dolphinDriver;
+  private CtrlTaskContextIdFetcherImpl() {
   }
 
   public Optional<String> getCtrlTaskContextId() {
-    return Optional.ofNullable(dolphinDriver.get().getCtrlTaskContextId());
+    return Optional.ofNullable(ctrlTaskContextId);
+  }
+
+  @Override
+  public void setCtrlTaskContextId(final String ctrlTaskContextId) {
+    this.ctrlTaskContextId = ctrlTaskContextId;
   }
 }

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
-import edu.snu.cay.dolphin.core.DolphinDriver;
+import edu.snu.cay.dolphin.core.CtrlTaskContextIdFetcher;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -24,7 +24,6 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.util.Optional;
 import org.ojalgo.optimisation.Expression;
 import org.ojalgo.optimisation.ExpressionsBasedModel;
@@ -62,30 +61,25 @@ public final class ILPSolverOptimizer implements Optimizer {
   private final AtomicInteger newComputeTaskSequence = new AtomicInteger(0);
   private final DataUnitsToMoveComparator ascendingComparator;
   private final DataUnitsToMoveComparator descendingComparator;
-  private String ctrlTaskContextId;
-  private InjectionFuture<DolphinDriver> dolphinDriver;
-
-  ILPSolverOptimizer(final String ctrlTaskContextId) {
-    this.ascendingComparator = new DataUnitsToMoveComparator();
-    this.descendingComparator = new DataUnitsToMoveComparator(DataUnitsToMoveComparator.Order.DESCENDING);
-    this.ctrlTaskContextId = ctrlTaskContextId;
-  }
+  private final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher;
 
   @Inject
-  private ILPSolverOptimizer(final InjectionFuture<DolphinDriver> dolphinDriver) {
+  private ILPSolverOptimizer(final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher) {
     this.ascendingComparator = new DataUnitsToMoveComparator();
     this.descendingComparator = new DataUnitsToMoveComparator(DataUnitsToMoveComparator.Order.DESCENDING);
-    this.dolphinDriver = dolphinDriver;
+    this.ctrlTaskContextIdFetcher = ctrlTaskContextIdFetcher;
   }
 
 
   @Override
   public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
-    if (ctrlTaskContextId == null) {
-      initializeCtrlTaskContextId();
+    final Optional<String> ctrlTaskContextId = ctrlTaskContextIdFetcher.getCtrlTaskContextId();
+    if (!ctrlTaskContextId.isPresent()) {
+      LOG.log(Level.WARNING, "Controller task is unidentifiable at the moment. Returning empty plan.");
+      return PlanImpl.newBuilder().build();
     }
 
-    final Optional<Cost> cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId);
+    final Optional<Cost> cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId.get());
     if (!cost.isPresent()) {
       LOG.log(Level.WARNING, "No controller task present at the moment. Returning empty plan.");
       return PlanImpl.newBuilder().build();
@@ -153,13 +147,6 @@ public final class ILPSolverOptimizer implements Optimizer {
         return;
       }
     }
-  }
-
-  /**
-   * Use {@code dolphinDriver} to check the context id of the ctrl task.
-   */
-  private void initializeCtrlTaskContextId() {
-    ctrlTaskContextId = dolphinDriver.get().getCtrlTaskContextId();
   }
 
   /**
