@@ -89,7 +89,7 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   /**
-   * Blocks until localBuf and packetQueue are emptied
+   * Blocks until localBuf and packetQueue are emptied.
    */
   @Override
   public void flush() throws IOException {
@@ -97,7 +97,7 @@ public final class SurfFSOutputStream extends OutputStream {
   }
 
   /**
-   * After flush(), notify SurfMetaServer of file completion
+   * After flush(), notify SurfMetaServer of file completion.
    */
   @Override
   public void close() throws IOException {
@@ -251,7 +251,8 @@ public final class SurfFSOutputStream extends OutputStream {
           }
 
           final BlockMeta blockMeta = packet.writeableBlockMeta.getBlockMeta();
-          curCacheClient.writeData(blockMeta.getFileId(), blockMeta.getOffSet(), packet.blockInnerOffset, packet.buf, packet.isLastPacket);
+          curCacheClient.writeData(
+              blockMeta.getFileId(), blockMeta.getOffSet(), packet.blockInnerOffset, packet.buf, packet.isLastPacket);
         } catch (Exception e) {
           throw new RuntimeException(e);
         }

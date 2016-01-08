@@ -18,7 +18,7 @@ import java.util.logging.Logger;
 
 public final class FallbackFSInputStream extends FSInputStream {
 
-  private static Logger LOG = Logger.getLogger(FallbackFSInputStream.class.getName());
+  private static final Logger LOG = Logger.getLogger(FallbackFSInputStream.class.getName());
 
   // The original input stream is always kept, so it can be closed later
   private final FSInputStream originalIn;
@@ -63,7 +63,7 @@ public final class FallbackFSInputStream extends FSInputStream {
     }
   }
 
-  /*** Override abstract methods ***/
+  /*** Override abstract methods. ***/
 
   @Override
   public synchronized void seek(final long pos) throws IOException {
@@ -111,10 +111,11 @@ public final class FallbackFSInputStream extends FSInputStream {
     return numRead;
   }
 
-  /*** Override methods directly inherited from FSInputStream ***/
+  /*** Override methods directly inherited from FSInputStream. ***/
 
   @Override
-  public synchronized int read(final long position, final byte[] buffer, final int offset, final int length) throws IOException {
+  public synchronized int read(final long position, final byte[] buffer, final int offset, final int length)
+      throws IOException {
     int numRead;
     try {
       numRead = in.read(position, buffer, offset, length);
@@ -129,7 +130,8 @@ public final class FallbackFSInputStream extends FSInputStream {
   }
 
   @Override
-  public void readFully(final long position, final byte[] buffer, final int offset, final int length) throws IOException {
+  public void readFully(final long position, final byte[] buffer, final int offset, final int length)
+      throws IOException {
     try {
       in.readFully(position, buffer, offset, length);
     } catch (final IOException e) {
@@ -148,7 +150,7 @@ public final class FallbackFSInputStream extends FSInputStream {
     }
   }
 
-  /*** Override methods inherited from InputStream ***/
+  /*** Override methods inherited from InputStream. ***/
 
   @Override
   public synchronized int read(final byte[] b) throws IOException {
@@ -217,7 +219,7 @@ public final class FallbackFSInputStream extends FSInputStream {
     }
   }
 
-  /*** Mark/Reset is not supported by FallbackFSInputStream ***/
+  /*** Mark/Reset is not supported by FallbackFSInputStream. ***/
 
   @Override
   public synchronized void mark(final int readlimit) {

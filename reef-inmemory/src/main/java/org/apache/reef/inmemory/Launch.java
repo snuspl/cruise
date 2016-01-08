@@ -38,7 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Launcher for InMemory Application
+ * Launcher for InMemory Application.
  */
 public final class Launch {
   /**
@@ -47,34 +47,36 @@ public final class Launch {
   private static final Logger LOG = Logger.getLogger(Launch.class.getName());
 
   /**
-   * The file is located at "./conf/config.json" as a JSON format
+   * The file is located at "./conf/config.json" as a JSON format.
    */
   private static final String CONFIG_FILE = "conf/config.json";
 
   @NamedParameter(doc = "Whether the application runs on local runtime",
-    short_name = "local", default_value = "true")
+      short_name = "local", default_value = "true")
   public static final class Local implements Name<Boolean> {
   }
 
   @NamedParameter(doc = "Number of maximum evaluators that can be created in the local runtime",
-    short_name = "local_max_num_eval", default_value = "2")
+      short_name = "local_max_num_eval", default_value = "2")
   public static final class LocalMaxNumEval implements Name<Integer> {
   }
 
   // See: JVMHeapSlack class
-  @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap.", short_name = "jvm_heap_slack", default_value = "0.05")
+  @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap.",
+      short_name = "jvm_heap_slack", default_value = "0.05")
   public static class ReefJvmHeapSlack implements Name<Double>{
   }
 
   /**
-   * File path of a replication rules JSON file. The file will be read at the client and added to the server configuration as a String.
+   * File path of a replication rules JSON file.
+   * The file will be read at the client and added to the server configuration as a String.
    */
   @NamedParameter(doc = "Replication rules JSON file path", short_name = "replication_rules")
   public static final class ReplicationRulesPath implements Name<String> {
   }
 
   /**
-   * Parse the configuration file
+   * Parse the configuration file.
    * @return Configuration described in config file
    * @throws IOException If failed to parse the config file
    */
@@ -89,7 +91,7 @@ public final class Launch {
    */
   public static Configuration parseCommandLine(final String[] args) throws IOException {
     final JavaConfigurationBuilder confBuilder =
-      Tang.Factory.getTang().newConfigurationBuilder();
+        Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(Local.class);
     cl.registerShortNameOfClass(LocalMaxNumEval.class);
@@ -117,7 +119,7 @@ public final class Launch {
   }
 
   /**
-   * Choose which configuration to use for each Parameter
+   * Choose which configuration to use for each Parameter.
    * The arguments given from the command line overwrites the one from configuration file
    * @param clazz The Parameter class to set the value
    * @param clConfigInjector The injector of Command line configuration
@@ -125,12 +127,14 @@ public final class Launch {
    * @return The instance for given Parameter
    * @throws InjectionException If failed to get instance
    */
-  private static <T> T chooseNamedInstance(Class<? extends Name<T>> clazz, Injector clConfigInjector, Injector fileConfigInjector) throws InjectionException {
-    return clConfigInjector.isParameterSet(clazz) ? clConfigInjector.getNamedInstance(clazz) : fileConfigInjector.getNamedInstance(clazz);
+  private static <T> T chooseNamedInstance(final Class<? extends Name<T>> clazz, final Injector clConfigInjector,
+                                           final Injector fileConfigInjector) throws InjectionException {
+    return clConfigInjector.isParameterSet(clazz) ? clConfigInjector.getNamedInstance(clazz) :
+        fileConfigInjector.getNamedInstance(clazz);
   }
 
   /**
-   * Build Driver Configuration
+   * Build Driver Configuration.
    */
   private static Configuration getDriverConfiguration() {
     final Configuration driverConfig;
@@ -163,31 +167,42 @@ public final class Launch {
   }
 
   /**
-   * Build InMemory Configuration which is used in application
+   * Build InMemory Configuration which is used in application.
    */
   private static Configuration getInMemoryConfiguration(final Configuration clConf, final Configuration fileConf)
     throws InjectionException, BindException {
     final Injector clInjector = Tang.Factory.getTang().newInjector(clConf);
     final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
 
-    ConfigurationModule inMemoryConfigModule = InMemoryDriverConfiguration.getConf(chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.METASERVER_PORT, chooseNamedInstance(MetaServerParameters.Port.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.INIT_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.InitCacheServers.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.DEFAULT_MEM_CACHE_SERVERS, chooseNamedInstance(MetaServerParameters.DefaultMemCacheServers.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.CACHESERVER_PORT, chooseNamedInstance(CacheParameters.Port.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.CACHESERVER_SERVER_THREADS, chooseNamedInstance(CacheParameters.NumServerThreads.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.CACHESERVER_LOADING_THREADS, chooseNamedInstance(CacheParameters.NumLoadingThreads.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.CACHE_MEMORY_SIZE, chooseNamedInstance(CacheParameters.Memory.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.CACHESERVER_HEAP_SLACK, chooseNamedInstance(CacheParameters.HeapSlack.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.DFS_TYPE, chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
-      .set(InMemoryDriverConfiguration.DFS_ADDRESS, chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
+    ConfigurationModule inMemoryConfigModule = InMemoryDriverConfiguration
+        .getConf(chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.METASERVER_PORT,
+            chooseNamedInstance(MetaServerParameters.Port.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.INIT_CACHE_SERVERS,
+            chooseNamedInstance(MetaServerParameters.InitCacheServers.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.DEFAULT_MEM_CACHE_SERVERS,
+            chooseNamedInstance(MetaServerParameters.DefaultMemCacheServers.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.CACHESERVER_PORT,
+            chooseNamedInstance(CacheParameters.Port.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.CACHESERVER_SERVER_THREADS,
+            chooseNamedInstance(CacheParameters.NumServerThreads.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.CACHESERVER_LOADING_THREADS,
+            chooseNamedInstance(CacheParameters.NumLoadingThreads.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.CACHE_MEMORY_SIZE,
+            chooseNamedInstance(CacheParameters.Memory.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.CACHESERVER_HEAP_SLACK,
+            chooseNamedInstance(CacheParameters.HeapSlack.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.DFS_TYPE,
+            chooseNamedInstance(DfsParameters.Type.class, clInjector, fileInjector))
+        .set(InMemoryDriverConfiguration.DFS_ADDRESS,
+            chooseNamedInstance(DfsParameters.Address.class, clInjector, fileInjector));
     inMemoryConfigModule = setReplicationRules(inMemoryConfigModule, clInjector, fileInjector);
     return inMemoryConfigModule.build();
   }
 
   /**
-   * Build Runtime Configuration
-   * public for integration testing
+   * Build Runtime Configuration.
+   * public for integration testing.
    */
   public static Configuration getRuntimeConfiguration(final Configuration clConf, final Configuration fileConf)
     throws BindException, InjectionException {
@@ -216,7 +231,8 @@ public final class Launch {
     final Injector fileInjector = Tang.Factory.getTang().newInjector(fileConf);
 
     final Instrumentor instrumentor = new InstrumentorImpl(
-            chooseNamedInstance(InstrumentationParameters.InstrumentationReporterPeriod.class, clInjector, fileInjector),
+            chooseNamedInstance(InstrumentationParameters.InstrumentationReporterPeriod.class,
+                clInjector, fileInjector),
             chooseNamedInstance(InstrumentationParameters.InstrumentationLogLevel.class, clInjector, fileInjector),
             chooseNamedInstance(GangliaParameters.Ganglia.class, clInjector, fileInjector),
             chooseNamedInstance(GangliaParameters.GangliaHost.class, clInjector, fileInjector),
@@ -226,7 +242,7 @@ public final class Launch {
   }
 
   /**
-   * Build cluster-specific configuration
+   * Build cluster-specific configuration.
    */
   private static Configuration getClusterConfiguration(final Configuration clConf, final Configuration fileConf)
     throws InjectionException, BindException {
@@ -256,10 +272,11 @@ public final class Launch {
   }
 
   /**
-   * Build launch configuration
+   * Build launch configuration.
    * public for integration testing
    */
-  public static Configuration getLaunchConfiguration(final Configuration clConfig, final Configuration fileConfig) throws InjectionException {
+  public static Configuration getLaunchConfiguration(final Configuration clConfig, final Configuration fileConfig)
+      throws InjectionException {
     final Configuration driverConfig = getDriverConfiguration();
     final Configuration inMemoryConfig = getInMemoryConfiguration(clConfig, fileConfig);
     final Configuration clusterConfig = getClusterConfiguration(clConfig, fileConfig);
@@ -269,9 +286,10 @@ public final class Launch {
   }
 
   /**
-   * Run InMemory Application
+   * Run InMemory Application.
    */
-  public static void runInMemory(final Configuration clConfig, final Configuration fileConfig) throws InjectionException {
+  public static void runInMemory(final Configuration clConfig, final Configuration fileConfig)
+      throws InjectionException {
 
     final Configuration runtimeConfig = getRuntimeConfiguration(clConfig, fileConfig);
     final Configuration launchConfig = getLaunchConfiguration(clConfig, fileConfig);

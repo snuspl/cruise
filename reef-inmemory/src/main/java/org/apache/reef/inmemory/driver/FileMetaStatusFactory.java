@@ -13,7 +13,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 /**
- * Used to create an instance of FileMetaStatus from either Entry in Surf or FileStatus fetched from HDFS
+ * Used to create an instance of FileMetaStatus from either Entry in Surf or FileStatus fetched from HDFS.
  */
 public class FileMetaStatusFactory {
   private final ReplicationPolicy replicationPolicy;
@@ -24,7 +24,7 @@ public class FileMetaStatusFactory {
   }
 
   /**
-   * Create an instance of FileMetaStatus from an Entry in Surf
+   * Create an instance of FileMetaStatus from an Entry in Surf.
    */
   public FileMetaStatus newFileMetaStatus(final String path, final Entry entry) {
     if (entry.isDirectory()) {
@@ -54,7 +54,7 @@ public class FileMetaStatusFactory {
   }
 
   /**
-   * Create an instance of FileMetaStatus from a FileStatus fetched from HDFS
+   * Create an instance of FileMetaStatus from a FileStatus fetched from HDFS.
    */
   public FileMetaStatus newFileMetaStatus(final FileStatus fileStatus) throws URISyntaxException {
     return new FileMetaStatus(

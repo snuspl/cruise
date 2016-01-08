@@ -21,7 +21,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The driver for InMemory Application
+ * The driver for InMemory Application.
  *  - Point of contact for client
  *  - Contains metadata indicating where cached files are stored
  *  - Manages Tasks
@@ -52,7 +52,7 @@ public final class InMemoryDriver {
   }
 
   /**
-   * Handler of StartTime event: Request Evaluators
+   * Handler of StartTime event: Request Evaluators.
    */
   public final class StartHandler implements EventHandler<StartTime> {
     @Override
@@ -73,7 +73,7 @@ public final class InMemoryDriver {
   }
 
   /**
-   * Handler of AllocatedEvaluator event: Submit an Task to the allocated evaluator
+   * Handler of AllocatedEvaluator event: Submit an Task to the allocated evaluator.
    */
   public final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     @Override
@@ -136,7 +136,7 @@ public final class InMemoryDriver {
   }
 
   /**
-   * Delegate handling to the EStage
+   * Delegate handling to the EStage.
    */
   public class TaskMessageHandler implements EventHandler<TaskMessage> {
     @Override

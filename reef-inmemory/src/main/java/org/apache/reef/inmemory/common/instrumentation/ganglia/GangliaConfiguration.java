@@ -6,27 +6,27 @@ import org.apache.reef.tang.formats.ConfigurationModuleBuilder;
 import org.apache.reef.tang.formats.RequiredParameter;
 
 /**
- * A configuration module for Ganglia-specific parameters
+ * A configuration module for Ganglia-specific parameters.
  */
 public final class GangliaConfiguration extends ConfigurationModuleBuilder {
 
   /**
-   * Use Ganglia (set to true)
+   * Use Ganglia (set to true).
    */
   public static final RequiredParameter<Boolean> GANGLIA = new RequiredParameter<>();
 
   /**
-   * Hostname of Ganglia Meta Daemon
+   * Hostname of Ganglia Meta Daemon.
    */
   public static final RequiredParameter<String> GANGLIA_HOST = new RequiredParameter<>();
 
   /**
-   * Port of Ganglia Meta Daemon
+   * Port of Ganglia Meta Daemon.
    */
   public static final RequiredParameter<Integer> GANGLIA_PORT = new RequiredParameter<>();
 
   /**
-   * Prefix for reported Ganglia metric entries
+   * Prefix for reported Ganglia metric entries.
    */
   public static final RequiredParameter<String> GANGLIA_PREFIX = new RequiredParameter<>();
 

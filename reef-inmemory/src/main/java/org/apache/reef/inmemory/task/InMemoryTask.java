@@ -69,13 +69,14 @@ public class InMemoryTask implements Task, TaskMessageSource {
 
   @Override
   public Optional<TaskMessage> getMessage() {
-    final CacheStatusMessage message = new CacheStatusMessage(cache.getStatistics(), cache.pullUpdates(), dataServer.getBindPort());
+    final CacheStatusMessage message = new CacheStatusMessage(cache.getStatistics(),
+        cache.pullUpdates(), dataServer.getBindPort());
     return Optional.of(TaskMessage.from(this.toString(),
       STATUS_CODEC.encode(message)));
   }
 
   /**
-   * Starts the thread for fulfilling data requests from clients
+   * Starts the thread for fulfilling data requests from clients.
    */
   public final class StartHandler implements EventHandler<TaskStart> {
     @Override
@@ -95,7 +96,7 @@ public class InMemoryTask implements Task, TaskMessageSource {
   }
 
   /**
-   * Delegates to the DriverMessageHandler for the Base FS
+   * Delegates to the DriverMessageHandler for the Base FS.
    */
   public final class DelegatingDriverMessageHandler implements EventHandler<DriverMessage> {
     @Override

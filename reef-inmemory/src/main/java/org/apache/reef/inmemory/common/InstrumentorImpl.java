@@ -24,8 +24,10 @@ public final class InstrumentorImpl implements Instrumentor {
   private final String gangliaPrefix;
 
   @Inject
-  public InstrumentorImpl(@Parameter(InstrumentationParameters.InstrumentationReporterPeriod.class) final int reporterPeriod,
-                          @Parameter(InstrumentationParameters.InstrumentationLogLevel.class) final String reporterLogLevel,
+  public InstrumentorImpl(@Parameter(InstrumentationParameters.InstrumentationReporterPeriod.class)
+                            final int reporterPeriod,
+                          @Parameter(InstrumentationParameters.InstrumentationLogLevel.class)
+                            final String reporterLogLevel,
                           @Parameter(GangliaParameters.Ganglia.class) final boolean ganglia,
                           @Parameter(GangliaParameters.GangliaHost.class) final String gangliaHost,
                           @Parameter(GangliaParameters.GangliaPort.class) final int gangliaPort,

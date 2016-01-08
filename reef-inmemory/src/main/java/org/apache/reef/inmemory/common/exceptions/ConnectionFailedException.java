@@ -3,7 +3,7 @@ package org.apache.reef.inmemory.common.exceptions;
 import java.io.IOException;
 
 /**
- * This exception is thrown when failed while making a connection
+ * This exception is thrown when failed while making a connection.
  */
 public class ConnectionFailedException extends IOException {
   public ConnectionFailedException() {

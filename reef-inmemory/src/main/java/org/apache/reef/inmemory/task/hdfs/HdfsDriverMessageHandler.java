@@ -22,7 +22,7 @@ import java.util.logging.Logger;
 public final class HdfsDriverMessageHandler implements DriverMessageHandler {
 
   private static final Logger LOG = Logger.getLogger(HdfsDriverMessageHandler.class.getName());
-  private final EventRecorder RECORD;
+  private final EventRecorder recorder;
 
   private static final ObjectSerializableCodec<HdfsDriverTaskMessage> HDFS_CODEC = new ObjectSerializableCodec<>();
 
@@ -32,7 +32,7 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
   public HdfsDriverMessageHandler(final InMemoryCache cache,
                                   final EventRecorder recorder) {
     this.cache = cache;
-    this.RECORD = recorder;
+    this.recorder = recorder;
   }
 
   @Override
@@ -43,7 +43,7 @@ public final class HdfsDriverMessageHandler implements DriverMessageHandler {
         LOG.log(Level.INFO, "Received load block msg");
         final HdfsBlockMessage blockMsg = msg.getHdfsBlockMessage().get();
         final HdfsBlockLoader loader = new HdfsBlockLoader(blockMsg.getBlockId(), blockMsg.getBlockInfo(),
-                blockMsg.getLocations(), blockMsg.isPin(), cache.getLoadingBufferSize(), RECORD);
+                blockMsg.getLocations(), blockMsg.isPin(), cache.getLoadingBufferSize(), recorder);
 
         try {
           cache.load(loader);

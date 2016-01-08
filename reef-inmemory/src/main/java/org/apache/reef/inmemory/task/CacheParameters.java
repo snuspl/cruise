@@ -4,7 +4,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Parameters for setting up the per-Task Cache
+ * Parameters for setting up the per-Task Cache.
  */
 public final class CacheParameters {
   @NamedParameter(doc = "InMemory Cache port", short_name = "cache_port", default_value = "0") // 0: any port
@@ -19,19 +19,23 @@ public final class CacheParameters {
   public static final class Timeout implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Number of threads assigned to the Cache server", short_name = "cache_server_threads", default_value = "10")
+  @NamedParameter(doc = "Number of threads assigned to the Cache server", short_name = "cache_server_threads",
+      default_value = "10")
   public static class NumServerThreads implements Name<Integer>{
   }
 
-  @NamedParameter(doc = "Number of threads assigned to the Block Loading stage", short_name = "cache_loading_threads", default_value = "3")
+  @NamedParameter(doc = "Number of threads assigned to the Block Loading stage", short_name = "cache_loading_threads",
+      default_value = "3")
   public static class NumLoadingThreads implements Name<Integer>{
   }
 
-  @NamedParameter(doc = "Amount of slack given to objects that are NOT in the cache", short_name = "cache_heap_slack", default_value = "0.15")
+  @NamedParameter(doc = "Amount of slack given to objects that are NOT in the cache", short_name = "cache_heap_slack",
+      default_value = "0.15")
   public static class HeapSlack implements Name<Double>{
   }
 
-  @NamedParameter(doc = "Size of buffer used when loading a block", short_name = "loading_buffer", default_value = "8388608") // 8 MB
+  @NamedParameter(doc = "Size of buffer used when loading a block", short_name = "loading_buffer",
+      default_value = "8388608") // 8 MB
   public static class LoadingBufferSize implements Name<Integer>{
   }
 }

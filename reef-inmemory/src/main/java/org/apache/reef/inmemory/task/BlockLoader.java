@@ -6,7 +6,7 @@ import org.apache.reef.inmemory.common.exceptions.BlockLoadingException;
 import java.io.IOException;
 
 /**
- * An interface to load a block from the base file systems
+ * An interface to load a block from the base file systems.
  */
 public interface BlockLoader {
   /**

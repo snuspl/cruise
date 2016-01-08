@@ -15,7 +15,7 @@ import java.io.OutputStream;
 public final class AvroReplicationSerializer {
 
   /**
-   * Parse Rules from a JSON String
+   * Parse Rules from a JSON String.
    */
   public static Rules fromString(String string) throws IOException {
     final DatumReader<Rules> reader = new SpecificDatumReader<>(Rules.class);
@@ -24,7 +24,7 @@ public final class AvroReplicationSerializer {
   }
 
   /**
-   * Parse Rules from a JSON text InputStream
+   * Parse Rules from a JSON text InputStream.
    */
   public static Rules fromStream(InputStream in) throws IOException {
     final DatumReader<Rules> reader = new SpecificDatumReader<>(Rules.class);
@@ -33,7 +33,7 @@ public final class AvroReplicationSerializer {
   }
 
   /**
-   * Write Rules to an OutputStream as JSON text
+   * Write Rules to an OutputStream as JSON text.
    */
   public static void toStream(Rules rules, OutputStream out) throws IOException {
     final DatumWriter<Rules> rulesWriter = new SpecificDatumWriter<>(Rules.class);

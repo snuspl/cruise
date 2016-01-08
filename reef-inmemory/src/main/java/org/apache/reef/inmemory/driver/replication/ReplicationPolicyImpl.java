@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 public final class ReplicationPolicyImpl implements ReplicationPolicy {
 
   private static final Logger LOG = Logger.getLogger(ReplicationPolicyImpl.class.getName());
-  private static final Pattern sizePattern = Pattern.compile("([\\d.]+)([KMG])?", Pattern.CASE_INSENSITIVE);
+  private static final Pattern SIZE_PATTERN = Pattern.compile("([\\d.]+)([KMG])?", Pattern.CASE_INSENSITIVE);
 
   private Rules rules;
 
@@ -124,7 +124,7 @@ public final class ReplicationPolicyImpl implements ReplicationPolicy {
   }
 
   private long parseSize(String s) throws NumberFormatException {
-    final Matcher matcher = sizePattern.matcher(s);
+    final Matcher matcher = SIZE_PATTERN.matcher(s);
     if (matcher.find()) {
       final int number = Integer.parseInt(matcher.group(1));
       final long multiplier;

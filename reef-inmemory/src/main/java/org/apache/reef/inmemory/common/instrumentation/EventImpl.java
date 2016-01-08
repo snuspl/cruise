@@ -7,7 +7,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Event Implementation
+ * Event Implementation.
  */
 public final class EventImpl implements Event {
   private static final Logger LOG = Logger.getLogger(EventImpl.class.getName());

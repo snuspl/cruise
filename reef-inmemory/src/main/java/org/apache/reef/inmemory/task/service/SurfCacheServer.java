@@ -32,7 +32,7 @@ import java.util.logging.Logger;
 public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, AutoCloseable {
 
   private static final Logger LOG = Logger.getLogger(SurfCacheServer.class.getName());
-  private final EventRecorder RECORD;
+  private final EventRecorder record;
 
   private final InMemoryCache cache;
   private final int port;
@@ -55,7 +55,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
     this.timeout = timeout;
     this.numThreads = numThreads;
     this.bufferSize = bufferSize;
-    this.RECORD = recorder;
+    this.record = recorder;
   }
 
   public int getBindPort() {
@@ -86,7 +86,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
       final TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(this.bindPort, this.timeout);
 
       final SurfCacheService.Processor<SurfCacheService.Iface> processor =
-        new SurfCacheService.Processor<SurfCacheService.Iface>(this);
+          new SurfCacheService.Processor<SurfCacheService.Iface>(this);
 
       this.server = new THsHaServer(
         new THsHaServer.Args(serverTransport).processor(processor)
@@ -113,7 +113,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
   @Override
   public ByteBuffer getData(final BlockMeta blockMeta, final long offset, final long length)
           throws BlockLoadingException, BlockNotFoundException, BlockWritingException {
-    final Event getDataEvent = RECORD.event("task.get-data",
+    final Event getDataEvent = record.event("task.get-data",
             blockMeta.toString() + ":" + Long.toString(offset)).start();
     final BlockId blockId = new BlockId(blockMeta);
 
@@ -125,7 +125,7 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
     final ByteBuffer buf = ByteBuffer.wrap(chunk, chunkOffset,
             Math.min(chunk.length - chunkOffset, (int) Math.min(Integer.MAX_VALUE, length)));
-    RECORD.record(getDataEvent.stop());
+    record.record(getDataEvent.stop());
     return buf;
   }
 
@@ -152,7 +152,8 @@ public final class SurfCacheServer implements SurfCacheService.Iface, Runnable, 
 
   // TODO: replace this synchronous call with an asynchronous protocol for better performance
   @Override
-  public void writeData(final long fileId, final long blockOffset, final long innerOffset, final ByteBuffer buf, final boolean isLastPacket) throws TException {
+  public void writeData(final long fileId, final long blockOffset, final long innerOffset, final ByteBuffer buf,
+                        final boolean isLastPacket) throws TException {
     final BlockId blockId = new BlockId(fileId, blockOffset);
     try {
       cache.write(blockId, innerOffset, buf, isLastPacket);

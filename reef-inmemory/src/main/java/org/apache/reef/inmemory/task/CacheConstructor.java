@@ -30,13 +30,13 @@ import java.util.logging.Logger;
  */
 public final class CacheConstructor implements ExternalConstructor<Cache> {
 
-  private Logger LOG = Logger.getLogger(CacheConstructor.class.getName());
+  private static final Logger LOG = Logger.getLogger(CacheConstructor.class.getName());
 
   private MemoryManager memoryManager;
   private final int numThreads;
 
   /**
-   * Update statistics on cache removal
+   * Update statistics on cache removal.
    */
   private final RemovalListener<BlockId, CacheEntry> removalListener = new RemovalListener<BlockId, CacheEntry>() {
     @Override

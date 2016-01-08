@@ -6,9 +6,9 @@ import java.util.List;
 
 /**
  * Block updates at the Task:
- * - failures : blocks that failed during load
- * - removals : blocks that were removed due to eviction or clear
- * - additions : blocks that were added after write
+ * - failures : blocks that failed during load.
+ * - removals : blocks that were removed due to eviction or clear.
+ * - additions : blocks that were added after write.
  */
 public final class CacheUpdates implements Serializable {
 

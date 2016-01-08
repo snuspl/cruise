@@ -19,15 +19,18 @@ public final class MetaServerParameters {
   public static final class Threads implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Replication rules", short_name = "replication_rules_json", default_value = "{\"rules\":[],\"default\":{\"replication\":1,\"pin\":false}}")
+  @NamedParameter(doc = "Replication rules", short_name = "replication_rules_json",
+      default_value = "{\"rules\":[],\"default\":{\"replication\":1,\"pin\":false}}")
   public static final class ReplicationRulesJson implements Name<String> {
   }
 
-  @NamedParameter(doc = "Number of task servers to allocate on startup", short_name = "cache_servers_num_init", default_value = "1")
+  @NamedParameter(doc = "Number of task servers to allocate on startup", short_name = "cache_servers_num_init",
+      default_value = "1")
   public static final class InitCacheServers implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Default memory in MB allocated to task servers", short_name = "cache_servers_default_mem", default_value = "512")
+  @NamedParameter(doc = "Default memory in MB allocated to task servers", short_name = "cache_servers_default_mem",
+      default_value = "512")
   public static final class DefaultMemCacheServers implements Name<Integer> {
   }
 }

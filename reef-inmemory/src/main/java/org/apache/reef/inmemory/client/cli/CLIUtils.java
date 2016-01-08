@@ -10,7 +10,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Utility methods for use by the CLI
+ * Utility methods for use by the CLI.
  */
 public final class CLIUtils {
 

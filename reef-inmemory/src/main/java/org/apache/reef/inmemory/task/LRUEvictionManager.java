@@ -32,7 +32,7 @@ public final class LRUEvictionManager {
   }
 
   /**
-   * Invoke when a block has been inserted into the cache
+   * Invoke when a block has been inserted into the cache.
    * @param blockId Inserted block
    * @param blockSize Size of the block
    */
@@ -43,7 +43,7 @@ public final class LRUEvictionManager {
   }
 
   /**
-   * Invoke when a block has been pinned into the cache
+   * Invoke when a block has been pinned into the cache.
    * @param blockId Pinned block
    */
   public synchronized void addPinned(final BlockId blockId) {
@@ -51,7 +51,7 @@ public final class LRUEvictionManager {
   }
 
   /**
-   * Invoke when a block has been read from the cache
+   * Invoke when a block has been read from the cache.
    * @param blockId Read block
    */
   public synchronized void use(final BlockId blockId) {
@@ -70,7 +70,7 @@ public final class LRUEvictionManager {
   }
 
   /**
-   * Invoke when a block has been manually removed from the cache
+   * Invoke when a block has been manually removed from the cache.
    * @param blockId Removed block
    */
   public synchronized void remove(final BlockId blockId) {

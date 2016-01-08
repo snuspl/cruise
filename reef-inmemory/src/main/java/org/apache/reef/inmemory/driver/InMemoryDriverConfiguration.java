@@ -23,7 +23,7 @@ import org.apache.reef.wake.StageConfiguration;
 import org.apache.reef.wake.impl.ThreadPoolStage;
 
 /**
- * Builder that creates a Configuration Module to be used at the Driver, according to base FS type
+ * Builder that creates a Configuration Module to be used at the Driver, according to base FS type.
  */
 public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilder {
 
@@ -49,30 +49,30 @@ public final class InMemoryDriverConfiguration extends ConfigurationModuleBuilde
   }
 
   private static final ConfigurationModule HDFS_CONF = new InMemoryDriverConfiguration()
-    .bindNamedParameter(MetaServerParameters.Port.class, METASERVER_PORT)
-    .bindNamedParameter(MetaServerParameters.InitCacheServers.class, INIT_CACHE_SERVERS)
-    .bindNamedParameter(MetaServerParameters.DefaultMemCacheServers.class, DEFAULT_MEM_CACHE_SERVERS)
-    .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
-    .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
-    .bindNamedParameter(CacheParameters.Memory.class, CACHE_MEMORY_SIZE)
-    .bindNamedParameter(CacheParameters.HeapSlack.class, CACHESERVER_HEAP_SLACK)
-    .bindNamedParameter(StageConfiguration.NumberOfThreads.class, CACHESERVER_LOADING_THREADS)
-    .bindNamedParameter(MetaServerParameters.ReplicationRulesJson.class, REPLICATION_RULES)
-    .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)
-    .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
-    .bindNamedParameter(StageConfiguration.StageHandler.class, TaskMessageHandlerExecutor.class)
-    .bindImplementation(BlockMetaFactory.class, HdfsBlockMetaFactory.class)
-    .bindImplementation(BaseFsBlockInfoFactory.class, HdfsBlockInfoFactory.class)
-    .bindImplementation(CacheNodeMessenger.class, HdfsCacheNodeMessenger.class)
-    .bindImplementation(FileMetaUpdater.class, HdfsFileMetaUpdater.class)
-    .bindImplementation(BlockLocationGetter.class, HdfsBlockLocationGetter.class)
-    .bindImplementation(BaseFsClient.class, HDFSClient.class)
-    .bindImplementation(CacheNodeManager.class, CacheNodeManagerImpl.class)
-    .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsRandomCacheSelectionPolicy.class)
-    .bindImplementation(WritingCacheSelectionPolicy.class, WritingRandomCacheSelectionPolicy.class)
-    .bindImplementation(ReplicationPolicy.class, ReplicationPolicyImpl.class)
-    .bindImplementation(EStage.class, ThreadPoolStage.class)
-    .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
-    .bindConstructor(FileSystem.class, BaseFsConstructor.class)
-    .build();
+      .bindNamedParameter(MetaServerParameters.Port.class, METASERVER_PORT)
+      .bindNamedParameter(MetaServerParameters.InitCacheServers.class, INIT_CACHE_SERVERS)
+      .bindNamedParameter(MetaServerParameters.DefaultMemCacheServers.class, DEFAULT_MEM_CACHE_SERVERS)
+      .bindNamedParameter(CacheParameters.Port.class, CACHESERVER_PORT)
+      .bindNamedParameter(CacheParameters.NumServerThreads.class, CACHESERVER_SERVER_THREADS)
+      .bindNamedParameter(CacheParameters.Memory.class, CACHE_MEMORY_SIZE)
+      .bindNamedParameter(CacheParameters.HeapSlack.class, CACHESERVER_HEAP_SLACK)
+      .bindNamedParameter(StageConfiguration.NumberOfThreads.class, CACHESERVER_LOADING_THREADS)
+      .bindNamedParameter(MetaServerParameters.ReplicationRulesJson.class, REPLICATION_RULES)
+      .bindNamedParameter(DfsParameters.Type.class, DFS_TYPE)
+      .bindNamedParameter(DfsParameters.Address.class, DFS_ADDRESS)
+      .bindNamedParameter(StageConfiguration.StageHandler.class, TaskMessageHandlerExecutor.class)
+      .bindImplementation(BlockMetaFactory.class, HdfsBlockMetaFactory.class)
+      .bindImplementation(BaseFsBlockInfoFactory.class, HdfsBlockInfoFactory.class)
+      .bindImplementation(CacheNodeMessenger.class, HdfsCacheNodeMessenger.class)
+      .bindImplementation(FileMetaUpdater.class, HdfsFileMetaUpdater.class)
+      .bindImplementation(BlockLocationGetter.class, HdfsBlockLocationGetter.class)
+      .bindImplementation(BaseFsClient.class, HDFSClient.class)
+      .bindImplementation(CacheNodeManager.class, CacheNodeManagerImpl.class)
+      .bindImplementation(HdfsCacheSelectionPolicy.class, HdfsRandomCacheSelectionPolicy.class)
+      .bindImplementation(WritingCacheSelectionPolicy.class, WritingRandomCacheSelectionPolicy.class)
+      .bindImplementation(ReplicationPolicy.class, ReplicationPolicyImpl.class)
+      .bindImplementation(EStage.class, ThreadPoolStage.class)
+      .bindConstructor(LoadingCache.class, LoadingCacheConstructor.class)
+      .bindConstructor(FileSystem.class, BaseFsConstructor.class)
+      .build();
 }

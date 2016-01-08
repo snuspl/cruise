@@ -38,7 +38,8 @@ public final class CacheAdmissionController {
    * @throws MemoryLimitException If it is not available to reserve even with eviction.
    * @throws BlockNotFoundException If the metadata is not found in the cache.
    */
-  public void reserveSpace(final BlockId blockId, final long blockSize, final boolean pin) throws BlockNotFoundException, MemoryLimitException {
+  public void reserveSpace(final BlockId blockId, final long blockSize, final boolean pin)
+      throws BlockNotFoundException, MemoryLimitException {
     // 1. If the cache is full, an eviction list is returned by copyStart.
     // 2. Each block in the eviction list is invalidated here.
     // 3. copyStart must be called again; the Memory Manager then ensures that

@@ -56,7 +56,7 @@ public final class SurfFS extends FileSystem {
   private static final Logger LOG = Logger.getLogger(SurfFS.class.getName());
 
   // These cannot be final, because the empty constructor + initialize() are called externally
-  private EventRecorder RECORD;
+  private EventRecorder recorder;
   private FileSystem baseFs;
   private String localAddress;
   private String metaServerAddress;
@@ -81,39 +81,39 @@ public final class SurfFS extends FileSystem {
                    final EventRecorder recorder) {
     this.baseFs = baseFs;
     this.metaClientManager = metaClientManager;
-    this.RECORD = recorder;
+    this.recorder = recorder;
   }
 
   @Override
   public void initialize(final URI uri,
                          final Configuration conf) throws IOException {
-    RECORD = new BasicEventRecorder(
+    recorder = new BasicEventRecorder(
             conf.get(INSTRUMENTATION_CLIENT_LOG_LEVEL_KEY, INSTRUMENTATION_CLIENT_LOG_LEVEL_DEFAULT));
-    final Event initializeEvent = RECORD.event("client.initialize", uri.toString()).start();
+    final Event initializeEvent = recorder.event("client.initialize", uri.toString()).start();
 
     super.initialize(uri, conf);
     final String baseFsAddress = conf.get(BASE_FS_ADDRESS_KEY, BASE_FS_ADDRESS_DEFAULT);
     this.uri = uri;
     this.baseFsUri = URI.create(baseFsAddress);
     this.baseFs = new DistributedFileSystem();
-    final Event initializeDfsEvent = RECORD.event("client.initialize.dfs", uri.toString()).start();
+    final Event initializeDfsEvent = recorder.event("client.initialize.dfs", uri.toString()).start();
     this.baseFs.initialize(this.baseFsUri, conf);
-    RECORD.record(initializeDfsEvent.stop());
+    recorder.record(initializeDfsEvent.stop());
     this.workingDir = toAbsoluteSurfPath(baseFs.getWorkingDirectory());
     this.setConf(conf);
 
     this.isFallback = conf.getBoolean(FALLBACK_KEY, FALLBACK_DEFAULT);
 
-    final Event resolveAddressEvent = RECORD.event("client.resolve-address", baseFsUri.toString()).start();
+    final Event resolveAddressEvent = recorder.event("client.resolve-address", baseFsUri.toString()).start();
     this.metaServerAddress = getMetaserverResolver().getAddress();
     LOG.log(Level.FINE, "SurfFs address resolved to {0}", this.metaServerAddress);
-    RECORD.record(resolveAddressEvent.stop());
+    recorder.record(resolveAddressEvent.stop());
 
     // TODO: Works on local and cluster. Will it work across all platforms? (NetUtils gives the wrong address.)
     this.localAddress = InetAddress.getLocalHost().getHostName();
 
     LOG.log(Level.INFO, "localAddress: {0}", localAddress);
-    RECORD.record(initializeEvent.stop());
+    recorder.record(initializeEvent.stop());
   }
 
   @Override
@@ -143,7 +143,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Loads data into Surf from HDFS: Yes
+   * Loads data into Surf from HDFS: Yes.
    * Consistency guarantee: Only for the first load (not responsible for changes in HDFS after)
    * Fallback: Yes (The returned FSDataInputStream also supports fallback)
    *
@@ -155,13 +155,14 @@ public final class SurfFS extends FileSystem {
   @Override
   public FSDataInputStream open(final Path path, final int bufferSize) throws IOException {
     final String pathStr = toAbsolutePathInString(path);
-    final Event openEvent = RECORD.event("client.open", pathStr).start();
+    final Event openEvent = recorder.event("client.open", pathStr).start();
     LOG.log(Level.INFO, "Open called on {0}, using {1}", new Object[]{path, pathStr});
 
     try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
       final FileMeta metadata = metaClientWrapper.getClient().getOrLoadFileMeta(pathStr, localAddress);
       final CacheClientManager cacheClientManager = getCacheClientManager();
-      final SurfFSInputStream surfFSInputStream = new SurfFSInputStream(metadata, cacheClientManager, getConf(), RECORD);
+      final SurfFSInputStream surfFSInputStream =
+          new SurfFSInputStream(metadata, cacheClientManager, getConf(), recorder);
       if (isFallback) {
         return new FSDataInputStream(new FallbackFSInputStream(surfFSInputStream, path, baseFs));
       } else {
@@ -179,12 +180,12 @@ public final class SurfFS extends FileSystem {
     } catch (Exception e) {
       throw new IOException("Failed to close the Meta Client in open " + path, e);
     } finally {
-      RECORD.record(openEvent.stop());
+      recorder.record(openEvent.stop());
     }
   }
 
   /**
-   * Loads data into Surf from HDFS: No
+   * Loads data into Surf from HDFS: No.
    * Consistency guarantee: If same metadata exists in both Surf and HDFS, Surf's overwrites HDFS's
    * Fallback: Yes
    *
@@ -215,7 +216,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Loads data into Surf from HDFS: Yes
+   * Loads data into Surf from HDFS: Yes.
    * Consistency guarantee: Only for the first load (not responsible for changes in HDFS after)
    * Fallback: Yes
    *
@@ -226,13 +227,16 @@ public final class SurfFS extends FileSystem {
    * @throws IOException
    */
   @Override
-  public BlockLocation[] getFileBlockLocations(final FileStatus file, final long start, final long len) throws IOException {
+  public BlockLocation[] getFileBlockLocations(final FileStatus file, final long start, final long len)
+      throws IOException {
     LOG.log(Level.INFO, "getFileBlockLocations called on {0}, using {1}",
-      new Object[]{file.getPath(), toAbsolutePathInString(file.getPath())});
+        new Object[]{file.getPath(), toAbsolutePathInString(file.getPath())});
     final List<BlockLocation> blockLocations = new LinkedList<>();
 
     try (final MetaClientWrapper metaClientWrapper = getMetaClientWrapper()) {
-      final FileMeta metadata = metaClientWrapper.getClient().getOrLoadFileMeta(toAbsolutePathInString(file.getPath()), localAddress);
+      final FileMeta metadata = metaClientWrapper
+          .getClient()
+          .getOrLoadFileMeta(toAbsolutePathInString(file.getPath()), localAddress);
       long startRemaining = start;
       final Iterator<BlockMeta> iter = metadata.getBlocksIterator();
       // HDFS returns empty array with the file of size 0(e.g. _SUCCESS file from Map/Reduce Task)
@@ -309,8 +313,10 @@ public final class SurfFS extends FileSystem {
   }
 
   @Override
-  public FSDataOutputStream create(final Path path, final FsPermission permission, final boolean overwrite, final int bufferSize,
-                                   final short baseFsReplication, final long blockSize, final Progressable progress) throws IOException {
+  public FSDataOutputStream create(final Path path, final FsPermission permission, final boolean overwrite,
+                                   final int bufferSize, final short baseFsReplication, final long blockSize,
+                                   final Progressable progress)
+      throws IOException {
     // TODO: handle permission, overwrite, bufferSize, progress
     final String pathStr = toAbsolutePathInString(path);
     try {
@@ -318,14 +324,16 @@ public final class SurfFS extends FileSystem {
       final MetaClientWrapper metaClientWrapper = getMetaClientWrapper();
       final CacheClientManager cacheClientManager = getCacheClientManager();
       metaClientWrapper.getClient().create(pathStr, blockSize, baseFsReplication);
-      return new FSDataOutputStream(new SurfFSOutputStream(pathStr, metaClientWrapper, cacheClientManager, blockSize), new Statistics("surf"));
+      return new FSDataOutputStream(
+          new SurfFSOutputStream(pathStr, metaClientWrapper, cacheClientManager, blockSize), new Statistics("surf")
+      );
     } catch (TException e) {
       throw new IOException("Failed to create " + path, e);
     }
   }
 
   /**
-   * This operation is not yet supported by Surf
+   * This operation is not yet supported by Surf.
    * Also, no fallback procedure is provided
    * @throws UnsupportedOperationException
    */
@@ -379,7 +387,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Instantiate and return a new CacheClientManager for thread-safety
+   * Instantiate and return a new CacheClientManager for thread-safety.
    */
   private CacheClientManager getCacheClientManager() {
     final Configuration conf = this.getConf();
@@ -452,7 +460,7 @@ public final class SurfFS extends FileSystem {
   }
 
   /**
-   * Get the MetaserverResolver based on the provided uri
+   * Get the MetaserverResolver based on the provided uri.
    */
   public MetaserverResolver getMetaserverResolver() {
     final String address = uri.getAuthority();

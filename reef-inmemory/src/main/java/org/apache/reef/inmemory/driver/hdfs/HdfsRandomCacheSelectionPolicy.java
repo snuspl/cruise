@@ -7,7 +7,7 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * Simple random policy for Cache selection
+ * Simple random policy for Cache selection.
  */
 public final class HdfsRandomCacheSelectionPolicy implements HdfsCacheSelectionPolicy {
 

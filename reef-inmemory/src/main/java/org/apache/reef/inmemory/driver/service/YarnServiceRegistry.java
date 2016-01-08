@@ -29,7 +29,7 @@ public final class YarnServiceRegistry implements ServiceRegistry {
 
   public static final class AddressHttpHandler implements HttpHandler {
 
-    private static final String uriSpecification = "surf";
+    private static final String URI_SPECIFICATION = "surf";
 
     private String host;
     private int port;
@@ -48,7 +48,7 @@ public final class YarnServiceRegistry implements ServiceRegistry {
 
     @Override
     public String getUriSpecification() {
-      return uriSpecification;
+      return URI_SPECIFICATION;
     }
 
     @Override

@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  */
 public final class CacheBlockLoader {
   private static final Logger LOG = Logger.getLogger(CacheBlockLoader.class.getName());
-  private final EventRecorder RECORD;
+  private final EventRecorder recorder;
 
   private static final long NOT_CACHED = -1;
 
@@ -47,7 +47,7 @@ public final class CacheBlockLoader {
     this.cacheManager = cacheManager;
     this.progressManager = progressManager;
     this.progressManager.initialize(block.getLocations(), conf);
-    this.RECORD = recorder;
+    this.recorder = recorder;
   }
 
   /**
@@ -78,10 +78,12 @@ public final class CacheBlockLoader {
    * @param position Get data from this position within the block
    * @param length Length of data to get. At most length bytes will be returned.
    * @param sequentialRead Whether this request is part of a sequential read. If so, local caching will be used.
-   * @return A ByteBuffer, to be read from position to limit. The number of bytes will be at most as the length parameter.
+   * @return A ByteBuffer, to be read from position to limit.
+   *        The number of bytes will be at most as the length parameter.
    * @throws IOException
    */
-  public synchronized ByteBuffer getData(final int position, final int length, final boolean sequentialRead) throws IOException {
+  public synchronized ByteBuffer getData(final int position, final int length, final boolean sequentialRead)
+      throws IOException {
     final int chunkPosition = position % cacheManager.getBufferSize();
     final int chunkStartPosition = position - chunkPosition;
 
@@ -121,7 +123,7 @@ public final class CacheBlockLoader {
       try {
         final SurfCacheService.Client client = getClient(cacheAddress);
         synchronized(client) {
-          final Event dataTransferEvent = RECORD.event("client.data-transfer",
+          final Event dataTransferEvent = recorder.event("client.data-transfer",
                   block.toString() + ":" + chunkStartPosition).start();
           LOG.log(Level.INFO, "Start data transfer from block {0}, with chunkStartPosition {1}",
                   new String[]{block.toString(), Integer.toString(chunkStartPosition)});
@@ -139,7 +141,7 @@ public final class CacheBlockLoader {
 
           LOG.log(Level.INFO, "Done data transfer from block {0}, with chunkStartPosition {1}",
                   new String[]{block.toString(), Integer.toString(chunkStartPosition)});
-          RECORD.record(dataTransferEvent.stop());
+          recorder.record(dataTransferEvent.stop());
           return dataBuffer;
         }
       } catch (BlockLoadingException e) {

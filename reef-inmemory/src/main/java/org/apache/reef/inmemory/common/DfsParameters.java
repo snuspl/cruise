@@ -3,7 +3,7 @@ package org.apache.reef.inmemory.common;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 /**
- * Parameters for specifying base FS
+ * Parameters for specifying base FS.
  */
 public final class DfsParameters {
   @NamedParameter(doc = "Base DFS type", short_name = "dfs_type", default_value = "hdfs")
