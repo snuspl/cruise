@@ -1,0 +1,58 @@
+[
+{
+  "namespace" : "org.apache.reef.inmemory.common.replication",
+  "type" : "record",
+  "name" : "Condition",
+  "fields" :
+  [
+    { "name" : "type", "type" : "string" },
+    { "name" : "operator", "type" : "string" },
+    { "name" : "operand", "type" : "string" }
+  ]
+},
+{
+  "namespace" : "org.apache.reef.inmemory.common.replication",
+  "type" : "record",
+  "name" : "Action",
+  "fields" :
+  [
+    { "name" : "replication", "type" : "int" },
+    { "name" : "pin", "type" : "boolean" }
+  ]
+},
+{
+  "namespace" : "org.apache.reef.inmemory.common.replication",
+  "type" : "record",
+  "name" : "Rule",
+  "fields" :
+  [
+    { "name" : "id", "type" : "string"},
+    {
+      "name" : "conditions",
+      "type" :
+      {
+        "type" : "array",
+        "items" : "Condition"
+      }
+    },
+    { "name" : "action", "type" : "Action" }
+  ]
+},
+{
+  "namespace" : "org.apache.reef.inmemory.common.replication",
+  "type" : "record",
+  "name" : "Rules",
+  "fields" :
+  [
+    {
+      "name" : "rules",
+      "type" :
+      {
+        "type" : "array",
+        "items" : "Rule"
+      }
+    },
+    { "name" : "default", "type" : "Action" }
+  ]
+}
+]
