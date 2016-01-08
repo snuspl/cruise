@@ -15,13 +15,11 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 
+import edu.snu.cay.dolphin.core.KeyValueStore;
 import edu.snu.cay.dolphin.core.UserControllerTask;
-import edu.snu.cay.dolphin.examples.ml.data.CentroidsDataType;
+import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherReceiver;
-import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -36,11 +34,6 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   private static final Logger LOG = Logger.getLogger(ClusteringPreCtrlTask.class.getName());
 
   /**
-   * Key used in Elastic Memory to put/get the centroids.
-   */
-  private final String centroidsDataType;
-
-  /**
    * Number of clusters.
    */
   private final int numberOfClusters;
@@ -53,22 +46,13 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
   /**
    * Memory storage to put/get the data.
    */
-  private final MemoryStore memoryStore;
-
-  /**
-   * Data identifier factory to generate id for data.
-   */
-  private final DataIdFactory<Long> dataIdFactory;
+  private final KeyValueStore keyValueStore;
 
   @Inject
   public ClusteringPreCtrlTask(
-      @Parameter(CentroidsDataType.class) final String centroidsDataType,
-      final MemoryStore memoryStore,
-      final DataIdFactory<Long> dataIdFactory,
+      final KeyValueStore keyValueStore,
       @Parameter(NumberOfClusters.class) final int numberOfClusters) {
-    this.centroidsDataType = centroidsDataType;
-    this.memoryStore = memoryStore;
-    this.dataIdFactory = dataIdFactory;
+    this.keyValueStore = keyValueStore;
     this.numberOfClusters = numberOfClusters;
   }
 
@@ -83,12 +67,7 @@ public final class ClusteringPreCtrlTask extends UserControllerTask
      * Pass the initial centroids to the main process.
      * Since CtrlTask is the only one to own the data, put data in LocalStore.
      */
-    try {
-      final List<Long> ids = dataIdFactory.getIds(initialCentroids.size());
-      memoryStore.getLocalStore().putList(centroidsDataType, ids, initialCentroids);
-    } catch (final IdGenerationException e) {
-      throw new RuntimeException(e);
-    }
+    keyValueStore.put(Centroids.class, initialCentroids);
   }
 
   @Override

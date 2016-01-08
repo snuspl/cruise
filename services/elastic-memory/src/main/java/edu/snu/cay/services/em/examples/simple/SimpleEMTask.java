@@ -57,7 +57,7 @@ final class SimpleEMTask implements Task {
 
     final List<Long> ids = dataIdFactory.getIds(NUM_DATA);
     // Just use ids as data (data do not matter)
-    this.memoryStore.getElasticStore().putList(DATATYPE, ids, ids);
+    this.memoryStore.putList(DATATYPE, ids, ids);
 
     partitionTracker.registerPartition(DATATYPE, ids.get(0), ids.get(NUM_DATA - 1));
   }
@@ -66,7 +66,7 @@ final class SimpleEMTask implements Task {
     LOG.info("SimpleEMTask commencing...");
 
     LOG.info("Before sleep, memory store contains: ");
-    LOG.info(memoryStore.getElasticStore().getAll(DATATYPE).toString());
+    LOG.info(memoryStore.getAll(DATATYPE).toString());
     // Should be either
     // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     // or
@@ -81,7 +81,7 @@ final class SimpleEMTask implements Task {
     Thread.sleep(sleepMillis);
 
     LOG.info("After sleep, memory store contains: ");
-    LOG.info(memoryStore.getElasticStore().getAll(DATATYPE).toString());
+    LOG.info(memoryStore.getAll(DATATYPE).toString());
     // Evaluator that receives on the last iteration should have more than before
     // Evaluator that sends on the last iterations should have less than before
 

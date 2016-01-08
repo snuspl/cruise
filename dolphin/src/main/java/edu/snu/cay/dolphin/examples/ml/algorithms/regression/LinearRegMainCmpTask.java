@@ -61,7 +61,7 @@ public class LinearRegMainCmpTask extends UserComputeTask
 
     // measure loss
     lossSum = 0;
-    final Map<?, Row> rows = memoryStore.getElasticStore().getAll(dataType);
+    final Map<?, Row> rows = memoryStore.getAll(dataType);
     for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());

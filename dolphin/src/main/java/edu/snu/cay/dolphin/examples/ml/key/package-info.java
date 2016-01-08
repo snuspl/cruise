@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.examples.ml.data;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Centroids data type for EM Local Store", default_value = "centroids")
-public final class CentroidsDataType implements Name<String> {
-}
+/**
+ * Dolphin classes that implement the {@code Key} interface.
+ */
+package edu.snu.cay.dolphin.examples.ml.key;

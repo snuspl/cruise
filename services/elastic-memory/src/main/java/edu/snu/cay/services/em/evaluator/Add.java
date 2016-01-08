@@ -54,7 +54,7 @@ final class Add implements Update {
     for (final UnitIdPair unitIdPair : unitIdPairs) {
       final byte[] data = unitIdPair.getUnit().array();
       final long id = unitIdPair.getId();
-      memoryStore.getElasticStore().put(dataType, id, codec.decode(data));
+      memoryStore.put(dataType, id, codec.decode(data));
     }
   }
 }

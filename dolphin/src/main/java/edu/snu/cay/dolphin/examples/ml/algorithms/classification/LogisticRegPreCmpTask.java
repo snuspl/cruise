@@ -69,7 +69,7 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
 
       workloadPartition.initialize(workloadMap);
       partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
-      memoryStore.getElasticStore().putList(dataType, ids, rows);
+      memoryStore.putList(dataType, ids, rows);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }

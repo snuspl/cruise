@@ -15,7 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em;
 
-import edu.snu.cay.dolphin.examples.ml.data.CentroidsDataType;
+import edu.snu.cay.dolphin.core.KeyValueStore;
+import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.core.UserControllerTask;
@@ -24,7 +25,6 @@ import edu.snu.cay.dolphin.examples.ml.data.ClusterStats;
 import edu.snu.cay.dolphin.examples.ml.data.ClusterSummary;
 import edu.snu.cay.dolphin.examples.ml.parameters.IsCovarianceShared;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.DiagonalMatrix;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.Vector;
@@ -81,14 +81,9 @@ public final class EMMainCtrlTask extends UserControllerTask
   private final boolean isCovarianceShared;
 
   /**
-   * Key used in Elastic Memory to put/get the centroids.
-   */
-  private final String centroidsDataType;
-
-  /**
    * Memory storage to put/get the data.
    */
-  private final MemoryStore memoryStore;
+  private final KeyValueStore keyValueStore;
 
   private final OutputStreamProvider outputStreamProvider;
 
@@ -97,22 +92,20 @@ public final class EMMainCtrlTask extends UserControllerTask
    * This class is instantiated by TANG.
    *
    * @param clusteringConvergenceCondition  conditions for checking convergence of algorithm
-   * @param memoryStore Memory storage to put/get the data
+   * @param keyValueStore Memory storage to put/get the data
    * @param outputStreamProvider
    * @param maxIterations maximum number of iterations allowed before job stops
    * @param isCovarianceShared    whether clusters share one covariance matrix or not
    */
   @Inject
   public EMMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
-                        @Parameter(CentroidsDataType.class) final String centroidsDataType,
-                        final MemoryStore memoryStore,
+                        final KeyValueStore keyValueStore,
                         final OutputStreamProvider outputStreamProvider,
                         @Parameter(MaxIterations.class) final int maxIterations,
                         @Parameter(IsCovarianceShared.class) final boolean isCovarianceShared) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;
-    this.centroidsDataType = centroidsDataType;
-    this.memoryStore = memoryStore;
+    this.keyValueStore = keyValueStore;
     this.outputStreamProvider = outputStreamProvider;
     this.maxIterations = maxIterations;
     this.isCovarianceShared = isCovarianceShared;
@@ -126,8 +119,7 @@ public final class EMMainCtrlTask extends UserControllerTask
   public void initialize() {
 
     // Load the initial centroids from the previous stage
-    final Map<?, Vector> centroidsMap = memoryStore.getLocalStore().removeAll(centroidsDataType);
-    centroids.addAll(centroidsMap.values());
+    centroids = keyValueStore.get(Centroids.class);
 
     // Initialize cluster summaries
     final int numClusters = centroids.size();

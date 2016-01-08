@@ -79,7 +79,7 @@ public final class PageRankPreCmpTask extends UserComputeTask {
     }
 
     for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
-      memoryStore.getElasticStore().put(dataType, entry.getKey().longValue(), entry.getValue());
+      memoryStore.put(dataType, entry.getKey().longValue(), entry.getValue());
     }
   }
 

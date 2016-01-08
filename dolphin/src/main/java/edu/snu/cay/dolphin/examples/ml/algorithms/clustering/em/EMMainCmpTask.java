@@ -78,7 +78,7 @@ public final class EMMainCmpTask extends UserComputeTask
     final int numClusters = clusterSummaries.size();
 
     // Compute the partial statistics of each cluster
-    final Map<?, Vector> points = memoryStore.getElasticStore().getAll(dataType);
+    final Map<?, Vector> points = memoryStore.getAll(dataType);
     for (final Vector vector : points.values()) {
       final int dimension = vector.size();
       Matrix outProd = null;

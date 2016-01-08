@@ -80,7 +80,7 @@ public final class SleepCmpTask extends UserComputeTask
       }
 
       partitionTracker.registerPartition(SleepParameters.KEY, ids.get(0), ids.get(ids.size() - 1));
-      memoryStore.getElasticStore().putList(SleepParameters.KEY, ids, objects);
+      memoryStore.putList(SleepParameters.KEY, ids, objects);
 
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
@@ -89,7 +89,7 @@ public final class SleepCmpTask extends UserComputeTask
 
   @Override
   public void run(final int iteration) {
-    final int workload = memoryStore.getElasticStore().getNumUnits(SleepParameters.KEY);
+    final int workload = memoryStore.getNumUnits(SleepParameters.KEY);
     final long sleepTime = workload * computationRate;
     LOG.log(Level.INFO, "iteration start: {0}, workload: {1}, computationRate: {2}, sleepTime: {3}",
         new Object[]{iteration, workload, computationRate, sleepTime});
@@ -100,7 +100,7 @@ public final class SleepCmpTask extends UserComputeTask
       throw new RuntimeException("InterruptedException during sleeping", e);
     }
 
-    final int finWorkload = memoryStore.getElasticStore().getNumUnits(SleepParameters.KEY);
+    final int finWorkload = memoryStore.getNumUnits(SleepParameters.KEY);
     LOG.log(Level.INFO, "iteration finish: {0}, finWorkload: {1}",
         new Object[]{iteration, finWorkload});
   }

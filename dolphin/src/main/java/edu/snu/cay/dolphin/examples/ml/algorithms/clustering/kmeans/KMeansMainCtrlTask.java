@@ -15,15 +15,15 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
+import edu.snu.cay.dolphin.core.KeyValueStore;
 import edu.snu.cay.dolphin.core.UserTaskTrace;
-import edu.snu.cay.dolphin.examples.ml.data.CentroidsDataType;
+import edu.snu.cay.dolphin.examples.ml.key.Centroids;
 import edu.snu.cay.dolphin.examples.ml.data.VectorSum;
 import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.converge.ClusteringConvCond;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.io.data.output.OutputStreamProvider;
 import org.apache.reef.tang.annotations.Parameter;
@@ -68,14 +68,9 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   private List<Vector> centroids = new ArrayList<>();
 
   /**
-   * Key used in Elastic Memory to put/get the centroids.
-   */
-  private final String centroidsDataType;
-
-  /**
    * Memory storage to put/get the data.
    */
-  private final MemoryStore memoryStore;
+  private final KeyValueStore keyValueStore;
 
   private final OutputStreamProvider outputStreamProvider;
 
@@ -86,21 +81,19 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    * This class is instantiated by TANG.
    *
    * @param clusteringConvergenceCondition conditions for checking convergence of algorithm
-   * @param memoryStore Memory storage to put/get the data
+   * @param keyValueStore Memory storage to put/get the data
    * @param outputStreamProvider
    * @param maxIterations maximum number of iterations allowed before job stops
    */
   @Inject
   public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
-                            @Parameter(CentroidsDataType.class) final String centroidsDataType,
-                            final MemoryStore memoryStore,
+                            final KeyValueStore keyValueStore,
                             final OutputStreamProvider outputStreamProvider,
                             @Parameter(MaxIterations.class) final int maxIterations,
                             final UserTaskTrace trace) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;
-    this.centroidsDataType = centroidsDataType;
-    this.memoryStore = memoryStore;
+    this.keyValueStore = keyValueStore;
     this.outputStreamProvider = outputStreamProvider;
     this.maxIterations = maxIterations;
     this.trace = trace;
@@ -112,8 +105,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
    */
   @Override
   public void initialize() {
-    final Map<?, Vector> centroidsMap = memoryStore.getLocalStore().removeAll(centroidsDataType);
-    centroids.addAll(centroidsMap.values());
+    centroids = keyValueStore.get(Centroids.class);
   }
 
   @Override
