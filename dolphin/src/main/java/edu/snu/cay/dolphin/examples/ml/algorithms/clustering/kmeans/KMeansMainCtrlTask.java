@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.core.UserTaskTrace;
 import edu.snu.cay.dolphin.examples.ml.data.CentroidsDataType;
 import edu.snu.cay.dolphin.examples.ml.data.VectorSum;
-import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.converge.ClusteringConvCond;
@@ -95,7 +95,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
                             @Parameter(CentroidsDataType.class) final String centroidsDataType,
                             final MemoryStore memoryStore,
                             final OutputStreamProvider outputStreamProvider,
-                            @Parameter(MaxIterations.class) final int maxIterations,
+                            @Parameter(Parameters.Iterations.class) final int maxIterations,
                             final UserTaskTrace trace) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;

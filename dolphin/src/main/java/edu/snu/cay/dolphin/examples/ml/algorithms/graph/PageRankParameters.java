@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.graph;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.examples.ml.data.AdjacencyListSerializer;
 import edu.snu.cay.dolphin.examples.ml.parameters.ConvergenceThreshold;
 import edu.snu.cay.dolphin.examples.ml.parameters.DampingFactor;
-import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.core.UserParameters;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.tang.Configuration;
@@ -37,7 +37,7 @@ public final class PageRankParameters implements UserParameters {
   @Inject
   private PageRankParameters(@Parameter(ConvergenceThreshold.class) final double convThreshold,
                              @Parameter(DampingFactor.class) final double dampingFactor,
-                             @Parameter(MaxIterations.class) final int maxIterations) {
+                             @Parameter(Parameters.Iterations.class) final int maxIterations) {
     this.convThreshold = convThreshold;
     this.dampingFactor = dampingFactor;
     this.maxIterations = maxIterations;
@@ -48,7 +48,7 @@ public final class PageRankParameters implements UserParameters {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
         .bindNamedParameter(DampingFactor.class, String.valueOf(dampingFactor))
-        .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
+        .bindNamedParameter(Parameters.Iterations.class, String.valueOf(maxIterations))
         .build();
   }
 
@@ -69,7 +69,7 @@ public final class PageRankParameters implements UserParameters {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
         .bindNamedParameter(DampingFactor.class, String.valueOf(dampingFactor))
-        .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
+        .bindNamedParameter(Parameters.Iterations.class, String.valueOf(maxIterations))
         .build();
   }
 
@@ -78,7 +78,7 @@ public final class PageRankParameters implements UserParameters {
     final CommandLine cl = new CommandLine(cb);
     cl.registerShortNameOfClass(ConvergenceThreshold.class);
     cl.registerShortNameOfClass(DampingFactor.class);
-    cl.registerShortNameOfClass(MaxIterations.class);
+    cl.registerShortNameOfClass(Parameters.Iterations.class);
     return cl;
   }
 }

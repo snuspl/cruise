@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.scheduling;
 
-import edu.snu.cay.dolphin.parameters.LocalRuntimeMaxNumEvaluators;
+import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -31,7 +31,8 @@ public final class LocalSchedulabilityAnalyzer implements SchedulabilityAnalyzer
 
   @Inject
   private LocalSchedulabilityAnalyzer(final DataLoadingService dataLoadingService,
-                                      @Parameter(LocalRuntimeMaxNumEvaluators.class) final int maxNumEvaluators) {
+                                      @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class)
+                                          final int maxNumEvaluators) {
     this.schedulable = maxNumEvaluators >= (dataLoadingService.getNumberOfPartitions() + 1);
   }
 

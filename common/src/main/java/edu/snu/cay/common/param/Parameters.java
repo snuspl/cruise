@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.async;
+package edu.snu.cay.common.param;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Various parameter classes that are required for all {@code dolphin-async} applications.
+ * Common parameter classes for application frameworks.
  */
-final class AsyncParameters {
+public final class Parameters {
 
   @NamedParameter(doc = "Desired memory size for each evaluator (MBs)",
                   short_name = "evalSize",
@@ -58,8 +58,8 @@ final class AsyncParameters {
   public final class LocalRuntimeMaxNumEvaluators implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "Number of iterations to run before a worker terminates",
-                  short_name = "iter")
+  @NamedParameter(doc = "Maximum number of iterations to run before termination",
+                  short_name = "maxIter")
   public final class Iterations implements Name<Integer> {
   }
 }

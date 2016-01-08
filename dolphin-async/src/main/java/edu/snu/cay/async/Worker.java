@@ -46,7 +46,7 @@ public interface Worker {
 
   /**
    * Main method of this worker. The number of times this method is called can be adjusted with the parameter
-   * {@link AsyncParameters.Iterations}.
+   * {@link edu.snu.cay.common.param.Parameters.Iterations}.
    */
   void run();
 

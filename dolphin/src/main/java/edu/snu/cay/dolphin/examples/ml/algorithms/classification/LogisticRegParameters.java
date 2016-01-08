@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.dolphin.core.UserParameters;
 import edu.snu.cay.dolphin.examples.ml.data.RowSerializer;
 import edu.snu.cay.dolphin.examples.ml.loss.LogisticLoss;
@@ -44,7 +45,7 @@ public final class LogisticRegParameters implements UserParameters {
                                 @Parameter(StepSize.class) final double stepSize,
                                 @Parameter(Lambda.class) final double lambda,
                                 @Parameter(Dimension.class) final int dimension,
-                                @Parameter(MaxIterations.class) final int maxIterations,
+                                @Parameter(Parameters.Iterations.class) final int maxIterations,
                                 @Parameter(IsDenseVector.class) final boolean isDenseVector) {
     this.convThreshold = convThreshold;
     this.stepSize = stepSize;
@@ -61,7 +62,7 @@ public final class LogisticRegParameters implements UserParameters {
         .bindNamedParameter(StepSize.class, String.valueOf(stepSize))
         .bindNamedParameter(Dimension.class, String.valueOf(dimension))
         .bindNamedParameter(Lambda.class, String.valueOf(lambda))
-        .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
+        .bindNamedParameter(Parameters.Iterations.class, String.valueOf(maxIterations))
         .bindImplementation(Loss.class, LogisticLoss.class)
         .bindImplementation(Regularization.class, L2Regularization.class)
         .bindNamedParameter(IsDenseVector.class, String.valueOf(isDenseVector))
@@ -91,7 +92,7 @@ public final class LogisticRegParameters implements UserParameters {
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(ConvergenceThreshold.class, String.valueOf(convThreshold))
-        .bindNamedParameter(MaxIterations.class, String.valueOf(maxIterations))
+        .bindNamedParameter(Parameters.Iterations.class, String.valueOf(maxIterations))
         .build();
   }
 
@@ -101,7 +102,7 @@ public final class LogisticRegParameters implements UserParameters {
     cl.registerShortNameOfClass(StepSize.class);
     cl.registerShortNameOfClass(Dimension.class);
     cl.registerShortNameOfClass(Lambda.class);
-    cl.registerShortNameOfClass(MaxIterations.class);
+    cl.registerShortNameOfClass(Parameters.Iterations.class);
     cl.registerShortNameOfClass(ConvergenceThreshold.class);
     cl.registerShortNameOfClass(IsDenseVector.class);
     return cl;

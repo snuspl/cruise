@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.async;
 
-import edu.snu.cay.async.AsyncParameters.*;
+import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.driver.impl.SingleNodeParameterServerManager;
