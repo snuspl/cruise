@@ -15,7 +15,7 @@ import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.remote.NetUtils;
+import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.apache.thrift.TException;
 import org.apache.thrift.TMultiplexedProcessor;
 import org.apache.thrift.server.THsHaServer;
@@ -49,6 +49,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
   private final ReplicationPolicy replicationPolicy;
   private final WritingCacheSelectionPolicy writingCacheSelector;
   private final LocationSorter locationSorter;
+  private final LocalAddressProvider localAddressProvider;
 
   @Inject
   public SurfMetaServer(final SurfMetaManager metaManager,
@@ -57,6 +58,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
                         final WritingCacheSelectionPolicy writingCacheSelector,
                         final ReplicationPolicy replicationPolicy,
                         final LocationSorter locationSorter,
+                        final LocalAddressProvider localAddressProvider,
                         @Parameter(MetaServerParameters.Port.class) final int port,
                         @Parameter(MetaServerParameters.Timeout.class) final int timeout,
                         @Parameter(MetaServerParameters.Threads.class) final int numThreads) {
@@ -66,6 +68,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
     this.replicationPolicy = replicationPolicy;
     this.writingCacheSelector = writingCacheSelector;
     this.locationSorter = locationSorter;
+    this.localAddressProvider = localAddressProvider;
 
     this.port = port;
     this.timeout = timeout;
@@ -283,7 +286,7 @@ public final class SurfMetaServer implements SurfMetaService.Iface, SurfManageme
           .workerThreads(this.numThreads));
 
       // Register just before serving
-      serviceRegistry.register(NetUtils.getLocalAddress(), port);
+      serviceRegistry.register(localAddressProvider.getLocalAddress(), port);
 
       this.server.serve();
     } catch (Exception e) {
