@@ -6,6 +6,7 @@ import org.apache.reef.inmemory.driver.locality.LocationSorter;
 import org.apache.reef.inmemory.driver.metatree.MetaTree;
 import org.apache.reef.inmemory.driver.replication.ReplicationPolicy;
 import org.apache.reef.inmemory.driver.write.WritingCacheSelectionPolicy;
+import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -35,13 +36,14 @@ public final class SurfMetaServerTest {
     final BlockMetaFactory blockMetaFactory = mock(BlockMetaFactory.class);
     final LocationSorter locationSorter = mock(LocationSorter.class);
     final MetaTree metaTree = mock(MetaTree.class);
+    final LocalAddressProvider localAddressProvider = mock(LocalAddressProvider.class);
 
     final SurfMetaManager metaManager = new SurfMetaManager(cacheNodeMessenger, cacheLocationRemover,
             fileMetaUpdater, blockMetaFactory, metaTree);
 
     try {
       final SurfMetaServer metaService = new SurfMetaServer(
-              metaManager, cacheNodeManager, serviceRegistry, writingCacheSelectionPolicy, replicationPolicy, locationSorter, 18000, 10, 1);
+              metaManager, cacheNodeManager, serviceRegistry, writingCacheSelectionPolicy, replicationPolicy, locationSorter, localAddressProvider, 18000, 10, 1);
       metaService.load("/nonexistent/path");
     } catch (Exception e) {
       assertTrue("Unexpected exception "+e, e instanceof org.apache.reef.inmemory.common.exceptions.FileNotFoundException);

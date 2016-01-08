@@ -18,7 +18,7 @@
         <tests.reuseForks>true</tests.reuseForks>
         <tests.argLine></tests.argLine>
         <hadoop.version>2.4.0</hadoop.version>
-        <reef.version>0.11.0-incubating</reef.version>
+        <reef.version>0.14.0-SNAPSHOT</reef.version>
         <thrift.version>0.9.1</thrift.version>
         <junit.version>4.11</junit.version>
         <avro.version>1.7.6</avro.version>
