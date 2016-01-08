@@ -45,7 +45,7 @@ final class Remove implements Update {
   @Override
   public void apply(final MemoryStore memoryStore) {
     for (final LongRange range : ranges) {
-      memoryStore.getElasticStore().removeRange(dataType, range.getMinimumLong(), range.getMaximumLong());
+      memoryStore.removeRange(dataType, range.getMinimumLong(), range.getMaximumLong());
     }
   }
 }

@@ -13,26 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.driver.impl;
+package edu.snu.cay.dolphin.examples.ml.key;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
-import org.apache.reef.wake.EventHandler;
+import edu.snu.cay.dolphin.core.Key;
+import org.apache.mahout.math.Vector;
 
-import javax.inject.Inject;
+import java.util.List;
 
 /**
- * Default implementation of EMDeleteExecutor.
+ * A class that implements Key that can be used as a key of mapping for KeyValueStore.
  */
-public final class EMDeleteExecutorImpl implements EMDeleteExecutor {
-
-  @Inject
-  private EMDeleteExecutorImpl() {
-
-  }
-
-  @Override
-  public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
-    throw new UnsupportedOperationException();
-  }
+public final class Centroids implements Key<List<Vector>> {
 }
