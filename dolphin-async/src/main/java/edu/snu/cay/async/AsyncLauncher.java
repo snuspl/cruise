@@ -38,6 +38,7 @@ import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.util.EnvironmentUtils;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
@@ -162,6 +163,7 @@ public final class AsyncLauncher {
 
     final ConfigurationModule driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
         .set(DriverConfiguration.ON_DRIVER_STARTED, AsyncDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AsyncDriver.AllocatedEvaluatorHandler.class)
@@ -185,11 +187,19 @@ public final class AsyncLauncher {
 
     return new DataLoadingRequestBuilder()
         .setInputFormatClass(TextInputFormat.class)
-        .setInputPath(injector.getNamedInstance(InputDir.class))
+        .setInputPath(processInputDir(injector.getNamedInstance(InputDir.class), injector))
         .setNumberOfDesiredSplits(injector.getNamedInstance(Splits.class))
         .addComputeRequest(compRequest)
         .addDataRequest(dataRequest)
         .setDriverConfigurationModule(driverConf)
         .build();
+  }
+
+  private static String processInputDir(final String inputDir, final Injector injector) throws InjectionException {
+    if (!injector.getNamedInstance(OnLocal.class)) {
+      return inputDir;
+    }
+    final File inputFile = new File(inputDir);
+    return "file:///" + inputFile.getAbsolutePath();
   }
 }
