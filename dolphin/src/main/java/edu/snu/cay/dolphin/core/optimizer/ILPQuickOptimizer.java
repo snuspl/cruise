@@ -118,8 +118,8 @@ public final class ILPQuickOptimizer implements Optimizer {
   private final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher;
 
   /**
-   * Constructor to be used during a real application run.
-   * A {@link edu.snu.cay.dolphin.core.DolphinDriver} instance must be present.
+   * Injectable constructor for this class.
+   * Use {@link CtrlTaskContextIdFetcher} to identify the controller task.
    */
   @Inject
   private ILPQuickOptimizer(final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher) {
