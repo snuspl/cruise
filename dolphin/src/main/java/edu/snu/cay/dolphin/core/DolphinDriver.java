@@ -119,11 +119,11 @@ public final class DolphinDriver {
   private final AtomicInteger taskIdCounter = new AtomicInteger(0);
 
   /**
-   * ID of the Context that goes under Controller Task.
-   * This string is used to distinguish the Context that represents the Controller Task
+   * Fetcher object of the ID of the Context that goes under Controller Task.
+   * The ID is used to distinguish the Context that represents the Controller Task
    * from Contexts that go under Compute Tasks.
    */
-  private String ctrlTaskContextId;
+  private final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher;
 
   /**
    * Driver that manages Group Communication settings.
@@ -278,7 +278,8 @@ public final class DolphinDriver {
                         final EMResourceRequestManager emResourceRequestManager,
                         final HTraceInfoCodec hTraceInfoCodec,
                         final HTrace hTrace,
-                        @Parameter(StartTrace.class) final boolean startTrace) {
+                        @Parameter(StartTrace.class) final boolean startTrace,
+                        final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher) {
     hTrace.initialize();
     this.groupCommDriver = groupCommDriver;
     this.groupCommParameters = groupCommParameters;
@@ -305,6 +306,7 @@ public final class DolphinDriver {
     this.closingContexts = Collections.synchronizedSet(new HashSet<String>());
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.jobTraceInfo = startTrace ? TraceInfo.fromSpan(Trace.startSpan("job", Sampler.ALWAYS).getSpan()) : null;
+    this.ctrlTaskContextIdFetcher = ctrlTaskContextIdFetcher;
     initializeDataOperators();
   }
 
@@ -522,7 +524,7 @@ public final class DolphinDriver {
           final Configuration finalServiceConf;
           if (dataLoadingService.isComputeContext(activeContext)) {
             LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
-            ctrlTaskContextId = getContextId(finalContextConf);
+            ctrlTaskContextIdFetcher.setCtrlTaskContextId(getContextId(finalContextConf));
 
             // Add services for the GroupCommContext under ControllerTask
             finalServiceConf = getServiceConfiguration();
@@ -811,15 +813,12 @@ public final class DolphinDriver {
   }
 
   private boolean isCtrlTaskContextId(final String id) {
-    if (ctrlTaskContextId == null) {
+    final Optional<String> ctrlTaskContextId = ctrlTaskContextIdFetcher.getCtrlTaskContextId();
+    if (!ctrlTaskContextId.isPresent()) {
       return false;
     } else {
-      return ctrlTaskContextId.equals(id);
+      return ctrlTaskContextId.get().equals(id);
     }
-  }
-
-  public String getCtrlTaskContextId() {
-    return this.ctrlTaskContextId;
   }
 
   private String getCtrlTaskId(final int sequence) {

@@ -17,12 +17,17 @@ package edu.snu.cay.dolphin.core.optimizer;
 
 import edu.snu.cay.dolphin.core.ComputeTask;
 import edu.snu.cay.dolphin.core.ControllerTask;
+import edu.snu.cay.dolphin.core.CtrlTaskContextIdFetcher;
 import edu.snu.cay.dolphin.core.DolphinMetricKeys;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 import edu.snu.cay.services.em.plan.api.Plan;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,6 +36,7 @@ import java.util.*;
 import static edu.snu.cay.dolphin.core.optimizer.PlanValidationUtils.checkPlan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.*;
 /**
  * Class for testing {@link ILPSolverOptimizer}'s behavior.
  */
@@ -41,8 +47,12 @@ public final class ILPSolverOptimizerTest {
   private Random random;
 
   @Before
-  public void setUp() {
-    ilpSolverOptimizer = new ILPSolverOptimizer(ctrlTaskId);
+  public void setUp() throws InjectionException {
+    final CtrlTaskContextIdFetcher mockFetcher = mock(CtrlTaskContextIdFetcher.class);
+    when(mockFetcher.getCtrlTaskContextId()).thenReturn(Optional.of(ctrlTaskId));
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(CtrlTaskContextIdFetcher.class, mockFetcher);
+    ilpSolverOptimizer = injector.getInstance(ILPSolverOptimizer.class);
     random = new Random();
   }
 
@@ -143,8 +153,13 @@ public final class ILPSolverOptimizerTest {
    * An empty plan should be returned.
    */
   @Test
-  public void testWrongCtrlTaskId() {
-    final ILPSolverOptimizer wrongCtrlIlpSolverOptimizer = new ILPSolverOptimizer("##WRONG_CONTROLLER_TASK_ID##");
+  public void testWrongCtrlTaskId() throws InjectionException {
+    final CtrlTaskContextIdFetcher mockFetcher = mock(CtrlTaskContextIdFetcher.class);
+    when(mockFetcher.getCtrlTaskContextId()).thenReturn(Optional.of("##WRONG_CONTROLLER_TASK_ID##"));
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(CtrlTaskContextIdFetcher.class, mockFetcher);
+
+    final ILPSolverOptimizer wrongCtrlIlpSolverOptimizer = injector.getInstance(ILPSolverOptimizer.class);
     final int numComputeTasks = 1;
     final int availableEvaluators = 4;
     final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
