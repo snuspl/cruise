@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.integration.em;
 
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.common.param.Parameters.Splits;
 import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.utils.ThreadUtils;
@@ -57,7 +57,7 @@ final class AddTestHandlers {
                           final DataLoader dataLoader,
                           @Parameter(AddIntegrationTest.AddEvalNumber.class) final int numAdd,
                           @Parameter(AddIntegrationTest.AddThreadNumber.class) final int numThreads,
-                          @Parameter(Parameters.Splits.class) final int numSplits) {
+                          @Parameter(Splits.class) final int numSplits) {
     this.elasticMemory = elasticMemory;
     this.dataLoader = dataLoader;
     this.numAdd = numAdd;

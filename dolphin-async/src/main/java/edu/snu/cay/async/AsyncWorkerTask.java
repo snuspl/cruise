@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.async;
 
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.common.param.Parameters.Iterations;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
@@ -37,7 +37,7 @@ final class AsyncWorkerTask implements Task {
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
-                          @Parameter(Parameters.Iterations.class) final int maxIterations,
+                          @Parameter(Iterations.class) final int maxIterations,
                           final Worker worker) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
