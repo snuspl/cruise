@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.parameters;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Maximum number of local runtime evaluators, must be at least Data Loading Splits + 1",
-    short_name = "maxNumEvalLocal", default_value = "2")
-public final class LocalRuntimeMaxNumEvaluators implements Name<Integer> {
-}
+/**
+ * Classes for the {@code dolphin-async} framework.
+ */
+package edu.snu.cay.async;

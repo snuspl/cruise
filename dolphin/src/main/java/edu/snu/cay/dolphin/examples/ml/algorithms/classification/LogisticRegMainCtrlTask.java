@@ -16,12 +16,12 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
 import edu.snu.cay.common.math.vector.VectorFactory;
+import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.converge.LinearModelConvCond;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.examples.ml.data.LogisticRegSummary;
 import edu.snu.cay.dolphin.examples.ml.parameters.Dimension;
-import edu.snu.cay.dolphin.examples.ml.parameters.MaxIterations;
 import edu.snu.cay.dolphin.examples.ml.parameters.IsDenseVector;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastSender;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceReceiver;
@@ -48,7 +48,7 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
   public LogisticRegMainCtrlTask(final OutputStreamProvider outputStreamProvider,
                                  final LinearModelConvCond convergeCondition,
                                  final VectorFactory vectorFactory,
-                                 @Parameter(MaxIterations.class) final int maxIter,
+                                 @Parameter(Iterations.class) final int maxIter,
                                  @Parameter(Dimension.class) final int dimension,
                                  @Parameter(IsDenseVector.class) final boolean isDenseVector) {
     this.outputStreamProvider = outputStreamProvider;

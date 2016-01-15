@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.scheduling;
 
-import edu.snu.cay.dolphin.parameters.LocalRuntimeMaxNumEvaluators;
+import edu.snu.cay.common.param.Parameters.LocalRuntimeMaxNumEvaluators;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.tang.annotations.Parameter;
 

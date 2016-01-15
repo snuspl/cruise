@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.parameters.*;
 import edu.snu.cay.dolphin.scheduling.LocalSchedulabilityAnalyzer;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
@@ -43,7 +44,7 @@ public final class DolphinParameters {
   private DolphinParameters(@Parameter(JobIdentifier.class) final String identifier,
                             final UserJobInfo userJobInfo,
                             final UserParameters userParameters,
-                            @Parameter(DesiredSplits.class) final int desiredSplits,
+                            @Parameter(Splits.class) final int desiredSplits,
                             @Parameter(EvaluatorSize.class) final int evalSize,
                             @Parameter(InputDir.class) final String inputDir,
                             @Parameter(OutputDir.class) final String outputDir,
@@ -70,7 +71,7 @@ public final class DolphinParameters {
    */
   public Configuration getDriverConf() {
     final Configuration driverConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(DesiredSplits.class, String.valueOf(desiredSplits))
+        .bindNamedParameter(Splits.class, String.valueOf(desiredSplits))
         .bindNamedParameter(EvaluatorSize.class, String.valueOf(evalSize))
         .bindNamedParameter(OnLocal.class, String.valueOf(onLocal))
         .bindNamedParameter(StartTrace.class, String.valueOf(startTrace))

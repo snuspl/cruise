@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.dolphin.groupcomm.conf.GroupCommParameters;
 import edu.snu.cay.dolphin.parameters.*;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerParameters;
@@ -36,7 +37,7 @@ public final class DolphinConfiguration extends ConfigurationModuleBuilder {
     cl.registerShortNameOfClass(EvaluatorSize.class);
     cl.registerShortNameOfClass(OnLocal.class);
     cl.registerShortNameOfClass(LocalRuntimeMaxNumEvaluators.class);
-    cl.registerShortNameOfClass(DesiredSplits.class);
+    cl.registerShortNameOfClass(Splits.class);
     cl.registerShortNameOfClass(Timeout.class);
     cl.registerShortNameOfClass(InputDir.class);
     cl.registerShortNameOfClass(OutputDir.class);
