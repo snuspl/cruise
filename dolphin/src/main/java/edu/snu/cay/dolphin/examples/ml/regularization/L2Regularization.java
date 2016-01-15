@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.regularization;
 
-import edu.snu.cay.common.math.vector.Vector;
+import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.dolphin.examples.ml.parameters.Lambda;
 import edu.snu.cay.dolphin.examples.ml.data.Model;
 import org.apache.reef.tang.annotations.Parameter;

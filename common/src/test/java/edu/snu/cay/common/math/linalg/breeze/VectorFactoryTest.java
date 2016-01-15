@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.math.vector.breeze;
+package edu.snu.cay.common.math.linalg.breeze;
 
-import edu.snu.cay.common.math.vector.*;
+import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.common.math.linalg.VectorEntry;
+import edu.snu.cay.common.math.linalg.VectorFactory;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;

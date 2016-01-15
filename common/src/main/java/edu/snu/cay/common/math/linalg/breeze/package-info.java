@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Common vector classes.
+ * Breeze linalg Java wrapper package.
  */
-package edu.snu.cay.common.math.vector;
+package edu.snu.cay.common.math.linalg.breeze;

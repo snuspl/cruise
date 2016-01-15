@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
-import edu.snu.cay.common.math.vector.VectorFactory;
+import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.core.UserControllerTask;
 import edu.snu.cay.dolphin.examples.ml.converge.LinearModelConvCond;
