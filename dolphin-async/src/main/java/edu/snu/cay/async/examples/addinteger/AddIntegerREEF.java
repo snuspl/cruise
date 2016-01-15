@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.async.examples.addinteger;
 
-import edu.snu.cay.async.AsyncConfiguration;
-import edu.snu.cay.async.AsyncLauncher;
+import edu.snu.cay.async.AsyncDolphinConfiguration;
+import edu.snu.cay.async.AsyncDolphinLauncher;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
@@ -32,7 +32,7 @@ public final class AddIntegerREEF {
   }
 
   public static void main(final String[] args) {
-    AsyncLauncher.launch("AddIntegerREEF", args, AsyncConfiguration.newBuilder()
+    AsyncDolphinLauncher.launch("AddIntegerREEF", args, AsyncDolphinConfiguration.newBuilder()
         .setWorkerClass(AddIntegerWorker.class)
         .setUpdaterClass(AddIntegerUpdater.class)
         .addParameterClass(AddIntegerParameter.class)

@@ -37,7 +37,6 @@ import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.util.EnvironmentUtils;
 
-import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -46,11 +45,11 @@ import java.util.logging.Logger;
 
 /**
  * Main entry point for launching a {@code dolphin-async} application.
- * See {@link AsyncLauncher#launch(String, String[], AsyncConfiguration)}.
+ * See {@link AsyncDolphinLauncher#launch(String, String[], AsyncDolphinConfiguration)}.
  */
 @ClientSide
-public final class AsyncLauncher {
-  private static final Logger LOG = Logger.getLogger(AsyncLauncher.class.getName());
+public final class AsyncDolphinLauncher {
+  private static final Logger LOG = Logger.getLogger(AsyncDolphinLauncher.class.getName());
 
   @NamedParameter(doc = "configuration for parameters, serialized as a string")
   final class SerializedParameterConfiguration implements Name<String> {
@@ -63,22 +62,21 @@ public final class AsyncLauncher {
   /**
    * Should not be instantiated.
    */
-  @Inject
-  private AsyncLauncher() {
+  private AsyncDolphinLauncher() {
   }
 
   /**
    * Launch an application on the {@code dolphin-async} framework.
    * @param jobName string identifier of this application
    * @param args command line arguments
-   * @param asyncConfiguration job configuration of this application
+   * @param asyncDolphinConfiguration job configuration of this application
    */
   public static LauncherStatus launch(final String jobName,
                                       final String[] args,
-                                      final AsyncConfiguration asyncConfiguration) {
+                                      final AsyncDolphinConfiguration asyncDolphinConfiguration) {
     try {
       // parse command line arguments
-      final Configuration commandLineConf = parseCommandLine(args, asyncConfiguration.getParameterClassList());
+      final Configuration commandLineConf = parseCommandLine(args, asyncDolphinConfiguration.getParameterClassList());
       final Injector commandLineInjector = Tang.Factory.getTang().newInjector(commandLineConf);
 
       // local or yarn runtime
@@ -90,17 +88,17 @@ public final class AsyncLauncher {
       // configuration for the parameter server
       final Configuration parameterServerConf = ParameterServerConfigurationBuilder.newBuilder()
           .setManagerClass(SingleNodeParameterServerManager.class)
-          .setUpdaterClass(asyncConfiguration.getUpdaterClass())
-          .setKeyCodecClass(asyncConfiguration.getKeyCodecClass())
-          .setPreValueCodecClass(asyncConfiguration.getPreValueCodecClass())
-          .setValueCodecClass(asyncConfiguration.getValueCodecClass())
+          .setUpdaterClass(asyncDolphinConfiguration.getUpdaterClass())
+          .setKeyCodecClass(asyncDolphinConfiguration.getKeyCodecClass())
+          .setPreValueCodecClass(asyncDolphinConfiguration.getPreValueCodecClass())
+          .setValueCodecClass(asyncDolphinConfiguration.getValueCodecClass())
           .build();
 
       // worker-specific configurations
       final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
       // pass the worker class implementation as well as all command line arguments
       final Configuration workerConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(Worker.class, asyncConfiguration.getWorkerClass())
+          .bindImplementation(Worker.class, asyncDolphinConfiguration.getWorkerClass())
           .build();
       final Configuration serializedWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(SerializedWorkerConfiguration.class, confSerializer.toString(workerConf))
@@ -162,16 +160,16 @@ public final class AsyncLauncher {
     final int evalSize = injector.getNamedInstance(EvaluatorSize.class);
 
     final ConfigurationModule driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDriver.class))
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
-        .set(DriverConfiguration.ON_DRIVER_STARTED, AsyncDriver.StartHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AsyncDriver.AllocatedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_EVALUATOR_FAILED, AsyncDriver.FailedEvaluatorHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, AsyncDriver.ActiveContextHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_FAILED, AsyncDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_COMPLETED, AsyncDriver.CompletedTaskHandler.class)
-        .set(DriverConfiguration.ON_TASK_FAILED, AsyncDriver.FailedTaskHandler.class);
+        .set(DriverConfiguration.ON_DRIVER_STARTED, AsyncDolphinDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AsyncDolphinDriver.AllocatedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, AsyncDolphinDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, AsyncDolphinDriver.ActiveContextHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, AsyncDolphinDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_COMPLETED, AsyncDolphinDriver.CompletedTaskHandler.class)
+        .set(DriverConfiguration.ON_TASK_FAILED, AsyncDolphinDriver.FailedTaskHandler.class);
 
     // one evaluator for the parameter server
     final EvaluatorRequest compRequest = EvaluatorRequest.newBuilder()

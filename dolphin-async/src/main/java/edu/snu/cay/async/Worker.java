@@ -32,7 +32,7 @@ import org.apache.reef.annotations.audience.TaskSide;
  * a constructor parameter of an {@link javax.inject.Inject}-annotated constructor, and store it in a field for later
  * use at {@code run} or the other methods.
  *
- * Other parameters specified with {@link edu.snu.cay.async.AsyncConfiguration.Builder#addParameterClass(Class)}
+ * Other parameters specified with {@link AsyncDolphinConfiguration.Builder#addParameterClass(Class)}
  * can also be received as constructor parameters, given that the parameter itself is tagged with
  * {@link org.apache.reef.tang.annotations.Parameter} and an actual value is given for the parameter via command line.
  */

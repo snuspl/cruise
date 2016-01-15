@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.core.optimizer;
 
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.common.param.Parameters.EvaluatorSize;
 import edu.snu.cay.dolphin.core.DolphinDriver;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.sync.DriverSync;
@@ -72,7 +72,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   private DefaultPlanExecutor(final ElasticMemory elasticMemory,
                               final DriverSync driverSync,
                               final InjectionFuture<DolphinDriver> dolphinDriver,
-                              @Parameter(Parameters.EvaluatorSize.class) final int evalSize) {
+                              @Parameter(EvaluatorSize.class) final int evalSize) {
     this.elasticMemory = elasticMemory;
     this.driverSync = driverSync;
     this.dolphinDriver = dolphinDriver;

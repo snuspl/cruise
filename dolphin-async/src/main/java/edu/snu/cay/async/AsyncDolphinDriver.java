@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.async;
 
-import edu.snu.cay.async.AsyncLauncher.*;
+import edu.snu.cay.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -47,8 +47,8 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @Unit
-final class AsyncDriver {
-  private static final Logger LOG = Logger.getLogger(AsyncDriver.class.getName());
+final class AsyncDolphinDriver {
+  private static final Logger LOG = Logger.getLogger(AsyncDolphinDriver.class.getName());
   private static final String WORKER_CONTEXT = "WorkerContext";
   private static final String SERVER_CONTEXT = "ServerContext";
 
@@ -97,12 +97,12 @@ final class AsyncDriver {
   private ActiveContext serverContext;
 
   @Inject
-  private AsyncDriver(final DataLoadingService dataLoadingService,
-                      final DataLoader dataLoader,
-                      final ParameterServerDriver psDriver,
-                      @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
-                      @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
-                      final ConfigurationSerializer configurationSerializer) throws IOException {
+  private AsyncDolphinDriver(final DataLoadingService dataLoadingService,
+                             final DataLoader dataLoader,
+                             final ParameterServerDriver psDriver,
+                             @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
+                             @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
+                             final ConfigurationSerializer configurationSerializer) throws IOException {
     this.dataLoadingService = dataLoadingService;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.dataLoader = dataLoader;

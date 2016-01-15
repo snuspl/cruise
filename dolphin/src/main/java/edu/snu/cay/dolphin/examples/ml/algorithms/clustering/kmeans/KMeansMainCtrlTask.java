@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.kmeans;
 
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.core.KeyValueStore;
 import edu.snu.cay.dolphin.core.UserTaskTrace;
 import edu.snu.cay.dolphin.examples.ml.key.Centroids;
@@ -89,7 +89,7 @@ public final class KMeansMainCtrlTask extends UserControllerTask
   public KMeansMainCtrlTask(final ClusteringConvCond clusteringConvergenceCondition,
                             final KeyValueStore keyValueStore,
                             final OutputStreamProvider outputStreamProvider,
-                            @Parameter(Parameters.Iterations.class) final int maxIterations,
+                            @Parameter(Iterations.class) final int maxIterations,
                             final UserTaskTrace trace) {
 
     this.clusteringConvergenceCondition = clusteringConvergenceCondition;

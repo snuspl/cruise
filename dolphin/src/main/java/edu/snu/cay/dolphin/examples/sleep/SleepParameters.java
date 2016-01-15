@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.examples.sleep;
 
-import edu.snu.cay.common.param.Parameters;
+import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.core.UserParameters;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.driver.parameters.DriverLocalFiles;
@@ -75,7 +75,7 @@ public final class SleepParameters implements UserParameters {
 
   @Inject
   private SleepParameters(@Parameter(ConfigurationFilePath.class) final String confFilePath,
-                          @Parameter(Parameters.Iterations.class) final int maxIterations,
+                          @Parameter(Iterations.class) final int maxIterations,
                           @Parameter(GCEncodeTime.class) final long gcEncodeTime,
                           @Parameter(GCDecodeTime.class) final long gcDecodeTime,
                           @Parameter(EMEncodeRate.class) final long emEncodeRate,
@@ -97,7 +97,7 @@ public final class SleepParameters implements UserParameters {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindSetEntry(DriverLocalFiles.class, confFile.getAbsolutePath())
         .bindNamedParameter(ConfigurationFilePath.class, String.format("reef/local/%s", confFile.getName()))
-        .bindNamedParameter(Parameters.Iterations.class, Integer.toString(maxIterations))
+        .bindNamedParameter(Iterations.class, Integer.toString(maxIterations))
         .bindNamedParameter(GCEncodeTime.class, Long.toString(gcEncodeTime))
         .bindNamedParameter(GCDecodeTime.class, Long.toString(gcDecodeTime))
         .bindNamedParameter(EMEncodeRate.class, Long.toString(emEncodeRate))
@@ -205,7 +205,7 @@ public final class SleepParameters implements UserParameters {
   @Override
   public Configuration getUserCtrlTaskConf() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(Parameters.Iterations.class, Integer.toString(maxIterations))
+        .bindNamedParameter(Iterations.class, Integer.toString(maxIterations))
         .build();
   }
 
@@ -216,7 +216,7 @@ public final class SleepParameters implements UserParameters {
     final ConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
     cl.registerShortNameOfClass(ConfigurationFilePath.class);
-    cl.registerShortNameOfClass(Parameters.Iterations.class);
+    cl.registerShortNameOfClass(Iterations.class);
     cl.registerShortNameOfClass(GCEncodeTime.class);
     cl.registerShortNameOfClass(GCDecodeTime.class);
     cl.registerShortNameOfClass(EMEncodeRate.class);

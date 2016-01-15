@@ -29,10 +29,10 @@ import java.util.List;
  *
  * Call {@code newBuilder} and supply classes for {@link Worker}, {@link ParameterUpdater}, codecs, and parameters.
  * {@link SerializableCodec}s are used in case codec classes are not given. Parameter classes are also optional.
- * Use with {@link AsyncLauncher#launch(String, String[], AsyncConfiguration)} to launch application.
+ * Use with {@link AsyncDolphinLauncher#launch(String, String[], AsyncDolphinConfiguration)} to launch application.
  */
 @ClientSide
-public final class AsyncConfiguration {
+public final class AsyncDolphinConfiguration {
   private final Class<? extends Worker> workerClass;
   private final Class<? extends ParameterUpdater> updaterClass;
   private final Class<? extends Codec> keyCodecClass;
@@ -40,12 +40,12 @@ public final class AsyncConfiguration {
   private final Class<? extends Codec> valueCodecClass;
   private final List<Class<? extends Name<?>>> parameterClassList;
 
-  private AsyncConfiguration(final Class<? extends Worker> workerClass,
-                             final Class<? extends ParameterUpdater> updaterClass,
-                             final Class<? extends Codec> keyCodecClass,
-                             final Class<? extends Codec> preValueCodecClass,
-                             final Class<? extends Codec> valueCodecClass,
-                             final List<Class<? extends Name<?>>> parameterClassList) {
+  private AsyncDolphinConfiguration(final Class<? extends Worker> workerClass,
+                                    final Class<? extends ParameterUpdater> updaterClass,
+                                    final Class<? extends Codec> keyCodecClass,
+                                    final Class<? extends Codec> preValueCodecClass,
+                                    final Class<? extends Codec> valueCodecClass,
+                                    final List<Class<? extends Name<?>>> parameterClassList) {
     this.workerClass = workerClass;
     this.updaterClass = updaterClass;
     this.keyCodecClass = keyCodecClass;
@@ -82,7 +82,7 @@ public final class AsyncConfiguration {
     return new Builder();
   }
 
-  public static class Builder implements org.apache.reef.util.Builder<AsyncConfiguration> {
+  public static class Builder implements org.apache.reef.util.Builder<AsyncDolphinConfiguration> {
     private Class<? extends Worker> workerClass;
     private Class<? extends ParameterUpdater> updaterClass;
     private Class<? extends Codec> keyCodecClass = SerializableCodec.class;
@@ -121,7 +121,7 @@ public final class AsyncConfiguration {
     }
 
     @Override
-    public AsyncConfiguration build() {
+    public AsyncDolphinConfiguration build() {
       if (workerClass == null) {
         throw new RuntimeException("Worker class is required.");
       }
@@ -130,7 +130,7 @@ public final class AsyncConfiguration {
         throw new RuntimeException("Updater class is required.");
       }
 
-      return new AsyncConfiguration(workerClass, updaterClass,
+      return new AsyncDolphinConfiguration(workerClass, updaterClass,
           keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList);
     }
   }
