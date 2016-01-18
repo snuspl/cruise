@@ -41,9 +41,9 @@ public final class VectorOps {
   static final UFunc.UImpl2 SUB_SS = breeze.linalg.SparseVector.implOps_SVT_SVT_eq_SVT_Double_OpSub();
 
   // scale operator
-  static final UFunc.UImpl2 SCALE_D = breeze.linalg.DenseVector.canScaleD();
-  static final UFunc.InPlaceImpl2 SCALEI_D = breeze.linalg.DenseVector.canScaleIntoD();
-  static final UFunc.UImpl2 SCALE_S = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpMulScalar();
+  static final UFunc.UImpl2 SCALE_D = breeze.linalg.DenseVector.dv_s_Op_Double_OpMulMatrix();
+  static final UFunc.InPlaceImpl2 SCALEI_D = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpMulMatrix();
+  static final UFunc.UImpl2 SCALE_S = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpMulMatrix();
 
   // axpy operator
   static final UFunc.InPlaceImpl3 AXPY_DD = breeze.linalg.DenseVector.canDaxpy$.MODULE$;
@@ -51,7 +51,7 @@ public final class VectorOps {
   static final UFunc.InPlaceImpl3 AXPY_SS = breeze.linalg.SparseVector.implScaleAdd_SVT_T_SVT_InPlace_Double();
 
   // dot operator
-  static final UFunc.UImpl2 DOT_DD = breeze.linalg.DenseVector.canDotD();
+  static final UFunc.UImpl2 DOT_DD = breeze.linalg.DenseVector.canDotD$.MODULE$;
   static final UFunc.UImpl2 DOT_DS = breeze.linalg.SparseVector.implOpMulInner_DVT_SVT_eq_T_Double();
   static final UFunc.UImpl2 DOT_SS = SparseVector.implOpMulInner_SVT_SVT_eq_T_Double();
 

@@ -56,7 +56,7 @@ public final class DefaultVectorFactory implements VectorFactory {
   public DenseVector newDenseVector(final double[] data) {
     final breeze.linalg.DenseVector dv = new breeze.linalg.DenseVector(data.length, TAG);
     for (int i = 0; i < data.length; i++) {
-      dv.unsafeUpdate(i, data[i]);
+      dv.update(i, data[i]);
     }
     return new DenseVector(dv);
   }
