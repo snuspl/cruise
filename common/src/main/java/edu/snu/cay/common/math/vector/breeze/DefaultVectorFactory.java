@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.common.math.vector.breeze;
 
-import breeze.collection.mutable.SparseArray;
 import breeze.storage.Zero;
 import breeze.storage.Zero$;
 import edu.snu.cay.common.math.vector.VectorFactory;
@@ -44,21 +43,19 @@ public final class DefaultVectorFactory implements VectorFactory {
    */
   @Override
   public DenseVector newDenseVector(final int length) {
-    return new DenseVector(new breeze.linalg.DenseVector<Double>(length, TAG));
+    return new DenseVector(breeze.linalg.DenseVector.zeros(length, TAG, ZERO));
   }
 
   /**
    * Creates a dense vector with given values.
+   * This method does not make a deep copy of {@code data}.
+   * Thus, changes in {@code data} also change the returning vector.
    * @param data elements of a vector
    * @return created vector
    */
   @Override
   public DenseVector newDenseVector(final double[] data) {
-    final breeze.linalg.DenseVector dv = new breeze.linalg.DenseVector(data.length, TAG);
-    for (int i = 0; i < data.length; i++) {
-      dv.update(i, data[i]);
-    }
-    return new DenseVector(dv);
+    return new DenseVector(new breeze.linalg.DenseVector(data));
   }
 
   /**
@@ -68,11 +65,13 @@ public final class DefaultVectorFactory implements VectorFactory {
    */
   @Override
   public SparseVector newSparseVector(final int length) {
-    return new SparseVector(new breeze.linalg.SparseVector(new SparseArray(length, TAG, ZERO), ZERO));
+    return new SparseVector(breeze.linalg.SparseVector.zeros(length, TAG, ZERO));
   }
 
   /**
    * Creates a sparse vector with given indices, values, and length.
+   * This method does not make a deep copy of {@code index} and {@code data}.
+   * Thus, changes in {@code index} and {@code data} also change the returning vector.
    * @param index indices of vector elements
    * @param data elements of a vector
    * @param length vector length
@@ -81,10 +80,6 @@ public final class DefaultVectorFactory implements VectorFactory {
   @Override
   public SparseVector newSparseVector(final int[] index, final double[] data, final int length) {
     assert (index.length == data.length);
-    final breeze.linalg.SparseVector sv = new breeze.linalg.SparseVector(new SparseArray(length, TAG, ZERO), ZERO);
-    for (int i = 0; i < index.length; i++) {
-      sv.array().update(index[i], data[i]);
-    }
-    return new SparseVector(sv);
+    return new SparseVector(new breeze.linalg.SparseVector(index, data, length, ZERO));
   }
 }

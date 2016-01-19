@@ -25,7 +25,7 @@ import java.util.Iterator;
 
 /**
  * Vector implementation based on breeze sparse vector.
- * This class should be initialized by {@link VectorFactory}.
+ * This class should be initialized by {@link edu.snu.cay.common.math.vector.VectorFactory}.
  */
 public class SparseVector implements Vector {
 
