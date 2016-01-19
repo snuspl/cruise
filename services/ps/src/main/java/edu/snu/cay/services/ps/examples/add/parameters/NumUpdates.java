@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.examples.parameters;
+package edu.snu.cay.services.ps.examples.add.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of workers to run updater tasks on", default_value = "1", short_name = "numWorkers")
-public final class NumWorkers implements Name<Integer> {
+@NamedParameter(doc = "Number of updates to apply per worker", default_value = "100", short_name = "numUpdates")
+public final class NumUpdates implements Name<Integer> {
 }

@@ -26,7 +26,7 @@ import javax.inject.Inject;
 public final class AddUpdater implements ParameterUpdater<Integer, Integer, Integer> {
 
   @Inject
-  public AddUpdater() {
+  private AddUpdater() {
   }
 
   @Override

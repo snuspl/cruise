@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.examples.parameters;
+package edu.snu.cay.services.ps.examples.add.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Job Timeout in ms", default_value = "15000", short_name = "timeout")
-public final class JobTimeout implements Name<Long> {
+@NamedParameter(doc = "Number of workers to run updater tasks on", default_value = "1", short_name = "numWorkers")
+public final class NumWorkers implements Name<Integer> {
 }

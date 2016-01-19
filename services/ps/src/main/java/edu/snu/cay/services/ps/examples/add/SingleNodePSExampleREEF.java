@@ -17,9 +17,9 @@ package edu.snu.cay.services.ps.examples.add;
 
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.driver.impl.SingleNodeParameterServerManager;
-import edu.snu.cay.services.ps.examples.parameters.NumUpdates;
-import edu.snu.cay.services.ps.examples.parameters.NumWorkers;
-import edu.snu.cay.services.ps.examples.parameters.JobTimeout;
+import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
+import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
+import edu.snu.cay.services.ps.examples.add.parameters.JobTimeout;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;

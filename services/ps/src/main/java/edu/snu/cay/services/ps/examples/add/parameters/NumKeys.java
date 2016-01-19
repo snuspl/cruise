@@ -13,7 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Parameters related to PS examples.
- */
-package edu.snu.cay.services.ps.examples.parameters;
+package edu.snu.cay.services.ps.examples.add.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Number of keys to apply updates on: updates are done on [KeyStart, KeyStart + NumKeys)",
+    default_value = "8")
+public final class NumKeys implements Name<Integer> {
+}

@@ -16,10 +16,10 @@
 package edu.snu.cay.services.ps.examples.add;
 
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
-import edu.snu.cay.services.ps.examples.parameters.NumKeys;
-import edu.snu.cay.services.ps.examples.parameters.NumUpdates;
-import edu.snu.cay.services.ps.examples.parameters.NumWorkers;
-import edu.snu.cay.services.ps.examples.parameters.StartKey;
+import edu.snu.cay.services.ps.examples.add.parameters.NumKeys;
+import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
+import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
+import edu.snu.cay.services.ps.examples.add.parameters.StartKey;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;

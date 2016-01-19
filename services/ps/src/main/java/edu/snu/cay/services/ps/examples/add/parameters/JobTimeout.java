@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.examples.parameters;
+package edu.snu.cay.services.ps.examples.add.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of keys to apply updates on: updates are done on [KeyStart, KeyStart + NumKeys)",
-    default_value = "8")
-public final class NumKeys implements Name<Integer> {
+@NamedParameter(doc = "Job Timeout in ms", default_value = "15000", short_name = "timeout")
+public final class JobTimeout implements Name<Long> {
 }

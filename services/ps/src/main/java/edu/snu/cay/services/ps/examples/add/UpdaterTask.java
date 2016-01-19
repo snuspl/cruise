@@ -15,9 +15,9 @@
  */
 package edu.snu.cay.services.ps.examples.add;
 
-import edu.snu.cay.services.ps.examples.parameters.NumKeys;
-import edu.snu.cay.services.ps.examples.parameters.StartKey;
-import edu.snu.cay.services.ps.examples.parameters.NumUpdates;
+import edu.snu.cay.services.ps.examples.add.parameters.NumKeys;
+import edu.snu.cay.services.ps.examples.add.parameters.StartKey;
+import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.tang.annotations.Parameter;
