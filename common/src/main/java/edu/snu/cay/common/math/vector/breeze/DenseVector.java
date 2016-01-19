@@ -74,7 +74,7 @@ public class DenseVector implements Vector {
    */
   @Override
   public double get(final int index) {
-    return breezeVector.unsafeValueAt(index);
+    return breezeVector.apply(index);
   }
 
   /**
@@ -84,7 +84,7 @@ public class DenseVector implements Vector {
    */
   @Override
   public void set(final int index, final double value) {
-    breezeVector.unsafeUpdate(index, value);
+    breezeVector.update(index, value);
   }
 
   @Override
