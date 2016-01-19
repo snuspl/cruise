@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.math.vector;
+package edu.snu.cay.common.math.linalg;
 
-import edu.snu.cay.common.math.vector.breeze.DefaultVectorFactory;
+import edu.snu.cay.common.math.linalg.breeze.DefaultVectorFactory;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**

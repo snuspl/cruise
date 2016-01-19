@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.math.vector.breeze;
+package edu.snu.cay.common.math.linalg.breeze;
 
 import breeze.generic.UFunc;
 import breeze.linalg.SparseVector;

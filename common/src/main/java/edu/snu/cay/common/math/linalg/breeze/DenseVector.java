@@ -13,29 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.math.vector.breeze;
+package edu.snu.cay.common.math.linalg.breeze;
 
+import breeze.linalg.NumericOps;
 import breeze.linalg.package$;
-import edu.snu.cay.common.math.vector.Vector;
-import edu.snu.cay.common.math.vector.VectorEntry;
+import edu.snu.cay.common.math.linalg.Vector;
+import edu.snu.cay.common.math.linalg.VectorEntry;
 import scala.Tuple2;
 import scala.collection.JavaConversions;
 
 import java.util.Iterator;
 
 /**
- * Vector implementation based on breeze sparse vector.
- * This class should be initialized by {@link edu.snu.cay.common.math.vector.VectorFactory}.
+ * Vector implementation based on breeze dense vector.
+ * This class should be initialized by {@link edu.snu.cay.common.math.linalg.VectorFactory}.
  */
-public class SparseVector implements Vector {
+public class DenseVector implements Vector {
 
-  private final breeze.linalg.SparseVector<Double> breezeVector;
+  private final breeze.linalg.DenseVector<Double> breezeVector;
 
-  SparseVector(final breeze.linalg.SparseVector<Double> breezeVector) {
+  DenseVector(final breeze.linalg.DenseVector<Double> breezeVector) {
     this.breezeVector = breezeVector;
   }
 
-  breeze.linalg.SparseVector<Double> getBreezeVector() {
+  breeze.linalg.DenseVector<Double> getBreezeVector() {
     return breezeVector;
   }
 
@@ -49,7 +50,7 @@ public class SparseVector implements Vector {
   }
 
   /**
-   * Return the number of active(nonzero) elements.
+   * Return the number of active elements, which is same as {@code length()}.
    * @return number of active elements
    */
   @Override
@@ -59,11 +60,11 @@ public class SparseVector implements Vector {
 
   /**
    * Returns true if the vector is dense, false if sparse.
-   * @return false
+   * @return true
    */
   @Override
   public boolean isDense() {
-    return false;
+    return true;
   }
 
   /**
@@ -73,7 +74,7 @@ public class SparseVector implements Vector {
    */
   @Override
   public double get(final int index) {
-    return breezeVector.array().apply(index);
+    return breezeVector.apply(index);
   }
 
   /**
@@ -83,16 +84,16 @@ public class SparseVector implements Vector {
    */
   @Override
   public void set(final int index, final double value) {
-    breezeVector.array().update(index, value);
+    breezeVector.update(index, value);
   }
 
   @Override
   public boolean equals(final Object o) {
-    if (o instanceof SparseVector) {
-      return breezeVector.equals(((SparseVector) o).breezeVector);
-    }
     if (o instanceof DenseVector) {
-      return breezeVector.equals(((DenseVector) o).getBreezeVector());
+      return breezeVector.equals(((DenseVector) o).breezeVector);
+    }
+    if (o instanceof SparseVector) {
+      return breezeVector.equals(((SparseVector) o).getBreezeVector());
     }
     return false;
   }
@@ -107,13 +108,13 @@ public class SparseVector implements Vector {
    * @return copied new vector
    */
   @Override
-  public SparseVector copy() {
-    return new SparseVector(breezeVector.copy());
+  public DenseVector copy() {
+    return new DenseVector(breezeVector.copy());
   }
 
   @Override
   public Iterator<VectorEntry> iterator() {
-    return new SparseVectorIterator();
+    return new DenseVectorIterator();
   }
 
   @Override
@@ -123,82 +124,85 @@ public class SparseVector implements Vector {
 
   /**
    * Element-wise vector addition (in place).
-   * Since breeze allocate new memory for this operation, this is actually not in-place.
    * @param vector operand vector
-   * @return operation result
+   * @return this vector with operation result
    */
   @Override
   public Vector addi(final Vector vector) {
-    throw new UnsupportedOperationException();
+    if (vector.isDense()) {
+      ((NumericOps)breezeVector).$colon$plus$eq(((DenseVector) vector).breezeVector, VectorOps.ADDI_DD);
+    } else {
+      ((NumericOps)breezeVector).$colon$plus$eq(((SparseVector) vector).getBreezeVector(), VectorOps.ADDI_DS);
+    }
+    return this;
   }
 
   /**
    * Element-wise vector addition.
-   * The result is {@link DenseVector} if the operand is {@link DenseVector},
-   * {@link SparseVector} otherwise.
    * @param vector operand vector
-   * @return new vector with operation result
+   * @return new {@link DenseVector} with operation result
    */
   @Override
   public Vector add(final Vector vector) {
     if (vector.isDense()) {
       return new DenseVector((breeze.linalg.DenseVector<Double>)
-          ((DenseVector) vector).getBreezeVector().$plus(breezeVector, VectorOps.ADD_DS));
+          breezeVector.$plus(((DenseVector) vector).breezeVector, VectorOps.ADD_DD));
     } else {
-      return new SparseVector((breeze.linalg.SparseVector<Double>)
-          breezeVector.$plus(((SparseVector) vector).breezeVector, VectorOps.ADD_SS));
+      return new DenseVector((breeze.linalg.DenseVector<Double>)
+          breezeVector.$plus(((SparseVector) vector).getBreezeVector(), VectorOps.ADD_DS));
     }
   }
 
   /**
    * Element-wise vector subtraction (in place).
-   * Since breeze allocate new memory for this operation, this is actually not in-place.
    * @param vector operand vector
-   * @return operation result
+   * @return this vector with operation result
    */
   @Override
   public Vector subi(final Vector vector) {
-    throw new UnsupportedOperationException();
+    if (vector.isDense()) {
+      ((NumericOps)breezeVector).$colon$minus$eq(((DenseVector) vector).breezeVector, VectorOps.SUBI_DD);
+    } else {
+      ((NumericOps)breezeVector).$colon$minus$eq(((SparseVector) vector).getBreezeVector(), VectorOps.SUBI_DS);
+    }
+    return this;
   }
 
   /**
    * Element-wise vector subtraction.
-   * The result is {@link DenseVector} if the operand is {@link DenseVector},
-   * {@link SparseVector} otherwise.
    * @param vector operand vector
-   * @return new vector with operation result
+   * @return new {@link DenseVector} with operation result
    */
   @Override
   public Vector sub(final Vector vector) {
     if (vector.isDense()) {
       return new DenseVector((breeze.linalg.DenseVector<Double>)
-          ((DenseVector) vector).getBreezeVector().$minus(breezeVector, VectorOps.SUB_DS));
+          breezeVector.$minus(((DenseVector) vector).breezeVector, VectorOps.SUB_DD));
     } else {
-      return new SparseVector((breeze.linalg.SparseVector<Double>)
-          breezeVector.$minus(((SparseVector) vector).breezeVector, VectorOps.SUB_SS));
+      return new DenseVector((breeze.linalg.DenseVector<Double>)
+          breezeVector.$minus(((SparseVector) vector).getBreezeVector(), VectorOps.SUB_DS));
     }
   }
 
   /**
    * Multiplies a scala to all elements (in place).
-   * Since breeze allocate new memory for this operation, this is actually not in-place.
    * @param value operand scala
-   * @return operation result
+   * @return this vector with operation result
    */
   @Override
   public Vector scalei(final double value) {
-    throw new UnsupportedOperationException();
+    ((NumericOps)breezeVector).$colon$times$eq(value, VectorOps.SCALEI_D);
+    return this;
   }
 
   /**
-   * Multiplies a scala to all elements (in place).
-   * Since breeze allocate new memory for this operation, this is actually not in-place.
+   * Multiplies a scala to all elements.
    * @param value operand scala
-   * @return new {@link SparseVector} with operation result
+   * @return new {@link DenseVector} with operation result
    */
   @Override
   public Vector scale(final double value) {
-    return new SparseVector((breeze.linalg.SparseVector<Double>) breezeVector.$colon$times(value, VectorOps.SCALE_S));
+    return new DenseVector((breeze.linalg.DenseVector<Double>) breezeVector.$colon$times(value, VectorOps.SCALE_D));
   }
 
   /**
@@ -210,9 +214,9 @@ public class SparseVector implements Vector {
   @Override
   public Vector axpy(final double value, final Vector vector) {
     if (vector.isDense()) {
-      throw new UnsupportedOperationException();
+      package$.MODULE$.axpy(value, ((DenseVector) vector).breezeVector, breezeVector, VectorOps.AXPY_DD);
     } else {
-      package$.MODULE$.axpy(value, ((SparseVector) vector).breezeVector, breezeVector, VectorOps.AXPY_SS);
+      package$.MODULE$.axpy(value, ((SparseVector) vector).getBreezeVector(), breezeVector, VectorOps.AXPY_DS);
     }
     return this;
   }
@@ -225,17 +229,17 @@ public class SparseVector implements Vector {
   @Override
   public double dot(final Vector vector) {
     if (vector.isDense()) {
-      return (double) ((DenseVector) vector).getBreezeVector().dot(breezeVector, VectorOps.DOT_DS);
+      return (double) breezeVector.dot(((DenseVector) vector).breezeVector, VectorOps.DOT_DD);
     } else {
-      return (double) breezeVector.dot(((SparseVector) vector).breezeVector, VectorOps.DOT_SS);
+      return (double) breezeVector.dot(((SparseVector) vector).getBreezeVector(), VectorOps.DOT_DS);
     }
   }
 
-  private class SparseVectorIterator implements Iterator<VectorEntry> {
+  private class DenseVectorIterator implements Iterator<VectorEntry> {
 
     private final Iterator<Tuple2<Object, Double>> iterator
         = JavaConversions.asJavaIterator(breezeVector.activeIterator());
-    private final SparseVectorEntry entry = new SparseVectorEntry();
+    private final DenseVectorEntry entry = new DenseVectorEntry();
 
     public boolean hasNext() {
       return iterator.hasNext();
@@ -251,7 +255,7 @@ public class SparseVector implements Vector {
     }
   }
 
-  private class SparseVectorEntry implements VectorEntry {
+  private class DenseVectorEntry implements VectorEntry {
 
     private Tuple2<Object, Double> cursor;
 
