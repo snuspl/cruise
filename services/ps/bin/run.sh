@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run.sh edu.snu.cay.services.ps.examples.add.SingleNodePSExampleREEF -numUpdates 960 -timeout 360000 -numWorkers 4
+# ./run.sh edu.snu.cay.services.ps.examples.add.ConcurrentPSExampleREEF -numUpdates 960 -timeout 360000 -numWorkers 4
 
 # RUNTIME
 SELF_JAR=../target/ps-0.1-SNAPSHOT-shaded.jar

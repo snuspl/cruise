@@ -19,7 +19,7 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 
 /**
  * A Parameter Server worker (client) that interacts with the server to provide or fetch parameters.
- * Works as a set with {@link edu.snu.cay.services.ps.server.api.ParameterServer}.
+ * Works as a set with {@link edu.snu.cay.services.ps.server.concurrent.api.ParameterServer}.
  * @param <K> class type of parameter keys
  * @param <P> class type of parameter values before they are processed at the server
  * @param <V> class type of parameter values after they are processed at the server

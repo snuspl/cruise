@@ -16,7 +16,7 @@
 package edu.snu.cay.services.ps.examples.add;
 
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
-import edu.snu.cay.services.ps.driver.impl.SingleNodeParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.ConcurrentParameterServerManager;
 import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
 import edu.snu.cay.services.ps.examples.add.parameters.JobTimeout;
@@ -39,17 +39,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * ParameterServer Example for the SingleNodePS.
+ * ParameterServer Example for the Concurrent (single-node) PS.
  */
-public final class SingleNodePSExampleREEF {
-  private static final Logger LOG = Logger.getLogger(SingleNodePSExampleREEF.class.getName());
+public final class ConcurrentPSExampleREEF {
+  private static final Logger LOG = Logger.getLogger(ConcurrentPSExampleREEF.class.getName());
 
   private final long timeout;
   private final int numWorkers;
   private final int numUpdates;
 
   @Inject
-  private SingleNodePSExampleREEF(@Parameter(JobTimeout.class) final long timeout,
+  private ConcurrentPSExampleREEF(@Parameter(JobTimeout.class) final long timeout,
                                   @Parameter(NumWorkers.class) final int numWorkers,
                                   @Parameter(NumUpdates.class) final int numUpdates) {
     this.timeout = timeout;
@@ -61,7 +61,7 @@ public final class SingleNodePSExampleREEF {
     final Configuration driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES,
             EnvironmentUtils.getClassLocation(PSExampleDriver.class))
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "SingleNodePSExample")
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "ConcurrentPSExample")
         .set(DriverConfiguration.ON_DRIVER_STARTED,
             PSExampleDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED,
@@ -80,7 +80,7 @@ public final class SingleNodePSExampleREEF {
         .build();
 
     final Configuration psConf = new ParameterServerConfigurationBuilder()
-        .setManagerClass(SingleNodeParameterServerManager.class)
+        .setManagerClass(ConcurrentParameterServerManager.class)
         .setUpdaterClass(AddUpdater.class)
         .setKeyCodecClass(IntegerCodec.class)
         .setPreValueCodecClass(IntegerCodec.class)
@@ -104,7 +104,7 @@ public final class SingleNodePSExampleREEF {
     return DriverLauncher.getLauncher(getRuntimeConfiguration()).run(getDriverConf(), timeout);
   }
 
-  private static SingleNodePSExampleREEF parseCommandLine(final String[] args) throws IOException, InjectionException {
+  private static ConcurrentPSExampleREEF parseCommandLine(final String[] args) throws IOException, InjectionException {
     final JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
     cl.registerShortNameOfClass(JobTimeout.class);
@@ -113,14 +113,14 @@ public final class SingleNodePSExampleREEF {
 
     cl.processCommandLine(args);
 
-    return Tang.Factory.getTang().newInjector(cb.build()).getInstance(SingleNodePSExampleREEF.class);
+    return Tang.Factory.getTang().newInjector(cb.build()).getInstance(ConcurrentPSExampleREEF.class);
   }
 
   public static void main(final String[] args) {
     LauncherStatus status;
     try {
-      final SingleNodePSExampleREEF singleNodePSExampleREEF = parseCommandLine(args);
-      status = singleNodePSExampleREEF.run();
+      final ConcurrentPSExampleREEF concurrentPSExampleREEF = parseCommandLine(args);
+      status = concurrentPSExampleREEF.run();
     } catch (final Exception e) {
       LOG.log(Level.SEVERE, "Fatal exception occurred: {0}", e);
       status = LauncherStatus.failed(e);

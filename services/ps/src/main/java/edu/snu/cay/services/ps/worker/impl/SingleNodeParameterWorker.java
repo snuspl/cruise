@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.worker.impl;
 
-import edu.snu.cay.services.ps.driver.impl.SingleNodeParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.api.WorkerSideMsgSender;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -36,7 +36,7 @@ import java.util.logging.Logger;
 @EvaluatorSide
 public final class SingleNodeParameterWorker<K, P, V> implements ParameterWorker<K, P, V> {
   private static final Logger LOG = Logger.getLogger(SingleNodeParameterWorker.class.getName());
-  private static final long TIMEOUT = 10000; // milliseconds
+  private static final long TIMEOUT = 400000; // milliseconds
 
   /**
    * Network Connection Service identifier of the server.
@@ -56,7 +56,7 @@ public final class SingleNodeParameterWorker<K, P, V> implements ParameterWorker
   private final ConcurrentMap<K, ValueWrapper> keyToValueWrapper;
 
   @Inject
-  private SingleNodeParameterWorker(@Parameter(SingleNodeParameterServerManager.ServerId.class) final String serverId,
+  private SingleNodeParameterWorker(@Parameter(ServerId.class) final String serverId,
                                     final InjectionFuture<WorkerSideMsgSender<K, P>> sender) {
     this.serverId = serverId;
     this.sender = sender;

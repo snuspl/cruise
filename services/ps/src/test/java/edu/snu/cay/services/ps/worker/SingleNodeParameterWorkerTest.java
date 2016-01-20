@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.worker;
 
-import edu.snu.cay.services.ps.driver.impl.SingleNodeParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.worker.api.WorkerSideMsgSender;
 import edu.snu.cay.services.ps.worker.impl.SingleNodeParameterWorker;
 import edu.snu.cay.utils.ThreadUtils;
@@ -48,7 +48,7 @@ public final class SingleNodeParameterWorkerTest {
   @Before
   public void setup() throws InjectionException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(SingleNodeParameterServerManager.ServerId.class, "ServerId")
+        .bindNamedParameter(ServerId.class, "ServerId")
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
     final WorkerSideMsgSender<Integer, Integer> mockSender = mock(WorkerSideMsgSender.class);
