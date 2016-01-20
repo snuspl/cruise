@@ -21,6 +21,7 @@ import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
 import edu.snu.cay.services.ps.avro.PullMsg;
 import edu.snu.cay.services.ps.avro.PushMsg;
 import edu.snu.cay.utils.SingleMessageExtractor;
+import org.apache.hadoop.util.hash.MurmurHash;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.io.serialization.Codec;
@@ -33,6 +34,10 @@ import java.util.logging.Logger;
 /**
  * Server-side Parameter Server message handler.
  * Decode messages and call the appropriate {@link PartitionedParameterServer} method.
+ * We also compute a {@link MurmurHash} on the encoded key and pass it to {@link PartitionedParameterServer}.
+ *
+ * An alternative approach would be to compute the hash at the client and send it as part of the message.
+ * This would trade-off less computation on the server for more computation on the client and more communication cost.
  */
 @EvaluatorSide
 public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHandler<Message<AvroParameterServerMsg>> {
@@ -90,12 +95,18 @@ public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHand
   private void onPushMsg(final PushMsg pushMsg) {
     final K key = keyCodec.decode(pushMsg.getKey().array());
     final P preValue = preValueCodec.decode(pushMsg.getPreValue().array());
-    parameterServer.push(key, preValue);
+    final int keyHash = hash(pushMsg.getKey().array());
+    parameterServer.push(key, preValue, keyHash);
   }
 
   private void onPullMsg(final PullMsg pullMsg) {
     final String srcId = pullMsg.getSrcId().toString();
     final K key = keyCodec.decode(pullMsg.getKey().array());
-    parameterServer.pull(key, srcId);
+    final int keyHash = hash(pullMsg.getKey().array());
+    parameterServer.pull(key, srcId, keyHash);
+  }
+
+  private int hash(final byte[] encodedKey) {
+    return Math.abs(MurmurHash.getInstance().hash(encodedKey));
   }
 }

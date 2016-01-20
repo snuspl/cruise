@@ -112,9 +112,10 @@ public final class PartitionedParameterServer<K, P, V> {
    *
    * @param key key object that {@code preValue} is associated with
    * @param preValue preValue sent from the worker
+   * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
-  public void push(final K key, final P preValue) {
-    partitions[getPartitionIndex(key)].enqueue(new PushOp(key, preValue));
+  public void push(final K key, final P preValue, final int keyHash) {
+    partitions[getPartitionIndex(keyHash)].enqueue(new PushOp(key, preValue));
   }
 
   /**
@@ -125,13 +126,14 @@ public final class PartitionedParameterServer<K, P, V> {
    *
    * @param key key object that the requested {@code value} is associated with
    * @param srcId network Id of the requester
+   * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
-  public void pull(final K key, final String srcId) {
-    partitions[getPartitionIndex(key)].enqueue(new PullOp(key, srcId));
+  public void pull(final K key, final String srcId, final int keyHash) {
+    partitions[getPartitionIndex(keyHash)].enqueue(new PullOp(key, srcId));
   }
 
-  private int getPartitionIndex(final K key) {
-    return key.hashCode() % numPartitions;
+  private int getPartitionIndex(final int keyHash) {
+    return keyHash % numPartitions;
   }
 
   /**
