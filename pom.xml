@@ -54,7 +54,7 @@
     <mockito.version>1.10.19</mockito.version>
     <ojalgo.version>37.1</ojalgo.version>
     <breeze.version>0.12</breeze.version>
-    <guava.version>19.0</guava.version>
+    <guava.version>11.0.2</guava.version>
     <build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
   </properties>
 
