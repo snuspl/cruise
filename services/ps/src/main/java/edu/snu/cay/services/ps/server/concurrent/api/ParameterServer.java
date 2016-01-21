@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.server.api;
+package edu.snu.cay.services.ps.server.concurrent.api;
 
-import edu.snu.cay.services.ps.server.ValueEntry;
+import edu.snu.cay.services.ps.server.concurrent.impl.ValueEntry;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 /**

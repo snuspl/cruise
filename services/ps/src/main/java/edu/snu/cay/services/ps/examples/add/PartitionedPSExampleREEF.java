@@ -16,10 +16,12 @@
 package edu.snu.cay.services.ps.examples.add;
 
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
-import edu.snu.cay.services.ps.driver.impl.SingleNodeParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
+import edu.snu.cay.services.ps.examples.add.parameters.JobTimeout;
 import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
-import edu.snu.cay.services.ps.examples.add.parameters.JobTimeout;
+import edu.snu.cay.services.ps.server.partitioned.parameters.NumPartitions;
+import edu.snu.cay.services.ps.server.partitioned.parameters.QueueSize;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -39,29 +41,35 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * ParameterServer Example for the SingleNodePS.
+ * ParameterServer Example for the Partitioned (single-node) PS.
  */
-public final class SingleNodePSExampleREEF {
-  private static final Logger LOG = Logger.getLogger(SingleNodePSExampleREEF.class.getName());
+public final class PartitionedPSExampleREEF {
+  private static final Logger LOG = Logger.getLogger(PartitionedPSExampleREEF.class.getName());
 
   private final long timeout;
   private final int numWorkers;
   private final int numUpdates;
+  private final int numPartitions;
+  private final int queueSize;
 
   @Inject
-  private SingleNodePSExampleREEF(@Parameter(JobTimeout.class) final long timeout,
-                                  @Parameter(NumWorkers.class) final int numWorkers,
-                                  @Parameter(NumUpdates.class) final int numUpdates) {
+  private PartitionedPSExampleREEF(@Parameter(JobTimeout.class) final long timeout,
+                                   @Parameter(NumWorkers.class) final int numWorkers,
+                                   @Parameter(NumUpdates.class) final int numUpdates,
+                                   @Parameter(NumPartitions.class) final int numPartitions,
+                                   @Parameter(QueueSize.class) final int queueSize) {
     this.timeout = timeout;
     this.numWorkers = numWorkers;
     this.numUpdates = numUpdates;
+    this.numPartitions = numPartitions;
+    this.queueSize = queueSize;
   }
 
   private Configuration getDriverConf() {
     final Configuration driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES,
             EnvironmentUtils.getClassLocation(PSExampleDriver.class))
-        .set(DriverConfiguration.DRIVER_IDENTIFIER, "SingleNodePSExample")
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "PartitionedPSExample")
         .set(DriverConfiguration.ON_DRIVER_STARTED,
             PSExampleDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED,
@@ -77,10 +85,12 @@ public final class SingleNodePSExampleREEF {
     final Configuration parametersConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumWorkers.class, Integer.toString(numWorkers))
         .bindNamedParameter(NumUpdates.class, Integer.toString(numUpdates))
+        .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
+        .bindNamedParameter(QueueSize.class, Integer.toString(queueSize))
         .build();
 
     final Configuration psConf = new ParameterServerConfigurationBuilder()
-        .setManagerClass(SingleNodeParameterServerManager.class)
+        .setManagerClass(PartitionedParameterServerManager.class)
         .setUpdaterClass(AddUpdater.class)
         .setKeyCodecClass(IntegerCodec.class)
         .setPreValueCodecClass(IntegerCodec.class)
@@ -104,22 +114,24 @@ public final class SingleNodePSExampleREEF {
     return DriverLauncher.getLauncher(getRuntimeConfiguration()).run(getDriverConf(), timeout);
   }
 
-  private static SingleNodePSExampleREEF parseCommandLine(final String[] args) throws IOException, InjectionException {
+  private static PartitionedPSExampleREEF parseCommandLine(final String[] args) throws IOException, InjectionException {
     final JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
     cl.registerShortNameOfClass(JobTimeout.class);
     cl.registerShortNameOfClass(NumWorkers.class);
     cl.registerShortNameOfClass(NumUpdates.class);
+    cl.registerShortNameOfClass(NumPartitions.class);
+    cl.registerShortNameOfClass(QueueSize.class);
 
     cl.processCommandLine(args);
 
-    return Tang.Factory.getTang().newInjector(cb.build()).getInstance(SingleNodePSExampleREEF.class);
+    return Tang.Factory.getTang().newInjector(cb.build()).getInstance(PartitionedPSExampleREEF.class);
   }
 
   public static void main(final String[] args) {
     LauncherStatus status;
     try {
-      final SingleNodePSExampleREEF singleNodePSExampleREEF = parseCommandLine(args);
+      final PartitionedPSExampleREEF singleNodePSExampleREEF = parseCommandLine(args);
       status = singleNodePSExampleREEF.run();
     } catch (final Exception e) {
       LOG.log(Level.SEVERE, "Fatal exception occurred: {0}", e);

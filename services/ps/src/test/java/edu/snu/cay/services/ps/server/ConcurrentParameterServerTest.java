@@ -16,7 +16,8 @@
 package edu.snu.cay.services.ps.server;
 
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
-import edu.snu.cay.services.ps.server.impl.SingleNodeParameterServer;
+import edu.snu.cay.services.ps.server.concurrent.impl.ConcurrentParameterServer;
+import edu.snu.cay.services.ps.server.concurrent.impl.ValueEntry;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -31,13 +32,13 @@ import static org.junit.Assert.*;
 
 
 /**
- * Tests for {@link SingleNodeParameterServer}.
+ * Tests for {@link ConcurrentParameterServer}.
  */
-public final class SingleNodeParameterServerTest {
+public final class ConcurrentParameterServerTest {
   private static final Integer KEY = 0;
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
-  private SingleNodeParameterServer<Integer, Integer, Integer> server;
+  private ConcurrentParameterServer<Integer, Integer, Integer> server;
 
   @Before
   public void setup() throws InjectionException {
@@ -60,11 +61,11 @@ public final class SingleNodeParameterServerTest {
       }
     });
 
-    server = injector.getInstance(SingleNodeParameterServer.class);
+    server = injector.getInstance(ConcurrentParameterServer.class);
   }
 
   /**
-   * Test the thread safety of {@link SingleNodeParameterServer} by
+   * Test the thread safety of {@link ConcurrentParameterServer} by
    * running threads that push values to and pull values from the server, concurrently.
    */
   @Test
@@ -76,25 +77,27 @@ public final class SingleNodeParameterServerTest {
     final CountDownLatch countDownLatch = new CountDownLatch(numPushThreads + numPullThreads);
     final Runnable[] threads = new Runnable[numPushThreads + numPullThreads];
 
-    for (int index = 0; index < numPushThreads; index++) {
-      threads[index] = new Runnable() {
+    for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
+      final int threadId = threadIndex;
+      threads[threadIndex] = new Runnable() {
         @Override
         public void run() {
           for (int index = 0; index < numPushes; index++) {
             // each thread increments the server's value by 1 per push
-            server.push(KEY, 1);
+            server.push(KEY + threadId, 1);
           }
           countDownLatch.countDown();
         }
       };
     }
 
-    for (int index = 0; index < numPullThreads; index++) {
-      threads[index + numPushThreads] = new Runnable() {
+    for (int threadIndex = 0; threadIndex < numPullThreads; threadIndex++) {
+      final int threadId = threadIndex;
+      threads[threadIndex + numPushThreads] = new Runnable() {
         @Override
         public void run() {
           for (int index = 0; index < numPulls; index++) {
-            final ValueEntry<Integer> value = server.pull(KEY);
+            final ValueEntry<Integer> value = server.pull(KEY + threadId);
             value.getReadWriteLock().readLock().lock();
             try {
               value.getValue();
@@ -107,11 +110,16 @@ public final class SingleNodeParameterServerTest {
       };
     }
 
+    final long startTime = System.currentTimeMillis();
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(10, TimeUnit.SECONDS);
+    final long endTime = System.currentTimeMillis();
+    System.out.println("Ops completed in " + (endTime - startTime) + " milliseconds");
 
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
-    final ValueEntry<Integer> value = server.pull(KEY);
-    assertEquals(MSG_RESULT_ASSERTION, numPushThreads * numPushes, (int) value.getValue());
+    for (int threadIndex = 0; threadIndex < numPushThreads; threadIndex++) {
+      final ValueEntry<Integer> value = server.pull(KEY + threadIndex);
+      assertEquals(MSG_RESULT_ASSERTION, numPushes, (int) value.getValue());
+    }
   }
 }

@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.server;
+package edu.snu.cay.services.ps.server.concurrent.impl;
 
 import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
 import edu.snu.cay.services.ps.ParameterServerParameters.PreValueCodecName;
 import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
 import edu.snu.cay.services.ps.avro.PullMsg;
 import edu.snu.cay.services.ps.avro.PushMsg;
-import edu.snu.cay.services.ps.server.api.ParameterServer;
-import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
+import edu.snu.cay.services.ps.server.concurrent.api.ParameterServer;
+import edu.snu.cay.services.ps.server.concurrent.api.ServerSideMsgSender;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;

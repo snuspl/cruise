@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Implementations for server-side Parameter Server classes in {@link edu.snu.cay.services.ps.server.api}.
- */
-package edu.snu.cay.services.ps.server.impl;
+package edu.snu.cay.services.ps.server.partitioned.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Max number of items that can be queued for each partition", default_value = "1000",
+    short_name = "queueSize")
+public final class QueueSize implements Name<Integer> {
+}

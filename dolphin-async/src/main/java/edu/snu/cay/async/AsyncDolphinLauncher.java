@@ -18,7 +18,7 @@ package edu.snu.cay.async;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
-import edu.snu.cay.services.ps.driver.impl.SingleNodeParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.ConcurrentParameterServerManager;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
@@ -87,7 +87,7 @@ public final class AsyncDolphinLauncher {
 
       // configuration for the parameter server
       final Configuration parameterServerConf = ParameterServerConfigurationBuilder.newBuilder()
-          .setManagerClass(SingleNodeParameterServerManager.class)
+          .setManagerClass(ConcurrentParameterServerManager.class)
           .setUpdaterClass(asyncDolphinConfiguration.getUpdaterClass())
           .setKeyCodecClass(asyncDolphinConfiguration.getKeyCodecClass())
           .setPreValueCodecClass(asyncDolphinConfiguration.getPreValueCodecClass())

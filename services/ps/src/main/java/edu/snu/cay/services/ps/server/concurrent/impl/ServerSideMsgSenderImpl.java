@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.server.impl;
+package edu.snu.cay.services.ps.server.concurrent.impl;
 
 import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
 import edu.snu.cay.services.ps.ParameterServerParameters.ValueCodecName;
@@ -21,8 +21,7 @@ import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
 import edu.snu.cay.services.ps.avro.ReplyMsg;
 import edu.snu.cay.services.ps.avro.Type;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
-import edu.snu.cay.services.ps.server.ValueEntry;
-import edu.snu.cay.services.ps.server.api.ServerSideMsgSender;
+import edu.snu.cay.services.ps.server.concurrent.api.ServerSideMsgSender;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;

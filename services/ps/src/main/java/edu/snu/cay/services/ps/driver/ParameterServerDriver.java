@@ -20,7 +20,6 @@ import edu.snu.cay.services.ps.ParameterServerParameters.SerializedUpdaterConfig
 import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
 import edu.snu.cay.services.ps.ns.NetworkContextRegister;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
-import edu.snu.cay.services.ps.server.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.worker.WorkerSideMsgHandler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
@@ -132,7 +131,6 @@ public final class ParameterServerDriver {
             updaterConfiguration,
             getNameResolverServiceConfiguration())
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-        .bindNamedParameter(PSMessageHandler.class, ServerSideMsgHandler.class)
         .build();
   }
 }
