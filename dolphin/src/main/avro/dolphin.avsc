@@ -81,6 +81,7 @@
   [
     {"name": "srcType", "type": {"type": "enum", "name": "SrcType",
         "symbols": ["Compute", "Controller"]}},
+    {"name": "srcId", "type": "string"},
     {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.core.avro.IterationInfo"},
     {"name": "metrics", "type": "bytes"},
     {"name": "controllerMsg", "type": ["null", "ControllerMsg"], "default": null},
