@@ -16,8 +16,8 @@
 package edu.snu.cay.services.ps.server.partitioned;
 
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
-import edu.snu.cay.services.ps.server.partitioned.parameters.NumPartitions;
-import edu.snu.cay.services.ps.server.partitioned.parameters.QueueSize;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -77,8 +77,8 @@ public final class PartitionedParameterServer<K, P, V> {
   private final PartitionedServerSideReplySender sender;
 
   @Inject
-  private PartitionedParameterServer(@Parameter(NumPartitions.class) final int numPartitions,
-                                     @Parameter(QueueSize.class) final int queueSize,
+  private PartitionedParameterServer(@Parameter(ServerNumPartitions.class) final int numPartitions,
+                                     @Parameter(ServerQueueSize.class) final int queueSize,
                                      final ParameterUpdater<K, P, V> parameterUpdater,
                                      final PartitionedServerSideReplySender sender) {
     this.numPartitions = numPartitions;
@@ -276,7 +276,7 @@ public final class PartitionedParameterServer<K, P, V> {
 
     /**
      * Loop that dequeues operations and applies them.
-     * Dequeues is only performed through this thread.
+     * Dequeues are only performed through this thread.
      */
     @Override
     public void run() {

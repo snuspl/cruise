@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.impl;
+package edu.snu.cay.services.ps.worker.concurrent;
 
 import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
 import edu.snu.cay.services.ps.ParameterServerParameters.PreValueCodecName;
@@ -22,7 +22,6 @@ import edu.snu.cay.services.ps.avro.PushMsg;
 import edu.snu.cay.services.ps.avro.PullMsg;
 import edu.snu.cay.services.ps.avro.Type;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
-import edu.snu.cay.services.ps.worker.api.WorkerSideMsgSender;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;

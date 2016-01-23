@@ -65,17 +65,20 @@ public final class UpdaterTask implements Task {
     for (int i = 0; i < numUpdates; i++) {
       if (i % loggingInterval == 0) {
         LOG.log(Level.INFO, "{0} updates complete", i);
+        pullAllKeys();
       }
       worker.push(startKey + (i % numKeys), 1);
     }
 
     LOG.log(Level.INFO, "{0} updates complete", numUpdates);
+    pullAllKeys();
+    return null;
+  }
+
+  public void pullAllKeys() {
     for (int i = 0; i < numKeys; i++) {
       final int pullResult = worker.pull(startKey + i);
       LOG.log(Level.INFO, "Pull result for key {0}: {1}", new Object[]{startKey + i, pullResult});
     }
-    LOG.log(Level.INFO, "{0} pulls complete", numKeys);
-
-    return null;
   }
 }

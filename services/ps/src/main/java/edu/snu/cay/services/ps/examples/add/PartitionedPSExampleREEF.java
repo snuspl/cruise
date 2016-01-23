@@ -20,8 +20,8 @@ import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
 import edu.snu.cay.services.ps.examples.add.parameters.JobTimeout;
 import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
-import edu.snu.cay.services.ps.server.partitioned.parameters.NumPartitions;
-import edu.snu.cay.services.ps.server.partitioned.parameters.QueueSize;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -56,8 +56,8 @@ public final class PartitionedPSExampleREEF {
   private PartitionedPSExampleREEF(@Parameter(JobTimeout.class) final long timeout,
                                    @Parameter(NumWorkers.class) final int numWorkers,
                                    @Parameter(NumUpdates.class) final int numUpdates,
-                                   @Parameter(NumPartitions.class) final int numPartitions,
-                                   @Parameter(QueueSize.class) final int queueSize) {
+                                   @Parameter(ServerNumPartitions.class) final int numPartitions,
+                                   @Parameter(ServerQueueSize.class) final int queueSize) {
     this.timeout = timeout;
     this.numWorkers = numWorkers;
     this.numUpdates = numUpdates;
@@ -85,8 +85,8 @@ public final class PartitionedPSExampleREEF {
     final Configuration parametersConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumWorkers.class, Integer.toString(numWorkers))
         .bindNamedParameter(NumUpdates.class, Integer.toString(numUpdates))
-        .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
-        .bindNamedParameter(QueueSize.class, Integer.toString(queueSize))
+        .bindNamedParameter(ServerNumPartitions.class, Integer.toString(numPartitions))
+        .bindNamedParameter(ServerQueueSize.class, Integer.toString(queueSize))
         .build();
 
     final Configuration psConf = new ParameterServerConfigurationBuilder()
@@ -120,8 +120,8 @@ public final class PartitionedPSExampleREEF {
     cl.registerShortNameOfClass(JobTimeout.class);
     cl.registerShortNameOfClass(NumWorkers.class);
     cl.registerShortNameOfClass(NumUpdates.class);
-    cl.registerShortNameOfClass(NumPartitions.class);
-    cl.registerShortNameOfClass(QueueSize.class);
+    cl.registerShortNameOfClass(ServerNumPartitions.class);
+    cl.registerShortNameOfClass(ServerQueueSize.class);
 
     cl.processCommandLine(args);
 

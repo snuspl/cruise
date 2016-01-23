@@ -114,6 +114,7 @@ public final class ParameterServerDriver {
         .newConfigurationBuilder(
             codecConfiguration,
             psManager.getWorkerServiceConfiguration(),
+            updaterConfiguration,
             getNameResolverServiceConfiguration())
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .bindNamedParameter(PSMessageHandler.class, WorkerSideMsgHandler.class)

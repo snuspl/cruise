@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.server.partitioned.parameters;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Number of partitions", default_value = "2", short_name = "numPartitions")
-public final class NumPartitions implements Name<Integer> {
-}
+/**
+ * Parameters related to Partitioned PS Worker.
+ */
+package edu.snu.cay.services.ps.worker.partitioned.parameters;

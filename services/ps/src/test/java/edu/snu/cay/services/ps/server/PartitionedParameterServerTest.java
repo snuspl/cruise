@@ -20,7 +20,7 @@ import edu.snu.cay.services.ps.examples.add.IntegerCodec;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySender;
-import edu.snu.cay.services.ps.server.partitioned.parameters.NumPartitions;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -54,7 +54,7 @@ public final class PartitionedParameterServerTest {
         .bindNamedParameter(ParameterServerParameters.KeyCodecName.class, IntegerCodec.class)
         .bindNamedParameter(ParameterServerParameters.ValueCodecName.class, IntegerCodec.class)
         .bindNamedParameter(ParameterServerParameters.PreValueCodecName.class, IntegerCodec.class)
-        .bindNamedParameter(NumPartitions.class, "4")
+        .bindNamedParameter(ServerNumPartitions.class, "4")
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(ParameterUpdater.class, new ParameterUpdater<Integer, Integer, Integer>() {

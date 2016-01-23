@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.api;
+package edu.snu.cay.services.ps.worker.concurrent;
 
-import edu.snu.cay.services.ps.worker.impl.WorkerSideMsgSenderImpl;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
