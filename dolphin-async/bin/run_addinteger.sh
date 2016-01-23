@@ -18,7 +18,7 @@
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
-LOGGING_CONFIG='-Djava.util.logging.config.class=org.apache.reef.util.logging.Config'
+LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
 
 CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:$YARN_HOME/share/hadoop/yarn/*:$YARN_HOME/share/hadoop/hdfs/*:$YARN_HOME/share/hadoop/mapreduce/lib/*:$YARN_HOME/share/hadoop/mapreduce/*
 
