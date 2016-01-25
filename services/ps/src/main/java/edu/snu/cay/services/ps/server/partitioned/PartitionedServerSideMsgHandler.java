@@ -80,7 +80,6 @@ public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHand
     switch (innerMsg.getType()) {
     case PushMsg:
       onPushMsg(innerMsg.getPushMsg());
-      LOG.log(Level.INFO, "src: {0}", msg.getSrcId());
       break;
 
     case PullMsg:

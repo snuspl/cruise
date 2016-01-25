@@ -30,17 +30,12 @@ import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * A Msg Sender for PartitionedWorker.
  */
 @EvaluatorSide
 public final class PartitionedWorkerMsgSender<K, P> {
-  private static final Logger LOG = Logger.getLogger(PartitionedWorkerMsgSender.class.getName());
-  private AtomicInteger count = new AtomicInteger(0);
 
   /**
    * Network Connection Service related setup required for a Parameter Server application.
@@ -88,11 +83,6 @@ public final class PartitionedWorkerMsgSender<K, P> {
             .setType(Type.PushMsg)
             .setPushMsg(pushMsg)
             .build());
-
-    final int updated = count.incrementAndGet();
-    if (updated == 250000) {
-      LOG.log(Level.INFO, "250000 pushes");
-    }
   }
 
   public void sendPullMsg(final String destId, final EncodedKey<K> key) {
