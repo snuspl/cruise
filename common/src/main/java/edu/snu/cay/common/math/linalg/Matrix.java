@@ -52,7 +52,7 @@ public interface Matrix {
   int getColumns();
 
   /**
-   * Returns a element specified by the row and column indices.
+   * Returns the element specified by the row and column indices.
    * @param rowIndex an index in range [0, rows)
    * @param columnIndex an index in range [0, columns)
    * @return element specified by given indices
@@ -81,7 +81,7 @@ public interface Matrix {
 
   /**
    * Returns a new matrix same as this one.
-   * @return copied new matrix
+   * @return a new copy of this matrix
    */
   Matrix copy();
 
@@ -156,14 +156,14 @@ public interface Matrix {
   Matrix muli(double value);
 
   /**
-   * Matrix-Matrix element-wise multiplication.
+   * Element-wise multiplies a matrix.
    * @param matrix operand matrix
    * @return operation result
    */
   Matrix mul(Matrix matrix);
 
   /**
-   * Matrix-Matrix element-wise multiplication (in place).
+   * Element-wise multiplies a matrix (in place).
    * @param matrix operand matrix
    * @return operation result
    */

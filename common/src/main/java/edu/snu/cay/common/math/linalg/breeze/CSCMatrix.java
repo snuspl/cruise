@@ -81,7 +81,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Returns a element specified by the row and column indices.
+   * Returns the element specified by the row and column indices.
    * @param rowIndex an index in range [0, rows)
    * @param columnIndex an index in range [0, columns)
    * @return element specified by given indices
@@ -113,7 +113,7 @@ public final class CSCMatrix implements Matrix {
 
   /**
    * Returns true if transposed, false otherwise.
-   * @return true if transposed, false otherwise
+   * @throws UnsupportedOperationException
    */
   public boolean isTranspose() {
     throw new UnsupportedOperationException();
@@ -121,7 +121,7 @@ public final class CSCMatrix implements Matrix {
 
   /**
    * Returns a new matrix same as this one.
-   * @return copied new matrix
+   * @return a new copy of this matrix
    */
   @Override
   public Matrix copy() {
@@ -137,11 +137,11 @@ public final class CSCMatrix implements Matrix {
   public boolean equals(final Object o) {
     if (o instanceof CSCMatrix) {
       return breezeMatrix.equals(((CSCMatrix) o).breezeMatrix);
-    }
-    if (o instanceof DenseMatrix) {
+    } else if (o instanceof DenseMatrix) {
       return breezeMatrix.equals(((DenseMatrix) o).getBreezeMatrix());
+    } else {
+      return false;
     }
-    return false;
   }
 
   @Override
@@ -190,9 +190,9 @@ public final class CSCMatrix implements Matrix {
 
   /**
    * Element-wise adds a matrix.
-   * Throws {@code UnsupportedOperationException} if the operand is {@link DenseMatrix}.
    * @param matrix operand matrix
    * @return this matrix with operation result
+   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix addi(final Matrix matrix) {
@@ -245,9 +245,9 @@ public final class CSCMatrix implements Matrix {
 
   /**
    * Element-wise subtracts a matrix (in place).
-   * Throws {@code UnsupportedOperationException} if the operand is {@link DenseMatrix}.
    * @param matrix operand matrix
    * @return this matrix with operation result
+   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix subi(final Matrix matrix) {
@@ -281,10 +281,10 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Matrix-Matrix element-wise multiplication.
-   * Throws {@code UnsupportedOperationException} if the operand is {@link DenseMatrix}.
+   * Element-wise multiplies a matrix.
    * @param matrix operand matrix
    * @return new {@link CSCMatrix} operation result
+   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix mul(final Matrix matrix) {
@@ -297,10 +297,10 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Matrix-Matrix element-wise multiplication (in place).
-   * Throws {@code UnsupportedOperationException} if the operand is {@link DenseMatrix}.
+   * Element-wise multiplies a matrix (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
+   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix muli(final Matrix matrix) {
@@ -335,9 +335,9 @@ public final class CSCMatrix implements Matrix {
 
   /**
    * Element-wise divides by a matrix.
-   * Throws {@code UnsupportedOperationException} if the operand is {@link DenseMatrix}.
    * @param matrix operand matrix
    * @return new {@link CSCMatrix} operation result
+   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix div(final Matrix matrix) {
@@ -351,9 +351,9 @@ public final class CSCMatrix implements Matrix {
 
   /**
    * Element-wise divides by a matrix (in place).
-   * Throws {@code UnsupportedOperationException} if the operand is {@link DenseMatrix}.
    * @param matrix operand matrix
    * @return this matrix with operation result
+   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix divi(final Matrix matrix) {

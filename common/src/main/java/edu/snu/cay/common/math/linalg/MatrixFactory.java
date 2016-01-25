@@ -36,8 +36,8 @@ public interface MatrixFactory {
 
   /**
    * Creates a dense matrix with the given values.
-   * @param rows the number of rows
-   * @param columns the number of columns
+   * @param rows number of rows
+   * @param columns number of columns
    * @param data elements of a matrix in column-major order
    * @return a generated matrix
    */
