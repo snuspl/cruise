@@ -25,6 +25,7 @@ import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySend
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.partitioned.ContextStopHandler;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
@@ -45,8 +46,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @DriverSide
 public final class PartitionedParameterServerManager implements ParameterServerManager {
-  private static final String SERVER_ID = "SINGLE_NODE_SERVER_ID";
-  private static final String WORKER_ID_PREFIX = "SINGLE_NODE_WORKER_ID_";
+  private static final String SERVER_ID = "PARTITIONED_SERVER_ID";
+  private static final String WORKER_ID_PREFIX = "PARTITIONED_WORKER_ID_";
 
   private final int numPartitions;
   private final int queueSize;
@@ -71,6 +72,7 @@ public final class PartitionedParameterServerManager implements ParameterServerM
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, PartitionedParameterWorker.class)
+            .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
             .build())
         .bindImplementation(ParameterWorker.class, PartitionedParameterWorker.class)
         .bindNamedParameter(ServerId.class, SERVER_ID)

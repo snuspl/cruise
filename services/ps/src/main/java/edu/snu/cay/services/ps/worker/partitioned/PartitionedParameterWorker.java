@@ -195,6 +195,20 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   }
 
   /**
+   * Close the worker, after waiting for queued messages to be sent.
+   */
+  public void close() {
+    // Close all partitions
+    for (int i = 0; i < numPartitions; i++) {
+      partitions[i].close();
+    }
+    // Wait for shutdown to complete on all partitions
+    for (int i = 0; i < numPartitions; i++) {
+      partitions[i].waitForShutdown();
+    }
+  }
+
+  /**
    * Handles incoming pull replies, by setting the value of the future.
    * This will notify the Partition's (synchronous) CacheLoader method to continue.
    */
@@ -379,6 +393,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
     private final int drainSize; // Max number of operations to drain per iteration.
 
+    private volatile boolean close = false;
     private volatile boolean shutdown = false;
 
     public Partition(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
@@ -428,14 +443,25 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
       kvCache.invalidateAll();
     }
 
+
+    /**
+     * @return number of pending operations in the queue.
+     */
+    public int opsPending() {
+      int opsPending = 0;
+      opsPending += queue.size();
+      opsPending += localOps.size();
+      return opsPending;
+    }
+
     /**
      * Loop that dequeues operations and applies them.
      * Dequeues are only performed through this thread.
      */
     @Override
     public void run() {
-      while (!shutdown) {
-        // First, poll and apply. The timeout allows the run thread to shutdown cleanly within timeout ms.
+      while (!close || !queue.isEmpty()) {
+        // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (op == null) {
@@ -456,13 +482,32 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
         }
         localOps.clear();
       }
+      shutdown();
     }
 
     /**
-     * Cleanly shutdown the run thread.
+     * Cleanly close the run thread.
      */
-    public void shutdown() {
+    public void close() {
+      close = true;
+    }
+
+    private synchronized void shutdown() {
       shutdown = true;
+      notifyAll();
+    }
+
+    /**
+     * Wait for shutdown confirmation (clean close has finished).
+     */
+    public synchronized void waitForShutdown() {
+      while (!shutdown) {
+        try {
+          wait();
+        } catch (final InterruptedException e) {
+          LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
+        }
+      }
     }
   }
 }
