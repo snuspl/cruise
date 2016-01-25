@@ -74,10 +74,30 @@ public interface Matrix {
   Matrix transpose();
 
   /**
+   * Returns true if transposed, false otherwise.
+   * @return true if transposed, false otherwise
+   */
+  boolean isTranspose();
+
+  /**
    * Returns a new matrix same as this one.
    * @return copied new matrix
    */
   Matrix copy();
+
+  /**
+   * Adds a scalar to all elements.
+   * @param value operand scalar
+   * @return operation result
+   */
+  Matrix add(double value);
+
+  /**
+   * Adds a scalar to all elements (in place).
+   * @param value operand scalar
+   * @return operation result
+   */
+  Matrix addi(double value);
 
   /**
    * Element-wise adds a matrix.
@@ -92,6 +112,20 @@ public interface Matrix {
    * @return operation result
    */
   Matrix addi(Matrix matrix);
+
+  /**
+   * Subtracts a scalar to all elements.
+   * @param value operand scalar
+   * @return operation result
+   */
+  Matrix sub(double value);
+
+  /**
+   * Subtracts a scalar to all elements (in place).
+   * @param value operand scalar
+   * @return operation result
+   */
+  Matrix subi(double value);
 
   /**
    * Element-wise subtracts a matrix.
@@ -134,6 +168,34 @@ public interface Matrix {
    * @return operation result
    */
   Matrix muli(Matrix matrix);
+
+  /**
+   * Divides by a scalar to all elements.
+   * @param value operand scalar
+   * @return operation result
+   */
+  Matrix div(double value);
+
+  /**
+   * Divides by a scalar to all elements (in place).
+   * @param value operand scalar
+   * @return operation result
+   */
+  Matrix divi(double value);
+
+  /**
+   * Element-wise divides by a matrix.
+   * @param matrix operand matrix
+   * @return operation result
+   */
+  Matrix div(Matrix matrix);
+
+  /**
+   * Element-wise divides by a matrix (in place).
+   * @param matrix operand matrix
+   * @return operation result
+   */
+  Matrix divi(Matrix matrix);
 
   /**
    * Matrix-Vector multiplication.

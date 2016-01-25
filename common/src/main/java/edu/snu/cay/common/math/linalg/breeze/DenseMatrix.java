@@ -112,6 +112,15 @@ public class DenseMatrix implements Matrix {
   }
 
   /**
+   * Returns true if transposed, false otherwise.
+   * @return true if transposed, false otherwise
+   */
+  @Override
+  public boolean isTranspose() {
+    return breezeMatrix.isTranspose();
+  }
+
+  /**
    * Returns a new matrix same as this one.
    * @return copied new matrix
    */
@@ -142,6 +151,27 @@ public class DenseMatrix implements Matrix {
   }
 
   /**
+   * Adds a scalar to all elements.
+   * @param value operand scalar
+   * @return new {@link DenseMatrix} with operation result
+   */
+  @Override
+  public Matrix add(final double value) {
+    return new DenseMatrix((breeze.linalg.DenseMatrix<Double>) breezeMatrix.$plus(value, MatrixOps.ADD_DT));
+  }
+
+  /**
+   * Adds a scalar to all elements (in place).
+   * @param value operand scalar
+   * @return this matrix with operation result
+   */
+  @Override
+  public Matrix addi(final double value) {
+    breezeMatrix.$plus$eq(value, MatrixOps.ADDI_DT);
+    return this;
+  }
+
+  /**
    * Element-wise adds a matrix.
    * @param matrix operand matrix
    * @return new {@link DenseMatrix} with operation result
@@ -169,6 +199,27 @@ public class DenseMatrix implements Matrix {
     } else {
       ((NumericOps) breezeMatrix).$plus$eq(((CSCMatrix) matrix).getBreezeMatrix(), MatrixOps.ADDI_DS);
     }
+    return this;
+  }
+
+  /**
+   * Subtracts a scalar to all elements.
+   * @param value operand scalar
+   * @return new {@link DenseMatrix} with operation result
+   */
+  @Override
+  public Matrix sub(final double value) {
+    return new DenseMatrix((breeze.linalg.DenseMatrix<Double>) breezeMatrix.$minus(value, MatrixOps.SUB_DT));
+  }
+
+  /**
+   * Subtracts a scalar to all elements (in place).
+   * @param value operand scalar
+   * @return this matrix with operation result
+   */
+  @Override
+  public Matrix subi(final double value) {
+    breezeMatrix.$minus$eq(value, MatrixOps.SUBI_DT);
     return this;
   }
 
@@ -250,6 +301,59 @@ public class DenseMatrix implements Matrix {
   public Matrix muli(final Matrix matrix) {
     if (matrix.isDense()) {
       ((NumericOps) breezeMatrix).$colon$times$eq(((DenseMatrix) matrix).breezeMatrix, MatrixOps.EMULI_DD);
+      return this;
+    } else {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  /**
+   * Divides by a scalar to all elements.
+   * @param value operand scalar
+   * @return new {@link DenseMatrix} with operation result
+   */
+  @Override
+  public Matrix div(final double value) {
+    return new DenseMatrix((breeze.linalg.DenseMatrix<Double>) breezeMatrix.$div(value, MatrixOps.DIV_DT));
+  }
+
+  /**
+   * Divides by a scalar to all elements (in place).
+   * @param value operand scalar
+   * @return this matrix with operation result
+   */
+  @Override
+  public Matrix divi(final double value) {
+    breezeMatrix.$div$eq(value, MatrixOps.DIVI_DT);
+    return this;
+  }
+
+  /**
+   * Element-wise divides by a matrix.
+   * Throws {@code UnsupportedOperationException} if the operand is {@link CSCMatrix}.
+   * @param matrix operand matrix
+   * @return new {@link DenseMatrix} operation result
+   */
+  @Override
+  public Matrix div(final Matrix matrix) {
+    if (matrix.isDense()) {
+      return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+          breezeMatrix.$div(((DenseMatrix) matrix).breezeMatrix, MatrixOps.EDIV_DD));
+    } else {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  /**
+   * Element-wise divides by a matrix (in place).
+   * Throws {@code UnsupportedOperationException} if the operand is {@link CSCMatrix}.
+   * @param matrix operand matrix
+   * @return this matrix with operation result
+   */
+  @Override
+  public Matrix divi(final Matrix matrix) {
+    if (matrix.isDense()) {
+      ((NumericOps) breezeMatrix).$div$eq(((DenseMatrix) matrix).breezeMatrix, MatrixOps.EDIVI_DD);
       return this;
     } else {
       throw new UnsupportedOperationException();

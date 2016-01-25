@@ -17,8 +17,7 @@ package edu.snu.cay.common.math.linalg.breeze;
 
 import breeze.generic.UFunc;
 import breeze.linalg.support.CanTranspose;
-import breeze.math.Semiring;
-import breeze.math.Semiring$;
+import breeze.math.*;
 import breeze.storage.Zero;
 import breeze.storage.Zero$;
 import scala.reflect.ClassTag;
@@ -31,16 +30,24 @@ public final class MatrixOps {
 
   private static final ClassTag TAG = ClassTag$.MODULE$.Double();
   private static final Zero ZERO = Zero$.MODULE$.forClass(Double.TYPE);
-  private static final Semiring RING = Semiring$.MODULE$.semiringD();
+  private static final Semiring SEMI_RING = Semiring$.MODULE$.semiringD();
+  private static final Ring RING = Ring$.MODULE$.ringD();
+  private static final Field FIELD = Field.fieldDouble$.MODULE$;
 
   private MatrixOps() {
   }
 
   // transpose operators
   static final CanTranspose T_D = breeze.linalg.DenseMatrix.canTranspose();
-  static final CanTranspose T_S = breeze.linalg.CSCMatrix.canTranspose(TAG, ZERO, RING);
+  static final CanTranspose T_S = breeze.linalg.CSCMatrix.canTranspose(TAG, ZERO, SEMI_RING);
 
-  // add operators
+  // scalar addition operators
+  static final UFunc.UImpl2 ADD_DT = breeze.linalg.DenseMatrix.op_DM_S_Double_OpAdd();
+  static final UFunc.InPlaceImpl2 ADDI_DT = breeze.linalg.DenseMatrix.dm_s_UpdateOp_Double_OpAdd();
+  static final UFunc.UImpl2 ADD_ST = breeze.linalg.CSCMatrix.canAddM_S_Semiring(SEMI_RING, TAG);
+  static final UFunc.InPlaceImpl2 ADDI_ST = breeze.linalg.CSCMatrix.csc_T_InPlace_Double_OpAdd();
+
+  // matrix addition operators
   static final UFunc.UImpl2 ADD_DD = breeze.linalg.DenseMatrix.op_DM_DM_Double_OpAdd();
   static final UFunc.InPlaceImpl2 ADDI_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpAdd();
   static final UFunc.UImpl2 ADD_DS = breeze.linalg.CSCMatrix.dm_csc_OpAdd_Double();
@@ -48,7 +55,13 @@ public final class MatrixOps {
   static final UFunc.UImpl2 ADD_SS = breeze.linalg.CSCMatrix.csc_csc_OpAdd_Double();
   static final UFunc.InPlaceImpl2 ADDI_SS = breeze.linalg.CSCMatrix.csc_csc_InPlace_Double_OpAdd();
 
-  // subtract operators
+  // scalar subtraction operators
+  static final UFunc.UImpl2 SUB_DT = breeze.linalg.DenseMatrix.op_DM_S_Double_OpSub();
+  static final UFunc.InPlaceImpl2 SUBI_DT = breeze.linalg.DenseMatrix.dm_s_UpdateOp_Double_OpSub();
+  static final UFunc.UImpl2 SUB_ST = breeze.linalg.CSCMatrix.canSubM_S_Ring(RING, TAG);
+  static final UFunc.InPlaceImpl2 SUBI_ST = breeze.linalg.CSCMatrix.csc_T_InPlace_Double_OpSub();
+
+  // matrix subtraction operators
   static final UFunc.UImpl2 SUB_DD = breeze.linalg.DenseMatrix.op_DM_DM_Double_OpSub();
   static final UFunc.InPlaceImpl2 SUBI_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpSub();
   static final UFunc.UImpl2 SUB_DS = breeze.linalg.CSCMatrix.dm_csc_OpSub_Double();
@@ -79,4 +92,17 @@ public final class MatrixOps {
   static final UFunc.InPlaceImpl2 EMULI_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpMulScalar();
   static final UFunc.UImpl2 EMUL_SS = breeze.linalg.CSCMatrix.csc_csc_OpMulScalar_Double();
   static final UFunc.InPlaceImpl2 EMULI_SS = breeze.linalg.CSCMatrix.csc_csc_InPlace_Double_OpMulScalar();
+
+  // scalar division operators
+  static final UFunc.UImpl2 DIV_DT = breeze.linalg.DenseMatrix.op_DM_S_Double_OpDiv();
+  static final UFunc.InPlaceImpl2 DIVI_DT = breeze.linalg.DenseMatrix.dm_s_UpdateOp_Double_OpDiv();
+  static final UFunc.UImpl2 DIV_TD = breeze.linalg.DenseMatrix.s_dm_op_Double_OpDiv();
+  static final UFunc.UImpl2 DIV_ST = breeze.linalg.CSCMatrix.csc_T_Op_OpDiv(FIELD, TAG);
+  static final UFunc.InPlaceImpl2 DIVI_ST = breeze.linalg.CSCMatrix.csc_T_InPlace_Double_OpDiv();
+
+  // matrix element-wise division operators
+  static final UFunc.UImpl2 EDIV_DD = breeze.linalg.DenseMatrix.op_DM_DM_Double_OpDiv();
+  static final UFunc.InPlaceImpl2 EDIVI_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpDiv();
+  static final UFunc.UImpl2 EDIV_SS = breeze.linalg.CSCMatrix.csc_csc_BadOps_Double_OpDiv();
+  static final UFunc.InPlaceImpl2 EDIVI_SS = breeze.linalg.CSCMatrix.csc_csc_InPlace_Double_OpDiv();
 }

@@ -112,6 +112,14 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
+   * Returns true if transposed, false otherwise.
+   * @return true if transposed, false otherwise
+   */
+  public boolean isTranspose() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
    * Returns a new matrix same as this one.
    * @return copied new matrix
    */
@@ -139,6 +147,27 @@ public final class CSCMatrix implements Matrix {
   @Override
   public int hashCode() {
     return breezeMatrix.hashCode();
+  }
+
+  /**
+   * Adds a scalar to all elements.
+   * @param value operand scalar
+   * @return new {@link CSCMatrix} with operation result
+   */
+  @Override
+  public Matrix add(final double value) {
+    return new CSCMatrix((breeze.linalg.CSCMatrix<Double>) breezeMatrix.$plus(value, MatrixOps.ADD_ST));
+  }
+
+  /**
+   * Adds a scalar to all elements (in place).
+   * @param value operand scalar
+   * @return this matrix with operation result
+   */
+  @Override
+  public Matrix addi(final double value) {
+    breezeMatrix.$plus$eq(value, MatrixOps.ADDI_ST);
+    return this;
   }
 
   /**
@@ -173,6 +202,27 @@ public final class CSCMatrix implements Matrix {
       ((NumericOps) breezeMatrix).$plus$eq(((CSCMatrix) matrix).breezeMatrix, MatrixOps.ADDI_SS);
       return this;
     }
+  }
+
+  /**
+   * Subtracts a scalar to all elements.
+   * @param value operand scalar
+   * @return new {@link CSCMatrix} with operation result
+   */
+  @Override
+  public Matrix sub(final double value) {
+    return new CSCMatrix((breeze.linalg.CSCMatrix<Double>) breezeMatrix.$minus(value, MatrixOps.SUB_ST));
+  }
+
+  /**
+   * Subtracts a scalar to all elements (in place).
+   * @param value operand scalar
+   * @return this matrix with operation result
+   */
+  @Override
+  public Matrix subi(final double value) {
+    breezeMatrix.$minus$eq(value, MatrixOps.SUBI_ST);
+    return this;
   }
 
   /**
@@ -258,6 +308,59 @@ public final class CSCMatrix implements Matrix {
       throw new UnsupportedOperationException();
     } else {
       ((NumericOps) breezeMatrix).$colon$times$eq(((CSCMatrix) matrix).breezeMatrix, MatrixOps.EMULI_SS);
+      return this;
+    }
+  }
+
+  /**
+   * Divides by a scalar to all elements.
+   * @param value operand scalar
+   * @return new {@link CSCMatrix} with operation result
+   */
+  @Override
+  public Matrix div(final double value) {
+    return new CSCMatrix((breeze.linalg.CSCMatrix<Double>) breezeMatrix.$div(value, MatrixOps.DIV_ST));
+  }
+
+  /**
+   * Divides by a scalar to all elements (in place).
+   * @param value operand scalar
+   * @return this matrix with operation result
+   */
+  @Override
+  public Matrix divi(final double value) {
+    breezeMatrix.$div$eq(value, MatrixOps.DIVI_ST);
+    return this;
+  }
+
+  /**
+   * Element-wise divides by a matrix.
+   * Throws {@code UnsupportedOperationException} if the operand is {@link DenseMatrix}.
+   * @param matrix operand matrix
+   * @return new {@link CSCMatrix} operation result
+   */
+  @Override
+  public Matrix div(final Matrix matrix) {
+    if (matrix.isDense()) {
+      throw new UnsupportedOperationException();
+    } else {
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+          breezeMatrix.$div(((CSCMatrix) matrix).breezeMatrix, MatrixOps.EDIV_SS));
+    }
+  }
+
+  /**
+   * Element-wise divides by a matrix (in place).
+   * Throws {@code UnsupportedOperationException} if the operand is {@link DenseMatrix}.
+   * @param matrix operand matrix
+   * @return this matrix with operation result
+   */
+  @Override
+  public Matrix divi(final Matrix matrix) {
+    if (matrix.isDense()) {
+      throw new UnsupportedOperationException();
+    } else {
+      ((NumericOps) breezeMatrix).$div$eq(((CSCMatrix) matrix).breezeMatrix, MatrixOps.EDIVI_SS);
       return this;
     }
   }
