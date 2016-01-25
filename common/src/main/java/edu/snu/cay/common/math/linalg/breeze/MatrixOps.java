@@ -69,7 +69,7 @@ public final class MatrixOps {
   static final UFunc.UImpl2 SUB_SS = breeze.linalg.CSCMatrix.csc_csc_OpSub_Double();
   static final UFunc.InPlaceImpl2 SUBI_SS = breeze.linalg.CSCMatrix.csc_csc_InPlace_Double_OpSub();
 
-  // scalar multiplication operatros
+  // scalar multiplication operators
   static final UFunc.UImpl2 MUL_DT = breeze.linalg.DenseMatrix.op_DM_S_Double_OpMulScalar();
   static final UFunc.InPlaceImpl2 MULI_DT = breeze.linalg.DenseMatrix.dm_s_UpdateOp_Double_OpMulScalar();
   static final UFunc.UImpl2 MUL_ST = breeze.linalg.CSCMatrix.implOps_CSCT_T_eq_CSCT_Double_OpMulScalar();

@@ -67,7 +67,7 @@ public final class MatrixOpsTest {
     final List<Vector> denseVectorList2 = new ArrayList<>();
     denseVectorList2.add(vec3);
     denseVectorList2.add(vec4);
-    final List<Vector> denseVectorList3 = new ArrayList();
+    final List<Vector> denseVectorList3 = new ArrayList<>();
     denseVectorList3.add(vec1.scale(value3[0]).add(vec2.scale(value3[1])));
     denseVectorList3.add(vec1.scale(value4[0]).add(vec2.scale(value4[1])));
 

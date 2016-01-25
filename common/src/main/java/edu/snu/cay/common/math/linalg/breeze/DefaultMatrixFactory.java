@@ -85,7 +85,7 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    */
   @Override
   public DenseMatrix horzcatDense(final List<Vector> vectors) {
-    List<breeze.linalg.DenseVector<Double>> breezeVecList = Lists.transform(vectors,
+    final List<breeze.linalg.DenseVector<Double>> breezeVecList = Lists.transform(vectors,
         new Function<Vector, breeze.linalg.DenseVector<Double>>() {
           public breeze.linalg.DenseVector<Double> apply(final Vector vector) {
             return ((DenseVector) vector).getBreezeVector();
@@ -103,7 +103,7 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    */
   @Override
   public CSCMatrix horzcatSparse(final List<Vector> vectors) {
-    List<breeze.linalg.SparseVector<Double>> breezeVecList = Lists.transform(vectors,
+    final List<breeze.linalg.SparseVector<Double>> breezeVecList = Lists.transform(vectors,
         new Function<Vector, breeze.linalg.SparseVector<Double>>() {
           public breeze.linalg.SparseVector<Double> apply(final Vector vector) {
             return ((SparseVector) vector).getBreezeVector();
