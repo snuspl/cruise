@@ -19,6 +19,7 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Start key to apply updates on: updates are done on [KeyStart, KeyStart + NumKeys)",
-    default_value = "0")
+                default_value = "0",
+                short_name = "startKey")
 public final class StartKey implements Name<Integer> {
 }

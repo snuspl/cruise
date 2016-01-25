@@ -17,9 +17,7 @@ package edu.snu.cay.services.ps.examples.add;
 
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
-import edu.snu.cay.services.ps.examples.add.parameters.JobTimeout;
-import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
-import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
+import edu.snu.cay.services.ps.examples.add.parameters.*;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
@@ -53,6 +51,8 @@ public final class PartitionedPSExampleREEF {
   private final long timeout;
   private final int numWorkers;
   private final int numUpdates;
+  private final int numKeys;
+  private final int startKey;
   private final int serverNumPartitions;
   private final int serverQueueSize;
   private final int workerNumPartitions;
@@ -64,6 +64,8 @@ public final class PartitionedPSExampleREEF {
   private PartitionedPSExampleREEF(@Parameter(JobTimeout.class) final long timeout,
                                    @Parameter(NumWorkers.class) final int numWorkers,
                                    @Parameter(NumUpdates.class) final int numUpdates,
+                                   @Parameter(NumKeys.class) final int numKeys,
+                                   @Parameter(StartKey.class) final int startKey,
                                    @Parameter(ServerNumPartitions.class) final int serverNumPartitions,
                                    @Parameter(ServerQueueSize.class) final int serverQueueSize,
                                    @Parameter(WorkerNumPartitions.class) final int workerNumPartitions,
@@ -73,6 +75,8 @@ public final class PartitionedPSExampleREEF {
     this.timeout = timeout;
     this.numWorkers = numWorkers;
     this.numUpdates = numUpdates;
+    this.numKeys = numKeys;
+    this.startKey = startKey;
     this.serverNumPartitions = serverNumPartitions;
     this.serverQueueSize = serverQueueSize;
     this.workerNumPartitions = workerNumPartitions;
@@ -101,6 +105,8 @@ public final class PartitionedPSExampleREEF {
     final Configuration parametersConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumWorkers.class, Integer.toString(numWorkers))
         .bindNamedParameter(NumUpdates.class, Integer.toString(numUpdates))
+        .bindNamedParameter(NumKeys.class, Integer.toString(numKeys))
+        .bindNamedParameter(StartKey.class, Integer.toString(startKey))
         .bindNamedParameter(ServerNumPartitions.class, Integer.toString(serverNumPartitions))
         .bindNamedParameter(ServerQueueSize.class, Integer.toString(serverQueueSize))
         .bindNamedParameter(WorkerNumPartitions.class, Integer.toString(workerNumPartitions))
@@ -140,6 +146,8 @@ public final class PartitionedPSExampleREEF {
     cl.registerShortNameOfClass(JobTimeout.class);
     cl.registerShortNameOfClass(NumWorkers.class);
     cl.registerShortNameOfClass(NumUpdates.class);
+    cl.registerShortNameOfClass(NumKeys.class);
+    cl.registerShortNameOfClass(StartKey.class);
     cl.registerShortNameOfClass(ServerNumPartitions.class);
     cl.registerShortNameOfClass(ServerQueueSize.class);
     cl.registerShortNameOfClass(WorkerNumPartitions.class);
