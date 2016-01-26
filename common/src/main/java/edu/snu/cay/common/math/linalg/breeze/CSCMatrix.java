@@ -284,12 +284,12 @@ public final class CSCMatrix implements Matrix {
    * Element-wise multiplies a matrix.
    * @param matrix operand matrix
    * @return new {@link CSCMatrix} operation result
-   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix mul(final Matrix matrix) {
     if (matrix.isDense()) {
-      throw new UnsupportedOperationException();
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+          breezeMatrix.$colon$times(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.EMUL_MM));
     } else {
       return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
           breezeMatrix.$colon$times(((CSCMatrix) matrix).breezeMatrix, MatrixOps.EMUL_SS));
@@ -300,16 +300,15 @@ public final class CSCMatrix implements Matrix {
    * Element-wise multiplies a matrix (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
-   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix muli(final Matrix matrix) {
     if (matrix.isDense()) {
-      throw new UnsupportedOperationException();
+      ((NumericOps) breezeMatrix).$colon$times$eq(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.EMULI_MM);
     } else {
       ((NumericOps) breezeMatrix).$colon$times$eq(((CSCMatrix) matrix).breezeMatrix, MatrixOps.EMULI_SS);
-      return this;
     }
+    return this;
   }
 
   /**

@@ -279,7 +279,6 @@ public class DenseMatrix implements Matrix {
    * Element-wise multiplies a matrix.
    * @param matrix operand matrix
    * @return new {@link DenseMatrix} operation result
-   * @throws UnsupportedOperationException if the operand is {@link CSCMatrix}
    */
   @Override
   public Matrix mul(final Matrix matrix) {
@@ -287,7 +286,8 @@ public class DenseMatrix implements Matrix {
       return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
           breezeMatrix.$colon$times(((DenseMatrix) matrix).breezeMatrix, MatrixOps.EMUL_DD));
     } else {
-      throw new UnsupportedOperationException();
+      return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+          breezeMatrix.$colon$times(((CSCMatrix) matrix).getBreezeMatrix(), MatrixOps.EMUL_MM));
     }
   }
 
@@ -295,16 +295,15 @@ public class DenseMatrix implements Matrix {
    * Element-wise multiplies a matrix (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
-   * @throws UnsupportedOperationException if the operand is {@link CSCMatrix}
    */
   @Override
   public Matrix muli(final Matrix matrix) {
     if (matrix.isDense()) {
       ((NumericOps) breezeMatrix).$colon$times$eq(((DenseMatrix) matrix).breezeMatrix, MatrixOps.EMULI_DD);
-      return this;
     } else {
-      throw new UnsupportedOperationException();
+      ((NumericOps) breezeMatrix).$colon$times$eq(((CSCMatrix) matrix).getBreezeMatrix(), MatrixOps.EMULI_MM);
     }
+    return this;
   }
 
   /**

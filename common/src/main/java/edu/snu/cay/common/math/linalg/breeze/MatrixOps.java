@@ -16,6 +16,7 @@
 package edu.snu.cay.common.math.linalg.breeze;
 
 import breeze.generic.UFunc;
+import breeze.linalg.Matrix$;
 import breeze.linalg.support.CanTranspose;
 import breeze.math.*;
 import breeze.storage.Zero;
@@ -92,6 +93,8 @@ public final class MatrixOps {
   static final UFunc.InPlaceImpl2 EMULI_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpMulScalar();
   static final UFunc.UImpl2 EMUL_SS = breeze.linalg.CSCMatrix.csc_csc_OpMulScalar_Double();
   static final UFunc.InPlaceImpl2 EMULI_SS = breeze.linalg.CSCMatrix.csc_csc_InPlace_Double_OpMulScalar();
+  static final UFunc.UImpl2 EMUL_MM = Matrix$.MODULE$.op_M_DM_Double_OpMulScalar();
+  static final UFunc.InPlaceImpl2 EMULI_MM = Matrix$.MODULE$.m_m_UpdateOp_Double_OpMulScalar();
 
   // scalar division operators
   static final UFunc.UImpl2 DIV_DT = breeze.linalg.DenseMatrix.op_DM_S_Double_OpDiv();
