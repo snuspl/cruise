@@ -51,7 +51,7 @@ public final class MatrixOpsTest {
    * Tests dense matrix operations work well as intended.
    */
   @Test
-  public void testDenseMatrix() {
+  public void testDenseOps() {
     final double[] value1 = {0.1, 0.2, 0.3};
     final double[] value2 = {0.4, 0.5, 0.6};
     final double[] value3 = {1.0, 2.0};
@@ -90,7 +90,7 @@ public final class MatrixOpsTest {
    * Tests CSC matrix operations work well as intended.
    */
   @Test
-  public void testCSCMatrix() {
+  public void testCSCOps() {
     final int[][] index1 = {{0, 2, 4, 6}, {1, 2, 3, 4, 5}};
     final double[][] value1 = {{0.1, 0.2, 0.3, 0.4}, {0.5, 0.6, 0.7, 0.8, 0.9}};
     final int[][] index2 = {{0, 1}, {1}, {0, 1}};
@@ -125,6 +125,48 @@ public final class MatrixOpsTest {
 
     assertEquals(mat2.mmul(mat3), matrixFactory.horzcatSparse(sparseVectorList3));
     assertEquals(mat2.mmul(vec3), vec1.scale(vec3.get(0)).add(vec2.scale(vec3.get(1))));
-    assertEquals(mat2.mmul(vec6), mat2.mmul(vec3));
+  }
+
+  /**
+   * Tests dense-CSC matrix operations work well as intended.
+   */
+  @Test
+  public void testDenseCSCOps() {
+    final int[][] index1 = {{0, 1, 2}, {0, 1, 2}};
+    final int[][] index2 = {{0, 1}, {0, 1}};
+    final double[][] value1 = {{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}};
+    final double[][] value2 = {{1.0, 0.0}, {0.0, 1.0}};
+
+    final List<Vector> denseVectorList1 = new ArrayList<>();
+    final List<Vector> denseVectorList2 = new ArrayList<>();
+    denseVectorList1.add(vectorFactory.newDenseVector(value1[0]));
+    denseVectorList1.add(vectorFactory.newDenseVector(value1[1]));
+    denseVectorList2.add(vectorFactory.newDenseVector(value2[0]));
+    denseVectorList2.add(vectorFactory.newDenseVector(value2[1]));
+
+    final List<Vector> sparseVectorList1 = new ArrayList<>();
+    final List<Vector> sparseVectorList2 = new ArrayList<>();
+    sparseVectorList1.add(vectorFactory.newSparseVector(index1[0], value1[0], 3));
+    sparseVectorList1.add(vectorFactory.newSparseVector(index1[1], value1[1], 3));
+    sparseVectorList2.add(vectorFactory.newSparseVector(index2[0], value2[0], 2));
+    sparseVectorList2.add(vectorFactory.newSparseVector(index2[1], value2[1], 2));
+
+    final Matrix dMat1 = matrixFactory.horzcatDense(denseVectorList1);
+    final Matrix dMat2 = matrixFactory.horzcatDense(denseVectorList2);
+    final Matrix sMat1 = matrixFactory.horzcatSparse(sparseVectorList1);
+    final Matrix sMat2 = matrixFactory.horzcatSparse(sparseVectorList2);
+
+    assertEquals(dMat1.add(sMat1), sMat1.addi(dMat1));
+    assertEquals(sMat1.subi(dMat1), dMat1);
+    assertEquals(sMat1.add(dMat1), dMat1.addi(sMat1));
+    assertEquals(dMat1.subi(sMat1), sMat1);
+
+    assertEquals(dMat1.mul(sMat1), sMat1.muli(dMat1));
+    assertEquals(sMat1.divi(dMat1), dMat1);
+    assertEquals(sMat1.mul(dMat1), dMat1.muli(sMat1));
+    assertEquals(dMat1.divi(sMat1), sMat1);
+
+    assertEquals(dMat1.mmul(sMat2), dMat1);
+    assertEquals(sMat1.mmul(dMat2), sMat1);
   }
 }

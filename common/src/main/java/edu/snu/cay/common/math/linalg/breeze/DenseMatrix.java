@@ -144,7 +144,9 @@ public class DenseMatrix implements Matrix {
 
   @Override
   public boolean equals(final Object o) {
-    if (o instanceof DenseMatrix) {
+    if (this == o) {
+      return true;
+    } else if (o instanceof DenseMatrix) {
       return breezeMatrix.equals(((DenseMatrix) o).breezeMatrix);
     } else if (o instanceof CSCMatrix) {
       return breezeMatrix.equals(((CSCMatrix) o).getBreezeMatrix());
@@ -175,7 +177,7 @@ public class DenseMatrix implements Matrix {
    */
   @Override
   public Matrix addi(final double value) {
-    breezeMatrix.$plus$eq(value, MatrixOps.ADDI_DT);
+    ((NumericOps) breezeMatrix).$plus$eq(value, MatrixOps.ADDI_DT);
     return this;
   }
 
@@ -227,7 +229,7 @@ public class DenseMatrix implements Matrix {
    */
   @Override
   public Matrix subi(final double value) {
-    breezeMatrix.$minus$eq(value, MatrixOps.SUBI_DT);
+    ((NumericOps) breezeMatrix).$minus$eq(value, MatrixOps.SUBI_DT);
     return this;
   }
 
@@ -331,7 +333,7 @@ public class DenseMatrix implements Matrix {
    */
   @Override
   public Matrix divi(final double value) {
-    breezeMatrix.$div$eq(value, MatrixOps.DIVI_DT);
+    ((NumericOps) breezeMatrix).$div$eq(value, MatrixOps.DIVI_DT);
     return this;
   }
 
@@ -339,7 +341,6 @@ public class DenseMatrix implements Matrix {
    * Divides this matrix by another matrix, element-wise.
    * @param matrix operand matrix
    * @return new {@link DenseMatrix} operation result
-   * @throws UnsupportedOperationException if the operand is {@link CSCMatrix}
    */
   @Override
   public Matrix div(final Matrix matrix) {
@@ -347,7 +348,8 @@ public class DenseMatrix implements Matrix {
       return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
           breezeMatrix.$div(((DenseMatrix) matrix).breezeMatrix, MatrixOps.EDIV_DD));
     } else {
-      throw new UnsupportedOperationException();
+      return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+          breezeMatrix.$div(((CSCMatrix) matrix).getBreezeMatrix(), MatrixOps.EDIV_MM));
     }
   }
 
@@ -355,16 +357,15 @@ public class DenseMatrix implements Matrix {
    * Divides this matrix by another matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
-   * @throws UnsupportedOperationException if the operand is {@link CSCMatrix}
    */
   @Override
   public Matrix divi(final Matrix matrix) {
     if (matrix.isDense()) {
       ((NumericOps) breezeMatrix).$div$eq(((DenseMatrix) matrix).breezeMatrix, MatrixOps.EDIVI_DD);
-      return this;
     } else {
-      throw new UnsupportedOperationException();
+      ((NumericOps) breezeMatrix).$div$eq(((CSCMatrix) matrix).getBreezeMatrix(), MatrixOps.EDIVI_MM);
     }
+    return this;
   }
 
   /**

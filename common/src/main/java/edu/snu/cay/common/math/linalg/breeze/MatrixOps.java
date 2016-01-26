@@ -53,8 +53,10 @@ public final class MatrixOps {
   static final UFunc.InPlaceImpl2 ADDI_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpAdd();
   static final UFunc.UImpl2 ADD_DS = breeze.linalg.CSCMatrix.dm_csc_OpAdd_Double();
   static final UFunc.InPlaceImpl2 ADDI_DS = breeze.linalg.CSCMatrix.dm_csc_InPlace_OpAdd_Double();
+  static final UFunc.UImpl2 ADD_SD = breeze.linalg.CSCMatrix.csc_dm_OpAdd_Double();
   static final UFunc.UImpl2 ADD_SS = breeze.linalg.CSCMatrix.csc_csc_OpAdd_Double();
   static final UFunc.InPlaceImpl2 ADDI_SS = breeze.linalg.CSCMatrix.csc_csc_InPlace_Double_OpAdd();
+  static final UFunc.InPlaceImpl2 ADDI_MM = Matrix$.MODULE$.m_m_UpdateOp_Double_OpAdd();
 
   // scalar subtraction operators
   static final UFunc.UImpl2 SUB_DT = breeze.linalg.DenseMatrix.op_DM_S_Double_OpSub();
@@ -67,8 +69,10 @@ public final class MatrixOps {
   static final UFunc.InPlaceImpl2 SUBI_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpSub();
   static final UFunc.UImpl2 SUB_DS = breeze.linalg.CSCMatrix.dm_csc_OpSub_Double();
   static final UFunc.InPlaceImpl2 SUBI_DS = breeze.linalg.CSCMatrix.dm_csc_InPlace_OpSub_Double();
+  static final UFunc.UImpl2 SUB_SD = breeze.linalg.CSCMatrix.csc_dm_OpSub_Double();
   static final UFunc.UImpl2 SUB_SS = breeze.linalg.CSCMatrix.csc_csc_OpSub_Double();
   static final UFunc.InPlaceImpl2 SUBI_SS = breeze.linalg.CSCMatrix.csc_csc_InPlace_Double_OpSub();
+  static final UFunc.InPlaceImpl2 SUBI_MM = Matrix$.MODULE$.m_m_UpdateOp_Double_OpSub();
 
   // scalar multiplication operators
   static final UFunc.UImpl2 MUL_DT = breeze.linalg.DenseMatrix.op_DM_S_Double_OpMulScalar();
@@ -108,4 +112,6 @@ public final class MatrixOps {
   static final UFunc.InPlaceImpl2 EDIVI_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpDiv();
   static final UFunc.UImpl2 EDIV_SS = breeze.linalg.CSCMatrix.csc_csc_BadOps_Double_OpDiv();
   static final UFunc.InPlaceImpl2 EDIVI_SS = breeze.linalg.CSCMatrix.csc_csc_InPlace_Double_OpDiv();
+  static final UFunc.UImpl2 EDIV_MM = Matrix$.MODULE$.op_M_DM_Double_OpDiv();
+  static final UFunc.InPlaceImpl2 EDIVI_MM = Matrix$.MODULE$.m_m_UpdateOp_Double_OpDiv();
 }

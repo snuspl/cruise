@@ -127,7 +127,9 @@ public final class CSCMatrix implements Matrix {
 
   @Override
   public boolean equals(final Object o) {
-    if (o instanceof CSCMatrix) {
+    if (this == o) {
+      return true;
+    } else if (o instanceof CSCMatrix) {
       return breezeMatrix.equals(((CSCMatrix) o).breezeMatrix);
     } else if (o instanceof DenseMatrix) {
       return breezeMatrix.equals(((DenseMatrix) o).getBreezeMatrix());
@@ -158,7 +160,7 @@ public final class CSCMatrix implements Matrix {
    */
   @Override
   public Matrix addi(final double value) {
-    breezeMatrix.$plus$eq(value, MatrixOps.ADDI_ST);
+    ((NumericOps) breezeMatrix).$plus$eq(value, MatrixOps.ADDI_ST);
     return this;
   }
 
@@ -173,7 +175,7 @@ public final class CSCMatrix implements Matrix {
   public Matrix add(final Matrix matrix) {
     if (matrix.isDense()) {
       return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
-          ((DenseMatrix) matrix).getBreezeMatrix().$plus(breezeMatrix, MatrixOps.ADD_DS));
+          breezeMatrix.$plus(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.ADD_SD));
     } else {
       return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
           breezeMatrix.$plus(((CSCMatrix) matrix).breezeMatrix, MatrixOps.ADD_SS));
@@ -184,16 +186,15 @@ public final class CSCMatrix implements Matrix {
    * Adds a matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
-   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix addi(final Matrix matrix) {
     if (matrix.isDense()) {
-      throw new UnsupportedOperationException();
+      ((NumericOps) breezeMatrix).$plus$eq(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.ADDI_MM);
     } else {
       ((NumericOps) breezeMatrix).$plus$eq(((CSCMatrix) matrix).breezeMatrix, MatrixOps.ADDI_SS);
-      return this;
     }
+    return this;
   }
 
   /**
@@ -213,7 +214,7 @@ public final class CSCMatrix implements Matrix {
    */
   @Override
   public Matrix subi(final double value) {
-    breezeMatrix.$minus$eq(value, MatrixOps.SUBI_ST);
+    ((NumericOps) breezeMatrix).$minus$eq(value, MatrixOps.SUBI_ST);
     return this;
   }
 
@@ -228,7 +229,7 @@ public final class CSCMatrix implements Matrix {
   public Matrix sub(final Matrix matrix) {
     if (matrix.isDense()) {
       return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
-          ((DenseMatrix) matrix).getBreezeMatrix().$minus(breezeMatrix, MatrixOps.SUB_DS));
+          breezeMatrix.$minus(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.SUB_SD));
     } else {
       return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
           breezeMatrix.$minus(((CSCMatrix) matrix).breezeMatrix, MatrixOps.SUB_SS));
@@ -239,16 +240,15 @@ public final class CSCMatrix implements Matrix {
    * Subtracts a matrix from this matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
-   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix subi(final Matrix matrix) {
     if (matrix.isDense()) {
-      throw new UnsupportedOperationException();
+      ((NumericOps) breezeMatrix).$minus$eq(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.SUBI_MM);
     } else {
       ((NumericOps) breezeMatrix).$minus$eq(((CSCMatrix) matrix).breezeMatrix, MatrixOps.SUBI_SS);
-      return this;
     }
+    return this;
   }
 
   /**
@@ -320,7 +320,7 @@ public final class CSCMatrix implements Matrix {
    */
   @Override
   public Matrix divi(final double value) {
-    breezeMatrix.$div$eq(value, MatrixOps.DIVI_ST);
+    ((NumericOps) breezeMatrix).$div$eq(value, MatrixOps.DIVI_ST);
     return this;
   }
 
@@ -328,12 +328,12 @@ public final class CSCMatrix implements Matrix {
    * Divides this matrix by another matrix, element-wise.
    * @param matrix operand matrix
    * @return new {@link CSCMatrix} operation result
-   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix div(final Matrix matrix) {
     if (matrix.isDense()) {
-      throw new UnsupportedOperationException();
+      return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
+          breezeMatrix.$div(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.EDIV_MM));
     } else {
       return new CSCMatrix((breeze.linalg.CSCMatrix<Double>)
           breezeMatrix.$div(((CSCMatrix) matrix).breezeMatrix, MatrixOps.EDIV_SS));
@@ -344,16 +344,15 @@ public final class CSCMatrix implements Matrix {
    * Divides this matrix by another matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
-   * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
    */
   @Override
   public Matrix divi(final Matrix matrix) {
     if (matrix.isDense()) {
-      throw new UnsupportedOperationException();
+      ((NumericOps) breezeMatrix).$div$eq(((DenseMatrix) matrix).getBreezeMatrix(), MatrixOps.EDIVI_MM);
     } else {
       ((NumericOps) breezeMatrix).$div$eq(((CSCMatrix) matrix).breezeMatrix, MatrixOps.EDIVI_SS);
-      return this;
     }
+    return this;
   }
 
   /**
