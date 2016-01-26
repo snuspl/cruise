@@ -55,8 +55,8 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    * Creates a dense matrix with the given values.
    * This method does not make a deep copy of {@code data}.
    * Thus, changes in {@code data} also change the returning matrix.
-   * @param rows the number of rows
-   * @param columns the number of columns
+   * @param rows number of rows
+   * @param columns number of columns
    * @param data elements of a matrix in column-major order
    * @return a generated matrix
    */

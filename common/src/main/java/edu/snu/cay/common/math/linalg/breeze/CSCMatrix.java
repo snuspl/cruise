@@ -163,7 +163,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Element-wise adds a matrix.
+   * Adds a matrix, element-wise.
    * The result is {@link DenseMatrix} if the operand is {@link DenseMatrix},
    * {@link CSCMatrix} otherwise.
    * @param matrix operand matrix
@@ -181,7 +181,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Element-wise adds a matrix.
+   * Adds a matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
    * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
@@ -197,7 +197,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Subtracts a scalar to all elements.
+   * Subtracts a scalar from all elements.
    * @param value operand scalar
    * @return new {@link CSCMatrix} with operation result
    */
@@ -207,7 +207,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Subtracts a scalar to all elements (in place).
+   * Subtracts a scalar from all elements (in place).
    * @param value operand scalar
    * @return this matrix with operation result
    */
@@ -218,7 +218,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Element-wise subtracts a matrix.
+   * Subtracts a matrix from this matrix, element-wise.
    * The result is {@link DenseMatrix} if the operand is {@link DenseMatrix},
    * {@link CSCMatrix} otherwise.
    * @param matrix operand matrix
@@ -236,7 +236,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Element-wise subtracts a matrix (in place).
+   * Subtracts a matrix from this matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
    * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
@@ -252,7 +252,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Multiplies a scalar to all elements.
+   * Multiplies all elements by a scalar.
    * @param value operand scalar
    * @return new {@link CSCMatrix} with operation result
    */
@@ -262,7 +262,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Multiplies a scalar to all elements (in place).
+   * Multiplies all elements by a scalar (in place).
    * @param value operand scalar
    * @return this matrix with operation result
    */
@@ -273,7 +273,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Element-wise multiplies a matrix.
+   * Multiplies this matrix by another matrix, element-wise.
    * @param matrix operand matrix
    * @return new {@link CSCMatrix} operation result
    */
@@ -289,7 +289,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Element-wise multiplies a matrix (in place).
+   * Multiplies this matrix by another matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
    */
@@ -304,7 +304,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Divides by a scalar to all elements.
+   * Divides all elements by a scalar.
    * @param value operand scalar
    * @return new {@link CSCMatrix} with operation result
    */
@@ -314,7 +314,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Divides by a scalar to all elements (in place).
+   * Divides all elements by a scalar (in place).
    * @param value operand scalar
    * @return this matrix with operation result
    */
@@ -325,7 +325,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Element-wise divides by a matrix.
+   * Divides this matrix by another matrix, element-wise.
    * @param matrix operand matrix
    * @return new {@link CSCMatrix} operation result
    * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}
@@ -341,7 +341,7 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Element-wise divides by a matrix (in place).
+   * Divides this matrix by another matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return this matrix with operation result
    * @throws UnsupportedOperationException if the operand is {@link DenseMatrix}

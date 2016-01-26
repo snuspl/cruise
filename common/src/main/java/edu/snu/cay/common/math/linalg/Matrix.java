@@ -93,98 +93,98 @@ public interface Matrix {
   Matrix addi(double value);
 
   /**
-   * Element-wise adds a matrix.
+   * Adds a matrix, element-wise.
    * @param matrix operand matrix
    * @return operation result
    */
   Matrix add(Matrix matrix);
 
   /**
-   * Element-wise adds a matrix (in place).
+   * Adds a matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return operation result
    */
   Matrix addi(Matrix matrix);
 
   /**
-   * Subtracts a scalar to all elements.
+   * Subtracts a scalar from all elements.
    * @param value operand scalar
    * @return operation result
    */
   Matrix sub(double value);
 
   /**
-   * Subtracts a scalar to all elements (in place).
+   * Subtracts a scalar from all elements (in place).
    * @param value operand scalar
    * @return operation result
    */
   Matrix subi(double value);
 
   /**
-   * Element-wise subtracts a matrix.
+   * Subtracts a matrix from this matrix, element-wise.
    * @param matrix operand matrix
    * @return operation result
    */
   Matrix sub(Matrix matrix);
 
   /**
-   * Element-wise subtracts a matrix (in place).
+   * Subtracts a matrix from this matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return operation result
    */
   Matrix subi(Matrix matrix);
 
   /**
-   * Multiplies a scalar to all elements.
+   * Multiplies all elements by a scalar.
    * @param value operand scalar
    * @return operation result
    */
   Matrix mul(double value);
 
   /**
-   * Multiplies a scalar to all elements (in place).
+   * Multiplies all elements by a scalar (in place).
    * @param value operand scalar
    * @return operation result
    */
   Matrix muli(double value);
 
   /**
-   * Element-wise multiplies a matrix.
+   * Multiplies this matrix by another matrix, element-wise.
    * @param matrix operand matrix
    * @return operation result
    */
   Matrix mul(Matrix matrix);
 
   /**
-   * Element-wise multiplies a matrix (in place).
+   * Multiplies this matrix by another matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return operation result
    */
   Matrix muli(Matrix matrix);
 
   /**
-   * Divides by a scalar to all elements.
+   * Divides all elements by a scalar.
    * @param value operand scalar
    * @return operation result
    */
   Matrix div(double value);
 
   /**
-   * Divides by a scalar to all elements (in place).
+   * Divides all elements by a scalar (in place).
    * @param value operand scalar
    * @return operation result
    */
   Matrix divi(double value);
 
   /**
-   * Element-wise divides by a matrix.
+   * Divides this matrix by another matrix, element-wise.
    * @param matrix operand matrix
    * @return operation result
    */
   Matrix div(Matrix matrix);
 
   /**
-   * Element-wise divides by a matrix (in place).
+   * Divides this matrix by another matrix, element-wise (in place).
    * @param matrix operand matrix
    * @return operation result
    */
