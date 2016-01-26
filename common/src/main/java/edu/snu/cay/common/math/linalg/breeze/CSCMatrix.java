@@ -112,14 +112,6 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
-   * Returns true if transposed, false otherwise.
-   * @throws UnsupportedOperationException
-   */
-  public boolean isTranspose() {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
    * Returns a new matrix same as this one.
    * @return a new copy of this matrix
    */

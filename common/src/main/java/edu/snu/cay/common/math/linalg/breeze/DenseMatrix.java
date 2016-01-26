@@ -22,6 +22,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 /**
  * Matrix implementation based on breeze dense matrix.
  * This class should be initialized by {@link edu.snu.cay.common.math.linalg.MatrixFactory}.
+ * Linear indexing is in column-major order, unless the matrix is transposed.
  */
 public class DenseMatrix implements Matrix {
 
@@ -115,9 +116,16 @@ public class DenseMatrix implements Matrix {
    * Returns true if transposed, false otherwise.
    * @return true if transposed, false otherwise
    */
-  @Override
   public boolean isTranspose() {
     return breezeMatrix.isTranspose();
+  }
+
+  /**
+   * Converts this matrix to a flat array (column-major).
+   * @return flat array with matrix elements
+   */
+  public double[] toArray() {
+    return (double[]) breezeMatrix.toArray();
   }
 
   /**

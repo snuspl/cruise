@@ -17,7 +17,6 @@ package edu.snu.cay.common.math.linalg;
 
 /**
  * Interface for matrix whose elements are {@code double} values.
- * Linear indexing is in column-major order, unless the matrix is transposed.
  */
 public interface Matrix {
 
@@ -72,12 +71,6 @@ public interface Matrix {
    * @return transposed copy of this matrix
    */
   Matrix transpose();
-
-  /**
-   * Returns true if transposed, false otherwise.
-   * @return true if transposed, false otherwise
-   */
-  boolean isTranspose();
 
   /**
    * Returns a new matrix same as this one.
