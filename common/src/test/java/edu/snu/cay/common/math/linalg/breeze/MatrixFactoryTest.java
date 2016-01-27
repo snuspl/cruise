@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -76,6 +77,7 @@ public final class MatrixFactoryTest {
     }
 
     assertEquals(matrixFactory.horzcatDense(denseVectorList), mat3);
+    assertArrayEquals(((DenseMatrix) mat3).toArray(), ArrayUtils.addAll(value, value), 0.0);
   }
 
   /**
