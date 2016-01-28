@@ -76,8 +76,9 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
       throw new IdGenerationException("No more id available");
     }
     final Vector<Long> idVector = new Vector<>();
+    final long headId = counter.getAndAdd(size);
     for (int i = 0; i < size; i++) {
-      idVector.add(base + counter.getAndIncrement());
+      idVector.add(base + headId + i);
     }
     return idVector;
   }
