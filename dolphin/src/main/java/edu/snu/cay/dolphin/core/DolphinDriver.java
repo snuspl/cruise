@@ -39,6 +39,7 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -237,6 +238,8 @@ public final class DolphinDriver {
    */
   private final EMResourceRequestManager emResourceRequestManager;
 
+  private final PartitionManager partitionManager;
+
   /**
    * Set of ActiveContext ids on state closing, used to determine whether a task is requested to be closed or not.
    */
@@ -276,6 +279,7 @@ public final class DolphinDriver {
                         final MetricsMessageCodec metricsMessageCodec,
                         final HTraceParameters traceParameters,
                         final EMResourceRequestManager emResourceRequestManager,
+                        final PartitionManager partitionManager,
                         final HTraceInfoCodec hTraceInfoCodec,
                         final HTrace hTrace,
                         @Parameter(StartTrace.class) final boolean startTrace,
@@ -303,6 +307,7 @@ public final class DolphinDriver {
     this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
     this.emResourceRequestManager = emResourceRequestManager;
+    this.partitionManager = partitionManager;
     this.closingContexts = Collections.synchronizedSet(new HashSet<String>());
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.jobTraceInfo = startTrace ? TraceInfo.fromSpan(Trace.startSpan("job", Sampler.ALWAYS).getSpan()) : null;
@@ -537,6 +542,8 @@ public final class DolphinDriver {
           }
           activeContext.submitContextAndService(finalContextConf, finalServiceConf);
         } else {
+          LOG.log(Level.INFO, "Registering evaluator to PartitionManager");
+          partitionManager.registerEvaluator(activeContext.getId());
           submitTask(activeContext, 0);
         }
       } else if (requestorId.equals(ElasticMemory.class.getName())) {
