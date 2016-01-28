@@ -718,6 +718,10 @@ public final class DolphinDriver {
       }
     }
 
+    dolphinTaskConfBuilder
+        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+        .bindNamedParameter(BaseCounterDataIdFactory.Base.class, activeContext.getId().split("-")[1]);
+
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task
     // We can now place a Controller Task on top of the contexts.
@@ -727,9 +731,7 @@ public final class DolphinDriver {
       try (final TraceScope controllerTaskTraceScope = Trace.startSpan(ctrlTaskId, jobTraceInfo)) {
 
         dolphinTaskConfBuilder
-            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-            .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
-            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
+            .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass());
 
         partialTaskConf = Configurations.merge(
             getCtrlTaskConf(ctrlTaskId, controllerTaskTraceScope.getSpan()),
@@ -749,9 +751,7 @@ public final class DolphinDriver {
       try (final TraceScope computeTaskTraceScope = Trace.startSpan(cmpTaskId, jobTraceInfo)) {
 
         dolphinTaskConfBuilder
-            .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
-            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
+            .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass());
 
         partialTaskConf = Configurations.merge(
             getCmpTaskConf(cmpTaskId, computeTaskTraceScope.getSpan()),

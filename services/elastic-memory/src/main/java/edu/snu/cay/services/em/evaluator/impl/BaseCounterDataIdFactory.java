@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * To guarantee that different factories create unique data ids without asking to the driver or
  * to other evaluators, the driver should bind a unique NamedParameter {@code Base} to each factory.
  *
- * Note that this factory can only create up to 2^32 global unique ids. Beyond that, the methods throw Exceptions
- * because the ids are not guaranteed to be unique.
+ * Note that this factory can only create up to 2^{@code partitionSizeBits} global unique ids.
+ * Beyond that, the methods throw Exceptions, because the ids are not guaranteed to be unique.
  */
 public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
 
@@ -50,14 +50,21 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
    */
   private final long base;
 
+  /**
+   * A number of bit representing the partition size.
+   */
+  private final int partitionSizeBits;
+
   @Inject
-  private BaseCounterDataIdFactory(@Parameter(Base.class) final Integer base) {
-    this.base = (long) base << 32;
+  private BaseCounterDataIdFactory(@Parameter(Base.class) final Integer base,
+                                   @Parameter(RangePartitionFunc.PartitionSizeBits.class) final int partitionSizeBits) {
+    this.base = (long) base << partitionSizeBits;
+    this.partitionSizeBits = partitionSizeBits;
   }
 
   @Override
   public Long getId() throws IdGenerationException {
-    if (counter.get() == 0x100000000L) {
+    if (counter.get() == (long) 1 << partitionSizeBits) {
       throw new IdGenerationException("No more id available");
     }
     return base + counter.getAndIncrement();
@@ -65,7 +72,7 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
 
   @Override
   public List<Long> getIds(final int size) throws IdGenerationException {
-    if (counter.get() + size > 0x100000000L) {
+    if (counter.get() + size > (long) 1 << partitionSizeBits) {
       throw new IdGenerationException("No more id available");
     }
     final Vector<Long> idVector = new Vector<>();
