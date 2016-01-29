@@ -91,11 +91,13 @@ public final class MemoryStoreImpl implements MemoryStore {
       throw new RuntimeException("Different list sizes: ids " + ids.size() + ", values " + values.size());
     }
 
+    final Map<Long, T> idValueMap = new HashMap<>();
+
     for (int index = 0; index < ids.size(); index++) {
       if (!router.isLocal(ids.get(index))) {
         LOG.log(Level.INFO, "This id is not local: {0}", ids.get(index));
-        ids.remove(index);
-        values.remove(index);
+      } else {
+        idValueMap.put(ids.get(index), values.get(index));
       }
     }
 
@@ -106,10 +108,7 @@ public final class MemoryStoreImpl implements MemoryStore {
         dataMap.put(dataType, new TreeMap<Long, Object>());
       }
       final Map<Long, Object> innerMap = dataMap.get(dataType);
-      for (int index = 0; index < ids.size(); index++) {
-        innerMap.put(ids.get(index), values.get(index));
-      }
-
+      innerMap.putAll(idValueMap);
     } finally {
       readWriteLock.writeLock().unlock();
     }
