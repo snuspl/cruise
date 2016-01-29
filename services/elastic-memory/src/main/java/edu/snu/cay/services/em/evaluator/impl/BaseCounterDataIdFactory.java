@@ -51,20 +51,20 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
   private final long base;
 
   /**
-   * A number of bit representing the partition size.
+   * A size of partition, which means a number of ids the id factory can generate.
    */
-  private final int partitionSizeBits;
+  private final long partitionSize;
 
   @Inject
-  private BaseCounterDataIdFactory(@Parameter(Base.class) final Integer base,
+  private BaseCounterDataIdFactory(@Parameter(PartitionId.class) final Integer partitionId,
                                    @Parameter(RangePartitionFunc.PartitionSizeBits.class) final int partitionSizeBits) {
-    this.base = (long) base << partitionSizeBits;
-    this.partitionSizeBits = partitionSizeBits;
+    this.base = (long) partitionId << partitionSizeBits;
+    this.partitionSize = 1L << partitionSizeBits;
   }
 
   @Override
   public Long getId() throws IdGenerationException {
-    if (counter.get() == (long) 1 << partitionSizeBits) {
+    if (counter.get() == partitionSize) {
       throw new IdGenerationException("No more id available");
     }
     return base + counter.getAndIncrement();
@@ -72,7 +72,7 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
 
   @Override
   public List<Long> getIds(final int size) throws IdGenerationException {
-    if (counter.get() + size > (long) 1 << partitionSizeBits) {
+    if (counter.get() + size > partitionSize) {
       throw new IdGenerationException("No more id available");
     }
     final Vector<Long> idVector = new Vector<>();
@@ -83,7 +83,7 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
     return idVector;
   }
 
-  @NamedParameter(doc = "Global unique base value of BaseCounterDataIdFactory to prevent conflict between each other")
-  public final class Base implements Name<Integer> {
+  @NamedParameter(doc = "A partition id that enables BaseCounterDataIdFactory to generate unique data ids")
+  public final class PartitionId implements Name<Integer> {
   }
 }

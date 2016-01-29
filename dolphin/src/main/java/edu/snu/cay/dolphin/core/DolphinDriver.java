@@ -718,9 +718,13 @@ public final class DolphinDriver {
       }
     }
 
+    // Let's use context id as a partition Id, which should be distinguished between evaluators
+    final String partitionId = activeContext.getId().split("-")[1];
+
+    // Bind things for EM's initial id partitioning
     dolphinTaskConfBuilder
         .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-        .bindNamedParameter(BaseCounterDataIdFactory.Base.class, activeContext.getId().split("-")[1]);
+        .bindNamedParameter(BaseCounterDataIdFactory.PartitionId.class, partitionId);
 
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task

@@ -67,13 +67,13 @@ public final class PartitionManager {
 
   /**
    * Register an evaluator and allocate a partition to the evaluator.
-   * @param evalId an id of evaluator
+   * @param contextId an id of context
    * @return a id of allocated partition
    */
-  public synchronized void registerEvaluator(final String evalId) {
-    final long partitionId = Long.parseLong(evalId.split("-")[1]);
-    LOG.log(Level.INFO, "evalId: {0}, partitionId: {1}", new Object[]{evalId, partitionId});
-    if (evalPartitionMap.put(evalId, partitionId) != null) {
+  public synchronized void registerEvaluator(final String contextId) {
+    final long partitionId = Long.parseLong(contextId.split("-")[1]);
+    LOG.log(Level.INFO, "contextId: {0}, partitionId: {1}", new Object[]{contextId, partitionId});
+    if (evalPartitionMap.put(contextId, partitionId) != null) {
       throw new RuntimeException("This evaluator is already registered");
     }
   }

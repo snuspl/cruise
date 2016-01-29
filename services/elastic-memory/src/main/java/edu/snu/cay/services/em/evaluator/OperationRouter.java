@@ -34,11 +34,11 @@ public final class OperationRouter {
   }
 
   /**
-   * Initialize local partition id with localEvalId.
-   * @param localEvalId an id of evaluator
+   * Initialize local partition id with {@code localContextId}.
+   * @param localContextId an id of context of local evaluator
    */
-  public void initialize(final String localEvalId) {
-    this.localPartitionId = Long.parseLong(localEvalId.split("-")[1]);
+  public void initialize(final String localContextId) {
+    this.localPartitionId = Long.parseLong(localContextId.split("-")[1]);
   }
 
   /**
