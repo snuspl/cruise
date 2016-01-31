@@ -33,7 +33,7 @@ public final class RangePartitionFunc implements PartitionFunc {
   @Inject
   private RangePartitionFunc(@Parameter(PartitionSizeBits.class) final int partitionSizeBits) {
     if (partitionSizeBits <= 0 || partitionSizeBits > 32) {
-      throw new RuntimeException("PartitionSizeBits should be positive value and its maximum value is 32");
+      throw new RuntimeException("PartitionSizeBits should be a positive value no greater than 32");
     }
     this.partitionSizeBits = partitionSizeBits;
   }

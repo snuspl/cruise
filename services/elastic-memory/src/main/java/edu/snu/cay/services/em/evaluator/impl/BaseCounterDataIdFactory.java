@@ -51,7 +51,7 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
   private final long base;
 
   /**
-   * A size of partition, which means a number of ids the id factory can generate.
+   * A size of one partition, which means the number of ids the id factory can generate.
    */
   private final long partitionSize;
 
