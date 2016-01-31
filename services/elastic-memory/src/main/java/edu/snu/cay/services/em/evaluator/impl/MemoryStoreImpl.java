@@ -68,7 +68,7 @@ public final class MemoryStoreImpl implements MemoryStore {
   @Override
   public <T> void put(final String dataType, final long id, final T value) {
     if (!router.isLocal(id)) {
-      LOG.log(Level.INFO, "This id is not local: {0}", id);
+      LOG.log(Level.WARNING, "This id is not local: {0}", id);
       return;
     }
 
@@ -95,7 +95,7 @@ public final class MemoryStoreImpl implements MemoryStore {
 
     for (int index = 0; index < ids.size(); index++) {
       if (!router.isLocal(ids.get(index))) {
-        LOG.log(Level.INFO, "This id is not local: {0}", ids.get(index));
+        LOG.log(Level.WARNING, "This id is not local: {0}", ids.get(index));
       } else {
         idValueMap.put(ids.get(index), values.get(index));
       }
