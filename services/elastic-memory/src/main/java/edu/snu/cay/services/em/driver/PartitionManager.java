@@ -52,10 +52,31 @@ public final class PartitionManager {
    */
   private final Map<String, Map<String, NavigableSet<LongRange>>> evalPartitions;
 
+  /**
+   * A mapping that maintains each evaluator have taken which partitions.
+   * A key of map is an evaluator id and and a value of map is a partition id.
+   * TODO #346: Clean up data structures managing data id partitions
+   */
+  private final Map<String, Long> evalPartitionMap;
+
   @Inject
   private PartitionManager() {
+    this.evalPartitionMap = new HashMap<>();
     this.evalPartitions = new HashMap<>();
     this.globalPartitions = new HashMap<>();
+  }
+
+  /**
+   * Register an evaluator and allocate a partition to the evaluator.
+   * @param contextId an id of context
+   * @return a id of allocated partition
+   */
+  public synchronized void registerEvaluator(final String contextId) {
+    final long partitionId = Long.parseLong(contextId.split("-")[1]);
+    LOG.log(Level.INFO, "contextId: {0}, partitionId: {1}", new Object[]{contextId, partitionId});
+    if (evalPartitionMap.put(contextId, partitionId) != null) {
+      throw new RuntimeException("This evaluator is already registered");
+    }
   }
 
   /**

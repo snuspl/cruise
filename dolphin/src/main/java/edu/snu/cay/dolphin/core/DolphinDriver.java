@@ -39,6 +39,7 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -237,6 +238,8 @@ public final class DolphinDriver {
    */
   private final EMResourceRequestManager emResourceRequestManager;
 
+  private final PartitionManager partitionManager;
+
   /**
    * Set of ActiveContext ids on state closing, used to determine whether a task is requested to be closed or not.
    */
@@ -276,6 +279,7 @@ public final class DolphinDriver {
                         final MetricsMessageCodec metricsMessageCodec,
                         final HTraceParameters traceParameters,
                         final EMResourceRequestManager emResourceRequestManager,
+                        final PartitionManager partitionManager,
                         final HTraceInfoCodec hTraceInfoCodec,
                         final HTrace hTrace,
                         @Parameter(StartTrace.class) final boolean startTrace,
@@ -303,6 +307,7 @@ public final class DolphinDriver {
     this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
     this.emResourceRequestManager = emResourceRequestManager;
+    this.partitionManager = partitionManager;
     this.closingContexts = Collections.synchronizedSet(new HashSet<String>());
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.jobTraceInfo = startTrace ? TraceInfo.fromSpan(Trace.startSpan("job", Sampler.ALWAYS).getSpan()) : null;
@@ -537,6 +542,8 @@ public final class DolphinDriver {
           }
           activeContext.submitContextAndService(finalContextConf, finalServiceConf);
         } else {
+          LOG.log(Level.INFO, "Registering evaluator to PartitionManager");
+          partitionManager.registerEvaluator(activeContext.getId());
           submitTask(activeContext, 0);
         }
       } else if (requestorId.equals(ElasticMemory.class.getName())) {
@@ -711,6 +718,14 @@ public final class DolphinDriver {
       }
     }
 
+    // Let's use context id as a partition Id, which should be distinguished between evaluators
+    final String partitionId = activeContext.getId().split("-")[1];
+
+    // Bind things for EM's initial id partitioning
+    dolphinTaskConfBuilder
+        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+        .bindNamedParameter(BaseCounterDataIdFactory.PartitionId.class, partitionId);
+
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task
     // We can now place a Controller Task on top of the contexts.
@@ -720,9 +735,7 @@ public final class DolphinDriver {
       try (final TraceScope controllerTaskTraceScope = Trace.startSpan(ctrlTaskId, jobTraceInfo)) {
 
         dolphinTaskConfBuilder
-            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-            .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass())
-            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(stageSequence));
+            .bindImplementation(UserControllerTask.class, stageInfo.getUserCtrlTaskClass());
 
         partialTaskConf = Configurations.merge(
             getCtrlTaskConf(ctrlTaskId, controllerTaskTraceScope.getSpan()),
@@ -742,9 +755,7 @@ public final class DolphinDriver {
       try (final TraceScope computeTaskTraceScope = Trace.startSpan(cmpTaskId, jobTraceInfo)) {
 
         dolphinTaskConfBuilder
-            .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass())
-            .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-            .bindNamedParameter(BaseCounterDataIdFactory.Base.class, String.valueOf(taskId));
+            .bindImplementation(UserComputeTask.class, stageInfo.getUserCmpTaskClass());
 
         partialTaskConf = Configurations.merge(
             getCmpTaskConf(cmpTaskId, computeTaskTraceScope.getSpan()),

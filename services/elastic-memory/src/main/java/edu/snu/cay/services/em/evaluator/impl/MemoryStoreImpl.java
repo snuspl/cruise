@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
+import edu.snu.cay.services.em.evaluator.OperationRouter;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -24,6 +25,8 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A {@code MemoryStore} implementation based on {@code TreeMap}s inside a single {@code HashMap}.
@@ -35,6 +38,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 @EvaluatorSide
 public final class MemoryStoreImpl implements MemoryStore {
+  private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
   /**
    * This map uses data types, represented as strings, for keys and inner {@code TreeMaps} for values.
@@ -50,15 +54,24 @@ public final class MemoryStoreImpl implements MemoryStore {
    */
   private final ReadWriteLock readWriteLock;
 
+  private final OperationRouter router;
+
   @Inject
-  private MemoryStoreImpl(final HTrace hTrace) {
+  private MemoryStoreImpl(final HTrace hTrace,
+                          final OperationRouter router) {
     hTrace.initialize();
+    this.router = router;
     dataMap = new HashMap<>();
     readWriteLock = new ReentrantReadWriteLock(true);
   }
 
   @Override
   public <T> void put(final String dataType, final long id, final T value) {
+    if (!router.isLocal(id)) {
+      LOG.log(Level.WARNING, "This id is not local: {0}", id);
+      return;
+    }
+
     readWriteLock.writeLock().lock();
 
     try {
@@ -78,6 +91,16 @@ public final class MemoryStoreImpl implements MemoryStore {
       throw new RuntimeException("Different list sizes: ids " + ids.size() + ", values " + values.size());
     }
 
+    final Map<Long, T> idValueMap = new HashMap<>();
+
+    for (int index = 0; index < ids.size(); index++) {
+      if (!router.isLocal(ids.get(index))) {
+        LOG.log(Level.WARNING, "This id is not local: {0}", ids.get(index));
+      } else {
+        idValueMap.put(ids.get(index), values.get(index));
+      }
+    }
+
     readWriteLock.writeLock().lock();
 
     try {
@@ -85,10 +108,7 @@ public final class MemoryStoreImpl implements MemoryStore {
         dataMap.put(dataType, new TreeMap<Long, Object>());
       }
       final Map<Long, Object> innerMap = dataMap.get(dataType);
-      for (int index = 0; index < ids.size(); index++) {
-        innerMap.put(ids.get(index), values.get(index));
-      }
-
+      innerMap.putAll(idValueMap);
     } finally {
       readWriteLock.writeLock().unlock();
     }
