@@ -25,7 +25,7 @@ import javax.inject.Inject;
 /**
  * Evaluator-side message handler.
  * Currently does nothing, but we need this class as a placeholder to
- * instantiate NetworkService.
+ * instantiate NetworkConnectionService.
  */
 @EvaluatorSide
 public final class EvalSideMetricsMsgHandler implements EventHandler<Message<MetricsMessage>> {

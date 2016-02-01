@@ -45,7 +45,6 @@ public final class MetricsMessageSender implements MetricsHandler {
 
   private final MetricNetworkSetup metricNetworkSetup;
   private final MetricCodec metricCodec;
-  private final MetricsMessageCodec metricsMessageCodec;
   private MetricsMessage.Builder metricsMessageBuilder;
   private final IdentifierFactory identifierFactory;
   private final String driverId;
@@ -53,12 +52,10 @@ public final class MetricsMessageSender implements MetricsHandler {
   @Inject
   private MetricsMessageSender(final MetricNetworkSetup metricNetworkSetup,
                                final MetricCodec metricCodec,
-                               final MetricsMessageCodec metricsMessageCodec,
                                final IdentifierFactory identifierFactory,
                                @Parameter(DriverIdentifier.class) final String driverId) {
     this.metricNetworkSetup = metricNetworkSetup;
     this.metricCodec = metricCodec;
-    this.metricsMessageCodec = metricsMessageCodec;
     this.metricsMessageBuilder = MetricsMessage.newBuilder();
     this.identifierFactory = identifierFactory;
     this.driverId = driverId;

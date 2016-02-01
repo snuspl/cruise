@@ -44,7 +44,7 @@ public final class MetricNetworkSetup {
                              final IdentifierFactory identifierFactory,
                              final MetricsMessageCodec metricsMessageCodec,
                              @Parameter(MetricsMessageHandler.class)
-                             final EventHandler<Message<MetricsMessage>> handler) {
+                                 final EventHandler<Message<MetricsMessage>> handler) {
     this.networkConnectionService = networkConnectionService;
     this.connectionFactoryIdentifier = identifierFactory.getNewInstance(METRIC_COLLECTION_SERVICE_IDENTIFIER);
     this.metricsMessageCodec = metricsMessageCodec;

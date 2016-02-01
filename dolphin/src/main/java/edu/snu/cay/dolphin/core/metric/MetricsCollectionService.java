@@ -25,18 +25,12 @@ import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.annotations.Unit;
-
-import javax.inject.Inject;
 
 /**
  * Provides configurations for the service that collects metrics from Tasks.
- * Should be inserted alongside a context.
  */
-@Unit
 public final class MetricsCollectionService {
 
-  @Inject
   private MetricsCollectionService() {
   }
 
