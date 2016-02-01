@@ -20,14 +20,12 @@ import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
 import edu.snu.cay.dolphin.core.metric.avro.ControllerMsg;
 import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.dolphin.core.metric.avro.SrcType;
-import org.apache.avro.AvroRuntimeException;
-import org.apache.reef.evaluator.context.ContextMessage;
-import org.apache.reef.evaluator.context.ContextMessageSource;
-import org.apache.reef.evaluator.context.parameters.ContextMessageSources;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.task.HeartBeatTriggerManager;
-import org.apache.reef.util.Optional;
+import edu.snu.cay.dolphin.core.metric.ns.MetricNetworkSetup;
+import org.apache.reef.driver.parameters.DriverIdentifier;
+import org.apache.reef.exception.evaluator.NetworkException;
+import org.apache.reef.io.network.Connection;
+import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
@@ -36,32 +34,31 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A MetricsHandler implementation that sends a MetricsMessage via heartbeat.
+ * A MetricsHandler implementation that sends a MetricsMessage via NetworkConnectionService.
  * The metrics are set via MetricsHandler. The other message parts must be
  * set via the setters for each Dolphin iteration. The MetricsMessage is
- * built when sending the heartbeat. As it builds the message incrementally,
+ * built when sending the network message. As it builds the message incrementally,
  * this class is *not* thread-safe.
- *
- * The static methods are provided for convenience of configuration.
- *
- * TODO #172: Use NetworkConnectionService to replace the heartbeat
  */
-public final class MetricsMessageSender implements MetricsHandler, ContextMessageSource {
+public final class MetricsMessageSender implements MetricsHandler {
   private static final Logger LOG = Logger.getLogger(MetricsMessageSender.class.getName());
 
-  private final HeartBeatTriggerManager heartBeatTriggerManager;
+  private final MetricNetworkSetup metricNetworkSetup;
   private final MetricCodec metricCodec;
-  private final MetricsMessageCodec metricsMessageCodec;
   private MetricsMessage.Builder metricsMessageBuilder;
+  private final IdentifierFactory identifierFactory;
+  private final String driverId;
 
   @Inject
-  private MetricsMessageSender(final HeartBeatTriggerManager heartbeatTriggerManager,
+  private MetricsMessageSender(final MetricNetworkSetup metricNetworkSetup,
                                final MetricCodec metricCodec,
-                               final MetricsMessageCodec metricsMessageCodec) {
-    this.heartBeatTriggerManager = heartbeatTriggerManager;
+                               final IdentifierFactory identifierFactory,
+                               @Parameter(DriverIdentifier.class) final String driverId) {
+    this.metricNetworkSetup = metricNetworkSetup;
     this.metricCodec = metricCodec;
-    this.metricsMessageCodec = metricsMessageCodec;
     this.metricsMessageBuilder = MetricsMessage.newBuilder();
+    this.identifierFactory = identifierFactory;
+    this.driverId = driverId;
   }
 
   public MetricsMessageSender setComputeMsg(final ComputeMsg computeMsg) {
@@ -85,7 +82,18 @@ public final class MetricsMessageSender implements MetricsHandler, ContextMessag
   }
 
   public void send() {
-    heartBeatTriggerManager.triggerHeartBeat();
+    LOG.entering(MetricsMessageSender.class.getSimpleName(), "send");
+
+    final Connection<MetricsMessage> conn = metricNetworkSetup.getConnectionFactory()
+        .newConnection(identifierFactory.getNewInstance(driverId));
+    try {
+      conn.open();
+      conn.write(getMessage());
+    } catch (final NetworkException ex) {
+      throw new RuntimeException("NetworkException", ex);
+    }
+
+    LOG.exiting(MetricsMessageSender.class.getSimpleName(), "send");
   }
 
   @Override
@@ -93,44 +101,12 @@ public final class MetricsMessageSender implements MetricsHandler, ContextMessag
     metricsMessageBuilder.setMetrics(ByteBuffer.wrap(metricCodec.encode(metrics)));
   }
 
-  /**
-   * Build the MetricsMessage, encode it, and return it as a Context heartbeat.
-   * @return the Context heartbeat
-   */
-  @Override
-  public Optional<ContextMessage> getMessage() {
-    try {
-      final MetricsMessage metricsMessage = metricsMessageBuilder.build();
-      metricsMessageBuilder = MetricsMessage.newBuilder();
-      LOG.log(Level.INFO, "Sending metricsMessage {0} as ContextMessage", metricsMessage);
-      return Optional.of(ContextMessage.from(
-          MetricsCollectionService.class.getName(),
-          metricsMessageCodec.encode(metricsMessage)));
-
-    } catch (final AvroRuntimeException avroRuntimeException) {
-      LOG.log(Level.WARNING, "metricsMessageBuilder {0} not ready", metricsMessageBuilder);
-      return Optional.empty();
-    }
-  }
-
-  /**
-   * Bind this class as a MetricsHandler implementation.
-   * @return configuration that binds the implementation
-   */
-  public static Configuration getServiceConfiguration() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MetricsHandler.class, MetricsMessageSender.class)
+  private MetricsMessage getMessage() {
+    final MetricsMessage metricsMessage = metricsMessageBuilder
+        .setSrcId(metricNetworkSetup.getMyId().toString())
         .build();
-  }
-
-  /**
-   * Add a context message source.
-   * TODO #172: This configuration can be removed when NetworkConnectionService replaces the heartbeat
-   * @return configuration to which a context message source is added
-   */
-  public static Configuration getContextConfiguration() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextMessageSources.class, MetricsMessageSender.class)
-        .build();
+    metricsMessageBuilder = MetricsMessage.newBuilder();
+    LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
+    return metricsMessage;
   }
 }

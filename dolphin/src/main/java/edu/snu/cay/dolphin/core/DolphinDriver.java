@@ -15,21 +15,14 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import edu.snu.cay.dolphin.core.metric.MetricsMessageCodec;
-import edu.snu.cay.dolphin.core.metric.MetricsMessageSender;
+import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
-import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
-import edu.snu.cay.dolphin.core.metric.avro.SrcType;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.dolphin.core.sync.ControllerTaskSyncRegister;
 import edu.snu.cay.dolphin.core.sync.DriverSync;
 import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.groupcomm.conf.GroupCommParameters;
 import edu.snu.cay.dolphin.groupcomm.names.*;
-import edu.snu.cay.dolphin.core.metric.MetricCodec;
-import edu.snu.cay.dolphin.core.metric.MetricTracker;
-import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
-import edu.snu.cay.dolphin.core.metric.MetricTrackers;
 import edu.snu.cay.dolphin.groupcomm.names.DataPreRunShuffle;
 import edu.snu.cay.dolphin.parameters.StartTrace;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
@@ -45,8 +38,6 @@ import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
-import edu.snu.cay.services.em.optimizer.api.DataInfo;
-import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
@@ -56,7 +47,6 @@ import edu.snu.cay.utils.trace.HTraceInfoCodec;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.context.ContextMessage;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
@@ -81,7 +71,6 @@ import org.apache.reef.task.Task;
 import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.remote.Codec;
-import org.apache.reef.wake.remote.impl.ObjectSerializableCodec;
 import org.apache.reef.wake.time.event.StartTime;
 import org.htrace.Sampler;
 import org.htrace.Span;
@@ -209,21 +198,10 @@ public final class DolphinDriver {
 
   private final OptimizationOrchestrator optimizationOrchestrator;
 
-  /**
-   * Codec for metrics.
-   */
-  private final MetricCodec metricCodec;
-
-  /**
-   * Codec for metrics messages.
-   */
-  private final MetricsMessageCodec metricsMessageCodec;
-
   private final HTraceParameters traceParameters;
 
   private final HTraceInfoCodec hTraceInfoCodec;
 
-  private final ObjectSerializableCodec<Long> codecLong = new ObjectSerializableCodec<>();
   private final UserParameters userParameters;
 
   private final TraceInfo jobTraceInfo;
@@ -259,7 +237,6 @@ public final class DolphinDriver {
    * @param emConf manager for Elastic Memory configurations
    * @param userJobInfo
    * @param userParameters
-   * @param metricCodec
    */
   @Inject
   private DolphinDriver(final GroupCommDriver groupCommDriver,
@@ -275,8 +252,6 @@ public final class DolphinDriver {
                         final ElasticMemoryConfiguration emConf,
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
-                        final MetricCodec metricCodec,
-                        final MetricsMessageCodec metricsMessageCodec,
                         final HTraceParameters traceParameters,
                         final EMResourceRequestManager emResourceRequestManager,
                         final PartitionManager partitionManager,
@@ -303,8 +278,6 @@ public final class DolphinDriver {
     this.postRunShuffleManagerList = new LinkedList<>();
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
-    this.metricCodec = metricCodec;
-    this.metricsMessageCodec = metricsMessageCodec;
     this.traceParameters = traceParameters;
     this.emResourceRequestManager = emResourceRequestManager;
     this.partitionManager = partitionManager;
@@ -483,8 +456,8 @@ public final class DolphinDriver {
   private Configuration getContextConfiguration() {
     final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
     final Configuration emContextConf = emConf.getContextConfiguration();
-    final Configuration metricsMessageContextConf = MetricsMessageSender.getContextConfiguration();
-    return Configurations.merge(groupCommContextConf, emContextConf, metricsMessageContextConf);
+    final Configuration metricsCollectionContextConf = MetricsCollectionService.getContextConfiguration();
+    return Configurations.merge(groupCommContextConf, emContextConf, metricsCollectionContextConf);
   }
 
   /**
@@ -499,10 +472,9 @@ public final class DolphinDriver {
     final Configuration workloadServiceConf = WorkloadPartition.getServiceConfiguration();
     final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
     final Configuration traceConf = traceParameters.getConfiguration();
-    final Configuration metricsMessageServiceConf = MetricsMessageSender.getServiceConfiguration();
     return Configurations.merge(
         userParameters.getServiceConf(), groupCommServiceConf, workloadServiceConf, emServiceConf,
-        metricCollectionServiceConf, outputServiceConf, keyValueStoreServiceConf, traceConf, metricsMessageServiceConf);
+        metricCollectionServiceConf, outputServiceConf, keyValueStoreServiceConf, traceConf);
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
@@ -573,52 +545,6 @@ public final class DolphinDriver {
       return injector.getNamedInstance(ContextIdentifier.class);
     } catch (final InjectionException e) {
       throw new RuntimeException("Unable to inject context identifier from context conf", e);
-    }
-  }
-
-  /**
-   * Receives metrics from context.
-   * TODO #172: Use NetworkConnectionService to replace the heartbeat
-   */
-  final class ContextMessageHandler implements EventHandler<ContextMessage> {
-
-    @Override
-    public void onNext(final ContextMessage message) {
-
-      if (message.getMessageSourceID().equals(MetricsCollectionService.class.getName())) {
-
-        LOG.info("Metrics are gathered from " + message.getId());
-        final MetricsMessage metricsMessage = metricsMessageCodec.decode(message.get());
-
-        final SrcType srcType = metricsMessage.getSrcType();
-        if (SrcType.Compute.equals(srcType)) {
-
-          optimizationOrchestrator.receiveComputeMetrics(message.getId(),
-              metricsMessage.getIterationInfo().getCommGroupName().toString(),
-              metricsMessage.getIterationInfo().getIteration(),
-              metricCodec.decode(metricsMessage.getMetrics().array()),
-              getDataInfoFromAvro(metricsMessage.getComputeMsg().getDataInfos()));
-
-        } else if (SrcType.Controller.equals(srcType)) {
-
-          optimizationOrchestrator.receiveControllerMetrics(message.getId(),
-              metricsMessage.getIterationInfo().getCommGroupName().toString(),
-              metricsMessage.getIterationInfo().getIteration(),
-              metricCodec.decode(metricsMessage.getMetrics().array()));
-
-        } else {
-          throw new RuntimeException("Unknown SrcType " + srcType);
-        }
-      }
-    }
-
-    private List<DataInfo> getDataInfoFromAvro(
-        final List<edu.snu.cay.dolphin.core.metric.avro.DataInfo> avroDataInfos) {
-      final List<DataInfo> dataInfos = new ArrayList<>(avroDataInfos.size());
-      for (final edu.snu.cay.dolphin.core.metric.avro.DataInfo avroDataInfo : avroDataInfos) {
-        dataInfos.add(new DataInfoImpl(avroDataInfo.getDataType().toString(), avroDataInfo.getNumUnits()));
-      }
-      return dataInfos;
     }
   }
 

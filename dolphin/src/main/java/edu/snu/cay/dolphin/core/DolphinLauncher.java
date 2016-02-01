@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
 import edu.snu.cay.dolphin.core.sync.DriverSyncRegister;
 import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.groupcomm.conf.GroupCommParameters;
@@ -122,7 +123,6 @@ public final class DolphinLauncher {
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, DolphinDriver.EvaluatorFailedHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, DolphinDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_FAILED, DolphinDriver.FailedContextHandler.class)
-        .set(DriverConfiguration.ON_CONTEXT_MESSAGE, DolphinDriver.ContextMessageHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, DolphinDriver.TaskCompletedHandler.class)
         .set(DriverConfiguration.ON_TASK_RUNNING, DolphinDriver.TaskRunningHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, DolphinDriver.TaskFailedHandler.class);
@@ -165,6 +165,7 @@ public final class DolphinLauncher {
         SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
+        MetricsCollectionService.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         dolphinParameters.getDriverConf(),
