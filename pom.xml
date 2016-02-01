@@ -69,6 +69,7 @@
     <module>services/elastic-memory</module>
     <module>services/shuffle</module>
     <module>services/ps</module>
+    <module>services/aggregate</module>
     <module>utils</module>
     <module>common</module>
   </modules>
