@@ -55,6 +55,7 @@ public final class PartitionManager {
   /**
    * A mapping that maintains each evaluator have taken which partitions.
    * A key of map is an evaluator id and and a value of map is a partition id.
+   * TODO #346: Clean up data structures managing data id partitions
    */
   private final Map<String, Long> evalPartitionMap;
 
