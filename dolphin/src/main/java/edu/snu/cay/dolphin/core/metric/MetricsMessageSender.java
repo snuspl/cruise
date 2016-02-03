@@ -15,17 +15,12 @@
  */
 package edu.snu.cay.dolphin.core.metric;
 
+import edu.snu.cay.common.aggregation.AggregationSlave;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
 import edu.snu.cay.dolphin.core.metric.avro.ControllerMsg;
 import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.dolphin.core.metric.avro.SrcType;
-import edu.snu.cay.dolphin.core.metric.ns.MetricNetworkSetup;
-import org.apache.reef.driver.parameters.DriverIdentifier;
-import org.apache.reef.exception.evaluator.NetworkException;
-import org.apache.reef.io.network.Connection;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
@@ -34,7 +29,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A MetricsHandler implementation that sends a MetricsMessage via NetworkConnectionService.
+ * A MetricsHandler implementation that sends a MetricsMessage via Aggregation Service.
  * The metrics are set via MetricsHandler. The other message parts must be
  * set via the setters for each Dolphin iteration. The MetricsMessage is
  * built when sending the network message. As it builds the message incrementally,
@@ -43,22 +38,19 @@ import java.util.logging.Logger;
 public final class MetricsMessageSender implements MetricsHandler {
   private static final Logger LOG = Logger.getLogger(MetricsMessageSender.class.getName());
 
-  private final MetricNetworkSetup metricNetworkSetup;
   private final MetricCodec metricCodec;
+  private final MetricsMessageCodec metricsMessageCodec;
   private MetricsMessage.Builder metricsMessageBuilder;
-  private final IdentifierFactory identifierFactory;
-  private final String driverId;
+  private final AggregationSlave aggregationSlave;
 
   @Inject
-  private MetricsMessageSender(final MetricNetworkSetup metricNetworkSetup,
-                               final MetricCodec metricCodec,
-                               final IdentifierFactory identifierFactory,
-                               @Parameter(DriverIdentifier.class) final String driverId) {
-    this.metricNetworkSetup = metricNetworkSetup;
+  private MetricsMessageSender(final MetricCodec metricCodec,
+                               final MetricsMessageCodec metricsMessageCodec,
+                               final AggregationSlave aggregationSlave) {
     this.metricCodec = metricCodec;
+    this.metricsMessageCodec = metricsMessageCodec;
     this.metricsMessageBuilder = MetricsMessage.newBuilder();
-    this.identifierFactory = identifierFactory;
-    this.driverId = driverId;
+    this.aggregationSlave = aggregationSlave;
   }
 
   public MetricsMessageSender setComputeMsg(final ComputeMsg computeMsg) {
@@ -83,16 +75,7 @@ public final class MetricsMessageSender implements MetricsHandler {
 
   public void send() {
     LOG.entering(MetricsMessageSender.class.getSimpleName(), "send");
-
-    final Connection<MetricsMessage> conn = metricNetworkSetup.getConnectionFactory()
-        .newConnection(identifierFactory.getNewInstance(driverId));
-    try {
-      conn.open();
-      conn.write(getMessage());
-    } catch (final NetworkException ex) {
-      throw new RuntimeException("NetworkException", ex);
-    }
-
+    aggregationSlave.send(MetricsMessageSender.class.getName(), getMessage());
     LOG.exiting(MetricsMessageSender.class.getSimpleName(), "send");
   }
 
@@ -101,12 +84,11 @@ public final class MetricsMessageSender implements MetricsHandler {
     metricsMessageBuilder.setMetrics(ByteBuffer.wrap(metricCodec.encode(metrics)));
   }
 
-  private MetricsMessage getMessage() {
-    final MetricsMessage metricsMessage = metricsMessageBuilder
-        .setSrcId(metricNetworkSetup.getMyId().toString())
-        .build();
+  private byte[] getMessage() {
+    final MetricsMessage metricsMessage = metricsMessageBuilder.build();
     metricsMessageBuilder = MetricsMessage.newBuilder();
     LOG.log(Level.INFO, "Sending metricsMessage {0}", metricsMessage);
-    return metricsMessage;
+
+    return metricsMessageCodec.encode(metricsMessage);
   }
 }

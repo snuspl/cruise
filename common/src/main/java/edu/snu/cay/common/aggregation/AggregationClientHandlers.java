@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric.ns;
+package edu.snu.cay.common.aggregation;
 
+import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.wake.EventHandler;
 
-@NamedParameter(doc = "Network message receive handler for Metric Collection Service")
-public final class MetricsMessageHandler implements Name<EventHandler> {
+import java.util.Set;
+
+@NamedParameter(doc = "Network message handlers for Aggregation Service clients")
+public final class AggregationClientHandlers implements Name<Set<EventHandler<AggregationMessage>>> {
 }

@@ -13,13 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.aggregate;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-// Serialize Configuration -> String with ConfigurationSerializer
-// Might not be needed?
-@NamedParameter()
-public final class AggregationMasterSerializedConf implements Name<String> {
-}
+/**
+ * Classes for Aggregation Service.
+ */
+package edu.snu.cay.common.aggregation;

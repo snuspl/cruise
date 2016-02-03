@@ -13,27 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.aggregate;
+package edu.snu.cay.common.aggregation;
 
-import edu.snu.cay.utils.SingleMessageExtractor;
-import org.apache.reef.io.network.Message;
-import org.apache.reef.wake.EventHandler;
+import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
-// Wrap user's handler with Message<T>
-public final class AggregationMasterHandler<T> implements EventHandler<Message<T>> {
+/**
+ * Codec for AggregationMessage.
+ * Simply uses AvroUtils to encode and decode messages.
+ */
+public final class AggregationMsgCodec implements Codec<AggregationMessage> {
 
-  private final EventHandler<T> innerHandler;
-
-  // TODO: Use NamedParameters to receive innerHandler
   @Inject
-  private AggregationMasterHandler(final EventHandler<T> innerHandler) {
-    this.innerHandler = innerHandler;
+  private AggregationMsgCodec() {
   }
 
   @Override
-  public void onNext(final Message<T> message) {
-    innerHandler.onNext(SingleMessageExtractor.extract(message));
+  public byte[] encode(final AggregationMessage msg) {
+    return AvroUtils.toBytes(msg, AggregationMessage.class);
+  }
+
+  @Override
+  public AggregationMessage decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, AggregationMessage.class);
   }
 }

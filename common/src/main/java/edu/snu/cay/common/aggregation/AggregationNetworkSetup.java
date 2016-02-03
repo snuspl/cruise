@@ -13,43 +13,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.aggregate;
+package edu.snu.cay.common.aggregation;
 
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;
-import org.apache.reef.io.network.Message;
 import org.apache.reef.io.network.NetworkConnectionService;
-import org.apache.reef.io.network.impl.StreamingCodec;
-import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 
-public final class AggregateNetworkSetup<T> {
-  private static final String AGGREGATE_IDENTIFIER = "AGGREGATE";
+/**
+ * Register and unregister driver and evaluators to/from Network Connection Service.
+ */
+public final class AggregationNetworkSetup {
+  private static final String AGGREGATION_IDENTIFIER = "AGGREGATION";
 
   private final NetworkConnectionService networkConnectionService;
   private final Identifier connectionFactoryIdentifier;
-  private final StreamingCodec<T> streamingCodec;
-  private final EventHandler<Message<T>> handler;
-  private ConnectionFactory<T> connectionFactory;
+  private final AggregationMsgCodec codec;
+  private final AggregationMsgHandler handler;
+  private ConnectionFactory connectionFactory;
 
-  // TODO: Use NamedParameters to receive streamingCodec and handler
   @Inject
-  private AggregateNetworkSetup(final NetworkConnectionService networkConnectionService,
-                                final IdentifierFactory identifierFactory,
-                                final StreamingCodec<T> streamingCodec,
-                                final EventHandler<Message<T>> handler) throws NetworkException {
+  private AggregationNetworkSetup(final NetworkConnectionService networkConnectionService,
+                                  final IdentifierFactory identifierFactory,
+                                  final AggregationMsgCodec codec,
+                                  final AggregationMsgHandler handler) throws NetworkException {
     this.networkConnectionService = networkConnectionService;
-    this.connectionFactoryIdentifier = identifierFactory.getNewInstance(AGGREGATE_IDENTIFIER);
-    this.streamingCodec = streamingCodec;
+    this.connectionFactoryIdentifier = identifierFactory.getNewInstance(AGGREGATION_IDENTIFIER);
+    this.codec = codec;
     this.handler = handler;
   }
 
-  public ConnectionFactory<T> registerConnectionFactory(final Identifier localEndPointId) {
+  public ConnectionFactory registerConnectionFactory(final Identifier localEndPointId) {
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryIdentifier,
-        streamingCodec, handler, null, localEndPointId);
+        codec, handler, null, localEndPointId);
     return connectionFactory;
   }
 
@@ -57,10 +56,17 @@ public final class AggregateNetworkSetup<T> {
     networkConnectionService.unregisterConnectionFactory(connectionFactoryIdentifier);
   }
 
-  public ConnectionFactory<T> getConnectionFactory() {
+  public ConnectionFactory getConnectionFactory() {
     if (connectionFactory == null) {
       throw new RuntimeException("A connection factory has not been registered yet.");
     }
     return connectionFactory;
+  }
+
+  public Identifier getMyId() {
+    if (connectionFactory == null) {
+      throw new RuntimeException("A connection factory has not been registered yet.");
+    }
+    return connectionFactory.getLocalEndPointId();
   }
 }

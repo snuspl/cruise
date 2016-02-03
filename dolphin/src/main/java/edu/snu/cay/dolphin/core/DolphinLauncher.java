@@ -15,7 +15,10 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import edu.snu.cay.dolphin.core.metric.MetricsCollectionService;
+import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.dolphin.core.metric.DriverSideMetricsMsgHandler;
+import edu.snu.cay.dolphin.core.metric.EvalSideMetricsMsgHandler;
+import edu.snu.cay.dolphin.core.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.core.sync.DriverSyncRegister;
 import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.groupcomm.conf.GroupCommParameters;
@@ -156,6 +159,12 @@ public final class DolphinLauncher {
         .set(ShuffleDriverConfiguration.SHUFFLE_MANAGER_CLASS_NAME, StaticPushShuffleManager.class.getName())
         .build();
 
+    final AggregationConfiguration aggregaionConf = AggregationConfiguration.newBuilder()
+        .addAggregationClient(MetricsMessageSender.class.getName(),
+            DriverSideMetricsMsgHandler.class,
+            EvalSideMetricsMsgHandler.class)
+        .build();
+
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         optimizerParameters.getConfiguration(),
@@ -165,7 +174,7 @@ public final class DolphinLauncher {
         SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
-        MetricsCollectionService.getDriverConfiguration(),
+        aggregaionConf.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         dolphinParameters.getDriverConf(),

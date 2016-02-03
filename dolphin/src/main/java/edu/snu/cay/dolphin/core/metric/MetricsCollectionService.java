@@ -15,13 +15,7 @@
  */
 package edu.snu.cay.dolphin.core.metric;
 
-import edu.snu.cay.dolphin.core.metric.ns.MetricsMessageHandler;
-import edu.snu.cay.dolphin.core.metric.ns.NetworkContextRegister;
-import edu.snu.cay.dolphin.core.metric.ns.NetworkDriverRegister;
 import org.apache.reef.driver.context.ServiceConfiguration;
-import org.apache.reef.driver.parameters.DriverStartHandler;
-import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
-import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -35,29 +29,6 @@ public final class MetricsCollectionService {
   }
 
   /**
-   * Configuration for REEF driver when using {@link MetricsMessageSender} for metric sender.
-   * Binds NetworkConnectionService registration handlers and MetricsMessage codec/handler.
-   * @return configuration that should be submitted with a DriverConfiguration
-   */
-  public static Configuration getDriverConfiguration() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(DriverStartHandler.class, NetworkDriverRegister.RegisterDriverHandler.class)
-        .bindNamedParameter(MetricsMessageHandler.class, DriverSideMetricsMsgHandler.class)
-        .build();
-  }
-
-  /**
-   * Binds NetworkConnectionService registration handlers.
-   * @return configuration to which a NetworkConnectionService registration handlers are added
-   */
-  public static Configuration getContextConfiguration() {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindSetEntry(ContextStartHandlers.class, NetworkContextRegister.RegisterContextHandler.class)
-        .bindSetEntry(ContextStopHandlers.class, NetworkContextRegister.UnregisterContextHandler.class)
-        .build();
-  }
-
-  /**
    * Return the service configuration for the Metrics Collection Service.
    * @return service configuration for the Metrics Collection Service
    */
@@ -68,7 +39,6 @@ public final class MetricsCollectionService {
             .build(),
         Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(MetricsHandler.class, MetricsMessageSender.class)
-            .bindNamedParameter(MetricsMessageHandler.class, EvalSideMetricsMsgHandler.class)
             .build()
     );
   }

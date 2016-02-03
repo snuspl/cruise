@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.aggregate;
+package edu.snu.cay.common.aggregation;
 
+import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.tang.annotations.Parameter;
@@ -22,32 +23,37 @@ import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
+import java.nio.ByteBuffer;
 
-public final class AggregationSlave<T> {
+/**
+ * Slave of Aggregation Service.
+ * Sends messages to aggregation master.
+ */
+public final class AggregationSlave {
 
-  private final AggregateNetworkSetup<T> aggregateNetworkSetup;
+  private final AggregationNetworkSetup aggregationNetworkSetup;
   private final Identifier masterId;
-  private Connection<T> connection;
 
   @Inject
-  private AggregationSlave(final AggregateNetworkSetup<T> aggregateNetworkSetup,
+  private AggregationSlave(final AggregationNetworkSetup aggregationNetworkSetup,
                            @Parameter(MasterId.class) final String masterIdStr,
                            final IdentifierFactory identifierFactory) {
-    this.aggregateNetworkSetup = aggregateNetworkSetup;
+    this.aggregationNetworkSetup = aggregationNetworkSetup;
     this.masterId = identifierFactory.getNewInstance(masterIdStr);
-
   }
 
-  public void send(final T data) {
-    if (connection == null) {
-      connection = aggregateNetworkSetup.getConnectionFactory().newConnection(masterId);
-      try {
-        connection.open();
-      } catch (final NetworkException e) {
-        throw new RuntimeException("NetworkException during AggregationSlave.send()", e);
-      }
+  public void send(final String clientId, final byte[] data) {
+    final AggregationMessage msg = AggregationMessage.newBuilder()
+        .setSrcId(aggregationNetworkSetup.getMyId().toString())
+        .setClientId(clientId)
+        .setData(ByteBuffer.wrap(data))
+        .build();
+    final Connection<AggregationMessage> conn = aggregationNetworkSetup.getConnectionFactory().newConnection(masterId);
+    try {
+      conn.open();
+      conn.write(msg);
+    } catch (final NetworkException e) {
+      throw new RuntimeException("NetworkException during AggregationSlave.send()", e);
     }
-
-    connection.write(data);
   }
 }

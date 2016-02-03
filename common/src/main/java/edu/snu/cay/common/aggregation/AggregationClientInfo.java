@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.aggregate;
+package edu.snu.cay.common.aggregation;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Network Connection Service identifier of the Aggregate Slaves")
-public final class EndpointId implements Name<String> {
+import java.util.Set;
+
+@NamedParameter(doc = "Information for Aggregation Service clients")
+public final class AggregationClientInfo implements Name<Set<String>> {
 }

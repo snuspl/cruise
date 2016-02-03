@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric.ns;
+package edu.snu.cay.common.aggregation;
 
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
@@ -29,28 +29,27 @@ import javax.inject.Inject;
  */
 @Unit
 public final class NetworkContextRegister {
-
-  private final MetricNetworkSetup metricNetworkSetup;
+  private final AggregationNetworkSetup aggregationNetworkSetup;
   private final IdentifierFactory identifierFactory;
 
   @Inject
-  private NetworkContextRegister(final MetricNetworkSetup psNetworkSetup,
+  private NetworkContextRegister(final AggregationNetworkSetup aggregationNetworkSetup,
                                  final IdentifierFactory identifierFactory) {
-    this.metricNetworkSetup = psNetworkSetup;
+    this.aggregationNetworkSetup = aggregationNetworkSetup;
     this.identifierFactory = identifierFactory;
   }
 
   public final class RegisterContextHandler implements EventHandler<ContextStart> {
     @Override
     public void onNext(final ContextStart contextStart) {
-      metricNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
+      aggregationNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
     }
   }
 
   public final class UnregisterContextHandler implements EventHandler<ContextStop> {
     @Override
     public void onNext(final ContextStop contextStop) {
-      metricNetworkSetup.unregisterConnectionFactory();
+      aggregationNetworkSetup.unregisterConnectionFactory();
     }
   }
 }

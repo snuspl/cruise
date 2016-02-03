@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.aggregate;
+package edu.snu.cay.common.aggregation;
 
-import org.apache.reef.annotations.audience.ClientSide;
-import org.apache.reef.io.network.impl.StreamingCodec;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.wake.EventHandler;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-@ClientSide
-public final class AggregationConfiguration {
-
-  public static <T> Configuration getDriverConfiguration(final StreamingCodec<T> streamingCodec,
-                                                         final EventHandler<T> masterHandler) {
-    return null;
-  }
+@NamedParameter(doc = "Network Connection Service identifier of the Aggregation Master")
+public final class MasterId implements Name<String> {
 }

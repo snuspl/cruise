@@ -15,27 +15,25 @@
  */
 package edu.snu.cay.dolphin.core.metric;
 
-import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
+import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 
 /**
  * Evaluator-side message handler.
- * Currently does nothing, but we need this class as a placeholder to
- * instantiate NetworkConnectionService.
+ * Currently does nothing, but we need this class as a placeholder to use Aggregation Service.
  */
 @EvaluatorSide
-public final class EvalSideMetricsMsgHandler implements EventHandler<Message<MetricsMessage>> {
+public final class EvalSideMetricsMsgHandler implements EventHandler<AggregationMessage> {
 
   @Inject
   private EvalSideMetricsMsgHandler() {
   }
 
   @Override
-  public void onNext(final Message<MetricsMessage> msg) {
+  public void onNext(final AggregationMessage msg) {
     throw new RuntimeException("Evaluators are not intended to receive messages for now.");
   }
 }

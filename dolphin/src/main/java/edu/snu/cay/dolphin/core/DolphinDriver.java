@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
+import edu.snu.cay.common.aggregation.AggregationDriver;
 import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;
@@ -154,6 +155,8 @@ public final class DolphinDriver {
    */
   private final SchedulabilityAnalyzer schedulabilityAnalyzer;
 
+  private final AggregationDriver aggregationDriver;
+
   private final DriverSync driverSync;
 
   private final TaskTracker taskTracker;
@@ -246,6 +249,7 @@ public final class DolphinDriver {
                         final DataLoader dataLoader,
                         final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
+                        final AggregationDriver aggregationDriver,
                         final OptimizationOrchestrator optimizationOrchestrator,
                         final DriverSync driverSync,
                         final TaskTracker taskTracker,
@@ -267,6 +271,7 @@ public final class DolphinDriver {
     this.dataLoader = dataLoader;
     this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
+    this.aggregationDriver = aggregationDriver;
     this.optimizationOrchestrator = optimizationOrchestrator;
     this.driverSync = driverSync;
     this.taskTracker = taskTracker;
@@ -456,8 +461,8 @@ public final class DolphinDriver {
   private Configuration getContextConfiguration() {
     final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
     final Configuration emContextConf = emConf.getContextConfiguration();
-    final Configuration metricsCollectionContextConf = MetricsCollectionService.getContextConfiguration();
-    return Configurations.merge(groupCommContextConf, emContextConf, metricsCollectionContextConf);
+    final Configuration aggregationContextConf = aggregationDriver.getContextConfiguration();
+    return Configurations.merge(groupCommContextConf, emContextConf, aggregationContextConf);
   }
 
   /**
@@ -468,13 +473,14 @@ public final class DolphinDriver {
     final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
     final Configuration outputServiceConf = outputService.getServiceConfiguration();
     final Configuration keyValueStoreServiceConf = KeyValueStoreService.getServiceConfiguration();
+    final Configuration aggregationServiceConf = aggregationDriver.getServiceConfigurationWithoutNameResolver();
     final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
     final Configuration workloadServiceConf = WorkloadPartition.getServiceConfiguration();
     final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
     final Configuration traceConf = traceParameters.getConfiguration();
     return Configurations.merge(
         userParameters.getServiceConf(), groupCommServiceConf, workloadServiceConf, emServiceConf,
-        metricCollectionServiceConf, outputServiceConf, keyValueStoreServiceConf, traceConf);
+        aggregationServiceConf, metricCollectionServiceConf, outputServiceConf, keyValueStoreServiceConf, traceConf);
   }
 
   final class ActiveContextHandler implements EventHandler<ActiveContext> {

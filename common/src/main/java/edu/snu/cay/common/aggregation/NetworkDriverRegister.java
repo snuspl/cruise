@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.aggregate;
+package edu.snu.cay.common.aggregation;
 
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
@@ -22,7 +22,6 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.time.event.StartTime;
-import org.apache.reef.wake.time.event.StopTime;
 
 import javax.inject.Inject;
 
@@ -32,28 +31,21 @@ import javax.inject.Inject;
 @Unit
 public final class NetworkDriverRegister {
 
-  private final AggregateNetworkSetup aggregateNetworkSetup;
+  private final AggregationNetworkSetup aggregationNetworkSetup;
   private final Identifier driverId;
 
   @Inject
-  private NetworkDriverRegister(final AggregateNetworkSetup aggregateNetworkSetup,
+  private NetworkDriverRegister(final AggregationNetworkSetup aggregationNetworkSetup,
                                 final IdentifierFactory identifierFactory,
                                 @Parameter(DriverIdentifier.class) final String driverIdStr) {
-    this.aggregateNetworkSetup = aggregateNetworkSetup;
+    this.aggregationNetworkSetup = aggregationNetworkSetup;
     this.driverId = identifierFactory.getNewInstance(driverIdStr);
   }
 
   public final class RegisterDriverHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      aggregateNetworkSetup.registerConnectionFactory(driverId);
-    }
-  }
-
-  public final class UnregisterDriverHandler implements EventHandler<StopTime> {
-    @Override
-    public void onNext(final StopTime stopTime) {
-      aggregateNetworkSetup.unregisterConnectionFactory();
+      aggregationNetworkSetup.registerConnectionFactory(driverId);
     }
   }
 }
