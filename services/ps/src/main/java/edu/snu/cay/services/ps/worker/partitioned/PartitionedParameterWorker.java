@@ -52,7 +52,7 @@ import java.util.logging.Logger;
  * There are a few client-side optimizations that can be configured.
  * A serialized and hashed representation of a key is cached, avoiding these costs.
  * See {@link WorkerKeyCacheSize}.
- * The remaining configurations are related to the partitions.
+ * The remaining configurations are related to the worker-side partitions.
  * See {@link Partition}.
  */
 @EvaluatorSide
@@ -376,6 +376,9 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
    * A partition for the cache on the Worker.
    * The basic structure is similar to the partition for the Server at
    * {@link edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer}.
+   *
+   * The partitions at the Worker can be independent of the partitions at the Server. In other words,
+   * the number of worker-side partitions does not have to be equal to the number of server-side partitions.
    *
    * A remotely read pull remains in the local cache for a duration of expireTimeout.
    * Pushes are applied locally while the parameter is cached.
