@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 /**
- * Implementations for worker-side Parameter Server classes in {@link edu.snu.cay.services.ps.worker.api}.
+ * Partitioned implementation of Parameter Server worker (client).
+ * For use with server in {@link edu.snu.cay.services.ps.server.partitioned}.
  */
-package edu.snu.cay.services.ps.worker.impl;
+package edu.snu.cay.services.ps.worker.partitioned;

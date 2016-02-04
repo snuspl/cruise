@@ -16,8 +16,8 @@
 package edu.snu.cay.services.ps.worker;
 
 import edu.snu.cay.services.ps.driver.impl.ServerId;
-import edu.snu.cay.services.ps.worker.api.WorkerSideMsgSender;
-import edu.snu.cay.services.ps.worker.impl.SingleNodeParameterWorker;
+import edu.snu.cay.services.ps.worker.concurrent.WorkerSideMsgSender;
+import edu.snu.cay.services.ps.worker.concurrent.ConcurrentParameterWorker;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -37,13 +37,13 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests for {@link SingleNodeParameterWorker}.
+ * Tests for {@link ConcurrentParameterWorker}.
  */
-public final class SingleNodeParameterWorkerTest {
+public final class ConcurrentParameterWorkerTest {
   private static final Integer KEY = 0;
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "threads received null";
-  private SingleNodeParameterWorker<Integer, Integer, Integer> worker;
+  private ConcurrentParameterWorker<Integer, Integer, Integer> worker;
 
   @Before
   public void setup() throws InjectionException {
@@ -74,12 +74,12 @@ public final class SingleNodeParameterWorkerTest {
     }).when(mockSender).sendPullMsg(anyString(), anyInt());
 
     injector.bindVolatileInstance(WorkerSideMsgSender.class, mockSender);
-    worker = injector.getInstance(SingleNodeParameterWorker.class);
+    worker = injector.getInstance(ConcurrentParameterWorker.class);
   }
 
   /**
-   * Test the thread safety of {@link SingleNodeParameterWorker} by
-   * creating multiple threads that try to pull values from the server using {@link SingleNodeParameterWorker}.
+   * Test the thread safety of {@link ConcurrentParameterWorker} by
+   * creating multiple threads that try to pull values from the server using {@link ConcurrentParameterWorker}.
    */
   @Test
   public void testMultiThreadPull() throws InterruptedException {

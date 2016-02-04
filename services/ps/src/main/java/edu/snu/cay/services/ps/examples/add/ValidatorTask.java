@@ -20,6 +20,7 @@ import edu.snu.cay.services.ps.examples.add.parameters.StartKey;
 import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
@@ -60,21 +61,51 @@ public final class ValidatorTask implements Task {
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "Task.call() commencing...");
 
-    final int expectedResult = numWorkers * numUpdates / numKeys;
+    final long sleepMillis = 100;
+    int numRetries = 20;
 
+    final int expectedResult = numWorkers * numUpdates / numKeys;
+    while (numRetries > 0) {
+      numRetries--;
+
+      if (worker instanceof PartitionedParameterWorker) {
+        LOG.log(Level.INFO, "Invalidating cache before key validation.");
+        ((PartitionedParameterWorker) worker).invalidateAll();
+      }
+      try {
+        if (validate(expectedResult)) {
+          return null;
+        }
+      } catch (final IntegerValidationException e) {
+        if (numRetries > 0) {
+          LOG.log(Level.INFO, "Sleeping {0} ms to let PS catch up.", sleepMillis);
+          Thread.sleep(sleepMillis);
+        } else {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+    return null;
+  }
+
+  private boolean validate(final int expectedResult) throws IntegerValidationException {
     for (int i = 0; i < numKeys; i++) {
       final int result = worker.pull(startKey + i);
 
       if (expectedResult != result) {
-        LOG.log(Level.SEVERE, "For key {0}, expected value {1} but received {2}",
+        LOG.log(Level.WARNING, "For key {0}, expected value {1} but received {2}",
             new Object[]{startKey + i, expectedResult, result});
-        throw new RuntimeException(String.format("For key %d, expected value %d but received %d",
-             startKey + i, expectedResult, result));
+        throw new IntegerValidationException(startKey + i, expectedResult, result);
       } else {
         LOG.log(Level.INFO, "For key {0}, received expected value {1}.", new Object[]{startKey + i, expectedResult});
       }
     }
+    return true;
+  }
 
-    return null;
+  private static class IntegerValidationException extends Exception {
+    public IntegerValidationException(final int key, final int expected, final int actual) {
+      super(String.format("For key %d, expected value %d but received %d", key, expected, actual));
+    }
   }
 }

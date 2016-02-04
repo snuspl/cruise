@@ -22,7 +22,7 @@ import edu.snu.cay.services.ps.server.concurrent.api.ParameterServer;
 import edu.snu.cay.services.ps.server.concurrent.impl.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.concurrent.impl.ConcurrentParameterServer;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.impl.SingleNodeParameterWorker;
+import edu.snu.cay.services.ps.worker.concurrent.ConcurrentParameterWorker;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -48,7 +48,7 @@ public final class ConcurrentParameterServerManager implements ParameterServerMa
 
   /**
    * Returns worker-side service configuration.
-   * Sets {@link SingleNodeParameterWorker} as the {@link ParameterWorker} class.
+   * Sets {@link ConcurrentParameterWorker} as the {@link ParameterWorker} class.
    */
   @Override
   public Configuration getWorkerServiceConfiguration() {
@@ -56,9 +56,9 @@ public final class ConcurrentParameterServerManager implements ParameterServerMa
 
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
-            .set(ServiceConfiguration.SERVICES, SingleNodeParameterWorker.class)
+            .set(ServiceConfiguration.SERVICES, ConcurrentParameterWorker.class)
             .build())
-        .bindImplementation(ParameterWorker.class, SingleNodeParameterWorker.class)
+        .bindImplementation(ParameterWorker.class, ConcurrentParameterWorker.class)
         .bindNamedParameter(ServerId.class, SERVER_ID)
         .bindNamedParameter(EndpointId.class, WORKER_ID_PREFIX + workerIndex)
         .build();

@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.impl;
+package edu.snu.cay.services.ps.worker.concurrent;
 
 import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.api.WorkerSideMsgSender;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -34,8 +33,8 @@ import java.util.logging.Logger;
  * the codec classes used in {@link WorkerSideMsgSender} are thread-safe.
  */
 @EvaluatorSide
-public final class SingleNodeParameterWorker<K, P, V> implements ParameterWorker<K, P, V> {
-  private static final Logger LOG = Logger.getLogger(SingleNodeParameterWorker.class.getName());
+public final class ConcurrentParameterWorker<K, P, V> implements ParameterWorker<K, P, V> {
+  private static final Logger LOG = Logger.getLogger(ConcurrentParameterWorker.class.getName());
   private static final long TIMEOUT = 400000; // milliseconds
 
   /**
@@ -56,7 +55,7 @@ public final class SingleNodeParameterWorker<K, P, V> implements ParameterWorker
   private final ConcurrentMap<K, ValueWrapper> keyToValueWrapper;
 
   @Inject
-  private SingleNodeParameterWorker(@Parameter(ServerId.class) final String serverId,
+  private ConcurrentParameterWorker(@Parameter(ServerId.class) final String serverId,
                                     final InjectionFuture<WorkerSideMsgSender<K, P>> sender) {
     this.serverId = serverId;
     this.sender = sender;

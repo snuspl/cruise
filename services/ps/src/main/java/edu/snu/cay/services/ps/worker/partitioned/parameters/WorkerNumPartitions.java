@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.server.partitioned.parameters;
+package edu.snu.cay.services.ps.worker.partitioned.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Max number of items that can be queued for each partition", default_value = "1000",
-    short_name = "queueSize")
-public final class QueueSize implements Name<Integer> {
+@NamedParameter(doc = "Number of partitions", default_value = "2", short_name = "workerNumPartitions")
+public final class WorkerNumPartitions implements Name<Integer> {
 }

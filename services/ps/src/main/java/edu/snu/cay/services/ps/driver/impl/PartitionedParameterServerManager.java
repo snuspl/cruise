@@ -22,10 +22,11 @@ import edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySender;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySenderImpl;
-import edu.snu.cay.services.ps.server.partitioned.parameters.NumPartitions;
-import edu.snu.cay.services.ps.server.partitioned.parameters.QueueSize;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.impl.SingleNodeParameterWorker;
+import edu.snu.cay.services.ps.worker.partitioned.ContextStopHandler;
+import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -45,16 +46,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @DriverSide
 public final class PartitionedParameterServerManager implements ParameterServerManager {
-  private static final String SERVER_ID = "SINGLE_NODE_SERVER_ID";
-  private static final String WORKER_ID_PREFIX = "SINGLE_NODE_WORKER_ID_";
+  private static final String SERVER_ID = "PARTITIONED_SERVER_ID";
+  private static final String WORKER_ID_PREFIX = "PARTITIONED_WORKER_ID_";
 
   private final int numPartitions;
   private final int queueSize;
   private final AtomicInteger numWorkers;
 
   @Inject
-  private PartitionedParameterServerManager(@Parameter(NumPartitions.class) final int numPartitions,
-                                            @Parameter(QueueSize.class) final int queueSize) {
+  private PartitionedParameterServerManager(@Parameter(ServerNumPartitions.class) final int numPartitions,
+                                            @Parameter(ServerQueueSize.class) final int queueSize) {
     this.numPartitions = numPartitions;
     this.queueSize = queueSize;
     this.numWorkers = new AtomicInteger(0);
@@ -62,7 +63,7 @@ public final class PartitionedParameterServerManager implements ParameterServerM
 
   /**
    * Returns worker-side service configuration.
-   * Sets {@link SingleNodeParameterWorker} as the {@link ParameterWorker} class.
+   * Sets {@link PartitionedParameterWorker} as the {@link ParameterWorker} class.
    */
   @Override
   public Configuration getWorkerServiceConfiguration() {
@@ -70,9 +71,10 @@ public final class PartitionedParameterServerManager implements ParameterServerM
 
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
-            .set(ServiceConfiguration.SERVICES, SingleNodeParameterWorker.class)
+            .set(ServiceConfiguration.SERVICES, PartitionedParameterWorker.class)
+            .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
             .build())
-        .bindImplementation(ParameterWorker.class, SingleNodeParameterWorker.class)
+        .bindImplementation(ParameterWorker.class, PartitionedParameterWorker.class)
         .bindNamedParameter(ServerId.class, SERVER_ID)
         .bindNamedParameter(EndpointId.class, WORKER_ID_PREFIX + workerIndex)
         .build();
@@ -89,8 +91,8 @@ public final class PartitionedParameterServerManager implements ParameterServerM
             .build())
         .bindNamedParameter(EndpointId.class, SERVER_ID)
         .bindNamedParameter(PSMessageHandler.class, PartitionedServerSideMsgHandler.class)
-        .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
-        .bindNamedParameter(QueueSize.class, Integer.toString(queueSize))
+        .bindNamedParameter(ServerNumPartitions.class, Integer.toString(numPartitions))
+        .bindNamedParameter(ServerQueueSize.class, Integer.toString(queueSize))
         .bindImplementation(PartitionedServerSideReplySender.class, PartitionedServerSideReplySenderImpl.class)
         .build();
   }

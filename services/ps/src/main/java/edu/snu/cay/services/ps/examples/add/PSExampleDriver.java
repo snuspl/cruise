@@ -38,6 +38,7 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -72,6 +73,7 @@ public final class PSExampleDriver {
   private final AtomicInteger taskCompletedCounter = new AtomicInteger(0);
 
   private ActiveContext psActiveContext = null;
+  private ConcurrentLinkedQueue<ActiveContext> contextsToClose = new ConcurrentLinkedQueue<>();
 
   /**
    * numUpdates is the _total_ number of updates to push.
@@ -204,7 +206,8 @@ public final class PSExampleDriver {
 
       final int taskCompletedCount = taskCompletedCounter.incrementAndGet();
       if (taskCompletedCount < numWorkers) { // Close Contexts when their task is completed, up to the last Worker.
-        completedTask.getActiveContext().close();
+        contextsToClose.add(completedTask.getActiveContext());
+        // completedTask.getActiveContext().close();
 
       } else if (taskCompletedCount == numWorkers) { // For the last Worker, run the Validator Task.
         LOG.log(Level.INFO, "All Tasks have completed, running Validator Task.");
@@ -223,10 +226,14 @@ public final class PSExampleDriver {
 
         completedTask.getActiveContext().submitTask(Configurations.merge(taskConf, parameterConf));
 
-      } else if (taskCompletedCount == numWorkers + 1) { // When the Validator Task is complete, shutdown the PS Server.
-        completedTask.getActiveContext().close();
+      } else if (taskCompletedCount == numWorkers + 1) { // When the Validator Task is complete, close all contexts.
+        contextsToClose.add(completedTask.getActiveContext());
+        // completedTask.getActiveContext().close();
 
         LOG.log(Level.INFO, "Correct result validated, shutting down parameter server.");
+        for (final ActiveContext context : contextsToClose) {
+          context.close();
+        }
         psActiveContext.close();
       }
     }
