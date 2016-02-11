@@ -23,11 +23,13 @@ import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
+import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
@@ -76,6 +78,7 @@ public final class AggregationDriver {
     final Configuration nameClientConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
 
     return Configurations.merge(getServiceConfigurationWithoutNameResolver(), nameClientConf);
