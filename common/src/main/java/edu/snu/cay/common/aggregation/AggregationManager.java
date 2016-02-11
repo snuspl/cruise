@@ -36,23 +36,34 @@ import javax.inject.Inject;
 import java.io.IOException;
 
 /**
- * Driver for Aggregation Service.
+ * Manager for Aggregation Service.
  * Provides methods for getting context and service configurations.
  */
 @DriverSide
-public final class AggregationDriver {
+public final class AggregationManager {
 
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
   private final Configuration slaveConf;
   private final String driverId;
 
+  /**
+   * Constructor for the manager of Aggreagtion Service.
+   * This class is instantiated by TANG.
+   *
+   * @param nameServer a NameServer for NCS, which provides NameServer port
+   * @param localAddressProvider a LocalAddressProvider for NCS, which provides NameServer address
+   * @param configurationSerializer used for deserializing slave configuration
+   * @param serializedSlaveConf serialized slave configuration which should not be instantiated in driver
+   * @param driverId driver identifier
+   * @throws IOException if there is a problem in deserializing slave configuration
+   */
   @Inject
-  private AggregationDriver(final NameServer nameServer,
-                            final LocalAddressProvider localAddressProvider,
-                            final ConfigurationSerializer configurationSerializer,
-                            @Parameter(AggregationSlaveSerializedConf.class) final String serializedSlaveConf,
-                            @Parameter(DriverIdentifier.class) final String driverId) throws IOException {
+  private AggregationManager(final NameServer nameServer,
+                             final LocalAddressProvider localAddressProvider,
+                             final ConfigurationSerializer configurationSerializer,
+                             @Parameter(AggregationSlaveSerializedConf.class) final String serializedSlaveConf,
+                             @Parameter(DriverIdentifier.class) final String driverId) throws IOException {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.slaveConf = configurationSerializer.fromString(serializedSlaveConf);

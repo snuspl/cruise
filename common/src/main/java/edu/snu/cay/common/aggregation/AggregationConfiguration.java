@@ -38,11 +38,24 @@ import java.util.Map;
  * Configuration class for Aggregation Service.
  * Provides configuration for REEF driver.
  * Current implementation assumes that the driver is the master of Aggregation Service.
+ * A client of Aggregation Service is a user of this service, which is different from REEF client.
  */
 @ClientSide
 public final class AggregationConfiguration {
+
+  /**
+   * Names of the clients of Aggregation Service.
+   */
   private final List<String> aggregationClientNames;
+
+  /**
+   * Master-side handlers for each clients.
+   */
   private final List<Class<? extends EventHandler<AggregationMessage>>> aggregationMasterHandlers;
+
+  /**
+   * Slave-side handlers for each clients.
+   */
   private final List<Class<? extends EventHandler<AggregationMessage>>> aggregationSlaveHandlers;
 
   private AggregationConfiguration(
@@ -68,6 +81,8 @@ public final class AggregationConfiguration {
         .bindSetEntry(DriverStartHandler.class, NetworkDriverRegister.RegisterDriverHandler.class);
     final JavaConfigurationBuilder slaveConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
 
+    // To match clients' name and handlers, encode the class names of handlers and the client name
+    // using delimiter "//" which cannot be included in Java class name.
     for (int i = 0; i < aggregationClientNames.size(); i++) {
       commonConfBuilder.bindSetEntry(AggregationClientInfo.class,
           String.format("%s//%s//%s",

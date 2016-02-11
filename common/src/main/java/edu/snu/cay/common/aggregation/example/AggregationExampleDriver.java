@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.common.aggregation.example;
 
-import edu.snu.cay.common.aggregation.AggregationDriver;
+import edu.snu.cay.common.aggregation.AggregationManager;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -50,7 +50,7 @@ public final class AggregationExampleDriver {
   private static final String WORKER_CONTEXT_PREFIX = "Worker-Context-";
   private static final String TASK_PREFIX = "Worker-Task-";
 
-  private final AggregationDriver aggregationDriver;
+  private final AggregationManager aggregationManager;
   private final EvaluatorRequestor evalRequestor;
   private final DriverSideMsgHandler driverSideMsgHandler;
 
@@ -60,11 +60,11 @@ public final class AggregationExampleDriver {
   private final AtomicInteger taskCompletedCounter = new AtomicInteger(0);
 
   @Inject
-  private AggregationExampleDriver(final AggregationDriver aggregationDriver,
+  private AggregationExampleDriver(final AggregationManager aggregationManager,
                                    final EvaluatorRequestor evalRequestor,
                                    final DriverSideMsgHandler driverSideMsgHandler,
                                    @Parameter(Parameters.Splits.class) final int splits) {
-    this.aggregationDriver = aggregationDriver;
+    this.aggregationManager = aggregationManager;
     this.evalRequestor = evalRequestor;
     this.driverSideMsgHandler = driverSideMsgHandler;
     this.splits = splits;
@@ -89,8 +89,8 @@ public final class AggregationExampleDriver {
           ContextConfiguration.CONF
               .set(ContextConfiguration.IDENTIFIER, WORKER_CONTEXT_PREFIX + workerIndex)
               .build(),
-          aggregationDriver.getContextConfiguration());
-      final Configuration serviceConf = aggregationDriver.getServiceConfiguration();
+          aggregationManager.getContextConfiguration());
+      final Configuration serviceConf = aggregationManager.getServiceConfiguration();
       final Configuration taskConf = TaskConfiguration.CONF
           .set(TaskConfiguration.IDENTIFIER, TASK_PREFIX + workerIndex)
           .set(TaskConfiguration.TASK, AggregationSlaveTask.class)

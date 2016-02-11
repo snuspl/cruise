@@ -16,6 +16,7 @@
 package edu.snu.cay.common.aggregation;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.tang.annotations.Parameter;
@@ -29,6 +30,7 @@ import java.nio.ByteBuffer;
  * Slave of Aggregation Service.
  * Sends messages to aggregation master.
  */
+@EvaluatorSide
 public final class AggregationSlave {
 
   private final AggregationNetworkSetup aggregationNetworkSetup;
