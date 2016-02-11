@@ -22,12 +22,14 @@ import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -89,7 +91,11 @@ public final class AggregationExampleREEF {
         .build()
         .getDriverConfiguration();
 
-    return Configurations.merge(driverConf, commandLineConf, aggregationConf,
+    final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+        .build();
+
+    return Configurations.merge(driverConf, commandLineConf, aggregationConf, idFactoryConf,
         NameServerConfiguration.CONF.build(), LocalNameResolverConfiguration.CONF.build());
   }
 

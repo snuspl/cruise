@@ -19,7 +19,6 @@ import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.driver.parameters.DriverStartHandler;
 import org.apache.reef.io.network.util.Pair;
-import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.JavaConfigurationBuilder;
@@ -27,7 +26,6 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.IdentifierFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -96,8 +94,7 @@ public final class AggregationConfiguration {
     final Configuration commonConf = commonConfBuilder.build();
     final String serializedSlaveConf
         = confSerializer.toString(Configurations.merge(commonConf, slaveConfBuilder.build()));
-    driverConfBuilder.bindNamedParameter(AggregationSlaveSerializedConf.class, serializedSlaveConf)
-        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class);
+    driverConfBuilder.bindNamedParameter(AggregationSlaveSerializedConf.class, serializedSlaveConf);
     return Configurations.merge(commonConf, driverConfBuilder.build());
   }
 
