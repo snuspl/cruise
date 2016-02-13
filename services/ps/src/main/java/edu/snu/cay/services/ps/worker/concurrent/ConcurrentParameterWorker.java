@@ -118,9 +118,9 @@ public final class ConcurrentParameterWorker<K, P, V> implements ParameterWorker
   }
 
   /**
-   * {@inheritDoc}
+   * Process a pull reply message received from the server.
+   * Called by {@link ConcurrentWorkerHandler#processReply}.
    */
-  @Override
   public void processReply(final K key, final V value) {
     final ValueWrapper valueWrapper = keyToValueWrapper.remove(key);
     if (valueWrapper != null) {

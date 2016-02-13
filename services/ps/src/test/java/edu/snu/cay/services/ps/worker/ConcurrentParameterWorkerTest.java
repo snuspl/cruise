@@ -16,6 +16,7 @@
 package edu.snu.cay.services.ps.worker;
 
 import edu.snu.cay.services.ps.driver.impl.ServerId;
+import edu.snu.cay.services.ps.worker.concurrent.ConcurrentWorkerHandler;
 import edu.snu.cay.services.ps.worker.concurrent.WorkerSideMsgSender;
 import edu.snu.cay.services.ps.worker.concurrent.ConcurrentParameterWorker;
 import edu.snu.cay.utils.ThreadUtils;
@@ -44,6 +45,7 @@ public final class ConcurrentParameterWorkerTest {
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "threads received null";
   private ConcurrentParameterWorker<Integer, Integer, Integer> worker;
+  private ConcurrentWorkerHandler<Integer, Integer> handler;
 
   @Before
   public void setup() throws InjectionException {
@@ -61,7 +63,7 @@ public final class ConcurrentParameterWorkerTest {
             try {
               // simulate slow network by purposely sleeping for 5 seconds
               Thread.sleep(5000);
-              worker.processReply(KEY, 1);
+              handler.processReply(KEY, 1);
             } catch (final InterruptedException e) {
               throw new RuntimeException(e);
             }
@@ -75,6 +77,7 @@ public final class ConcurrentParameterWorkerTest {
 
     injector.bindVolatileInstance(WorkerSideMsgSender.class, mockSender);
     worker = injector.getInstance(ConcurrentParameterWorker.class);
+    handler = injector.getInstance(ConcurrentWorkerHandler.class);
   }
 
   /**

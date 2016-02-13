@@ -211,8 +211,8 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   /**
    * Handles incoming pull replies, by setting the value of the future.
    * This will notify the Partition's (synchronous) CacheLoader method to continue.
+   * Called by {@link PartitionedWorkerHandler#processReply}.
    */
-  @Override
   public void processReply(final K key, final V value) {
     final PullFuture<V> future = pendingPulls.get(key);
     if (future != null) {
