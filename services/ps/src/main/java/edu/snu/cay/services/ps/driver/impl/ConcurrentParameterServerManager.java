@@ -21,8 +21,10 @@ import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.server.concurrent.api.ParameterServer;
 import edu.snu.cay.services.ps.server.concurrent.impl.ServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.concurrent.impl.ConcurrentParameterServer;
+import edu.snu.cay.services.ps.worker.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.concurrent.ConcurrentParameterWorker;
+import edu.snu.cay.services.ps.worker.concurrent.ConcurrentWorkerHandler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -59,6 +61,7 @@ public final class ConcurrentParameterServerManager implements ParameterServerMa
             .set(ServiceConfiguration.SERVICES, ConcurrentParameterWorker.class)
             .build())
         .bindImplementation(ParameterWorker.class, ConcurrentParameterWorker.class)
+        .bindImplementation(AsyncWorkerHandler.class, ConcurrentWorkerHandler.class)
         .bindNamedParameter(ServerId.class, SERVER_ID)
         .bindNamedParameter(EndpointId.class, WORKER_ID_PREFIX + workerIndex)
         .build();

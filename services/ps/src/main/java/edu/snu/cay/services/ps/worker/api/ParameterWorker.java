@@ -40,12 +40,5 @@ public interface ParameterWorker<K, P, V> {
    * @return value specified by the {@code key}, or {@code null} if something unexpected happens (see implementation)
    */
   V pull(K key);
-
-  /**
-   * Reply to the worker with a {@code value} that was previously requested by {@code pull}.
-   * @param key key object representing what was sent
-   * @param value value sent from the server
-   */
-  void processReply(K key, V value);
 }
 
