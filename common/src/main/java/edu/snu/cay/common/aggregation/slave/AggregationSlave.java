@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation;
+package edu.snu.cay.common.aggregation.slave;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.ns.AggregationNetworkSetup;
+import edu.snu.cay.common.aggregation.ns.MasterId;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
@@ -44,10 +46,10 @@ public final class AggregationSlave {
     this.masterId = identifierFactory.getNewInstance(masterIdStr);
   }
 
-  public void send(final String clientId, final byte[] data) {
+  public void send(final String clientClassName, final byte[] data) {
     final AggregationMessage msg = AggregationMessage.newBuilder()
-        .setSrcId(aggregationNetworkSetup.getMyId().toString())
-        .setClientId(clientId)
+        .setSlaveId(aggregationNetworkSetup.getMyId().toString())
+        .setClientClassName(clientClassName)
         .setData(ByteBuffer.wrap(data))
         .build();
     final Connection<AggregationMessage> conn = aggregationNetworkSetup.getConnectionFactory().newConnection(masterId);

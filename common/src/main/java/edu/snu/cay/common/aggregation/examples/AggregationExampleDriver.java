@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.example;
+package edu.snu.cay.common.aggregation.examples;
 
-import edu.snu.cay.common.aggregation.AggregationManager;
+import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -47,8 +47,8 @@ import java.util.logging.Logger;
 public final class AggregationExampleDriver {
   private static final Logger LOG = Logger.getLogger(AggregationExampleDriver.class.getName());
 
-  private static final String WORKER_CONTEXT_PREFIX = "Worker-Context-";
-  private static final String TASK_PREFIX = "Worker-Task-";
+  static final String WORKER_CONTEXT_PREFIX = "Worker-Context-";
+  static final String TASK_PREFIX = "Worker-Task-";
 
   private final AggregationManager aggregationManager;
   private final EvaluatorRequestor evalRequestor;
@@ -75,7 +75,7 @@ public final class AggregationExampleDriver {
     public void onNext(final StartTime startTime) {
       evalRequestor.submit(EvaluatorRequest.newBuilder()
           .setNumber(splits)
-          .setMemory(256)
+          .setMemory(128)
           .setNumberOfCores(1)
           .build());
     }
@@ -114,7 +114,7 @@ public final class AggregationExampleDriver {
 
       final int taskCompletedCount = taskCompletedCounter.incrementAndGet();
 
-      if (taskCompletedCount == evalCounter.get()) {
+      if (taskCompletedCount == splits) {
         driverSideMsgHandler.validate();
       }
       completedTask.getActiveContext().close();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation;
+package edu.snu.cay.common.aggregation.params;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Network Connection Service identifier of the Aggregation Master")
-public final class MasterId implements Name<String> {
+import java.util.Set;
+
+@NamedParameter(doc = "Information for Aggregation Service clients." +
+    "Encoded as ClientClassName//MasterHandlerClassName//SlaveHandlerClassName")
+public final class AggregationClientInfo implements Name<Set<String>> {
 }

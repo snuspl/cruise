@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.core;
 
-import edu.snu.cay.common.aggregation.AggregationManager;
+import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;

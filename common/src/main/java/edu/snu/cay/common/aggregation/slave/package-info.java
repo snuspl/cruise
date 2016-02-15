@@ -13,19 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- [
- /**
-  * Message for Aggregation Service.
-  */
- {
-   "namespace": "edu.snu.cay.common.aggregation.avro",
-   "type": "record",
-   "name": "AggregationMessage",
-   "fields":
-   [
-     {"name": "clientClassName", "type": "string"},
-     {"name": "slaveId", "type": "string"},
-     {"name": "data", "type": "bytes"}
-   ]
- }
- ]
+/**
+ * Slave classes for Aggregation Service.
+ */
+package edu.snu.cay.common.aggregation.slave;

@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation;
+package edu.snu.cay.common.aggregation.ns;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.params.AggregationClientHandlers;
+import edu.snu.cay.common.aggregation.params.AggregationClientInfo;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.annotations.Parameter;
@@ -31,7 +33,7 @@ import java.util.logging.Logger;
  * Handler for AggregationMessage.
  * Wraps clients' AggregationMessage handlers and routes message to right client handler.
  * Parse strings in {@link AggregationClientInfo} to route AggregationMessage to right handler.
- * After REEF-402 is resolved, we can simply use two parallel lists for routing.
+ * TODO #352: After REEF-402 is resolved, we can simply use two parallel lists for routing.
  */
 public final class AggregationMsgHandler implements EventHandler<Message<AggregationMessage>> {
   private static final Logger LOG = Logger.getLogger(AggregationMsgHandler.class.getName());
@@ -64,9 +66,10 @@ public final class AggregationMsgHandler implements EventHandler<Message<Aggrega
     LOG.entering(AggregationMsgHandler.class.getSimpleName(), "onNext");
 
     final AggregationMessage aggregationMessage = SingleMessageExtractor.extract(message);
-    final EventHandler<AggregationMessage> handler = innerHandlerMap.get(aggregationMessage.getClientId().toString());
+    final EventHandler<AggregationMessage> handler
+        = innerHandlerMap.get(aggregationMessage.getClientClassName().toString());
     if (handler == null) {
-      throw new RuntimeException("Unknown aggregation service client " + aggregationMessage.getClientId());
+      throw new RuntimeException("Unknown aggregation service client " + aggregationMessage.getClientClassName());
     }
     handler.onNext(aggregationMessage);
 

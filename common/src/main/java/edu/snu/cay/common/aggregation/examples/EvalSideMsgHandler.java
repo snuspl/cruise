@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.example;
+package edu.snu.cay.common.aggregation.examples;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;

@@ -13,19 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- [
- /**
-  * Message for Aggregation Service.
-  */
- {
-   "namespace": "edu.snu.cay.common.aggregation.avro",
-   "type": "record",
-   "name": "AggregationMessage",
-   "fields":
-   [
-     {"name": "clientClassName", "type": "string"},
-     {"name": "slaveId", "type": "string"},
-     {"name": "data", "type": "bytes"}
-   ]
- }
- ]
+package edu.snu.cay.common.aggregation.params;
+
+import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+import org.apache.reef.wake.EventHandler;
+
+import java.util.Set;
+
+@NamedParameter(doc = "Network message handlers for Aggregation Service clients")
+public final class AggregationClientHandlers implements Name<Set<EventHandler<AggregationMessage>>> {
+}

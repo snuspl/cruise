@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "Configuration for aggregation slaves, serialized as a string")
-public final class AggregationSlaveSerializedConf implements Name<String> {
-}
+/**
+ * Example applications using aggregation service.
+ */
+package edu.snu.cay.common.aggregation.examples;

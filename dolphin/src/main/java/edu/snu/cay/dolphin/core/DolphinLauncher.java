@@ -159,7 +159,7 @@ public final class DolphinLauncher {
         .set(ShuffleDriverConfiguration.SHUFFLE_MANAGER_CLASS_NAME, StaticPushShuffleManager.class.getName())
         .build();
 
-    final AggregationConfiguration aggregaionConf = AggregationConfiguration.newBuilder()
+    final AggregationConfiguration aggregationConf = AggregationConfiguration.newBuilder()
         .addAggregationClient(MetricsMessageSender.class.getName(),
             DriverSideMetricsMsgHandler.class,
             EvalSideMetricsMsgHandler.class)
@@ -174,7 +174,7 @@ public final class DolphinLauncher {
         SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
-        aggregaionConf.getDriverConfiguration(),
+        aggregationConf.getDriverConfiguration(),
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         dolphinParameters.getDriverConf(),

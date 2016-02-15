@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Example applications using aggregation service.
+ * Driver classes for Aggregation Service.
  */
-package edu.snu.cay.common.aggregation.example;
+package edu.snu.cay.common.aggregation.driver;

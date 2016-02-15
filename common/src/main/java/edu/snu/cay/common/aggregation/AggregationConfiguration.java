@@ -16,6 +16,10 @@
 package edu.snu.cay.common.aggregation;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.ns.NetworkDriverRegister;
+import edu.snu.cay.common.aggregation.params.AggregationClientHandlers;
+import edu.snu.cay.common.aggregation.params.AggregationClientInfo;
+import edu.snu.cay.common.aggregation.params.SerializedAggregationSlavesConf;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.driver.parameters.DriverStartHandler;
 import org.apache.reef.io.network.util.Pair;
@@ -68,7 +72,7 @@ public final class AggregationConfiguration {
   /**
    * Configuration for REEF driver when using Aggregation Service.
    * Binds NetworkConnectionService registration handlers.
-   * After REEF-402 is resolved, we should use
+   * TODO #352: After REEF-402 is resolved, we should use
    * {@code JavaConfigurationBuilder.bindList()} to bind handlers.
    * @return configuration that should be submitted with a DriverConfiguration
    */
@@ -94,7 +98,7 @@ public final class AggregationConfiguration {
     final Configuration commonConf = commonConfBuilder.build();
     final String serializedSlaveConf
         = confSerializer.toString(Configurations.merge(commonConf, slaveConfBuilder.build()));
-    driverConfBuilder.bindNamedParameter(AggregationSlaveSerializedConf.class, serializedSlaveConf);
+    driverConfBuilder.bindNamedParameter(SerializedAggregationSlavesConf.class, serializedSlaveConf);
     return Configurations.merge(commonConf, driverConfBuilder.build());
   }
 

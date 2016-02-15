@@ -13,8 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation;
+package edu.snu.cay.common.aggregation.driver;
 
+import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.aggregation.params.SerializedAggregationSlavesConf;
+import edu.snu.cay.common.aggregation.ns.MasterId;
+import edu.snu.cay.common.aggregation.ns.NetworkContextRegister;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.driver.parameters.DriverIdentifier;
@@ -48,7 +52,7 @@ public final class AggregationManager {
   private final String driverId;
 
   /**
-   * Constructor for the manager of Aggreagtion Service.
+   * Constructor for the manager of Aggregation Service.
    * This class is instantiated by TANG.
    *
    * @param nameServer a NameServer for NCS, which provides NameServer port
@@ -62,7 +66,7 @@ public final class AggregationManager {
   private AggregationManager(final NameServer nameServer,
                              final LocalAddressProvider localAddressProvider,
                              final ConfigurationSerializer configurationSerializer,
-                             @Parameter(AggregationSlaveSerializedConf.class) final String serializedSlaveConf,
+                             @Parameter(SerializedAggregationSlavesConf.class) final String serializedSlaveConf,
                              @Parameter(DriverIdentifier.class) final String driverId) throws IOException {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;

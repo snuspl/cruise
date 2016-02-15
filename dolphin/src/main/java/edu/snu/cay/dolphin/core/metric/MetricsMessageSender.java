@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.core.metric;
 
-import edu.snu.cay.common.aggregation.AggregationSlave;
+import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
 import edu.snu.cay.dolphin.core.metric.avro.ControllerMsg;

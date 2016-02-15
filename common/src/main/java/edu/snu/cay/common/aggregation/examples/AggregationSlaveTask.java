@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.example;
+package edu.snu.cay.common.aggregation.examples;
 
-import edu.snu.cay.common.aggregation.AggregationSlave;
+import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import org.apache.reef.annotations.audience.TaskSide;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.serialization.Codec;

@@ -16,6 +16,7 @@
 package edu.snu.cay.common.aggregation;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.aggregation.ns.AggregationMsgHandler;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.io.network.impl.NSMessage;
 import org.apache.reef.tang.Configuration;
@@ -65,13 +66,13 @@ public final class AggregationMsgHandlerTest {
   @Test
   public void testMultipleAggregationClients() {
     final Message<AggregationMessage> mockedMessageA = new NSMessage(null, null, AggregationMessage.newBuilder()
-        .setSrcId("")
-        .setClientId(MockedMasterMsgHandlerA.class.getName())
+        .setSlaveId("")
+        .setClientClassName(MockedMasterMsgHandlerA.class.getName())
         .setData(ByteBuffer.wrap(DATA_A))
         .build());
     final Message<AggregationMessage> mockedMessageB = new NSMessage(null, null, AggregationMessage.newBuilder()
-        .setSrcId("")
-        .setClientId(MockedMasterMsgHandlerB.class.getName())
+        .setSlaveId("")
+        .setClientClassName(MockedMasterMsgHandlerB.class.getName())
         .setData(ByteBuffer.wrap(DATA_B))
         .build());
     aggregationMsgHandler.onNext(mockedMessageA);
@@ -98,7 +99,7 @@ public final class AggregationMsgHandlerTest {
 
     @Override
     public void onNext(final AggregationMessage message) {
-
+      // do nothing
     }
   }
 
@@ -106,7 +107,7 @@ public final class AggregationMsgHandlerTest {
 
     @Override
     public void onNext(final AggregationMessage message) {
-
+      // do nothing
     }
   }
 }

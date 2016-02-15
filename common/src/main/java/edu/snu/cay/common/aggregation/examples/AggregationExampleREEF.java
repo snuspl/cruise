@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.example;
+package edu.snu.cay.common.aggregation.examples;
 
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters;
@@ -51,7 +51,7 @@ public final class AggregationExampleREEF {
     try {
       status = run(args);
     } catch (final Exception e) {
-      LOG.log(Level.SEVERE, "Fatal exception occurred: {0}", e);
+      LOG.log(Level.SEVERE, "Fatal exception occurred: ", e);
       status = LauncherStatus.failed(e);
     }
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
@@ -64,7 +64,7 @@ public final class AggregationExampleREEF {
     final boolean onLocal = commandLineInjector.getNamedInstance(Parameters.OnLocal.class);
     final int splits = commandLineInjector.getNamedInstance(Parameters.Splits.class);
     final Configuration runTimeConf = onLocal ?
-        getLocalRuntimeConfiguration(splits + 1) :
+        getLocalRuntimeConfiguration(splits) :
         getYarnRuntimeConfiguration();
 
     final Configuration driverConf = getDriverConfiguration(commandLineConf);
@@ -120,5 +120,4 @@ public final class AggregationExampleREEF {
         .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, Integer.toString(maxNumEvalLocal))
         .build();
   }
-
 }
