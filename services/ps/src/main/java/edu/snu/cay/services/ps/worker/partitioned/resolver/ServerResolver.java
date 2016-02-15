@@ -19,6 +19,7 @@ package edu.snu.cay.services.ps.worker.partitioned.resolver;
  * Resolve the Server for a key, based on its hash.
  */
 public interface ServerResolver {
+
   /**
    * @param hash unsigned int hash to resolve server from
    * @return Network Connection Service identifier of the server.

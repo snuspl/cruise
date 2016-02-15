@@ -24,6 +24,7 @@ import javax.inject.Inject;
  * Resolves to the single server node defined by {@link ServerId}.
  */
 public final class SingleNodeServerResolver implements ServerResolver {
+
   /**
    * Network Connection Service identifier of the server.
    */
