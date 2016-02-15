@@ -19,13 +19,13 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
-import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerNumPartitions;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.worker.partitioned.resolver.ServerResolver;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
@@ -60,14 +60,14 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   private static final Logger LOG = Logger.getLogger(PartitionedParameterWorker.class.getName());
 
   /**
-   * Network Connection Service identifier of the server.
-   */
-  private final String serverId;
-
-  /**
    * Object for processing preValues and applying updates to existing values.
    */
   private final ParameterUpdater<K, P, V> parameterUpdater;
+
+  /**
+   * Resolve to a server's Network Connection Service identifier based on hashed key.
+   */
+  private final ServerResolver serverResolver;
 
   /**
    * A map of pending pulls, used to reconcile the asynchronous messaging with the synchronous CacheLoader call.
@@ -112,19 +112,19 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   private final InjectionFuture<PartitionedWorkerMsgSender<K, P>> sender;
 
   @Inject
-  private PartitionedParameterWorker(@Parameter(ServerId.class) final String serverId,
-                                     @Parameter(WorkerNumPartitions.class) final int numPartitions,
+  private PartitionedParameterWorker(@Parameter(WorkerNumPartitions.class) final int numPartitions,
                                      @Parameter(WorkerQueueSize.class) final int queueSize,
                                      @Parameter(WorkerExpireTimeout.class) final long expireTimeout,
                                      @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
                                      @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                      final ParameterUpdater<K, P, V> parameterUpdater,
+                                     final ServerResolver serverResolver,
                                      final InjectionFuture<PartitionedWorkerMsgSender<K, P>> sender) {
-    this.serverId = serverId;
     this.numPartitions = numPartitions;
     this.queueSize = queueSize;
     this.expireTimeout = expireTimeout;
     this.parameterUpdater = parameterUpdater;
+    this.serverResolver = serverResolver;
     this.sender = sender;
     this.pendingPulls = new ConcurrentHashMap<>();
     this.threadPool = Executors.newFixedThreadPool(numPartitions);
@@ -147,7 +147,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     LOG.log(Level.INFO, "Initializing {0} partitions", numPartitions);
     final Partition<K, P, V>[] initialized = new Partition[numPartitions];
     for (int i = 0; i < numPartitions; i++) {
-      initialized[i] = new Partition<>(pendingPulls, sender, serverId, queueSize, expireTimeout);
+      initialized[i] = new Partition<>(pendingPulls, serverResolver, sender, queueSize, expireTimeout);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -321,7 +321,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
       }
 
       // Send to remote PS
-      sender.get().sendPushMsg(serverId, encodedKey, preValue);
+      sender.get().sendPushMsg(serverResolver.resolve(encodedKey.getHash()), encodedKey, preValue);
     }
   }
 
@@ -400,8 +400,8 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     private volatile boolean shutdown = false;
 
     public Partition(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
+                     final ServerResolver serverResolver,
                      final InjectionFuture<PartitionedWorkerMsgSender<K, P>> sender,
-                     final String serverId,
                      final int queueSize,
                      final long expireTimeout) {
       kvCache = CacheBuilder.newBuilder()
@@ -412,7 +412,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
             public Wrapped<V> load(final EncodedKey<K> encodedKey) throws Exception {
               final PullFuture<V> future = new PullFuture<>();
               pendingPulls.put(encodedKey.getKey(), future);
-              sender.get().sendPullMsg(serverId, encodedKey);
+              sender.get().sendPullMsg(serverResolver.resolve(encodedKey.getHash()), encodedKey);
               final V value = future.getValue();
               pendingPulls.remove(encodedKey.getKey());
               return new Wrapped<>(value);
