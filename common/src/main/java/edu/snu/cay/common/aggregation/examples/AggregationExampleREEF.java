@@ -51,7 +51,7 @@ public final class AggregationExampleREEF {
     try {
       status = run(args);
     } catch (final Exception e) {
-      LOG.log(Level.SEVERE, "Fatal exception occurred: ", e);
+      LOG.log(Level.SEVERE, "Fatal exception occurred.", e);
       status = LauncherStatus.failed(e);
     }
     LOG.log(Level.INFO, "REEF job completed: {0}", status);

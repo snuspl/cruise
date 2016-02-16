@@ -46,6 +46,11 @@ public final class AggregationSlave {
     this.masterId = identifierFactory.getNewInstance(masterIdStr);
   }
 
+  /**
+   * Sends message to aggregation master. The user should specify class name of the aggregation service client.
+   * @param clientClassName class name of the aggregation service client
+   * @param data data which is encoded as a byte array
+   */
   public void send(final String clientClassName, final byte[] data) {
     final AggregationMessage msg = AggregationMessage.newBuilder()
         .setSlaveId(aggregationNetworkSetup.getMyId().toString())

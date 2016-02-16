@@ -30,16 +30,23 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 /**
- * Handler for AggregationMessage.
+ * Handler for AggregationMessage, which can be used for both aggregation master and slave.
  * Wraps clients' AggregationMessage handlers and routes message to right client handler.
  * Parse strings in {@link AggregationClientInfo} to route AggregationMessage to right handler.
- * TODO #352: After REEF-402 is resolved, we can simply use two parallel lists for routing.
  */
+// TODO #352: After REEF-402 is resolved, we can simply use two parallel lists for routing.
 public final class AggregationMsgHandler implements EventHandler<Message<AggregationMessage>> {
   private static final Logger LOG = Logger.getLogger(AggregationMsgHandler.class.getName());
 
   private final Map<String, EventHandler<AggregationMessage>> innerHandlerMap;
 
+  /**
+   * Constructor for aggregation message handler.
+   * If this class is on the aggregation master, {@code innerHandlers} are master-side message handlers.
+   * Otherwise, {@code innerHandlers} are slave-side message handlers.
+   * @param clientInfo a set of strings which contains class names of each aggregation client and handlers
+   * @param innerHandlers client message handlers, can be both master-side and slave-side handlers
+   */
   @Inject
   private AggregationMsgHandler(@Parameter(AggregationClientInfo.class) final Set<String> clientInfo,
                                 @Parameter(AggregationClientHandlers.class)

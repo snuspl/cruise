@@ -40,7 +40,7 @@ import java.util.logging.Logger;
 /**
  * The driver for aggregation service example.
  * Launch evaluators for workers, which send aggregation message to master(driver).
- * When all tasks are complete, checks that all messages are arrived or not.
+ * When all tasks are complete, checks that all messages have arrived or not.
  */
 @DriverSide
 @Unit

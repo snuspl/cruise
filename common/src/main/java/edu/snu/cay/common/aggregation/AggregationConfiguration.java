@@ -51,31 +51,30 @@ public final class AggregationConfiguration {
   private final List<String> aggregationClientNames;
 
   /**
-   * Master-side handlers for each clients.
+   * Master-side message handlers for each clients.
    */
-  private final List<Class<? extends EventHandler<AggregationMessage>>> aggregationMasterHandlers;
+  private final List<Class<? extends EventHandler<AggregationMessage>>> masterSideMsgHandlers;
 
   /**
-   * Slave-side handlers for each clients.
+   * Slave-side message handlers for each clients.
    */
-  private final List<Class<? extends EventHandler<AggregationMessage>>> aggregationSlaveHandlers;
+  private final List<Class<? extends EventHandler<AggregationMessage>>> slaveSideMsgHandlers;
 
   private AggregationConfiguration(
       final List<String> aggregationClientNames,
-      final List<Class<? extends EventHandler<AggregationMessage>>> aggregationMasterHandlers,
-      final List<Class<? extends EventHandler<AggregationMessage>>> aggregationSlaveHandlers) {
+      final List<Class<? extends EventHandler<AggregationMessage>>> masterSideMsgHandlers,
+      final List<Class<? extends EventHandler<AggregationMessage>>> slaveSideMsgHandlers) {
     this.aggregationClientNames = aggregationClientNames;
-    this.aggregationMasterHandlers = aggregationMasterHandlers;
-    this.aggregationSlaveHandlers = aggregationSlaveHandlers;
+    this.masterSideMsgHandlers = masterSideMsgHandlers;
+    this.slaveSideMsgHandlers = slaveSideMsgHandlers;
   }
 
   /**
    * Configuration for REEF driver when using Aggregation Service.
    * Binds NetworkConnectionService registration handlers.
-   * TODO #352: After REEF-402 is resolved, we should use
-   * {@code JavaConfigurationBuilder.bindList()} to bind handlers.
    * @return configuration that should be submitted with a DriverConfiguration
    */
+  // TODO #352: After REEF-402 is resolved, we should use {@code JavaConfigurationBuilder.bindList()} to bind handlers.
   public Configuration getDriverConfiguration() {
     final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
     final JavaConfigurationBuilder commonConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
@@ -89,10 +88,10 @@ public final class AggregationConfiguration {
       commonConfBuilder.bindSetEntry(AggregationClientInfo.class,
           String.format("%s//%s//%s",
               aggregationClientNames.get(i),
-              aggregationMasterHandlers.get(i).getName(),
-              aggregationSlaveHandlers.get(i).getName()));
-      driverConfBuilder.bindSetEntry(AggregationClientHandlers.class, aggregationMasterHandlers.get(i));
-      slaveConfBuilder.bindSetEntry(AggregationClientHandlers.class, aggregationSlaveHandlers.get(i));
+              masterSideMsgHandlers.get(i).getName(),
+              slaveSideMsgHandlers.get(i).getName()));
+      driverConfBuilder.bindSetEntry(AggregationClientHandlers.class, masterSideMsgHandlers.get(i));
+      slaveConfBuilder.bindSetEntry(AggregationClientHandlers.class, slaveSideMsgHandlers.get(i));
     }
 
     final Configuration commonConf = commonConfBuilder.build();
@@ -116,16 +115,16 @@ public final class AggregationConfiguration {
     /**
      * Add a new client of Aggregation Service.
      * @param clientName name of Aggregation Service client, used to identify messages from different clients
-     * @param masterHandler message handler for aggregation master
-     * @param slaveHandler message handler for aggregation slave
+     * @param masterSideMsgHandler message handler for aggregation master
+     * @param slaveSideMsgHandler message handler for aggregation slave
      * @return Builder
      */
     public Builder addAggregationClient(final String clientName,
-                                        final Class<? extends EventHandler<AggregationMessage>> masterHandler,
-                                        final Class<? extends EventHandler<AggregationMessage>> slaveHandler) {
+                                        final Class<? extends EventHandler<AggregationMessage>> masterSideMsgHandler,
+                                          final Class<? extends EventHandler<AggregationMessage>> slaveSideMsgHandler) {
       this.aggregationClients.put(clientName,
           new Pair<Class<? extends EventHandler<AggregationMessage>>,
-              Class<? extends EventHandler<AggregationMessage>>>(masterHandler, slaveHandler));
+              Class<? extends EventHandler<AggregationMessage>>>(masterSideMsgHandler, slaveSideMsgHandler));
       return this;
     }
 
