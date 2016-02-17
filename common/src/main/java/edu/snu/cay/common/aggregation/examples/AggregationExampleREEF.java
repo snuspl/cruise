@@ -70,8 +70,7 @@ public final class AggregationExampleREEF {
     final Configuration driverConf = getDriverConfiguration(commandLineConf);
     final int timeout = commandLineInjector.getNamedInstance(Parameters.Timeout.class);
 
-    final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(driverConf, timeout);
-    return status;
+    return DriverLauncher.getLauncher(runTimeConf).run(driverConf, timeout);
   }
 
   private static Configuration getDriverConfiguration(final Configuration commandLineConf) {

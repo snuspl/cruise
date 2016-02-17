@@ -51,12 +51,12 @@ public final class AggregationConfiguration {
   private final List<String> aggregationClientNames;
 
   /**
-   * Master-side message handlers for each clients.
+   * Master-side message handlers for each client.
    */
   private final List<Class<? extends EventHandler<AggregationMessage>>> masterSideMsgHandlers;
 
   /**
-   * Slave-side message handlers for each clients.
+   * Slave-side message handlers for each client.
    */
   private final List<Class<? extends EventHandler<AggregationMessage>>> slaveSideMsgHandlers;
 
@@ -121,7 +121,7 @@ public final class AggregationConfiguration {
      */
     public Builder addAggregationClient(final String clientName,
                                         final Class<? extends EventHandler<AggregationMessage>> masterSideMsgHandler,
-                                          final Class<? extends EventHandler<AggregationMessage>> slaveSideMsgHandler) {
+                                        final Class<? extends EventHandler<AggregationMessage>> slaveSideMsgHandler) {
       this.aggregationClients.put(clientName,
           new Pair<Class<? extends EventHandler<AggregationMessage>>,
               Class<? extends EventHandler<AggregationMessage>>>(masterSideMsgHandler, slaveSideMsgHandler));

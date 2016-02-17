@@ -23,7 +23,10 @@ import javax.inject.Inject;
 
 /**
  * Evaluator-side message handler.
- * Currently does nothing, but we need this class as a placeholder to use Aggregation Service.
+ * Currently does nothing. This class is mainly for NCS configuration
+ * which needs handlers in both sender and receiver side.
+ * In the future, we may implement this class for additional features,
+ * for example, pull-based metric aggregation.
  */
 @EvaluatorSide
 public final class EvalSideMetricsMsgHandler implements EventHandler<AggregationMessage> {

@@ -86,8 +86,9 @@ public final class AggregationManager {
   }
 
   /**
-   * Return the service configuration for the Aggregation Service.
-   * Includes all configurations required for Aggregation Service.
+   * Return the service configuration for the Aggregation Service including NameResolver.
+   * Note that if more than one service tries to submit service configuration with NameResolver,
+   * TANG will throw an exception.
    * @return service configuration for the Aggregation Service
    */
   public Configuration getServiceConfiguration() {

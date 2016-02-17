@@ -23,6 +23,7 @@ import java.util.Map;
 /**
  * Default implementation of MetricCodec.
  */
+// TODO #358: Remove MetricCodec
 public final class DefaultMetricCodecImpl implements MetricCodec {
 
   @Inject
