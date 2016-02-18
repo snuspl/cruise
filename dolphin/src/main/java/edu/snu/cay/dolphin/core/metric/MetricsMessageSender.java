@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.core.metric;
 
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
+import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
 import edu.snu.cay.dolphin.core.metric.avro.ControllerMsg;
@@ -23,7 +24,6 @@ import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.dolphin.core.metric.avro.SrcType;
 
 import javax.inject.Inject;
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,16 +38,13 @@ import java.util.logging.Logger;
 public final class MetricsMessageSender implements MetricsHandler {
   private static final Logger LOG = Logger.getLogger(MetricsMessageSender.class.getName());
 
-  private final MetricCodec metricCodec;
   private final MetricsMessageCodec metricsMessageCodec;
   private MetricsMessage.Builder metricsMessageBuilder;
   private final AggregationSlave aggregationSlave;
 
   @Inject
-  private MetricsMessageSender(final MetricCodec metricCodec,
-                               final MetricsMessageCodec metricsMessageCodec,
+  private MetricsMessageSender(final MetricsMessageCodec metricsMessageCodec,
                                final AggregationSlave aggregationSlave) {
-    this.metricCodec = metricCodec;
     this.metricsMessageCodec = metricsMessageCodec;
     this.metricsMessageBuilder = MetricsMessage.newBuilder();
     this.aggregationSlave = aggregationSlave;
@@ -80,8 +77,8 @@ public final class MetricsMessageSender implements MetricsHandler {
   }
 
   @Override
-  public void onNext(final Map<String, Double> metrics) {
-    metricsMessageBuilder.setMetrics(ByteBuffer.wrap(metricCodec.encode(metrics)));
+  public void onNext(final Map<CharSequence, Double> metrics) {
+    metricsMessageBuilder.setMetrics(metrics);
   }
 
   private byte[] getMessage() {

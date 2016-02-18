@@ -13,20 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
+package edu.snu.cay.common.metric;
+
+import java.util.Map;
 
 /**
- * Thrown when metric tracking fails. Metric tracking commonly fails for two reasons.
- * The first is that the tracking is started again before the previous tracking is stopped.
- * The second is that tracking is stopped before being started.
+ * Interface that metric trackers implement.
  */
-public class MetricException extends Exception {
+public interface MetricTracker extends AutoCloseable {
 
   /**
-   * Constructs a new exception with the specified detail message.
-   * @param message the detail message.
+   * start tracking metrics.
    */
-  public MetricException(final String message) {
-    super(message);
-  }
+  void start();
+
+  /**
+   * stop tracking metrics and return currently tracked metrics.
+   * @return key and value of metrics
+   */
+  Map<String, Double> stop();
 }
