@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Network connection service related classes for Metric Collection Service.
+ * Example applications using aggregation service.
  */
-package edu.snu.cay.dolphin.core.metric.ns;
+package edu.snu.cay.common.aggregation.examples;

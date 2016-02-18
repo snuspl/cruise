@@ -13,30 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
+package edu.snu.cay.common.aggregation.ns;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
-import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.wake.EventHandler;
+import edu.snu.cay.utils.AvroUtils;
+import org.apache.reef.wake.remote.Codec;
 
 import javax.inject.Inject;
 
 /**
- * Evaluator-side message handler.
- * Currently does nothing. This class is mainly for NCS configuration
- * which needs handlers in both sender and receiver side.
- * In the future, we may implement this class for additional features,
- * for example, pull-based metric aggregation.
+ * Codec for AggregationMessage.
+ * Simply uses AvroUtils to encode and decode messages.
  */
-@EvaluatorSide
-public final class EvalSideMetricsMsgHandler implements EventHandler<AggregationMessage> {
+public final class AggregationMsgCodec implements Codec<AggregationMessage> {
 
   @Inject
-  private EvalSideMetricsMsgHandler() {
+  private AggregationMsgCodec() {
   }
 
   @Override
-  public void onNext(final AggregationMessage msg) {
-    throw new RuntimeException("Evaluators are not intended to receive messages for now.");
+  public byte[] encode(final AggregationMessage msg) {
+    return AvroUtils.toBytes(msg, AggregationMessage.class);
+  }
+
+  @Override
+  public AggregationMessage decode(final byte[] data) {
+    return AvroUtils.fromBytes(data, AggregationMessage.class);
   }
 }

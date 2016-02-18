@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
+package edu.snu.cay.common.aggregation.examples;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -23,20 +23,17 @@ import javax.inject.Inject;
 
 /**
  * Evaluator-side message handler.
- * Currently does nothing. This class is mainly for NCS configuration
- * which needs handlers in both sender and receiver side.
- * In the future, we may implement this class for additional features,
- * for example, pull-based metric aggregation.
+ * Does nothing, but we need this class as a placeholder to use Aggregation Service.
  */
 @EvaluatorSide
-public final class EvalSideMetricsMsgHandler implements EventHandler<AggregationMessage> {
+public final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
 
   @Inject
-  private EvalSideMetricsMsgHandler() {
+  private EvalSideMsgHandler() {
   }
 
   @Override
-  public void onNext(final AggregationMessage msg) {
-    throw new RuntimeException("Evaluators are not intended to receive messages for now.");
+  public void onNext(final AggregationMessage message) {
+    throw new RuntimeException("Evaluators are not intended to receive aggregation messages.");
   }
 }

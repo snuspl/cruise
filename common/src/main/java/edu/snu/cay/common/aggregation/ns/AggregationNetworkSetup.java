@@ -13,15 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric.ns;
+package edu.snu.cay.common.aggregation.ns;
 
-import edu.snu.cay.dolphin.core.metric.MetricsMessageCodec;
-import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
+import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;
-import org.apache.reef.io.network.Message;
 import org.apache.reef.io.network.NetworkConnectionService;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
@@ -30,30 +27,29 @@ import javax.inject.Inject;
 /**
  * Register and unregister driver and evaluators to/from Network Connection Service.
  */
-public final class MetricNetworkSetup {
-  private static final String METRIC_COLLECTION_SERVICE_IDENTIFIER = "MCS";
+public final class AggregationNetworkSetup {
+  private static final String AGGREGATION_IDENTIFIER = "AGGREGATION";
 
   private final NetworkConnectionService networkConnectionService;
   private final Identifier connectionFactoryIdentifier;
-  private final MetricsMessageCodec metricsMessageCodec;
-  private final EventHandler<Message<MetricsMessage>> handler;
-  private ConnectionFactory<MetricsMessage> connectionFactory;
+  private final AggregationMsgCodec codec;
+  private final AggregationMsgHandler handler;
+  private ConnectionFactory<AggregationMessage> connectionFactory;
 
   @Inject
-  private MetricNetworkSetup(final NetworkConnectionService networkConnectionService,
-                             final IdentifierFactory identifierFactory,
-                             final MetricsMessageCodec metricsMessageCodec,
-                             @Parameter(MetricsMessageHandler.class)
-                                 final EventHandler<Message<MetricsMessage>> handler) {
+  private AggregationNetworkSetup(final NetworkConnectionService networkConnectionService,
+                                  final IdentifierFactory identifierFactory,
+                                  final AggregationMsgCodec codec,
+                                  final AggregationMsgHandler handler) throws NetworkException {
     this.networkConnectionService = networkConnectionService;
-    this.connectionFactoryIdentifier = identifierFactory.getNewInstance(METRIC_COLLECTION_SERVICE_IDENTIFIER);
-    this.metricsMessageCodec = metricsMessageCodec;
+    this.connectionFactoryIdentifier = identifierFactory.getNewInstance(AGGREGATION_IDENTIFIER);
+    this.codec = codec;
     this.handler = handler;
   }
 
-  public ConnectionFactory<MetricsMessage> registerConnectionFactory(final Identifier localEndPointId) {
+  public ConnectionFactory<AggregationMessage> registerConnectionFactory(final Identifier localEndPointId) {
     connectionFactory = networkConnectionService.registerConnectionFactory(connectionFactoryIdentifier,
-        metricsMessageCodec, handler, null, localEndPointId);
+        codec, handler, null, localEndPointId);
     return connectionFactory;
   }
 
@@ -61,7 +57,7 @@ public final class MetricNetworkSetup {
     networkConnectionService.unregisterConnectionFactory(connectionFactoryIdentifier);
   }
 
-  public ConnectionFactory<MetricsMessage> getConnectionFactory() {
+  public ConnectionFactory<AggregationMessage> getConnectionFactory() {
     if (connectionFactory == null) {
       throw new RuntimeException("A connection factory has not been registered yet.");
     }

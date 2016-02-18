@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric.ns;
+package edu.snu.cay.common.aggregation.ns;
 
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.time.event.StartTime;
 
@@ -30,23 +31,21 @@ import javax.inject.Inject;
 @Unit
 public final class NetworkDriverRegister {
 
-  private final MetricNetworkSetup metricNetworkSetup;
-  private final IdentifierFactory identifierFactory;
-  private final String driverId;
+  private final AggregationNetworkSetup aggregationNetworkSetup;
+  private final Identifier driverId;
 
   @Inject
-  private NetworkDriverRegister(final MetricNetworkSetup metricNetworkSetup,
+  private NetworkDriverRegister(final AggregationNetworkSetup aggregationNetworkSetup,
                                 final IdentifierFactory identifierFactory,
-                                @Parameter(DriverIdentifier.class) final String driverId) {
-    this.metricNetworkSetup = metricNetworkSetup;
-    this.identifierFactory = identifierFactory;
-    this.driverId = driverId;
+                                @Parameter(DriverIdentifier.class) final String driverIdStr) {
+    this.aggregationNetworkSetup = aggregationNetworkSetup;
+    this.driverId = identifierFactory.getNewInstance(driverIdStr);
   }
 
   public final class RegisterDriverHandler implements EventHandler<StartTime> {
     @Override
-    public void onNext(final StartTime value) {
-      metricNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(driverId));
+    public void onNext(final StartTime startTime) {
+      aggregationNetworkSetup.registerConnectionFactory(driverId);
     }
   }
 }

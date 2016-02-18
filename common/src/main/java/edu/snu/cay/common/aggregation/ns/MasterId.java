@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric.ns;
+package edu.snu.cay.common.aggregation.ns;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
-import org.apache.reef.wake.EventHandler;
 
-@NamedParameter(doc = "Network message receive handler for Metric Collection Service")
-public final class MetricsMessageHandler implements Name<EventHandler> {
+@NamedParameter(doc = "Network Connection Service identifier of the Aggregation Master")
+public final class MasterId implements Name<String> {
 }

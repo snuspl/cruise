@@ -15,14 +15,13 @@
  */
 package edu.snu.cay.dolphin.core.metric;
 
+import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.dolphin.core.metric.avro.SrcType;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
-import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -32,31 +31,34 @@ import java.util.logging.Logger;
 
 /**
  * Driver-side message handler.
- * Receives metric messages and hands over them to {@link OptimizationOrchestrator}.
+ * Receives AggregationMessage and hands over them to {@link OptimizationOrchestrator}.
  */
 @DriverSide
-public final class DriverSideMetricsMsgHandler implements EventHandler<Message<MetricsMessage>> {
+public final class DriverSideMetricsMsgHandler implements EventHandler<AggregationMessage> {
   private static final Logger LOG = Logger.getLogger(DriverSideMetricsMsgHandler.class.getName());
 
   private final OptimizationOrchestrator optimizationOrchestrator;
   private final MetricCodec metricCodec;
+  private final MetricsMessageCodec metricsMessageCodec;
 
   @Inject
   private DriverSideMetricsMsgHandler(final OptimizationOrchestrator optimizationOrchestrator,
-                                      final MetricCodec metricCodec) {
+                                      final MetricCodec metricCodec,
+                                      final MetricsMessageCodec metricsMessageCodec) {
     this.optimizationOrchestrator = optimizationOrchestrator;
     this.metricCodec = metricCodec;
+    this.metricsMessageCodec = metricsMessageCodec;
   }
 
   @Override
-  public void onNext(final Message<MetricsMessage> msg) {
+  public void onNext(final AggregationMessage msg) {
     LOG.entering(DriverSideMetricsMsgHandler.class.getSimpleName(), "onNext");
-    final MetricsMessage metricsMessage = SingleMessageExtractor.extract(msg);
+    final MetricsMessage metricsMessage = metricsMessageCodec.decode(msg.getData().array());
 
     final SrcType srcType = metricsMessage.getSrcType();
     if (SrcType.Compute.equals(srcType)) {
 
-      optimizationOrchestrator.receiveComputeMetrics(msg.getSrcId().toString(),
+      optimizationOrchestrator.receiveComputeMetrics(msg.getSlaveId().toString(),
           metricsMessage.getIterationInfo().getCommGroupName().toString(),
           metricsMessage.getIterationInfo().getIteration(),
           metricCodec.decode(metricsMessage.getMetrics().array()),
@@ -64,7 +66,7 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Message<M
 
     } else if (SrcType.Controller.equals(srcType)) {
 
-      optimizationOrchestrator.receiveControllerMetrics(msg.getSrcId().toString(),
+      optimizationOrchestrator.receiveControllerMetrics(msg.getSlaveId().toString(),
           metricsMessage.getIterationInfo().getCommGroupName().toString(),
           metricsMessage.getIterationInfo().getIteration(),
           metricCodec.decode(metricsMessage.getMetrics().array()));
