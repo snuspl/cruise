@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.partitioned.resolver;
+package edu.snu.cay.services.ps.common.partitioned.resolver;
 
 import edu.snu.cay.services.ps.driver.impl.ServerId;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Resolves to the single server node defined by {@link ServerId}.
@@ -30,13 +33,33 @@ public final class SingleNodeServerResolver implements ServerResolver {
    */
   private final String serverId;
 
+  private int numPartitions;
+
+  private List<Integer> partitions;
+
   @Inject
-  private SingleNodeServerResolver(@Parameter(ServerId.class) final String serverId) {
+  private SingleNodeServerResolver(@Parameter(ServerId.class) final String serverId,
+                                   @Parameter(NumPartitions.class) final int numPartitions) {
     this.serverId = serverId;
+    this.numPartitions = numPartitions;
+    this.partitions = new ArrayList<>(numPartitions);
+    for (int i = 0; i < numPartitions; i++) {
+      partitions.add(i);
+    }
   }
 
   @Override
-  public String resolve(final int hash) {
+  public String resolveServer(final int hash) {
     return serverId;
+  }
+
+  @Override
+  public int resolvePartition(final int hash) {
+    return hash % numPartitions;
+  }
+
+  @Override
+  public List<Integer> getPartitions(final String server) {
+    return partitions;
   }
 }
