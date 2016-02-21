@@ -52,6 +52,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.services.em.common.Constants.EVAL_ID_PREFIX;
+
 /**
  * Driver code for EMExample.
  * Two evaluators take turns moving half of their movable data to the other.
@@ -146,8 +148,7 @@ final class SimpleEMDriver {
 
       final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-          .bindNamedParameter(BaseCounterDataIdFactory.PartitionId.class,
-              taskId.substring(SimpleEMDriver.TASK_ID_PREFIX.length())).build();
+          .build();
 
       final Configuration taskConf = Configurations.merge(
           TaskConfiguration.CONF
@@ -176,16 +177,20 @@ final class SimpleEMDriver {
         // slow evaluator goes through here
         final String slowId = taskMessage.getContextId();
         final String fastId = prevContextId.get();
-        runMoves(slowId, fastId);
+
+        final String srcEvalId = slowId.replace(CONTEXT_ID_PREFIX, EVAL_ID_PREFIX);
+        final String destEvalId = fastId.replace(CONTEXT_ID_PREFIX, EVAL_ID_PREFIX);
+
+        runMoves(srcEvalId, destEvalId);
       } else {
         // fast evaluator goes this way
       }
     }
 
-    private void runMoves(final String firstContextId, final String secondContextId) {
+    private void runMoves(final String srcEvalId, final String destEvalId) {
 
-      String srcId = firstContextId;
-      String destId = secondContextId;
+      String srcId = srcEvalId;
+      String destId = destEvalId;
 
       for (int i = 0; i < iterations; i++) {
         final CountDownLatch transferredLatch = new CountDownLatch(1);
