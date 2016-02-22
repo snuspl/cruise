@@ -17,6 +17,7 @@ package edu.snu.cay.common.aggregation.driver;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.ns.AggregationNetworkSetup;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.tang.InjectionFuture;
@@ -29,6 +30,7 @@ import java.nio.ByteBuffer;
  * Master of Aggregation Service.
  * Sends messages to aggregation slaves.
  */
+@DriverSide
 public final class AggregationMaster {
 
   private final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup;
