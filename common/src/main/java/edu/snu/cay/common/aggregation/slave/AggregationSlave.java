@@ -21,6 +21,7 @@ import edu.snu.cay.common.aggregation.ns.MasterId;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
@@ -35,11 +36,11 @@ import java.nio.ByteBuffer;
 @EvaluatorSide
 public final class AggregationSlave {
 
-  private final AggregationNetworkSetup aggregationNetworkSetup;
+  private final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup;
   private final Identifier masterId;
 
   @Inject
-  private AggregationSlave(final AggregationNetworkSetup aggregationNetworkSetup,
+  private AggregationSlave(final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup,
                            @Parameter(MasterId.class) final String masterIdStr,
                            final IdentifierFactory identifierFactory) {
     this.aggregationNetworkSetup = aggregationNetworkSetup;
@@ -53,11 +54,12 @@ public final class AggregationSlave {
    */
   public void send(final String clientClassName, final byte[] data) {
     final AggregationMessage msg = AggregationMessage.newBuilder()
-        .setSourceId(aggregationNetworkSetup.getMyId().toString())
+        .setSourceId(aggregationNetworkSetup.get().getMyId().toString())
         .setClientClassName(clientClassName)
         .setData(ByteBuffer.wrap(data))
         .build();
-    final Connection<AggregationMessage> conn = aggregationNetworkSetup.getConnectionFactory().newConnection(masterId);
+    final Connection<AggregationMessage> conn = aggregationNetworkSetup.get().
+        getConnectionFactory().newConnection(masterId);
     try {
       conn.open();
       conn.write(msg);
