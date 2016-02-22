@@ -17,23 +17,50 @@ package edu.snu.cay.common.aggregation.examples;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Evaluator-side message handler.
- * Does nothing, but we need this class as a placeholder to use Aggregation Service.
+ * A task waits response from the driver through this class.
  */
 @EvaluatorSide
 public final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
 
+  private static final Logger LOG = Logger.getLogger(EvalSideMsgHandler.class.getName());
+
+  private final SerializableCodec<String> codec;
+  private final CountDownLatch latch;
+
   @Inject
-  private EvalSideMsgHandler() {
+  private EvalSideMsgHandler(final SerializableCodec<String> codec) {
+    this.codec = codec;
+    this.latch = new CountDownLatch(1);
   }
 
   @Override
   public void onNext(final AggregationMessage message) {
-    throw new RuntimeException("Evaluators are not intended to receive aggregation messages.");
+    final String data = codec.decode(message.getData().array());
+    if (!data.equals(DriverSideMsgHandler.MSG_FROM_DRIVER)) {
+      throw new RuntimeException("A wrong data " + data + " was sent from the driver but we expect " +
+          DriverSideMsgHandler.MSG_FROM_DRIVER);
+    } else {
+      LOG.log(Level.INFO, "Message from the driver: {0}", data);
+    }
+
+    latch.countDown();
+  }
+
+  public void waitForMessage() {
+    try {
+      latch.await();
+    } catch (final InterruptedException e) {
+      throw new RuntimeException("Unexpected exception", e);
+    }
   }
 }

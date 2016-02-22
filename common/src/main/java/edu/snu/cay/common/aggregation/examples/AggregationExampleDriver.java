@@ -22,7 +22,6 @@ import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
-import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -40,12 +39,15 @@ import java.util.logging.Logger;
 /**
  * The driver for aggregation service example.
  * Launch evaluators for workers, which send aggregation message to master(driver).
- * When all tasks are complete, checks that all messages have arrived or not.
+ * Each task waits for a message from the driver which will be sent when all aggregation
+ * messages from all tasks arrive.
  */
 @DriverSide
 @Unit
 public final class AggregationExampleDriver {
   private static final Logger LOG = Logger.getLogger(AggregationExampleDriver.class.getName());
+
+  static final String AGGREGATION_CLIENT_ID = "AGGREGATION_CLIENT_ID";
 
   static final String WORKER_CONTEXT_PREFIX = "Worker-Context-";
   static final String TASK_PREFIX = "Worker-Task-";
@@ -57,7 +59,7 @@ public final class AggregationExampleDriver {
   private final int splits;
 
   private final AtomicInteger evalCounter = new AtomicInteger(0);
-  private final AtomicInteger taskCompletedCounter = new AtomicInteger(0);
+  private final AtomicInteger taskRunningCounter = new AtomicInteger(0);
 
   @Inject
   private AggregationExampleDriver(final AggregationManager aggregationManager,
@@ -104,20 +106,12 @@ public final class AggregationExampleDriver {
     @Override
     public void onNext(final RunningTask runningTask) {
       LOG.log(Level.INFO, "Task running: {0}", runningTask.getId());
-    }
-  }
 
-  final class CompletedTaskHandler implements EventHandler<CompletedTask> {
-    @Override
-    public void onNext(final CompletedTask completedTask) {
-      LOG.log(Level.INFO, "Task completed: {0}", completedTask.getId());
+      final int taskRunningCount = taskRunningCounter.incrementAndGet();
 
-      final int taskCompletedCount = taskCompletedCounter.incrementAndGet();
-
-      if (taskCompletedCount == splits) {
+      if (taskRunningCount == splits) {
         driverSideMsgHandler.validate();
       }
-      completedTask.getActiveContext().close();
     }
   }
 }
