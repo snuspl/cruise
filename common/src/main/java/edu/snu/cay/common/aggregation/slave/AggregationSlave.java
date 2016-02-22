@@ -53,7 +53,7 @@ public final class AggregationSlave {
    */
   public void send(final String clientClassName, final byte[] data) {
     final AggregationMessage msg = AggregationMessage.newBuilder()
-        .setSlaveId(aggregationNetworkSetup.getMyId().toString())
+        .setSourceId(aggregationNetworkSetup.getMyId().toString())
         .setClientClassName(clientClassName)
         .setData(ByteBuffer.wrap(data))
         .build();

@@ -66,12 +66,12 @@ public final class AggregationMsgHandlerTest {
   @Test
   public void testMultipleAggregationClients() {
     final Message<AggregationMessage> mockedMessageA = new NSMessage(null, null, AggregationMessage.newBuilder()
-        .setSlaveId("")
+        .setSourceId("")
         .setClientClassName(MockedMasterMsgHandlerA.class.getName())
         .setData(ByteBuffer.wrap(DATA_A))
         .build());
     final Message<AggregationMessage> mockedMessageB = new NSMessage(null, null, AggregationMessage.newBuilder()
-        .setSlaveId("")
+        .setSourceId("")
         .setClientClassName(MockedMasterMsgHandlerB.class.getName())
         .setData(ByteBuffer.wrap(DATA_B))
         .build());

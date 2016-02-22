@@ -55,7 +55,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
   @Override
   public void onNext(final AggregationMessage message) {
     LOG.log(Level.INFO, "Received aggregation message {0}", message);
-    final String slaveId = message.getSlaveId().toString();
+    final String slaveId = message.getSourceId().toString();
     final String data = codec.decode(message.getData().array());
 
     // checks that slaveId of the message is WORKER_CONTEXT_PREFIX + index,
