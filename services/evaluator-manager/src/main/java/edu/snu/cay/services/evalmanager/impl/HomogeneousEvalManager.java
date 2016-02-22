@@ -44,11 +44,13 @@ import java.util.logging.Logger;
  * Only requests for homogeneous evaluators, with 1 core and {@link Parameters.EvaluatorSize} MBs of memory.
  *
  * Since one of the purposes of {@link EvaluatorManager} is to help stacking REEF contexts on evaluators,
- * the following assumptions are reasonable:
- * 1) the driver does not call {@code onEvent()} multiple times
- * for the same {@link AllocatedEvaluator} or {@link ActiveContext} event
- * 2) there are no REEF event handlers which submit context
- * except for the handlers passed by {@code allocateEvaluators}
+ * the following assumptions are reasonable: <br>
+ * 1) methods of this class are invoked in the following order: <br>
+ * allocateEvaluators() -> onEvaluatorAllocated() -> onContextActive() (can be invoked multiple times) <br>
+ * 2) the driver does not call {@code onEvent()} multiple times
+ * for the same {@link AllocatedEvaluator} or {@link ActiveContext} event <br>
+ * 3) there are no REEF event handlers which submit context
+ * except for the handlers passed by {@code allocateEvaluators} <br>
  *
  * With the assumptions above, this class is thread-safe.
  */
@@ -60,30 +62,24 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
    * A waiting queue for evaluator-related event handling plans.
    * {@code onEvent(AllocatedEvaluator)} pops an element from this, and assigns it to the evaluator.
    */
-  private final Queue<Tuple2<EventHandler<AllocatedEvaluator>, Queue<EventHandler<ActiveContext>>>> requestQueue;
+  private final Queue<Tuple2<EventHandler<AllocatedEvaluator>, Queue<EventHandler<ActiveContext>>>> pendingEvalRequests;
 
   /**
    * Maps evaluator id to {@link ActiveContext} event handling plan.
    */
-  private final ConcurrentMap<String, Queue<EventHandler<ActiveContext>>> evalIdToHandlersMap;
+  private final ConcurrentMap<String, Queue<EventHandler<ActiveContext>>> evalIdToPendingContextHandlers;
 
-  /**
-   * REEF evaluator requestor.
-   */
   private final EvaluatorRequestor evaluatorRequestor;
 
-  /**
-   * Memory size of evaluator requests, specified by {@link Parameters.EvaluatorSize}.
-   */
-  private final int evalSize;
+  private final int evalMemSizeInMB;
 
   @Inject
   private HomogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor,
-                                 @Parameter(Parameters.EvaluatorSize.class) final int evalSize) {
-    this.requestQueue = new ConcurrentLinkedQueue<>();
-    this.evalIdToHandlersMap = new ConcurrentHashMap<>();
+                                 @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB) {
+    this.pendingEvalRequests = new ConcurrentLinkedQueue<>();
+    this.evalIdToPendingContextHandlers = new ConcurrentHashMap<>();
     this.evaluatorRequestor = evaluatorRequestor;
-    this.evalSize = evalSize;
+    this.evalMemSizeInMB = evalMemSizeInMB;
   }
 
   /**
@@ -98,12 +94,12 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
     for (int i = 0; i < evalNum; i++) {
       final Queue<EventHandler<ActiveContext>> handlerQueue
           = new ArrayBlockingQueue<>(contextActiveHandlerList.size(), false, contextActiveHandlerList);
-      requestQueue.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
+      pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
     }
     final EvaluatorRequest request = EvaluatorRequest.newBuilder()
         .setNumber(evalNum)
         .setNumberOfCores(1)
-        .setMemory(evalSize)
+        .setMemory(evalMemSizeInMB)
         .build();
     evaluatorRequestor.submit(request);
   }
@@ -111,33 +107,34 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
   /**
    * {@inheritDoc}
    */
-  public void onEvent(final AllocatedEvaluator allocatedEvaluator) {
-    LOG.entering(HomogeneousEvalManager.class.getSimpleName(), "onEvent");
-
-    final Tuple2<EventHandler<AllocatedEvaluator>, Queue<EventHandler<ActiveContext>>> handlers = requestQueue.remove();
-    evalIdToHandlersMap.put(allocatedEvaluator.getId(), handlers.getT2());
-    handlers.getT1().onNext(allocatedEvaluator);
-
-    LOG.exiting(HomogeneousEvalManager.class.getSimpleName(), "onEvent");
+  public void onEvaluatorAllocated(final AllocatedEvaluator allocatedEvaluator) {
+    final Tuple2<EventHandler<AllocatedEvaluator>, Queue<EventHandler<ActiveContext>>> handlers
+        = pendingEvalRequests.remove();
+    final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler = handlers.getT1();
+    final Queue<EventHandler<ActiveContext>> contextActiveHandlers = handlers.getT2();
+    evalIdToPendingContextHandlers.put(allocatedEvaluator.getId(), contextActiveHandlers);
+    evaluatorAllocatedHandler.onNext(allocatedEvaluator);
   }
 
   /**
    * {@inheritDoc}
    */
-  public void onEvent(final ActiveContext activeContext) {
-    LOG.entering(HomogeneousEvalManager.class.getSimpleName(), "onEvent");
-
-    final Queue<EventHandler<ActiveContext>> handlerQueue = evalIdToHandlersMap.get(activeContext.getEvaluatorId());
+  public void onContextActive(final ActiveContext activeContext) {
+    final Queue<EventHandler<ActiveContext>> handlerQueue
+        = evalIdToPendingContextHandlers.get(activeContext.getEvaluatorId());
     if (handlerQueue == null) {
       throw new RuntimeException(String.format("No more ActiveContext handlers for %s", activeContext));
+    } else {
+      // According to the assumption 2) in javadoc of this class,
+      // other threads processing this method for the same evaluator do not exist.
+      // Also, handlerQueue should have at least 1 element initially
+      // due to the constraint in javadoc of allocateEvaluators().
+      // By the assumptions above, handlerQueue must not be empty.
+      final EventHandler<ActiveContext> handler = handlerQueue.remove();
+      if (handlerQueue.isEmpty()) {
+        evalIdToPendingContextHandlers.remove(activeContext.getEvaluatorId());
+      }
+      handler.onNext(activeContext);
     }
-
-    final EventHandler<ActiveContext> handler = handlerQueue.remove();
-    if (handlerQueue.isEmpty()) {
-      evalIdToHandlersMap.remove(activeContext.getEvaluatorId());
-    }
-    handler.onNext(activeContext);
-
-    LOG.exiting(HomogeneousEvalManager.class.getSimpleName(), "onEvent");
   }
 }

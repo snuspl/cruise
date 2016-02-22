@@ -56,12 +56,12 @@ public interface EvaluatorManager {
    * Invokes {@link AllocatedEvaluator} event handler registered by {@code allocateEvaluators()}.
    * @param allocatedEvaluator REEF event to handle
    */
-  void onEvent(AllocatedEvaluator allocatedEvaluator);
+  void onEvaluatorAllocated(AllocatedEvaluator allocatedEvaluator);
 
   /**
    * Invokes {@link ActiveContext} event handler registered by {@code allocateEvaluators()}.
    * Tracks necessary states internally, and triggers the correct event handler in specified order.
    * @param activeContext REEF event to handle
    */
-  void onEvent(ActiveContext activeContext);
+  void onContextActive(ActiveContext activeContext);
 }
