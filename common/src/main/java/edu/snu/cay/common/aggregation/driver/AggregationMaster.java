@@ -44,21 +44,21 @@ public final class AggregationMaster {
   }
 
   /**
-   * Sends a message to an aggregation slave named endPointId. The user should specify
+   * Sends a message to an aggregation slave named slaveId. The user should specify
    * class name of the aggregation service client.
    *
    * @param clientClassName class name of the aggregation service client
-   * @param endPointId an end point id of the slave
+   * @param slaveId an end point id of the slave
    * @param data data which is encoded as a byte array
    */
-  public void send(final String clientClassName, final String endPointId, final byte[] data) {
+  public void send(final String clientClassName, final String slaveId, final byte[] data) {
     final AggregationMessage msg = AggregationMessage.newBuilder()
         .setSourceId(aggregationNetworkSetup.get().getMyId().toString())
         .setClientClassName(clientClassName)
         .setData(ByteBuffer.wrap(data))
         .build();
     final Connection<AggregationMessage> conn = aggregationNetworkSetup.get().getConnectionFactory()
-        .newConnection(identifierFactory.getNewInstance(endPointId));
+        .newConnection(identifierFactory.getNewInstance(slaveId));
     try {
       conn.open();
       conn.write(msg);
