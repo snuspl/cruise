@@ -33,9 +33,15 @@ public final class SingleNodeServerResolver implements ServerResolver {
    */
   private final String serverId;
 
-  private int numPartitions;
+  /**
+   * Number of partitions.
+   */
+  private final int numPartitions;
 
-  private List<Integer> partitions;
+  /**
+   * List of all partitions mapped to the single node.
+   */
+  private final List<Integer> partitions;
 
   @Inject
   private SingleNodeServerResolver(@Parameter(ServerId.class) final String serverId,

@@ -38,31 +38,46 @@ import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
  * This mapping cannot be changed dynamically (i.e., after Job configuration).
  */
 public final class StaticServerResolver implements ServerResolver {
+
+  /**
+   * Number of partitions, globally held by all servers.
+   */
   private final int numPartitions;
-  private final String[] servers;
-  private final Map<String, List<Integer>> partitions;
+
+  /**
+   * Mapping from partition to server.
+   * The array is indexed by partition index, and contains the server's NCS name.
+   */
+  private final String[] partitionToServer;
+
+  /**
+   * Mapping from server to partitions.
+   * The key is the server's NCS name, and the value is a list of partition indices held by the server.
+   * Contains the same information as partitionToServer, but indexed by server.
+   */
+  private final Map<String, List<Integer>> serverToPartitions;
 
   @Inject
   private StaticServerResolver(@Parameter(NumServers.class) final int numServers,
                                @Parameter(NumPartitions.class) final int numPartitions) {
     this.numPartitions = numPartitions;
 
-    this.partitions = new HashMap<>(numServers);
+    this.serverToPartitions = new HashMap<>(numServers);
     for (int i = 0; i < numServers; i++) {
-      partitions.put(SERVER_ID_PREFIX + i, new ArrayList<Integer>());
+      serverToPartitions.put(SERVER_ID_PREFIX + i, new ArrayList<Integer>());
     }
 
-    this.servers = new String[numPartitions];
-    for (int virtualNodeIndex = 0; virtualNodeIndex < servers.length; virtualNodeIndex++) {
-      final int serverIndex = virtualNodeIndex % numServers;
-      servers[virtualNodeIndex] = (SERVER_ID_PREFIX + serverIndex);
-      partitions.get(SERVER_ID_PREFIX + serverIndex).add(virtualNodeIndex);
+    this.partitionToServer = new String[numPartitions];
+    for (int partitionIndex = 0; partitionIndex < partitionToServer.length; partitionIndex++) {
+      final int serverIndex = partitionIndex % numServers;
+      partitionToServer[partitionIndex] = (SERVER_ID_PREFIX + serverIndex);
+      serverToPartitions.get(SERVER_ID_PREFIX + serverIndex).add(partitionIndex);
     }
   }
 
   @Override
   public String resolveServer(final int hash) {
-    return servers[resolvePartition(hash)];
+    return partitionToServer[resolvePartition(hash)];
   }
 
   @Override
@@ -72,6 +87,6 @@ public final class StaticServerResolver implements ServerResolver {
 
   @Override
   public List<Integer> getPartitions(final String server) {
-    return partitions.get(server);
+    return serverToPartitions.get(server);
   }
 }
