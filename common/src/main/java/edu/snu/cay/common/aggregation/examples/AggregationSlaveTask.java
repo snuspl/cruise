@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 
 /**
  * The aggregation slave task that runs on all Workers.
- * Sends aggregation message to aggregation master(driver) and waits a message from the driver.
+ * Sends aggregation message to aggregation master(driver) and waits for a message from the driver.
  */
 @TaskSide
 public final class AggregationSlaveTask implements Task {

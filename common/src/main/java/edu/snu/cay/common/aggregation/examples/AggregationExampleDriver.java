@@ -38,9 +38,11 @@ import java.util.logging.Logger;
 
 /**
  * The driver for aggregation service example.
- * Launch evaluators for workers, which send aggregation message to master(driver).
- * Each task waits for a message from the driver which will be sent when all aggregation
- * messages from all tasks arrive.
+ * Launch evaluators for workers which exchange aggregation messages with the driver.
+ *
+ * 1. Each task sends a message to the driver and waits for a response message.
+ * 2. When all messages from the tasks has arrived, the driver sends response messages to the tasks.
+ * 3. All tasks are terminated by the response messages.
  */
 @DriverSide
 @Unit

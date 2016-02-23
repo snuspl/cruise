@@ -36,7 +36,16 @@ import java.nio.ByteBuffer;
 @EvaluatorSide
 public final class AggregationSlave {
 
+  /**
+   * A network setup instance for AggregationMessage. It should be wrapped with InjectionFuture
+   * since there would be a loopy constructor when users use AggregationSlave in their
+   * aggregation message handlers.
+   */
   private final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup;
+
+  /**
+   * An identifier of the master.
+   */
   private final Identifier masterId;
 
   @Inject

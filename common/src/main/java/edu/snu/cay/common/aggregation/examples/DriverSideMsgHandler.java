@@ -41,9 +41,9 @@ import java.util.logging.Logger;
 @DriverSide
 public final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
 
-  static final String MSG_FROM_DRIVER = "MSG_FROM_DRIVER";
-
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
+
+  public static final String MSG_FROM_DRIVER = "MSG_FROM_DRIVER";
 
   private final AggregationMaster aggregationMaster;
   private final Codec<String> codec;
@@ -92,7 +92,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
   /**
    * Checks whether all messages have arrived correctly or not.
    * If all messages have not arrived yet, wait until those messages are received
-   * or an interruption(e.g., timeout) occurs. It sends response messages if all messages are
+   * or an interruption(e.g., timeout) occurs. It sends response messages when all messages are
    * successfully received.
    *
    * @throws RuntimeException if an interruption occurs before finish receiving all messages

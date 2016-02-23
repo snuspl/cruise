@@ -33,7 +33,16 @@ import java.nio.ByteBuffer;
 @DriverSide
 public final class AggregationMaster {
 
+  /**
+   * A network setup instance for AggregationMessage. It should be wrapped with InjectionFuture
+   * since there would be a loopy constructor when users use AggregationMaster in their
+   * aggregation message handlers.
+   */
   private final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup;
+
+  /**
+   * An identifier factory.
+   */
   private final IdentifierFactory identifierFactory;
 
   @Inject
