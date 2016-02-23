@@ -74,8 +74,8 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
   private final int evalMemSizeInMB;
 
   @Inject
-  private HomogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor,
-                                 @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB) {
+  HomogeneousEvalManager(final EvaluatorRequestor evaluatorRequestor,
+                         @Parameter(Parameters.EvaluatorSize.class) final int evalMemSizeInMB) {
     this.pendingEvalRequests = new ConcurrentLinkedQueue<>();
     this.evalIdToPendingContextHandlers = new ConcurrentHashMap<>();
     this.evaluatorRequestor = evaluatorRequestor;
