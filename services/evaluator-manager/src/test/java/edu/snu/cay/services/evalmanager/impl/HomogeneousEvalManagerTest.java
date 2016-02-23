@@ -38,6 +38,7 @@ import org.mockito.stubbing.Answer;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -57,6 +58,7 @@ public final class HomogeneousEvalManagerTest {
   private static final String CONTEXT_D_ID = "D";
   private static final int THREAD_POOL_SIZE = 5;
   private static final int MAX_SLEEP_MILLIS = 20;
+  private static final int TEST_TIMEOUT_MILLIS = 60000;
 
   private EvaluatorManager evaluatorManager;
   private final EStage<Object> eventStage = new ThreadPoolStage<>(new EventHandler<Object>() {
@@ -84,19 +86,7 @@ public final class HomogeneousEvalManagerTest {
 
   @Before
   public void setUp() throws InjectionException {
-    final EvaluatorRequestor mockedEvaluatorRequestor = mock(EvaluatorRequestor.class);
-
-    doAnswer(new Answer() {
-      @Override
-      public Object answer(final InvocationOnMock invocationOnMock) {
-        final EvaluatorRequest request = (EvaluatorRequest) invocationOnMock.getArguments()[0];
-        requestMockedEvaluators(request.getNumber());
-        return null;
-      }
-    }).when(mockedEvaluatorRequestor).submit(any(EvaluatorRequest.class));
-
-    evaluatorManager = new HomogeneousEvalManager(mockedEvaluatorRequestor, 0);
-
+    evaluatorManager = new HomogeneousEvalManager(generateMockedEvaluatorRequestor(), 0);
     evalCounter = new AtomicInteger(0);
     evalIdToActualContextIdStack = new HashMap<>();
     evalIdToExpectedContextIdStack = new HashMap<>();
@@ -117,7 +107,7 @@ public final class HomogeneousEvalManagerTest {
     evaluatorManager.allocateEvaluators(evalNum, handlers.getT1(), handlers.getT2());
 
     try {
-      finishedCounter.await();
+      finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -143,7 +133,7 @@ public final class HomogeneousEvalManagerTest {
     evaluatorManager.allocateEvaluators(evalNum, handlers.getT1(), handlers.getT2());
 
     try {
-      finishedCounter.await();
+      finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -185,7 +175,7 @@ public final class HomogeneousEvalManagerTest {
     evaluatorManager.allocateEvaluators(evalNumForPlan3, handlersForPlan3.getT1(), handlersForPlan3.getT2());
 
     try {
-      finishedCounter.await();
+      finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -194,6 +184,25 @@ public final class HomogeneousEvalManagerTest {
       final List<String> actualContextIdStack = evalIdToActualContextIdStack.get(evalId);
       assertEquals(expectedContextIdStack, actualContextIdStack);
     }
+  }
+
+  /**
+   * Generate mocked {@link EvaluatorRequestor}, which provides {@code submit()} method.
+   * @return mocked {@link EvaluatorRequestor}
+   */
+  private EvaluatorRequestor generateMockedEvaluatorRequestor() {
+    final EvaluatorRequestor mockedEvaluatorRequestor = mock(EvaluatorRequestor.class);
+
+    doAnswer(new Answer() {
+      @Override
+      public Object answer(final InvocationOnMock invocationOnMock) {
+        final EvaluatorRequest request = (EvaluatorRequest) invocationOnMock.getArguments()[0];
+        requestMockedEvaluators(request.getNumber());
+        return null;
+      }
+    }).when(mockedEvaluatorRequestor).submit(any(EvaluatorRequest.class));
+
+    return mockedEvaluatorRequestor;
   }
 
   /**
