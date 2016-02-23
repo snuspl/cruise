@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.evalmanager.impl;
 
+import com.google.common.collect.Lists;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import org.apache.commons.lang.math.RandomUtils;
 import org.apache.reef.driver.context.ActiveContext;
@@ -35,8 +36,7 @@ import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -56,15 +56,31 @@ public final class HomogeneousEvalManagerTest {
   private static final String CONTEXT_C_ID = "C";
   private static final String CONTEXT_D_ID = "D";
   private static final int THREAD_POOL_SIZE = 5;
-  private static final int MAX_SLEEP_MILLIS = 1000;
+  private static final int MAX_SLEEP_MILLIS = 20;
 
   private EvaluatorManager evaluatorManager;
-  private EventHandler<AllocatedEvaluator> driverAEHandler;
-  private EventHandler<ActiveContext> driverACHandler;
-  private EStage<Object> eventStage;
+  private final EStage<Object> eventStage = new ThreadPoolStage<>(new EventHandler<Object>() {
+    @Override
+    public void onNext(final Object o) {
+      try {
+        // simulates messaging heartbeat to driver, to shuffle executing order randomly
+        Thread.sleep(RandomUtils.nextInt(MAX_SLEEP_MILLIS));
+      } catch (final InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+
+      if (o instanceof AllocatedEvaluator) {
+        evaluatorManager.onEvaluatorAllocated((AllocatedEvaluator) o);
+      } else {
+        evaluatorManager.onContextActive((ActiveContext) o);
+      }
+    }
+  }, THREAD_POOL_SIZE);
 
   private AtomicInteger evalCounter;
-  private CountDownLatch validationCounter;
+  private CountDownLatch finishedCounter;
+  private Map<String, List<String>> evalIdToActualContextIdStack;
+  private Map<String, List<String>> evalIdToExpectedContextIdStack;
 
   @Before
   public void setUp() throws InjectionException {
@@ -87,71 +103,127 @@ public final class HomogeneousEvalManagerTest {
     injector.bindVolatileInstance(EvaluatorRequestor.class, mockedEvaluatorRequestor);
     evaluatorManager = injector.getInstance(HomogeneousEvalManager.class);
 
-    driverAEHandler = new EventHandler<AllocatedEvaluator>() {
-      @Override
-      public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-        evaluatorManager.onEvent(allocatedEvaluator);
-      }
-    };
-    driverACHandler = new EventHandler<ActiveContext>() {
-      @Override
-      public void onNext(final ActiveContext activeContext) {
-        evaluatorManager.onEvent(activeContext);
-      }
-    };
-    eventStage = new ThreadPoolStage<>(new EventHandler<Object>() {
-      @Override
-      public void onNext(final Object o) {
-        try {
-          // simulates messaging heartbeat to driver
-          Thread.sleep(RandomUtils.nextInt(MAX_SLEEP_MILLIS));
-        } catch (final InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-
-        if (o instanceof AllocatedEvaluator) {
-          driverAEHandler.onNext((AllocatedEvaluator) o);
-        } else {
-          driverACHandler.onNext((ActiveContext) o);
-        }
-      }
-    }, THREAD_POOL_SIZE);
     evalCounter = new AtomicInteger(0);
+    evalIdToActualContextIdStack = new HashMap<>();
+    evalIdToExpectedContextIdStack = new HashMap<>();
   }
 
   /**
-   * Tests multiple event handling plans.
-   * Requests for two groups of evaluators, submits different contexts on them,
-   * and checks that context stack is built correctly.
+   * Tests single plan with a single context submit.
+   * Checks that context stack is built correctly.
    */
   @Test
-  public void testEvalManager() {
-    // Context Stack: A -> B -> C
-    final String[] plan1 = new String[]{CONTEXT_A_ID, CONTEXT_B_ID, CONTEXT_C_ID};
-    final int plan1Num = 3;
-    final List<EventHandler<ActiveContext>> plan1ACHandlerList = new ArrayList<>();
-    for (int i = 1; i < plan1.length; i++) {
-      plan1ACHandlerList.add(new SubmitContextToACHandler(plan1[i]));
+  public void testSinglePlanSingleContext() {
+    final List<String> plan = Lists.newArrayList(CONTEXT_A_ID);
+    final int evalNum = 3;
+    final List<EventHandler<ActiveContext>> activeContextHandlerList = new ArrayList<>();
+    for (int i = 1; i < plan.size(); i++) {
+      activeContextHandlerList.add(new SubmitContextToACHandler(plan.get(i)));
     }
-    plan1ACHandlerList.add(new ContextStackValidationHandler(plan1[0] + plan1[1] + plan1[2]));
+    activeContextHandlerList.add(new LastACHandler());
+    finishedCounter = new CountDownLatch(evalNum);
 
-    // Context Stack: D -> A -> B -> C
-    final String[] plan2 = new String[]{CONTEXT_D_ID, CONTEXT_A_ID, CONTEXT_B_ID, CONTEXT_C_ID};
-    final int plan2Num = 8;
-    final List<EventHandler<ActiveContext>> plan2ACHandlerList = new ArrayList<>();
-    for (int i = 1; i < plan2.length; i++) {
-      plan2ACHandlerList.add(new SubmitContextToACHandler(plan2[i]));
-    }
-    plan2ACHandlerList.add(new ContextStackValidationHandler(plan2[0] + plan2[1] + plan2[2] + plan2[3]));
-
-    validationCounter = new CountDownLatch(plan1Num + plan2Num);
-    evaluatorManager.allocateEvaluators(plan1Num, new SubmitContextToAEHandler(plan1[0]), plan1ACHandlerList);
-    evaluatorManager.allocateEvaluators(plan2Num, new SubmitContextToAEHandler(plan2[0]), plan2ACHandlerList);
+    evaluatorManager.allocateEvaluators(evalNum,
+        new SubmitContextToAEHandler(plan.get(0), plan),
+        activeContextHandlerList);
 
     try {
-      validationCounter.await();
+      finishedCounter.await();
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
+    }
+    for (final String evalId : evalIdToActualContextIdStack.keySet()) {
+      final List<String> expectedContextIdStack = evalIdToExpectedContextIdStack.get(evalId);
+      final List<String> actualContextIdStack = evalIdToActualContextIdStack.get(evalId);
+      assertEquals(expectedContextIdStack, actualContextIdStack);
+    }
+  }
+
+  /**
+   * Tests single plan with multiple context submits.
+   * Checks that context stack is built correctly.
+   */
+  @Test
+  public void testSinglePlanMultipleContext() {
+    final List<String> plan = Lists.newArrayList(CONTEXT_A_ID, CONTEXT_B_ID, CONTEXT_C_ID, CONTEXT_D_ID);
+    final int evalNum = 3;
+    final List<EventHandler<ActiveContext>> activeContextHandlerList = new ArrayList<>();
+    for (int i = 1; i < plan.size(); i++) {
+      activeContextHandlerList.add(new SubmitContextToACHandler(plan.get(i)));
+    }
+    activeContextHandlerList.add(new LastACHandler());
+    finishedCounter = new CountDownLatch(evalNum);
+
+    evaluatorManager.allocateEvaluators(evalNum,
+        new SubmitContextToAEHandler(plan.get(0), plan),
+        activeContextHandlerList);
+
+    try {
+      finishedCounter.await();
+    } catch (final InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+    for (final String evalId : evalIdToActualContextIdStack.keySet()) {
+      final List<String> expectedContextIdStack = evalIdToExpectedContextIdStack.get(evalId);
+      final List<String> actualContextIdStack = evalIdToActualContextIdStack.get(evalId);
+      assertEquals(expectedContextIdStack, actualContextIdStack);
+    }
+  }
+
+  /**
+   * Tests multiple plans with multiple context submits.
+   * Checks that context stack is built correctly.
+   */
+  @Test
+  public void testMultiplePlanMultipleContext() {
+    // Context Stack: A -> B -> C
+    final List<String> plan1 = Lists.newArrayList(CONTEXT_A_ID, CONTEXT_B_ID, CONTEXT_C_ID);
+    final int evalNumForPlan1 = 500;
+    final List<EventHandler<ActiveContext>> plan1ACHandlerList = new ArrayList<>();
+    for (int i = 1; i < plan1.size(); i++) {
+      plan1ACHandlerList.add(new SubmitContextToACHandler(plan1.get(i)));
+    }
+    plan1ACHandlerList.add(new LastACHandler());
+
+    // Context Stack: D -> A -> B -> C
+    final List<String> plan2 = Lists.newArrayList(CONTEXT_D_ID, CONTEXT_A_ID, CONTEXT_B_ID, CONTEXT_C_ID);
+    final int evalNumForPlan2 = 500;
+    final List<EventHandler<ActiveContext>> plan2ACHandlerList = new ArrayList<>();
+    for (int i = 1; i < plan2.size(); i++) {
+      plan2ACHandlerList.add(new SubmitContextToACHandler(plan2.get(i)));
+    }
+    plan2ACHandlerList.add(new LastACHandler());
+
+    // Context Stack: B -> D -> A -> A
+    final List<String> plan3 = Lists.newArrayList(CONTEXT_B_ID, CONTEXT_D_ID, CONTEXT_A_ID, CONTEXT_A_ID);
+    final int evalNumForPlan3 = 500;
+    final List<EventHandler<ActiveContext>> plan3ACHandlerList = new ArrayList<>();
+    for (int i = 1; i < plan3.size(); i++) {
+      plan3ACHandlerList.add(new SubmitContextToACHandler(plan3.get(i)));
+    }
+    plan3ACHandlerList.add(new LastACHandler());
+
+    finishedCounter = new CountDownLatch(evalNumForPlan1 + evalNumForPlan2 + evalNumForPlan3);
+
+    evaluatorManager.allocateEvaluators(evalNumForPlan1,
+        new SubmitContextToAEHandler(plan1.get(0), plan1),
+        plan1ACHandlerList);
+    evaluatorManager.allocateEvaluators(evalNumForPlan2,
+        new SubmitContextToAEHandler(plan2.get(0), plan2),
+        plan2ACHandlerList);
+    evaluatorManager.allocateEvaluators(evalNumForPlan3,
+        new SubmitContextToAEHandler(plan3.get(0), plan3),
+        plan3ACHandlerList);
+
+    try {
+      finishedCounter.await();
+    } catch (final InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+    for (final String evalId : evalIdToActualContextIdStack.keySet()) {
+      final List<String> expectedContextIdStack = evalIdToExpectedContextIdStack.get(evalId);
+      final List<String> actualContextIdStack = evalIdToActualContextIdStack.get(evalId);
+      assertEquals(expectedContextIdStack, actualContextIdStack);
     }
   }
 
@@ -200,16 +272,21 @@ public final class HomogeneousEvalManagerTest {
 
   /**
    * {@link AllocatedEvaluator} handler which submits context with specified id in constructor.
+   * Add a stack of context id for this evaluator to evalIdToExpectedContextIdStack and evalIdToActualContextIdStack.
    */
   final class SubmitContextToAEHandler implements EventHandler<AllocatedEvaluator> {
     private final String contextId;
+    private final List<String> expectedContextIdStack;
 
-    SubmitContextToAEHandler(final String contextId) {
+    SubmitContextToAEHandler(final String contextId, final List<String> expectedContextIdStack) {
       this.contextId = contextId;
+      this.expectedContextIdStack = expectedContextIdStack;
     }
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+      evalIdToExpectedContextIdStack.put(allocatedEvaluator.getId(), expectedContextIdStack);
+      evalIdToActualContextIdStack.put(allocatedEvaluator.getId(), new ArrayList<String>());
       final Configuration contextConf = ContextConfiguration.CONF
           .set(ContextConfiguration.IDENTIFIER, contextId)
           .build();
@@ -218,8 +295,8 @@ public final class HomogeneousEvalManagerTest {
   }
 
   /**
-   * {@link ActiveContext} handler which submits context with following context identifier.
-   * <i>top context id</i> + <i>specified id in constructor</i>.
+   * {@link ActiveContext} handler which submits context with specified id in constructor.
+   * Add identifier of given {@link ActiveContext} to evalIdToActualContextIdStack for validation.
    */
   final class SubmitContextToACHandler implements EventHandler<ActiveContext> {
     private final String contextId;
@@ -230,27 +307,23 @@ public final class HomogeneousEvalManagerTest {
 
     @Override
     public void onNext(final ActiveContext activeContext) {
+      evalIdToActualContextIdStack.get(activeContext.getEvaluatorId()).add(activeContext.getId());
       final Configuration contextConf = ContextConfiguration.CONF
-          .set(ContextConfiguration.IDENTIFIER, activeContext.getId() + contextId)
+          .set(ContextConfiguration.IDENTIFIER, contextId)
           .build();
       activeContext.submitContext(contextConf);
     }
   }
 
   /**
-   * {@link ActiveContext} handler which checks whether context stack is built correctly.
+   * Last {@link ActiveContext} handler which does not submit context.
+   * Add identifier of given {@link ActiveContext} to evalIdToActualContextIdStack for validation.
    */
-  final class ContextStackValidationHandler implements EventHandler<ActiveContext> {
-    private final String expectedContextId;
-
-    ContextStackValidationHandler(final String expectedContextId) {
-      this.expectedContextId = expectedContextId;
-    }
-
+  final class LastACHandler implements EventHandler<ActiveContext> {
     @Override
     public void onNext(final ActiveContext activeContext) {
-      assertEquals(expectedContextId, activeContext.getId());
-      validationCounter.countDown();
+      evalIdToActualContextIdStack.get(activeContext.getEvaluatorId()).add(activeContext.getId());
+      finishedCounter.countDown();
     }
   }
 }
