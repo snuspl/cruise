@@ -37,6 +37,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -88,8 +89,8 @@ public final class HomogeneousEvalManagerTest {
   public void setUp() throws InjectionException {
     evaluatorManager = new HomogeneousEvalManager(generateMockedEvaluatorRequestor(), 0);
     evalCounter = new AtomicInteger(0);
-    evalIdToActualContextIdStack = new HashMap<>();
-    evalIdToExpectedContextIdStack = new HashMap<>();
+    evalIdToActualContextIdStack = new ConcurrentHashMap<>();
+    evalIdToExpectedContextIdStack = new ConcurrentHashMap<>();
   }
 
   /**
