@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-[
+package edu.snu.cay.common.metric;
+
+import java.util.Map;
+
 /**
- * Message for Aggregation Service.
+ * Interface that metric trackers implement.
  */
-{
-  "namespace": "edu.snu.cay.common.aggregation.avro",
-  "type": "record",
-  "name": "AggregationMessage",
-  "fields":
-  [
-    {"name": "clientClassName", "type": "string"},
-    {"name": "sourceId", "type": "string"},
-    {"name": "data", "type": "bytes"}
-  ]
+public interface MetricTracker extends AutoCloseable {
+
+  /**
+   * start tracking metrics.
+   */
+  void start();
+
+  /**
+   * stop tracking metrics and return currently tracked metrics.
+   * @return key and value of metrics
+   */
+  Map<String, Double> stop();
 }
-]

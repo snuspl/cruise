@@ -13,19 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-[
 /**
- * Message for Aggregation Service.
+ * APIs for Evaluator Manager classes.
  */
-{
-  "namespace": "edu.snu.cay.common.aggregation.avro",
-  "type": "record",
-  "name": "AggregationMessage",
-  "fields":
-  [
-    {"name": "clientClassName", "type": "string"},
-    {"name": "sourceId", "type": "string"},
-    {"name": "data", "type": "bytes"}
-  ]
-}
-]
+package edu.snu.cay.services.evalmanager.api;

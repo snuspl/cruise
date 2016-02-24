@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-[
+package edu.snu.cay.common.metric;
+
 /**
- * Message for Aggregation Service.
+ * Thrown when metric tracking fails. Metric tracking commonly fails for two reasons.
+ * The first is that the tracking is started again before the previous tracking is stopped.
+ * The second is that tracking is stopped before being started.
  */
-{
-  "namespace": "edu.snu.cay.common.aggregation.avro",
-  "type": "record",
-  "name": "AggregationMessage",
-  "fields":
-  [
-    {"name": "clientClassName", "type": "string"},
-    {"name": "sourceId", "type": "string"},
-    {"name": "data", "type": "bytes"}
-  ]
+public class MetricException extends Exception {
+
+  /**
+   * Constructs a new exception with the specified detail message.
+   * @param message the detail message.
+   */
+  public MetricException(final String message) {
+    super(message);
+  }
 }
-]

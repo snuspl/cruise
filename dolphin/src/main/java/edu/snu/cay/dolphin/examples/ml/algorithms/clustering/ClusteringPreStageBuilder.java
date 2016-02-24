@@ -16,9 +16,9 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 
 import edu.snu.cay.dolphin.core.StageInfo;
-import edu.snu.cay.dolphin.core.metric.GCMetricTracker;
-import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
-import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
+import edu.snu.cay.common.metric.GCMetricTracker;
+import edu.snu.cay.common.metric.InsertableMetricTracker;
+import edu.snu.cay.common.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.sub.VectorListCodec;
 
 public final class ClusteringPreStageBuilder {

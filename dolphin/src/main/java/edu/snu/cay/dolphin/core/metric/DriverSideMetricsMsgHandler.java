@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.core.metric;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.dolphin.core.metric.avro.SrcType;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;
@@ -26,7 +27,9 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -38,15 +41,12 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
   private static final Logger LOG = Logger.getLogger(DriverSideMetricsMsgHandler.class.getName());
 
   private final OptimizationOrchestrator optimizationOrchestrator;
-  private final MetricCodec metricCodec;
   private final MetricsMessageCodec metricsMessageCodec;
 
   @Inject
   private DriverSideMetricsMsgHandler(final OptimizationOrchestrator optimizationOrchestrator,
-                                      final MetricCodec metricCodec,
                                       final MetricsMessageCodec metricsMessageCodec) {
     this.optimizationOrchestrator = optimizationOrchestrator;
-    this.metricCodec = metricCodec;
     this.metricsMessageCodec = metricsMessageCodec;
   }
 
@@ -56,12 +56,13 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
     final MetricsMessage metricsMessage = metricsMessageCodec.decode(msg.getData().array());
 
     final SrcType srcType = metricsMessage.getSrcType();
+
     if (SrcType.Compute.equals(srcType)) {
 
       optimizationOrchestrator.receiveComputeMetrics(msg.getSourceId().toString(),
           metricsMessage.getIterationInfo().getCommGroupName().toString(),
           metricsMessage.getIterationInfo().getIteration(),
-          metricCodec.decode(metricsMessage.getMetrics().array()),
+          getMetricsFromAvro(metricsMessage.getMetrics()),
           getDataInfoFromAvro(metricsMessage.getComputeMsg().getDataInfos()));
 
     } else if (SrcType.Controller.equals(srcType)) {
@@ -69,7 +70,7 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
       optimizationOrchestrator.receiveControllerMetrics(msg.getSourceId().toString(),
           metricsMessage.getIterationInfo().getCommGroupName().toString(),
           metricsMessage.getIterationInfo().getIteration(),
-          metricCodec.decode(metricsMessage.getMetrics().array()));
+          getMetricsFromAvro(metricsMessage.getMetrics()));
 
     } else {
       throw new RuntimeException("Unknown SrcType " + srcType);
@@ -84,5 +85,13 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
       dataInfos.add(new DataInfoImpl(avroDataInfo.getDataType().toString(), avroDataInfo.getNumUnits()));
     }
     return dataInfos;
+  }
+
+  private Map<String, Double> getMetricsFromAvro(final Metrics avroMetrics) {
+    final Map<String, Double> metrics = new HashMap<>(avroMetrics.getData().size());
+    for (final Map.Entry<CharSequence, Double> metric : avroMetrics.getData().entrySet()) {
+      metrics.put(metric.getKey().toString(), metric.getValue());
+    }
+    return metrics;
   }
 }

@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
+package edu.snu.cay.common.metric;
+
+import edu.snu.cay.common.metric.avro.Metrics;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -86,11 +88,11 @@ public final class MetricsCollector implements AutoCloseable {
     if (!isStarted) {
       throw new MetricException("Metric tracking should be started first before being stopped");
     }
-    final Map<String, Double> newMetrics = new HashMap<>();
+    final Map<CharSequence, Double> newMetrics = new HashMap<>();
     for (final MetricTracker metricTracker : metricTrackerList) {
       newMetrics.putAll(metricTracker.stop());
     }
-    metricsHandler.onNext(newMetrics);
+    metricsHandler.onNext(Metrics.newBuilder().setData(newMetrics).build());
     isStarted = false;
   }
 

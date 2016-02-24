@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.classification;
 
-import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
-import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
+import edu.snu.cay.common.metric.InsertableMetricTracker;
+import edu.snu.cay.common.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.data.ClassificationDenseDataParser;
 import edu.snu.cay.dolphin.examples.ml.data.ClassificationSparseDataParser;
 import edu.snu.cay.dolphin.examples.ml.parameters.CommunicationGroup;
@@ -25,7 +25,7 @@ import edu.snu.cay.dolphin.examples.ml.sub.*;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.StageInfo;
 import edu.snu.cay.dolphin.core.UserJobInfo;
-import edu.snu.cay.dolphin.core.metric.GCMetricTracker;
+import edu.snu.cay.common.metric.GCMetricTracker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,23 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
-
-import java.util.Map;
-
 /**
- * Interface that metric trackers implement.
+ * Test classes for Evaluator Manager.
  */
-public interface MetricTracker extends AutoCloseable {
-
-  /**
-   * start tracking metrics.
-   */
-  void start();
-
-  /**
-   * stop tracking metrics and return currently tracked metrics.
-   * @return key and value of metrics
-   */
-  Map<String, Double> stop();
-}
+package edu.snu.cay.services.evalmanager.impl;
