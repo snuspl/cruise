@@ -13,67 +13,66 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.common.aggregation.slave;
+package edu.snu.cay.common.aggregation.driver;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.ns.AggregationNetworkSetup;
-import edu.snu.cay.common.aggregation.ns.MasterId;
-import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.tang.InjectionFuture;
-import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 
 /**
- * Slave of Aggregation Service.
- * Sends messages to aggregation master.
+ * Master of Aggregation Service.
+ * Sends messages to aggregation slaves.
  */
-@EvaluatorSide
-public final class AggregationSlave {
+@DriverSide
+public final class AggregationMaster {
 
   /**
    * A network setup instance for AggregationMessage. It should be wrapped with InjectionFuture
-   * since there would be a loopy constructor when users use AggregationSlave in their
+   * since there would be a loopy constructor when users use AggregationMaster in their
    * aggregation message handlers.
    */
   private final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup;
 
   /**
-   * An identifier of the master.
+   * An identifier factory.
    */
-  private final Identifier masterId;
+  private final IdentifierFactory identifierFactory;
 
   @Inject
-  private AggregationSlave(final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup,
-                           @Parameter(MasterId.class) final String masterIdStr,
-                           final IdentifierFactory identifierFactory) {
+  private AggregationMaster(final InjectionFuture<AggregationNetworkSetup> aggregationNetworkSetup,
+                            final IdentifierFactory identifierFactory) {
     this.aggregationNetworkSetup = aggregationNetworkSetup;
-    this.masterId = identifierFactory.getNewInstance(masterIdStr);
+    this.identifierFactory = identifierFactory;
   }
 
   /**
-   * Sends message to aggregation master. The user should specify class name of the aggregation service client.
+   * Sends a message to an aggregation slave named slaveId. The user should specify
+   * class name of the aggregation service client.
+   *
    * @param clientClassName class name of the aggregation service client
+   * @param slaveId an end point id of the slave
    * @param data data which is encoded as a byte array
    */
-  public void send(final String clientClassName, final byte[] data) {
+  public void send(final String clientClassName, final String slaveId, final byte[] data) {
     final AggregationMessage msg = AggregationMessage.newBuilder()
         .setSourceId(aggregationNetworkSetup.get().getMyId().toString())
         .setClientClassName(clientClassName)
         .setData(ByteBuffer.wrap(data))
         .build();
-    final Connection<AggregationMessage> conn = aggregationNetworkSetup.get().
-        getConnectionFactory().newConnection(masterId);
+    final Connection<AggregationMessage> conn = aggregationNetworkSetup.get().getConnectionFactory()
+        .newConnection(identifierFactory.getNewInstance(slaveId));
     try {
       conn.open();
       conn.write(msg);
     } catch (final NetworkException e) {
-      throw new RuntimeException("NetworkException during AggregationSlave.send()", e);
+      throw new RuntimeException("NetworkException during AggregationMaster.send()", e);
     }
   }
 }

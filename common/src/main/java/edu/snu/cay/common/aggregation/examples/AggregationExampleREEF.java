@@ -80,11 +80,10 @@ public final class AggregationExampleREEF {
         .set(DriverConfiguration.ON_DRIVER_STARTED, AggregationExampleDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AggregationExampleDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_TASK_RUNNING, AggregationExampleDriver.RunningTaskHandler.class)
-        .set(DriverConfiguration.ON_TASK_COMPLETED, AggregationExampleDriver.CompletedTaskHandler.class)
         .build();
 
     final Configuration aggregationConf = AggregationConfiguration.newBuilder()
-        .addAggregationClient(AggregationSlaveTask.class.getName(),
+        .addAggregationClient(AggregationExampleDriver.AGGREGATION_CLIENT_ID,
             DriverSideMsgHandler.class,
             EvalSideMsgHandler.class)
         .build()

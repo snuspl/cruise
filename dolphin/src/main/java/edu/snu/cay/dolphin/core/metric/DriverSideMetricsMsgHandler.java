@@ -59,7 +59,7 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
 
     if (SrcType.Compute.equals(srcType)) {
 
-      optimizationOrchestrator.receiveComputeMetrics(msg.getSlaveId().toString(),
+      optimizationOrchestrator.receiveComputeMetrics(msg.getSourceId().toString(),
           metricsMessage.getIterationInfo().getCommGroupName().toString(),
           metricsMessage.getIterationInfo().getIteration(),
           getMetricsFromAvro(metricsMessage.getMetrics()),
@@ -67,7 +67,7 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
 
     } else if (SrcType.Controller.equals(srcType)) {
 
-      optimizationOrchestrator.receiveControllerMetrics(msg.getSlaveId().toString(),
+      optimizationOrchestrator.receiveControllerMetrics(msg.getSourceId().toString(),
           metricsMessage.getIterationInfo().getCommGroupName().toString(),
           metricsMessage.getIterationInfo().getIteration(),
           getMetricsFromAvro(metricsMessage.getMetrics()));
