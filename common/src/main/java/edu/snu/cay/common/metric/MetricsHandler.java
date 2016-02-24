@@ -18,10 +18,9 @@
  */
 package edu.snu.cay.common.metric;
 
+import edu.snu.cay.common.metric.avro.Metrics;
 import org.apache.reef.wake.EventHandler;
 
-import java.util.Map;
-
-public interface MetricsHandler extends EventHandler<Map<CharSequence, Double>> {
-  void onNext(Map<CharSequence, Double> metrics);
+public interface MetricsHandler extends EventHandler<Metrics> {
+  void onNext(Metrics metrics);
 }

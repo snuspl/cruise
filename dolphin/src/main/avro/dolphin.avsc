@@ -82,7 +82,7 @@
     {"name": "srcType", "type": {"type": "enum", "name": "SrcType",
         "symbols": ["Compute", "Controller"]}},
     {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.core.avro.IterationInfo"},
-    {"name": "metrics", "type": {"type": "map", "values": "double"}},
+    {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
     {"name": "controllerMsg", "type": ["null", "ControllerMsg"], "default": null},
     {"name": "computeMsg", "type": ["null", "ComputeMsg"], "default": null}
   ]

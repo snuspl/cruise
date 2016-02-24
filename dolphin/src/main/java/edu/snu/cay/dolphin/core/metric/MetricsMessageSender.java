@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.core.metric;
 
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
+import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
 import edu.snu.cay.dolphin.core.metric.avro.ControllerMsg;
@@ -24,7 +25,6 @@ import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.dolphin.core.metric.avro.SrcType;
 
 import javax.inject.Inject;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -77,7 +77,7 @@ public final class MetricsMessageSender implements MetricsHandler {
   }
 
   @Override
-  public void onNext(final Map<CharSequence, Double> metrics) {
+  public void onNext(final Metrics metrics) {
     metricsMessageBuilder.setMetrics(metrics);
   }
 

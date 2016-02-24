@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.common.metric;
 
+import edu.snu.cay.common.metric.avro.Metrics;
+
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
@@ -90,7 +92,7 @@ public final class MetricsCollector implements AutoCloseable {
     for (final MetricTracker metricTracker : metricTrackerList) {
       newMetrics.putAll(metricTracker.stop());
     }
-    metricsHandler.onNext(newMetrics);
+    metricsHandler.onNext(Metrics.newBuilder().setData(newMetrics).build());
     isStarted = false;
   }
 

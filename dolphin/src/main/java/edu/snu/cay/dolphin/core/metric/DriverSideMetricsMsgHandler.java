@@ -16,6 +16,7 @@
 package edu.snu.cay.dolphin.core.metric;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
+import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
 import edu.snu.cay.dolphin.core.metric.avro.SrcType;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;
@@ -86,10 +87,10 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
     return dataInfos;
   }
 
-  private Map<String, Double> getMetricsFromAvro(final Map<CharSequence, Double> avroMetrics) {
-    final Map<String, Double> metrics = new HashMap<>(avroMetrics.size());
-    for (final Map.Entry<CharSequence, Double> avroMetric : avroMetrics.entrySet()) {
-      metrics.put(avroMetric.getKey().toString(), avroMetric.getValue());
+  private Map<String, Double> getMetricsFromAvro(final Metrics avroMetrics) {
+    final Map<String, Double> metrics = new HashMap<>(avroMetrics.getData().size());
+    for (final Map.Entry<CharSequence, Double> metric : avroMetrics.getData().entrySet()) {
+      metrics.put(metric.getKey().toString(), metric.getValue());
     }
     return metrics;
   }
