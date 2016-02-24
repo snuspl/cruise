@@ -116,6 +116,9 @@
             <configuration>
               <sourceDirectory>${project.basedir}/src/main/avro/</sourceDirectory>
               <outputDirectory>${project.basedir}/target/generated-sources/avro/</outputDirectory>
+              <imports>
+                <import>${project.parent.basedir}/common/src/main/avro/metric.avsc</import>
+              </imports>
             </configuration>
           </execution>
         </executions>

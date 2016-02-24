@@ -13,20 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
+package edu.snu.cay.common.metric;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+import java.util.Set;
 
 /**
- * Thrown when metric tracking fails. Metric tracking commonly fails for two reasons.
- * The first is that the tracking is started again before the previous tracking is stopped.
- * The second is that tracking is stopped before being started.
+ * The set of MetricTracker implementations registered to MetricManager.
  */
-public class MetricException extends Exception {
-
-  /**
-   * Constructs a new exception with the specified detail message.
-   * @param message the detail message.
-   */
-  public MetricException(final String message) {
-    super(message);
-  }
+@NamedParameter(doc = "The set of MetricTracker implementations registered to MetricManager.",
+                default_classes = {})
+public final class MetricTrackers implements Name<Set<MetricTracker>> {
 }

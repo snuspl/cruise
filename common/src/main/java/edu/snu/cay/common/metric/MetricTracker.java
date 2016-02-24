@@ -13,16 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
-
-import org.apache.reef.tang.annotations.DefaultImplementation;
-import org.apache.reef.wake.remote.Codec;
+package edu.snu.cay.common.metric;
 
 import java.util.Map;
 
 /**
- * Interface of codecs for metrics.
+ * Interface that metric trackers implement.
  */
-@DefaultImplementation(DefaultMetricCodecImpl.class)
-public interface MetricCodec extends Codec<Map<String, Double>> {
+public interface MetricTracker extends AutoCloseable {
+
+  /**
+   * start tracking metrics.
+   */
+  void start();
+
+  /**
+   * stop tracking metrics and return currently tracked metrics.
+   * @return key and value of metrics
+   */
+  Map<String, Double> stop();
 }
