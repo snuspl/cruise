@@ -17,9 +17,11 @@ package edu.snu.cay.services.ps.examples.add;
 
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.driver.impl.ConcurrentParameterServerManager;
+import edu.snu.cay.services.ps.examples.add.parameters.NumKeys;
 import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
 import edu.snu.cay.services.ps.examples.add.parameters.JobTimeout;
+import edu.snu.cay.services.ps.examples.add.parameters.StartKey;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -47,14 +49,20 @@ public final class ConcurrentPSExampleREEF {
   private final long timeout;
   private final int numWorkers;
   private final int numUpdates;
+  private final int startKey;
+  private final int numKeys;
 
   @Inject
   private ConcurrentPSExampleREEF(@Parameter(JobTimeout.class) final long timeout,
                                   @Parameter(NumWorkers.class) final int numWorkers,
-                                  @Parameter(NumUpdates.class) final int numUpdates) {
+                                  @Parameter(NumUpdates.class) final int numUpdates,
+                                  @Parameter(StartKey.class) final int startKey,
+                                  @Parameter(NumKeys.class) final int numKeys) {
     this.timeout = timeout;
     this.numWorkers = numWorkers;
     this.numUpdates = numUpdates;
+    this.startKey = startKey;
+    this.numKeys = numKeys;
   }
 
   private Configuration getDriverConf() {
@@ -77,6 +85,8 @@ public final class ConcurrentPSExampleREEF {
     final Configuration parametersConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumWorkers.class, Integer.toString(numWorkers))
         .bindNamedParameter(NumUpdates.class, Integer.toString(numUpdates))
+        .bindNamedParameter(StartKey.class, Integer.toString(startKey))
+        .bindNamedParameter(NumKeys.class, Integer.toString(numKeys))
         .build();
 
     final Configuration psConf = new ParameterServerConfigurationBuilder()
@@ -110,6 +120,8 @@ public final class ConcurrentPSExampleREEF {
     cl.registerShortNameOfClass(JobTimeout.class);
     cl.registerShortNameOfClass(NumWorkers.class);
     cl.registerShortNameOfClass(NumUpdates.class);
+    cl.registerShortNameOfClass(StartKey.class);
+    cl.registerShortNameOfClass(NumKeys.class);
 
     cl.processCommandLine(args);
 
