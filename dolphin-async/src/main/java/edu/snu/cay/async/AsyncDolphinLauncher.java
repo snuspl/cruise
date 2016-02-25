@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.async;
 
+import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
@@ -25,6 +26,9 @@ import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
+import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
+import org.apache.reef.io.network.naming.NameServerConfiguration;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
@@ -36,6 +40,7 @@ import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -183,7 +188,7 @@ public final class AsyncDolphinLauncher {
         .setMemory(evalSize)
         .build();
 
-    return new DataLoadingRequestBuilder()
+    final Configuration driverConfWithDataLoad = new DataLoadingRequestBuilder()
         .setInputFormatClass(TextInputFormat.class)
         .setInputPath(processInputDir(injector.getNamedInstance(InputDir.class), injector))
         .setNumberOfDesiredSplits(injector.getNamedInstance(Splits.class))
@@ -191,6 +196,20 @@ public final class AsyncDolphinLauncher {
         .addDataRequest(dataRequest)
         .setDriverConfigurationModule(driverConf)
         .build();
+
+    final AggregationConfiguration aggregationServiceConf = AggregationConfiguration.newBuilder()
+        .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
+            SynchronizationManager.MessageHandler.class,
+            Synchronizer.MessageHandler.class)
+        .build();
+
+    return Configurations.merge(driverConfWithDataLoad,
+        aggregationServiceConf.getDriverConfiguration(),
+        NameServerConfiguration.CONF.build(),
+        LocalNameResolverConfiguration.CONF.build(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+            .build());
   }
 
   private static String processInputDir(final String inputDir, final Injector injector) throws InjectionException {
