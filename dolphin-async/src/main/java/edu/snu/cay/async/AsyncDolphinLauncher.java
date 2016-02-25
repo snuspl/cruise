@@ -24,7 +24,6 @@ import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
-import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
@@ -157,8 +156,6 @@ public final class AsyncDolphinLauncher {
 
   private static Configuration getDriverConfiguration(
       final String jobName, final Injector injector) throws InjectionException {
-    final int evalSize = injector.getNamedInstance(EvaluatorSize.class);
-
     final ConfigurationModule driverConf = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
@@ -171,24 +168,10 @@ public final class AsyncDolphinLauncher {
         .set(DriverConfiguration.ON_TASK_COMPLETED, AsyncDolphinDriver.CompletedTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, AsyncDolphinDriver.FailedTaskHandler.class);
 
-    // one evaluator for the parameter server
-    final EvaluatorRequest compRequest = EvaluatorRequest.newBuilder()
-        .setNumber(1)
-        .setMemory(evalSize)
-        .build();
-
-    // We do not explicitly set the number of data loading evaluators here, because
-    // the number is being reset to the number of data partitions at the Driver in DataLoader anyway.
-    final EvaluatorRequest dataRequest = EvaluatorRequest.newBuilder()
-        .setMemory(evalSize)
-        .build();
-
     return new DataLoadingRequestBuilder()
         .setInputFormatClass(TextInputFormat.class)
         .setInputPath(processInputDir(injector.getNamedInstance(InputDir.class), injector))
         .setNumberOfDesiredSplits(injector.getNamedInstance(Splits.class))
-        .addComputeRequest(compRequest)
-        .addDataRequest(dataRequest)
         .setDriverConfigurationModule(driverConf)
         .build();
   }

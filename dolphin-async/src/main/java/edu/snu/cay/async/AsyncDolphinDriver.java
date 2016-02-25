@@ -16,7 +16,7 @@
 package edu.snu.cay.async;
 
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
-import edu.snu.cay.services.dataloader.DataLoader;
+import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
@@ -38,6 +38,8 @@ import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,6 +55,12 @@ final class AsyncDolphinDriver {
   private static final String SERVER_CONTEXT = "ServerContext";
 
   /**
+   * Evaluator Manager, a unified path for requesting evaluators.
+   * Helps managing REEF events related to evaluator and context.
+   */
+  private final EvaluatorManager evaluatorManager;
+
+  /**
    * Accessor for data loading service.
    * We can check whether a evaluator is configured with the service or not, and
    * query the number of initial evaluators.
@@ -63,12 +71,6 @@ final class AsyncDolphinDriver {
    * The initial number of worker-side evaluators.
    */
   private final int initWorkerCount;
-
-  /**
-   * Customized REEF DataLoader.
-   * Sends evaluator allocation requests for data loading service.
-   */
-  private final DataLoader dataLoader;
 
   /**
    * Accessor for parameter server service.
@@ -97,15 +99,15 @@ final class AsyncDolphinDriver {
   private ActiveContext serverContext;
 
   @Inject
-  private AsyncDolphinDriver(final DataLoadingService dataLoadingService,
-                             final DataLoader dataLoader,
+  private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
+                             final DataLoadingService dataLoadingService,
                              final ParameterServerDriver psDriver,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
                              final ConfigurationSerializer configurationSerializer) throws IOException {
+    this.evaluatorManager = evaluatorManager;
     this.dataLoadingService = dataLoadingService;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
-    this.dataLoader = dataLoader;
     this.psDriver = psDriver;
     this.runningWorkerContextCount = new AtomicInteger(0);
     this.completedOrFailedEvalCount = new AtomicInteger(0);
@@ -117,7 +119,84 @@ final class AsyncDolphinDriver {
     @Override
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
-      dataLoader.releaseResourceRequestGate();
+
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForServer = new EventHandler<AllocatedEvaluator>() {
+        @Override
+        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+          LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
+          final Configuration idConfiguration = ContextConfiguration.CONF.set(
+              ContextConfiguration.IDENTIFIER,
+              dataLoadingService.getComputeContextIdPrefix() + 0).build();
+          allocatedEvaluator.submitContext(idConfiguration);
+        }
+      };
+      final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>();
+      contextActiveHandlersForServer.add(new EventHandler<ActiveContext>() {
+        @Override
+        public void onNext(final ActiveContext activeContext) {
+          LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);
+          final Configuration contextConf = Configurations.merge(
+              ContextConfiguration.CONF
+                  .set(ContextConfiguration.IDENTIFIER, SERVER_CONTEXT)
+                  .build(),
+              psDriver.getContextConfiguration());
+          final Configuration serviceConf = psDriver.getServerServiceConfiguration();
+
+          activeContext.submitContextAndService(contextConf, Configurations.merge(serviceConf, paramConf));
+        }
+      });
+      contextActiveHandlersForServer.add(new EventHandler<ActiveContext>() {
+        @Override
+        public void onNext(final ActiveContext activeContext) {
+          // TODO #361: Adjust to use multiple servers for multi-node parameter server
+          LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
+          completedOrFailedEvalCount.incrementAndGet();
+          // although this evaluator is not 'completed' yet,
+          // we add it beforehand so that it closes if all workers finish
+          serverContext = activeContext;
+        }
+      });
+      evaluatorManager.allocateEvaluators(1, evalAllocHandlerForServer, contextActiveHandlersForServer);
+
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = new EventHandler<AllocatedEvaluator>() {
+        @Override
+        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+          LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
+          allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
+              dataLoadingService.getServiceConfiguration(allocatedEvaluator));
+        }
+      };
+      final List<EventHandler<ActiveContext>> contextActiveHandlersForWorker = new ArrayList<>();
+      contextActiveHandlersForWorker.add(new EventHandler<ActiveContext>() {
+        @Override
+        public void onNext(final ActiveContext activeContext) {
+          LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
+          final int workerIndex = runningWorkerContextCount.getAndIncrement();
+          final Configuration contextConf = Configurations.merge(
+              ContextConfiguration.CONF
+                  .set(ContextConfiguration.IDENTIFIER, WORKER_CONTEXT + "-" + workerIndex)
+                  .build(),
+              psDriver.getContextConfiguration());
+          final Configuration serviceConf = psDriver.getWorkerServiceConfiguration();
+
+          activeContext.submitContextAndService(contextConf, serviceConf);
+        }
+      });
+      contextActiveHandlersForWorker.add(new EventHandler<ActiveContext>() {
+        @Override
+        public void onNext(final ActiveContext activeContext) {
+          LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
+          final int workerIndex = Integer.parseInt(activeContext.getId().substring(WORKER_CONTEXT.length() + 1));
+          final Configuration taskConf = TaskConfiguration.CONF
+              .set(TaskConfiguration.IDENTIFIER, AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex)
+              .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
+              .build();
+
+          activeContext.submitTask(Configurations.merge(taskConf, workerConf, paramConf));
+        }
+      });
+      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
+          evalAllocHandlerForWorker, contextActiveHandlersForWorker);
     }
   }
 
@@ -125,9 +204,7 @@ final class AsyncDolphinDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       LOG.log(Level.INFO, "AllocatedEvaluator: {0}", allocatedEvaluator);
-      // currently we only have data loading service,
-      // but later we should check if this evaluator was actually requested by the service
-      dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
+      evaluatorManager.onEvaluatorAllocated(allocatedEvaluator);
     }
   }
 
@@ -135,55 +212,7 @@ final class AsyncDolphinDriver {
     @Override
     public void onNext(final ActiveContext activeContext) {
       LOG.log(Level.INFO, "ActiveContext: {0}", activeContext);
-
-      // Case 1: One context on worker-side evaluator
-      if (dataLoadingService.isDataLoadedContext(activeContext)) {
-        LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
-        final int workerIndex = runningWorkerContextCount.getAndIncrement();
-        final Configuration contextConf = Configurations.merge(
-            ContextConfiguration.CONF
-                .set(ContextConfiguration.IDENTIFIER, WORKER_CONTEXT + "-" + workerIndex)
-                .build(),
-            psDriver.getContextConfiguration());
-        final Configuration serviceConf = psDriver.getWorkerServiceConfiguration();
-
-        activeContext.submitContextAndService(contextConf, serviceConf);
-
-      // TODO #361: Adjust to use multiple servers for multi-node parameter server
-      // Case 2: One context on server-side evaluator
-      } else if (dataLoadingService.isComputeContext(activeContext)) {
-        LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);
-        final Configuration contextConf = Configurations.merge(
-            ContextConfiguration.CONF
-                .set(ContextConfiguration.IDENTIFIER, SERVER_CONTEXT)
-                .build(),
-            psDriver.getContextConfiguration());
-        final Configuration serviceConf = psDriver.getServerServiceConfiguration();
-
-        activeContext.submitContextAndService(contextConf, Configurations.merge(serviceConf, paramConf));
-
-      // Case 3: Two contexts on worker-side evaluator
-      } else if (activeContext.getId().startsWith(WORKER_CONTEXT)) {
-        LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
-        final int workerIndex = Integer.parseInt(activeContext.getId().substring(WORKER_CONTEXT.length() + 1));
-        final Configuration taskConf = TaskConfiguration.CONF
-            .set(TaskConfiguration.IDENTIFIER, AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex)
-            .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
-            .build();
-
-        activeContext.submitTask(Configurations.merge(taskConf, workerConf, paramConf));
-
-      // Case 4: Two contexts on server-side evaluator
-      } else if (activeContext.getId().equals(SERVER_CONTEXT)) {
-        LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
-        completedOrFailedEvalCount.incrementAndGet();
-        // although this evaluator is not 'completed' yet, we add it beforehand so that it closes if all workers finish
-        serverContext = activeContext;
-
-      } else {
-        LOG.log(Level.WARNING, "Unexpected context - {0}", activeContext);
-        activeContext.close();
-      }
+      evaluatorManager.onContextActive(activeContext);
     }
   }
 
