@@ -149,6 +149,7 @@ final class AsyncDolphinDriver {
 
         activeContext.submitContextAndService(contextConf, serviceConf);
 
+      // TODO #361: Adjust to use multiple servers for multi-node parameter server
       // Case 2: One context on server-side evaluator
       } else if (dataLoadingService.isComputeContext(activeContext)) {
         LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);

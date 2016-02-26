@@ -25,7 +25,7 @@ import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerNumPartitions;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerQueueSize;
-import edu.snu.cay.services.ps.worker.partitioned.resolver.ServerResolver;
+import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
@@ -321,7 +321,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
       }
 
       // Send to remote PS
-      sender.get().sendPushMsg(serverResolver.resolve(encodedKey.getHash()), encodedKey, preValue);
+      sender.get().sendPushMsg(serverResolver.resolveServer(encodedKey.getHash()), encodedKey, preValue);
     }
   }
 
@@ -412,7 +412,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
             public Wrapped<V> load(final EncodedKey<K> encodedKey) throws Exception {
               final PullFuture<V> future = new PullFuture<>();
               pendingPulls.put(encodedKey.getKey(), future);
-              sender.get().sendPullMsg(serverResolver.resolve(encodedKey.getHash()), encodedKey);
+              sender.get().sendPullMsg(serverResolver.resolveServer(encodedKey.getHash()), encodedKey);
               final V value = future.getValue();
               pendingPulls.remove(encodedKey.getKey());
               return new Wrapped<>(value);
