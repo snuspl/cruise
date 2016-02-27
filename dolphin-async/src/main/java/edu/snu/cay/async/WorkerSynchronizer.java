@@ -31,15 +31,15 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 @Unit
-public final class Synchronizer {
+public final class WorkerSynchronizer {
 
-  private static final Logger LOG = Logger.getLogger(Synchronizer.class.getName());
+  private static final Logger LOG = Logger.getLogger(WorkerSynchronizer.class.getName());
 
   private final AggregationSlave aggregationSlave;
   private final ResettingCountDownLatch countDownLatch;
 
   @Inject
-  private Synchronizer(final AggregationSlave aggregationSlave) {
+  private WorkerSynchronizer(final AggregationSlave aggregationSlave) {
     this.aggregationSlave = aggregationSlave;
     this.countDownLatch = new ResettingCountDownLatch(1);
   }

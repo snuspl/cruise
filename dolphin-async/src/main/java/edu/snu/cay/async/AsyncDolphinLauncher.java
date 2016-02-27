@@ -200,7 +200,7 @@ public final class AsyncDolphinLauncher {
     final AggregationConfiguration aggregationServiceConf = AggregationConfiguration.newBuilder()
         .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
             SynchronizationManager.MessageHandler.class,
-            Synchronizer.MessageHandler.class)
+            WorkerSynchronizer.MessageHandler.class)
         .build();
 
     return Configurations.merge(driverConfWithDataLoad,

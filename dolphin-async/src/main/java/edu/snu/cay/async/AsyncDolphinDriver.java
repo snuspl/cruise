@@ -107,7 +107,7 @@ final class AsyncDolphinDriver {
                              final DataLoader dataLoader,
                              final ParameterServerDriver psDriver,
                              final AggregationManager aggregationManager,
-                             @Parameter(SerializedWorkerConfiguration.class)final String serializedWorkerConf,
+                             @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
                              final ConfigurationSerializer configurationSerializer) throws IOException {
     this.dataLoadingService = dataLoadingService;

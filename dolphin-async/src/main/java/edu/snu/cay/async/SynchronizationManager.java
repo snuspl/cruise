@@ -42,7 +42,7 @@ final class SynchronizationManager {
 
   private final AggregationMaster aggregationMaster;
 
-  // This has to be correctly changed when dolphin-asyn elastically scales in/out workers.
+  // TODO #379: This has to be correctly changed when the number of workers elastically scale-in or scale-out.
   private final int numWorkers;
   private final Set<String> blockedWorkerIds;
 
@@ -55,11 +55,12 @@ final class SynchronizationManager {
   }
 
   private void broadcastResponseMessages() {
-    for (final String slaveId : blockedWorkerIds) {
-      aggregationMaster.send(AGGREGATION_CLIENT_NAME, slaveId, new byte[0]);
-    }
+    final Set<String> previousBlockedWorkerIds = new HashSet<>(blockedWorkerIds);
 
     blockedWorkerIds.clear();
+    for (final String slaveId : previousBlockedWorkerIds) {
+      aggregationMaster.send(AGGREGATION_CLIENT_NAME, slaveId, new byte[0]);
+    }
   }
 
   final class MessageHandler implements EventHandler<AggregationMessage> {
@@ -68,7 +69,7 @@ final class SynchronizationManager {
     public void onNext(final AggregationMessage aggregationMessage) {
       final String slaveId = aggregationMessage.getSourceId().toString();
       if (blockedWorkerIds.contains(slaveId)) {
-        LOG.log(Level.INFO, "Multiple synchronization requests from {0}", slaveId);
+        LOG.log(Level.WARNING, "Multiple synchronization requests from {0}", slaveId);
       } else {
         blockedWorkerIds.add(slaveId);
       }
