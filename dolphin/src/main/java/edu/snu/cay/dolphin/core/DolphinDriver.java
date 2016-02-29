@@ -406,18 +406,20 @@ public final class DolphinDriver {
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
 
+      // Submitting first context(DataLoading compute context) to evaluator for controller task
       final EventHandler<AllocatedEvaluator>
           evalAllocHandlerForControllerTask = new EventHandler<AllocatedEvaluator>() {
             @Override
             public void onNext(final AllocatedEvaluator allocatedEvaluator) {
               LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
-              final Configuration idConfiguration = ContextConfiguration.CONF.set(
-                  ContextConfiguration.IDENTIFIER,
-                  dataLoadingService.getComputeContextIdPrefix() + 0).build();
+              final Configuration idConfiguration = ContextConfiguration.CONF
+                  .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + 0)
+                  .build();
               allocatedEvaluator.submitContext(idConfiguration);
             }
           };
       final List<EventHandler<ActiveContext>> contextActiveHandlersForControllerTask = new ArrayList<>();
+      // Submitting second context(GroupComm context) to evaluator for controller task
       contextActiveHandlersForControllerTask.add(new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
@@ -428,6 +430,7 @@ public final class DolphinDriver {
           activeContext.submitContextAndService(contextConf, serviceConf);
         }
       });
+      // Submitting task to evaluator for controller task
       final EventHandler<ActiveContext> submittingTaskHandler = new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
@@ -439,6 +442,7 @@ public final class DolphinDriver {
       contextActiveHandlersForControllerTask.add(submittingTaskHandler);
       evaluatorManager.allocateEvaluators(1, evalAllocHandlerForControllerTask, contextActiveHandlersForControllerTask);
 
+      // Submitting first context(DataLoading context) to evaluator for compute task
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForComputeTask = new EventHandler<AllocatedEvaluator>() {
         @Override
         public void onNext(final AllocatedEvaluator allocatedEvaluator) {
@@ -448,6 +452,7 @@ public final class DolphinDriver {
         }
       };
       final List<EventHandler<ActiveContext>> contextActiveHandlersForComputeTask = new ArrayList<>();
+      // Submitting second context(GroupComm context) to evaluator for compute task
       contextActiveHandlersForComputeTask.add(new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
@@ -458,6 +463,7 @@ public final class DolphinDriver {
           activeContext.submitContextAndService(contextConf, serviceConf);
         }
       });
+      // Submitting task to evaluator for compute task
       contextActiveHandlersForComputeTask.add(submittingTaskHandler);
       evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
           evalAllocHandlerForComputeTask, contextActiveHandlersForComputeTask);

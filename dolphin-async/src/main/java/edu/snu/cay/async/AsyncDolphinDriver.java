@@ -120,17 +120,20 @@ final class AsyncDolphinDriver {
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
 
+      // Submitting first context(DataLoading compute context) to server-side evaluator
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForServer = new EventHandler<AllocatedEvaluator>() {
         @Override
         public void onNext(final AllocatedEvaluator allocatedEvaluator) {
           LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
-          final Configuration idConfiguration = ContextConfiguration.CONF.set(
-              ContextConfiguration.IDENTIFIER,
-              dataLoadingService.getComputeContextIdPrefix() + 0).build();
+          final Configuration idConfiguration = ContextConfiguration.CONF
+              .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + 0)
+              .build();
           allocatedEvaluator.submitContext(idConfiguration);
         }
       };
-      final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>();
+      final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>(2);
+      // Submitting second context(parameter server context) to server-side evaluator
+      // TODO #361: Adjust to use multiple servers for multi-node parameter server
       contextActiveHandlersForServer.add(new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
@@ -145,10 +148,10 @@ final class AsyncDolphinDriver {
           activeContext.submitContextAndService(contextConf, Configurations.merge(serviceConf, paramConf));
         }
       });
+      // Finished server-side evaluator setup
       contextActiveHandlersForServer.add(new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
-          // TODO #361: Adjust to use multiple servers for multi-node parameter server
           LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
           completedOrFailedEvalCount.incrementAndGet();
           // although this evaluator is not 'completed' yet,
@@ -158,6 +161,7 @@ final class AsyncDolphinDriver {
       });
       evaluatorManager.allocateEvaluators(1, evalAllocHandlerForServer, contextActiveHandlersForServer);
 
+      // Submitting first context(DataLoading context) to worker-side evaluator
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = new EventHandler<AllocatedEvaluator>() {
         @Override
         public void onNext(final AllocatedEvaluator allocatedEvaluator) {
@@ -166,7 +170,8 @@ final class AsyncDolphinDriver {
               dataLoadingService.getServiceConfiguration(allocatedEvaluator));
         }
       };
-      final List<EventHandler<ActiveContext>> contextActiveHandlersForWorker = new ArrayList<>();
+      final List<EventHandler<ActiveContext>> contextActiveHandlersForWorker = new ArrayList<>(2);
+      // Submitting second context(worker context) to worker-side evaluator
       contextActiveHandlersForWorker.add(new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
@@ -182,6 +187,7 @@ final class AsyncDolphinDriver {
           activeContext.submitContextAndService(contextConf, serviceConf);
         }
       });
+      // Submitting worker task to worker-side evaluator
       contextActiveHandlersForWorker.add(new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
