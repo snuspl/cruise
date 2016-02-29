@@ -136,7 +136,6 @@ final class AsyncDolphinDriver {
 
     /**
      * Returns an EventHandler which submits the first context(DataLoading compute context) to server-side evaluator.
-     * @return an EventHandler
      */
     private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForServer() {
       return new EventHandler<AllocatedEvaluator>() {
@@ -153,7 +152,6 @@ final class AsyncDolphinDriver {
 
     /**
      * Returns an EventHandler which submits the first context(DataLoading context) to worker-side evaluator.
-     * @return an EventHandler
      */
     private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForWorker() {
       return new EventHandler<AllocatedEvaluator>() {
@@ -168,7 +166,6 @@ final class AsyncDolphinDriver {
 
     /**
      * Returns an EventHandler which submits the second context(parameter server context) to server-side evaluator.
-     * @return an EventHandler
      */
     // TODO #361: Adjust to use multiple servers for multi-node parameter server
     private EventHandler<ActiveContext> getFirstContextActiveHandlerForServer() {
@@ -190,7 +187,6 @@ final class AsyncDolphinDriver {
 
     /**
      * Returns an EventHandler which finishes server-side evaluator setup.
-     * @return an EventHandler
      */
     private EventHandler<ActiveContext> getSecondContextActiveHandlerForServer() {
       return new EventHandler<ActiveContext>() {
@@ -207,7 +203,6 @@ final class AsyncDolphinDriver {
 
     /**
      * Returns an EventHandler which submits the second context(worker context) to worker-side evaluator.
-     * @return an EventHandler
      */
     private EventHandler<ActiveContext> getFirstContextActiveHandlerForWorker() {
       return new EventHandler<ActiveContext>() {
@@ -229,7 +224,6 @@ final class AsyncDolphinDriver {
 
     /**
      * Returns an EventHandler which submits worker task to worker-side evaluator.
-     * @return an EventHandler
      */
     private EventHandler<ActiveContext> getSecondContextActiveHandlerForWorker() {
       return new EventHandler<ActiveContext>() {

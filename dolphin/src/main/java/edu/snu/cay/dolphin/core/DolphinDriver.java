@@ -423,7 +423,6 @@ public final class DolphinDriver {
     /**
      * Returns an EventHandler which submits the first context(DataLoading compute context)
      * to evaluator for controller task.
-     * @return an EventHandler
      */
     private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForControllerTask() {
       return new EventHandler<AllocatedEvaluator>() {
@@ -440,7 +439,6 @@ public final class DolphinDriver {
 
     /**
      * Returns an EventHandler which submits the first context(DataLoading context) to evaluator for compute task.
-     * @return an EventHandler
      */
     private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForComputeTask() {
       return new EventHandler<AllocatedEvaluator>() {
@@ -455,7 +453,6 @@ public final class DolphinDriver {
 
     /**
      * Returns an EventHandler which submits the second context(GroupComm context) to evaluator for controller task.
-     * @return an EventHandler
      */
     private EventHandler<ActiveContext> getFirstContextActiveHandlerForControllerTask() {
       return new EventHandler<ActiveContext>() {
@@ -472,7 +469,6 @@ public final class DolphinDriver {
 
     /**
      * Returns an EventHandler which submits the second context(GroupComm context) to evaluator for compute task.
-     * @return an EventHandler
      */
     private EventHandler<ActiveContext> getFirstContextActiveHandlerForComputeTask() {
       return new EventHandler<ActiveContext>() {
@@ -489,7 +485,6 @@ public final class DolphinDriver {
 
     /**
      * Returns an EventHandler which submits task to evaluator.
-     * @return an EventHandler
      */
     private EventHandler<ActiveContext> getSubmittingTaskHandler() {
       return new EventHandler<ActiveContext>() {
@@ -748,7 +743,6 @@ public final class DolphinDriver {
         final int currentSequence = contextToStageSequence.get(runningTask.getActiveContext().getId());
         final CommunicationGroupDriverImpl commGroup
             = (CommunicationGroupDriverImpl) commGroupDriverList.get(currentSequence);
-        LOG.log(Level.INFO, "deleting...");
         commGroup.failTask(runningTask.getId());
         commGroup.removeTask(runningTask.getId());
         // Memo this context to release it after the task is completed
