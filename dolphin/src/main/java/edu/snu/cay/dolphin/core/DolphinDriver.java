@@ -35,7 +35,6 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
-import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -221,8 +220,6 @@ public final class DolphinDriver {
    */
   private final EMResourceRequestManager emResourceRequestManager;
 
-  private final PartitionManager partitionManager;
-
   /**
    * Set of ActiveContext ids on state closing, used to determine whether a task is requested to be closed or not.
    */
@@ -260,7 +257,6 @@ public final class DolphinDriver {
                         final UserParameters userParameters,
                         final HTraceParameters traceParameters,
                         final EMResourceRequestManager emResourceRequestManager,
-                        final PartitionManager partitionManager,
                         final HTraceInfoCodec hTraceInfoCodec,
                         final HTrace hTrace,
                         @Parameter(StartTrace.class) final boolean startTrace,
@@ -287,7 +283,6 @@ public final class DolphinDriver {
     this.userParameters = userParameters;
     this.traceParameters = traceParameters;
     this.emResourceRequestManager = emResourceRequestManager;
-    this.partitionManager = partitionManager;
     this.closingContexts = Collections.synchronizedSet(new HashSet<String>());
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.jobTraceInfo = startTrace ? TraceInfo.fromSpan(Trace.startSpan("job", Sampler.ALWAYS).getSpan()) : null;
@@ -522,8 +517,6 @@ public final class DolphinDriver {
           }
           activeContext.submitContextAndService(finalContextConf, finalServiceConf);
         } else {
-          LOG.log(Level.INFO, "Registering evaluator to PartitionManager");
-          partitionManager.registerEvaluator(activeContext.getId());
           submitTask(activeContext, 0);
         }
       } else if (requestorId.equals(ElasticMemory.class.getName())) {
@@ -652,13 +645,9 @@ public final class DolphinDriver {
       }
     }
 
-    // Let's use context id as a partition Id, which should be distinguished between evaluators
-    final String partitionId = activeContext.getId().split("-")[1];
-
-    // Bind things for EM's initial id partitioning
+    //Bind EM's DataIdFactory implementation
     dolphinTaskConfBuilder
-        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-        .bindNamedParameter(BaseCounterDataIdFactory.PartitionId.class, partitionId);
+        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class);
 
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task

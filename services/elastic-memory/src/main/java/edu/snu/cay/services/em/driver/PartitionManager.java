@@ -25,6 +25,8 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.services.em.common.Constants.EVAL_ID_PREFIX;
+
 /**
  * Manager class for keeping track of partitions registered by evaluators.
  * It handles a global view of the partitions of all Evaluators, so we can guarantee that all partitions are unique.
@@ -68,13 +70,13 @@ public final class PartitionManager {
 
   /**
    * Register an evaluator and allocate a partition to the evaluator.
-   * @param contextId an id of context
-   * @return a id of allocated partition
+   * The partition id is determined by the index of the Evaluator's id.
+   * @param evalId an id of evaluator
    */
-  public synchronized void registerEvaluator(final String contextId) {
-    final long partitionId = Long.parseLong(contextId.split("-")[1]);
-    LOG.log(Level.INFO, "contextId: {0}, partitionId: {1}", new Object[]{contextId, partitionId});
-    if (evalPartitionMap.put(contextId, partitionId) != null) {
+  public synchronized void registerEvaluator(final String evalId) {
+    final long partitionId = Long.parseLong(evalId.replace(EVAL_ID_PREFIX, ""));
+    LOG.log(Level.INFO, "evalId: {0}, partitionId: {1}", new Object[]{evalId, partitionId});
+    if (evalPartitionMap.put(evalId, partitionId) != null) {
       throw new RuntimeException("This evaluator is already registered");
     }
   }

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
+import edu.snu.cay.services.em.ns.parameters.EMEvalId;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.reef.tang.Configuration;
@@ -55,6 +56,7 @@ public final class MemoryStoreTest {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(SpanReceiver.class, MockedSpanReceiver.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindNamedParameter(EMEvalId.class, String.valueOf(0))
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);

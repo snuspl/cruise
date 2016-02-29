@@ -16,29 +16,27 @@
 package edu.snu.cay.services.em.evaluator;
 
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
+import edu.snu.cay.services.em.ns.parameters.EMEvalId;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+
+import static edu.snu.cay.services.em.common.Constants.EVAL_ID_PREFIX;
 
 /**
  * OperationRouter that redirects incoming operations to corresponding evaluators.
  * Currently it manages only a local partition.
  */
 public final class OperationRouter {
-  private long localPartitionId;
+  private final long localPartitionId;
 
   private final PartitionFunc partitionFunc;
 
   @Inject
-  private OperationRouter(final PartitionFunc partitionFunc) {
+  private OperationRouter(final PartitionFunc partitionFunc,
+                          @Parameter(EMEvalId.class) final String evalId) {
     this.partitionFunc = partitionFunc;
-  }
-
-  /**
-   * Initialize local partition id with {@code localContextId}.
-   * @param localContextId an id of context of local evaluator
-   */
-  public void initialize(final String localContextId) {
-    this.localPartitionId = Long.parseLong(localContextId.split("-")[1]);
+    this.localPartitionId = Long.parseLong(evalId.replace(EVAL_ID_PREFIX, ""));
   }
 
   /**

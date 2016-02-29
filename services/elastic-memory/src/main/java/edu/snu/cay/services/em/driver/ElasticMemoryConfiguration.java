@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.NetworkContextRegister;
 import edu.snu.cay.services.em.ns.NetworkDriverRegister;
 import edu.snu.cay.services.em.ns.parameters.EMCodec;
+import edu.snu.cay.services.em.ns.parameters.EMEvalId;
 import edu.snu.cay.services.em.ns.parameters.EMMessageHandler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
@@ -41,6 +42,9 @@ import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static edu.snu.cay.services.em.common.Constants.EVAL_ID_PREFIX;
 
 /**
  * Configuration class for setting evaluator configurations of ElasticMemoryService.
@@ -51,14 +55,19 @@ public final class ElasticMemoryConfiguration {
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
   private final String driverId;
+  private final AtomicInteger numEvals;
+  private final PartitionManager partitionManager;
 
   @Inject
   private ElasticMemoryConfiguration(final NameServer nameServer,
                                      final LocalAddressProvider localAddressProvider,
-                                     @Parameter(DriverIdentifier.class) final String driverId) {
+                                     @Parameter(DriverIdentifier.class) final String driverId,
+                                     final PartitionManager partitionManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
+    this.numEvals = new AtomicInteger(0);
+    this.partitionManager = partitionManager;
   }
 
   /**
@@ -111,8 +120,12 @@ public final class ElasticMemoryConfiguration {
         .set(ServiceConfiguration.SERVICES, MemoryStoreImpl.class)
         .build();
 
+    final String evalId = EVAL_ID_PREFIX + numEvals.getAndIncrement();
+    partitionManager.registerEvaluator(evalId);
+
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindNamedParameter(EMEvalId.class, evalId)
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .build();
 
