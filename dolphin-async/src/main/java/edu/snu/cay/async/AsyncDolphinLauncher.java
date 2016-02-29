@@ -71,11 +71,11 @@ public final class AsyncDolphinLauncher {
   }
 
   /**
-   * Launch an application on the {@code dolphin-async} framework.
+   * Launch an application on the {@code dolphin-async} framework with an additional configuration for the driver.
    * @param jobName string identifier of this application
    * @param args command line arguments
    * @param asyncDolphinConfiguration job configuration of this application
-   * @param customDriverConfiguration custom driver configuration
+   * @param customDriverConfiguration additional Tang configuration to be injected at the driver
    */
   public static LauncherStatus launch(final String jobName,
                                       final String[] args,

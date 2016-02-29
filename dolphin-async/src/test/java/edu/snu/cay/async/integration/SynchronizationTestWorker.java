@@ -26,11 +26,13 @@ final class SynchronizationTestWorker implements Worker {
 
   static final String BEFORE_BARRIER_MSG = "BEFORE_BARRIER_MSG";
   static final String AFTER_BARRIER_MSG = "AFTER_BARRIER_MSG";
+  static final String FINAL_MSG = "FINAL_MSG";
 
-  private int currentIter;
   private final ParameterWorker<Integer, String, String> parameterWorker;
   private final WorkerSynchronizer synchronizer;
   private final Random random;
+
+  private int currentIter;
 
   @Inject
   private SynchronizationTestWorker(final ParameterWorker<Integer, String, String> parameterWorker,
@@ -38,6 +40,8 @@ final class SynchronizationTestWorker implements Worker {
     this.parameterWorker = parameterWorker;
     this.synchronizer = synchronizer;
     this.random = new Random();
+
+    this.currentIter = 0;
   }
 
   @Override
@@ -49,7 +53,7 @@ final class SynchronizationTestWorker implements Worker {
   public void run() {
     parameterWorker.push(currentIter, BEFORE_BARRIER_MSG);
     try {
-      Thread.sleep(random.nextInt(500));
+      Thread.sleep(100 + random.nextInt(400));
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -61,5 +65,12 @@ final class SynchronizationTestWorker implements Worker {
   @Override
   public void cleanup() {
     synchronizer.globalBarrier();
+    // Make sure the previous AFTER_BARRIER_MSG is sent
+    try {
+      Thread.sleep(500);
+    } catch (final InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+    parameterWorker.push(Integer.MAX_VALUE, FINAL_MSG);
   }
 }

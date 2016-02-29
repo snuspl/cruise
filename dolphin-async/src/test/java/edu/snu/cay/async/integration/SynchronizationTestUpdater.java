@@ -27,6 +27,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Workers send BEFORE_BARRIER_MSG and AFTER_BARRIER_MSG for each iteration. All AFTER_BARRIER_MSG are
+ * guaranteed to arrive later to any BEFORE_BARRIER_MSG in one iteration since there are global barriers
+ * between them. There is a counter for every iteration that keeps track the number of received messages.
+ * The counter is incremented when BEFORE_BARRIER_MSG arrives. Receiving the first AFTER_BARRIER_MSG, the
+ * sign of the value is changed, and incremented with following BEFORE_MSG messages so that the value becomes zero
+ * at the end of one iteration.
+ */
 final class SynchronizationTestUpdater implements ParameterUpdater<Integer, String, String> {
 
   private static final Logger LOG = Logger.getLogger(SynchronizationTestUpdater.class.getName());
@@ -42,6 +50,10 @@ final class SynchronizationTestUpdater implements ParameterUpdater<Integer, Stri
 
   @Override
   public synchronized String process(final Integer key, final String message) {
+    if (message.equals(SynchronizationTestWorker.FINAL_MSG)) {
+      checkCounters();
+      return message;
+    }
 
     LOG.log(Level.INFO, "{0}-th iteration, message : {1}", new Object[]{key, message});
 
@@ -55,7 +67,7 @@ final class SynchronizationTestUpdater implements ParameterUpdater<Integer, Stri
     case SynchronizationTestWorker.BEFORE_BARRIER_MSG:
       if (counter.get() < 0) {
         killEvaluatorWithMessage("A BEFORE_BARRIER_MSG in " + key +
-            "-th iteration has arrived after a AFTER_BARRIER_MSG for the iteration");
+            "-th iteration should not arrive after a AFTER_BARRIER_MSG for the iteration");
       } else {
         counter.incrementAndGet();
       }
@@ -72,6 +84,14 @@ final class SynchronizationTestUpdater implements ParameterUpdater<Integer, Stri
     }
 
     return message;
+  }
+
+  private void checkCounters() {
+    for (final AtomicInteger counter : counterMap.values()) {
+      if (counter.get() != 0) {
+        killEvaluatorWithMessage("All counters should be zero");
+      }
+    }
   }
 
   /**

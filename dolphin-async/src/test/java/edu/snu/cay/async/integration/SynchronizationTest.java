@@ -44,7 +44,7 @@ public final class SynchronizationTest {
         "-maxIter", "5",
         "-maxNumEvalLocal", "9",
         "-split", "8",
-        "-input", ClassLoader.getSystemResource("data").getPath() + "/touch",
+        "-input", ClassLoader.getSystemResource("data").getPath() + "/empty_file",
     };
 
     final LauncherStatus status = AsyncDolphinLauncher.launch("SynchronizationTest", args,
