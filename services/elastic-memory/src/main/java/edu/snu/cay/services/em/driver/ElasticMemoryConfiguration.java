@@ -121,7 +121,7 @@ public final class ElasticMemoryConfiguration {
         .build();
 
     final String evalId = EVAL_ID_PREFIX + numEvals.getAndIncrement();
-    partitionManager.registerEvaluator(evalId.toString());
+    partitionManager.registerEvaluator(evalId);
 
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)

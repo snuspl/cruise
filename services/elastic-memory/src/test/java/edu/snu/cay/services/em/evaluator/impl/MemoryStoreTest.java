@@ -56,7 +56,7 @@ public final class MemoryStoreTest {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(SpanReceiver.class, MockedSpanReceiver.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
-        .bindNamedParameter(EMEvalId.class, new Integer(0).toString())
+        .bindNamedParameter(EMEvalId.class, String.valueOf(0))
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);

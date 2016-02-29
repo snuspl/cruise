@@ -28,7 +28,7 @@ import static edu.snu.cay.services.em.common.Constants.EVAL_ID_PREFIX;
  * Currently it manages only a local partition.
  */
 public final class OperationRouter {
-  private final Long localPartitionId;
+  private final long localPartitionId;
 
   private final PartitionFunc partitionFunc;
 

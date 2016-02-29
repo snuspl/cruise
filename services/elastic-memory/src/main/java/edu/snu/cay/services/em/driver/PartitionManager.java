@@ -70,6 +70,7 @@ public final class PartitionManager {
 
   /**
    * Register an evaluator and allocate a partition to the evaluator.
+   * The partition id is determined by the index of the Evaluator's id.
    * @param evalId an id of evaluator
    */
   public synchronized void registerEvaluator(final String evalId) {
