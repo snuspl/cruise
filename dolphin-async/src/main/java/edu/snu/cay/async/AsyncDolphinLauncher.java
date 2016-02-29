@@ -75,10 +75,12 @@ public final class AsyncDolphinLauncher {
    * @param jobName string identifier of this application
    * @param args command line arguments
    * @param asyncDolphinConfiguration job configuration of this application
+   * @param customDriverConfiguration custom driver configuration
    */
   public static LauncherStatus launch(final String jobName,
                                       final String[] args,
-                                      final AsyncDolphinConfiguration asyncDolphinConfiguration) {
+                                      final AsyncDolphinConfiguration asyncDolphinConfiguration,
+                                      final Configuration customDriverConfiguration) {
     try {
       // parse command line arguments
       final Configuration commandLineConf = parseCommandLine(args, asyncDolphinConfiguration.getParameterClassList());
@@ -115,7 +117,7 @@ public final class AsyncDolphinLauncher {
       final int timeout = commandLineInjector.getNamedInstance(Timeout.class);
 
       final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
-          Configurations.merge(parameterServerConf, serializedWorkerConf, driverConf),
+          Configurations.merge(parameterServerConf, serializedWorkerConf, driverConf, customDriverConfiguration),
           timeout);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
       return status;
@@ -125,6 +127,18 @@ public final class AsyncDolphinLauncher {
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
       return status;
     }
+  }
+
+  /**
+   * Launch an application on the {@code dolphin-async} framework.
+   * @param jobName string identifier of this application
+   * @param args command line arguments
+   * @param asyncDolphinConfiguration job configuration of this application
+   */
+  public static LauncherStatus launch(final String jobName,
+                                      final String[] args,
+                                      final AsyncDolphinConfiguration asyncDolphinConfiguration) {
+    return launch(jobName, args, asyncDolphinConfiguration, Tang.Factory.getTang().newConfigurationBuilder().build());
   }
 
   private static Configuration parseCommandLine(
