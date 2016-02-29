@@ -21,5 +21,5 @@ import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 @NamedParameter(doc = "Network Connection Service identifier of a Elastic Memory evaluator")
-final public class EMEvalId implements Name<String> {
+public final class EMEvalId implements Name<String> {
 }
