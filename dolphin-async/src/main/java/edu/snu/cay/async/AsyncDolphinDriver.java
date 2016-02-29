@@ -120,8 +120,26 @@ final class AsyncDolphinDriver {
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
 
-      // Submitting first context(DataLoading compute context) to server-side evaluator
-      final EventHandler<AllocatedEvaluator> evalAllocHandlerForServer = new EventHandler<AllocatedEvaluator>() {
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForServer = getEvalAllocHandlerForServer();
+      final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>(2);
+      contextActiveHandlersForServer.add(getFirstContextActiveHandlerForServer());
+      contextActiveHandlersForServer.add(getSecondContextActiveHandlerForServer());
+      evaluatorManager.allocateEvaluators(1, evalAllocHandlerForServer, contextActiveHandlersForServer);
+
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = getEvalAllocHandlerForWorker();
+      final List<EventHandler<ActiveContext>> contextActiveHandlersForWorker = new ArrayList<>(2);
+      contextActiveHandlersForWorker.add(getFirstContextActiveHandlerForWorker());
+      contextActiveHandlersForWorker.add(getSecondContextActiveHandlerForWorker());
+      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
+          evalAllocHandlerForWorker, contextActiveHandlersForWorker);
+    }
+
+    /**
+     * Returns an EventHandler which submits the first context(DataLoading compute context) to server-side evaluator.
+     * @return an EventHandler
+     */
+    private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForServer() {
+      return new EventHandler<AllocatedEvaluator>() {
         @Override
         public void onNext(final AllocatedEvaluator allocatedEvaluator) {
           LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
@@ -131,10 +149,30 @@ final class AsyncDolphinDriver {
           allocatedEvaluator.submitContext(idConfiguration);
         }
       };
-      final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>(2);
-      // Submitting second context(parameter server context) to server-side evaluator
-      // TODO #361: Adjust to use multiple servers for multi-node parameter server
-      contextActiveHandlersForServer.add(new EventHandler<ActiveContext>() {
+    }
+
+    /**
+     * Returns an EventHandler which submits the first context(DataLoading context) to worker-side evaluator.
+     * @return an EventHandler
+     */
+    private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForWorker() {
+      return new EventHandler<AllocatedEvaluator>() {
+        @Override
+        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+          LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
+          allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
+              dataLoadingService.getServiceConfiguration(allocatedEvaluator));
+        }
+      };
+    }
+
+    /**
+     * Returns an EventHandler which submits the second context(parameter server context) to server-side evaluator.
+     * @return an EventHandler
+     */
+    // TODO #361: Adjust to use multiple servers for multi-node parameter server
+    private EventHandler<ActiveContext> getFirstContextActiveHandlerForServer() {
+      return new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
           LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);
@@ -147,9 +185,15 @@ final class AsyncDolphinDriver {
 
           activeContext.submitContextAndService(contextConf, Configurations.merge(serviceConf, paramConf));
         }
-      });
-      // Finished server-side evaluator setup
-      contextActiveHandlersForServer.add(new EventHandler<ActiveContext>() {
+      };
+    }
+
+    /**
+     * Returns an EventHandler which finishes server-side evaluator setup.
+     * @return an EventHandler
+     */
+    private EventHandler<ActiveContext> getSecondContextActiveHandlerForServer() {
+      return new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
           LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
@@ -158,21 +202,15 @@ final class AsyncDolphinDriver {
           // we add it beforehand so that it closes if all workers finish
           serverContext = activeContext;
         }
-      });
-      evaluatorManager.allocateEvaluators(1, evalAllocHandlerForServer, contextActiveHandlersForServer);
-
-      // Submitting first context(DataLoading context) to worker-side evaluator
-      final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = new EventHandler<AllocatedEvaluator>() {
-        @Override
-        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-          LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
-          allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
-              dataLoadingService.getServiceConfiguration(allocatedEvaluator));
-        }
       };
-      final List<EventHandler<ActiveContext>> contextActiveHandlersForWorker = new ArrayList<>(2);
-      // Submitting second context(worker context) to worker-side evaluator
-      contextActiveHandlersForWorker.add(new EventHandler<ActiveContext>() {
+    }
+
+    /**
+     * Returns an EventHandler which submits the second context(worker context) to worker-side evaluator.
+     * @return an EventHandler
+     */
+    private EventHandler<ActiveContext> getFirstContextActiveHandlerForWorker() {
+      return new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
           LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
@@ -186,9 +224,15 @@ final class AsyncDolphinDriver {
 
           activeContext.submitContextAndService(contextConf, serviceConf);
         }
-      });
-      // Submitting worker task to worker-side evaluator
-      contextActiveHandlersForWorker.add(new EventHandler<ActiveContext>() {
+      };
+    }
+
+    /**
+     * Returns an EventHandler which submits worker task to worker-side evaluator.
+     * @return an EventHandler
+     */
+    private EventHandler<ActiveContext> getSecondContextActiveHandlerForWorker() {
+      return new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
           LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
@@ -200,9 +244,7 @@ final class AsyncDolphinDriver {
 
           activeContext.submitTask(Configurations.merge(taskConf, workerConf, paramConf));
         }
-      });
-      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
-          evalAllocHandlerForWorker, contextActiveHandlersForWorker);
+      };
     }
   }
 

@@ -406,21 +406,59 @@ public final class DolphinDriver {
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
 
-      // Submitting first context(DataLoading compute context) to evaluator for controller task
-      final EventHandler<AllocatedEvaluator>
-          evalAllocHandlerForControllerTask = new EventHandler<AllocatedEvaluator>() {
-            @Override
-            public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-              LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
-              final Configuration idConfiguration = ContextConfiguration.CONF
-                  .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + 0)
-                  .build();
-              allocatedEvaluator.submitContext(idConfiguration);
-            }
-          };
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForControllerTask = getEvalAllocHandlerForControllerTask();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForControllerTask = new ArrayList<>();
-      // Submitting second context(GroupComm context) to evaluator for controller task
-      contextActiveHandlersForControllerTask.add(new EventHandler<ActiveContext>() {
+      contextActiveHandlersForControllerTask.add(getFirstContextActiveHandlerForControllerTask());
+      contextActiveHandlersForControllerTask.add(getSubmittingTaskHandler());
+      evaluatorManager.allocateEvaluators(1, evalAllocHandlerForControllerTask, contextActiveHandlersForControllerTask);
+
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForComputeTask = getEvalAllocHandlerForComputeTask();
+      final List<EventHandler<ActiveContext>> contextActiveHandlersForComputeTask = new ArrayList<>();
+      contextActiveHandlersForComputeTask.add(getFirstContextActiveHandlerForComputeTask());
+      contextActiveHandlersForComputeTask.add(getSubmittingTaskHandler());
+      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
+          evalAllocHandlerForComputeTask, contextActiveHandlersForComputeTask);
+    }
+
+    /**
+     * Returns an EventHandler which submits the first context(DataLoading compute context)
+     * to evaluator for controller task.
+     * @return an EventHandler
+     */
+    private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForControllerTask() {
+      return new EventHandler<AllocatedEvaluator>() {
+        @Override
+        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+          LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
+          final Configuration idConfiguration = ContextConfiguration.CONF
+              .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + 0)
+              .build();
+          allocatedEvaluator.submitContext(idConfiguration);
+        }
+      };
+    }
+
+    /**
+     * Returns an EventHandler which submits the first context(DataLoading context) to evaluator for compute task.
+     * @return an EventHandler
+     */
+    private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForComputeTask() {
+      return new EventHandler<AllocatedEvaluator>() {
+        @Override
+        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+          LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
+          allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
+              dataLoadingService.getServiceConfiguration(allocatedEvaluator));
+        }
+      };
+    }
+
+    /**
+     * Returns an EventHandler which submits the second context(GroupComm context) to evaluator for controller task.
+     * @return an EventHandler
+     */
+    private EventHandler<ActiveContext> getFirstContextActiveHandlerForControllerTask() {
+      return new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
@@ -429,31 +467,15 @@ public final class DolphinDriver {
           final Configuration serviceConf = getServiceConfiguration();
           activeContext.submitContextAndService(contextConf, serviceConf);
         }
-      });
-      // Submitting task to evaluator for controller task
-      final EventHandler<ActiveContext> submittingTaskHandler = new EventHandler<ActiveContext>() {
-        @Override
-        public void onNext(final ActiveContext activeContext) {
-          LOG.log(Level.INFO, "Registering evaluator to PartitionManager");
-          partitionManager.registerEvaluator(activeContext.getId());
-          submitTask(activeContext, 0);
-        }
       };
-      contextActiveHandlersForControllerTask.add(submittingTaskHandler);
-      evaluatorManager.allocateEvaluators(1, evalAllocHandlerForControllerTask, contextActiveHandlersForControllerTask);
+    }
 
-      // Submitting first context(DataLoading context) to evaluator for compute task
-      final EventHandler<AllocatedEvaluator> evalAllocHandlerForComputeTask = new EventHandler<AllocatedEvaluator>() {
-        @Override
-        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-          LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
-          allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
-              dataLoadingService.getServiceConfiguration(allocatedEvaluator));
-        }
-      };
-      final List<EventHandler<ActiveContext>> contextActiveHandlersForComputeTask = new ArrayList<>();
-      // Submitting second context(GroupComm context) to evaluator for compute task
-      contextActiveHandlersForComputeTask.add(new EventHandler<ActiveContext>() {
+    /**
+     * Returns an EventHandler which submits the second context(GroupComm context) to evaluator for compute task.
+     * @return an EventHandler
+     */
+    private EventHandler<ActiveContext> getFirstContextActiveHandlerForComputeTask() {
+      return new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
@@ -462,11 +484,22 @@ public final class DolphinDriver {
           final Configuration serviceConf = Configurations.merge(getServiceConfiguration(), dataParseConf);
           activeContext.submitContextAndService(contextConf, serviceConf);
         }
-      });
-      // Submitting task to evaluator for compute task
-      contextActiveHandlersForComputeTask.add(submittingTaskHandler);
-      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
-          evalAllocHandlerForComputeTask, contextActiveHandlersForComputeTask);
+      };
+    }
+
+    /**
+     * Returns an EventHandler which submits task to evaluator.
+     * @return an EventHandler
+     */
+    private EventHandler<ActiveContext> getSubmittingTaskHandler() {
+      return new EventHandler<ActiveContext>() {
+        @Override
+        public void onNext(final ActiveContext activeContext) {
+          LOG.log(Level.INFO, "Registering evaluator to PartitionManager");
+          partitionManager.registerEvaluator(activeContext.getId());
+          submitTask(activeContext, 0);
+        }
+      };
     }
   }
 
@@ -715,6 +748,7 @@ public final class DolphinDriver {
         final int currentSequence = contextToStageSequence.get(runningTask.getActiveContext().getId());
         final CommunicationGroupDriverImpl commGroup
             = (CommunicationGroupDriverImpl) commGroupDriverList.get(currentSequence);
+        LOG.log(Level.INFO, "deleting...");
         commGroup.failTask(runningTask.getId());
         commGroup.removeTask(runningTask.getId());
         // Memo this context to release it after the task is completed

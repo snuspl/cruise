@@ -41,9 +41,12 @@ import javax.inject.Inject;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @DriverSide
 public final class ElasticMemoryImpl implements ElasticMemory {
+  private static final Logger LOG = Logger.getLogger(ElasticMemoryImpl.class.getName());
   private static final String MOVE = "move";
   private static final String APPLY_UPDATES = "apply_updates";
 
@@ -98,6 +101,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
       // Deletion fails when the evaluator has remaining data
       if (!rangeSet.isEmpty()) {
         if (callback != null) {
+          LOG.log(Level.INFO, "{0}", rangeSet.size());
           final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
               .setType(Type.ResultMsg)
               .setResultMsg(ResultMsg.newBuilder().setResult(Result.FAILURE).build())
