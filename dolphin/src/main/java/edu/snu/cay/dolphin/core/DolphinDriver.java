@@ -36,6 +36,8 @@ import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
@@ -640,6 +642,10 @@ public final class DolphinDriver {
         dolphinTaskConfBuilder.bindSetEntry(MetricTrackers.class, metricTrackerClass);
       }
     }
+
+    //Bind EM's DataIdFactory implementation
+    dolphinTaskConfBuilder
+        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class);
 
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task

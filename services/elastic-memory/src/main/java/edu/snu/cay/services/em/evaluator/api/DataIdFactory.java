@@ -15,9 +15,7 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
-import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.List;
 
@@ -28,7 +26,6 @@ import java.util.List;
  * to avoid tedious communications between evaluators.
  * @param <T> type of data id
  */
-@DefaultImplementation(BaseCounterDataIdFactory.class)
 public interface DataIdFactory<T> {
   /**
    * Give a new data id.
