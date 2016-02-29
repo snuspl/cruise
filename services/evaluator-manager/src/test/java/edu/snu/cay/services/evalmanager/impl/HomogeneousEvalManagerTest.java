@@ -105,7 +105,7 @@ public final class HomogeneousEvalManagerTest {
         = getHandlersFromPlan(plan);
     finishedCounter = new CountDownLatch(evalNum);
 
-    evaluatorManager.allocateEvaluators(evalNum, handlers.getT1(), new ArrayList<EventHandler<ActiveContext>>());
+    evaluatorManager.allocateEvaluators(evalNum, handlers.getT1(), handlers.getT2());
 
     try {
       finishedCounter.await(TEST_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
