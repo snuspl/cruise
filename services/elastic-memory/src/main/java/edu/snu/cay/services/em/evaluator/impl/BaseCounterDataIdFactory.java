@@ -59,8 +59,8 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
   @Inject
   private BaseCounterDataIdFactory(@Parameter(EMEvalId.class) final String evalId,
                                    @Parameter(RangePartitionFunc.PartitionSizeBits.class) final int partitionSizeBits) {
-    final long partitionId = Long.parseLong(evalId.replace(EVAL_ID_PREFIX, ""));
-    this.base = partitionId << partitionSizeBits;
+    final int partitionId = Integer.parseInt(evalId.replace(EVAL_ID_PREFIX, ""));
+    this.base = (long)partitionId << partitionSizeBits; // Currently we assume that partitionSizeBits is smaller than 32
     this.partitionSize = 1L << partitionSizeBits;
   }
 
