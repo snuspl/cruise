@@ -84,17 +84,22 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
 
   /**
    * {@inheritDoc}
-   * {@code contextActiveHandlerList} should have at least 1 element.
    */
   public void allocateEvaluators(final int evalNum,
                                  final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                                  final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
     LOG.log(Level.INFO, "Requesting {0} evaluators...", evalNum);
 
-    for (int i = 0; i < evalNum; i++) {
-      final Queue<EventHandler<ActiveContext>> handlerQueue
-          = new ArrayBlockingQueue<>(contextActiveHandlerList.size(), false, contextActiveHandlerList);
-      pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
+    if (contextActiveHandlerList.isEmpty()) {
+      for (int i = 0; i < evalNum; i++) {
+        pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, (Queue<EventHandler<ActiveContext>>)null));
+      }
+    } else {
+      for (int i = 0; i < evalNum; i++) {
+        final Queue<EventHandler<ActiveContext>> handlerQueue
+            = new ArrayBlockingQueue<>(contextActiveHandlerList.size(), false, contextActiveHandlerList);
+        pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
+      }
     }
     final EvaluatorRequest request = EvaluatorRequest.newBuilder()
         .setNumber(evalNum)
@@ -112,7 +117,9 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
         = pendingEvalRequests.remove();
     final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler = handlers.getT1();
     final Queue<EventHandler<ActiveContext>> contextActiveHandlers = handlers.getT2();
-    evalIdToPendingContextHandlers.put(allocatedEvaluator.getId(), contextActiveHandlers);
+    if (contextActiveHandlers != null) {
+      evalIdToPendingContextHandlers.put(allocatedEvaluator.getId(), contextActiveHandlers);
+    }
     evaluatorAllocatedHandler.onNext(allocatedEvaluator);
   }
 
