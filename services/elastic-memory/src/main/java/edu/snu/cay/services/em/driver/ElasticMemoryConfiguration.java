@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.common.parameters.EMPartitionId;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
@@ -122,12 +121,11 @@ public final class ElasticMemoryConfiguration {
         .build();
 
     final String evalId = EVAL_ID_PREFIX + numEvals.getAndIncrement();
-    final Long partitionId = partitionManager.registerEvaluator(evalId.toString());
+    partitionManager.registerEvaluator(evalId.toString());
 
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(EMEvalId.class, evalId)
-        .bindNamedParameter(EMPartitionId.class, partitionId.toString())
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .build();
 

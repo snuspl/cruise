@@ -15,11 +15,13 @@
  */
 package edu.snu.cay.services.em.evaluator;
 
-import edu.snu.cay.services.em.common.parameters.EMPartitionId;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
+import edu.snu.cay.services.em.ns.parameters.EMEvalId;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+
+import static edu.snu.cay.services.em.common.Constants.EVAL_ID_PREFIX;
 
 /**
  * OperationRouter that redirects incoming operations to corresponding evaluators.
@@ -32,9 +34,9 @@ public final class OperationRouter {
 
   @Inject
   private OperationRouter(final PartitionFunc partitionFunc,
-                          @Parameter(EMPartitionId.class) final Long partitionId) {
+                          @Parameter(EMEvalId.class) final String evalId) {
     this.partitionFunc = partitionFunc;
-    this.localPartitionId = partitionId;
+    this.localPartitionId = Long.parseLong(evalId.replace(EVAL_ID_PREFIX, ""));
   }
 
   /**

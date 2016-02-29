@@ -15,15 +15,17 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.common.parameters.EMPartitionId;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
+import edu.snu.cay.services.em.ns.parameters.EMEvalId;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static edu.snu.cay.services.em.common.Constants.EVAL_ID_PREFIX;
 
 /**
  * An implementation of {@link DataIdFactory}. This factory creates ids of {@code Long} type
@@ -55,8 +57,9 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
   private final long partitionSize;
 
   @Inject
-  private BaseCounterDataIdFactory(@Parameter(EMPartitionId.class) final Long partitionId,
+  private BaseCounterDataIdFactory(@Parameter(EMEvalId.class) final String evalId,
                                    @Parameter(RangePartitionFunc.PartitionSizeBits.class) final int partitionSizeBits) {
+    final long partitionId = Long.parseLong(evalId.replace(EVAL_ID_PREFIX, ""));
     this.base = partitionId << partitionSizeBits;
     this.partitionSize = 1L << partitionSizeBits;
   }
