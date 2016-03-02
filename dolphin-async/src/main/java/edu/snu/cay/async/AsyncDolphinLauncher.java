@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.async;
 
+import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
@@ -24,6 +25,9 @@ import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
+import org.apache.reef.io.network.naming.NameServerConfiguration;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
@@ -35,6 +39,7 @@ import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -65,14 +70,16 @@ public final class AsyncDolphinLauncher {
   }
 
   /**
-   * Launch an application on the {@code dolphin-async} framework.
+   * Launch an application on the {@code dolphin-async} framework with an additional configuration for the driver.
    * @param jobName string identifier of this application
    * @param args command line arguments
    * @param asyncDolphinConfiguration job configuration of this application
+   * @param customDriverConfiguration additional Tang configuration to be injected at the driver
    */
   public static LauncherStatus launch(final String jobName,
                                       final String[] args,
-                                      final AsyncDolphinConfiguration asyncDolphinConfiguration) {
+                                      final AsyncDolphinConfiguration asyncDolphinConfiguration,
+                                      final Configuration customDriverConfiguration) {
     try {
       // parse command line arguments
       final Configuration commandLineConf = parseCommandLine(args, asyncDolphinConfiguration.getParameterClassList());
@@ -109,7 +116,7 @@ public final class AsyncDolphinLauncher {
       final int timeout = commandLineInjector.getNamedInstance(Timeout.class);
 
       final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
-          Configurations.merge(parameterServerConf, serializedWorkerConf, driverConf),
+          Configurations.merge(parameterServerConf, serializedWorkerConf, driverConf, customDriverConfiguration),
           timeout);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
       return status;
@@ -119,6 +126,18 @@ public final class AsyncDolphinLauncher {
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
       return status;
     }
+  }
+
+  /**
+   * Launch an application on the {@code dolphin-async} framework.
+   * @param jobName string identifier of this application
+   * @param args command line arguments
+   * @param asyncDolphinConfiguration job configuration of this application
+   */
+  public static LauncherStatus launch(final String jobName,
+                                      final String[] args,
+                                      final AsyncDolphinConfiguration asyncDolphinConfiguration) {
+    return launch(jobName, args, asyncDolphinConfiguration, Tang.Factory.getTang().newConfigurationBuilder().build());
   }
 
   private static Configuration parseCommandLine(
@@ -168,12 +187,26 @@ public final class AsyncDolphinLauncher {
         .set(DriverConfiguration.ON_TASK_COMPLETED, AsyncDolphinDriver.CompletedTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, AsyncDolphinDriver.FailedTaskHandler.class);
 
-    return new DataLoadingRequestBuilder()
+    final Configuration driverConfWithDataLoad = new DataLoadingRequestBuilder()
         .setInputFormatClass(TextInputFormat.class)
         .setInputPath(processInputDir(injector.getNamedInstance(InputDir.class), injector))
         .setNumberOfDesiredSplits(injector.getNamedInstance(Splits.class))
         .setDriverConfigurationModule(driverConf)
         .build();
+
+    final AggregationConfiguration aggregationServiceConf = AggregationConfiguration.newBuilder()
+        .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
+            SynchronizationManager.MessageHandler.class,
+            WorkerSynchronizer.MessageHandler.class)
+        .build();
+
+    return Configurations.merge(driverConfWithDataLoad,
+        aggregationServiceConf.getDriverConfiguration(),
+        NameServerConfiguration.CONF.build(),
+        LocalNameResolverConfiguration.CONF.build(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+            .build());
   }
 
   private static String processInputDir(final String inputDir, final Injector injector) throws InjectionException {

@@ -16,6 +16,7 @@
 package edu.snu.cay.async;
 
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
+import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -73,6 +74,11 @@ final class AsyncDolphinDriver {
   private final int initWorkerCount;
 
   /**
+   * Exchange messages between the driver and evaluators.
+   */
+  private final AggregationManager aggregationManager;
+
+  /**
    * Accessor for parameter server service.
    */
   private final ParameterServerDriver psDriver;
@@ -102,6 +108,7 @@ final class AsyncDolphinDriver {
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
                              final ParameterServerDriver psDriver,
+                             final AggregationManager aggregationManager,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
                              final ConfigurationSerializer configurationSerializer) throws IOException {
@@ -109,6 +116,7 @@ final class AsyncDolphinDriver {
     this.dataLoadingService = dataLoadingService;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.psDriver = psDriver;
+    this.aggregationManager = aggregationManager;
     this.runningWorkerContextCount = new AtomicInteger(0);
     this.completedOrFailedEvalCount = new AtomicInteger(0);
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
@@ -214,8 +222,11 @@ final class AsyncDolphinDriver {
               ContextConfiguration.CONF
                   .set(ContextConfiguration.IDENTIFIER, WORKER_CONTEXT + "-" + workerIndex)
                   .build(),
-              psDriver.getContextConfiguration());
-          final Configuration serviceConf = psDriver.getWorkerServiceConfiguration();
+              psDriver.getContextConfiguration(),
+              aggregationManager.getContextConfiguration());
+          final Configuration serviceConf = Configurations.merge(
+              psDriver.getWorkerServiceConfiguration(),
+              aggregationManager.getServiceConfigurationWithoutNameResolver());
 
           activeContext.submitContextAndService(contextConf, serviceConf);
         }
@@ -254,6 +265,7 @@ final class AsyncDolphinDriver {
     @Override
     public void onNext(final ActiveContext activeContext) {
       LOG.log(Level.INFO, "ActiveContext: {0}", activeContext);
+
       evaluatorManager.onContextActive(activeContext);
     }
   }
