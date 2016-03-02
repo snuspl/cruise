@@ -22,7 +22,6 @@ import edu.snu.cay.dolphin.examples.simple.SimpleJobInfo;
 import edu.snu.cay.dolphin.parameters.JobIdentifier;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.driver.parameters.DriverStartHandler;
-import org.apache.reef.driver.parameters.EvaluatorAllocatedHandlers;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Name;
@@ -71,7 +70,6 @@ public final class AddIntegrationTest {
                   .build()),
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindSetEntry(DriverStartHandler.class, AddTestHandlers.AddTestStartHandler.class)
-              .bindSetEntry(EvaluatorAllocatedHandlers.class, AddTestHandlers.AddTestEvaluatorAllocatedHandler.class)
               .bindSetEntry(Clock.StopHandler.class, AddTestHandlers.AddTestStopHandler.class)
               .bindNamedParameter(AddEvalNumber.class, Integer.toString(addEvalNum))
               .bindNamedParameter(AddThreadNumber.class, Integer.toString(addThreadNum))

@@ -34,7 +34,6 @@ import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
-import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.io.data.output.TaskOutputServiceBuilder;
 import org.apache.reef.io.data.output.TaskOutputStreamProvider;
 import org.apache.reef.io.data.output.TaskOutputStreamProviderHDFS;
@@ -130,23 +129,10 @@ public final class DolphinLauncher {
         .set(DriverConfiguration.ON_TASK_RUNNING, DolphinDriver.TaskRunningHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, DolphinDriver.TaskFailedHandler.class);
 
-    final EvaluatorRequest compRequest = EvaluatorRequest.newBuilder()
-        .setNumber(1)
-        .setMemory(dolphinParameters.getEvalSize())
-        .build();
-
-    // We do not explicitly set the number of data loading evaluators here, because
-    // the number is being reset to the number of data partitions at the Driver in DataLoader anyway.
-    final EvaluatorRequest dataRequest = EvaluatorRequest.newBuilder()
-        .setMemory(dolphinParameters.getEvalSize())
-        .build();
-
     final Configuration driverConfWithDataLoad = new DataLoadingRequestBuilder()
         .setInputFormatClass(TextInputFormat.class)
         .setInputPath(processInputDir(dolphinParameters.getInputDir()))
         .setNumberOfDesiredSplits(dolphinParameters.getDesiredSplits())
-        .addComputeRequest(compRequest)
-        .addDataRequest(dataRequest)
         .setDriverConfigurationModule(driverConfiguration)
         .build();
 

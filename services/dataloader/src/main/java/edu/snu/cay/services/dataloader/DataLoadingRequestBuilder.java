@@ -15,15 +15,12 @@
  */
 package edu.snu.cay.services.dataloader;
 
-import org.apache.commons.lang.Validate;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.TextInputFormat;
-import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.data.loading.api.DistributedDataSet;
 import org.apache.reef.io.data.loading.api.EvaluatorToPartitionStrategy;
 import org.apache.reef.io.data.loading.impl.DistributedDataSetPartitionSerializer;
-import org.apache.reef.io.data.loading.impl.AvroEvaluatorRequestSerializer;
 import org.apache.reef.io.data.loading.impl.SingleDataCenterEvaluatorToPartitionStrategy;
 import org.apache.reef.io.data.loading.impl.DistributedDataSetPartition;
 import org.apache.reef.io.data.loading.impl.InputFormatLoadingService;
@@ -38,9 +35,7 @@ import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.BindException;
 import org.apache.reef.tang.formats.ConfigurationModule;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -52,8 +47,6 @@ public final class DataLoadingRequestBuilder
   // constant used in several places.
   private static final int UNINITIALIZED = -1;
   private int numberOfDesiredSplits = UNINITIALIZED;
-  private final List<EvaluatorRequest> computeRequests = new ArrayList<>();
-  private final List<EvaluatorRequest> dataRequests = new ArrayList<>();
   private boolean inMemory = false;
   private ConfigurationModule driverConfigurationModule = null;
   private String inputFormatClass;
@@ -75,60 +68,6 @@ public final class DataLoadingRequestBuilder
 
   public DataLoadingRequestBuilder setNumberOfDesiredSplits(final int numberOfDesiredSplits) {
     this.numberOfDesiredSplits = numberOfDesiredSplits;
-    return this;
-  }
-
-  /**
-   * Adds the requests to the compute requests list.
-   *
-   * @param computeRequests
-   *          the compute requests to add
-   * @return this
-   */
-  @SuppressWarnings("checkstyle:hiddenfield")
-  public DataLoadingRequestBuilder addComputeRequests(final List<EvaluatorRequest> computeRequests) {
-    for (final EvaluatorRequest computeRequest : computeRequests) {
-      addComputeRequest(computeRequest);
-    }
-    return this;
-  }
-
-  /**
-   * Adds the requests to the data requests list.
-   *
-   * @param dataRequests
-   *          the data requests to add
-   * @return this
-   */
-  @SuppressWarnings("checkstyle:hiddenfield")
-  public DataLoadingRequestBuilder addDataRequests(final List<EvaluatorRequest> dataRequests) {
-    for (final EvaluatorRequest dataRequest : dataRequests) {
-      addDataRequest(dataRequest);
-    }
-    return this;
-  }
-
-  /**
-   * Adds a single request to the compute requests list.
-   *
-   * @param computeRequest
-   *          the compute request to add
-   * @return this
-   */
-  public DataLoadingRequestBuilder addComputeRequest(final EvaluatorRequest computeRequest) {
-    this.computeRequests.add(computeRequest);
-    return this;
-  }
-
-  /**
-   * Adds a single request to the data requests list.
-   *
-   * @param dataRequest
-   *          the data request to add
-   * @return this
-   */
-  public DataLoadingRequestBuilder addDataRequest(final EvaluatorRequest dataRequest) {
-    this.dataRequests.add(dataRequest);
     return this;
   }
 
@@ -202,8 +141,7 @@ public final class DataLoadingRequestBuilder
           .setPath(inputPath)
           .setLocation(Constants.ANY_RACK)
           .setDesiredSplits(
-              numberOfDesiredSplits > 0 ? numberOfDesiredSplits : Integer
-                  .valueOf(NumberOfDesiredSplits.DEFAULT_DESIRED_SPLITS)).build());
+              numberOfDesiredSplits > 0 ? numberOfDesiredSplits : 0).build());
       this.distributedDataSet = dds;
     } else {
       if (this.inputPath != null) {
@@ -224,20 +162,8 @@ public final class DataLoadingRequestBuilder
     final JavaConfigurationBuilder jcb =
         Tang.Factory.getTang().newConfigurationBuilder(driverConfiguration);
 
-    Validate.isTrue(!this.dataRequests.isEmpty(),
-        "Number of cores and memory are deprecated; you have to add specific data requests");
-    for (final EvaluatorRequest request : this.dataRequests) {
-      jcb.bindSetEntry(DataLoadingDataRequests.class, AvroEvaluatorRequestSerializer.toString(request));
-    }
-
-    // compute requests can be empty to maintain compatibility with previous code.
-    if (!this.computeRequests.isEmpty()) {
-      for (final EvaluatorRequest request : this.computeRequests) {
-        jcb.bindSetEntry(DataLoadingComputeRequests.class, AvroEvaluatorRequestSerializer.toString(request));
-      }
-    }
-
-    jcb.bindNamedParameter(LoadDataIntoMemory.class, Boolean.toString(this.inMemory))
+    jcb.bindNamedParameter(org.apache.reef.io.data.loading.api.DataLoadingRequestBuilder.LoadDataIntoMemory.class,
+        Boolean.toString(this.inMemory))
         .bindNamedParameter(JobConfExternalConstructor.InputFormatClass.class, inputFormatClass);
 
     final Iterator<DistributedDataSetPartition> partitions = this.distributedDataSet.iterator();
@@ -260,11 +186,6 @@ public final class DataLoadingRequestBuilder
     return jcb.bindImplementation(DataLoadingService.class, InputFormatLoadingService.class).build();
   }
 
-  @NamedParameter(short_name = "num_desired_splits", default_value = NumberOfDesiredSplits.DEFAULT_DESIRED_SPLITS)
-  public static final class NumberOfDesiredSplits implements Name<Integer> {
-    static final String DEFAULT_DESIRED_SPLITS = "0";
-  }
-
   /**
    * Allows to specify a set of compute requests to send to the DataLoader.
    */
@@ -279,9 +200,5 @@ public final class DataLoadingRequestBuilder
   @NamedParameter(doc = "Sets of data requests to request to the DataLoader, " +
       "i.e. evaluators requests that will load data")
   static final class DataLoadingDataRequests implements Name<Set<String>> {
-  }
-
-  @NamedParameter(default_value = "false")
-  public static final class LoadDataIntoMemory implements Name<Boolean> {
   }
 }
