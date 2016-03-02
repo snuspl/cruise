@@ -29,10 +29,8 @@ import java.util.logging.Logger;
 /**
  * Workers send BEFORE_BARRIER_MSG and AFTER_BARRIER_MSG for each iteration. All AFTER_BARRIER_MSG are
  * guaranteed to arrive later than any BEFORE_BARRIER_MSG in one iteration since there are global barriers
- * between them. There is a counter for every iteration that keeps track of the number of received messages.
- * The counter is incremented when BEFORE_BARRIER_MSG arrives. Receiving the first AFTER_BARRIER_MSG, the
- * sign of the value is changed, and incremented with following BEFORE_MSG messages so that the value becomes zero
- * at the end of one iteration.
+ * between them. There is a counter for every iteration that keeps track of the number of received messages
+ * to check whether the messages have arrived as following the assumption.
  */
 final class SynchronizationTestUpdater implements ParameterUpdater<Integer, String, String> {
 
@@ -41,12 +39,16 @@ final class SynchronizationTestUpdater implements ParameterUpdater<Integer, Stri
   private final Clock clock;
 
   // Guarded by synchronized of process method.
-  private final Map<Integer, Integer> counterMap;
+  private final Map<Integer, Integer> beforeMsgCounterMap;
+
+  // Guarded by synchronized of process method.
+  private final Map<Integer, Integer> afterMsgCounterMap;
 
   @Inject
   private SynchronizationTestUpdater(final Clock clock) {
     this.clock = clock;
-    this.counterMap = new HashMap<>();
+    this.beforeMsgCounterMap = new HashMap<>();
+    this.afterMsgCounterMap = new HashMap<>();
   }
 
   @Override
@@ -58,41 +60,34 @@ final class SynchronizationTestUpdater implements ParameterUpdater<Integer, Stri
 
     LOG.log(Level.INFO, "{0}-th iteration, message : {1}", new Object[]{key, message});
 
-    if (!counterMap.containsKey(key)) {
-      counterMap.put(key, 0);
+    if (!beforeMsgCounterMap.containsKey(key)) {
+      beforeMsgCounterMap.put(key, 0);
+      afterMsgCounterMap.put(key, 0);
     }
-
-    int counter = counterMap.get(key);
 
     switch (message) {
     case SynchronizationTestWorker.BEFORE_BARRIER_MSG:
-      if (counter < 0) {
+      if (afterMsgCounterMap.get(key) > 0) {
         killEvaluatorWithMessage("A BEFORE_BARRIER_MSG in " + key +
             "-th iteration should not arrive after a AFTER_BARRIER_MSG for the iteration");
       } else {
-        counter++;
+        beforeMsgCounterMap.put(key, beforeMsgCounterMap.get(key) + 1);
       }
       break;
     case SynchronizationTestWorker.AFTER_BARRIER_MSG:
-      if (counter > 0) {
-        counter *= -1;
-      }
-
-      counter++;
+      afterMsgCounterMap.put(key, afterMsgCounterMap.get(key) + 1);
       break;
     default:
       killEvaluatorWithMessage("Illegal message : " + message);
     }
 
-    counterMap.put(key, counter);
-
     return message;
   }
 
   private void checkCounters() {
-    for (final int counter : counterMap.values()) {
-      if (counter != 0) {
-        killEvaluatorWithMessage("All counters should be zero");
+    for (final int iteration : beforeMsgCounterMap.keySet()) {
+      if (!beforeMsgCounterMap.get(iteration).equals(afterMsgCounterMap.get(iteration))) {
+        killEvaluatorWithMessage("The number of before messages should be same as after messages in each iteration");
       }
     }
   }
