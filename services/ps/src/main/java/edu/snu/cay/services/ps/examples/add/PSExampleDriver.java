@@ -122,77 +122,86 @@ public final class PSExampleDriver {
     @Override
     public void onNext(final StartTime startTime) {
 
-      final EventHandler<AllocatedEvaluator> evalAllocHandlerForServer = new EventHandler<AllocatedEvaluator>() {
-        /**
-         * Submit the ParameterServers
-         */
-        @Override
-        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-          final int serverIndex = runningServerContextCount.getAndIncrement();
-
-          final Configuration contextConf = Configurations.merge(
-              ContextConfiguration.CONF
-                  .set(ContextConfiguration.IDENTIFIER,
-                      PS_CONTEXT_PREFIX + serverIndex)
-                  .build(),
-              psDriver.getContextConfiguration());
-
-          final Configuration serviceConf = psDriver.getServerServiceConfiguration();
-
-          allocatedEvaluator.submitContextAndService(contextConf, serviceConf);
-        }
-      };
-
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForServer = getEvalAllocHandlerForServer();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>(1);
-      contextActiveHandlersForServer.add(new EventHandler<ActiveContext>() {
-        /**
-         * Save the Parameter Server's active context.
-         */
-        @Override
-        public void onNext(final ActiveContext activeContext) {
-          psContexts.add(activeContext);
-        }
-      });
-
+      contextActiveHandlersForServer.add(getContextActiveHandlerForServer());
       evaluatorManager.allocateEvaluators(numServers, evalAllocHandlerForServer, contextActiveHandlersForServer);
 
-      final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = new EventHandler<AllocatedEvaluator>() {
-        /**
-         * Submit a Context and Service for the PS Worker, and run an UpdaterTask on top of that
-         */
-        @Override
-        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-          final int workerIndex = runningWorkerContextCount.getAndIncrement();
-
-          final Configuration contextConf = Configurations.merge(
-              ContextConfiguration.CONF
-                  .set(ContextConfiguration.IDENTIFIER,
-                      WORKER_CONTEXT_PREFIX + workerIndex)
-                  .build(),
-              psDriver.getContextConfiguration()
-          );
-
-          final Configuration serviceConf = psDriver.getWorkerServiceConfiguration();
-
-          final Configuration taskConf = TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_PREFIX + workerIndex)
-              .set(TaskConfiguration.TASK, UpdaterTask.class)
-              .build();
-
-          final Configuration parametersConf = Tang.Factory.getTang().newConfigurationBuilder()
-              .bindNamedParameter(NumUpdates.class, Integer.toString(numUpdatesPerWorker))
-              .bindNamedParameter(StartKey.class, Integer.toString(startKey))
-              .bindNamedParameter(NumKeys.class, Integer.toString(numKeys))
-              .build();
-
-          allocatedEvaluator.submitContextAndServiceAndTask(contextConf, serviceConf,
-              Configurations.merge(taskConf, parametersConf));
-        }
-      };
-
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = getEvalAllocHandlerForWorker();
       evaluatorManager.allocateEvaluators(numWorkers, evalAllocHandlerForWorker,
           new ArrayList<EventHandler<ActiveContext>>());
     }
+  }
+
+  /**
+   * Submit the ParameterServer Context and Service.
+   */
+  private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForServer() {
+    return new EventHandler<AllocatedEvaluator>() {
+      @Override
+      public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+        final int serverIndex = runningServerContextCount.getAndIncrement();
+
+        final Configuration contextConf = Configurations.merge(
+            ContextConfiguration.CONF
+                .set(ContextConfiguration.IDENTIFIER,
+                    PS_CONTEXT_PREFIX + serverIndex)
+                .build(),
+            psDriver.getContextConfiguration());
+
+        final Configuration serviceConf = psDriver.getServerServiceConfiguration();
+
+        allocatedEvaluator.submitContextAndService(contextConf, serviceConf);
+      }
+    };
+  }
+
+  /**
+   * Save the Parameter Server's active Context.
+   */
+  private EventHandler<ActiveContext> getContextActiveHandlerForServer() {
+    return new EventHandler<ActiveContext>() {
+      @Override
+      public void onNext(final ActiveContext activeContext) {
+        psContexts.add(activeContext);
+      }
+    };
+  }
+
+  /**
+   * Submit a Context and Service for the PS Worker, and run an UpdaterTask on top of that.
+   */
+  private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForWorker() {
+    return new EventHandler<AllocatedEvaluator>() {
+      @Override
+      public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+        final int workerIndex = runningWorkerContextCount.getAndIncrement();
+
+        final Configuration contextConf = Configurations.merge(
+            ContextConfiguration.CONF
+                .set(ContextConfiguration.IDENTIFIER,
+                    WORKER_CONTEXT_PREFIX + workerIndex)
+                .build(),
+            psDriver.getContextConfiguration()
+        );
+
+        final Configuration serviceConf = psDriver.getWorkerServiceConfiguration();
+
+        final Configuration taskConf = TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_PREFIX + workerIndex)
+            .set(TaskConfiguration.TASK, UpdaterTask.class)
+            .build();
+
+        final Configuration parametersConf = Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(NumUpdates.class, Integer.toString(numUpdatesPerWorker))
+            .bindNamedParameter(StartKey.class, Integer.toString(startKey))
+            .bindNamedParameter(NumKeys.class, Integer.toString(numKeys))
+            .build();
+
+        allocatedEvaluator.submitContextAndServiceAndTask(contextConf, serviceConf,
+            Configurations.merge(taskConf, parametersConf));
+      }
+    };
   }
 
   /**
