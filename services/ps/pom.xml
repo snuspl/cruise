@@ -80,6 +80,11 @@
       <artifactId>cay-utils</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
+    <dependency>
+      <groupId>${project.parent.groupId}.services</groupId>
+      <artifactId>evaluator-manager</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
