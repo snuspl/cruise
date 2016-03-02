@@ -20,6 +20,7 @@ import edu.snu.cay.services.ps.examples.add.parameters.NumKeys;
 import edu.snu.cay.services.ps.examples.add.parameters.NumUpdates;
 import edu.snu.cay.services.ps.examples.add.parameters.NumWorkers;
 import edu.snu.cay.services.ps.examples.add.parameters.StartKey;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -56,7 +57,7 @@ import java.util.logging.Logger;
 public final class PSExampleDriver {
   private static final Logger LOG = Logger.getLogger(PSExampleDriver.class.getName());
 
-  private static final String PS_ID = "PS";
+  private static final String PS_CONTEXT_PREFIX = "PS-Context-";
   private static final String WORKER_CONTEXT_PREFIX = "Worker-Context-";
   private static final String UPDATER_TASK_PREFIX = "Updater-Task-";
   private static final String VALIDATOR_TASK_ID = "Validator-Task";
@@ -64,6 +65,7 @@ public final class PSExampleDriver {
   private final ParameterServerDriver psDriver;
   private final EvaluatorRequestor evalRequestor;
 
+  private final int numServers;
   private final int numWorkers;
   private final int numUpdatesPerWorker;
   private final int startKey;
@@ -72,8 +74,8 @@ public final class PSExampleDriver {
   private final AtomicInteger evalCounter = new AtomicInteger(0);
   private final AtomicInteger taskCompletedCounter = new AtomicInteger(0);
 
-  private ActiveContext psActiveContext = null;
-  private ConcurrentLinkedQueue<ActiveContext> contextsToClose = new ConcurrentLinkedQueue<>();
+  private ConcurrentLinkedQueue<ActiveContext> psContexts = new ConcurrentLinkedQueue<>();
+  private ConcurrentLinkedQueue<ActiveContext> workerContextsToClose = new ConcurrentLinkedQueue<>();
 
   /**
    * numUpdates is the _total_ number of updates to push.
@@ -86,6 +88,7 @@ public final class PSExampleDriver {
   @Inject
   private PSExampleDriver(final ParameterServerDriver psDriver,
                           final EvaluatorRequestor evalRequestor,
+                          @Parameter(NumServers.class) final int numServers,
                           @Parameter(NumWorkers.class) final int numWorkers,
                           @Parameter(NumUpdates.class) final int numUpdates,
                           @Parameter(StartKey.class) final int startKey,
@@ -102,6 +105,7 @@ public final class PSExampleDriver {
 
     this.psDriver = psDriver;
     this.evalRequestor = evalRequestor;
+    this.numServers = numServers;
     this.numWorkers = numWorkers;
     this.numUpdatesPerWorker = numUpdates / numWorkers;
     this.startKey = startKey;
@@ -115,7 +119,7 @@ public final class PSExampleDriver {
     @Override
     public void onNext(final StartTime startTime) {
       evalRequestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(numWorkers + 1)
+          .setNumber(numWorkers + numServers)
           .setMemory(512)
           .setNumberOfCores(1)
           .build());
@@ -130,11 +134,12 @@ public final class PSExampleDriver {
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final int evalCount = evalCounter.incrementAndGet();
 
-      if (evalCount == 1) { // Submit the ParameterServer
+      if (evalCount <= numServers) { // Submit the ParameterServers
 
         final Configuration contextConf = Configurations.merge(
             ContextConfiguration.CONF
-                .set(ContextConfiguration.IDENTIFIER, PS_ID)
+                .set(ContextConfiguration.IDENTIFIER,
+                    PS_CONTEXT_PREFIX + (evalCount - 1))
                 .build(),
             psDriver.getContextConfiguration());
 
@@ -178,8 +183,8 @@ public final class PSExampleDriver {
     @Override
     public void onNext(final ActiveContext activeContext) {
       LOG.log(Level.INFO, "Context active: {0}", activeContext.getId());
-      if (activeContext.getId().equals(PS_ID)) {
-        psActiveContext = activeContext;
+      if (activeContext.getId().startsWith(PS_CONTEXT_PREFIX)) {
+        psContexts.add(activeContext);
       }
     }
   }
@@ -206,7 +211,7 @@ public final class PSExampleDriver {
 
       final int taskCompletedCount = taskCompletedCounter.incrementAndGet();
       if (taskCompletedCount < numWorkers) { // Close Contexts when their task is completed, up to the last Worker.
-        contextsToClose.add(completedTask.getActiveContext());
+        workerContextsToClose.add(completedTask.getActiveContext());
         // completedTask.getActiveContext().close();
 
       } else if (taskCompletedCount == numWorkers) { // For the last Worker, run the Validator Task.
@@ -227,14 +232,16 @@ public final class PSExampleDriver {
         completedTask.getActiveContext().submitTask(Configurations.merge(taskConf, parameterConf));
 
       } else if (taskCompletedCount == numWorkers + 1) { // When the Validator Task is complete, close all contexts.
-        contextsToClose.add(completedTask.getActiveContext());
+        workerContextsToClose.add(completedTask.getActiveContext());
         // completedTask.getActiveContext().close();
 
         LOG.log(Level.INFO, "Correct result validated, shutting down parameter server.");
-        for (final ActiveContext context : contextsToClose) {
+        for (final ActiveContext context : workerContextsToClose) {
           context.close();
         }
-        psActiveContext.close();
+        for (final ActiveContext context : psContexts) {
+          context.close();
+        }
       }
     }
   }

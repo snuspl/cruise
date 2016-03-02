@@ -13,16 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.partitioned.resolver;
-
 /**
- * Resolve the Server for a key, based on its hash.
+ * Common parameters related to Partitioned PS.
  */
-public interface ServerResolver {
-
-  /**
-   * @param hash unsigned int hash to resolve server from
-   * @return Network Connection Service identifier of the server.
-   */
-  String resolve(int hash);
-}
+package edu.snu.cay.services.ps.common.partitioned.parameters;

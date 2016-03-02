@@ -28,6 +28,7 @@ import edu.snu.cay.services.em.plan.api.PlanResult;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -109,9 +110,12 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         }
         executingPlan = new ExecutingPlan(plan);
 
+        final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler = new EvaluatorAllocatedHandler();
+        final List<EventHandler<ActiveContext>> contextActiveHandlers = new ArrayList<>();
+        contextActiveHandlers.add(new ContextActiveHandler());
         for (final String evaluatorToAdd : plan.getEvaluatorsToAdd()) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
-          elasticMemory.add(1, evalSize, 1, new ContextActiveHandler());
+          elasticMemory.add(1, evalSize, 1, evaluatorAllocatedHandler, contextActiveHandlers);
         }
         executingPlan.awaitActiveContexts();
 
@@ -152,6 +156,17 @@ public final class DefaultPlanExecutor implements PlanExecutor {
       return;
     }
     executingPlan.onRunningTask(task);
+  }
+
+  /**
+   * This handler is registered as a callback to ElasticMemory.add().
+   */
+  private final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+    @Override
+    public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+      allocatedEvaluator.submitContextAndService(dolphinDriver.get().getContextConfiguration(),
+          dolphinDriver.get().getServiceConfiguration());
+    }
   }
 
   /**

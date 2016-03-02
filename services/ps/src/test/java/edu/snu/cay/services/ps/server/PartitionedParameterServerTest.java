@@ -16,11 +16,15 @@
 package edu.snu.cay.services.ps.server;
 
 import edu.snu.cay.services.ps.ParameterServerParameters;
+import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
+import edu.snu.cay.services.ps.common.partitioned.resolver.SingleNodeServerResolver;
+import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
+import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySender;
-import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -35,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
 
 
 /**
@@ -51,10 +56,13 @@ public final class PartitionedParameterServerTest {
   public void setup() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bind(PartitionedServerSideReplySender.class, MockPartitionedServerSideReplySender.class)
+        .bindImplementation(ServerResolver.class, SingleNodeServerResolver.class)
+        .bindNamedParameter(ServerId.class, SERVER_ID_PREFIX + 0)
+        .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + 0)
         .bindNamedParameter(ParameterServerParameters.KeyCodecName.class, IntegerCodec.class)
         .bindNamedParameter(ParameterServerParameters.ValueCodecName.class, IntegerCodec.class)
         .bindNamedParameter(ParameterServerParameters.PreValueCodecName.class, IntegerCodec.class)
-        .bindNamedParameter(ServerNumPartitions.class, "4")
+        .bindNamedParameter(NumPartitions.class, "4")
         .build();
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
     injector.bindVolatileInstance(ParameterUpdater.class, new ParameterUpdater<Integer, Integer, Integer>() {

@@ -15,15 +15,17 @@
  */
 package edu.snu.cay.services.ps.server.partitioned;
 
+import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
-import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
+import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -47,9 +49,14 @@ public final class PartitionedParameterServer<K, P, V> {
   private static final Logger LOG = Logger.getLogger(PartitionedParameterServer.class.getName());
 
   /**
-   * Number of partitions.
+   * Network Connection Service endpoint of this ParameterServer.
    */
-  private final int numPartitions;
+  private final String endpointId;
+
+  /**
+   * ServerResolver that maps hashed keys to partitions.
+   */
+  private final ServerResolver serverResolver;
 
   /**
    * Max size of each partition's queue.
@@ -64,7 +71,7 @@ public final class PartitionedParameterServer<K, P, V> {
   /**
    * Running partitions.
    */
-  private final Partition<K, V>[] partitions;
+  private final Map<Integer, Partition<K, V>> partitions;
 
   /**
    * Object for processing preValues and applying updates to existing values.
@@ -74,16 +81,18 @@ public final class PartitionedParameterServer<K, P, V> {
   /**
    * Sender that sends pull responses.
    */
-  private final PartitionedServerSideReplySender sender;
+  private final PartitionedServerSideReplySender<K, V> sender;
 
   @Inject
-  private PartitionedParameterServer(@Parameter(ServerNumPartitions.class) final int numPartitions,
+  private PartitionedParameterServer(@Parameter(EndpointId.class) final String endpointId,
                                      @Parameter(ServerQueueSize.class) final int queueSize,
+                                     final ServerResolver serverResolver,
                                      final ParameterUpdater<K, P, V> parameterUpdater,
-                                     final PartitionedServerSideReplySender sender) {
-    this.numPartitions = numPartitions;
+                                     final PartitionedServerSideReplySender<K, V> sender) {
+    this.endpointId = endpointId;
+    this.serverResolver = serverResolver;
     this.queueSize = queueSize;
-    this.threadPool = Executors.newFixedThreadPool(numPartitions);
+    this.threadPool = Executors.newFixedThreadPool(serverResolver.getPartitions(endpointId).size());
     this.partitions = initPartitions();
     this.parameterUpdater = parameterUpdater;
     this.sender = sender;
@@ -92,13 +101,14 @@ public final class PartitionedParameterServer<K, P, V> {
   /**
    * Call after initializing numPartitions and threadPool.
    */
-  @SuppressWarnings("unchecked")
-  private Partition<K, V>[] initPartitions() {
-    LOG.log(Level.INFO, "Initializing {0} partitions", numPartitions);
-    final Partition<K, V>[] initialized = new Partition[numPartitions];
-    for (int i = 0; i < numPartitions; i++) {
-      initialized[i] = new Partition<>(queueSize);
-      threadPool.submit(initialized[i]);
+  private Map<Integer, Partition<K, V>> initPartitions() {
+    final Map<Integer, Partition<K, V>> initialized = new HashMap<>();
+    final List<Integer> localPartitions = serverResolver.getPartitions(endpointId);
+    LOG.log(Level.INFO, "Initializing {0} partitions", localPartitions.size());
+    for (final int partitionIndex : localPartitions) {
+      final Partition<K, V> partition = new Partition<>(queueSize);
+      initialized.put(partitionIndex, partition);
+      threadPool.submit(partition);
     }
     return initialized;
   }
@@ -115,7 +125,7 @@ public final class PartitionedParameterServer<K, P, V> {
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
   public void push(final K key, final P preValue, final int keyHash) {
-    partitions[getPartitionIndex(keyHash)].enqueue(new PushOp(key, preValue));
+    partitions.get(serverResolver.resolvePartition(keyHash)).enqueue(new PushOp(key, preValue));
   }
 
   /**
@@ -129,11 +139,7 @@ public final class PartitionedParameterServer<K, P, V> {
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
   public void pull(final K key, final String srcId, final int keyHash) {
-    partitions[getPartitionIndex(keyHash)].enqueue(new PullOp(key, srcId));
-  }
-
-  private int getPartitionIndex(final int keyHash) {
-    return keyHash % numPartitions;
+    partitions.get(serverResolver.resolvePartition(keyHash)).enqueue(new PullOp(key, srcId));
   }
 
   /**
@@ -141,8 +147,8 @@ public final class PartitionedParameterServer<K, P, V> {
    */
   public int opsPending() {
     int sum = 0;
-    for (int i = 0; i < numPartitions; i++) {
-      sum += partitions[i].opsPending();
+    for (final Partition<K, V> partition : partitions.values()) {
+      sum += partition.opsPending();
     }
     return sum;
   }
@@ -263,7 +269,6 @@ public final class PartitionedParameterServer<K, P, V> {
         queue.put(op);
       } catch (final InterruptedException e) {
         LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
-        return;
       }
     }
 

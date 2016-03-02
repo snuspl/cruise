@@ -13,30 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.partitioned.resolver;
-
-import edu.snu.cay.services.ps.driver.impl.ServerId;
-import org.apache.reef.tang.annotations.Parameter;
-
-import javax.inject.Inject;
+package edu.snu.cay.services.ps.common;
 
 /**
- * Resolves to the single server node defined by {@link ServerId}.
+ * Constants used across Driver/Server/Worker boundaries.
  */
-public final class SingleNodeServerResolver implements ServerResolver {
-
+public final class Constants {
   /**
-   * Network Connection Service identifier of the server.
+   * Empty private constructor to prohibit instantiation of utility class.
    */
-  private final String serverId;
-
-  @Inject
-  private SingleNodeServerResolver(@Parameter(ServerId.class) final String serverId) {
-    this.serverId = serverId;
+  private Constants() {
   }
 
-  @Override
-  public String resolve(final int hash) {
-    return serverId;
-  }
+  public static final String SERVER_ID_PREFIX = "SERVER_ID_";
+  public static final String WORKER_ID_PREFIX = "WORKER_ID_";
 }

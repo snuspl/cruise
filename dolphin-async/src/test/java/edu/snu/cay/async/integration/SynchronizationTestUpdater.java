@@ -23,7 +23,6 @@ import org.apache.reef.wake.time.event.Alarm;
 import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,7 +39,9 @@ final class SynchronizationTestUpdater implements ParameterUpdater<Integer, Stri
   private static final Logger LOG = Logger.getLogger(SynchronizationTestUpdater.class.getName());
 
   private final Clock clock;
-  private final Map<Integer, AtomicInteger> counterMap;
+
+  // Guarded by synchronized of process method.
+  private final Map<Integer, Integer> counterMap;
 
   @Inject
   private SynchronizationTestUpdater(final Clock clock) {
@@ -58,37 +59,39 @@ final class SynchronizationTestUpdater implements ParameterUpdater<Integer, Stri
     LOG.log(Level.INFO, "{0}-th iteration, message : {1}", new Object[]{key, message});
 
     if (!counterMap.containsKey(key)) {
-      counterMap.put(key, new AtomicInteger(0));
+      counterMap.put(key, 0);
     }
 
-    final AtomicInteger counter = counterMap.get(key);
+    int counter = counterMap.get(key);
 
     switch (message) {
     case SynchronizationTestWorker.BEFORE_BARRIER_MSG:
-      if (counter.get() < 0) {
+      if (counter < 0) {
         killEvaluatorWithMessage("A BEFORE_BARRIER_MSG in " + key +
             "-th iteration should not arrive after a AFTER_BARRIER_MSG for the iteration");
       } else {
-        counter.incrementAndGet();
+        counter++;
       }
       break;
     case SynchronizationTestWorker.AFTER_BARRIER_MSG:
-      if (counter.get() > 0) {
-        counter.set(-counter.get());
+      if (counter > 0) {
+        counter *= -1;
       }
 
-      counter.incrementAndGet();
+      counter++;
       break;
     default:
       killEvaluatorWithMessage("Illegal message : " + message);
     }
 
+    counterMap.put(key, counter);
+
     return message;
   }
 
   private void checkCounters() {
-    for (final AtomicInteger counter : counterMap.values()) {
-      if (counter.get() != 0) {
+    for (final int counter : counterMap.values()) {
+      if (counter != 0) {
         killEvaluatorWithMessage("All counters should be zero");
       }
     }

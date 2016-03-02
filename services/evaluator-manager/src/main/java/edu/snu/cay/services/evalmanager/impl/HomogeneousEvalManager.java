@@ -84,7 +84,6 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
 
   /**
    * {@inheritDoc}
-   * {@code contextActiveHandlerList} should have at least 1 element.
    */
   public void allocateEvaluators(final int evalNum,
                                  final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
@@ -93,7 +92,10 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
 
     for (int i = 0; i < evalNum; i++) {
       final Queue<EventHandler<ActiveContext>> handlerQueue
-          = new ArrayBlockingQueue<>(contextActiveHandlerList.size(), false, contextActiveHandlerList);
+          = new ArrayBlockingQueue<>(contextActiveHandlerList.isEmpty() ? 1 : contextActiveHandlerList.size());
+      for (int j = 0; j < contextActiveHandlerList.size(); j++) {
+        handlerQueue.add(contextActiveHandlerList.get(j));
+      }
       pendingEvalRequests.add(new Tuple2<>(evaluatorAllocatedHandler, handlerQueue));
     }
     final EvaluatorRequest request = EvaluatorRequest.newBuilder()
@@ -112,7 +114,9 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
         = pendingEvalRequests.remove();
     final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler = handlers.getT1();
     final Queue<EventHandler<ActiveContext>> contextActiveHandlers = handlers.getT2();
-    evalIdToPendingContextHandlers.put(allocatedEvaluator.getId(), contextActiveHandlers);
+    if (!contextActiveHandlers.isEmpty()) {
+      evalIdToPendingContextHandlers.put(allocatedEvaluator.getId(), contextActiveHandlers);
+    }
     evaluatorAllocatedHandler.onNext(allocatedEvaluator);
   }
 
@@ -127,8 +131,8 @@ public final class HomogeneousEvalManager implements EvaluatorManager {
     } else {
       // According to the assumption 2) in javadoc of this class,
       // other threads processing this method for the same evaluator do not exist.
-      // Also, handlerQueue should have at least 1 element initially
-      // due to the constraint in javadoc of allocateEvaluators().
+      // Also, the handlerQueue stored in evalIdToPendingContextHandlers should have
+      // at least 1 element initially due to the behavior of onEvaluatorAllocated().
       // By the assumptions above, handlerQueue must not be empty.
       final EventHandler<ActiveContext> handler = handlerQueue.remove();
       if (handlerQueue.isEmpty()) {
