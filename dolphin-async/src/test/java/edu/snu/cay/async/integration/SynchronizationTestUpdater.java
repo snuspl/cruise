@@ -29,8 +29,8 @@ import java.util.logging.Logger;
 
 /**
  * Workers send BEFORE_BARRIER_MSG and AFTER_BARRIER_MSG for each iteration. All AFTER_BARRIER_MSG are
- * guaranteed to arrive later to any BEFORE_BARRIER_MSG in one iteration since there are global barriers
- * between them. There is a counter for every iteration that keeps track the number of received messages.
+ * guaranteed to arrive later than any BEFORE_BARRIER_MSG in one iteration since there are global barriers
+ * between them. There is a counter for every iteration that keeps track of the number of received messages.
  * The counter is incremented when BEFORE_BARRIER_MSG arrives. Receiving the first AFTER_BARRIER_MSG, the
  * sign of the value is changed, and incremented with following BEFORE_MSG messages so that the value becomes zero
  * at the end of one iteration.
