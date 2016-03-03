@@ -30,8 +30,13 @@ import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.task.RunningTask;
+import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -164,8 +169,23 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   private final class EvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      allocatedEvaluator.submitContextAndService(dolphinDriver.get().getContextConfiguration(),
-          dolphinDriver.get().getServiceConfiguration());
+      final Configuration contextConf = dolphinDriver.get().getContextConfiguration();
+      final String contextId = getContextId(contextConf);
+      final Configuration serviceConf = dolphinDriver.get().getServiceConfiguration(contextId);
+      allocatedEvaluator.submitContextAndService(contextConf,
+          serviceConf);
+    }
+  }
+
+  /**
+   * Return the ID of the given Context.
+   */
+  private String getContextId(final Configuration contextConf) {
+    try {
+      final Injector injector = Tang.Factory.getTang().newInjector(contextConf);
+      return injector.getNamedInstance(ContextIdentifier.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException("Unable to inject context identifier from context conf", e);
     }
   }
 
