@@ -672,8 +672,7 @@ public final class DolphinDriver {
 
     // Bind things for EM's initial id partitioning
     dolphinTaskConfBuilder
-        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-        .bindNamedParameter(BaseCounterDataIdFactory.PartitionId.class, partitionId);
+        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class);
 
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task
