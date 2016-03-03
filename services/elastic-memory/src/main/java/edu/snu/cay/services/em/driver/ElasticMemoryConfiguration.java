@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.em.driver;
 
+import edu.snu.cay.services.em.common.parameters.PartitionId;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.NetworkContextRegister;
@@ -121,7 +121,7 @@ public final class ElasticMemoryConfiguration {
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(DriverIdentifier.class, driverId)
-        .bindNamedParameter(BaseCounterDataIdFactory.PartitionId.class, Integer.toString(partitionId))
+        .bindNamedParameter(PartitionId.class, Integer.toString(partitionId))
         .build();
 
     return Configurations.merge(networkConf, serviceConf, otherConf);

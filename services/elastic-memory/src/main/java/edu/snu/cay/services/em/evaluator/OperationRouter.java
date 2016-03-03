@@ -15,8 +15,8 @@
  */
 package edu.snu.cay.services.em.evaluator;
 
+import edu.snu.cay.services.em.common.parameters.PartitionId;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
-import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -32,7 +32,7 @@ public final class OperationRouter {
 
   @Inject
   private OperationRouter(final PartitionFunc partitionFunc,
-                          @Parameter(BaseCounterDataIdFactory.PartitionId.class) final int partitionId) {
+                          @Parameter(PartitionId.class) final int partitionId) {
     this.localPartitionId = partitionId;
     this.partitionFunc = partitionFunc;
   }
