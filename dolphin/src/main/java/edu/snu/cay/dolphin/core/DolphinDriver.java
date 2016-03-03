@@ -526,7 +526,7 @@ public final class DolphinDriver {
   /**
    * Gives service configuration submitted on
    * both DataLoader requested evaluators and ElasticMemory requested evaluators.
-   * ElasticMemory service requires contextId for its configuration.
+   * @param contextId an identifier of the context id that each service will run on
    */
   public Configuration getServiceConfiguration(final String contextId) {
     final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
@@ -670,7 +670,7 @@ public final class DolphinDriver {
     // Let's use context id as a partition Id, which should be distinguished between evaluators
     final String partitionId = activeContext.getId().split("-")[1];
 
-    // Bind things for EM's initial id partitioning
+    // Bind EM's DataIdFactory implementation
     dolphinTaskConfBuilder
         .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class);
 

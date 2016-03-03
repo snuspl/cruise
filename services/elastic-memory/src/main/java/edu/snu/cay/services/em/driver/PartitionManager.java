@@ -76,15 +76,11 @@ public final class PartitionManager {
    */
   public synchronized int registerEvaluator(final String contextId) {
     if (evalPartitionMap.containsKey(contextId)) {
-      throw new RuntimeException("This evaluator is already registered");
+      throw new RuntimeException("This evaluator is already registered. Its context Id is " + contextId);
     }
-
     final int partitionId = numEvalCounter.getAndIncrement();
-
     LOG.log(Level.INFO, "contextId: {0}, partitionId: {1}", new Object[]{contextId, partitionId});
-
     evalPartitionMap.put(contextId, Integer.valueOf(partitionId));
-
     return partitionId;
   }
 

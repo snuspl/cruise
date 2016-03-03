@@ -172,8 +172,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
       final Configuration contextConf = dolphinDriver.get().getContextConfiguration();
       final String contextId = getContextId(contextConf);
       final Configuration serviceConf = dolphinDriver.get().getServiceConfiguration(contextId);
-      allocatedEvaluator.submitContextAndService(contextConf,
-          serviceConf);
+      allocatedEvaluator.submitContextAndService(contextConf, serviceConf);
     }
   }
 
