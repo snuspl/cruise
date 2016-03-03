@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.server.partitioned.parameters;
+package edu.snu.cay.services.ps.common.partitioned.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of partitions", default_value = "2", short_name = "serverNumPartitions")
-public final class ServerNumPartitions implements Name<Integer> {
+@NamedParameter(doc = "Number of servers", default_value = "1", short_name = "numServers")
+public final class NumServers implements Name<Integer> {
 }

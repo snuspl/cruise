@@ -13,23 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
+package edu.snu.cay.common.metric;
 
-import java.util.Map;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+import java.util.Set;
 
 /**
- * Interface that metric trackers implement.
+ * The set of MetricTracker implementations registered to MetricManager.
  */
-public interface MetricTracker extends AutoCloseable {
-
-  /**
-   * start tracking metrics.
-   */
-  void start();
-
-  /**
-   * stop tracking metrics and return currently tracked metrics.
-   * @return key and value of metrics
-   */
-  Map<String, Double> stop();
+@NamedParameter(doc = "The set of MetricTracker implementations registered to MetricManager.",
+                default_classes = {})
+public final class MetricTrackers implements Name<Set<MetricTracker>> {
 }

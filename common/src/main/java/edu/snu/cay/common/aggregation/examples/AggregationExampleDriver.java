@@ -22,7 +22,6 @@ import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
-import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -39,13 +38,18 @@ import java.util.logging.Logger;
 
 /**
  * The driver for aggregation service example.
- * Launch evaluators for workers, which send aggregation message to master(driver).
- * When all tasks are complete, checks that all messages have arrived or not.
+ * Launch evaluators for workers which exchange aggregation messages with the driver.
+ *
+ * 1. Each task sends a message to the driver and waits for a response message.
+ * 2. When all messages from the tasks has arrived, the driver sends response messages to the tasks.
+ * 3. All tasks are terminated by the response messages.
  */
 @DriverSide
 @Unit
 public final class AggregationExampleDriver {
   private static final Logger LOG = Logger.getLogger(AggregationExampleDriver.class.getName());
+
+  static final String AGGREGATION_CLIENT_ID = "AGGREGATION_CLIENT_ID";
 
   static final String WORKER_CONTEXT_PREFIX = "Worker-Context-";
   static final String TASK_PREFIX = "Worker-Task-";
@@ -57,7 +61,7 @@ public final class AggregationExampleDriver {
   private final int splits;
 
   private final AtomicInteger evalCounter = new AtomicInteger(0);
-  private final AtomicInteger taskCompletedCounter = new AtomicInteger(0);
+  private final AtomicInteger taskRunningCounter = new AtomicInteger(0);
 
   @Inject
   private AggregationExampleDriver(final AggregationManager aggregationManager,
@@ -104,20 +108,12 @@ public final class AggregationExampleDriver {
     @Override
     public void onNext(final RunningTask runningTask) {
       LOG.log(Level.INFO, "Task running: {0}", runningTask.getId());
-    }
-  }
 
-  final class CompletedTaskHandler implements EventHandler<CompletedTask> {
-    @Override
-    public void onNext(final CompletedTask completedTask) {
-      LOG.log(Level.INFO, "Task completed: {0}", completedTask.getId());
+      final int taskRunningCount = taskRunningCounter.incrementAndGet();
 
-      final int taskCompletedCount = taskCompletedCounter.incrementAndGet();
-
-      if (taskCompletedCount == splits) {
+      if (taskRunningCount == splits) {
         driverSideMsgHandler.validate();
       }
-      completedTask.getActiveContext().close();
     }
   }
 }

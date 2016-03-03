@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 
 /**
  * The aggregation slave task that runs on all Workers.
- * Sends aggregation message to aggregation master(driver).
+ * Sends aggregation message to aggregation master(driver) and waits for a message from the driver.
  */
 @TaskSide
 public final class AggregationSlaveTask implements Task {
@@ -38,20 +38,25 @@ public final class AggregationSlaveTask implements Task {
   private final AggregationSlave aggregationSlave;
   private final Codec<String> codec;
   private final String taskId;
+  private final EvalSideMsgHandler msgHandler;
 
   @Inject
   private AggregationSlaveTask(final AggregationSlave aggregationSlave,
                                final SerializableCodec<String> codec,
-                               @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId) {
+                               @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
+                               final EvalSideMsgHandler msgHandler) {
     this.aggregationSlave = aggregationSlave;
     this.codec = codec;
     this.taskId = taskId;
+    this.msgHandler = msgHandler;
   }
 
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
-    aggregationSlave.send(AggregationSlaveTask.class.getName(), codec.encode(taskId));
+    aggregationSlave.send(AggregationExampleDriver.AGGREGATION_CLIENT_ID, codec.encode(taskId));
+    LOG.log(Level.INFO, "A message was sent. Waiting for response from the driver");
+    msgHandler.waitForMessage();
     return null;
   }
 }

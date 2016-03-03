@@ -22,15 +22,16 @@ import edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideMsgHandler;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySender;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySenderImpl;
-import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.ContextStopHandler;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerHandler;
-import edu.snu.cay.services.ps.worker.partitioned.resolver.ServerResolver;
-import edu.snu.cay.services.ps.worker.partitioned.resolver.SingleNodeServerResolver;
+import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
+import edu.snu.cay.services.ps.common.partitioned.resolver.StaticServerResolver;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -39,6 +40,9 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
+import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
 
 /**
  * Manager class for a Partitioned Parameter Server, that supports atomic,
@@ -50,19 +54,21 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @DriverSide
 public final class PartitionedParameterServerManager implements ParameterServerManager {
-  private static final String SERVER_ID = "PARTITIONED_SERVER_ID";
-  private static final String WORKER_ID_PREFIX = "PARTITIONED_WORKER_ID_";
-
+  private final int numServers;
   private final int numPartitions;
   private final int queueSize;
-  private final AtomicInteger numWorkers;
+  private final AtomicInteger workerCount;
+  private final AtomicInteger serverCount;
 
   @Inject
-  private PartitionedParameterServerManager(@Parameter(ServerNumPartitions.class) final int numPartitions,
+  private PartitionedParameterServerManager(@Parameter(NumServers.class) final int numServers,
+                                            @Parameter(NumPartitions.class) final int numPartitions,
                                             @Parameter(ServerQueueSize.class) final int queueSize) {
+    this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.queueSize = queueSize;
-    this.numWorkers = new AtomicInteger(0);
+    this.workerCount = new AtomicInteger(0);
+    this.serverCount = new AtomicInteger(0);
   }
 
   /**
@@ -71,7 +77,7 @@ public final class PartitionedParameterServerManager implements ParameterServerM
    */
   @Override
   public Configuration getWorkerServiceConfiguration() {
-    final int workerIndex = numWorkers.getAndIncrement();
+    final int workerIndex = workerCount.getAndIncrement();
 
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
@@ -80,9 +86,9 @@ public final class PartitionedParameterServerManager implements ParameterServerM
             .build())
         .bindImplementation(ParameterWorker.class, PartitionedParameterWorker.class)
         .bindImplementation(AsyncWorkerHandler.class, PartitionedWorkerHandler.class)
-        // TODO #308: Add a MultiNodeServerResolver
-        .bindImplementation(ServerResolver.class, SingleNodeServerResolver.class)
-        .bindNamedParameter(ServerId.class, SERVER_ID)
+        .bindImplementation(ServerResolver.class, StaticServerResolver.class)
+        .bindNamedParameter(NumServers.class, Integer.toString(numServers))
+        .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
         .bindNamedParameter(EndpointId.class, WORKER_ID_PREFIX + workerIndex)
         .build();
   }
@@ -92,15 +98,19 @@ public final class PartitionedParameterServerManager implements ParameterServerM
    */
   @Override
   public Configuration getServerServiceConfiguration() {
+    final int serverIndex = serverCount.getAndIncrement();
+
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, PartitionedParameterServer.class)
             .build())
-        .bindNamedParameter(EndpointId.class, SERVER_ID)
-        .bindNamedParameter(PSMessageHandler.class, PartitionedServerSideMsgHandler.class)
-        .bindNamedParameter(ServerNumPartitions.class, Integer.toString(numPartitions))
-        .bindNamedParameter(ServerQueueSize.class, Integer.toString(queueSize))
         .bindImplementation(PartitionedServerSideReplySender.class, PartitionedServerSideReplySenderImpl.class)
+        .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + serverIndex)
+        .bindNamedParameter(PSMessageHandler.class, PartitionedServerSideMsgHandler.class)
+        .bindImplementation(ServerResolver.class, StaticServerResolver.class)
+        .bindNamedParameter(NumServers.class, Integer.toString(numServers))
+        .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
+        .bindNamedParameter(ServerQueueSize.class, Integer.toString(queueSize))
         .build();
   }
 }

@@ -24,7 +24,7 @@
   "fields":
   [
     {"name": "clientClassName", "type": "string"},
-    {"name": "slaveId", "type": "string"},
+    {"name": "sourceId", "type": "string"},
     {"name": "data", "type": "bytes"}
   ]
 }

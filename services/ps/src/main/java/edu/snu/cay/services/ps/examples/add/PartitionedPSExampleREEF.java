@@ -18,7 +18,8 @@ package edu.snu.cay.services.ps.examples.add;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
 import edu.snu.cay.services.ps.examples.add.parameters.*;
-import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumPartitions;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
@@ -53,6 +54,7 @@ public final class PartitionedPSExampleREEF {
   private final int numUpdates;
   private final int numKeys;
   private final int startKey;
+  private final int numServers;
   private final int serverNumPartitions;
   private final int serverQueueSize;
   private final int workerNumPartitions;
@@ -66,7 +68,8 @@ public final class PartitionedPSExampleREEF {
                                    @Parameter(NumUpdates.class) final int numUpdates,
                                    @Parameter(NumKeys.class) final int numKeys,
                                    @Parameter(StartKey.class) final int startKey,
-                                   @Parameter(ServerNumPartitions.class) final int serverNumPartitions,
+                                   @Parameter(NumServers.class) final int numServers,
+                                   @Parameter(NumPartitions.class) final int serverNumPartitions,
                                    @Parameter(ServerQueueSize.class) final int serverQueueSize,
                                    @Parameter(WorkerNumPartitions.class) final int workerNumPartitions,
                                    @Parameter(WorkerQueueSize.class) final int workerQueueSize,
@@ -77,6 +80,7 @@ public final class PartitionedPSExampleREEF {
     this.numUpdates = numUpdates;
     this.numKeys = numKeys;
     this.startKey = startKey;
+    this.numServers = numServers;
     this.serverNumPartitions = serverNumPartitions;
     this.serverQueueSize = serverQueueSize;
     this.workerNumPartitions = workerNumPartitions;
@@ -107,7 +111,8 @@ public final class PartitionedPSExampleREEF {
         .bindNamedParameter(NumUpdates.class, Integer.toString(numUpdates))
         .bindNamedParameter(NumKeys.class, Integer.toString(numKeys))
         .bindNamedParameter(StartKey.class, Integer.toString(startKey))
-        .bindNamedParameter(ServerNumPartitions.class, Integer.toString(serverNumPartitions))
+        .bindNamedParameter(NumServers.class, Integer.toString(numServers))
+        .bindNamedParameter(NumPartitions.class, Integer.toString(serverNumPartitions))
         .bindNamedParameter(ServerQueueSize.class, Integer.toString(serverQueueSize))
         .bindNamedParameter(WorkerNumPartitions.class, Integer.toString(workerNumPartitions))
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
@@ -132,7 +137,7 @@ public final class PartitionedPSExampleREEF {
 
   private Configuration getLocalRuntimeConfiguration() {
     return LocalRuntimeConfiguration.CONF
-        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, numWorkers + 1)
+        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, numWorkers + numServers)
         .build();
   }
 
@@ -148,7 +153,8 @@ public final class PartitionedPSExampleREEF {
     cl.registerShortNameOfClass(NumUpdates.class);
     cl.registerShortNameOfClass(NumKeys.class);
     cl.registerShortNameOfClass(StartKey.class);
-    cl.registerShortNameOfClass(ServerNumPartitions.class);
+    cl.registerShortNameOfClass(NumServers.class);
+    cl.registerShortNameOfClass(NumPartitions.class);
     cl.registerShortNameOfClass(ServerQueueSize.class);
     cl.registerShortNameOfClass(WorkerNumPartitions.class);
     cl.registerShortNameOfClass(WorkerQueueSize.class);

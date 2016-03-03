@@ -16,15 +16,15 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.regression;
 
 import edu.snu.cay.dolphin.core.StageInfo;
-import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
-import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
+import edu.snu.cay.common.metric.InsertableMetricTracker;
+import edu.snu.cay.common.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.data.RegressionDataParser;
 import edu.snu.cay.dolphin.examples.ml.parameters.CommunicationGroup;
 import edu.snu.cay.dolphin.examples.ml.sub.LinearRegReduceFunction;
 import edu.snu.cay.dolphin.examples.ml.sub.LinearRegSummaryCodec;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserJobInfo;
-import edu.snu.cay.dolphin.core.metric.GCMetricTracker;
+import edu.snu.cay.common.metric.GCMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.sub.DenseLinearModelCodec;
 
 import javax.inject.Inject;

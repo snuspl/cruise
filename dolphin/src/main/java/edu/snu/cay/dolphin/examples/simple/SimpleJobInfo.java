@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.examples.simple;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.StageInfo;
 import edu.snu.cay.dolphin.core.UserJobInfo;
-import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
+import edu.snu.cay.common.metric.InsertableMetricTracker;
 import org.apache.reef.io.serialization.SerializableCodec;
 
 import javax.inject.Inject;

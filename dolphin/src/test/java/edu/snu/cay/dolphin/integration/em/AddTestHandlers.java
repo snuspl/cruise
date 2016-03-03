@@ -15,12 +15,12 @@
  */
 package edu.snu.cay.dolphin.integration.em;
 
-import edu.snu.cay.common.param.Parameters.Splits;
-import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
@@ -28,7 +28,9 @@ import org.apache.reef.wake.time.event.StartTime;
 import org.apache.reef.wake.time.event.StopTime;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -42,29 +44,25 @@ import java.util.logging.Logger;
 @Unit
 final class AddTestHandlers {
   private static final Logger LOG = Logger.getLogger(AddTestHandlers.class.getName());
+  private static final String EM_CONTEXT_ID_PREFIX = "EM-Context-";
+
   private final ElasticMemory elasticMemory;
-  private final DataLoader dataLoader;
   private final int numAdd;
   private final int numThreads;
   private final CountDownLatch allocationCounter;
   private final CountDownLatch callbackCounter;
-  private final int dataLoaderRequestNum;
   private final Set<ActiveContext> activeContextSet;
   private RuntimeException runtimeException;
 
   @Inject
   private AddTestHandlers(final ElasticMemory elasticMemory,
-                          final DataLoader dataLoader,
                           @Parameter(AddIntegrationTest.AddEvalNumber.class) final int numAdd,
-                          @Parameter(AddIntegrationTest.AddThreadNumber.class) final int numThreads,
-                          @Parameter(Splits.class) final int numSplits) {
+                          @Parameter(AddIntegrationTest.AddThreadNumber.class) final int numThreads) {
     this.elasticMemory = elasticMemory;
-    this.dataLoader = dataLoader;
     this.numAdd = numAdd;
     this.numThreads = numThreads;
     this.allocationCounter = new CountDownLatch(numAdd);
     this.callbackCounter = new CountDownLatch(numAdd);
-    this.dataLoaderRequestNum = numSplits + 1;
     this.activeContextSet  = Collections.newSetFromMap(new ConcurrentHashMap<ActiveContext, Boolean>());
   }
 
@@ -145,45 +143,29 @@ final class AddTestHandlers {
 
       @Override
       public void run() {
-        // Wait until DataLoader receives evaluators
-        // TODO #153: use resource manager to manage all evaluator requests
-        while (dataLoader.isDataLoaderRequest()) {
-          LOG.fine("Sleeping...");
-          try {
-            Thread.sleep(1000);
-          } catch (final InterruptedException e) {
-            runtimeException = new RuntimeException("Test failed.", e);
+        // Checks that EM add request actually allocates new evaluators
+        final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler = new EventHandler<AllocatedEvaluator>() {
+          @Override
+          public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+            LOG.log(Level.INFO, "EM add allocated evaluator {0} successfully.", allocatedEvaluator);
+            final Configuration dummyContextConf = ContextConfiguration.CONF.set(ContextConfiguration.IDENTIFIER,
+                EM_CONTEXT_ID_PREFIX + (numAdd - allocationCounter.getCount())).build();
+            allocationCounter.countDown();
+            allocatedEvaluator.submitContext(dummyContextConf);
           }
-        }
-        elasticMemory.add(addsPerThread, 128, 1,
-            // Checks that EM add callback was actually triggered
-            new EventHandler<ActiveContext>() {
-              @Override
-              public void onNext(final ActiveContext activeContext) {
-                LOG.log(Level.INFO, "EM add callback for active context {0} triggered successfully.", activeContext);
-                callbackCounter.countDown();
-                activeContextSet.add(activeContext);
-              }
-            });
-      }
-    }
-  }
+        };
+        final List<EventHandler<ActiveContext>> contextActiveHandlers = new ArrayList<>();
+        contextActiveHandlers.add(new EventHandler<ActiveContext>() {
+          // Checks that EM add callback was actually triggered
+          @Override
+          public void onNext(final ActiveContext activeContext) {
+            LOG.log(Level.INFO, "EM add callback for active context {0} triggered successfully.", activeContext);
+            callbackCounter.countDown();
+            activeContextSet.add(activeContext);
+          }
+        });
 
-  /**
-   * Evaluator allocated handler.
-   * Checks that EM add request actually allocates new evaluators.
-   */
-  final class AddTestEvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
-    private int dataLoaderEvalCount = 0;
-
-    @Override
-    public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      LOG.log(Level.INFO, "Evaluator allocated {0}", allocatedEvaluator);
-      if (dataLoaderEvalCount < dataLoaderRequestNum) {
-        dataLoaderEvalCount++;
-      } else {
-        LOG.log(Level.INFO, "EM add allocated evaluator {0} successfully.", allocatedEvaluator);
-        allocationCounter.countDown();
+        elasticMemory.add(addsPerThread, 128, 1, evaluatorAllocatedHandler, contextActiveHandlers);
       }
     }
   }

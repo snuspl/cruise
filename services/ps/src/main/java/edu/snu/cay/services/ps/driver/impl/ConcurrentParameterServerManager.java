@@ -33,14 +33,15 @@ import org.apache.reef.tang.Tang;
 import javax.inject.Inject;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
+import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
+
 /**
  * Manager class for a Parameter Server that uses only one node for a server.
  * This manager does NOT handle server or worker faults.
  */
 @DriverSide
 public final class ConcurrentParameterServerManager implements ParameterServerManager {
-  private static final String SERVER_ID = "SINGLE_NODE_SERVER_ID";
-  private static final String WORKER_ID_PREFIX = "SINGLE_NODE_WORKER_ID_";
   private final AtomicInteger numWorkers;
 
   @Inject
@@ -62,7 +63,7 @@ public final class ConcurrentParameterServerManager implements ParameterServerMa
             .build())
         .bindImplementation(ParameterWorker.class, ConcurrentParameterWorker.class)
         .bindImplementation(AsyncWorkerHandler.class, ConcurrentWorkerHandler.class)
-        .bindNamedParameter(ServerId.class, SERVER_ID)
+        .bindNamedParameter(ServerId.class, SERVER_ID_PREFIX + 0)
         .bindNamedParameter(EndpointId.class, WORKER_ID_PREFIX + workerIndex)
         .build();
   }
@@ -79,7 +80,7 @@ public final class ConcurrentParameterServerManager implements ParameterServerMa
             .build())
         .bindNamedParameter(PSMessageHandler.class, ServerSideMsgHandler.class)
         .bindImplementation(ParameterServer.class, ConcurrentParameterServer.class)
-        .bindNamedParameter(EndpointId.class, SERVER_ID)
+        .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + 0)
         .build();
   }
 

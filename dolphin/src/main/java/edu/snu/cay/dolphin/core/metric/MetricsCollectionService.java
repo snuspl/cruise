@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.core.metric;
 
+import edu.snu.cay.common.metric.MetricsCollector;
+import edu.snu.cay.common.metric.MetricsHandler;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;

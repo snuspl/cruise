@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.cay.dolphin.core.metric;
+package edu.snu.cay.common.metric;
 
+import edu.snu.cay.common.metric.avro.Metrics;
 import org.apache.reef.wake.EventHandler;
 
-import java.util.Map;
-
-public interface MetricsHandler extends EventHandler<Map<String, Double>> {
-  void onNext(Map<String, Double> metrics);
+public interface MetricsHandler extends EventHandler<Metrics> {
+  void onNext(Metrics metrics);
 }

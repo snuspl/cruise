@@ -16,6 +16,8 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
+import edu.snu.cay.common.metric.MetricTracker;
+import edu.snu.cay.common.metric.MetricTrackers;
 import edu.snu.cay.dolphin.core.metric.*;
 import edu.snu.cay.dolphin.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator;
@@ -27,7 +29,6 @@ import edu.snu.cay.dolphin.groupcomm.names.*;
 import edu.snu.cay.dolphin.groupcomm.names.DataPreRunShuffle;
 import edu.snu.cay.dolphin.parameters.StartTrace;
 import edu.snu.cay.dolphin.scheduling.SchedulabilityAnalyzer;
-import edu.snu.cay.services.dataloader.DataLoader;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
@@ -35,10 +36,9 @@ import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
-import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
+import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
@@ -48,6 +48,7 @@ import edu.snu.cay.utils.trace.HTraceInfoCodec;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
@@ -117,6 +118,12 @@ public final class DolphinDriver {
   private final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher;
 
   /**
+   * Evaluator Manager, a unified path for requesting evaluators.
+   * Helps managing REEF events related to evaluator and context.
+   */
+  private final EvaluatorManager evaluatorManager;
+
+  /**
    * Driver that manages Group Communication settings.
    */
   private final GroupCommDriver groupCommDriver;
@@ -136,12 +143,6 @@ public final class DolphinDriver {
    * Can check whether a evaluator is configured with the service or not.
    */
   private final DataLoadingService dataLoadingService;
-
-  /**
-   * Customized REEF DataLoader.
-   * Sends evaluator allocation requests for data loading.
-   */
-  private final DataLoader dataLoader;
 
   /**
    * The output service.
@@ -214,11 +215,6 @@ public final class DolphinDriver {
    */
   private final ConcurrentHashMap<String, String> evalToRequestorMap = new ConcurrentHashMap<>();
 
-  /**
-   * Manage callback of EM resource requests.
-   */
-  private final EMResourceRequestManager emResourceRequestManager;
-
   private final PartitionManager partitionManager;
 
   /**
@@ -242,11 +238,11 @@ public final class DolphinDriver {
    * @param userParameters
    */
   @Inject
-  private DolphinDriver(final GroupCommDriver groupCommDriver,
+  private DolphinDriver(final EvaluatorManager evaluatorManager,
+                        final GroupCommDriver groupCommDriver,
                         final GroupCommParameters groupCommParameters,
                         final ShuffleDriver shuffleDriver,
                         final DataLoadingService dataLoadingService,
-                        final DataLoader dataLoader,
                         final OutputService outputService,
                         final SchedulabilityAnalyzer schedulabilityAnalyzer,
                         final AggregationManager aggregationManager,
@@ -257,18 +253,17 @@ public final class DolphinDriver {
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
                         final HTraceParameters traceParameters,
-                        final EMResourceRequestManager emResourceRequestManager,
                         final PartitionManager partitionManager,
                         final HTraceInfoCodec hTraceInfoCodec,
                         final HTrace hTrace,
                         @Parameter(StartTrace.class) final boolean startTrace,
                         final CtrlTaskContextIdFetcher ctrlTaskContextIdFetcher) {
     hTrace.initialize();
+    this.evaluatorManager = evaluatorManager;
     this.groupCommDriver = groupCommDriver;
     this.groupCommParameters = groupCommParameters;
     this.shuffleDriver = shuffleDriver;
     this.dataLoadingService = dataLoadingService;
-    this.dataLoader = dataLoader;
     this.outputService = outputService;
     this.schedulabilityAnalyzer = schedulabilityAnalyzer;
     this.aggregationManager = aggregationManager;
@@ -284,7 +279,6 @@ public final class DolphinDriver {
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
     this.traceParameters = traceParameters;
-    this.emResourceRequestManager = emResourceRequestManager;
     this.partitionManager = partitionManager;
     this.closingContexts = Collections.synchronizedSet(new HashSet<String>());
     this.hTraceInfoCodec = hTraceInfoCodec;
@@ -411,7 +405,96 @@ public final class DolphinDriver {
     @Override
     public void onNext(final StartTime startTime) {
       LOG.log(Level.INFO, "StartTime: {0}", startTime);
-      dataLoader.releaseResourceRequestGate();
+
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForControllerTask = getEvalAllocHandlerForControllerTask();
+      final List<EventHandler<ActiveContext>> contextActiveHandlersForControllerTask = new ArrayList<>();
+      contextActiveHandlersForControllerTask.add(getFirstContextActiveHandlerForControllerTask());
+      contextActiveHandlersForControllerTask.add(getSubmittingTaskHandler());
+      evaluatorManager.allocateEvaluators(1, evalAllocHandlerForControllerTask, contextActiveHandlersForControllerTask);
+
+      final EventHandler<AllocatedEvaluator> evalAllocHandlerForComputeTask = getEvalAllocHandlerForComputeTask();
+      final List<EventHandler<ActiveContext>> contextActiveHandlersForComputeTask = new ArrayList<>();
+      contextActiveHandlersForComputeTask.add(getFirstContextActiveHandlerForComputeTask());
+      contextActiveHandlersForComputeTask.add(getSubmittingTaskHandler());
+      evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
+          evalAllocHandlerForComputeTask, contextActiveHandlersForComputeTask);
+    }
+
+    /**
+     * Returns an EventHandler which submits the first context(DataLoading compute context)
+     * to evaluator for controller task.
+     */
+    private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForControllerTask() {
+      return new EventHandler<AllocatedEvaluator>() {
+        @Override
+        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+          LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
+          final Configuration idConfiguration = ContextConfiguration.CONF
+              .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + 0)
+              .build();
+          allocatedEvaluator.submitContext(idConfiguration);
+        }
+      };
+    }
+
+    /**
+     * Returns an EventHandler which submits the first context(DataLoading context) to evaluator for compute task.
+     */
+    private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForComputeTask() {
+      return new EventHandler<AllocatedEvaluator>() {
+        @Override
+        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+          LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
+          allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
+              dataLoadingService.getServiceConfiguration(allocatedEvaluator));
+        }
+      };
+    }
+
+    /**
+     * Returns an EventHandler which submits the second context(GroupComm context) to evaluator for controller task.
+     */
+    private EventHandler<ActiveContext> getFirstContextActiveHandlerForControllerTask() {
+      return new EventHandler<ActiveContext>() {
+        @Override
+        public void onNext(final ActiveContext activeContext) {
+          LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
+          final Configuration contextConf = getContextConfiguration();
+          ctrlTaskContextIdFetcher.setCtrlTaskContextId(getContextId(contextConf));
+          final Configuration serviceConf = getServiceConfiguration();
+          activeContext.submitContextAndService(contextConf, serviceConf);
+        }
+      };
+    }
+
+    /**
+     * Returns an EventHandler which submits the second context(GroupComm context) to evaluator for compute task.
+     */
+    private EventHandler<ActiveContext> getFirstContextActiveHandlerForComputeTask() {
+      return new EventHandler<ActiveContext>() {
+        @Override
+        public void onNext(final ActiveContext activeContext) {
+          LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
+          final Configuration contextConf = getContextConfiguration();
+          final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
+          final Configuration serviceConf = Configurations.merge(getServiceConfiguration(), dataParseConf);
+          activeContext.submitContextAndService(contextConf, serviceConf);
+        }
+      };
+    }
+
+    /**
+     * Returns an EventHandler which submits task to evaluator.
+     */
+    private EventHandler<ActiveContext> getSubmittingTaskHandler() {
+      return new EventHandler<ActiveContext>() {
+        @Override
+        public void onNext(final ActiveContext activeContext) {
+          LOG.log(Level.INFO, "Registering evaluator to PartitionManager");
+          partitionManager.registerEvaluator(activeContext.getId());
+          submitTask(activeContext, 0);
+        }
+      };
     }
   }
 
@@ -420,16 +503,7 @@ public final class DolphinDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       LOG.log(Level.INFO, "Evaluator allocated {0}", allocatedEvaluator);
-      if (dataLoader.isDataLoaderRequest()) {
-        evalToRequestorMap.put(allocatedEvaluator.getId(), DataLoader.class.getName());
-        dataLoader.handleDataLoadingEvalAlloc(allocatedEvaluator);
-      } else if (emResourceRequestManager.bindCallback(allocatedEvaluator)) {
-        evalToRequestorMap.put(allocatedEvaluator.getId(), ElasticMemory.class.getName());
-        allocatedEvaluator.submitContextAndService(getContextConfiguration(), getServiceConfiguration());
-      } else {
-        LOG.log(Level.WARNING, "Unknown evaluator allocated. Ignore {0}", allocatedEvaluator);
-        allocatedEvaluator.close();
-      }
+      evaluatorManager.onEvaluatorAllocated(allocatedEvaluator);
     }
   }
 
@@ -437,20 +511,9 @@ public final class DolphinDriver {
 
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
-      final String evaluatorId = failedEvaluator.getId();
-      final String requestorId = evalToRequestorMap.get(evaluatorId);
-      if (requestorId == null) {
-        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + failedEvaluator);
-        return;
-      }
-      if (requestorId.equals(DataLoader.class.getName())) {
-        dataLoader.handleDataLoadingEvalFailure(failedEvaluator);
-      } else if (requestorId.equals(ElasticMemory.class.getName())) {
-        // Failure handling for EM requested evaluators. We may use ElasticMemory.checkpoint to do this.
-        // TODO #114: Implement Checkpoint
-      } else {
-        LOG.warning("Unknown failed evaluator. Ignore " + failedEvaluator);
-      }
+      LOG.log(Level.WARNING, "Evaluator failed {0}", failedEvaluator);
+      // Failure handling for evaluators. We may use ElasticMemory.checkpoint to do this.
+      // TODO #114: Implement Checkpoint
     }
   }
 
@@ -458,7 +521,7 @@ public final class DolphinDriver {
    * Gives context configuration submitted on
    * both DataLoader requested evaluators and ElasticMemory requested evaluators.
    */
-  private Configuration getContextConfiguration() {
+  public Configuration getContextConfiguration() {
     final Configuration groupCommContextConf = groupCommDriver.getContextConfiguration();
     final Configuration emContextConf = emConf.getContextConfiguration();
     final Configuration aggregationContextConf = aggregationManager.getContextConfiguration();
@@ -469,7 +532,7 @@ public final class DolphinDriver {
    * Gives service configuration submitted on
    * both DataLoader requested evaluators and ElasticMemory requested evaluators.
    */
-  private Configuration getServiceConfiguration() {
+  public Configuration getServiceConfiguration() {
     final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
     final Configuration outputServiceConf = outputService.getServiceConfiguration();
     final Configuration keyValueStoreServiceConf = KeyValueStoreService.getServiceConfiguration();
@@ -487,49 +550,7 @@ public final class DolphinDriver {
 
     @Override
     public void onNext(final ActiveContext activeContext) {
-
-      // Evaluator configured with a Data Loading context has been given
-      // We need to add a Group Communication context above this context.
-      //
-      // It would be better if the two services could go into the same context, but
-      // the Data Loading API is currently constructed to add its own context before
-      // allowing any other ones.
-      final String evaluatorId = activeContext.getEvaluatorId();
-      final String requestorId = evalToRequestorMap.get(evaluatorId);
-      if (requestorId == null) {
-        LOG.warning("Failed to find a requestor for " + evaluatorId + ". Ignore " + activeContext);
-        activeContext.close();
-        return;
-      }
-      if (requestorId.equals(DataLoader.class.getName())) {
-        if (!groupCommDriver.isConfigured(activeContext)) {
-          final Configuration finalContextConf = getContextConfiguration();
-          final Configuration finalServiceConf;
-          if (dataLoadingService.isComputeContext(activeContext)) {
-            LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
-            ctrlTaskContextIdFetcher.setCtrlTaskContextId(getContextId(finalContextConf));
-
-            // Add services for the GroupCommContext under ControllerTask
-            finalServiceConf = getServiceConfiguration();
-          } else {
-            LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
-
-            // Add services for the GroupCommContext under ComputeTask
-            final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
-            finalServiceConf = Configurations.merge(getServiceConfiguration(), dataParseConf);
-          }
-          activeContext.submitContextAndService(finalContextConf, finalServiceConf);
-        } else {
-          LOG.log(Level.INFO, "Registering evaluator to PartitionManager");
-          partitionManager.registerEvaluator(activeContext.getId());
-          submitTask(activeContext, 0);
-        }
-      } else if (requestorId.equals(ElasticMemory.class.getName())) {
-        emResourceRequestManager.onCompleted(activeContext);
-      } else {
-        LOG.warning("Unknown evaluator. Ignore " + activeContext);
-        activeContext.close();
-      }
+      evaluatorManager.onContextActive(activeContext);
     }
   }
 

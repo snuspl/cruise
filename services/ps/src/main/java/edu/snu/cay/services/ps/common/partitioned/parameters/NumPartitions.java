@@ -13,7 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Resolve Server name based on a hashed key.
- */
-package edu.snu.cay.services.ps.worker.partitioned.resolver;
+package edu.snu.cay.services.ps.common.partitioned.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Number of partitions across all servers", default_value = "2", short_name = "numPartitions")
+public final class NumPartitions implements Name<Integer> {
+}

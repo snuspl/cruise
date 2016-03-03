@@ -22,23 +22,23 @@ import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.MigrationManager;
 import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
-import edu.snu.cay.services.em.driver.api.EMResourceRequestManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.tang.InjectionFuture;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.driver.evaluator.EvaluatorRequest;
-import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -47,29 +47,28 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private static final String MOVE = "move";
   private static final String APPLY_UPDATES = "apply_updates";
 
-  private final EvaluatorRequestor requestor;
   private final MigrationManager migrationManager;
 
   private final AtomicLong operationIdCounter = new AtomicLong();
+
   /**
-   * EM resource request manager.
+   * Evaluator Manager, a unified path for requesting evaluators.
+   * Helps managing REEF events related to evaluator and context.
    */
-  private final EMResourceRequestManager resourceRequestManager;
+  private final EvaluatorManager evaluatorManager;
 
   private final InjectionFuture<EMDeleteExecutor> deleteExecutor;
   private final PartitionManager partitionManager;
 
   @Inject
-  private ElasticMemoryImpl(final EvaluatorRequestor requestor,
+  private ElasticMemoryImpl(final EvaluatorManager evaluatorManager,
                             final MigrationManager migrationManager,
-                            final EMResourceRequestManager resourceRequestManager,
                             final InjectionFuture<EMDeleteExecutor> deleteExecutor,
                             final PartitionManager partitionManager,
                             final HTrace hTrace) {
     hTrace.initialize();
-    this.requestor = requestor;
+    this.evaluatorManager = evaluatorManager;
     this.migrationManager = migrationManager;
-    this.resourceRequestManager = resourceRequestManager;
     this.deleteExecutor = deleteExecutor;
     this.partitionManager = partitionManager;
   }
@@ -81,15 +80,9 @@ public final class ElasticMemoryImpl implements ElasticMemory {
    */
   @Override
   public void add(final int number, final int megaBytes, final int cores,
-                  @Nullable final EventHandler<ActiveContext> callback) {
-    for (int i = 0; i < number; i++) {
-      resourceRequestManager.register(callback);
-    }
-    requestor.submit(EvaluatorRequest.newBuilder()
-        .setNumber(number)
-        .setMemory(megaBytes)
-        .setNumberOfCores(cores)
-        .build());
+                  final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
+                  final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
+    evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlerList);
   }
 
   /**

@@ -15,12 +15,12 @@
  */
 package edu.snu.cay.dolphin.examples.ml.algorithms.clustering.em;
 
-import edu.snu.cay.dolphin.core.metric.InsertableMetricTracker;
-import edu.snu.cay.dolphin.core.metric.TimeMetricTracker;
+import edu.snu.cay.common.metric.InsertableMetricTracker;
+import edu.snu.cay.common.metric.TimeMetricTracker;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.StageInfo;
 import edu.snu.cay.dolphin.core.UserJobInfo;
-import edu.snu.cay.dolphin.core.metric.GCMetricTracker;
+import edu.snu.cay.common.metric.GCMetricTracker;
 import edu.snu.cay.dolphin.examples.ml.algorithms.clustering.ClusteringPreStageBuilder;
 import edu.snu.cay.dolphin.examples.ml.data.ClusteringDataParser;
 import edu.snu.cay.dolphin.examples.ml.sub.ClusterSummaryListCodec;
