@@ -83,7 +83,9 @@ public final class PartitionManager {
 
     LOG.log(Level.INFO, "contextId: {0}, partitionId: {1}", new Object[]{contextId, partitionId});
 
-    return evalPartitionMap.put(contextId, partitionId);
+    evalPartitionMap.put(contextId, Integer.valueOf(partitionId));
+
+    return partitionId;
   }
 
   /**
