@@ -112,14 +112,16 @@ final class SimpleEMDriver {
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final int evalCount = activeEvaluatorCount.getAndIncrement();
 
+      final String contextId = CONTEXT_ID_PREFIX + evalCount;
+
       final Configuration partialContextConf = ContextConfiguration.CONF
-          .set(ContextConfiguration.IDENTIFIER, CONTEXT_ID_PREFIX + evalCount)
+          .set(ContextConfiguration.IDENTIFIER, contextId)
           .build();
 
       final Configuration contextConf = Configurations.merge(
           partialContextConf, emConf.getContextConfiguration());
 
-      final Configuration emServiceConf = emConf.getServiceConfiguration();
+      final Configuration emServiceConf = emConf.getServiceConfiguration(contextId);
 
       final Configuration traceConf = traceParameters.getConfiguration();
 
