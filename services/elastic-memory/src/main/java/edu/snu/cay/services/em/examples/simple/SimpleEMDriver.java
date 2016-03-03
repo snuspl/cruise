@@ -147,9 +147,7 @@ final class SimpleEMDriver {
       final String taskId = contextId.replace(CONTEXT_ID_PREFIX, TASK_ID_PREFIX);
 
       final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-          .bindNamedParameter(BaseCounterDataIdFactory.PartitionId.class,
-              taskId.substring(SimpleEMDriver.TASK_ID_PREFIX.length())).build();
+          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class).build();
 
       final Configuration taskConf = Configurations.merge(
           TaskConfiguration.CONF
