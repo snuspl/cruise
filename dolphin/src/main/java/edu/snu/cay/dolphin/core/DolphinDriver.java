@@ -667,7 +667,7 @@ public final class DolphinDriver {
       }
     }
 
-    // Bind EM's DataIdFactory implementation
+    // Bind the implementation of DataIdFactory, which guarantees EM's MemoryStores generate disjoint ids each other
     dolphinTaskConfBuilder
         .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class);
 
