@@ -526,7 +526,7 @@ public final class DolphinDriver {
   /**
    * Gives service configuration submitted on
    * both DataLoader requested evaluators and ElasticMemory requested evaluators.
-   * @param contextId an identifier of the context id that each service will run on
+   * @param contextId Identifier of the context that the service will run on
    */
   public Configuration getServiceConfiguration(final String contextId) {
     final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();

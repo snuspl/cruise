@@ -20,6 +20,6 @@ package edu.snu.cay.services.em.common.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "A partition id assigned to each evaluator")
+@NamedParameter(doc = "Partition id assigned to each evaluator")
 public final class PartitionId implements Name<Integer> {
 }

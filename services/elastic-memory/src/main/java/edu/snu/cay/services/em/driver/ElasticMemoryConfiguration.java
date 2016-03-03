@@ -95,7 +95,7 @@ public final class ElasticMemoryConfiguration {
    * Configuration for REEF service with Elastic Memory.
    * Sets up ElasticMemoryMsg codec/handler and ElasticMemoryStore, both required for Elastic Memory.
    *
-   * @param contextId an identifier of the context on which the service will run
+   * @param contextId Identifier of the context on which the service will run
    * @return service configuration that should be passed along with a ContextConfiguration
    */
   public Configuration getServiceConfiguration(final String contextId) {

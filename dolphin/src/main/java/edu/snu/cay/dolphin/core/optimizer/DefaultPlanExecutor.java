@@ -184,7 +184,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
       final Injector injector = Tang.Factory.getTang().newInjector(contextConf);
       return injector.getNamedInstance(ContextIdentifier.class);
     } catch (final InjectionException e) {
-      throw new RuntimeException("Unable to inject context identifier from context conf", e);
+      throw new RuntimeException("Unable to get the context's identifier from the configuration", e);
     }
   }
 
