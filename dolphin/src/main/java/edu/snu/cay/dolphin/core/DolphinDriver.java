@@ -667,9 +667,6 @@ public final class DolphinDriver {
       }
     }
 
-    // Let's use context id as a partition Id, which should be distinguished between evaluators
-    final String partitionId = activeContext.getId().split("-")[1];
-
     // Bind EM's DataIdFactory implementation
     dolphinTaskConfBuilder
         .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class);
