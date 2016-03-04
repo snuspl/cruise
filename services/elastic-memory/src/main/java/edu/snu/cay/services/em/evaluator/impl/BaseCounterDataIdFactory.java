@@ -15,10 +15,9 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
+import edu.snu.cay.services.em.common.parameters.PartitionId;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -56,7 +55,7 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
   private final long partitionSize;
 
   @Inject
-  private BaseCounterDataIdFactory(@Parameter(PartitionId.class) final Integer partitionId,
+  private BaseCounterDataIdFactory(@Parameter(PartitionId.class) final int partitionId,
                                    @Parameter(RangePartitionFunc.PartitionSizeBits.class) final int partitionSizeBits) {
     this.base = (long) partitionId << partitionSizeBits;
     this.partitionSize = 1L << partitionSizeBits;
@@ -81,9 +80,5 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
       idVector.add(base + headId + i);
     }
     return idVector;
-  }
-
-  @NamedParameter(doc = "A partition id that enables BaseCounterDataIdFactory to generate unique data ids")
-  public final class PartitionId implements Name<Integer> {
   }
 }

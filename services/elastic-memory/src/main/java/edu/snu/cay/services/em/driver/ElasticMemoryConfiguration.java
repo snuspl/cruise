@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.driver;
 
+import edu.snu.cay.services.em.common.parameters.PartitionId;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
@@ -51,14 +52,17 @@ public final class ElasticMemoryConfiguration {
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
   private final String driverId;
+  private final PartitionManager partitionManager;
 
   @Inject
   private ElasticMemoryConfiguration(final NameServer nameServer,
                                      final LocalAddressProvider localAddressProvider,
-                                     @Parameter(DriverIdentifier.class) final String driverId) {
+                                     @Parameter(DriverIdentifier.class) final String driverId,
+                                     final PartitionManager partitionManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
+    this.partitionManager = partitionManager;
   }
 
   /**
@@ -91,18 +95,19 @@ public final class ElasticMemoryConfiguration {
    * Configuration for REEF service with Elastic Memory.
    * Sets up ElasticMemoryMsg codec/handler and ElasticMemoryStore, both required for Elastic Memory.
    *
+   * @param contextId Identifier of the context that the service will run on
    * @return service configuration that should be passed along with a ContextConfiguration
    */
-  public Configuration getServiceConfiguration() {
+  public Configuration getServiceConfiguration(final String contextId) {
     final Configuration nameClientConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
         .build();
 
-    return Configurations.merge(getServiceConfigurationWithoutNameResolver(), nameClientConf);
+    return Configurations.merge(getServiceConfigurationWithoutNameResolver(contextId), nameClientConf);
   }
 
-  public Configuration getServiceConfigurationWithoutNameResolver() {
+  public Configuration getServiceConfigurationWithoutNameResolver(final String contextId) {
     final Configuration networkConf = getNetworkConfigurationBuilder()
         .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.evaluator.ElasticMemoryMsgHandler.class)
         .build();
@@ -111,9 +116,12 @@ public final class ElasticMemoryConfiguration {
         .set(ServiceConfiguration.SERVICES, MemoryStoreImpl.class)
         .build();
 
+    final int partitionId = partitionManager.registerEvaluator(contextId);
+
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(DriverIdentifier.class, driverId)
+        .bindNamedParameter(PartitionId.class, Integer.toString(partitionId))
         .build();
 
     return Configurations.merge(networkConf, serviceConf, otherConf);
