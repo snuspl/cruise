@@ -19,7 +19,15 @@ import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 
+/**
+ * Sample a document using the word-topic assignment count matrix from parameter server and a local
+ * document-topic assignment count vector. It follows SparseLDA algorithm in L. Yao, D. Mimno, and A. McCallum.
+ * Efficient methods for topic model inference on streaming document collections. In Proceedings of the
+ * 15th ACM SIGKDD international conference on Knowledge discovery and data mining, pages 937–946. ACM, 2009.
+ */
 final class SparseLdaSampler {
 
   private final double alpha;
@@ -42,13 +50,17 @@ final class SparseLdaSampler {
   }
 
   void sample(final Document document) {
+    // numVocabs-th row represents the total word-topic assignment count vector
     final int[] globalWordCountByTopics = parameterWorker.pull(numVocabs);
     double sumS = 0.0;
     double sumR = 0.0;
     double sumQ = 0.0;
     final double[] sTerms = new double[numTopics];
+    final List<Integer> nonZeroStermIndices = new ArrayList<>(numTopics);
     final double[] rTerms = new double[numTopics];
+    final List<Integer> nonZeroRtermIndices = new ArrayList<>(numTopics);
     final double[] qTerms = new double[numTopics];
+    final List<Integer> nonZeroQtermIndices = new ArrayList<>(numTopics);
 
     final double[] qCoefficients = new double[numTopics];
 
@@ -59,8 +71,11 @@ final class SparseLdaSampler {
       qCoefficients[i] = (alpha + topicCount) / denom;
       sTerms[i] = alpha * beta / denom;
       sumS += sTerms[i];
+      // All s terms are not zero
+      nonZeroStermIndices.add(i);
 
       if (topicCount != 0) {
+        nonZeroRtermIndices.add(i);
         rTerms[i] = (topicCount * beta) / denom;
         sumR += rTerms[i];
       }
@@ -81,6 +96,12 @@ final class SparseLdaSampler {
       rTerms[oldTopic] = ((oldTopicCount - 1) * beta) / (denom - 1);
       sumR += rTerms[oldTopic];
 
+      // Remove from nonzero r terms if it goes to 0
+      if (oldTopicCount - 1 == 0) {
+        // Explicitly convert to Integer type not to call remove(int position)
+        nonZeroRtermIndices.remove((Integer) oldTopic);
+      }
+
       qCoefficients[oldTopic] = (alpha + oldTopicCount - 1) / (denom - 1);
 
       document.removeWord(itr);
@@ -88,6 +109,7 @@ final class SparseLdaSampler {
       final int[] wordTopicCount = parameterWorker.pull(word);
 
       // Calculate q terms
+      nonZeroQtermIndices.clear();
       sumQ = 0.0;
 
       for (int i = 0; i < numTopics; i++) {
@@ -96,6 +118,7 @@ final class SparseLdaSampler {
         if (count != 0) {
           qTerms[i] = qCoefficients[i] * count;
           sumQ += qTerms[i];
+          nonZeroQtermIndices.add(i);
         }
       }
 
@@ -105,11 +128,11 @@ final class SparseLdaSampler {
 
       // Hit the "smoothing only" bucket.
       if (randomVar < sumS) {
-        newTopic = sampleFromTerms(randomVar - (sumR + sumQ), sTerms);
+        newTopic = sampleFromTerms(randomVar - (sumR + sumQ), sTerms, nonZeroStermIndices);
       } else if (sumS <= randomVar && randomVar < sumS + sumR) { // Hit the "document topic" bucket
-        newTopic = sampleFromTerms(randomVar - (sumQ + sumS), rTerms);
+        newTopic = sampleFromTerms(randomVar - (sumQ + sumS), rTerms, nonZeroRtermIndices);
       } else { // Hit the "topic word" bucket. More than 90% hit here.
-        newTopic = sampleFromTerms(randomVar - (sumS + sumR), qTerms);
+        newTopic = sampleFromTerms(randomVar - (sumS + sumR), qTerms, nonZeroQtermIndices);
       }
 
       final int newTopicCount = document.getTopicCount(newTopic);
@@ -124,6 +147,11 @@ final class SparseLdaSampler {
       rTerms[newTopic] = ((newTopicCount + 1) * beta) / (newDenom + 1);
       sumR += rTerms[newTopic];
 
+      // Add to nonzero r terms if it goes to 1
+      if (newTopicCount + 1 == 1) {
+        nonZeroRtermIndices.add(newTopic);
+      }
+
       qCoefficients[newTopic] = (alpha + newTopicCount + 1) / (newDenom + 1);
 
       document.addWord(itr, newTopic);
@@ -131,21 +159,22 @@ final class SparseLdaSampler {
       // Push the changes to the parameter servers.
       parameterWorker.push(word, new int[]{oldTopic, -1});
       parameterWorker.push(word, new int[]{newTopic, 1});
+      // numVocabs-th row represents the total word-topic assignment count vector
       parameterWorker.push(numVocabs, new int[]{oldTopic, -1});
       parameterWorker.push(numVocabs, new int[]{newTopic, 1});
     }
   }
 
-  private int sampleFromTerms(final double randomVar, final double[] terms) {
+  private int sampleFromTerms(final double randomVar, final double[] terms, final List<Integer> nonzeroIndices) {
     double val = randomVar;
-    for (int i = 0; i < numTopics; i++) {
-      if (val < terms[i]) {
-        return i;
+    for (final Integer nonzeroIndex : nonzeroIndices) {
+      if (val < terms[nonzeroIndex]) {
+        return nonzeroIndex;
       }
 
-      val -= terms[i];
+      val -= terms[nonzeroIndex];
     }
 
-    throw new RuntimeException("Unexpected situation with the uniform distribution");
+    throw new RuntimeException("randomVar have to be smaller than summation of all nonzero terms");
   }
 }

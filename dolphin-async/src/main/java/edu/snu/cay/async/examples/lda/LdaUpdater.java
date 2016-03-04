@@ -21,7 +21,9 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 
 /**
- *
+ * Each vector with a word index represents a count vector whose elements are the
+ * number of words in the corpus that are assigned to a specific topic. We use
+ * numVocabs-th row as the total count vector for all word indices.
  */
 final class LdaUpdater implements ParameterUpdater<Integer, int[], int[]> {
 
@@ -39,7 +41,7 @@ final class LdaUpdater implements ParameterUpdater<Integer, int[], int[]> {
 
   @Override
   public int[] update(final int[] oldValue, final int[] deltaValue) {
-    // deltaValue have the position and value of the change.
+    // deltaValue consists of a word index and a changed value.
     oldValue[deltaValue[0]] += deltaValue[1];
     return oldValue;
   }

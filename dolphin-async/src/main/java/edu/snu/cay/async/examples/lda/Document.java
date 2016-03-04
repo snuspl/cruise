@@ -17,6 +17,10 @@ package edu.snu.cay.async.examples.lda;
 
 import java.util.Random;
 
+/**
+ * Representation of a document in a corpus. This has words and corresponding topic assignment
+ * in the document as well as a document-topic assignment table of the document.
+ */
 final class Document {
 
   private final int[] words;

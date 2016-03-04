@@ -24,7 +24,7 @@ import org.apache.reef.tang.annotations.NamedParameter;
 import javax.inject.Inject;
 
 /**
- *
+ * Run Latent Dirichlet Allocation algorithm on dolphin-async.
  */
 public final class LdaREEF {
 
@@ -46,18 +46,30 @@ public final class LdaREEF {
         .build());
   }
 
+  /**
+   * A parameter of the Dirichlet prior on the per-document topic distribution.
+   */
   @NamedParameter(short_name = "alpha", default_value = "0.001")
   public static final class Alpha implements Name<Double> {
   }
 
+  /**
+   * A parameter of the Dirichlet prior on the per-topic word distribution.
+   */
   @NamedParameter(short_name = "beta", default_value = "0.01")
   public static final class Beta implements Name<Double> {
   }
 
+  /**
+   * The number of topics.
+   */
   @NamedParameter(short_name = "num_topics", default_value = "100")
   public static final class NumTopics implements Name<Integer> {
   }
 
+  /**
+   * The number of unique words in the corpus.
+   */
   @NamedParameter(short_name = "num_vocabs")
   public static final class NumVocabs implements Name<Integer> {
   }

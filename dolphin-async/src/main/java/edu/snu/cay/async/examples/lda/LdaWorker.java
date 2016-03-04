@@ -16,20 +16,28 @@
 package edu.snu.cay.async.examples.lda;
 
 import edu.snu.cay.async.Worker;
+import edu.snu.cay.async.WorkerSynchronizer;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- *
+ * Assign a random topic to each word in all documents and block on a global barrier to make sure
+ * all workers update their initial topic assignments. For each iteration, sequentially sampling documents,
+ * it immediately pushes the changed topic assignment whenever each word is sampled to a new topic.
  */
 final class LdaWorker implements Worker {
+
+  private static final Logger LOG = Logger.getLogger(LdaWorker.class.getName());
 
   private final LdaDataParser dataParser;
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
   private final SparseLdaSampler sampler;
+  private final WorkerSynchronizer synchronizer;
   private final int numVocabs;
   private List<Document> documents;
 
@@ -37,10 +45,12 @@ final class LdaWorker implements Worker {
   private LdaWorker(final LdaDataParser dataParser,
                     final ParameterWorker<Integer, int[], int[]> parameterWorker,
                     final SparseLdaSampler sampler,
+                    final WorkerSynchronizer synchronizer,
                     @Parameter(LdaREEF.NumVocabs.class) final int numVocabs) {
     this.dataParser = dataParser;
     this.parameterWorker = parameterWorker;
     this.sampler = sampler;
+    this.synchronizer = synchronizer;
     this.numVocabs = numVocabs;
   }
 
@@ -49,28 +59,36 @@ final class LdaWorker implements Worker {
     this.documents = dataParser.parse();
 
     for (final Document document : documents) {
-
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
         parameterWorker.push(word, new int[]{document.getAssignment(i), 1});
+        // numVocabs-th row represents the total word-topic assignment count vector
         parameterWorker.push(numVocabs, new int[]{document.getAssignment(i), 1});
       }
     }
 
-    try {
-      Thread.sleep(5000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    LOG.log(Level.INFO, "All random topic assignments are updated");
+    synchronizer.globalBarrier();
   }
 
   @Override
   public void run() {
-    int x = 0;
+    LOG.log(Level.INFO, "Iteration Started");
+
+    final int numDocuments = documents.size();
+    final int countForLogging = numDocuments / 3;
+    int numSampledDocuments = 0;
+
     for (final Document document : documents) {
       sampler.sample(document);
-      System.out.println(++x + " documents are sampled");
+      numSampledDocuments++;
+
+      if (numSampledDocuments % countForLogging == 0) {
+        LOG.log(Level.INFO, "{0}/{1} documents are sampled", new Object[]{numSampledDocuments, numDocuments});
+      }
     }
+
+    LOG.log(Level.INFO, "Iteration Ended");
   }
 
   @Override
