@@ -55,8 +55,8 @@ public final class MatrixFactoryTest {
   @Test
   public void testDenseMatrix() {
     final double[] value = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2};
-    final Vector vec1 = vectorFactory.newDenseVector(value);
-    final Vector vec2 = vectorFactory.newDenseVector(value);
+    final Vector vec1 = vectorFactory.createDense(value);
+    final Vector vec2 = vectorFactory.createDense(value);
     final List<Vector> denseVectorList = new ArrayList<>();
     denseVectorList.add(vec1);
     denseVectorList.add(vec2);
@@ -87,9 +87,9 @@ public final class MatrixFactoryTest {
   public void testCSCMatrix() {
     final int[][] index = {{0, 2, 4, 6}, {1, 2, 3, 4, 5}, {3, 5, 7}};
     final double[][] value = {{0.1, 0.2, 0.3, 0.4}, {0.5, 0.6, 0.7, 0.8, 0.9}, {1.0, 1.1, 1.2}};
-    final Vector vec1 = vectorFactory.newSparseVector(index[0], value[0], 10);
-    final Vector vec2 = vectorFactory.newSparseVector(index[1], value[1], 10);
-    final Vector vec3 = vectorFactory.newSparseVector(index[2], value[2], 10);
+    final Vector vec1 = vectorFactory.createSparse(index[0], value[0], 10);
+    final Vector vec2 = vectorFactory.createSparse(index[1], value[1], 10);
+    final Vector vec3 = vectorFactory.createSparse(index[2], value[2], 10);
     final List<Vector> sparseVectorList = new ArrayList<>();
     sparseVectorList.add(vec1);
     sparseVectorList.add(vec2);

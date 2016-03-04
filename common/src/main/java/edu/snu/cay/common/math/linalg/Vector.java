@@ -59,6 +59,20 @@ public interface Vector extends Iterable<VectorEntry> {
   Vector copy();
 
   /**
+   * Element-wise scalar addition (in place).
+   * @param value operand scalar
+   * @return operation result
+   */
+  Vector addi(double value);
+
+  /**
+   * Element-wise scalar addition.
+   * @param value operand scalar
+   * @return operation result
+   */
+  Vector add(double value);
+
+  /**
    * Element-wise vector addition (in place).
    * @param vector operand vector
    * @return operation result
@@ -71,6 +85,20 @@ public interface Vector extends Iterable<VectorEntry> {
    * @return operation result
    */
   Vector add(Vector vector);
+
+  /**
+   * Element-wise scalar subtraction (in place).
+   * @param value operand scalar
+   * @return operation result
+   */
+  Vector subi(double value);
+
+  /**
+   * Element-wise scalar subtraction.
+   * @param value operand scalar
+   * @return operation result
+   */
+  Vector sub(double value);
 
   /**
    * Element-wise vector subtraction (in place).
@@ -99,6 +127,20 @@ public interface Vector extends Iterable<VectorEntry> {
    * @return operation result
    */
   Vector scale(double value);
+
+  /**
+   * Divides all elements by a scalar (in place).
+   * @param value operand scala
+   * @return operation result
+   */
+  Vector divi(double value);
+
+  /**
+   * Divides all elements by a scalar.
+   * @param value operand scala
+   * @return operation result
+   */
+  Vector div(double value);
 
   /**
    * In place axpy (y += a * x) operation.

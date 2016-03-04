@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.common.math.linalg.breeze;
 
+import breeze.linalg.NumericOps;
 import breeze.linalg.package$;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
@@ -122,6 +123,27 @@ public class SparseVector implements Vector {
   }
 
   /**
+   * Element-wise scalar addition (in place).
+   * @param value operand scalar
+   * @return operation result
+   */
+  @Override
+  public Vector addi(final double value) {
+    ((NumericOps)breezeVector).$plus$eq(value, VectorOps.ADDI_ST);
+    return this;
+  }
+
+  /**
+   * Element-wise scalar addition.
+   * @param value operand scalar
+   * @return operation result
+   */
+  @Override
+  public Vector add(final double value) {
+    return new SparseVector((breeze.linalg.SparseVector<Double>) breezeVector.$plus(value, VectorOps.ADD_ST));
+  }
+
+  /**
    * Element-wise vector addition (in place).
    * Since breeze allocate new memory for this operation, this is actually not in-place.
    * @param vector operand vector
@@ -148,6 +170,27 @@ public class SparseVector implements Vector {
       return new SparseVector((breeze.linalg.SparseVector<Double>)
           breezeVector.$plus(((SparseVector) vector).breezeVector, VectorOps.ADD_SS));
     }
+  }
+
+  /**
+   * Element-wise scalar subtraction (in place).
+   * @param value operand scalar
+   * @return operation result
+   */
+  @Override
+  public Vector subi(final double value) {
+    ((NumericOps)breezeVector).$minus$eq(value, VectorOps.SUBI_ST);
+    return this;
+  }
+
+  /**
+   * Element-wise scalar subtraction.
+   * @param value operand scalar
+   * @return operation result
+   */
+  @Override
+  public Vector sub(final double value) {
+    return new SparseVector((breeze.linalg.SparseVector<Double>) breezeVector.$minus(value, VectorOps.SUB_ST));
   }
 
   /**
@@ -199,6 +242,27 @@ public class SparseVector implements Vector {
   @Override
   public Vector scale(final double value) {
     return new SparseVector((breeze.linalg.SparseVector<Double>) breezeVector.$colon$times(value, VectorOps.SCALE_S));
+  }
+
+  /**
+   * Divides all elements by a scalar (in place).
+   * @param value operand scala
+   * @return operation result
+   */
+  @Override
+  public Vector divi(final double value) {
+    ((NumericOps)breezeVector).$div$eq(value, VectorOps.DIVI_S);
+    return this;
+  }
+
+  /**
+   * Divides all elements by a scalar.
+   * @param value operand scala
+   * @return operation result
+   */
+  @Override
+  public Vector div(final double value) {
+    return new SparseVector((breeze.linalg.SparseVector<Double>) breezeVector.$div(value, VectorOps.DIV_S));
   }
 
   /**

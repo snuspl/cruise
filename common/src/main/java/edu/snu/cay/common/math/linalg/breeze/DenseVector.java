@@ -123,6 +123,27 @@ public class DenseVector implements Vector {
   }
 
   /**
+   * Element-wise scalar addition (in place).
+   * @param value operand scalar
+   * @return operation result
+   */
+  @Override
+  public Vector addi(final double value) {
+    ((NumericOps)breezeVector).$plus$eq(value, VectorOps.ADDI_DT);
+    return this;
+  }
+
+  /**
+   * Element-wise scalar addition.
+   * @param value operand scalar
+   * @return operation result
+   */
+  @Override
+  public Vector add(final double value) {
+    return new DenseVector((breeze.linalg.DenseVector<Double>) breezeVector.$plus(value, VectorOps.ADD_DT));
+  }
+
+  /**
    * Element-wise vector addition (in place).
    * @param vector operand vector
    * @return this vector with operation result
@@ -151,6 +172,27 @@ public class DenseVector implements Vector {
       return new DenseVector((breeze.linalg.DenseVector<Double>)
           breezeVector.$plus(((SparseVector) vector).getBreezeVector(), VectorOps.ADD_DS));
     }
+  }
+
+  /**
+   * Element-wise scalar subtraction (in place).
+   * @param value operand scalar
+   * @return operation result
+   */
+  @Override
+  public Vector subi(final double value) {
+    ((NumericOps)breezeVector).$minus$eq(value, VectorOps.SUBI_DT);
+    return this;
+  }
+
+  /**
+   * Element-wise scalar subtraction.
+   * @param value operand scalar
+   * @return operation result
+   */
+  @Override
+  public Vector sub(final double value) {
+    return new DenseVector((breeze.linalg.DenseVector<Double>) breezeVector.$minus(value, VectorOps.SUB_DT));
   }
 
   /**
@@ -203,6 +245,27 @@ public class DenseVector implements Vector {
   @Override
   public Vector scale(final double value) {
     return new DenseVector((breeze.linalg.DenseVector<Double>) breezeVector.$colon$times(value, VectorOps.SCALE_D));
+  }
+
+  /**
+   * Divides all elements by a scalar (in place).
+   * @param value operand scala
+   * @return operation result
+   */
+  @Override
+  public Vector divi(final double value) {
+    ((NumericOps)breezeVector).$div$eq(value, VectorOps.DIVI_D);
+    return this;
+  }
+
+  /**
+   * Divides all elements by a scalar.
+   * @param value operand scala
+   * @return operation result
+   */
+  @Override
+  public Vector div(final double value) {
+    return new DenseVector((breeze.linalg.DenseVector<Double>) breezeVector.$div(value, VectorOps.DIV_D));
   }
 
   /**

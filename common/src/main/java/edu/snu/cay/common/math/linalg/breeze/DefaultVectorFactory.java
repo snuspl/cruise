@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.common.math.linalg.breeze;
 
+import breeze.math.Semiring;
+import breeze.math.Semiring$;
 import breeze.storage.Zero;
 import breeze.storage.Zero$;
 import edu.snu.cay.common.math.linalg.VectorFactory;
@@ -31,19 +33,30 @@ public final class DefaultVectorFactory implements VectorFactory {
   // If we want to use Scala object(singleton) in Java, we should use $ sign.
   private static final ClassTag TAG = ClassTag$.MODULE$.Double();
   private static final Zero ZERO = Zero$.MODULE$.forClass(Double.TYPE);
+  private static final Semiring SEMI_RING = Semiring$.MODULE$.semiringD();
 
   @Inject
   private DefaultVectorFactory() {
   }
 
   /**
-   * Creates a dense vector with specified length.
+   * Creates a dense vector in which all elements are equal to {@code 0} with specified length.
    * @param length vector length
    * @return created vector
    */
   @Override
-  public DenseVector newDenseVector(final int length) {
+  public DenseVector createDenseZeros(final int length) {
     return new DenseVector(breeze.linalg.DenseVector.zeros(length, TAG, ZERO));
+  }
+
+  /**
+   * Creates a dense vector in which all elements are equal to {@code 1} with specified length.
+   * @param length vector length
+   * @return created vector
+   */
+  @Override
+  public DenseVector createDenseOnes(final int length) {
+    return new DenseVector(breeze.linalg.DenseVector.ones(length, TAG, SEMI_RING));
   }
 
   /**
@@ -54,17 +67,17 @@ public final class DefaultVectorFactory implements VectorFactory {
    * @return created vector
    */
   @Override
-  public DenseVector newDenseVector(final double[] data) {
+  public DenseVector createDense(final double[] data) {
     return new DenseVector(new breeze.linalg.DenseVector(data));
   }
 
   /**
-   * Creates a sparse vector with specified length.
+   * Creates a sparse vector in which all elements are equal to {@code 0} with specified length.
    * @param length vector length
    * @return created vector
    */
   @Override
-  public SparseVector newSparseVector(final int length) {
+  public SparseVector createSparseZeros(final int length) {
     return new SparseVector(breeze.linalg.SparseVector.zeros(length, TAG, ZERO));
   }
 
@@ -78,7 +91,7 @@ public final class DefaultVectorFactory implements VectorFactory {
    * @return created vector
    */
   @Override
-  public SparseVector newSparseVector(final int[] index, final double[] data, final int length) {
+  public SparseVector createSparse(final int[] index, final double[] data, final int length) {
     assert (index.length == data.length);
     return new SparseVector(new breeze.linalg.SparseVector(index, data, length, ZERO));
   }

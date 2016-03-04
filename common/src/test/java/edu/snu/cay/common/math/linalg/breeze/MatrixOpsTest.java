@@ -56,11 +56,11 @@ public final class MatrixOpsTest {
     final double[] value2 = {0.4, 0.5, 0.6};
     final double[] value3 = {1.0, 2.0};
     final double[] value4 = {-1.0, -2.0};
-    final Vector vec1 = vectorFactory.newDenseVector(value1);
-    final Vector vec2 = vectorFactory.newDenseVector(value2);
-    final Vector vec3 = vectorFactory.newDenseVector(value3);
-    final Vector vec4 = vectorFactory.newDenseVector(value4);
-    final Vector vec5 = vectorFactory.newSparseVector(new int[]{0, 1}, value3, 2);
+    final Vector vec1 = vectorFactory.createDense(value1);
+    final Vector vec2 = vectorFactory.createDense(value2);
+    final Vector vec3 = vectorFactory.createDense(value3);
+    final Vector vec4 = vectorFactory.createDense(value4);
+    final Vector vec5 = vectorFactory.createSparse(new int[]{0, 1}, value3, 2);
     final List<Vector> denseVectorList1 = new ArrayList<>();
     denseVectorList1.add(vec1);
     denseVectorList1.add(vec2);
@@ -95,12 +95,12 @@ public final class MatrixOpsTest {
     final double[][] value1 = {{0.1, 0.2, 0.3, 0.4}, {0.5, 0.6, 0.7, 0.8, 0.9}};
     final int[][] index2 = {{0, 1}, {1}, {0, 1}};
     final double[][] value2 = {{2.0, 1.0}, {0.5}, {-1.0, 0.0}};
-    final Vector vec1 = vectorFactory.newSparseVector(index1[0], value1[0], 7);
-    final Vector vec2 = vectorFactory.newSparseVector(index1[1], value1[1], 7);
-    final Vector vec3 = vectorFactory.newSparseVector(index2[0], value2[0], 2);
-    final Vector vec4 = vectorFactory.newSparseVector(index2[1], value2[1], 2);
-    final Vector vec5 = vectorFactory.newSparseVector(index2[2], value2[2], 2);
-    final Vector vec6 = vectorFactory.newDenseVector(value2[0]);
+    final Vector vec1 = vectorFactory.createSparse(index1[0], value1[0], 7);
+    final Vector vec2 = vectorFactory.createSparse(index1[1], value1[1], 7);
+    final Vector vec3 = vectorFactory.createSparse(index2[0], value2[0], 2);
+    final Vector vec4 = vectorFactory.createSparse(index2[1], value2[1], 2);
+    final Vector vec5 = vectorFactory.createSparse(index2[2], value2[2], 2);
+    final Vector vec6 = vectorFactory.createDense(value2[0]);
     final List<Vector> sparseVectorList1 = new ArrayList<>();
     sparseVectorList1.add(vec1);
     sparseVectorList1.add(vec2);
@@ -139,17 +139,17 @@ public final class MatrixOpsTest {
 
     final List<Vector> denseVectorList1 = new ArrayList<>();
     final List<Vector> denseVectorList2 = new ArrayList<>();
-    denseVectorList1.add(vectorFactory.newDenseVector(value1[0]));
-    denseVectorList1.add(vectorFactory.newDenseVector(value1[1]));
-    denseVectorList2.add(vectorFactory.newDenseVector(value2[0]));
-    denseVectorList2.add(vectorFactory.newDenseVector(value2[1]));
+    denseVectorList1.add(vectorFactory.createDense(value1[0]));
+    denseVectorList1.add(vectorFactory.createDense(value1[1]));
+    denseVectorList2.add(vectorFactory.createDense(value2[0]));
+    denseVectorList2.add(vectorFactory.createDense(value2[1]));
 
     final List<Vector> sparseVectorList1 = new ArrayList<>();
     final List<Vector> sparseVectorList2 = new ArrayList<>();
-    sparseVectorList1.add(vectorFactory.newSparseVector(index1[0], value1[0], 3));
-    sparseVectorList1.add(vectorFactory.newSparseVector(index1[1], value1[1], 3));
-    sparseVectorList2.add(vectorFactory.newSparseVector(index2[0], value2[0], 2));
-    sparseVectorList2.add(vectorFactory.newSparseVector(index2[1], value2[1], 2));
+    sparseVectorList1.add(vectorFactory.createSparse(index1[0], value1[0], 3));
+    sparseVectorList1.add(vectorFactory.createSparse(index1[1], value1[1], 3));
+    sparseVectorList2.add(vectorFactory.createSparse(index2[0], value2[0], 2));
+    sparseVectorList2.add(vectorFactory.createSparse(index2[1], value2[1], 2));
 
     final Matrix dMat1 = matrixFactory.horzcatDense(denseVectorList1);
     final Matrix dMat2 = matrixFactory.horzcatDense(denseVectorList2);

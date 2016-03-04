@@ -26,14 +26,26 @@ public final class VectorOps {
   private VectorOps() {
   }
 
-  // add operator
+  // scalar addition operator
+  static final UFunc.UImpl2 ADD_DT = breeze.linalg.DenseVector.dv_s_Op_Double_OpAdd();
+  static final UFunc.InPlaceImpl2 ADDI_DT = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpAdd();
+  static final UFunc.UImpl2 ADD_ST = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpAdd();
+  static final UFunc.InPlaceImpl2 ADDI_ST = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Double_OpAdd();
+
+  // vector addition operator
   static final UFunc.UImpl2 ADD_DD = breeze.linalg.DenseVector.canAddD();
   static final UFunc.InPlaceImpl2 ADDI_DD = breeze.linalg.DenseVector.canAddIntoD();
   static final UFunc.UImpl2 ADD_DS = breeze.linalg.SparseVector.dv_sv_op_Double_OpAdd();
   static final UFunc.InPlaceImpl2 ADDI_DS = breeze.linalg.SparseVector.implOps_DVT_SVT_InPlace_Double_OpAdd();
   static final UFunc.UImpl2 ADD_SS = breeze.linalg.SparseVector.implOps_SVT_SVT_eq_SVT_Double_OpAdd();
 
-  // subtract operator
+  // scalar subtraction operator
+  static final UFunc.UImpl2 SUB_DT = breeze.linalg.DenseVector.dv_s_Op_Double_OpSub();
+  static final UFunc.InPlaceImpl2 SUBI_DT = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpSub();
+  static final UFunc.UImpl2 SUB_ST = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpSub();
+  static final UFunc.InPlaceImpl2 SUBI_ST = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Double_OpSub();
+
+  // vector subtraction operator
   static final UFunc.UImpl2 SUB_DD = breeze.linalg.DenseVector.canSubD();
   static final UFunc.InPlaceImpl2 SUBI_DD = breeze.linalg.DenseVector.canSubIntoD();
   static final UFunc.UImpl2 SUB_DS = breeze.linalg.SparseVector.dv_sv_op_Double_OpSub();
@@ -44,6 +56,12 @@ public final class VectorOps {
   static final UFunc.UImpl2 SCALE_D = breeze.linalg.DenseVector.dv_s_Op_Double_OpMulMatrix();
   static final UFunc.InPlaceImpl2 SCALEI_D = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpMulMatrix();
   static final UFunc.UImpl2 SCALE_S = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpMulMatrix();
+
+  // division operator
+  static final UFunc.UImpl2 DIV_D = breeze.linalg.DenseVector.dv_s_Op_Double_OpDiv();
+  static final UFunc.InPlaceImpl2 DIVI_D = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpDiv();
+  static final UFunc.UImpl2 DIV_S = breeze.linalg.SparseVector.implOps_SVT_T_eq_SVT_Double_OpDiv();
+  static final UFunc.InPlaceImpl2 DIVI_S = breeze.linalg.SparseVector.implOps_SVT_T_InPlace_Double_OpDiv();
 
   // axpy operator
   static final UFunc.InPlaceImpl3 AXPY_DD = breeze.linalg.DenseVector.canDaxpy$.MODULE$;
