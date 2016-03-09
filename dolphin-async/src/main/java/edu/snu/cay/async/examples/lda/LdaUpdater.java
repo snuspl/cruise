@@ -41,8 +41,11 @@ final class LdaUpdater implements ParameterUpdater<Integer, int[], int[]> {
 
   @Override
   public int[] update(final int[] oldValue, final int[] deltaValue) {
-    // deltaValue consists of a word index and a changed value.
-    oldValue[deltaValue[0]] += deltaValue[1];
+    // deltaValue consists of pairs of a word index and a changed value.
+    final int numPairs = deltaValue.length / 2;
+    for (int i = 0; i < numPairs; i++) {
+      oldValue[deltaValue[2 * i]] += deltaValue[2 * i + 1];
+    }
     return oldValue;
   }
 

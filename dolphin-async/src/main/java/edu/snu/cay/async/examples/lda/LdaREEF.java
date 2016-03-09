@@ -63,14 +63,14 @@ public final class LdaREEF {
   /**
    * The number of topics.
    */
-  @NamedParameter(short_name = "num_topics", default_value = "100")
+  @NamedParameter(short_name = "numTopics", default_value = "100")
   public static final class NumTopics implements Name<Integer> {
   }
 
   /**
    * The number of unique words in the corpus.
    */
-  @NamedParameter(short_name = "num_vocabs")
+  @NamedParameter(short_name = "numVocabs")
   public static final class NumVocabs implements Name<Integer> {
   }
 }

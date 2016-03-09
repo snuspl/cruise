@@ -39,6 +39,7 @@ final class LdaWorker implements Worker {
   private final SparseLdaSampler sampler;
   private final WorkerSynchronizer synchronizer;
   private final int numVocabs;
+  private final int numTopics;
   private List<Document> documents;
 
   @Inject
@@ -46,25 +47,28 @@ final class LdaWorker implements Worker {
                     final ParameterWorker<Integer, int[], int[]> parameterWorker,
                     final SparseLdaSampler sampler,
                     final WorkerSynchronizer synchronizer,
-                    @Parameter(LdaREEF.NumVocabs.class) final int numVocabs) {
+                    @Parameter(LdaREEF.NumVocabs.class) final int numVocabs,
+                    @Parameter(LdaREEF.NumTopics.class) final int numTopics) {
     this.dataParser = dataParser;
     this.parameterWorker = parameterWorker;
     this.sampler = sampler;
     this.synchronizer = synchronizer;
     this.numVocabs = numVocabs;
+    this.numTopics = numTopics;
   }
 
   @Override
   public void initialize() {
     this.documents = dataParser.parse();
-
+    final LdaBatchParameterWorker batchWorker = new LdaBatchParameterWorker(parameterWorker, numTopics);
     for (final Document document : documents) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);
-        parameterWorker.push(word, new int[]{document.getAssignment(i), 1});
+        batchWorker.addTopicChange(word, document.getAssignment(i), 1);
         // numVocabs-th row represents the total word-topic assignment count vector
-        parameterWorker.push(numVocabs, new int[]{document.getAssignment(i), 1});
+        batchWorker.addTopicChange(numVocabs, document.getAssignment(i), 1);
       }
+      batchWorker.pushAndClear();
     }
 
     LOG.log(Level.INFO, "All random topic assignments are updated");

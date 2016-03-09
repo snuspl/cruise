@@ -58,12 +58,12 @@ final class Document {
     return assignments[index];
   }
 
-  void removeWord(final int index) {
+  void removeWordAtIndex(final int index) {
     final int oldTopic = assignments[index];
     topicCounts[oldTopic]--;
   }
 
-  void addWord(final int index, final int newTopic) {
+  void addWordAtIndex(final int index, final int newTopic) {
     assignments[index] = newTopic;
     topicCounts[newTopic]++;
   }

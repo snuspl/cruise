@@ -50,14 +50,10 @@ final class LdaDataParser {
       }
 
       final String[] split = text.split("\\s+");
-      final List<Integer> wordList = new LinkedList<>();
-      for (final String word : split) {
-        wordList.add(Integer.parseInt(word));
-      }
 
-      final int[] words = new int[wordList.size()];
-      for (int i = 0; i < words.length; i++) {
-        words[i] = wordList.get(i);
+      final int[] words = new int[split.length];
+      for (int i = 0; i < split.length; i++) {
+        words[i] = Integer.parseInt(split[i]);
       }
 
       documents.add(new Document(words, numTopics));
