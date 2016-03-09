@@ -80,7 +80,7 @@ final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
 
   @Override
   public Vector initValue(final Integer key) {
-    final Vector newVector = vectorFactory.newDenseVector(rank);
+    final Vector newVector = vectorFactory.createDenseZeros(rank);
     for (int i = 0; i < rank; ++i) {
       final double newValue = random.nextDouble() * (initMax - initMin) + initMin;
       newVector.set(i, validate(newValue));
