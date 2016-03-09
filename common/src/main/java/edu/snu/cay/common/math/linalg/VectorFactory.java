@@ -25,25 +25,32 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 public interface VectorFactory {
 
   /**
-   * Creates a dense vector with specified length.
+   * Creates a dense vector in which all elements are equal to {@code 0} with specified length.
    * @param length vector length
    * @return created vector
    */
-  Vector newDenseVector(int length);
+  Vector createDenseZeros(int length);
+
+  /**
+   * Creates a dense vector in which all elements are equal to {@code 1} with specified length.
+   * @param length vector length
+   * @return created vector
+   */
+  Vector createDenseOnes(int length);
 
   /**
    * Creates a dense vector with given values.
    * @param data elements of a vector
    * @return created vector
    */
-  Vector newDenseVector(double[] data);
+  Vector createDense(double[] data);
 
   /**
-   * Creates a sparse vector with specified length.
+   * Creates a sparse vector in which all elements are equal to {@code 0} with specified length.
    * @param length vector length
    * @return created vector
    */
-  Vector newSparseVector(int length);
+  Vector createSparseZeros(int length);
 
   /**
    * Creates a sparse vector with given indices, values, and length.
@@ -52,5 +59,5 @@ public interface VectorFactory {
    * @param length vector length
    * @return created vector
    */
-  Vector newSparseVector(int[] index, double[] data, int length);
+  Vector createSparse(int[] index, double[] data, int length);
 }

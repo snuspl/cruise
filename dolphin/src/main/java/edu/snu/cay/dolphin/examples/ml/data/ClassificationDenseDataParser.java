@@ -88,7 +88,7 @@ public final class ClassificationDenseDataParser implements DataParser<List<Row>
       }
 
       final int output;
-      final Vector feature = vectorFactory.newDenseVector(split.length);
+      final Vector feature = vectorFactory.createDenseZeros(split.length);
       try {
         output = Integer.valueOf(split[dimension]);
         if (output != positiveLabel && output != negativeLabel) {

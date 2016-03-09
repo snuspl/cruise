@@ -67,7 +67,7 @@ public class LinearRegSummaryCodec implements Codec<LinearRegSummary> {
       count = dais.readInt();
       loss = dais.readDouble();
       final int vecSize = dais.readInt();
-      final Vector v = vectorFactory.newDenseVector(vecSize);
+      final Vector v = vectorFactory.createDenseZeros(vecSize);
       for (int i = 0; i < vecSize; i++) {
         v.set(i, dais.readDouble());
       }

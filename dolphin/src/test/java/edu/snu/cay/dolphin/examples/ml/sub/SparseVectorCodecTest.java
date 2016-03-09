@@ -43,7 +43,7 @@ public final class SparseVectorCodecTest {
   }
 
   private Vector generateSparseVector(final int cardinality, final int size) {
-    final Vector ret = vectorFactory.newSparseVector(cardinality);
+    final Vector ret = vectorFactory.createSparseZeros(cardinality);
     for (int i = 0; i < size; ++i) {
       ret.set(random.nextInt(ret.length()), random.nextGaussian());
     }

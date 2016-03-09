@@ -76,7 +76,7 @@ public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vec
   public Vector decodeFromStream(final DataInputStream dais) {
     try {
       final int vecSize = dais.readInt();
-      final Vector vector = vectorFactory.newDenseVector(vecSize);
+      final Vector vector = vectorFactory.createDenseZeros(vecSize);
       for (int i = 0; i < vecSize; i++) {
         vector.set(i, dais.readDouble());
       }

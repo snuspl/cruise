@@ -52,7 +52,7 @@ public class LinearRegMainCtrlTask extends UserControllerTask
     this.outputStreamProvider = outputStreamProvider;
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;
-    this.model = new LinearModel(vectorFactory.newDenseVector(dimension + 1));
+    this.model = new LinearModel(vectorFactory.createDenseZeros(dimension + 1));
   }
   
   @Override
