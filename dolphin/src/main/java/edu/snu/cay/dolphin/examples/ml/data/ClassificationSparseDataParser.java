@@ -142,7 +142,7 @@ public final class ClassificationSparseDataParser implements DataParser<List<Row
    * @throws ParseException if a string element of the specified array is invalid.
    */
   private Vector parseFeatureVector(final String[] split) throws ParseException {
-    final Vector ret = vectorFactory.newSparseVector(dimension + 1); // +1 for a constant term
+    final Vector ret = vectorFactory.createSparseZeros(dimension + 1); // +1 for a constant term
     for (final String elementString : split) {
       final Pair<Integer, Double> elementPair = parseElement(elementString);
       ret.set(elementPair.getFirst(), elementPair.getSecond());

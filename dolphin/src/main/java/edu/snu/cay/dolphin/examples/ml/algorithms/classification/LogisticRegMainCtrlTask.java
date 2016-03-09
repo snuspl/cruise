@@ -55,7 +55,7 @@ public class LogisticRegMainCtrlTask extends UserControllerTask
     this.convergeCondition = convergeCondition;
     this.maxIter = maxIter;
     this.model = new LinearModel(
-        isDenseVector ? vectorFactory.newDenseVector(dimension + 1) : vectorFactory.newSparseVector(dimension + 1));
+        isDenseVector ? vectorFactory.createDenseZeros(dimension + 1) : vectorFactory.createSparseZeros(dimension + 1));
   }
   
   @Override
