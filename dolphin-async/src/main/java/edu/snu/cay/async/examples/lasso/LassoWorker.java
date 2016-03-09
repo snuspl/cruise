@@ -24,7 +24,6 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -222,9 +221,7 @@ final class LassoWorker implements Worker {
       sum += v.get(i);
     }
     final double mean = sum / v.length();
-    final double[] ones = new double[v.length()];
-    Arrays.fill(ones, mean);
-    v.subi(vf.newDenseVector(ones));
+    v.subi(mean);
 
     double sqrsum = 0;
     for (int i = 0; i < v.length(); i++) {

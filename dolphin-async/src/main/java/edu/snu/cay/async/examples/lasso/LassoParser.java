@@ -87,7 +87,7 @@ final class LassoParser {
       for (final double d : dataX[index]) {
         data[innerIndex++] = d;
       }
-      vecX[index] = vectorFactory.newDenseVector(data);
+      vecX[index] = vectorFactory.createDense(data);
     }
 
     final double[] arrayY = new double[dataY.size()];
@@ -95,7 +95,7 @@ final class LassoParser {
     for (final double y : dataY) {
       arrayY[arrayIndex++] = y;
     }
-    final Vector vecY = vectorFactory.newDenseVector(arrayY);
+    final Vector vecY = vectorFactory.createDense(arrayY);
 
     return new Pair<>(vecX, vecY);
   }
