@@ -18,6 +18,7 @@ package edu.snu.cay.async;
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
@@ -74,6 +75,11 @@ final class AsyncDolphinDriver {
   private final int initWorkerCount;
 
   /**
+   * The initial number of server-side evaluators.
+   */
+  private final int initServerCount;
+
+  /**
    * Exchange messages between the driver and evaluators.
    */
   private final AggregationManager aggregationManager;
@@ -89,6 +95,11 @@ final class AsyncDolphinDriver {
   private final AtomicInteger runningWorkerContextCount;
 
   /**
+   * Number of server-side evaluators that have successfully passed {@link ActiveContextHandler}.
+   */
+  private final AtomicInteger runningServerContextCount;
+
+  /**
    * Number of evaluators that have completed or failed.
    */
   private final AtomicInteger completedOrFailedEvalCount;
@@ -100,9 +111,9 @@ final class AsyncDolphinDriver {
   private final Configuration paramConf;
 
   /**
-   * ActiveContext object of the evaluator housing the parameter server.
+   * List of activeContext objects of the evaluators housing the parameter server.
    */
-  private ActiveContext serverContext;
+  private List<ActiveContext> serverContexts;
 
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
@@ -111,14 +122,18 @@ final class AsyncDolphinDriver {
                              final AggregationManager aggregationManager,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
+                             @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer) throws IOException {
     this.evaluatorManager = evaluatorManager;
     this.dataLoadingService = dataLoadingService;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
+    this.initServerCount = numServers;
     this.psDriver = psDriver;
     this.aggregationManager = aggregationManager;
     this.runningWorkerContextCount = new AtomicInteger(0);
+    this.runningServerContextCount = new AtomicInteger(0);
     this.completedOrFailedEvalCount = new AtomicInteger(0);
+    this.serverContexts = new ArrayList<>(numServers);
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
   }
@@ -132,7 +147,7 @@ final class AsyncDolphinDriver {
       final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>(2);
       contextActiveHandlersForServer.add(getFirstContextActiveHandlerForServer());
       contextActiveHandlersForServer.add(getSecondContextActiveHandlerForServer());
-      evaluatorManager.allocateEvaluators(1, evalAllocHandlerForServer, contextActiveHandlersForServer);
+      evaluatorManager.allocateEvaluators(initServerCount, evalAllocHandlerForServer, contextActiveHandlersForServer);
 
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = getEvalAllocHandlerForWorker();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForWorker = new ArrayList<>(2);
@@ -150,8 +165,9 @@ final class AsyncDolphinDriver {
         @Override
         public void onNext(final AllocatedEvaluator allocatedEvaluator) {
           LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
+          final int serverIndex = runningServerContextCount.getAndIncrement();
           final Configuration idConfiguration = ContextConfiguration.CONF
-              .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + 0)
+              .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + serverIndex)
               .build();
           allocatedEvaluator.submitContext(idConfiguration);
         }
@@ -175,15 +191,16 @@ final class AsyncDolphinDriver {
     /**
      * Returns an EventHandler which submits the second context(parameter server context) to server-side evaluator.
      */
-    // TODO #361: Adjust to use multiple servers for multi-node parameter server
     private EventHandler<ActiveContext> getFirstContextActiveHandlerForServer() {
       return new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
           LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);
+          final int serverIndex = Integer.parseInt(
+              activeContext.getId().substring(dataLoadingService.getComputeContextIdPrefix().length()));
           final Configuration contextConf = Configurations.merge(
               ContextConfiguration.CONF
-                  .set(ContextConfiguration.IDENTIFIER, SERVER_CONTEXT)
+                  .set(ContextConfiguration.IDENTIFIER, SERVER_CONTEXT + "-" + serverIndex)
                   .build(),
               psDriver.getContextConfiguration());
           final Configuration serviceConf = psDriver.getServerServiceConfiguration();
@@ -204,7 +221,7 @@ final class AsyncDolphinDriver {
           completedOrFailedEvalCount.incrementAndGet();
           // although this evaluator is not 'completed' yet,
           // we add it beforehand so that it closes if all workers finish
-          serverContext = activeContext;
+          serverContexts.add(activeContext);
         }
       };
     }
@@ -306,8 +323,12 @@ final class AsyncDolphinDriver {
   }
 
   private void checkShutdown() {
-    if (completedOrFailedEvalCount.incrementAndGet() == initWorkerCount + 1 && serverContext != null) {
-      serverContext.close();
+    if (completedOrFailedEvalCount.incrementAndGet() == initWorkerCount + initServerCount
+        && !serverContexts.isEmpty()) {
+      for (final ActiveContext serverContext : serverContexts) {
+        serverContext.close();
+      }
+      serverContexts.clear();
     }
   }
 }
