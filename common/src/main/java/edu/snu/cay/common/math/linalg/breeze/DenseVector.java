@@ -123,7 +123,7 @@ public class DenseVector implements Vector {
   }
 
   /**
-   * Element-wise scalar addition (in place).
+   * Adds a scalar to all elements of this vector (in place).
    * @param value operand scalar
    * @return operation result
    */
@@ -134,7 +134,7 @@ public class DenseVector implements Vector {
   }
 
   /**
-   * Element-wise scalar addition.
+   * Adds a scalar to all elements of this vector.
    * @param value operand scalar
    * @return operation result
    */
@@ -175,7 +175,7 @@ public class DenseVector implements Vector {
   }
 
   /**
-   * Element-wise scalar subtraction (in place).
+   * Subtracts a scalar from all elements of this vector (in place).
    * @param value operand scalar
    * @return operation result
    */
@@ -186,7 +186,7 @@ public class DenseVector implements Vector {
   }
 
   /**
-   * Element-wise scalar subtraction.
+   * Subtracts a scalar from all elements of this vector.
    * @param value operand scalar
    * @return operation result
    */

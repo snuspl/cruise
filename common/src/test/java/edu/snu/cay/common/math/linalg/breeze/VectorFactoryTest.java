@@ -46,9 +46,10 @@ public final class VectorFactoryTest {
    */
   @Test
   public void testDenseVector() {
-    final double[] value = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+    final double[] value = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     final Vector vec1 = factory.createDenseZeros(10);
     final Vector vec2 = factory.createDense(value);
+    final Vector vec3 = factory.createDenseOnes(10);
 
     assertEquals(vec1.length(), 10);
     assertEquals(vec2.length(), 10);
@@ -57,6 +58,7 @@ public final class VectorFactoryTest {
       assertEquals(vec1.get(i), 0.0, 0.0);
       assertEquals(vec2.get(i), value[i], 0.0);
     }
+    assertEquals(vec2, vec3);
   }
 
   /**

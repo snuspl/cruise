@@ -59,14 +59,14 @@ public interface Vector extends Iterable<VectorEntry> {
   Vector copy();
 
   /**
-   * Element-wise scalar addition (in place).
+   * Adds a scalar to all elements of this vector (in place).
    * @param value operand scalar
    * @return operation result
    */
   Vector addi(double value);
 
   /**
-   * Element-wise scalar addition.
+   * Adds a scalar to all elements of this vector.
    * @param value operand scalar
    * @return operation result
    */
@@ -87,14 +87,14 @@ public interface Vector extends Iterable<VectorEntry> {
   Vector add(Vector vector);
 
   /**
-   * Element-wise scalar subtraction (in place).
+   * Subtracts a scalar from all elements of this vector (in place).
    * @param value operand scalar
    * @return operation result
    */
   Vector subi(double value);
 
   /**
-   * Element-wise scalar subtraction.
+   * Subtracts a scalar from all elements of this vector.
    * @param value operand scalar
    * @return operation result
    */
