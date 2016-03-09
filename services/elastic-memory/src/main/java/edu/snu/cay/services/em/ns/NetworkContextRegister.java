@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.em.ns;
 
-import edu.snu.cay.services.em.evaluator.OperationRouter;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.tang.annotations.Unit;
@@ -33,15 +32,12 @@ import javax.inject.Inject;
 public final class NetworkContextRegister {
 
   private final EMNetworkSetup emNetworkSetup;
-  private final OperationRouter router;
   private final IdentifierFactory identifierFactory;
 
   @Inject
   private NetworkContextRegister(final EMNetworkSetup emNetworkSetup,
-                                 final OperationRouter router,
                                  final IdentifierFactory identifierFactory) {
     this.emNetworkSetup = emNetworkSetup;
-    this.router = router;
     this.identifierFactory = identifierFactory;
   }
 
@@ -50,7 +46,6 @@ public final class NetworkContextRegister {
     public void onNext(final ContextStart contextStart) {
       final Identifier identifier = identifierFactory.getNewInstance(contextStart.getId());
       emNetworkSetup.registerConnectionFactory(identifier);
-      router.initialize(identifier.toString());
     }
   }
 

@@ -22,6 +22,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,6 +35,8 @@ import java.util.logging.Logger;
 @DriverSide
 public final class PartitionManager {
   private static final Logger LOG = Logger.getLogger(PartitionManager.class.getName());
+
+  private final AtomicInteger numEvalCounter = new AtomicInteger(0);
 
   /**
    * This map holds the partitions of all evaluators by using data type as a key.
@@ -57,7 +60,7 @@ public final class PartitionManager {
    * A key of map is an evaluator id and and a value of map is a partition id.
    * TODO #346: Clean up data structures managing data id partitions
    */
-  private final Map<String, Long> evalPartitionMap;
+  private final Map<String, Integer> evalPartitionMap;
 
   @Inject
   private PartitionManager() {
@@ -71,12 +74,14 @@ public final class PartitionManager {
    * @param contextId an id of context
    * @return a id of allocated partition
    */
-  public synchronized void registerEvaluator(final String contextId) {
-    final long partitionId = Long.parseLong(contextId.split("-")[1]);
-    LOG.log(Level.INFO, "contextId: {0}, partitionId: {1}", new Object[]{contextId, partitionId});
-    if (evalPartitionMap.put(contextId, partitionId) != null) {
-      throw new RuntimeException("This evaluator is already registered");
+  public synchronized int registerEvaluator(final String contextId) {
+    if (evalPartitionMap.containsKey(contextId)) {
+      throw new RuntimeException("This evaluator is already registered. Its context Id is " + contextId);
     }
+    final int partitionId = numEvalCounter.getAndIncrement();
+    LOG.log(Level.INFO, "contextId: {0}, partitionId: {1}", new Object[]{contextId, partitionId});
+    evalPartitionMap.put(contextId, Integer.valueOf(partitionId));
+    return partitionId;
   }
 
   /**

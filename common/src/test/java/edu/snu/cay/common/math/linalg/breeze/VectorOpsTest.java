@@ -48,8 +48,10 @@ public final class VectorOpsTest {
     final double[] value1 = {0.1, 0.2, 0.3, 0.4, 0.5};
     final double[] value2 = {0.1, 0.3, 0.5, 0.7, 0.9};
 
-    final Vector vec1 = factory.newDenseVector(value1);
-    final Vector vec2 = factory.newDenseVector(value2);
+    final Vector vec1 = factory.createDense(value1);
+    final Vector vec2 = factory.createDense(value2);
+    final Vector vec3 = factory.createDenseOnes(5);
+    final Vector vec4 = factory.createDenseZeros(5);
 
     double dotResult = 0;
     for (int i = 0; i < vec1.length(); i++) {
@@ -68,6 +70,11 @@ public final class VectorOpsTest {
     final Vector addScaleVec = vec1.add(vec2);
     vec1.axpy(1.0, vec2);
     assertEquals(addScaleVec, vec1);
+
+    assertEquals(vec3, vec4.add(1));
+    vec4.subi(1);
+    vec3.addi(-2);
+    assertEquals(vec3, vec4);
   }
 
   /**
@@ -80,9 +87,11 @@ public final class VectorOpsTest {
     final int[] index2 = {0, 2, 4, 6, 8};
     final double[] value2 = {0.1, 0.3, 0.5, 0.7, 0.9};
 
-    final Vector vec1 = factory.newSparseVector(index1, value1, 10);
-    final Vector vec2 = factory.newSparseVector(index2, value2, 10);
-    final Vector dVec = factory.newDenseVector(10);
+    final Vector vec1 = factory.createSparse(index1, value1, 10);
+    final Vector vec2 = factory.createSparse(index2, value2, 10);
+    final Vector vec3 = factory.createSparseZeros(10);
+    final Vector vec4 = factory.createSparseZeros(10);
+    final Vector dVec = factory.createDenseZeros(10);
     for (int i = 0; i < value1.length; i++) {
       dVec.set(i, value1[i]);
     }
@@ -101,5 +110,10 @@ public final class VectorOpsTest {
 
     vec1.axpy(1.0, vec2);
     assertEquals(dVec, vec1);
+
+    vec3.addi(1);
+    assertEquals(vec3, vec4.add(1));
+    vec4.subi(1);
+    assertEquals(vec3.sub(2), vec4);
   }
 }

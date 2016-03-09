@@ -46,9 +46,10 @@ public final class VectorFactoryTest {
    */
   @Test
   public void testDenseVector() {
-    final double[] value = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
-    final Vector vec1 = factory.newDenseVector(10);
-    final Vector vec2 = factory.newDenseVector(value);
+    final double[] value = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    final Vector vec1 = factory.createDenseZeros(10);
+    final Vector vec2 = factory.createDense(value);
+    final Vector vec3 = factory.createDenseOnes(10);
 
     assertEquals(vec1.length(), 10);
     assertEquals(vec2.length(), 10);
@@ -57,6 +58,7 @@ public final class VectorFactoryTest {
       assertEquals(vec1.get(i), 0.0, 0.0);
       assertEquals(vec2.get(i), value[i], 0.0);
     }
+    assertEquals(vec2, vec3);
   }
 
   /**
@@ -66,8 +68,8 @@ public final class VectorFactoryTest {
   public void testSparseVector() {
     final int[] index = {1, 3, 5, 7};
     final double[] value = {0.1, 0.2, 0.3, 0.4};
-    final Vector vec1 = factory.newSparseVector(10);
-    final Vector vec2 = factory.newSparseVector(index, value, 10);
+    final Vector vec1 = factory.createSparseZeros(10);
+    final Vector vec2 = factory.createSparse(index, value, 10);
 
     assertEquals(vec1.length(), 10);
     assertEquals(vec1.activeSize(), 0);

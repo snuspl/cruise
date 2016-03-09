@@ -53,7 +53,7 @@ public final class DenseRowCodecTest {
     for (int i = 0; i < featureSize; i++) {
       featureArray[i] = random.nextDouble();
     }
-    final Vector feature = vectorFactory.newDenseVector(featureArray);
+    final Vector feature = vectorFactory.createDense(featureArray);
 
     return new Row(output, feature);
   }

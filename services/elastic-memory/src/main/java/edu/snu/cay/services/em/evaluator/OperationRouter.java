@@ -15,7 +15,9 @@
  */
 package edu.snu.cay.services.em.evaluator;
 
+import edu.snu.cay.services.em.common.parameters.PartitionId;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
@@ -24,21 +26,15 @@ import javax.inject.Inject;
  * Currently it manages only a local partition.
  */
 public final class OperationRouter {
-  private long localPartitionId;
+  private final int localPartitionId;
 
   private final PartitionFunc partitionFunc;
 
   @Inject
-  private OperationRouter(final PartitionFunc partitionFunc) {
+  private OperationRouter(final PartitionFunc partitionFunc,
+                          @Parameter(PartitionId.class) final int partitionId) {
+    this.localPartitionId = partitionId;
     this.partitionFunc = partitionFunc;
-  }
-
-  /**
-   * Initialize local partition id with {@code localContextId}.
-   * @param localContextId an id of context of local evaluator
-   */
-  public void initialize(final String localContextId) {
-    this.localPartitionId = Long.parseLong(localContextId.split("-")[1]);
   }
 
   /**

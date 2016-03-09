@@ -49,7 +49,7 @@ public final class SparseRowCodecTest {
   private Row generateSparseRow(final int cardinality, final int size) {
     final double output = random.nextDouble();
 
-    final Vector feature = vectorFactory.newSparseVector(cardinality);
+    final Vector feature = vectorFactory.createSparseZeros(cardinality);
     for (int i = 0; i < size; ++i) {
       feature.set(random.nextInt(feature.length()), random.nextGaussian());
     }

@@ -34,7 +34,6 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
-import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
@@ -215,8 +214,6 @@ public final class DolphinDriver {
    */
   private final ConcurrentHashMap<String, String> evalToRequestorMap = new ConcurrentHashMap<>();
 
-  private final PartitionManager partitionManager;
-
   /**
    * Set of ActiveContext ids on state closing, used to determine whether a task is requested to be closed or not.
    */
@@ -253,7 +250,6 @@ public final class DolphinDriver {
                         final UserJobInfo userJobInfo,
                         final UserParameters userParameters,
                         final HTraceParameters traceParameters,
-                        final PartitionManager partitionManager,
                         final HTraceInfoCodec hTraceInfoCodec,
                         final HTrace hTrace,
                         @Parameter(StartTrace.class) final boolean startTrace,
@@ -279,7 +275,6 @@ public final class DolphinDriver {
     this.contextToStageSequence = new HashMap<>();
     this.userParameters = userParameters;
     this.traceParameters = traceParameters;
-    this.partitionManager = partitionManager;
     this.closingContexts = Collections.synchronizedSet(new HashSet<String>());
     this.hTraceInfoCodec = hTraceInfoCodec;
     this.jobTraceInfo = startTrace ? TraceInfo.fromSpan(Trace.startSpan("job", Sampler.ALWAYS).getSpan()) : null;
@@ -460,8 +455,9 @@ public final class DolphinDriver {
         public void onNext(final ActiveContext activeContext) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ControllerTask to underlying context");
           final Configuration contextConf = getContextConfiguration();
-          ctrlTaskContextIdFetcher.setCtrlTaskContextId(getContextId(contextConf));
-          final Configuration serviceConf = getServiceConfiguration();
+          final String contextId = getContextId(contextConf);
+          ctrlTaskContextIdFetcher.setCtrlTaskContextId(contextId);
+          final Configuration serviceConf = getServiceConfiguration(contextId);
           activeContext.submitContextAndService(contextConf, serviceConf);
         }
       };
@@ -476,8 +472,9 @@ public final class DolphinDriver {
         public void onNext(final ActiveContext activeContext) {
           LOG.log(Level.INFO, "Submitting GroupCommContext for ComputeTask to underlying context");
           final Configuration contextConf = getContextConfiguration();
+          final String contextId = getContextId(contextConf);
           final Configuration dataParseConf = DataParseService.getServiceConfiguration(userJobInfo.getDataParser());
-          final Configuration serviceConf = Configurations.merge(getServiceConfiguration(), dataParseConf);
+          final Configuration serviceConf = Configurations.merge(getServiceConfiguration(contextId), dataParseConf);
           activeContext.submitContextAndService(contextConf, serviceConf);
         }
       };
@@ -490,8 +487,6 @@ public final class DolphinDriver {
       return new EventHandler<ActiveContext>() {
         @Override
         public void onNext(final ActiveContext activeContext) {
-          LOG.log(Level.INFO, "Registering evaluator to PartitionManager");
-          partitionManager.registerEvaluator(activeContext.getId());
           submitTask(activeContext, 0);
         }
       };
@@ -531,15 +526,16 @@ public final class DolphinDriver {
   /**
    * Gives service configuration submitted on
    * both DataLoader requested evaluators and ElasticMemory requested evaluators.
+   * @param contextId Identifier of the context that the service will run on
    */
-  public Configuration getServiceConfiguration() {
+  public Configuration getServiceConfiguration(final String contextId) {
     final Configuration groupCommServiceConf = groupCommDriver.getServiceConfiguration();
     final Configuration outputServiceConf = outputService.getServiceConfiguration();
     final Configuration keyValueStoreServiceConf = KeyValueStoreService.getServiceConfiguration();
     final Configuration aggregationServiceConf = aggregationManager.getServiceConfigurationWithoutNameResolver();
     final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
     final Configuration workloadServiceConf = WorkloadPartition.getServiceConfiguration();
-    final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver();
+    final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver(contextId);
     final Configuration traceConf = traceParameters.getConfiguration();
     return Configurations.merge(
         userParameters.getServiceConf(), groupCommServiceConf, workloadServiceConf, emServiceConf,
@@ -671,13 +667,9 @@ public final class DolphinDriver {
       }
     }
 
-    // Let's use context id as a partition Id, which should be distinguished between evaluators
-    final String partitionId = activeContext.getId().split("-")[1];
-
-    // Bind things for EM's initial id partitioning
+    // Bind the implementation of DataIdFactory, which guarantees EM's MemoryStores generate disjoint ids each other
     dolphinTaskConfBuilder
-        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-        .bindNamedParameter(BaseCounterDataIdFactory.PartitionId.class, partitionId);
+        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class);
 
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task

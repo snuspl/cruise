@@ -112,14 +112,16 @@ final class SimpleEMDriver {
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final int evalCount = activeEvaluatorCount.getAndIncrement();
 
+      final String contextId = CONTEXT_ID_PREFIX + evalCount;
+
       final Configuration partialContextConf = ContextConfiguration.CONF
-          .set(ContextConfiguration.IDENTIFIER, CONTEXT_ID_PREFIX + evalCount)
+          .set(ContextConfiguration.IDENTIFIER, contextId)
           .build();
 
       final Configuration contextConf = Configurations.merge(
           partialContextConf, emConf.getContextConfiguration());
 
-      final Configuration emServiceConf = emConf.getServiceConfiguration();
+      final Configuration emServiceConf = emConf.getServiceConfiguration(contextId);
 
       final Configuration traceConf = traceParameters.getConfiguration();
 
@@ -145,9 +147,7 @@ final class SimpleEMDriver {
       final String taskId = contextId.replace(CONTEXT_ID_PREFIX, TASK_ID_PREFIX);
 
       final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
-          .bindNamedParameter(BaseCounterDataIdFactory.PartitionId.class,
-              taskId.substring(SimpleEMDriver.TASK_ID_PREFIX.length())).build();
+          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class).build();
 
       final Configuration taskConf = Configurations.merge(
           TaskConfiguration.CONF

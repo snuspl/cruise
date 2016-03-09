@@ -80,7 +80,7 @@ public final class SparseVectorCodec implements Codec<Vector>, StreamingCodec<Ve
     try {
       final int size = dis.readInt();
       final int numNonZeros = dis.readInt();
-      final Vector vector = vectorFactory.newSparseVector(size);
+      final Vector vector = vectorFactory.createSparseZeros(size);
       for (int i = 0; i < numNonZeros; ++i) {
         final int index = dis.readInt();
         final double value = dis.readDouble();
