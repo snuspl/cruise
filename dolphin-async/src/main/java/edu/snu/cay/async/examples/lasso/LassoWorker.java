@@ -16,6 +16,7 @@
 package edu.snu.cay.async.examples.lasso;
 
 import edu.snu.cay.async.Worker;
+import edu.snu.cay.async.WorkerSynchronizer;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -45,20 +46,71 @@ import java.util.logging.Logger;
 final class LassoWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(LassoWorker.class.getName());
 
+  /**
+   * Factory object for creating new vectors.
+   */
   private final VectorFactory vectorFactory;
+
+  /**
+   * Array of vectors containing the features of the input data.
+   * Vector {@code j} represents the {@code j}-th feature of all input instances,
+   * not the {@code j}-th instance.
+   * Thus, the {@code i}-th instance can be formed by
+   * concatenating the {@code i}-th elements of each vector.
+   */
   private final Vector[] vecXArray;
+
+  /**
+   * Vector containing the target values of the input data.
+   * The {@code i}-th element corresponds to the {@code i}-th input instance,
+   * which can be found by concatenating the {@code i}-th element of each Vector in {@code vecXArray}.
+   */
   private final Vector vecY;
+
+  /**
+   * Regularization constant.
+   */
   private final double lambda;
+
+  /**
+   * The inner product values of each feature vector ({@code vecXArray}) and the target vector ({@code vecY}).
+   * Specifically, {@code x2y[i] := vecXArray[i].dot(vecY)}.
+   */
   private final double[] x2y;
+
+  /**
+   * The inner product values of the feature vectors ({@code vecXArray}).
+   * Specifically, {@code x2x.get(i).get(j) := vecXArray[i].dot(vecXArray[j])}.
+   * To reduce the size of this map, the smaller index (between {@code i} and {@code j})
+   * should be used as the index for the outer map, and the bigger index for the inner map. <br>
+   *
+   * The reason for using a map and not a 2-D array is because there are cases where
+   * we never use the inner product of {@code x2y[i]} and {@code x2y[j]}, and thus
+   * allocating a double value for those cases would be a waste of space.
+   */
   private final Map<Integer, Map<Integer, Double>> x2x;
+
+  /**
+   * Random number generator.
+   */
   private final Random random;
+
+  /**
+   * Worker object for interacting with the parameter server.
+   */
   private final ParameterWorker<Integer, Double, Double> worker;
+
+  /**
+   * Synchronization component for setting a global barrier across workers.
+   */
+  private final WorkerSynchronizer synchronizer;
 
   @Inject
   private LassoWorker(final LassoParser lassoParser,
                       final VectorFactory vectorFactory,
                       @Parameter(LassoREEF.Lambda.class) final double lambda,
-                      final ParameterWorker<Integer, Double, Double> worker) {
+                      final ParameterWorker<Integer, Double, Double> worker,
+                      final WorkerSynchronizer synchronizer) {
     final Pair<Vector[], Vector> pair = lassoParser.parse();
     this.vectorFactory = vectorFactory;
     this.vecXArray = pair.getFirst();
@@ -68,16 +120,20 @@ final class LassoWorker implements Worker {
     this.x2x = new HashMap<>();
     this.random = new Random();
     this.worker = worker;
+    this.synchronizer = synchronizer;
   }
 
   /**
    * {@inheritDoc}
    * Standardize input vectors w.r.t. each feature dimension, as well as the target vector,
-   * to have mean 0 and variation N.
+   * to have 0 as the mean and the number of input instances as the variation.
    * Also pre-calculate inner products of input vectors and the target vector, for later use.
    */
   @Override
   public void initialize() {
+
+    // TODO #396: We could skip feature scaling, since
+    // it might negatively affect the algorithm for distributed environments.
     for (final Vector vecX : vecXArray) {
       standardize(vectorFactory, vecX);
     }
@@ -86,13 +142,15 @@ final class LassoWorker implements Worker {
     for (int index = 0; index < vecXArray.length; index++) {
       x2y[index] = vecXArray[index].dot(vecY);
     }
+
+    synchronizer.globalBarrier();
   }
 
   /**
    * {@inheritDoc} <br>
    * 1) Pull model from server. <br>
    * 2) Pick dimension to update. <br>
-   * 3) Compute the optimal value, (dot(x_i, y) - sigma_(i !=j) (x_i, x_j) * model(j)) / N. <br>
+   * 3) Compute the optimal value, (dot(x_i, y) - sigma_(i != j) (x_i, x_j) * model(j)) / N. <br>
    * - When computing the optimal value, only compute (x_i, x_j) * model(j) if model(j) != 0, for performance. <br>
    * - Reuse (x_i, x_j) when possible, from {@code x2x}. <br>
    * 4) Push value to server.

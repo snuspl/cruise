@@ -24,6 +24,7 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.lang.reflect.Array;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -53,32 +54,40 @@ final class LassoParser {
     this.numFeatures = numFeatures;
   }
 
+  @SuppressWarnings("unchecked")
   Pair<Vector[], Vector> parse() {
-    final List<double[]> dataX = new LinkedList<>();
+
+    // we use this type because each line is not simply mapped to a vector
+    // rather, each column is mapped to a vector
+    final List<Double>[] dataX = (List<Double>[]) Array.newInstance(LinkedList.class, numFeatures);
+    for (int index = 0; index < numFeatures; index++) {
+      dataX[index] = new LinkedList<>();
+    }
     final List<Double> dataY = new LinkedList<>();
 
     for (final Pair<LongWritable, Text> keyValue : dataSet) {
       final String line = keyValue.getSecond().toString().trim();
       if (line.startsWith("#") || line.length() == 0) {
+        // skip comments and blank lines
         continue;
       }
 
       final String[] split = line.split("\\s+");
-      final double[] data = new double[numFeatures];
       for (int index = 0; index < numFeatures; index++) {
-        data[index] = Double.parseDouble(split[index]);
+        dataX[index].add(Double.parseDouble(split[index]));
       }
-      dataX.add(data);
       dataY.add(Double.parseDouble(split[numFeatures]));
     }
 
-    // Input vectors must be formed for each dimension, not for each instance.
-    // Thus we transpose the 2d array before creating vectors.
-    final double[][] arrayX = new double[dataX.size()][];
-    final double[][] transposedArrayX = transpose(dataX.toArray(arrayX));
-    final Vector[] vecX = new Vector[transposedArrayX.length];
-    for (int arrayIndex = 0; arrayIndex < transposedArrayX.length; arrayIndex++) {
-      vecX[arrayIndex] = vectorFactory.newDenseVector(transposedArrayX[arrayIndex]);
+    // transform List<Double> into double[], and then Vector
+    final Vector[] vecX = new Vector[numFeatures];
+    for (int index = 0; index < numFeatures; index++) {
+      final double[] data = new double[dataX[index].size()];
+      int innerIndex = 0;
+      for (final double d : dataX[index]) {
+        data[innerIndex++] = d;
+      }
+      vecX[index] = vectorFactory.newDenseVector(data);
     }
 
     final double[] arrayY = new double[dataY.size()];
@@ -89,16 +98,5 @@ final class LassoParser {
     final Vector vecY = vectorFactory.newDenseVector(arrayY);
 
     return new Pair<>(vecX, vecY);
-  }
-
-  private double[][] transpose(final double[][] array) {
-    final double[][] retArray = new double[array[0].length][array.length];
-    for (int i = 0; i < array.length; i++) {
-      for (int j = 0; j < array[0].length; j++) {
-        retArray[j][i] = array[i][j];
-      }
-    }
-
-    return retArray;
   }
 }
