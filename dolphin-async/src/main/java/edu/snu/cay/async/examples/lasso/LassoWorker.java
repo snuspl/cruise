@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.async.examples.lasso;
 
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 import edu.snu.cay.async.Worker;
 import edu.snu.cay.async.WorkerSynchronizer;
 import edu.snu.cay.common.math.linalg.Vector;
@@ -24,8 +26,6 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -79,15 +79,15 @@ final class LassoWorker implements Worker {
 
   /**
    * The inner product values of the feature vectors ({@code vecXArray}).
-   * Specifically, {@code x2x.get(i).get(j) := vecXArray[i].dot(vecXArray[j])}.
-   * To reduce the size of this map, the smaller index (between {@code i} and {@code j})
-   * should be used as the index for the outer map, and the bigger index for the inner map. <br>
+   * Specifically, {@code x2x.get(i, j) := vecXArray[i].dot(vecXArray[j])}.
+   * To reduce the size of this table, the smaller index (between {@code i} and {@code j})
+   * should be used as the row key and the bigger index as the column key.
    *
-   * The reason for using a map and not a 2-D array is because there are cases where
+   * The reason for using a table and not a 2-D array is because there are cases where
    * we never use the inner product of {@code x2y[i]} and {@code x2y[j]}, and thus
    * allocating a double value for those cases would be a waste of space.
    */
-  private final Map<Integer, Map<Integer, Double>> x2x;
+  private final Table<Integer, Integer, Double> x2x;
 
   /**
    * Random number generator.
@@ -116,7 +116,7 @@ final class LassoWorker implements Worker {
     this.vecY = pair.getSecond();
     this.lambda = lambda;
     this.x2y = new double[vecXArray.length];
-    this.x2x = new HashMap<>();
+    this.x2x = HashBasedTable.create();
     this.random = new Random();
     this.worker = worker;
     this.synchronizer = synchronizer;
@@ -170,14 +170,11 @@ final class LassoWorker implements Worker {
 
       final int min = Math.min(index, modelIndex);
       final int max = Math.max(index, modelIndex);
-      if (!x2x.containsKey(min)) {
-        x2x.put(min, new HashMap<Integer, Double>());
-      }
-      if (!x2x.get(min).containsKey(max)) {
-        x2x.get(min).put(max, vecXArray[index].dot(vecXArray[modelIndex]));
+      if (!x2x.contains(min, max)) {
+        x2x.put(min, max, vecXArray[index].dot(vecXArray[modelIndex]));
       }
 
-      dotValue -= x2x.get(min).get(max) * vecModel[modelIndex];
+      dotValue -= x2x.get(min, max) * vecModel[modelIndex];
     }
 
     dotValue /= vecY.length();

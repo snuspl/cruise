@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.async.examples.lasso;
 
+import com.google.common.primitives.Doubles;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import org.apache.hadoop.io.LongWritable;
@@ -82,20 +83,10 @@ final class LassoParser {
     // transform List<Double> into double[], and then Vector
     final Vector[] vecX = new Vector[numFeatures];
     for (int index = 0; index < numFeatures; index++) {
-      final double[] data = new double[dataX[index].size()];
-      int innerIndex = 0;
-      for (final double d : dataX[index]) {
-        data[innerIndex++] = d;
-      }
-      vecX[index] = vectorFactory.createDense(data);
+      vecX[index] = vectorFactory.createDense(Doubles.toArray(dataX[index]));
     }
 
-    final double[] arrayY = new double[dataY.size()];
-    int arrayIndex = 0;
-    for (final double y : dataY) {
-      arrayY[arrayIndex++] = y;
-    }
-    final Vector vecY = vectorFactory.createDense(arrayY);
+    final Vector vecY = vectorFactory.createDense(Doubles.toArray(dataY));
 
     return new Pair<>(vecX, vecY);
   }
