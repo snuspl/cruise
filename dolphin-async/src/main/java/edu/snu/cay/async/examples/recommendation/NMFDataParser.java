@@ -75,7 +75,7 @@ final class NMFDataParser {
         rowIndex = Integer.valueOf(split[0]);
         colIndex = Integer.valueOf(split[1]);
       } catch (final NumberFormatException e) {
-        throw new RuntimeException("Failed to parse: numbers for indices should be integer.");
+        throw new RuntimeException("Failed to parse: numbers for indices should be integer.", e);
       }
 
       if (rowIndex > numRows) {
