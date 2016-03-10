@@ -110,8 +110,8 @@ final class NMFWorker implements Worker {
       }
       System.out.println();
     }
-    // print R
-    System.out.println("R=");
+    // print transposed R (R')
+    System.out.println("R'=");
     for (int i = 1; i <= numColumns; ++i) {
       for (final VectorEntry valueEntry : parameterWorker.pull(i)) {
         System.out.print(" " + valueEntry.value());
