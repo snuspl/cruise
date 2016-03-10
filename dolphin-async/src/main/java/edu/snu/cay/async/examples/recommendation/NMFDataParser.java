@@ -23,7 +23,7 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -41,23 +41,23 @@ import java.util.List;
 final class NMFDataParser {
 
   private final DataSet<LongWritable, Text> dataSet;
-  private final int rows;
-  private final int cols;
+  private final int numRows;
+  private final int numCols;
 
   @Inject
   private NMFDataParser(final DataSet<LongWritable, Text> dataSet,
-                        @Parameter(NumRows.class) final int rows,
-                        @Parameter(NumColumns.class) final int cols) {
+                        @Parameter(NumRows.class) final int numRows,
+                        @Parameter(NumColumns.class) final int numCols) {
     this.dataSet = dataSet;
-    this.rows = rows;
-    this.cols = cols;
+    this.numRows = numRows;
+    this.numCols = numCols;
   }
 
   public List<NMFData> parse() {
-    final List<NMFData> result = new ArrayList<>();
+    final List<NMFData> result = new LinkedList<>();
 
-    for (final Pair<LongWritable, Text> ketValue : dataSet) {
-      final String line = ketValue.getSecond().toString().trim();
+    for (final Pair<LongWritable, Text> keyValue : dataSet) {
+      final String line = keyValue.getSecond().toString().trim();
       if (line.startsWith("#") || line.length() == 0) {
         continue;
       }
@@ -78,19 +78,20 @@ final class NMFDataParser {
         throw new RuntimeException("Failed to parse: numbers for indices should be integer.");
       }
 
-      if (rowIndex >= rows) {
+      if (rowIndex >= numRows) {
         throw new RuntimeException(
-            String.format("Invalid row index %d. It should be less than # of input rows %d", rowIndex, rows));
+            String.format("Invalid row index %d. It should be less than # of input rows %d", rowIndex, numRows));
       }
-      if (colIndex >= cols) {
+
+      if (colIndex >= numCols) {
         throw new RuntimeException(
-            String.format("Invalid column index %d. It should be less than # of input columns %d", colIndex, cols));
+            String.format("Invalid column index %d. It should be less than # of input columns %d", colIndex, numCols));
       }
 
       try {
         value = Double.valueOf(split[2]);
       } catch (final NumberFormatException e) {
-        throw new RuntimeException("Failed to parse: numbers for values should be double.");
+        throw new RuntimeException("Failed to parse: numbers for values should be double.", e);
       }
 
       if (value < 0) {

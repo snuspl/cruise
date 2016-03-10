@@ -23,6 +23,8 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Updater for non-negative matrix factorization via SGD.
@@ -31,6 +33,8 @@ import java.util.Random;
  * between {@link InitialMin} and {@link InitialMax} using {@link java.util.Random}.
  */
 final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
+
+  private static final Logger LOG = Logger.getLogger(NMFUpdater.class.getName());
 
   private final VectorFactory vectorFactory;
   private final Random random = new Random();
@@ -57,10 +61,21 @@ final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
    * @param value value to check validation
    * @return valid value
    */
-  private double validate(final double value) {
+  private double getValidValue(final double value) {
     // value should not be larger than maxVal to prevent overflow
-    final double newValue = (value > maxVal) ? maxVal : value;
-    return (newValue > 0.0) ? newValue : 0.0; // non-negativity
+    double newValue = value;
+    if (newValue > maxVal) {
+      LOG.log(Level.WARNING,
+          "Value {0} is greater than the max {1} and will be replaced with the max", new Object[]{newValue, maxVal});
+      newValue = maxVal;
+    }
+    // non-negativity
+    if (newValue < 0.0D) {
+      LOG.log(Level.WARNING,
+          "Value {0} is less than zero and will be replaced with zero for non-negativity", newValue);
+      newValue = 0.0D;
+    }
+    return newValue;
   }
 
   @Override
@@ -73,7 +88,7 @@ final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
     final Vector newVec = oldValue.subi(deltaValue);
     // assume that all vectors are dense vectors
     for (int i = 0; i < newVec.length(); ++i) {
-      newVec.set(i, validate(newVec.get(i)));
+      newVec.set(i, getValidValue(newVec.get(i)));
     }
     return newVec;
   }
@@ -83,7 +98,7 @@ final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
     final Vector newVector = vectorFactory.createDenseZeros(rank);
     for (int i = 0; i < rank; ++i) {
       final double newValue = random.nextDouble() * (initMax - initMin) + initMin;
-      newVector.set(i, validate(newValue));
+      newVector.set(i, getValidValue(newValue));
     }
     return newVector;
   }
