@@ -30,6 +30,8 @@ import java.util.logging.Logger;
 
 /**
  * Worker for non-negative matrix factorization via SGD.
+ *
+ * Assumes that indices in {@link NMFData} are one-based.
  */
 final class NMFWorker implements Worker {
 
@@ -102,15 +104,15 @@ final class NMFWorker implements Worker {
     // print generated matrices
     // print L
     System.out.println("L=");
-    for (int i = 0; i < numRows; ++i) {
-      for (final VectorEntry valueEntry : parameterWorker.pull(i)) {
+    for (int i = 1; i <= numRows; ++i) {
+      for (final VectorEntry valueEntry : parameterWorker.pull(-i)) {
         System.out.print(" " + valueEntry.value());
       }
       System.out.println();
     }
     // print R
     System.out.println("R=");
-    for (int i = 0; i < numColumns; ++i) {
+    for (int i = 1; i <= numColumns; ++i) {
       for (final VectorEntry valueEntry : parameterWorker.pull(i)) {
         System.out.print(" " + valueEntry.value());
       }

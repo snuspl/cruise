@@ -36,7 +36,7 @@ import java.util.List;
  *   ... <br>
  *   [row index] [column index] [value] <br>
  * </p>
- * Indices used in this format is zero-based.
+ * In this format, one-based indexing is used.
  */
 final class NMFDataParser {
 
@@ -78,14 +78,18 @@ final class NMFDataParser {
         throw new RuntimeException("Failed to parse: numbers for indices should be integer.");
       }
 
-      if (rowIndex >= numRows) {
+      if (rowIndex > numRows) {
         throw new RuntimeException(
             String.format("Invalid row index %d. It should be less than # of input rows %d", rowIndex, numRows));
       }
 
-      if (colIndex >= numCols) {
+      if (colIndex > numCols) {
         throw new RuntimeException(
             String.format("Invalid column index %d. It should be less than # of input columns %d", colIndex, numCols));
+      }
+
+      if (rowIndex <= 0 || colIndex <= 0) {
+        throw new RuntimeException("Invalid indices. It should be greater than zero");
       }
 
       try {
