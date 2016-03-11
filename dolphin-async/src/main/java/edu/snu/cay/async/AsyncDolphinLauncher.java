@@ -52,7 +52,7 @@ import org.apache.reef.wake.remote.impl.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -163,7 +163,7 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new LinkedList<>();
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(14);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -189,31 +189,28 @@ public final class AsyncDolphinLauncher {
 
     cl.processCommandLine(args);
     final Configuration clConf = cb.build();
-    final ClassHierarchy clConfClassHierarchy = clConf.getClassHierarchy();
 
-    final JavaConfigurationBuilder basicParameterConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
-    for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {
+    return new Tuple2<>(extractParameterConf(basicParameterClassList, clConf),
+        extractParameterConf(userParameterClassList, clConf));
+  }
+
+  /**
+   * Extracts configuration which is only related to {@code parameterClassList} from {@code totalConf}.
+   */
+  private static Configuration extractParameterConf(final List<Class<? extends Name<?>>> parameterClassList,
+                                                    final Configuration totalConf) {
+    final ClassHierarchy totalConfClassHierarchy = totalConf.getClassHierarchy();
+    final JavaConfigurationBuilder parameterConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
+    for (final Class<? extends Name<?>> parameterClass : parameterClassList) {
       final NamedParameterNode parameterNode
-          = (NamedParameterNode) clConfClassHierarchy.getNode(basicParameterClass.getName());
-      final String parameterValue = clConf.getNamedParameter(parameterNode);
-      // if this parameter is not included in command line arguments, parameterValue will be null
+          = (NamedParameterNode) totalConfClassHierarchy.getNode(parameterClass.getName());
+      final String parameterValue = totalConf.getNamedParameter(parameterNode);
+      // if this parameter is not included in the total configuration, parameterValue will be null
       if (parameterValue != null) {
-        basicParameterConfBuilder.bindNamedParameter(basicParameterClass, parameterValue);
+        parameterConfBuilder.bindNamedParameter(parameterClass, parameterValue);
       }
     }
-
-    final JavaConfigurationBuilder userParameterConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
-    for (final Class<? extends Name<?>> userParameterClass : userParameterClassList) {
-      final NamedParameterNode parameterNode
-          = (NamedParameterNode) clConfClassHierarchy.getNode(userParameterClass.getName());
-      final String parameterValue = clConf.getNamedParameter(parameterNode);
-      // if this parameter is not included in command line arguments, parameterValue will be null
-      if (parameterValue != null) {
-        userParameterConfBuilder.bind(userParameterClass.getName(), parameterValue);
-      }
-    }
-
-    return new Tuple2<>(basicParameterConfBuilder.build(), userParameterConfBuilder.build());
+    return parameterConfBuilder.build();
   }
 
   private static Configuration getYarnRuntimeConfiguration() {

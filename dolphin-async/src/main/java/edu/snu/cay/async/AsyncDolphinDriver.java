@@ -42,6 +42,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -111,9 +112,14 @@ final class AsyncDolphinDriver {
   private final Configuration paramConf;
 
   /**
-   * List of activeContext objects of the evaluators housing the parameter server.
+   * Queue of activeContext objects of the evaluators housing the parameter server.
    */
-  private List<ActiveContext> serverContexts;
+  private ConcurrentLinkedQueue<ActiveContext> serverContexts;
+
+  /**
+   * Queue of activeContext objects of the worker-side evaluators waiting for driver to close.
+   */
+  private ConcurrentLinkedQueue<ActiveContext> workerContextsToClose;
 
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
@@ -133,7 +139,8 @@ final class AsyncDolphinDriver {
     this.runningWorkerContextCount = new AtomicInteger(0);
     this.runningServerContextCount = new AtomicInteger(0);
     this.completedOrFailedEvalCount = new AtomicInteger(0);
-    this.serverContexts = new ArrayList<>(numServers);
+    this.serverContexts = new ConcurrentLinkedQueue<>();
+    this.workerContextsToClose = new ConcurrentLinkedQueue<>();
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
   }
@@ -305,7 +312,7 @@ final class AsyncDolphinDriver {
     @Override
     public void onNext(final FailedTask failedTask) {
       if (failedTask.getActiveContext().isPresent()) {
-        failedTask.getActiveContext().get().close();
+        workerContextsToClose.add(failedTask.getActiveContext().get());
       } else {
         LOG.log(Level.WARNING, "FailedTask {0} has no parent context", failedTask);
       }
@@ -317,18 +324,21 @@ final class AsyncDolphinDriver {
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(final CompletedTask completedTask) {
-      completedTask.getActiveContext().close();
+      workerContextsToClose.add(completedTask.getActiveContext());
       checkShutdown();
     }
   }
 
   private void checkShutdown() {
-    if (completedOrFailedEvalCount.incrementAndGet() == initWorkerCount + initServerCount
-        && !serverContexts.isEmpty()) {
+    if (completedOrFailedEvalCount.incrementAndGet() == initWorkerCount + initServerCount) {
+      // Since it is not guaranteed that the messages from workers are completely received and processed,
+      // the servers may lose some updates.
       for (final ActiveContext serverContext : serverContexts) {
         serverContext.close();
       }
-      serverContexts.clear();
+      for (final ActiveContext workerContext : workerContextsToClose) {
+        workerContext.close();
+      }
     }
   }
 }
