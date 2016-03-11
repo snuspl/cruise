@@ -125,7 +125,7 @@ final class LassoWorker implements Worker {
   /**
    * {@inheritDoc}
    * Standardize input vectors w.r.t. each feature dimension, as well as the target vector,
-   * to have 0 as the mean and the number of input instances as the variation.
+   * to have mean 0 and variance 1.
    * Also pre-calculate inner products of input vectors and the target vector, for later use.
    */
   @Override
@@ -210,7 +210,7 @@ final class LassoWorker implements Worker {
   }
 
   /**
-   * Standardize vector {@code v} to have a mean of zero and a variation of {@code v.length()}.
+   * Standardize vector {@code v} to have a mean of zero and a variation of one.
    */
   private static void standardize(final VectorFactory vf, final Vector v) {
     double sum = 0;
