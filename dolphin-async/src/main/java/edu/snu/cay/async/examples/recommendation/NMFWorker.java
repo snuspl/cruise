@@ -16,6 +16,7 @@
 package edu.snu.cay.async.examples.recommendation;
 
 import edu.snu.cay.async.Worker;
+import edu.snu.cay.async.WorkerSynchronizer;
 import edu.snu.cay.async.examples.recommendation.NMFParameters.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
@@ -38,6 +39,7 @@ final class NMFWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(NMFWorker.class.getName());
 
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
+  private final WorkerSynchronizer workerSynchronizer;
   private final NMFDataParser dataParser;
   private final List<NMFData> workload = new ArrayList<>();
   private final int numRows;
@@ -50,11 +52,13 @@ final class NMFWorker implements Worker {
   @Inject
   private NMFWorker(final NMFDataParser dataParser,
                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
+                    final WorkerSynchronizer workerSynchronizer,
                     @Parameter(NumRows.class) final int numRows,
                     @Parameter(NumColumns.class) final int numColumns,
                     @Parameter(StepSize.class) final double stepSize,
                     @Parameter(Lambda.class) final double lambda) {
     this.parameterWorker = parameterWorker;
+    this.workerSynchronizer = workerSynchronizer;
     this.dataParser = dataParser;
     this.numRows = numRows;
     this.numColumns = numColumns;
@@ -65,6 +69,7 @@ final class NMFWorker implements Worker {
   @Override
   public void initialize() {
     workload.addAll(dataParser.parse());
+    workerSynchronizer.globalBarrier();
   }
 
   @Override
