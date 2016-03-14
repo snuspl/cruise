@@ -35,22 +35,24 @@ final class SparseLdaSampler {
   private final int numTopics;
   private final int numVocabs;
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
+  private final LdaBatchParameterWorker batchWorker;
 
   @Inject
   private SparseLdaSampler(@Parameter(LdaREEF.Alpha.class) final double alpha,
                            @Parameter(LdaREEF.Beta.class) final double beta,
                            @Parameter(LdaREEF.NumTopics.class) final int numTopics,
                            @Parameter(LdaREEF.NumVocabs.class) final int numVocabs,
-                           final ParameterWorker<Integer, int[], int[]> parameterWorker) {
+                           final ParameterWorker<Integer, int[], int[]> parameterWorker,
+                           final LdaBatchParameterWorker batchWorker) {
     this.alpha = alpha;
     this.beta = beta;
     this.numTopics = numTopics;
     this.numVocabs = numVocabs;
     this.parameterWorker = parameterWorker;
+    this.batchWorker = batchWorker;
   }
 
   void sample(final Document document) {
-    final LdaBatchParameterWorker batchWorker = new LdaBatchParameterWorker(parameterWorker, numTopics);
     // numVocabs-th row represents the total word-topic assignment count vector
     final int[] globalWordCountByTopics = parameterWorker.pull(numVocabs);
     double sumS = 0.0;
@@ -65,6 +67,7 @@ final class SparseLdaSampler {
     final double[] qCoefficients = new double[numTopics];
 
     // Initialize auxiliary variables
+    // Recalculate for each document to adapt changes from other workers.
     for (int i = 0; i < numTopics; i++) {
       final int topicCount = document.getTopicCount(i);
       final double denom = globalWordCountByTopics[i] + beta * numVocabs;
@@ -157,12 +160,14 @@ final class SparseLdaSampler {
 
       document.addWordAtIndex(wordIndex, newTopic);
 
-      // Push the changes to the parameter servers
-      batchWorker.addTopicChange(word, oldTopic, -1);
-      batchWorker.addTopicChange(word, newTopic, 1);
-      // numVocabs-th row represents the total word-topic assignment count vector
-      batchWorker.addTopicChange(numVocabs, oldTopic, -1);
-      batchWorker.addTopicChange(numVocabs, newTopic, 1);
+      if (newTopic != oldTopic) {
+        // Push the changes to the parameter servers
+        batchWorker.addTopicChange(word, oldTopic, -1);
+        batchWorker.addTopicChange(word, newTopic, 1);
+        // numVocabs-th row represents the total word-topic assignment count vector
+        batchWorker.addTopicChange(numVocabs, oldTopic, -1);
+        batchWorker.addTopicChange(numVocabs, newTopic, 1);
+      }
     }
 
     batchWorker.pushAndClear();
@@ -178,7 +183,7 @@ final class SparseLdaSampler {
       val -= terms[i];
     }
 
-    throw new RuntimeException("randomVar have to be smaller than summation of all terms");
+    throw new RuntimeException("randomVar has to be smaller than summation of all terms");
   }
 
   private int sampleFromTerms(final double randomVar, final double[] terms, final List<Integer> nonzeroIndices) {
@@ -191,6 +196,6 @@ final class SparseLdaSampler {
       val -= terms[nonzeroIndex];
     }
 
-    throw new RuntimeException("randomVar have to be smaller than summation of all nonzero terms");
+    throw new RuntimeException("randomVar has to be smaller than summation of all nonzero terms");
   }
 }

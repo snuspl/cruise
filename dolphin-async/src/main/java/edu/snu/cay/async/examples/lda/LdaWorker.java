@@ -17,7 +17,6 @@ package edu.snu.cay.async.examples.lda;
 
 import edu.snu.cay.async.Worker;
 import edu.snu.cay.async.WorkerSynchronizer;
-import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -35,32 +34,28 @@ final class LdaWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(LdaWorker.class.getName());
 
   private final LdaDataParser dataParser;
-  private final ParameterWorker<Integer, int[], int[]> parameterWorker;
+  private final LdaBatchParameterWorker batchWorker;
   private final SparseLdaSampler sampler;
   private final WorkerSynchronizer synchronizer;
   private final int numVocabs;
-  private final int numTopics;
   private List<Document> documents;
 
   @Inject
   private LdaWorker(final LdaDataParser dataParser,
-                    final ParameterWorker<Integer, int[], int[]> parameterWorker,
+                    final LdaBatchParameterWorker batchWorker,
                     final SparseLdaSampler sampler,
                     final WorkerSynchronizer synchronizer,
-                    @Parameter(LdaREEF.NumVocabs.class) final int numVocabs,
-                    @Parameter(LdaREEF.NumTopics.class) final int numTopics) {
+                    @Parameter(LdaREEF.NumVocabs.class) final int numVocabs) {
     this.dataParser = dataParser;
-    this.parameterWorker = parameterWorker;
+    this.batchWorker = batchWorker;
     this.sampler = sampler;
     this.synchronizer = synchronizer;
     this.numVocabs = numVocabs;
-    this.numTopics = numTopics;
   }
 
   @Override
   public void initialize() {
     this.documents = dataParser.parse();
-    final LdaBatchParameterWorker batchWorker = new LdaBatchParameterWorker(parameterWorker, numTopics);
     for (final Document document : documents) {
       for (int i = 0; i < document.size(); i++) {
         final int word = document.getWord(i);

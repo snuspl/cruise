@@ -15,53 +15,61 @@
  */
 package edu.snu.cay.async.examples.lda;
 
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 
-import java.util.HashMap;
+import javax.inject.Inject;
 import java.util.Map;
 
 /**
- * Updates many changed topic changes at once.
+ * Updates many topic changes at once.
+ * Note that this is not thread-safe for performance reason.
  */
 final class LdaBatchParameterWorker {
 
   private final ParameterWorker<Integer, int[], int[]> parameterWorker;
-  private final int numTopics;
-  private final Map<Integer, int[]> changedTopicCounts;
+  private final Table<Integer, Integer, Integer> changedTopicCounts;
 
-  LdaBatchParameterWorker(final ParameterWorker<Integer, int[], int[]> parameterWorker,
-                          final int numTopics) {
+  @Inject
+  private LdaBatchParameterWorker(final ParameterWorker<Integer, int[], int[]> parameterWorker) {
     this.parameterWorker = parameterWorker;
-    this.numTopics = numTopics;
-    this.changedTopicCounts = new HashMap<>();
+    this.changedTopicCounts = HashBasedTable.create();
   }
 
+  /**
+   * Add topic changes that will be pushed later.
+   * Note that this is not thread-safe for performance reason.
+   *
+   * @param word a word
+   * @param topicIndex a topic index
+   * @param delta changed number of assignment
+   */
   void addTopicChange(final int word, final int topicIndex, final int delta) {
-    if (!changedTopicCounts.containsKey(word)) {
-      changedTopicCounts.put(word, new int[numTopics]);
+    if (!changedTopicCounts.contains(word, topicIndex)) {
+      changedTopicCounts.put(word, topicIndex, 0);
     }
 
-    final int[] changedTopicCountsForWord = changedTopicCounts.get(word);
-    changedTopicCountsForWord[topicIndex] += delta;
+    changedTopicCounts.put(word, topicIndex, delta + changedTopicCounts.get(word, topicIndex));
   }
 
+  /**
+   * Push all added changes and clear the changes.
+   * Note that this is not thread-safe for performance reason.
+   */
   void pushAndClear() {
-    final int[] changedTopicIndices = new int[numTopics];
-    for (final int changedWord : changedTopicCounts.keySet()) {
-      final int[] changedTopicCountsForWord = changedTopicCounts.get(changedWord);
-      int numChangedTopics = 0;
-      for (int i = 0; i < changedTopicCountsForWord.length; i++) {
-        if (changedTopicCountsForWord[i] != 0) {
-          changedTopicIndices[numChangedTopics] = i;
-          numChangedTopics++;
-        }
-      }
+    for (final int changedWord : changedTopicCounts.rowKeySet()) {
+      final Map<Integer, Integer> changedTopicCountsForWord = changedTopicCounts.row(changedWord);
+      final int numChangedTopics = changedTopicCountsForWord.size();
 
+      // Given a word, an even index represents a changed topic index and a corresponding odd index represents
+      // a changed value for the topic index.
       final int[] parameters = new int[2 * numChangedTopics];
-      for (int i = 0; i < numChangedTopics; i++) {
-        final int changedTopicIndex = changedTopicIndices[i];
-        parameters[2 * i] = changedTopicIndex;
-        parameters[2 * i + 1] = changedTopicCountsForWord[changedTopicIndex];
+      int i = 0;
+      for (final Map.Entry<Integer, Integer> entry : changedTopicCountsForWord.entrySet()) {
+        parameters[2 * i] = entry.getKey();
+        parameters[2 * i + 1] = entry.getValue();
+        i++;
       }
 
       parameterWorker.push(changedWord, parameters);
