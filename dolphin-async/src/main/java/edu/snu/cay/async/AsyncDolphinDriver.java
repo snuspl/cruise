@@ -252,7 +252,7 @@ final class AsyncDolphinDriver {
               psDriver.getWorkerServiceConfiguration(),
               aggregationManager.getServiceConfigurationWithoutNameResolver());
 
-          activeContext.submitContextAndService(contextConf, serviceConf);
+          activeContext.submitContextAndService(contextConf, Configurations.merge(serviceConf, paramConf));
         }
       };
     }
@@ -271,7 +271,7 @@ final class AsyncDolphinDriver {
               .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
               .build();
 
-          activeContext.submitTask(Configurations.merge(taskConf, workerConf, paramConf));
+          activeContext.submitTask(Configurations.merge(taskConf, workerConf));
         }
       };
     }
