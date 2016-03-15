@@ -13,7 +13,8 @@
 # limitations under the License.
 
 # name: sample_recommendation
-# description: sample data for matrix factorization (100 x 100) with values in range [0, 5]
+# description: sample data for matrix factorization (100 x 100) with values that are randomly generated
+#              using Python random module within range [0, 5].
 1 1 0
 1 2 5
 1 3 1

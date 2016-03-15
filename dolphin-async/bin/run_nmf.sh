@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_nmf.sh -maxIter 20 -local true -input sample_recommendation -row 100 -col 100 -rank 5 -stepSize 0.01 -lambda 0.01 -split 3 -maxNumEvalLocal 4
+# ./run_nmf.sh -maxIter 10 -local true -input sample_recommendation -row 100 -col 100 -rank 5 -stepSize 0.01 -lambda 0.01 -split 3 -maxNumEvalLocal 4 -timeout 300000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

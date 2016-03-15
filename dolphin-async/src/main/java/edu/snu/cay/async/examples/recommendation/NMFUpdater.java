@@ -65,13 +65,13 @@ final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
     // value should not be larger than maxVal to prevent overflow
     double newValue = value;
     if (newValue > maxVal) {
-      LOG.log(Level.WARNING,
+      LOG.log(Level.FINE,
           "Value {0} is greater than the max {1} and will be replaced with the max", new Object[]{newValue, maxVal});
       newValue = maxVal;
     }
     // non-negativity
     if (newValue < 0.0D) {
-      LOG.log(Level.WARNING,
+      LOG.log(Level.FINE,
           "Value {0} is less than zero and will be replaced with zero for non-negativity", newValue);
       newValue = 0.0D;
     }
