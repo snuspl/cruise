@@ -26,6 +26,7 @@ import java.util.logging.Logger;
 
 /**
  * Codec for dense vector.
+ * TODO #402: Remove this duplicate of {@code DenseVectorCodec} in dolphin submodule.
  */
 public final class DenseVectorCodec implements Codec<Vector>, StreamingCodec<Vector> {
   private static final Logger LOG = Logger.getLogger(DenseVectorCodec.class.getName());
