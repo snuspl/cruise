@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.evaluator.api;
 
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.io.network.util.Pair;
 
 import java.util.List;
 import java.util.Map;
@@ -36,8 +35,9 @@ public interface MemoryStore {
    * @param id global unique identifier of item
    * @param value data item to register
    * @param <T> actual data type
+   * @return a boolean that representing the operation is succeeded or not.
    */
-  <T> void put(String dataType, long id, T value);
+  <T> boolean put(String dataType, long id, T value);
 
   /**
    * Register data items of a certain data type to this store.
@@ -55,10 +55,9 @@ public interface MemoryStore {
    * @param dataType string that represents a certain data type
    * @param id global unique identifier of item
    * @param <T> actual data type
-   * @return a {@link Pair} of the data id and the actual data item,
-   *         or {@code null} if no item is associated with the given id
+   * @return actual data item or {@code null} if no item is associated with the given id
    */
-  <T> Pair<Long, T> get(String dataType, long id);
+  <T> T get(String dataType, long id);
 
   /**
    * Fetch all data of a certain data type from this store.
@@ -89,11 +88,9 @@ public interface MemoryStore {
    *
    * @param dataType string that represents a certain data type
    * @param id global unique identifier of item
-   * @param <T> actual data type
-   * @return a {@link Pair} of the data id and the actual data item,
-   *         or {@code null} if no item is associated with the given id
+   * @return a boolean that representing the operation is succeeded or not.
    */
-  <T> Pair<Long, T> remove(String dataType, long id);
+  boolean remove(String dataType, long id);
 
   /**
    * Fetch and remove all data of a certain data type from this store.
