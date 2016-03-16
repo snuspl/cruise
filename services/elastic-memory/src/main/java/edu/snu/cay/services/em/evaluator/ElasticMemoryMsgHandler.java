@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.evaluator;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.utils.LongRangeUtils;
@@ -54,6 +55,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_UPDATE_MSG = "onUpdateMsg";
 
   private final MemoryStore memoryStore;
+  private final RemoteAccessibleMemoryStore remoteAccessibleMemoryStore;
+  private final OperationResultHandler resultHandler;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
@@ -70,9 +73,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
   @Inject
   private ElasticMemoryMsgHandler(final MemoryStore memoryStore,
+                                  final RemoteAccessibleMemoryStore remoteAccessibleMemoryStore,
+                                  final OperationResultHandler resultHandler,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   final Serializer serializer) {
     this.memoryStore = memoryStore;
+    this.remoteAccessibleMemoryStore = remoteAccessibleMemoryStore;
+    this.resultHandler = resultHandler;
     this.serializer = serializer;
     this.sender = sender;
   }
@@ -83,6 +90,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
+    case RemoteOpMsg:
+      onRemoteOpMsg(innerMsg);
+      break;
+
+    case RemoteOpResultMsg:
+      onRemoteOpResultMsg(innerMsg);
+      break;
+
     case DataMsg:
       onDataMsg(innerMsg);
       break;
@@ -102,6 +117,41 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
+  /**
+   * Enqueue the data operation sent from the remote memory store.
+   */
+  private void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
+    LOG.log(Level.INFO, "onRemoteOpMsg: {0}", msg);
+
+    final RemoteOpMsg remoteOpMsg = msg.getRemoteOpMsg();
+    final String srcEvalId = remoteOpMsg.getOrigEvalId().toString();
+    final DataOpType operationType = remoteOpMsg.getOpType();
+    final String dataType = remoteOpMsg.getDataType().toString();
+    final Codec codec = serializer.getCodec(dataType);
+    final long dataKey = remoteOpMsg.getDataKey();
+    final String operationId = msg.getOperationId().toString();
+
+    final Object data = operationType == DataOpType.PUT ? codec.decode(remoteOpMsg.getDataValue().array()) : null;
+
+    final DataOperation operation = new DataOperation(srcEvalId,
+        operationId, operationType, dataType, dataKey, data);
+
+    remoteAccessibleMemoryStore.enqueueOperation(operation);
+  }
+
+  /**
+   * Handle the result of data operation processed in the remote memory store.
+   */
+  private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
+    LOG.log(Level.INFO, "onRemoteOpResultMsg: {0}", msg);
+
+    final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
+    final String operationId = msg.getOperationId().toString();
+    final boolean result = remoteOpResultMsg.getResult();
+    final ByteBuffer output = remoteOpResultMsg.getOutput();
+
+    resultHandler.handleRemoteResult(operationId, result, output);
+  }
 
   /**
    * Puts the data message contents into own memory store.
