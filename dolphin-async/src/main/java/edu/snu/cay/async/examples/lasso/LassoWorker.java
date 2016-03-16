@@ -20,7 +20,6 @@ import com.google.common.collect.Table;
 import edu.snu.cay.async.Worker;
 import edu.snu.cay.async.WorkerSynchronizer;
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
