@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.msg.api;
 
+import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
@@ -23,6 +24,7 @@ import org.htrace.TraceInfo;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
 
@@ -31,6 +33,33 @@ import java.util.Set;
  */
 @DefaultImplementation(ElasticMemoryMsgSenderImpl.class)
 public interface ElasticMemoryMsgSender {
+
+  /**
+   * Send a RemoteOpMsg that request the Evaluator specified with {@code destId} to
+   * process a data operation, parceling operation metadata into the message.
+   * Since the operation can be transmitted across the multiple evaluators multiple times,
+   * the message retains {@code origId}, an id of the Evaluator where the operation is generated at the beginning.
+   * The operation should be given a unique {@code operationId}.
+   * Include {@code parentTraceInfo} to continue tracing this message.
+   */
+  void sendRemoteOpMsg(final String origId,
+                       final String destId,
+                       final DataOpType operationType,
+                       final String dataType,
+                       final long dataId,
+                       final ByteBuffer data,
+                       final String operationId,
+                       @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Sends a RemoteOpResultMsg that contains the result of the data operation specified with {@code operationId}.
+   * Include {@code parentTraceInfo} to continue tracing this message.
+   */
+  void sendRemoteOpResultMsg(final String destId,
+                             final boolean result,
+                             final ByteBuffer data,
+                             final String operationId,
+                             @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Send a CtrlMsg that tells the Evaluator specified with {@code destId} to
