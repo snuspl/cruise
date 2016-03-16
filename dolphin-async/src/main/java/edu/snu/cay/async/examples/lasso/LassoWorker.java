@@ -46,11 +46,6 @@ final class LassoWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(LassoWorker.class.getName());
 
   /**
-   * Factory object for creating new vectors.
-   */
-  private final VectorFactory vectorFactory;
-
-  /**
    * Array of vectors containing the features of the input data.
    * Vector {@code j} represents the {@code j}-th feature of all input instances,
    * not the {@code j}-th instance.
@@ -106,12 +101,10 @@ final class LassoWorker implements Worker {
 
   @Inject
   private LassoWorker(final LassoParser lassoParser,
-                      final VectorFactory vectorFactory,
                       @Parameter(LassoREEF.Lambda.class) final double lambda,
                       final ParameterWorker<Integer, Double, Double> worker,
                       final WorkerSynchronizer synchronizer) {
     final Pair<Vector[], Vector> pair = lassoParser.parse();
-    this.vectorFactory = vectorFactory;
     this.vecXArray = pair.getFirst();
     this.vecY = pair.getSecond();
     this.lambda = lambda;
@@ -134,9 +127,9 @@ final class LassoWorker implements Worker {
     // TODO #396: We could skip feature scaling, since
     // it might negatively affect the algorithm for distributed environments.
     for (final Vector vecX : vecXArray) {
-      standardize(vectorFactory, vecX);
+      standardize(vecX);
     }
-    standardize(vectorFactory, vecY);
+    standardize(vecY);
 
     for (int index = 0; index < vecXArray.length; index++) {
       x2y[index] = vecXArray[index].dot(vecY);
@@ -149,7 +142,8 @@ final class LassoWorker implements Worker {
    * {@inheritDoc} <br>
    * 1) Pull model from server. <br>
    * 2) Pick dimension to update. <br>
-   * 3) Compute the optimal value, (dot(x_i, y) - sigma_(i != j) (x_i, x_j) * model(j)) / N. <br>
+   * 3) Compute the optimal value, (dot(x_i, y) - Sigma_{i != j} (x_i, x_j) * model(j)) / N, where
+   *   N equals the number of instances, i.e. the length of y. <br>
    * - When computing the optimal value, only compute (x_i, x_j) * model(j) if model(j) != 0, for performance. <br>
    * - Reuse (x_i, x_j) when possible, from {@code x2x}. <br>
    * 4) Push value to server.
@@ -187,11 +181,11 @@ final class LassoWorker implements Worker {
    */
   @Override
   public void cleanup() {
-    final double[] b = new double[vecXArray.length];
-    for (int index = 0; index < b.length; index++) {
-      b[index] = worker.pull(index);
-      if (b[index] != 0) {
-        LOG.log(Level.INFO, "Index {0}: value {1}", new Object[]{index, b[index]});
+    final double[] vecModel = new double[vecXArray.length];
+    for (int index = 0; index < vecModel.length; index++) {
+      vecModel[index] = worker.pull(index);
+      if (vecModel[index] != 0) {
+        LOG.log(Level.INFO, "Index {0}: value {1}", new Object[]{index, vecModel[index]});
       }
     }
   }
@@ -212,7 +206,7 @@ final class LassoWorker implements Worker {
   /**
    * Standardize vector {@code v} to have a mean of zero and a variation of one.
    */
-  private static void standardize(final VectorFactory vf, final Vector v) {
+  private static void standardize(final Vector v) {
     double sum = 0;
     for (int i = 0; i < v.length(); i++) {
       sum += v.get(i);
