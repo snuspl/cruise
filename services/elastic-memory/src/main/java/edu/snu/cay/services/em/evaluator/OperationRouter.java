@@ -17,15 +17,23 @@ package edu.snu.cay.services.em.evaluator;
 
 import edu.snu.cay.services.em.common.parameters.PartitionId;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.logging.Logger;
 
 /**
- * OperationRouter that redirects incoming operations to corresponding evaluators.
- * Currently it manages only a local partition.
+ * OperationRouter that redirects incoming operations on a specific data id to corresponding evaluators.
  */
 public final class OperationRouter {
+
+  private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
+
+  private String localEndPointId;
+
+  private String evalPrefix;
+
   private final int localPartitionId;
 
   private final PartitionFunc partitionFunc;
@@ -35,15 +43,31 @@ public final class OperationRouter {
                           @Parameter(PartitionId.class) final int partitionId) {
     this.localPartitionId = partitionId;
     this.partitionFunc = partitionFunc;
+
   }
 
   /**
-   * Return that a data id is one of local partition or not.
-   * @param dataId a id of data
-   * @return a boolean representing the result
+   * Initialize the router.
    */
-  public boolean isLocal(final long dataId) {
-    return localPartitionId == partitionFunc.partition(dataId);
+  public void initialize(final String endPointId) {
+    this.localEndPointId = endPointId;
+    this.evalPrefix = endPointId.split("-")[0];
+    LOG.info("localEndPointId: " + localEndPointId);
   }
 
+  /**
+   * Return an endpoint id of evaluator that owns a data whose key is dataId.
+   *
+   * @param dataId Identifier of data
+   * @return A pair of a boolean representing locality of data and an endpoint id of an evaluator
+   */
+  public Pair<Boolean, String> route(final long dataId) {
+
+    final int partitionId = partitionFunc.partition(dataId);
+    if (localPartitionId == partitionId) {
+      return new Pair<>(true, localEndPointId);
+    } else {
+      return new Pair<>(false, evalPrefix + '-' + partitionFunc.partition(dataId));
+    }
+  }
 }
