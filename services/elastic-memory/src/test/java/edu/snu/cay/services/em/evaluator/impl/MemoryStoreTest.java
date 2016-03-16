@@ -15,9 +15,15 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
+import edu.snu.cay.services.em.avro.DataOpType;
+import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.common.parameters.PartitionId;
+import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -25,15 +31,15 @@ import org.apache.reef.tang.exceptions.InjectionException;
 import org.htrace.HTraceConfiguration;
 import org.htrace.Span;
 import org.htrace.SpanReceiver;
+import org.htrace.TraceInfo;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.nio.ByteBuffer;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -55,7 +61,9 @@ public final class MemoryStoreTest {
   public void setUp() throws InjectionException {
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(SpanReceiver.class, MockedSpanReceiver.class)
+        .bindImplementation(ElasticMemoryMsgSender.class, MockedMsgSender.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
+        .bindImplementation(RemoteAccessibleMemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(PartitionId.class, Integer.toString(0))
         .build();
 
@@ -470,6 +478,77 @@ public final class MemoryStoreTest {
 
       countDownLatch.countDown();
     }
+  }
+}
+
+/**
+ * Mocked message sender that implements ElasticMemoryMsgSender, which is required to instantiate MemoryStore.
+ */
+final class MockedMsgSender implements ElasticMemoryMsgSender {
+
+  @Inject
+  private MockedMsgSender() {
+
+  }
+
+  @Override
+  public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
+                              final String dataType, final long dataId, final ByteBuffer data, final String operationId,
+                              @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendRemoteOpResultMsg(final String destId, final boolean result, final ByteBuffer data,
+                                    final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+                          final Set<LongRange> idRangeSet, final String operationId,
+                          @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId, final int numUnits,
+                          final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
+                          final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendDataAckMsg(final Set<LongRange> idRangeSet, final String operationId,
+                             @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendRegisMsg(final String dataType, final long unitStartId, final long unitEndId,
+                           @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendUpdateMsg(final String destId, final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendUpdateAckMsg(final String operationId, final UpdateResult result,
+                               @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendFailureMsg(final String operationId, final String reason, @Nullable final TraceInfo parentTraceInfo) {
+
   }
 }
 

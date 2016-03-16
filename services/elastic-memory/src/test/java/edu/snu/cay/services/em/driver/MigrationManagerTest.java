@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
@@ -29,6 +30,7 @@ import org.junit.Test;
 
 import javax.annotation.Nullable;
 
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -237,6 +239,19 @@ public class MigrationManagerTest {
      * To check the update message is sent in order (receiver first, sender next).
      */
     private final AtomicInteger[] updateMsgCount = new AtomicInteger[NUM_REQUESTS];
+
+    @Override
+    public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
+                                final String dataType, final long dataId, final ByteBuffer data,
+                                final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendRemoteOpResultMsg(final String destId, final boolean result, final ByteBuffer data,
+                                      final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+
+    }
 
     /**
      * Check the operation id and range matches.
