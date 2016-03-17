@@ -46,8 +46,6 @@ import java.util.logging.Logger;
 public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemoryStore {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
-  private static final long TIMEOUT = 40000;
-
   private static final int QUEUE_SIZE = 100;
 
   /**
@@ -111,22 +109,26 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
         operationQueue.drainTo(drainedOperations, drainSize);
 
         for (final DataOperation operation : drainedOperations) {
-          final long dataKey = operation.getDataKey();
-
-          final Pair<Boolean, String> routingResult = router.route(dataKey);
-
-          // 1) process local things or 2) send it off to remote memory store corresponding to the routing result
-          if (routingResult.getFirst()) {
-            final Pair<Boolean, Object> result = executeLocalOperation(operation);
-            resultHandler.handleLocalResult(operation, result.getFirst(), result.getSecond());
-          } else {
-            final String targetEvalId = routingResult.getSecond();
-            remoteSender.sendOperation(targetEvalId, operation);
-          }
+          executeOperation(operation);
         }
 
         drainedOperations.clear();
       }
+    }
+  }
+
+  private void executeOperation(final DataOperation operation) {
+    final long dataKey = operation.getDataKey();
+
+    final Pair<Boolean, String> routingResult = router.route(dataKey);
+
+    // 1) process local things or 2) send it off to remote memory store corresponding to the routing result
+    if (routingResult.getFirst()) {
+      final Pair<Boolean, Object> result = executeLocalOperation(operation);
+      resultHandler.handleLocalResult(operation, result.getFirst(), result.getSecond());
+    } else {
+      final String targetEvalId = routingResult.getSecond();
+      remoteSender.sendOperation(targetEvalId, operation);
     }
   }
 
@@ -179,47 +181,13 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
     }
   }
 
-  /**
-   * Enqueue an operation and wait until the operation is completed.
-   * @param operation an operation requested from a local client
-   */
-  private void submitOperation(final DataOperation operation) {
-    try {
-      operationQueue.put(operation);
-    } catch (InterruptedException e) {
-      LOG.warning("Thread is interrupted while waiting for enqueueing an operation");
-    }
-
-    // looping while the operation is in the local phase
-    while (!operation.isRemote()) {
-      // get the local result it it's done
-      if (operation.isFinished()) {
-        break;
-      }
-    }
-
-    // waiting here until the remote operation is completed
-    if (operation.isRemote()) {
-      try {
-        operation.waitOperation(TIMEOUT);
-      } catch (InterruptedException e) {
-        LOG.warning("Thread is interrupted while waiting for executing remote operation");
-      }
-    }
-
-    // for a case cancelling the operation due to time out
-    if (!operation.isFinished()) {
-      resultHandler.deregisterOperation(operation.getOperationId());
-    }
-  }
-
   @Override
   public <T> boolean put(final String dataType, final long id, final T value) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
     final DataOperation operation = new DataOperation(null, operationId, DataOpType.PUT, dataType, id, value);
 
-    submitOperation(operation);
+    executeOperation(operation);
 
     return operation.getResult().getFirst();
   }
@@ -252,7 +220,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
     final DataOperation operation = new DataOperation(null, operationId, DataOpType.GET, dataType, id, null);
 
-    submitOperation(operation);
+    executeOperation(operation);
 
     return (T) operation.getResult().getSecond();
   }
@@ -293,7 +261,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
     final DataOperation operation = new DataOperation(null, operationId, DataOpType.REMOVE, dataType, id, null);
 
-    submitOperation(operation);
+    executeOperation(operation);
 
     return operation.getResult().getFirst();
   }

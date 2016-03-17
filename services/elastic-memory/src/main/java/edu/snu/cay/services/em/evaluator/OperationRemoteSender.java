@@ -26,11 +26,15 @@ import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
+import java.util.logging.Logger;
 
 /**
  * A class that sends data operations to corresponding remote evaluators.
  */
 public final class OperationRemoteSender {
+  private static final Logger LOG = Logger.getLogger(OperationRemoteSender.class.getName());
+  private static final long TIMEOUT = 40000;
+
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   private OperationResultHandler resultHandler;
@@ -52,12 +56,20 @@ public final class OperationRemoteSender {
   public void sendOperation(final String targetEvalId, final DataOperation operation) {
     final Codec codec = serializer.getCodec(operation.getDataType());
 
-    // client thread goes to sleep until the operation is completed
-    operation.setRemote();
-
-    // register only local requests
+    // local request threads wait here until get the result
     if (operation.getOrigEvalId() == null) {
       resultHandler.registerOperation(operation);
+
+      try {
+        operation.waitOperation(TIMEOUT);
+      } catch (InterruptedException e) {
+        LOG.warning("Thread is interrupted while waiting for executing remote operation");
+      }
+
+      // for a case cancelling the operation due to time out
+      if (!operation.isFinished()) {
+        resultHandler.deregisterOperation(operation.getOperationId());
+      }
     }
 
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {

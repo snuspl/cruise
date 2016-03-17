@@ -37,7 +37,6 @@ public final class DataOperation {
   private final Object dataValue;
 
   // states of the operation
-  private AtomicBoolean remote = new AtomicBoolean(false);
   private AtomicBoolean finished = new AtomicBoolean(false);
   private boolean result = false;
   private Object outputData = null;
@@ -111,21 +110,6 @@ public final class DataOperation {
    */
   public boolean isFinished() {
     return finished.get();
-  }
-
-  /**
-   * Returns a boolean that represents whether the operation needs to be done in a remote memory store or
-   * can be done in a local memory store. It is determined by the routing result.
-   */
-  public boolean isRemote() {
-    return remote.get();
-  }
-
-  /**
-   * Change the operation state from local phase to remote phase.
-   */
-  public void setRemote() {
-    remote.set(true);
   }
 
   /**
