@@ -71,7 +71,7 @@ public final class DataOperation {
   }
 
   /**
-   * eturns an operation id that is issued by local memory store.
+   * Returns an operation id that is issued by local memory store.
    */
   public String getOperationId() {
     return operationId;
@@ -135,10 +135,17 @@ public final class DataOperation {
   }
 
   /**
-   * Get the result retrieved from the local operation.
+   * Get the result of the operation.
    */
-  public Pair<Boolean, Object> getResult() {
-    return new Pair<>(result, outputData);
+  public boolean getResult() {
+    return result;
+  }
+
+  /**
+   * Get the output data of GET operation.
+   */
+  public Object getOutputData() {
+    return outputData;
   }
 
   /**

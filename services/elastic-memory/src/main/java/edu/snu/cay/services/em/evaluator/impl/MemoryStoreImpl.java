@@ -189,7 +189,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
 
     executeOperation(operation);
 
-    return operation.getResult().getFirst();
+    return operation.getResult();
   }
 
   @Override
@@ -222,7 +222,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
 
     executeOperation(operation);
 
-    return (T) operation.getResult().getSecond();
+    return (T) operation.getOutputData();
   }
 
   @Override
@@ -263,7 +263,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
 
     executeOperation(operation);
 
-    return operation.getResult().getFirst();
+    return operation.getResult();
   }
 
   @Override
