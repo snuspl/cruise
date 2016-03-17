@@ -124,15 +124,14 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
 
     // 1) process local things or 2) send it off to remote memory store corresponding to the routing result
     if (routingResult.getFirst()) {
-      final Pair<Boolean, Object> result = executeLocalOperation(operation);
-      resultHandler.handleLocalResult(operation, result.getFirst(), result.getSecond());
+      executeLocalOperation(operation);
     } else {
       final String targetEvalId = routingResult.getSecond();
       remoteSender.sendOperation(targetEvalId, operation);
     }
   }
 
-  private Pair<Boolean, Object> executeLocalOperation(final DataOperation operation) {
+  private void executeLocalOperation(final DataOperation operation) {
     final DataOpType operationType = operation.getOperationType();
     final String dataType = operation.getDataType();
     final long key = operation.getDataKey();
@@ -169,7 +168,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
       readWriteLock.writeLock().unlock();
     }
 
-    return new Pair<>(result, outputData);
+    resultHandler.handleLocalResult(operation, result, outputData);
   }
 
   @Override
