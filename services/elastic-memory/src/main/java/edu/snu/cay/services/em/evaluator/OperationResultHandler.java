@@ -68,7 +68,7 @@ public final class OperationResultHandler {
 
   /**
    * Handle the result of data operation that is processed by local memory store.
-   * Return the result to the local client or send it to the remote evaluator
+   * It returns the result to the local client or sends it to the remote evaluator
    * corresponding to the origin of the data operation.
    */
   public void handleLocalResult(final DataOperation operation, final boolean result, final Object outputData) {
@@ -92,13 +92,13 @@ public final class OperationResultHandler {
 
   /**
    * Handle the result of data operation that is processed by remote memory store.
-   * Return the result to the local client.
+   * It always return the result to the local client.
    */
   public void handleRemoteResult(final String operationId, final boolean result, final ByteBuffer data) {
     final DataOperation finishedOperation = ongoingOperations.remove(operationId);
 
     if (finishedOperation == null) {
-      LOG.info("The operation is already handled or canceled due to time out. OpId: " + operationId);
+      LOG.info("The operation is already handled or cancelled due to time out. OpId: " + operationId);
       return;
     }
 

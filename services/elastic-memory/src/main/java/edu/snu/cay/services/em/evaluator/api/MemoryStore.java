@@ -35,7 +35,7 @@ public interface MemoryStore {
    * @param id global unique identifier of item
    * @param value data item to register
    * @param <T> actual data type
-   * @return a boolean that representing the operation is succeeded or not.
+   * @return a boolean that represents the operation is succeeded or not.
    */
   <T> boolean put(String dataType, long id, T value);
 
@@ -88,7 +88,7 @@ public interface MemoryStore {
    *
    * @param dataType string that represents a certain data type
    * @param id global unique identifier of item
-   * @return a boolean that representing the operation is succeeded or not.
+   * @return a boolean that represents the operation is succeeded or not.
    */
   boolean remove(String dataType, long id);
 

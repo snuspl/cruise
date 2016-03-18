@@ -35,9 +35,9 @@ import java.util.Set;
 public interface ElasticMemoryMsgSender {
 
   /**
-   * Send a RemoteOpMsg that request the Evaluator specified with {@code destId} to
+   * Send a RemoteOpMsg that requests the Evaluator specified with {@code destId} to
    * process a data operation, parceling operation metadata into the message.
-   * Since the operation can be transmitted across the multiple evaluators multiple times,
+   * Since the operation can be transmitted multiple times across the multiple evaluators,
    * the message retains {@code origId}, an id of the Evaluator where the operation is generated at the beginning.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.

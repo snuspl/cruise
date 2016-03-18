@@ -24,7 +24,7 @@ import javax.inject.Inject;
 import java.util.logging.Logger;
 
 /**
- * OperationRouter that redirects incoming operations on a specific data id to corresponding evaluators.
+ * OperationRouter that redirects incoming operations on specific data ids to corresponding evaluators.
  */
 public final class OperationRouter {
 
@@ -56,7 +56,7 @@ public final class OperationRouter {
   }
 
   /**
-   * Return an endpoint id of evaluator that owns a data whose key is dataId.
+   * Return an endpoint id of evaluator that owns a data whose key is {@code dataId}.
    *
    * @param dataId Identifier of data
    * @return A pair of a boolean representing locality of data and an endpoint id of an evaluator
