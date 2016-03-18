@@ -56,20 +56,8 @@ public final class OperationRemoteSender {
   public void sendOperation(final String targetEvalId, final DataOperation operation) {
     final Codec codec = serializer.getCodec(operation.getDataType());
 
-    // local request threads wait here until get the result
     if (operation.getOrigEvalId() == null) {
       resultHandler.registerOperation(operation);
-
-      try {
-        operation.waitOperation(TIMEOUT);
-      } catch (InterruptedException e) {
-        LOG.warning("Thread is interrupted while waiting for executing remote operation");
-      }
-
-      // for a case cancelling the operation due to time out
-      if (!operation.isFinished()) {
-        resultHandler.deregisterOperation(operation.getOperationId());
-      }
     }
 
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {
@@ -80,6 +68,20 @@ public final class OperationRemoteSender {
 
       msgSender.get().sendRemoteOpMsg(operation.getOrigEvalId(), targetEvalId, operation.getOperationType(),
           operation.getDataType(), operation.getDataKey(), inputData, operation.getOperationId(), traceInfo);
+    }
+
+    // local request threads wait here until get the result
+    if (operation.getOrigEvalId() == null) {
+      try {
+        operation.waitOperation(TIMEOUT);
+      } catch (InterruptedException e) {
+        LOG.warning("Thread is interrupted while waiting for executing remote operation");
+      }
+
+      // for a case cancelling the operation due to time out
+      if (!operation.isFinished()) {
+        resultHandler.deregisterOperation(operation.getOperationId());
+      }
     }
   }
 }
