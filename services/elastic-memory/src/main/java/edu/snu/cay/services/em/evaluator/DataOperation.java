@@ -18,31 +18,34 @@
 package edu.snu.cay.services.em.evaluator;
 
 import edu.snu.cay.services.em.avro.DataOpType;
-import org.apache.reef.io.network.util.Pair;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A class that represents a single data operation.
- * It maintains metadata and state of the operation during execution.
+ * It maintains metadata and states of the operation during execution.
  */
 public final class DataOperation {
 
-  // metadata of the operation
-  private final String origEvalId; // null when the operation is requested from a local client
+  /**
+   * Metadata of the operation.
+   */
+  private final String origEvalId;
   private final String operationId;
   private final DataOpType operationType;
   private final String dataType;
   private final long dataKey;
   private final Object dataValue;
 
-  // states of the operation
+  /**
+   * States of the operation.
+   */
   private AtomicBoolean finished = new AtomicBoolean(false);
   private boolean result = false;
   private Object outputData = null;
 
   /**
-   * A monitoring byte to notify a client thread waiting for completion of operation.
+   * A monitoring byte to notify a client thread waiting for completion of the operation.
    */
   private final Byte monitor = new Byte("0");
 
@@ -58,6 +61,7 @@ public final class DataOperation {
 
   /**
    * Returns a boolean that represents whether the operation is requested from a local client or not.
+   * {@code origEvalId} field is null when the operation is requested from a local client.
    */
   public boolean isLocalRequest() {
     return origEvalId == null;
