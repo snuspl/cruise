@@ -168,6 +168,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
     basicParameterClassList.add(Splits.class);
+    basicParameterClassList.add(NumWorkerThreads.class);
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);
