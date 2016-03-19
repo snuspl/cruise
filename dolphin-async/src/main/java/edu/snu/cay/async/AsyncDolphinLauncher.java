@@ -120,6 +120,8 @@ public final class AsyncDolphinLauncher {
           .bindImplementation(Worker.class, asyncDolphinConfiguration.getWorkerClass())
           .bindNamedParameter(Iterations.class,
               Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
+          .bindNamedParameter(NumWorkerThreads.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(NumWorkerThreads.class)))
           .build();
       final Configuration serializedWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(SerializedWorkerConfiguration.class, confSerializer.toString(workerConf))
@@ -168,6 +170,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
     basicParameterClassList.add(Splits.class);
+    basicParameterClassList.add(NumWorkerThreads.class);
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);
