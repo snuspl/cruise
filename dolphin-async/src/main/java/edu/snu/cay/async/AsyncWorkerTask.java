@@ -15,17 +15,31 @@
  */
 package edu.snu.cay.async;
 
-import edu.snu.cay.common.param.Parameters.Iterations;
+import  edu.snu.cay.common.param.Parameters.Iterations;
+import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
+import org.apache.reef.io.data.loading.api.DataSet;
+import org.apache.reef.io.network.util.Pair;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * REEF Task for worker threads of {@code dolphin-async} applications.
+ * Spawns several computation threads and runs them using
+ * a fixed thread pool ({@link Executors#newFixedThreadPool(int)}.
  */
 final class AsyncWorkerTask implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
@@ -33,27 +47,95 @@ final class AsyncWorkerTask implements Task {
 
   private final String taskId;
   private final int maxIterations;
-  private final Worker worker;
+  private final int numWorkerThreads;
+  private final Injector injector;
+  private final DataSet<LongWritable, Text> dataSet;
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
                           @Parameter(Iterations.class) final int maxIterations,
-                          final Worker worker) {
+                          @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
+                          final Injector injector,
+                          final DataSet<LongWritable, Text> dataSet) {
     this.taskId = taskId;
     this.maxIterations = maxIterations;
-    this.worker = worker;
+    this.numWorkerThreads = numWorkerThreads;
+    this.injector = injector;
+    this.dataSet = dataSet;
   }
 
   @Override
   public byte[] call(final byte[] memento) throws Exception {
     LOG.log(Level.INFO, "{0} starting...", taskId);
 
-    worker.initialize();
-    for (int iteration = 0; iteration < maxIterations; ++iteration) {
-      worker.run();
+    final AsyncWorkerDataSet[] asyncWorkerDataSets = divideDataSets();
+    final ExecutorService executorService = Executors.newFixedThreadPool(numWorkerThreads);
+    final Future[] futures = new Future[numWorkerThreads];
+
+    for (int index = 0; index < numWorkerThreads; index++) {
+      // since a single injector only gives singleton instances,
+      // we need to fork the given injector every time we spawn a new thread
+      final Injector forkedInjector = injector.forkInjector();
+      forkedInjector.bindVolatileInstance(DataSet.class, asyncWorkerDataSets[index]);
+
+      final Worker worker = forkedInjector.getInstance(Worker.class);
+      futures[index] = executorService.submit(new Runnable() {
+        @Override
+        public void run() {
+          worker.initialize();
+          for (int iteration = 0; iteration < maxIterations; ++iteration) {
+            worker.run();
+          }
+          worker.cleanup();
+        }
+      });
     }
-    worker.cleanup();
+
+    // wait until all threads terminate
+    for (int index = 0; index < numWorkerThreads; index++) {
+      futures[index].get();
+    }
 
     return null;
+  }
+
+  /**
+   * Split the given dataset across worker computation threads, round-robin fashion.
+   */
+  private AsyncWorkerDataSet[] divideDataSets() {
+    final AsyncWorkerDataSet[] asyncWorkerDataSets = new AsyncWorkerDataSet[numWorkerThreads];
+    for (int index = 0; index < numWorkerThreads; index++) {
+      asyncWorkerDataSets[index] = new AsyncWorkerDataSet();
+    }
+
+    int dataSetIndex = 0;
+    for (final Pair<LongWritable, Text> pair : dataSet) {
+      asyncWorkerDataSets[dataSetIndex].addPair(pair);
+      dataSetIndex = (dataSetIndex + 1) % numWorkerThreads;
+    }
+
+    return asyncWorkerDataSets;
+  }
+
+  /**
+   * {@link DataSet} implementation for worker computation threads.
+   * Internally stores a list of data pairs that are exposed to threads as an {@link Iterator}.
+   */
+  private final class AsyncWorkerDataSet implements DataSet<LongWritable, Text> {
+
+    private final List<Pair<LongWritable, Text>> dataSet;
+
+    AsyncWorkerDataSet() {
+      dataSet = new LinkedList<>();
+    }
+
+    void addPair(final Pair<LongWritable, Text> pair) {
+      dataSet.add(pair);
+    }
+
+    @Override
+    public Iterator<Pair<LongWritable, Text>> iterator() {
+      return dataSet.iterator();
+    }
   }
 }
