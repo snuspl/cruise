@@ -19,8 +19,6 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
-import edu.snu.cay.services.em.driver.MigrationManager;
-import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;

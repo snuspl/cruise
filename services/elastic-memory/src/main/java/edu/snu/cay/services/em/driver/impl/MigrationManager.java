@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.driver;
+package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.AvroLongRange;
@@ -62,7 +62,7 @@ import java.util.logging.Logger;
  *  Once the Sender notifies the Driver that the update completes, the migration finishes (FINISHED).
  */
 @DriverSide
-public final class MigrationManager {
+final class MigrationManager {
   private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
   private static final String MOVE_PARTITION = "move_partition";
   private static final String TRANSFERRED_SUFFIX = "-transferred";

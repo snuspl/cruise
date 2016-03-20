@@ -13,35 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator;
+package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.commons.lang.math.LongRange;
-import org.apache.reef.io.serialization.Codec;
 
 import java.util.Collection;
 
 /**
- * Implementation of Update to add the data from MemoryStore when apply() is called.
+ * Implementation of Update to remove the data from MemoryStore when apply() is called.
  */
-final class Add implements Update {
-  private final String dataType;
-  private final Codec codec;
-  private final Collection<UnitIdPair> unitIdPairs;
-  private final Collection<LongRange> ranges;
+final class Remove implements Update {
+  private String dataType;
+  private Collection<LongRange> ranges;
 
-  Add(final String dataType, final Codec codec, final Collection<UnitIdPair> unitIdPairs,
-      final Collection<LongRange> ranges) {
+  Remove(final String dataType, final Collection<LongRange> ranges) {
     this.dataType = dataType;
-    this.codec = codec;
-    this.unitIdPairs = unitIdPairs;
     this.ranges = ranges;
   }
 
   @Override
   public Type getType() {
-    return Type.ADD;
+    return Type.REMOVE;
   }
 
   @Override
@@ -51,10 +44,8 @@ final class Add implements Update {
 
   @Override
   public void apply(final MemoryStore memoryStore) {
-    for (final UnitIdPair unitIdPair : unitIdPairs) {
-      final byte[] data = unitIdPair.getUnit().array();
-      final long id = unitIdPair.getId();
-      memoryStore.put(dataType, id, codec.decode(data));
+    for (final LongRange range : ranges) {
+      memoryStore.removeRange(dataType, range.getMinimumLong(), range.getMaximumLong());
     }
   }
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator;
+package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.common.parameters.PartitionId;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
@@ -25,7 +25,7 @@ import javax.inject.Inject;
  * OperationRouter that redirects incoming operations to corresponding evaluators.
  * Currently it manages only a local partition.
  */
-public final class OperationRouter {
+final class OperationRouter {
   private final int localPartitionId;
 
   private final PartitionFunc partitionFunc;

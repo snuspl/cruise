@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.driver;
+package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.AvroLongRange;
@@ -42,7 +42,7 @@ import java.util.logging.Logger;
  * instantiate NetworkService.
  */
 @DriverSide
-final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
+public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
   private static final String ON_REGIS_MSG = "onRegisMsg";
