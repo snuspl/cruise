@@ -141,28 +141,26 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
     Object outputData = null;
     readWriteLock.writeLock().lock();
     try {
-      if (operationType == DataOpType.PUT) {
-
-        if (!dataMap.containsKey(dataType)) {
-          dataMap.put(dataType, new TreeMap<Long, Object>());
-        }
-        dataMap.get(dataType).put(key, value);
-        result = true;
-
-      } else if (operationType == DataOpType.GET) {
-
-        result = dataMap.containsKey(dataType);
-        outputData = result ? dataMap.get(dataType).get(key) : null;
-
-      } else if (operationType == DataOpType.REMOVE) {
-
-        if (!dataMap.containsKey(dataType)) {
-          result = false;
-        } else {
-          result = dataMap.get(dataType).remove(key) != null;
-        }
-      } else {
-        throw new RuntimeException("Undefined operation");
+      switch(operationType) {
+        case PUT:
+          if (!dataMap.containsKey(dataType)) {
+            dataMap.put(dataType, new TreeMap<Long, Object>());
+          }
+          dataMap.get(dataType).put(key, value);
+          result = true;
+          break;
+        case GET:
+          result = dataMap.containsKey(dataType);
+          outputData = result ? dataMap.get(dataType).get(key) : null;
+          break;
+        case REMOVE:
+          if (!dataMap.containsKey(dataType)) {
+            result = false;
+          } else {
+            result = dataMap.get(dataType).remove(key) != null;
+          }
+        default:
+          throw new RuntimeException("Undefined operation");
       }
     } finally {
       readWriteLock.writeLock().unlock();
