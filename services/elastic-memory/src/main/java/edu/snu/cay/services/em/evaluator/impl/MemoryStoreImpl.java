@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.evaluator.OperationRouter;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.network.util.Pair;
 
 import javax.inject.Inject;
@@ -37,6 +37,7 @@ import java.util.logging.Logger;
   * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
 @EvaluatorSide
+@Private
 public final class MemoryStoreImpl implements MemoryStore {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 

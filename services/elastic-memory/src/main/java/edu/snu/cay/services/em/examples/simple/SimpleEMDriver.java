@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.examples.simple;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
-import edu.snu.cay.services.em.driver.PartitionManager;
+import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;

@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.driver;
+package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.utils.LongRangeUtils;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.annotations.audience.Private;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -33,6 +34,7 @@ import java.util.logging.Logger;
  */
 @ThreadSafe
 @DriverSide
+@Private
 public final class PartitionManager {
   private static final Logger LOG = Logger.getLogger(PartitionManager.class.getName());
 

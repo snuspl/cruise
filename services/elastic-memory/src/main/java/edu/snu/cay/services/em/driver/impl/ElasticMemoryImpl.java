@@ -19,14 +19,13 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
-import edu.snu.cay.services.em.driver.MigrationManager;
-import edu.snu.cay.services.em.driver.PartitionManager;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.tang.InjectionFuture;
@@ -43,6 +42,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 @DriverSide
+@Private
 public final class ElasticMemoryImpl implements ElasticMemory {
   private static final String MOVE = "move";
   private static final String APPLY_UPDATES = "apply_updates";

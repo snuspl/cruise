@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.common.parameters.PartitionId;
+import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
@@ -74,7 +75,7 @@ public final class ElasticMemoryConfiguration {
   public static Configuration getDriverConfiguration() {
     return getNetworkConfigurationBuilder()
         .bindSetEntry(DriverStartHandler.class, NetworkDriverRegister.RegisterDriverHandler.class)
-        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.ElasticMemoryMsgHandler.class)
+        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler.class)
         .build();
   }
 
@@ -109,7 +110,8 @@ public final class ElasticMemoryConfiguration {
 
   public Configuration getServiceConfigurationWithoutNameResolver(final String contextId) {
     final Configuration networkConf = getNetworkConfigurationBuilder()
-        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.evaluator.ElasticMemoryMsgHandler.class)
+        .bindNamedParameter(EMMessageHandler.class,
+            edu.snu.cay.services.em.evaluator.impl.ElasticMemoryMsgHandler.class)
         .build();
 
     final Configuration serviceConf = ServiceConfiguration.CONF
