@@ -24,6 +24,7 @@ import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.annotations.audience.Private;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -42,6 +43,7 @@ import java.util.logging.Logger;
  * instantiate NetworkService.
  */
 @DriverSide
+@Private
 public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 

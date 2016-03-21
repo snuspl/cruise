@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.common.parameters.PartitionId;
-import edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler;
 import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
@@ -76,7 +75,7 @@ public final class ElasticMemoryConfiguration {
   public static Configuration getDriverConfiguration() {
     return getNetworkConfigurationBuilder()
         .bindSetEntry(DriverStartHandler.class, NetworkDriverRegister.RegisterDriverHandler.class)
-        .bindNamedParameter(EMMessageHandler.class, ElasticMemoryMsgHandler.class)
+        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler.class)
         .build();
   }
 
