@@ -63,11 +63,11 @@ public final class OperationRouter {
    */
   public Pair<Boolean, String> route(final long dataId) {
 
-    final int partitionId = partitionFunc.partition(dataId);
+    final int partitionId = (int) partitionFunc.partition(dataId);
     if (localPartitionId == partitionId) {
       return new Pair<>(true, localEndPointId);
     } else {
-      return new Pair<>(false, evalPrefix + '-' + partitionFunc.partition(dataId));
+      return new Pair<>(false, evalPrefix + '-' + partitionId);
     }
   }
 }

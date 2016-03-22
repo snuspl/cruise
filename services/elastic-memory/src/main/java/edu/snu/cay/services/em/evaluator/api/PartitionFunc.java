@@ -29,5 +29,5 @@ public interface PartitionFunc {
    * @param dataId a id of data
    * @return an id of partition that the data
    */
-  int partition(long dataId);
+  long partition(long dataId);
 }

@@ -39,7 +39,7 @@ public final class RangePartitionFunc implements PartitionFunc {
   }
 
   @Override
-  public int partition(final long dataId) {
+  public long partition(final long dataId) {
     return (int) (dataId >> partitionSizeBits);
   }
 
