@@ -56,7 +56,7 @@ public final class OperationRemoteSender {
   public void sendOperation(final String targetEvalId, final DataOperation operation) {
     final Codec codec = serializer.getCodec(operation.getDataType());
 
-    if (operation.getOrigEvalId() == null) {
+    if (operation.isLocalRequest()) {
       resultHandler.registerOperation(operation);
     }
 
@@ -71,7 +71,7 @@ public final class OperationRemoteSender {
     }
 
     // local request threads wait here until get the result
-    if (operation.getOrigEvalId() == null) {
+    if (operation.isLocalRequest()) {
       try {
         operation.waitOperation(TIMEOUT);
       } catch (InterruptedException e) {
