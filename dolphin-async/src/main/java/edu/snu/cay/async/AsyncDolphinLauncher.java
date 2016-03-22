@@ -19,7 +19,14 @@ import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
-import edu.snu.cay.services.ps.driver.impl.ConcurrentParameterServerManager;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
+import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
+import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerNumPartitions;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerQueueSize;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
@@ -38,11 +45,14 @@ import org.apache.reef.tang.formats.AvroConfigurationSerializer;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
+import org.apache.reef.tang.types.NamedParameterNode;
 import org.apache.reef.util.EnvironmentUtils;
 import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.wake.remote.impl.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -81,19 +91,22 @@ public final class AsyncDolphinLauncher {
                                       final AsyncDolphinConfiguration asyncDolphinConfiguration,
                                       final Configuration customDriverConfiguration) {
     try {
-      // parse command line arguments
-      final Configuration commandLineConf = parseCommandLine(args, asyncDolphinConfiguration.getParameterClassList());
-      final Injector commandLineInjector = Tang.Factory.getTang().newInjector(commandLineConf);
+      // parse command line arguments, separate them into basic & user parameters
+      final Tuple2<Configuration, Configuration> configurations
+          = parseCommandLine(args, asyncDolphinConfiguration.getParameterClassList());
+      final Configuration basicParameterConf = configurations.getT1();
+      final Configuration userParameterConf = configurations.getT2();
+      final Injector basicParameterInjector = Tang.Factory.getTang().newInjector(basicParameterConf);
 
       // local or yarn runtime
-      final boolean onLocal = commandLineInjector.getNamedInstance(OnLocal.class);
+      final boolean onLocal = basicParameterInjector.getNamedInstance(OnLocal.class);
       final Configuration runTimeConf = onLocal ?
-          getLocalRuntimeConfiguration(commandLineInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class)) :
+          getLocalRuntimeConfiguration(basicParameterInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class)) :
           getYarnRuntimeConfiguration();
 
       // configuration for the parameter server
       final Configuration parameterServerConf = ParameterServerConfigurationBuilder.newBuilder()
-          .setManagerClass(ConcurrentParameterServerManager.class)
+          .setManagerClass(PartitionedParameterServerManager.class)
           .setUpdaterClass(asyncDolphinConfiguration.getUpdaterClass())
           .setKeyCodecClass(asyncDolphinConfiguration.getKeyCodecClass())
           .setPreValueCodecClass(asyncDolphinConfiguration.getPreValueCodecClass())
@@ -102,21 +115,24 @@ public final class AsyncDolphinLauncher {
 
       // worker-specific configurations
       final ConfigurationSerializer confSerializer = new AvroConfigurationSerializer();
-      // pass the worker class implementation as well as all command line arguments
+      // pass the worker class implementation as well as user-defined parameters
       final Configuration workerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(Worker.class, asyncDolphinConfiguration.getWorkerClass())
+          .bindNamedParameter(Iterations.class,
+              Integer.toString(basicParameterInjector.getNamedInstance(Iterations.class)))
           .build();
       final Configuration serializedWorkerConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindNamedParameter(SerializedWorkerConfiguration.class, confSerializer.toString(workerConf))
-          .bindNamedParameter(SerializedParameterConfiguration.class, confSerializer.toString(commandLineConf))
+          .bindNamedParameter(SerializedParameterConfiguration.class, confSerializer.toString(userParameterConf))
           .build();
 
       // driver-side configurations
-      final Configuration driverConf = getDriverConfiguration(jobName, commandLineInjector);
-      final int timeout = commandLineInjector.getNamedInstance(Timeout.class);
+      final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
+      final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
 
       final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
-          Configurations.merge(parameterServerConf, serializedWorkerConf, driverConf, customDriverConfiguration),
+          Configurations.merge(basicParameterConf, parameterServerConf,
+              serializedWorkerConf, driverConf, customDriverConfiguration),
           timeout);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
       return status;
@@ -140,27 +156,61 @@ public final class AsyncDolphinLauncher {
     return launch(jobName, args, asyncDolphinConfiguration, Tang.Factory.getTang().newConfigurationBuilder().build());
   }
 
-  private static Configuration parseCommandLine(
+  private static Tuple2<Configuration, Configuration> parseCommandLine(
       final String[] args,
-      final List<Class<? extends Name<?>>> parameterClassList) throws IOException {
+      final List<Class<? extends Name<?>>> userParameterClassList) throws IOException {
     final JavaConfigurationBuilder cb = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(cb);
+
     // add all basic parameters
-    cl.registerShortNameOfClass(EvaluatorSize.class);
-    cl.registerShortNameOfClass(InputDir.class);
-    cl.registerShortNameOfClass(OnLocal.class);
-    cl.registerShortNameOfClass(Splits.class);
-    cl.registerShortNameOfClass(Timeout.class);
-    cl.registerShortNameOfClass(LocalRuntimeMaxNumEvaluators.class);
-    cl.registerShortNameOfClass(Iterations.class);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(14);
+    basicParameterClassList.add(EvaluatorSize.class);
+    basicParameterClassList.add(InputDir.class);
+    basicParameterClassList.add(OnLocal.class);
+    basicParameterClassList.add(Splits.class);
+    basicParameterClassList.add(Timeout.class);
+    basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
+    basicParameterClassList.add(Iterations.class);
+    basicParameterClassList.add(NumServers.class);
+    basicParameterClassList.add(NumPartitions.class);
+    basicParameterClassList.add(ServerQueueSize.class);
+    basicParameterClassList.add(WorkerNumPartitions.class);
+    basicParameterClassList.add(WorkerQueueSize.class);
+    basicParameterClassList.add(WorkerExpireTimeout.class);
+    basicParameterClassList.add(WorkerKeyCacheSize.class);
+    for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {
+      cl.registerShortNameOfClass(basicParameterClass);
+    }
 
     // also add any additional parameters specified by user
-    for (final Class<? extends Name<?>> workerParameterClass : parameterClassList) {
-      cl.registerShortNameOfClass(workerParameterClass);
+    for (final Class<? extends Name<?>> userParameterClass : userParameterClassList) {
+      cl.registerShortNameOfClass(userParameterClass);
     }
 
     cl.processCommandLine(args);
-    return cb.build();
+    final Configuration clConf = cb.build();
+
+    return new Tuple2<>(extractParameterConf(basicParameterClassList, clConf),
+        extractParameterConf(userParameterClassList, clConf));
+  }
+
+  /**
+   * Extracts configuration which is only related to {@code parameterClassList} from {@code totalConf}.
+   */
+  private static Configuration extractParameterConf(final List<Class<? extends Name<?>>> parameterClassList,
+                                                    final Configuration totalConf) {
+    final ClassHierarchy totalConfClassHierarchy = totalConf.getClassHierarchy();
+    final JavaConfigurationBuilder parameterConfBuilder = Tang.Factory.getTang().newConfigurationBuilder();
+    for (final Class<? extends Name<?>> parameterClass : parameterClassList) {
+      final NamedParameterNode parameterNode
+          = (NamedParameterNode) totalConfClassHierarchy.getNode(parameterClass.getName());
+      final String parameterValue = totalConf.getNamedParameter(parameterNode);
+      // if this parameter is not included in the total configuration, parameterValue will be null
+      if (parameterValue != null) {
+        parameterConfBuilder.bindNamedParameter(parameterClass, parameterValue);
+      }
+    }
+    return parameterConfBuilder.build();
   }
 
   private static Configuration getYarnRuntimeConfiguration() {

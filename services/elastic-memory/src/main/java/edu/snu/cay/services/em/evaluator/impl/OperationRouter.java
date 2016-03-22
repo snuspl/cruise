@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator;
+package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.common.parameters.PartitionId;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 /**
  * OperationRouter that redirects incoming operations on specific data ids to corresponding evaluators.
  */
-public final class OperationRouter {
+final class OperationRouter {
 
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 
