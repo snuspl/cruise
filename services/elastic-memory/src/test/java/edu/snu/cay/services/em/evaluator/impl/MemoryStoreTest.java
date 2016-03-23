@@ -19,7 +19,6 @@ import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.common.parameters.PartitionId;
-import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -63,7 +62,6 @@ public final class MemoryStoreTest {
         .bindImplementation(SpanReceiver.class, MockedSpanReceiver.class)
         .bindImplementation(ElasticMemoryMsgSender.class, MockedMsgSender.class)
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
-        .bindImplementation(RemoteAccessibleMemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(PartitionId.class, Integer.toString(0))
         .build();
 

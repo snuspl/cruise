@@ -15,18 +15,13 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
-import edu.snu.cay.services.em.evaluator.DataOperation;
+import edu.snu.cay.services.em.evaluator.impl.DataOperation;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.wake.EventHandler;
 
 /**
- * Internal interface of a memory store for operations requested from remote memory stores.
+ * Non-user side interface of memory store for handling operations from remote request.
  */
 @EvaluatorSide
-public interface RemoteAccessibleMemoryStore {
-
-  /**
-   * Enqueue an operation requested from a remote memory store.
-   * It will internally reply to the memory store, after executing the operation.
-   */
-  void enqueueOperation(DataOperation operation);
+public interface RemoteAccessibleMemoryStore extends MemoryStore, EventHandler<DataOperation> {
 }

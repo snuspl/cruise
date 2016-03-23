@@ -16,10 +16,6 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.DataOpType;
-import edu.snu.cay.services.em.evaluator.DataOperation;
-import edu.snu.cay.services.em.evaluator.OperationResultHandler;
-import edu.snu.cay.services.em.evaluator.OperationRemoteSender;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -44,7 +40,7 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 @Private
-public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemoryStore {
+public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
   private static final int QUEUE_SIZE = 100;
@@ -65,7 +61,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
 
   private final OperationRouter router;
   private final OperationResultHandler resultHandler;
-  private final OperationRemoteSender remoteSender;
+  private final RemoteOperationSender remoteSender;
 
   /**
    * Used for issuing ids for locally requested operations.
@@ -82,7 +78,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter router,
                           final OperationResultHandler resultHandler,
-                          final OperationRemoteSender remoteSender) {
+                          final RemoteOperationSender remoteSender) {
     hTrace.initialize();
     this.router = router;
     this.resultHandler = resultHandler;
@@ -94,6 +90,15 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
 
   private void initialize() {
     executorService.execute(new OperationThread());
+  }
+
+  @Override
+  public void onNext(final DataOperation dataOperation) {
+    try {
+      operationQueue.put(dataOperation);
+    } catch (InterruptedException e) {
+      LOG.warning("Thread is interrupted while waiting for enqueueing an operation");
+    }
   }
 
   private final class OperationThread implements Runnable {
@@ -142,26 +147,27 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
     Object outputData = null;
     readWriteLock.writeLock().lock();
     try {
-      switch(operationType) {
-        case PUT:
-          if (!dataMap.containsKey(dataType)) {
-            dataMap.put(dataType, new TreeMap<Long, Object>());
-          }
-          dataMap.get(dataType).put(key, value);
-          result = true;
-          break;
-        case GET:
-          result = dataMap.containsKey(dataType);
-          outputData = result ? dataMap.get(dataType).get(key) : null;
-          break;
-        case REMOVE:
-          if (!dataMap.containsKey(dataType)) {
-            result = false;
-          } else {
-            result = dataMap.get(dataType).remove(key) != null;
-          }
-        default:
-          throw new RuntimeException("Undefined operation");
+      switch (operationType) {
+      case PUT:
+        if (!dataMap.containsKey(dataType)) {
+          dataMap.put(dataType, new TreeMap<Long, Object>());
+        }
+        dataMap.get(dataType).put(key, value);
+        result = true;
+        break;
+      case GET:
+        result = dataMap.containsKey(dataType);
+        outputData = result ? dataMap.get(dataType).get(key) : null;
+        break;
+      case REMOVE:
+        if (!dataMap.containsKey(dataType)) {
+          result = false;
+        } else {
+          result = dataMap.get(dataType).remove(key) != null;
+        }
+        break;
+      default:
+        throw new RuntimeException("Undefined operation");
       }
     } finally {
       readWriteLock.writeLock().unlock();
@@ -171,25 +177,17 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
   }
 
   @Override
-  public void enqueueOperation(final DataOperation operation) {
-    try {
-      operationQueue.put(operation);
-    } catch (InterruptedException e) {
-      LOG.warning("Thread is interrupted while waiting for enqueueing an operation");
-    }
-  }
-
-  @Override
   public <T> boolean put(final String dataType, final long id, final T value) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final DataOperation operation = new DataOperation(null, operationId, DataOpType.PUT, dataType, id, value);
+    final DataOperation operation = new DataOperation(operationId, DataOpType.PUT, dataType, id, value);
 
     executeOperation(operation);
 
-    return operation.getResult();
+    return operation.isSuccess();
   }
 
+  // TODO #406: enable remote access
   @Override
   public <T> void putList(final String dataType, final List<Long> ids, final List<T> values) {
     if (ids.size() != values.size()) {
@@ -216,13 +214,14 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
   public <T> T get(final String dataType, final long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final DataOperation operation = new DataOperation(null, operationId, DataOpType.GET, dataType, id, null);
+    final DataOperation operation = new DataOperation(operationId, DataOpType.GET, dataType, id, null);
 
     executeOperation(operation);
 
     return (T) operation.getOutputData();
   }
 
+  // TODO #406: enable remote access
   @Override
   public <T> Map<Long, T> getAll(final String dataType) {
     readWriteLock.readLock().lock();
@@ -238,6 +237,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
     }
   }
 
+  // TODO #406: enable remote access
   @Override
   public <T> Map<Long, T> getRange(final String dataType, final long startId, final long endId) {
     readWriteLock.readLock().lock();
@@ -257,13 +257,14 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
   public boolean remove(final String dataType, final long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final DataOperation operation = new DataOperation(null, operationId, DataOpType.REMOVE, dataType, id, null);
+    final DataOperation operation = new DataOperation(operationId, DataOpType.REMOVE, dataType, id, null);
 
     executeOperation(operation);
 
-    return operation.getResult();
+    return operation.isSuccess();
   }
 
+  // TODO #406: enable remote access
   @Override
   public <T> Map<Long, T> removeAll(final String dataType) {
     readWriteLock.writeLock().lock();
@@ -279,6 +280,7 @@ public final class MemoryStoreImpl implements MemoryStore, RemoteAccessibleMemor
     }
   }
 
+  // TODO #406: enable remote access
   @Override
   public <T> Map<Long, T> removeRange(final String dataType, final long startId, final long endId) {
     readWriteLock.writeLock().lock();
