@@ -65,9 +65,11 @@ final class OperationResultHandler {
    * It is automatically invoked by the network thread receiving the result.
    * But for the case failing to get the response from the remote stores,
    * the operation should be manually removed by invoking this method.
+   *
+   * @return a removed operation or null when the operation is already deregistered.
    */
-  public void deregisterOperation(final String operationId) {
-    ongoingOperations.remove(operationId);
+  public DataOperation deregisterOperation(final String operationId) {
+    return ongoingOperations.remove(operationId);
   }
 
   /**

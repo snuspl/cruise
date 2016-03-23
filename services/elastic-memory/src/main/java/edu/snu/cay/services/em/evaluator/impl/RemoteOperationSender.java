@@ -26,6 +26,7 @@ import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -78,9 +79,8 @@ final class RemoteOperationSender {
         LOG.warning("Thread is interrupted while waiting for executing remote operation");
       }
 
-      // for a case cancelling the operation due to timeout
-      if (!operation.isFinished()) {
-        resultHandler.deregisterOperation(operation.getOperationId());
+      if (resultHandler.deregisterOperation(operation.getOperationId()) != null) {
+        LOG.log(Level.WARNING, "The operation {0} has no response in timeout.", operation.getOperationId());
       }
     }
   }

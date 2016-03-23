@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 import edu.snu.cay.services.em.avro.DataOpType;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A class that represents a single data operation.
@@ -39,8 +40,8 @@ public final class DataOperation {
    * States of the operation.
    */
   private AtomicBoolean finished = new AtomicBoolean(false);
-  private boolean isSuccess = false;
-  private Object outputData = null;
+  private AtomicBoolean isSuccess = new AtomicBoolean(false);
+  private AtomicReference<Object> outputData = new AtomicReference();
 
   /**
    * A monitoring object to notify a client thread waiting for completion of the operation.
@@ -138,18 +139,11 @@ public final class DataOperation {
   }
 
   /**
-   * Returns true if the operation is finished.
-   */
-  public boolean isFinished() {
-    return finished.get();
-  }
-
-  /**
    * Set the result of the operation.
    */
   public void setResult(final boolean success, final Object data) {
-    this.isSuccess = success;
-    this.outputData = data;
+    this.isSuccess.set(success);
+    this.outputData.set(data);
     finished.set(true);
   }
 
@@ -168,14 +162,14 @@ public final class DataOperation {
    * Returns true if the operation is succeeded.
    */
   public boolean isSuccess() {
-    return isSuccess;
+    return isSuccess.get();
   }
 
   /**
    * Get the output data of GET operation.
    */
   public Object getOutputData() {
-    return outputData;
+    return outputData.get();
   }
 
   /**
