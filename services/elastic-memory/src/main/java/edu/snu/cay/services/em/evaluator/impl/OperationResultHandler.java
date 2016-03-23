@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator;
+package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -26,39 +26,45 @@ import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * A class that handles the result of data operations both from local and remote memory stores.
  * The results are routed to a local client or a remote memory store where the operation is started.
  */
-public final class OperationResultHandler {
+final class OperationResultHandler {
   private static final Logger LOG = Logger.getLogger(OperationResultHandler.class.getName());
 
-  private final Map<String, DataOperation> ongoingOperations = new HashMap<>();
+  private final Map<String, DataOperation> ongoingOperations = new ConcurrentHashMap<>();
 
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   private final Serializer serializer;
 
   @Inject
-  OperationResultHandler(final Serializer serializer,
+  private OperationResultHandler(final Serializer serializer,
                          final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
     this.serializer = serializer;
     this.msgSender = msgSender;
   }
 
   /**
-   * Register an operation with ongoingOperations map.
+   * Register an operation before sending it to remote memory store.
+   * Registered operations are properly handled by a {@code handleRemoteResult} method
+   * when receiving the result from the remote store.
    */
   public void registerOperation(final DataOperation operation) {
     ongoingOperations.put(operation.getOperationId(), operation);
   }
 
   /**
-   * Deregister an operation from ongoingOperations map.
+   * Deregister an operation after its remote access is finished.
+   * It is automatically invoked by the network thread receiving the result.
+   * But for the case failing to get the response from the remote stores,
+   * the operation should be manually removed by invoking this method.
    */
   public void deregisterOperation(final String operationId) {
     ongoingOperations.remove(operationId);
@@ -70,7 +76,7 @@ public final class OperationResultHandler {
    * corresponding to the origin of the data operation.
    */
   public void handleLocalResult(final DataOperation operation, final boolean result, final Object outputData) {
-    if (operation.isLocalRequest()) {
+    if (operation.isFromLocalClient()) {
       // return the result to the local client
       operation.setResult(result, outputData);
     } else {
@@ -89,20 +95,20 @@ public final class OperationResultHandler {
   }
 
   /**
-   * Handle the result of data operation that is processed by remote memory store.
-   * It always return the result to the local client.
+   * Handle the result of data operation sent from remote memory store.
+   * It always returns the result to the local client.
    */
   public void handleRemoteResult(final String operationId, final boolean result, final ByteBuffer data) {
     final DataOperation finishedOperation = ongoingOperations.remove(operationId);
 
     if (finishedOperation == null) {
-      LOG.info("The operation is already handled or cancelled due to time out. OpId: " + operationId);
+      LOG.log(Level.INFO, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
       return;
     }
 
     final Codec codec = serializer.getCodec(finishedOperation.getDataType());
     final Object outputData = data == null ? null : codec.decode(data.array());
 
-    finishedOperation.setResultAndNotifyClientThread(result, outputData);
+    finishedOperation.setResultAndWakeupClientThread(result, outputData);
   }
 }

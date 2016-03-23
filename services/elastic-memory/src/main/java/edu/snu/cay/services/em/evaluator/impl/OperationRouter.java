@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 /**
  * OperationRouter that redirects incoming operations on specific data ids to corresponding evaluators.
  */
-final class OperationRouter {
+public final class OperationRouter {
 
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 

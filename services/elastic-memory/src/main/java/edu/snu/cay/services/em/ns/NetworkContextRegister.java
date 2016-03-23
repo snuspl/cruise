@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.em.ns;
 
-import edu.snu.cay.services.em.evaluator.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.tang.annotations.Unit;

@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.*;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
@@ -56,8 +55,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_CTRL_MSG = "onCtrlMsg";
   private static final String ON_UPDATE_MSG = "onUpdateMsg";
 
-  private final MemoryStore memoryStore;
-  private final RemoteAccessibleMemoryStore remoteAccessibleMemoryStore;
+  private final RemoteAccessibleMemoryStore memoryStore;
   private final OperationResultHandler resultHandler;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
@@ -74,13 +72,11 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private final Set<LongRange> movingRanges = Collections.synchronizedSet(new HashSet<LongRange>());
 
   @Inject
-  private ElasticMemoryMsgHandler(final MemoryStore memoryStore,
-                                  final RemoteAccessibleMemoryStore remoteAccessibleMemoryStore,
+  private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore memoryStore,
                                   final OperationResultHandler resultHandler,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   final Serializer serializer) {
     this.memoryStore = memoryStore;
-    this.remoteAccessibleMemoryStore = remoteAccessibleMemoryStore;
     this.resultHandler = resultHandler;
     this.serializer = serializer;
     this.sender = sender;
@@ -138,7 +134,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final DataOperation operation = new DataOperation(srcEvalId,
         operationId, operationType, dataType, dataKey, data);
 
-    remoteAccessibleMemoryStore.enqueueOperation(operation);
+    memoryStore.onNext(operation);
   }
 
   /**

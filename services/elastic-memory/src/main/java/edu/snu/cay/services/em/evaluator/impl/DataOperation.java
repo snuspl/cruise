@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator;
+package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.DataOpType;
 
@@ -43,11 +43,40 @@ public final class DataOperation {
   private Object outputData = null;
 
   /**
-   * A monitoring byte to notify a client thread waiting for completion of the operation.
+   * A monitoring object to notify a client thread waiting for completion of the operation.
    */
-  private final Byte monitor = new Byte("0");
+  private final Object monitor = new Object();
 
-  public DataOperation(final String origEvalId, final String operationId, final DataOpType operationType,
+  /**
+   * A constructor for locally requested operation.
+   *
+   * @param operationId an id of operation
+   * @param operationType a type of operation
+   * @param dataType a type of data
+   * @param dataKey a key of data
+   * @param dataValue a value of data
+   */
+  DataOperation(final String operationId, final DataOpType operationType,
+                       final String dataType, final long dataKey, final Object dataValue) {
+    this.origEvalId = null;
+    this.operationId = operationId;
+    this.operationType = operationType;
+    this.dataType = dataType;
+    this.dataKey = dataKey;
+    this.dataValue = dataValue;
+  }
+
+  /**
+   * A constructor for remotely requested operation.
+   *
+   * @param origEvalId an id of original evaluator where the operation is generated
+   * @param operationId an id of operation
+   * @param operationType a type of operation
+   * @param dataType a type of data
+   * @param dataKey a key of data
+   * @param dataValue a value of data
+   */
+  DataOperation(final String origEvalId, final String operationId, final DataOpType operationType,
                        final String dataType, final long dataKey, final Object dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
@@ -58,10 +87,9 @@ public final class DataOperation {
   }
 
   /**
-   * Returns a boolean that represents whether the operation is requested from a local client or not.
-   * {@code origEvalId} field is null when the operation is requested from a local client.
+   * Returns true if the local client requested this operation.
    */
-  public boolean isLocalRequest() {
+  public boolean isFromLocalClient() {
     return origEvalId == null;
   }
 
@@ -108,7 +136,7 @@ public final class DataOperation {
   }
 
   /**
-   * Returns a boolean that represents whether the operation is finished or not.
+   * Returns true if the operation is finished.
    */
   public boolean isFinished() {
     return finished.get();
@@ -126,7 +154,7 @@ public final class DataOperation {
   /**
    * Set the result of the operation and wake the waiting thread.
    */
-  public void setResultAndNotifyClientThread(final boolean success, final Object data) {
+  public void setResultAndWakeupClientThread(final boolean success, final Object data) {
     this.result = success;
     this.outputData = data;
 
@@ -137,9 +165,9 @@ public final class DataOperation {
   }
 
   /**
-   * Get the result of the operation.
+   * Returns true if the operation is succeeded.
    */
-  public boolean getResult() {
+  public boolean isSuccess() {
     return result;
   }
 

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator;
+package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -31,9 +31,9 @@ import java.util.logging.Logger;
 /**
  * A class that sends data operations to corresponding remote evaluators.
  */
-public final class OperationRemoteSender {
-  private static final Logger LOG = Logger.getLogger(OperationRemoteSender.class.getName());
-  private static final long TIMEOUT = 40000;
+final class RemoteOperationSender {
+  private static final Logger LOG = Logger.getLogger(RemoteOperationSender.class.getName());
+  private static final long TIMEOUT_MS = 40000;
 
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
@@ -42,7 +42,7 @@ public final class OperationRemoteSender {
   private final Serializer serializer;
 
   @Inject
-  private OperationRemoteSender(final InjectionFuture<ElasticMemoryMsgSender> msgSender,
+  private RemoteOperationSender(final InjectionFuture<ElasticMemoryMsgSender> msgSender,
                                 final OperationResultHandler resultHandler,
                                 final Serializer serializer) {
     this.msgSender = msgSender;
@@ -56,7 +56,7 @@ public final class OperationRemoteSender {
   public void sendOperation(final String targetEvalId, final DataOperation operation) {
     final Codec codec = serializer.getCodec(operation.getDataType());
 
-    if (operation.isLocalRequest()) {
+    if (operation.isFromLocalClient()) {
       resultHandler.registerOperation(operation);
     }
 
@@ -71,14 +71,14 @@ public final class OperationRemoteSender {
     }
 
     // local request threads wait here until get the result
-    if (operation.isLocalRequest()) {
+    if (operation.isFromLocalClient()) {
       try {
-        operation.waitOperation(TIMEOUT);
+        operation.waitOperation(TIMEOUT_MS);
       } catch (InterruptedException e) {
         LOG.warning("Thread is interrupted while waiting for executing remote operation");
       }
 
-      // for a case cancelling the operation due to time out
+      // for a case cancelling the operation due to timeout
       if (!operation.isFinished()) {
         resultHandler.deregisterOperation(operation.getOperationId());
       }
