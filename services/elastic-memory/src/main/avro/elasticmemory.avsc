@@ -72,7 +72,7 @@
   "fields":
   [
     {"name": "result", "type": "boolean"},
-    {"name": "output", "type": ["null", "bytes"], "default": null}
+    {"name": "dataValue", "type": ["null", "bytes"], "default": null}
   ]
 },
 

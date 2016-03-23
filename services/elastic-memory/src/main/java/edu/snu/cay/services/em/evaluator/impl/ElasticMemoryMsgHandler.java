@@ -146,9 +146,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
     final String operationId = msg.getOperationId().toString();
     final boolean result = remoteOpResultMsg.getResult();
-    final ByteBuffer output = remoteOpResultMsg.getOutput();
+    final ByteBuffer data = remoteOpResultMsg.getDataValue();
 
-    resultHandler.handleRemoteResult(operationId, result, output);
+    resultHandler.handleRemoteResult(operationId, result, data);
   }
 
   /**

@@ -40,7 +40,7 @@ public final class RangePartitionFunc implements PartitionFunc {
 
   @Override
   public long partition(final long dataId) {
-    return (int) (dataId >> partitionSizeBits);
+    return dataId >> partitionSizeBits;
   }
 
   @NamedParameter(doc = "A number of bits representing partition size", default_value = "32")

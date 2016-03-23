@@ -134,7 +134,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       final RemoteOpResultMsg remoteOpResultMsg = RemoteOpResultMsg.newBuilder()
           .setResult(result)
-          .setOutput(data)
+          .setDataValue(data)
           .build();
 
       send(destId,
