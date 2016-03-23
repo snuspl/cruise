@@ -63,7 +63,7 @@
 
 /**
  * An avro message format for sending a result of data operation to a source evaluator.
- * {@code output} is used only for GET operations.
+ * {@code dataValue} is used only for GET and REMOVE operations.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -71,7 +71,7 @@
   "name": "RemoteOpResultMsg",
   "fields":
   [
-    {"name": "result", "type": "boolean"},
+    {"name": "isSuccess", "type": "boolean"},
     {"name": "dataValue", "type": ["null", "bytes"], "default": null}
   ]
 },

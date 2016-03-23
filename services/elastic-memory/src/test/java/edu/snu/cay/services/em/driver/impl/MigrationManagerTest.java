@@ -242,13 +242,13 @@ public class MigrationManagerTest {
 
     @Override
     public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final String dataType, final long dataId, final ByteBuffer data,
+                                final String dataType, final long dataKey, final ByteBuffer data,
                                 final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendRemoteOpResultMsg(final String destId, final boolean result, final ByteBuffer data,
+    public void sendRemoteOpResultMsg(final String destId, final boolean isSuccess, final ByteBuffer data,
                                       final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 
     }

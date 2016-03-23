@@ -39,7 +39,7 @@ public final class DataOperation {
    * States of the operation.
    */
   private AtomicBoolean finished = new AtomicBoolean(false);
-  private boolean result = false;
+  private boolean isSuccess = false;
   private Object outputData = null;
 
   /**
@@ -87,51 +87,53 @@ public final class DataOperation {
   }
 
   /**
-   * Returns true if the local client requested this operation.
+   * @return true if the local client requested this operation.
    */
   public boolean isFromLocalClient() {
     return origEvalId == null;
   }
 
   /**
-   * Returns an id of evaluator that initially requests the operation.
+   * @return an id of evaluator that initially requests the operation.
    */
   public String getOrigEvalId() {
     return origEvalId;
   }
 
   /**
-   * Returns an operation id that is issued by local memory store.
+   * @return an operation id that is issued by local memory store.
    */
   public String getOperationId() {
     return operationId;
   }
 
   /**
-   * Returns a type of the operation.
+   * @returns a type of the operation.
    */
   public DataOpType getOperationType() {
     return operationType;
   }
 
   /**
-   * Returns a type of data what the operation targets.
+   * @returns a type of data what the operation targets.
    */
   public String getDataType() {
     return dataType;
   }
 
   /**
-   * Returns a key of data what the operation targets.
+   * @return a key of data what the operation targets.
    */
   public long getDataKey() {
     return dataKey;
   }
 
   /**
-   * Returns a value of input data. It has a valid value only for the PUT operation.
+   * Returns a value of input data for PUT operation.
+   * It returns null for GET or REMOVE operations.
+   * @return a value of input data.
    */
-  public Object getDataValue() {
+  public Object getInputData() {
     return dataValue;
   }
 
@@ -146,7 +148,7 @@ public final class DataOperation {
    * Set the result of the operation.
    */
   public void setResult(final boolean success, final Object data) {
-    this.result = success;
+    this.isSuccess = success;
     this.outputData = data;
     finished.set(true);
   }
@@ -155,11 +157,9 @@ public final class DataOperation {
    * Set the result of the operation and wake the waiting thread.
    */
   public void setResultAndWakeupClientThread(final boolean success, final Object data) {
-    this.result = success;
-    this.outputData = data;
+    setResult(success, data);
 
     synchronized (monitor) {
-      finished.set(true);
       monitor.notify();
     }
   }
@@ -168,7 +168,7 @@ public final class DataOperation {
    * Returns true if the operation is succeeded.
    */
   public boolean isSuccess() {
-    return result;
+    return isSuccess;
   }
 
   /**
@@ -184,8 +184,8 @@ public final class DataOperation {
    * @throws InterruptedException an exception for interrupts in waiting
    */
   public void waitOperation(final long timeout) throws InterruptedException {
-    synchronized (monitor) {
-      if (!finished.get()) {
+    if (!finished.get()) {
+      synchronized (monitor) {
         monitor.wait(timeout);
       }
     }

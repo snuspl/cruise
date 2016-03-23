@@ -46,7 +46,7 @@ public interface ElasticMemoryMsgSender {
                        final String destId,
                        final DataOpType operationType,
                        final String dataType,
-                       final long dataId,
+                       final long dataKey,
                        final ByteBuffer data,
                        final String operationId,
                        @Nullable final TraceInfo parentTraceInfo);
@@ -56,7 +56,7 @@ public interface ElasticMemoryMsgSender {
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
   void sendRemoteOpResultMsg(final String destId,
-                             final boolean result,
+                             final boolean isSuccess,
                              final ByteBuffer data,
                              final String operationId,
                              @Nullable final TraceInfo parentTraceInfo);

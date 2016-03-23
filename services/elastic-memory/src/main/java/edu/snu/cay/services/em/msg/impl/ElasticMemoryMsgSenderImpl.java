@@ -91,12 +91,12 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                              final String dataType, final long dataId, final ByteBuffer data, final String operationId,
-                              @Nullable final TraceInfo parentTraceInfo) {
+                              final String dataType, final long dataKey, final ByteBuffer data,
+                              final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpMsgScope = Trace.startSpan(SEND_REMOTE_OP_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType, dataId, data});
+          operationType, dataType, dataKey, data});
 
       final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
 
@@ -104,7 +104,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setOrigEvalId(origEvalId)
           .setOpType(operationType)
           .setDataType(dataType)
-          .setDataKey(dataId)
+          .setDataKey(dataKey)
           .setDataValue(data)
           .build();
 
@@ -120,20 +120,20 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       );
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType, dataId});
+          operationType, dataType, dataKey});
     }
   }
 
   @Override
-  public void sendRemoteOpResultMsg(final String destId, final boolean result, final ByteBuffer data,
+  public void sendRemoteOpResultMsg(final String destId, final boolean isSuccess, final ByteBuffer data,
                                     final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpResultMsgScope = Trace.startSpan(SEND_REMOTE_OP_RESULT_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
-          result, data});
+          isSuccess, data});
 
       final RemoteOpResultMsg remoteOpResultMsg = RemoteOpResultMsg.newBuilder()
-          .setResult(result)
+          .setIsSuccess(isSuccess)
           .setDataValue(data)
           .build();
 
@@ -149,7 +149,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       );
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
-          result, data});
+          isSuccess, data});
     }
   }
 

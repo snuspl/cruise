@@ -64,7 +64,7 @@ final class RemoteOperationSender {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
 
       final ByteBuffer inputData = operation.getOperationType() == DataOpType.PUT ?
-          ByteBuffer.wrap(codec.encode(operation.getDataValue())) : null;
+          ByteBuffer.wrap(codec.encode(operation.getInputData())) : null;
 
       msgSender.get().sendRemoteOpMsg(operation.getOrigEvalId(), targetEvalId, operation.getOperationType(),
           operation.getDataType(), operation.getDataKey(), inputData, operation.getOperationId(), traceInfo);
