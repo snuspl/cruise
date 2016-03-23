@@ -141,10 +141,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     final DataOpType operationType = operation.getOperationType();
     final String dataType = operation.getDataType();
     final long key = operation.getDataKey();
-    final Object value = operation.getDataValue();
+    final Object value = operation.getInputData();
 
     final boolean result;
-    Object outputData = null;
+    final Object outputData;
     readWriteLock.writeLock().lock();
     try {
       switch (operationType) {
@@ -154,6 +154,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
         }
         dataMap.get(dataType).put(key, value);
         result = true;
+        outputData = null;
         break;
       case GET:
         result = dataMap.containsKey(dataType);
@@ -162,8 +163,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
       case REMOVE:
         if (!dataMap.containsKey(dataType)) {
           result = false;
+          outputData = null;
         } else {
-          result = dataMap.get(dataType).remove(key) != null;
+          outputData = dataMap.get(dataType).remove(key);
+          result = outputData != null;
         }
         break;
       default:
@@ -211,14 +214,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> T get(final String dataType, final long id) {
+  public <T> Pair<Long, T> get(final String dataType, final long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
     final DataOperation operation = new DataOperation(operationId, DataOpType.GET, dataType, id, null);
 
     executeOperation(operation);
 
-    return (T) operation.getOutputData();
+    return new Pair<>(id, (T) operation.getOutputData());
   }
 
   // TODO #406: enable remote access
@@ -254,14 +257,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public boolean remove(final String dataType, final long id) {
+  public <T> Pair<Long, T> remove(final String dataType, final long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
     final DataOperation operation = new DataOperation(operationId, DataOpType.REMOVE, dataType, id, null);
 
     executeOperation(operation);
 
-    return operation.isSuccess();
+    return new Pair<>(id, (T) operation.getOutputData());
   }
 
   // TODO #406: enable remote access

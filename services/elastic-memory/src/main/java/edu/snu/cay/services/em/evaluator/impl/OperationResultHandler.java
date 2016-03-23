@@ -86,7 +86,8 @@ final class OperationResultHandler {
         final DataOpType opType = operation.getOperationType();
 
         final Codec codec = serializer.getCodec(dataType);
-        final ByteBuffer data = opType == DataOpType.GET ? ByteBuffer.wrap(codec.encode(outputData)) : null;
+        final ByteBuffer data = opType == DataOpType.GET || opType == DataOpType.REMOVE ?
+            ByteBuffer.wrap(codec.encode(outputData)) : null;
 
         msgSender.get().sendRemoteOpResultMsg(operation.getOrigEvalId(), result, data,
             operation.getOperationId(), TraceInfo.fromSpan(traceScope.getSpan()));
@@ -107,6 +108,8 @@ final class OperationResultHandler {
     }
 
     final Codec codec = serializer.getCodec(finishedOperation.getDataType());
+
+    // GET operation does not have outputData (null)
     final Object outputData = data == null ? null : codec.decode(data.array());
 
     finishedOperation.setResultAndWakeupClientThread(result, outputData);
