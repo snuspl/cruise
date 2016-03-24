@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.util.Optional;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -64,10 +65,12 @@ final class RemoteOperationSender {
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
 
-      final ByteBuffer inputData = operation.getOperationType() == DataOpType.PUT ?
-          ByteBuffer.wrap(codec.encode(operation.getInputData())) : null;
+      final ByteBuffer inputData = operation.getInputData().isPresent() ?
+          ByteBuffer.wrap(codec.encode(operation.getInputData().get())) : null;
 
-      msgSender.get().sendRemoteOpMsg(operation.getOrigEvalId(), targetEvalId, operation.getOperationType(),
+      final Optional<String> origEvalID = operation.getOrigEvalId();
+
+      msgSender.get().sendRemoteOpMsg(origEvalID.get(), targetEvalId, operation.getOperationType(),
           operation.getDataType(), operation.getDataKey(), inputData, operation.getOperationId(), traceInfo);
     }
 

@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.util.Optional;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -80,7 +81,7 @@ final class OperationResultHandler {
   public void handleLocalResult(final DataOperation operation, final boolean result, final Object outputData) {
     if (operation.isFromLocalClient()) {
       // return the result to the local client
-      operation.setResult(result, outputData);
+      operation.setResult(result, Optional.ofNullable(outputData));
     } else {
       // send the remote store the result (RemoteOpResultMsg)
       try (final TraceScope traceScope = Trace.startSpan("HANDLE_LOCAL_RESULT")) {
@@ -91,7 +92,9 @@ final class OperationResultHandler {
         final ByteBuffer data = opType == DataOpType.GET || opType == DataOpType.REMOVE ?
             ByteBuffer.wrap(codec.encode(outputData)) : null;
 
-        msgSender.get().sendRemoteOpResultMsg(operation.getOrigEvalId(), result, data,
+        final Optional<String> origEvalId = operation.getOrigEvalId();
+
+        msgSender.get().sendRemoteOpResultMsg(origEvalId.get(), result, data,
             operation.getOperationId(), TraceInfo.fromSpan(traceScope.getSpan()));
       }
     }
@@ -114,6 +117,6 @@ final class OperationResultHandler {
     // GET operation does not have outputData (null)
     final Object outputData = data == null ? null : codec.decode(data.array());
 
-    finishedOperation.setResultAndWakeupClientThread(result, outputData);
+    finishedOperation.setResultAndWakeupClientThread(result, Optional.ofNullable(outputData));
   }
 }

@@ -24,6 +24,7 @@ import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.util.Optional;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -131,8 +132,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     final Object data = operationType == DataOpType.PUT ? codec.decode(remoteOpMsg.getDataValue().array()) : null;
 
-    final DataOperation operation = new DataOperation(srcEvalId,
-        operationId, operationType, dataType, dataKey, data);
+    final DataOperation<?> operation = new DataOperation<>(Optional.of(srcEvalId),
+        operationId, operationType, dataType, dataKey, Optional.of(data));
 
     memoryStore.onNext(operation);
   }

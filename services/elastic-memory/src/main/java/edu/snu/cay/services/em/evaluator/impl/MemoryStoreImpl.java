@@ -21,6 +21,7 @@ import edu.snu.cay.utils.trace.HTrace;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.network.util.Pair;
+import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -141,7 +142,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     final DataOpType operationType = operation.getOperationType();
     final String dataType = operation.getDataType();
     final long key = operation.getDataKey();
-    final Object value = operation.getInputData();
+    final Object value = operation.getInputData().get();
 
     final boolean result;
     final Object outputData;
@@ -183,7 +184,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   public <T> boolean put(final String dataType, final long id, final T value) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final DataOperation operation = new DataOperation(operationId, DataOpType.PUT, dataType, id, value);
+    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
+        dataType, id, Optional.of(value));
 
     executeOperation(operation);
 
@@ -217,11 +219,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   public <T> Pair<Long, T> get(final String dataType, final long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final DataOperation operation = new DataOperation(operationId, DataOpType.GET, dataType, id, null);
+    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
+        dataType, id, Optional.<T>empty());
 
     executeOperation(operation);
 
-    return new Pair<>(id, (T) operation.getOutputData());
+    return new Pair<>(id, operation.getOutputData().get());
   }
 
   // TODO #406: enable remote access
@@ -260,11 +263,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   public <T> Pair<Long, T> remove(final String dataType, final long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final DataOperation operation = new DataOperation(operationId, DataOpType.REMOVE, dataType, id, null);
+    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.REMOVE,
+        dataType, id, Optional.<T>empty());
 
     executeOperation(operation);
 
-    return new Pair<>(id, (T) operation.getOutputData());
+    return new Pair<>(id, operation.getOutputData().get());
   }
 
   // TODO #406: enable remote access

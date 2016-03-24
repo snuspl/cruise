@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.DataOpType;
+import org.apache.reef.util.Optional;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,24 +25,24 @@ import java.util.concurrent.atomic.AtomicReference;
  * A class that represents a single data operation.
  * It maintains metadata and states of the operation during execution.
  */
-public final class DataOperation {
+public final class DataOperation <T> {
 
   /**
    * Metadata of the operation.
    */
-  private final String origEvalId;
+  private final Optional<String> origEvalId;
   private final String operationId;
   private final DataOpType operationType;
   private final String dataType;
   private final long dataKey;
-  private final Object dataValue;
+  private final Optional<T> dataValue;
 
   /**
    * States of the operation.
    */
   private AtomicBoolean finished = new AtomicBoolean(false);
   private AtomicBoolean isSuccess = new AtomicBoolean(false);
-  private AtomicReference<Object> outputData = new AtomicReference();
+  private AtomicReference<Optional<T>> outputData = new AtomicReference<>();
 
   /**
    * A monitoring object to notify a client thread waiting for completion of the operation.
@@ -49,36 +50,19 @@ public final class DataOperation {
   private final Object monitor = new Object();
 
   /**
-   * A constructor for locally requested operation.
+   * A constructor for an operation.
+   * {@code origEvalId} is empty, when the operation is requested from a local client.
+   * {@code dataValue} is empty, when the operation is one of GET or REMOVE.
    *
+   * @param origEvalId an Optional with an id of original evaluator where the operation is generated
    * @param operationId an id of operation
    * @param operationType a type of operation
    * @param dataType a type of data
    * @param dataKey a key of data
-   * @param dataValue a value of data
+   * @param dataValue an Optional with a value of data
    */
-  DataOperation(final String operationId, final DataOpType operationType,
-                       final String dataType, final long dataKey, final Object dataValue) {
-    this.origEvalId = null;
-    this.operationId = operationId;
-    this.operationType = operationType;
-    this.dataType = dataType;
-    this.dataKey = dataKey;
-    this.dataValue = dataValue;
-  }
-
-  /**
-   * A constructor for remotely requested operation.
-   *
-   * @param origEvalId an id of original evaluator where the operation is generated
-   * @param operationId an id of operation
-   * @param operationType a type of operation
-   * @param dataType a type of data
-   * @param dataKey a key of data
-   * @param dataValue a value of data
-   */
-  DataOperation(final String origEvalId, final String operationId, final DataOpType operationType,
-                       final String dataType, final long dataKey, final Object dataValue) {
+  DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
+                       final String dataType, final long dataKey, final Optional<T> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -91,13 +75,13 @@ public final class DataOperation {
    * @return true if the local client requested this operation.
    */
   public boolean isFromLocalClient() {
-    return origEvalId == null;
+    return !origEvalId.isPresent();
   }
 
   /**
-   * @return an id of evaluator that initially requests the operation.
+   * @return an Optional with an id of evaluator that initially requests the operation.
    */
-  public String getOrigEvalId() {
+  public Optional<String> getOrigEvalId() {
     return origEvalId;
   }
 
@@ -130,18 +114,18 @@ public final class DataOperation {
   }
 
   /**
-   * Returns a value of input data for PUT operation.
-   * It returns null for GET or REMOVE operations.
-   * @return a value of input data.
+   * Returns an Optional with a value of input data for PUT operation.
+   * It returns an empty Optional for GET and REMOVE operations.
+   * @return an Optional with input data.
    */
-  public Object getInputData() {
+  public Optional<T> getInputData() {
     return dataValue;
   }
 
   /**
    * Set the result of the operation.
    */
-  public void setResult(final boolean success, final Object data) {
+  public void setResult(final boolean success, final Optional<T> data) {
     this.isSuccess.set(success);
     this.outputData.set(data);
     finished.set(true);
@@ -150,7 +134,7 @@ public final class DataOperation {
   /**
    * Set the result of the operation and wake the waiting thread.
    */
-  public void setResultAndWakeupClientThread(final boolean success, final Object data) {
+  public void setResultAndWakeupClientThread(final boolean success, final Optional<T> data) {
     setResult(success, data);
 
     synchronized (monitor) {
@@ -159,16 +143,18 @@ public final class DataOperation {
   }
 
   /**
-   * Returns true if the operation is succeeded.
+   * @return true if the operation is succeeded
    */
   public boolean isSuccess() {
     return isSuccess.get();
   }
 
   /**
-   * Get the output data of GET operation.
+   * Returns an Optional with the output data of operation.
+   * It returns an empty Optional for PUT operation.
+   * @return an Optional with the output data
    */
-  public Object getOutputData() {
+  public Optional<T> getOutputData() {
     return outputData.get();
   }
 
