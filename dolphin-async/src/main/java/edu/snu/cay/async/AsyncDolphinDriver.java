@@ -124,7 +124,7 @@ final class AsyncDolphinDriver {
   private ConcurrentLinkedQueue<ActiveContext> workerContextsToClose;
 
   /**
-   * Number of computation threads for each worker.
+   * Number of computation threads for each evaluator.
    */
   private final int numWorkerThreads;
 

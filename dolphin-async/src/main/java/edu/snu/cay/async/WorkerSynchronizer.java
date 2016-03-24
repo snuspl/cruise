@@ -57,8 +57,11 @@ public final class WorkerSynchronizer {
   }
 
   /**
-   * Each worker sends a synchronization message to the driver and is blocked until
+   * All worker threads wait on a local synchronization barrier.
+   * When all threads have been observed at the barrier,
+   * the {@link WorkerSynchronizer} sends a single synchronization message to the driver and blocks until
    * a response message arrives from the driver.
+   * After receiving the reply, this {@link WorkerSynchronizer} releases all threads from the barrier.
    */
   public void globalBarrier() {
     try {
