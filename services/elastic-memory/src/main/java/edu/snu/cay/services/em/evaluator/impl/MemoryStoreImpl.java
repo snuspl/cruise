@@ -99,7 +99,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   public void onNext(final DataOperation dataOperation) {
     try {
       operationQueue.put(dataOperation);
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOG.log(Level.SEVERE, "Interrupted while waiting for enqueueing an operation", e);
     }
   }
@@ -150,8 +150,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
     final Pair<Boolean, String> routingResult = router.route(dataKey);
 
+    final boolean isLocal = routingResult.getFirst();
+
     // 1) process local things or 2) send it off to remote memory store corresponding to the routing result
-    if (routingResult.getFirst()) {
+    if (isLocal) {
       executeLocalOperation(operation);
     } else {
       final String targetEvalId = routingResult.getSecond();

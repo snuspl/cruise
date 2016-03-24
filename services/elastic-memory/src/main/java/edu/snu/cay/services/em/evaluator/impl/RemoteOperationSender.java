@@ -77,12 +77,12 @@ final class RemoteOperationSender {
     if (operation.isFromLocalClient()) {
       try {
         operation.waitOperation(TIMEOUT_MS);
-      } catch (InterruptedException e) {
-        LOG.warning("Thread is interrupted while waiting for executing remote operation");
-      }
-
-      if (resultHandler.deregisterOperation(operation.getOperationId()) != null) {
-        LOG.log(Level.WARNING, "The operation {0} has no response in timeout.", operation.getOperationId());
+      } catch (final InterruptedException e) {
+        LOG.log(Level.SEVERE, "Interrupted while waiting for executing remote operation", e);
+      } finally {
+        if (resultHandler.deregisterOperation(operation.getOperationId()) != null) {
+          LOG.log(Level.WARNING, "The operation {0} has no response in timeout.", operation.getOperationId());
+        }
       }
     }
   }
