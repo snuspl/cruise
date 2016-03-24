@@ -17,6 +17,7 @@ package edu.snu.cay.async;
 
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
+import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
@@ -32,6 +33,7 @@ import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
@@ -121,6 +123,11 @@ final class AsyncDolphinDriver {
    */
   private ConcurrentLinkedQueue<ActiveContext> workerContextsToClose;
 
+  /**
+   * Number of computation threads for each evaluator.
+   */
+  private final int numWorkerThreads;
+
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
@@ -129,7 +136,8 @@ final class AsyncDolphinDriver {
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
                              @Parameter(NumServers.class) final int numServers,
-                             final ConfigurationSerializer configurationSerializer) throws IOException {
+                             final ConfigurationSerializer configurationSerializer,
+                             @Parameter(NumWorkerThreads.class) final int numWorkerThreads) throws IOException {
     this.evaluatorManager = evaluatorManager;
     this.dataLoadingService = dataLoadingService;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
@@ -143,6 +151,7 @@ final class AsyncDolphinDriver {
     this.workerContextsToClose = new ConcurrentLinkedQueue<>();
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
+    this.numWorkerThreads = numWorkerThreads;
   }
 
   final class StartHandler implements EventHandler<StartTime> {
@@ -251,8 +260,12 @@ final class AsyncDolphinDriver {
           final Configuration serviceConf = Configurations.merge(
               psDriver.getWorkerServiceConfiguration(),
               aggregationManager.getServiceConfigurationWithoutNameResolver());
+          final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
+              .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
+              .build();
 
-          activeContext.submitContextAndService(contextConf, Configurations.merge(serviceConf, paramConf));
+          activeContext.submitContextAndService(contextConf,
+              Configurations.merge(serviceConf, paramConf, otherParamConf));
         }
       };
     }

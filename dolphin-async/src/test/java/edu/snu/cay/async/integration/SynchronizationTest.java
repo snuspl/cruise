@@ -45,6 +45,7 @@ public final class SynchronizationTest {
         "-maxNumEvalLocal", "9",
         "-split", "8",
         "-input", ClassLoader.getSystemResource("data").getPath() + "/empty_file",
+        "-numWorkerThreads", "3"
     };
 
     final LauncherStatus status = AsyncDolphinLauncher.launch("SynchronizationTest", args,

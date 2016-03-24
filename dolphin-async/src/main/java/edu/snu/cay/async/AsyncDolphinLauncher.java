@@ -163,11 +163,12 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(14);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(15);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
     basicParameterClassList.add(Splits.class);
+    basicParameterClassList.add(NumWorkerThreads.class);
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);

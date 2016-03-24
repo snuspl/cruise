@@ -62,4 +62,10 @@ public final class Parameters {
                   short_name = "maxIter")
   public final class Iterations implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "Number of computation threads for each worker",
+                  short_name = "numWorkerThreads",
+                  default_value = "2")
+  public final class NumWorkerThreads implements Name<Integer> {
+  }
 }
