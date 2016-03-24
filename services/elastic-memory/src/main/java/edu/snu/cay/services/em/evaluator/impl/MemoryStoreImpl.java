@@ -29,6 +29,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -45,6 +46,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
   private static final int QUEUE_SIZE = 100;
+  private static final int QUEUE_TIMOUT_MS = 3000;
 
   /**
    * This map uses data types, represented as strings, for keys and inner {@code TreeMaps} for values.
@@ -104,16 +106,36 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
   private final class OperationThread implements Runnable {
 
+    private final int drainSize = QUEUE_SIZE / 10; // The max number of operations to drain per iteration
+    private final ArrayList<DataOperation> drainedOperations = new ArrayList<>(drainSize);
+
+    /**
+     * A loop that dequeues operations and executes them.
+     * Dequeues are only performed through this thread.
+     */
     @Override
     public void run() {
 
-      final int drainSize = QUEUE_SIZE / 10;
-
-      final ArrayList<DataOperation> drainedOperations = new ArrayList<>(drainSize);
-
-      // run operations in operationQueue
       while (true) {
-        operationQueue.drainTo(drainedOperations, drainSize);
+
+        // First, poll and execute a single operation.
+        // Poll with a timeout will prevent busy waiting, when the queue is empty.
+        try {
+          final DataOperation operation = operationQueue.poll(QUEUE_TIMOUT_MS, TimeUnit.MILLISECONDS);
+          if (operation == null) {
+            continue;
+          }
+          executeOperation(operation);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+          continue;
+        }
+
+        // Then, drain up to drainSize of the remaining queue and execute.
+        // drainTo method is much faster than multiple polls.
+        if (operationQueue.drainTo(drainedOperations, drainSize) == 0) {
+          continue;
+        }
 
         for (final DataOperation operation : drainedOperations) {
           executeOperation(operation);
