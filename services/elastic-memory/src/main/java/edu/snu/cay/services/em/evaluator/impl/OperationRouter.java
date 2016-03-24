@@ -21,6 +21,7 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -52,7 +53,7 @@ public final class OperationRouter {
   public void initialize(final String endPointId) {
     this.localEndPointId = endPointId;
     this.evalPrefix = endPointId.split("-")[0];
-    LOG.info("localEndPointId: " + localEndPointId);
+    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", localEndPointId);
   }
 
   /**
