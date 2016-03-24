@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 
 /**
  * A class that handles the result of data operations both from local and remote memory stores.
- * The results are routed to a local client or a remote memory store where the operation is started.
+ * The results are routed to a local client or an origin memory store where the operation is started.
  */
 final class OperationResultHandler {
   private static final Logger LOG = Logger.getLogger(OperationResultHandler.class.getName());
@@ -53,7 +53,7 @@ final class OperationResultHandler {
   }
 
   /**
-   * Register an operation before sending it to remote memory store.
+   * Registers an operation before sending it to remote memory store.
    * Registered operations are properly handled by a {@code handleRemoteResult} method
    * when receiving the result from the remote store.
    */
@@ -62,7 +62,7 @@ final class OperationResultHandler {
   }
 
   /**
-   * Deregister an operation after its remote access is finished.
+   * Deregisters an operation after its remote access is finished.
    * It is automatically invoked by the network thread receiving the result.
    * But for the case failing to get the response from the remote stores,
    * the operation should be manually removed by invoking this method.
@@ -74,9 +74,8 @@ final class OperationResultHandler {
   }
 
   /**
-   * Handle the result of data operation that is processed by local memory store.
-   * It returns the result to the local client or sends it to the remote evaluator
-   * corresponding to the origin of the data operation.
+   * Handles the result of data operation that is processed by local memory store.
+   * It returns the result to the local client or sends it to the origin evaluator of the data operation.
    */
   public void handleLocalResult(final DataOperation operation, final boolean result, final Object outputData) {
     if (operation.isFromLocalClient()) {
@@ -101,7 +100,7 @@ final class OperationResultHandler {
   }
 
   /**
-   * Handle the result of data operation sent from remote memory store.
+   * Handles the result of data operation sent from remote memory store.
    * It always returns the result to the local client.
    */
   public void handleRemoteResult(final String operationId, final boolean result, final ByteBuffer data) {

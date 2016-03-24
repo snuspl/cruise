@@ -20,7 +20,7 @@ import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.wake.EventHandler;
 
 /**
- * Non-user side interface of memory store for handling operations from remote request.
+ * Non-user side interface of memory store including APIs for handling operations from remote request.
  */
 @EvaluatorSide
 public interface RemoteAccessibleMemoryStore extends MemoryStore, EventHandler<DataOperation> {

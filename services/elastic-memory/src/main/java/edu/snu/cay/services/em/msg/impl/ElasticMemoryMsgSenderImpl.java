@@ -91,13 +91,14 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                              final String dataType, final long dataKey, final ByteBuffer data,
+                              final String dataType, final long dataKey, final ByteBuffer inputData,
                               final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpMsgScope = Trace.startSpan(SEND_REMOTE_OP_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType, dataKey, data});
+          operationType, dataType, dataKey, inputData});
 
+      // the operation begins with a local client, when the origId is null
       final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
 
       final RemoteOpMsg remoteOpMsg = RemoteOpMsg.newBuilder()
@@ -105,7 +106,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setOpType(operationType)
           .setDataType(dataType)
           .setDataKey(dataKey)
-          .setDataValue(data)
+          .setDataValue(inputData)
           .build();
 
       send(destId,
@@ -125,16 +126,16 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendRemoteOpResultMsg(final String destId, final boolean isSuccess, final ByteBuffer data,
+  public void sendRemoteOpResultMsg(final String destId, final boolean isSuccess, final ByteBuffer outputData,
                                     final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpResultMsgScope = Trace.startSpan(SEND_REMOTE_OP_RESULT_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
-          isSuccess, data});
+          isSuccess, outputData});
 
       final RemoteOpResultMsg remoteOpResultMsg = RemoteOpResultMsg.newBuilder()
           .setIsSuccess(isSuccess)
-          .setDataValue(data)
+          .setDataValue(outputData)
           .build();
 
       send(destId,
@@ -149,7 +150,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       );
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
-          isSuccess, data});
+          isSuccess, outputData});
     }
   }
 

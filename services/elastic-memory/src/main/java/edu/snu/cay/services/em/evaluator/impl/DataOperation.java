@@ -72,42 +72,42 @@ public final class DataOperation <T> {
   }
 
   /**
-   * @return true if the local client requested this operation.
+   * @return true if the operation is requested from the local client
    */
   public boolean isFromLocalClient() {
     return !origEvalId.isPresent();
   }
 
   /**
-   * @return an Optional with an id of evaluator that initially requests the operation.
+   * @return an Optional with an id of evaluator that initially requests the operation
    */
   public Optional<String> getOrigEvalId() {
     return origEvalId;
   }
 
   /**
-   * @return an operation id that is issued by local memory store.
+   * @return an operation id issued by its origin memory store
    */
   public String getOperationId() {
     return operationId;
   }
 
   /**
-   * @returns a type of the operation.
+   * @returns a type of the operation
    */
   public DataOpType getOperationType() {
     return operationType;
   }
 
   /**
-   * @returns a type of data what the operation targets.
+   * @returns a type of data what the operation targets
    */
   public String getDataType() {
     return dataType;
   }
 
   /**
-   * @return a key of data what the operation targets.
+   * @return a key of data what the operation targets
    */
   public long getDataKey() {
     return dataKey;
@@ -116,14 +116,14 @@ public final class DataOperation <T> {
   /**
    * Returns an Optional with a value of input data for PUT operation.
    * It returns an empty Optional for GET and REMOVE operations.
-   * @return an Optional with input data.
+   * @return an Optional with input data
    */
   public Optional<T> getInputData() {
     return dataValue;
   }
 
   /**
-   * Set the result of the operation.
+   * Sets the result of the operation.
    */
   public void setResult(final boolean success, final Optional<T> data) {
     this.isSuccess.set(success);
@@ -132,7 +132,7 @@ public final class DataOperation <T> {
   }
 
   /**
-   * Set the result of the operation and wake the waiting thread.
+   * Sets the result of the operation and wakes the waiting thread.
    */
   public void setResultAndWakeupClientThread(final boolean success, final Optional<T> data) {
     setResult(success, data);
@@ -150,7 +150,7 @@ public final class DataOperation <T> {
   }
 
   /**
-   * Returns an Optional with the output data of operation.
+   * Returns an Optional with the output data of the operation.
    * It returns an empty Optional for PUT operation.
    * @return an Optional with the output data
    */
@@ -159,7 +159,7 @@ public final class DataOperation <T> {
   }
 
   /**
-   * Start waiting for completion of the operation within a bounded time.
+   * Starts waiting for completion of the operation within a bounded time.
    * @param timeout a maximum waiting time in the milliseconds
    * @throws InterruptedException an exception for interrupts in waiting
    */

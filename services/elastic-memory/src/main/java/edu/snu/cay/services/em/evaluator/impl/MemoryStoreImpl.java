@@ -67,12 +67,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   private final RemoteOperationSender remoteSender;
 
   /**
-   * Used for issuing ids for locally requested operations.
+   * A counter for issuing ids for operations requested from local clients.
    */
   private final AtomicLong operationIdCounter = new AtomicLong(0);
 
   /**
-   * A queue that accepts operations both from local and remote.
+   * A queue for enqueueing operations from remote memory stores.
    */
   private final BlockingQueue<DataOperation> operationQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
   private final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -100,7 +100,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     try {
       operationQueue.put(dataOperation);
     } catch (InterruptedException e) {
-      LOG.warning("Thread is interrupted while waiting for enqueueing an operation");
+      LOG.log(Level.SEVERE, "Interrupted while waiting for enqueueing an operation", e);
     }
   }
 
@@ -117,7 +117,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     public void run() {
 
       while (true) {
-
         // First, poll and execute a single operation.
         // Poll with a timeout will prevent busy waiting, when the queue is empty.
         try {

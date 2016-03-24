@@ -36,7 +36,7 @@ public interface MemoryStore {
    * @param id global unique identifier of item
    * @param value data item to register
    * @param <T> actual data type
-   * @return a boolean that represents the operation is succeeded or not.
+   * @return true if the operation is succeeded
    */
   <T> boolean put(String dataType, long id, T value);
 

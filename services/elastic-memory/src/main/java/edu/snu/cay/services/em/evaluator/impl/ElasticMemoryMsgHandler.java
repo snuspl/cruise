@@ -62,13 +62,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
   /**
-   * Keep the information for applying the updates after the data is transferred.
+   * Keeps the information for applying the updates after the data is transferred.
    * This allows the data to be accessible while the migration is going on.
    */
   private final ConcurrentMap<String, Update> pendingUpdates = new ConcurrentHashMap<>();
 
   /**
-   * Keep the moving ranges, so we don't include the units to the migration if they are already moving.
+   * Keeps the moving ranges, so we don't include the units to the migration if they are already moving.
    */
   private final Set<LongRange> movingRanges = Collections.synchronizedSet(new HashSet<LongRange>());
 
@@ -117,29 +117,29 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Enqueue the data operation sent from the remote memory store.
+   * Enqueues the data operation sent from the remote memory store.
    */
   private void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
     LOG.log(Level.INFO, "onRemoteOpMsg: {0}", msg);
 
     final RemoteOpMsg remoteOpMsg = msg.getRemoteOpMsg();
-    final String srcEvalId = remoteOpMsg.getOrigEvalId().toString();
+    final String origEvalId = remoteOpMsg.getOrigEvalId().toString();
     final DataOpType operationType = remoteOpMsg.getOpType();
     final String dataType = remoteOpMsg.getDataType().toString();
-    final Codec codec = serializer.getCodec(dataType);
     final long dataKey = remoteOpMsg.getDataKey();
     final String operationId = msg.getOperationId().toString();
 
-    final Object data = operationType == DataOpType.PUT ? codec.decode(remoteOpMsg.getDataValue().array()) : null;
+    final Codec codec = serializer.getCodec(dataType);
+    final Object data = remoteOpMsg.getDataValue() != null ? codec.decode(remoteOpMsg.getDataValue().array()) : null;
 
-    final DataOperation<?> operation = new DataOperation<>(Optional.of(srcEvalId),
-        operationId, operationType, dataType, dataKey, Optional.of(data));
+    final DataOperation<?> operation = new DataOperation<>(Optional.of(origEvalId),
+        operationId, operationType, dataType, dataKey, Optional.ofNullable(data));
 
     memoryStore.onNext(operation);
   }
 
   /**
-   * Handle the result of data operation processed in the remote memory store.
+   * Handles the result of data operation processed in the remote memory store.
    */
   private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
     LOG.log(Level.INFO, "onRemoteOpResultMsg: {0}", msg);
@@ -178,8 +178,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Create a data message using the control message contents, and then
-   * send the data message to the correct evaluator.
+   * Creates a data message using the control message contents, and then
+   * sends the data message to the correct evaluator.
    */
   private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onCtrlMsgScope = Trace.startSpan(ON_CTRL_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
@@ -200,7 +200,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Create a data message using the id ranges specified in the given control message and send it.
+   * Creates a data message using the id ranges specified in the given control message and send it.
    */
   private void onCtrlMsgIdRange(final AvroElasticMemoryMessage msg,
                                 final TraceScope parentTraceInfo) {
@@ -261,7 +261,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Create a data message using the number of units specified in the given control message and send it.
+   * Creates a data message using the number of units specified in the given control message and send it.
    * This method simply picks the first n entries that are returned by Map.entrySet().iterator().
    */
   private void onCtrlMsgNumUnits(final AvroElasticMemoryMessage msg,
@@ -324,7 +324,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
   /**
    * Applies the pending updates (add, remove) to the MemoryStore,
-   * and send the ACK message to the Driver.
+   * and sends the ACK message to the Driver.
    */
   private void onUpdateMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onUpdateMsgScope =
@@ -361,7 +361,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Check whether the unit is moving in order to avoid the duplicate request for the ranges that are moving already.
+   * Checks whether the unit is moving in order to avoid the duplicate request for the ranges that are moving already.
    * @param id Identifier of unit to check.
    * @return {@code true} if the {@code id} is inside a range that is moving.
    */

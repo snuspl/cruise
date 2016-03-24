@@ -491,13 +491,13 @@ final class MockedMsgSender implements ElasticMemoryMsgSender {
 
   @Override
   public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                              final String dataType, final long dataKey, final ByteBuffer data,
+                              final String dataType, final long dataKey, final ByteBuffer inputData,
                               final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 
   }
 
   @Override
-  public void sendRemoteOpResultMsg(final String destId, final boolean isSuccess, final ByteBuffer data,
+  public void sendRemoteOpResultMsg(final String destId, final boolean isSuccess, final ByteBuffer outputData,
                                     final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 
   }
