@@ -169,22 +169,32 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
     final boolean result;
     final Object outputData;
-    readWriteLock.writeLock().lock();
-    try {
-      switch (operationType) {
-      case PUT:
+    switch (operationType) {
+    case PUT:
+      readWriteLock.writeLock().lock();
+      try {
         if (!dataMap.containsKey(dataType)) {
           dataMap.put(dataType, new TreeMap<Long, Object>());
         }
         dataMap.get(dataType).put(key, value);
         result = true;
         outputData = null;
-        break;
-      case GET:
+      } finally {
+        readWriteLock.writeLock().unlock();
+      }
+      break;
+    case GET:
+      readWriteLock.readLock().lock();
+      try {
         result = dataMap.containsKey(dataType);
         outputData = result ? dataMap.get(dataType).get(key) : null;
-        break;
-      case REMOVE:
+      } finally {
+        readWriteLock.readLock().unlock();
+      }
+      break;
+    case REMOVE:
+      readWriteLock.writeLock().lock();
+      try {
         if (!dataMap.containsKey(dataType)) {
           result = false;
           outputData = null;
@@ -192,12 +202,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
           outputData = dataMap.get(dataType).remove(key);
           result = outputData != null;
         }
-        break;
-      default:
-        throw new RuntimeException("Undefined operation");
+      } finally {
+        readWriteLock.writeLock().unlock();
       }
-    } finally {
-      readWriteLock.writeLock().unlock();
+      break;
+    default:
+      throw new RuntimeException("Undefined operation");
     }
 
     resultHandler.handleLocalResult(operation, result, outputData);
