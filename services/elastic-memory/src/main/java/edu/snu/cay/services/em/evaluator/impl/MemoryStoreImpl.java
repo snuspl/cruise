@@ -46,7 +46,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
   private static final int QUEUE_SIZE = 100;
-  private static final int QUEUE_TIMOUT_MS = 3000;
+  private static final int QUEUE_TIMEOUT_MS = 3000;
 
   /**
    * This map uses data types, represented as strings, for keys and inner {@code TreeMaps} for values.
@@ -120,7 +120,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
         // First, poll and execute a single operation.
         // Poll with a timeout will prevent busy waiting, when the queue is empty.
         try {
-          final DataOperation operation = operationQueue.poll(QUEUE_TIMOUT_MS, TimeUnit.MILLISECONDS);
+          final DataOperation operation = operationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (operation == null) {
             continue;
           }
@@ -165,7 +165,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     final DataOpType operationType = operation.getOperationType();
     final String dataType = operation.getDataType();
     final long key = operation.getDataKey();
-    final Object value = operation.getInputData().get();
+    final Object value = operation.getDataValue().get();
 
     final boolean result;
     final Object outputData;

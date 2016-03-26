@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.DataOpType;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.util.Optional;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * A class that represents a single data operation.
  * It maintains metadata and states of the operation during execution.
  */
+@Private
 public final class DataOperation <T> {
 
   /**
@@ -51,18 +53,17 @@ public final class DataOperation <T> {
 
   /**
    * A constructor for an operation.
-   * {@code origEvalId} is empty, when the operation is requested from a local client.
-   * {@code dataValue} is empty, when the operation is one of GET or REMOVE.
    *
-   * @param origEvalId an Optional with an id of original evaluator where the operation is generated
+   * @param origEvalId an Optional with an id of original evaluator where the operation is generated.
+   *                   It is empty, when the operation is requested from a local client.
    * @param operationId an id of operation
    * @param operationType a type of operation
    * @param dataType a type of data
    * @param dataKey a key of data
-   * @param dataValue an Optional with a value of data
+   * @param dataValue an Optional with a value of data. It is empty, when the operation is one of GET or REMOVE.
    */
   DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                       final String dataType, final long dataKey, final Optional<T> dataValue) {
+                final String dataType, final long dataKey, final Optional<T> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -100,14 +101,14 @@ public final class DataOperation <T> {
   }
 
   /**
-   * @returns a type of data what the operation targets
+   * @returns a type of data
    */
   public String getDataType() {
     return dataType;
   }
 
   /**
-   * @return a key of data what the operation targets
+   * @return a key of data
    */
   public long getDataKey() {
     return dataKey;
@@ -118,7 +119,7 @@ public final class DataOperation <T> {
    * It returns an empty Optional for GET and REMOVE operations.
    * @return an Optional with input data
    */
-  public Optional<T> getInputData() {
+  public Optional<T> getDataValue() {
     return dataValue;
   }
 
@@ -134,7 +135,7 @@ public final class DataOperation <T> {
   /**
    * Sets the result of the operation and wakes the waiting thread.
    */
-  public void setResultAndWakeupClientThread(final boolean success, final Optional<T> data) {
+  public void setResultAndNotifyClient(final boolean success, final Optional<T> data) {
     setResult(success, data);
 
     synchronized (monitor) {

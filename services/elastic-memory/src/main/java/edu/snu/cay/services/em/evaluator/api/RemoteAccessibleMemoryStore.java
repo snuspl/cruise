@@ -17,11 +17,13 @@ package edu.snu.cay.services.em.evaluator.api;
 
 import edu.snu.cay.services.em.evaluator.impl.DataOperation;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.wake.EventHandler;
 
 /**
  * Non-user side interface of memory store including APIs for handling operations from remote request.
  */
 @EvaluatorSide
+@Private
 public interface RemoteAccessibleMemoryStore extends MemoryStore, EventHandler<DataOperation> {
 }

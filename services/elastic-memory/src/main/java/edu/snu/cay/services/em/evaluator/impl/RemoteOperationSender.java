@@ -64,8 +64,8 @@ final class RemoteOperationSender {
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
 
-      final ByteBuffer inputData = operation.getInputData().isPresent() ?
-          ByteBuffer.wrap(codec.encode(operation.getInputData().get())) : null;
+      final ByteBuffer inputData = operation.getDataValue().isPresent() ?
+          ByteBuffer.wrap(codec.encode(operation.getDataValue().get())) : null;
 
       final Optional<String> origEvalID = operation.getOrigEvalId();
 
