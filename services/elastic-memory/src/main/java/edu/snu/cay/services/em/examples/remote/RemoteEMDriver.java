@@ -25,7 +25,6 @@ import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
-import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
@@ -116,7 +115,7 @@ final class RemoteEMDriver {
 
       allocatedEvaluator.submitContextAndService(contextConf,
           Configurations.merge(serviceConf, traceConf));
-      LOG.info((evalCount + 1) + " evaluators active!");
+      LOG.log(Level.INFO, "{0} evaluators active!", evalCount + 1);
     }
   }
 
@@ -142,21 +141,6 @@ final class RemoteEMDriver {
           idConf);
 
       activeContext.submitTask(taskConf);
-    }
-  }
-
-  final class RunningTaskHandler implements EventHandler<RunningTask> {
-    private final AtomicInteger taskRunningCounter = new AtomicInteger(0);
-
-    @Override
-    public void onNext(final RunningTask runningTask) {
-      LOG.log(Level.INFO, "Task running: {0}", runningTask.getId());
-
-      final int taskRunningCount = taskRunningCounter.incrementAndGet();
-
-      if (taskRunningCount == EVAL_NUM) {
-        driverSideMsgHandler.startSynchingWorkers();
-      }
     }
   }
 }

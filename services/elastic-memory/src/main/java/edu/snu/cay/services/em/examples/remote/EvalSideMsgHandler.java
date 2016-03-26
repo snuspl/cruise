@@ -56,7 +56,7 @@ final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
     latch.countDown();
   }
 
-  public void waitForMessage() {
+  void waitForMessage() {
     try {
       latch.await();
     } catch (final InterruptedException e) {

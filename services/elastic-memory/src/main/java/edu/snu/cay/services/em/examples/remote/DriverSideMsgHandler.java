@@ -46,9 +46,7 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
   private final AggregationMaster aggregationMaster;
   private final Codec<String> codec;
   private CountDownLatch msgCountDown;
-  private final Set<String> slaveIds;
-
-  private final Thread syncThread;
+  private final Set<String> workerIds;
 
   @Inject
   private DriverSideMsgHandler(final AggregationMaster aggregationMaster,
@@ -56,9 +54,8 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
     this.aggregationMaster = aggregationMaster;
     this.codec = codec;
     this.msgCountDown = new CountDownLatch(RemoteEMDriver.EVAL_NUM);
-    this.slaveIds = Collections.synchronizedSet(new HashSet<String>(RemoteEMDriver.EVAL_NUM));
-
-    syncThread = new Thread(new SyncThread());
+    this.workerIds = Collections.synchronizedSet(new HashSet<String>(RemoteEMDriver.EVAL_NUM));
+    syncWorkers();
   }
 
   /**
@@ -69,51 +66,69 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
   @Override
   public void onNext(final AggregationMessage message) {
     LOG.log(Level.INFO, "Received aggregation message {0}", message);
-    final String slaveId = message.getSourceId().toString();
+    final String workerId = message.getSourceId().toString();
     final String data = codec.decode(message.getData().array());
 
-    if (!slaveIds.contains(slaveId)) {
-      slaveIds.add(slaveId);
+    if (!workerIds.contains(workerId)) {
+      workerIds.add(workerId);
     }
 
-    // checks that slaveId of the message is CONTEXT_ID_PREFIX + index,
-    // and data of the message is TASK_ID_PREFIX + index.
-    if (slaveId.startsWith(RemoteEMDriver.CONTEXT_ID_PREFIX)
-        && data.startsWith(RemoteEMDriver.TASK_ID_PREFIX)
-        && slaveId.substring(RemoteEMDriver.CONTEXT_ID_PREFIX.length())
-        .equals(data.substring(RemoteEMDriver.TASK_ID_PREFIX.length()))) {
+    if (validateMsg(workerId, data)) {
       msgCountDown.countDown();
     } else {
-      throw new RuntimeException(String.format("SlaveId %s should not send message with data %s.", slaveId, data));
+      throw new RuntimeException(String.format("WorkerId %s should not send message with data %s.", workerId, data));
     }
   }
 
   /**
-   * Start synchronizing workers.
-   * With this, worker tasks sync their progress.
+   * Checks the validity of messages sent from workers.
+   * It checks that workerId of the message is CONTEXT_ID_PREFIX + index,
+   * and data of the message is TASK_ID_PREFIX + index.
+   *
+   * @param workerId an id of worker
+   * @param data a data sent from worker
+   * @return true if the msg is valid
    */
-  public void startSynchingWorkers() {
-    LOG.log(Level.INFO, "Synchronizing...");
+  private boolean validateMsg(final String workerId, final String data) {
+    return workerId.startsWith(RemoteEMDriver.CONTEXT_ID_PREFIX)
+        && data.startsWith(RemoteEMDriver.TASK_ID_PREFIX)
+        && workerId.substring(RemoteEMDriver.CONTEXT_ID_PREFIX.length())
+        .equals(data.substring(RemoteEMDriver.TASK_ID_PREFIX.length()));
+  }
+
+  /**
+   * Start synchronizing workers by executing a thread controlling workers.
+   */
+  private void syncWorkers() {
+    LOG.log(Level.INFO, "Start synchronization of workers...");
+    final Thread syncThread = new Thread(new SyncThread());
     syncThread.start();
   }
 
+  /**
+   * A Runnable that sends a response message to workers, when all they sent a message to driver.
+   * Workers can match their progress with each other by waiting driver's response.
+   */
   private class SyncThread implements Runnable {
 
     @Override
     public void run() {
       while (true) {
-        LOG.info("Sync loop");
+
+        // wait until all workers send a message
         try {
           msgCountDown.await();
         } catch (final InterruptedException e) {
           throw new RuntimeException(e);
         }
 
-        for (final String slaveId : slaveIds) {
+        // send response message to all workers
+        for (final String slaveId : workerIds) {
           LOG.log(Level.INFO, "Sending a message to {0}", slaveId);
           aggregationMaster.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, slaveId, codec.encode(MSG_FROM_DRIVER));
         }
 
+        // reset latch for next iteration
         msgCountDown = new CountDownLatch(RemoteEMDriver.EVAL_NUM);
       }
     }

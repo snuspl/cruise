@@ -32,13 +32,16 @@ import java.util.logging.Logger;
 /**
  * Task code for testing remote access of memory store.
  * It assumes there are only two evaluators participating in EM service.
- * Tasks code invokes PUT/GET/REMOVE operations of memory store with a single dataKey that belongs to one memory store.
+ * Tasks code invokes PUT/GET/REMOVE operations of memory store with a single DATA_KEY that belongs to one memory store.
  * The other memory store invokes PUT or REMOVE operations to update remote memory store state.
  * After then both memory stores invoke GET operation to confirm that the state of memory store is properly updated.
  */
 final class RemoteEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(RemoteEMTask.class.getName());
+
   private static final String DATA_TYPE = "INTEGER";
+  private static final long DATA_KEY = 0;
+  private static final int DATA_VALUE = 1000;
 
   private final MemoryStore memoryStore;
   private final OperationRouter router;
@@ -62,11 +65,11 @@ final class RemoteEMTask implements Task {
     this.msgHandler = msgHandler;
     this.codec = codec;
     this.taskId = taskId;
-    LOG.log(Level.INFO, "taskId: {0}", taskId);
   }
 
   /**
    * Synchronize all tasks with a barrier in driver.
+   * Workers can share same view on stores for each step.
    */
   private void synchronize() {
     aggregationSlave.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, codec.encode(taskId));
@@ -77,15 +80,14 @@ final class RemoteEMTask implements Task {
 
     LOG.info("RemoteEMTask commencing...");
 
-    final long dataKey = 0;
-    final int dataValue = 1000;
-    final boolean isLocalKey = router.route(dataKey).getFirst();
+    final boolean isLocalKey = router.route(DATA_KEY).getFirst();
 
     boolean isSuccess;
     Pair<Long, Integer> output;
 
-    output = memoryStore.get(DATA_TYPE, dataKey);
-    LOG.log(Level.INFO, "get({0}): {1}", new Object[]{dataKey, output});
+    // 1. INITIAL STATE: check that the store does not contain DATA
+    output = memoryStore.get(DATA_TYPE, DATA_KEY);
+    LOG.log(Level.INFO, "get({0}): {1}", new Object[]{DATA_KEY, output});
 
     if (output != null) {
       throw new RuntimeException("Wrong initial state");
@@ -93,9 +95,11 @@ final class RemoteEMTask implements Task {
 
     synchronize();
 
+    // 2. Put DATA into store via remote access
+    // It should be performed by a memory store that does not own DATA_KEY.
     if (!isLocalKey) {
-      isSuccess = memoryStore.put(DATA_TYPE, dataKey, dataValue);
-      LOG.log(Level.INFO, "put({0}): {1}", new Object[]{dataKey, isSuccess});
+      isSuccess = memoryStore.put(DATA_TYPE, DATA_KEY, DATA_VALUE);
+      LOG.log(Level.INFO, "put({0}): {1}", new Object[]{DATA_KEY, isSuccess});
 
       if (!isSuccess) {
         throw new RuntimeException("Fail to put data");
@@ -104,45 +108,46 @@ final class RemoteEMTask implements Task {
 
     synchronize();
 
-    output = memoryStore.get(DATA_TYPE, dataKey);
-    LOG.log(Level.INFO, "get({0}): {1}", new Object[]{dataKey, output});
+    // 3. AFTER PUT: check that all workers can get DATA in the store
+    output = memoryStore.get(DATA_TYPE, DATA_KEY);
+    LOG.log(Level.INFO, "get({0}): {1}", new Object[]{DATA_KEY, output});
 
     if (output == null) {
       throw new RuntimeException("Fail to get data");
     }
-    if (output.getFirst() != dataKey || output.getSecond() != dataValue) {
+    if (output.getFirst() != DATA_KEY || output.getSecond() != DATA_VALUE) {
       throw new RuntimeException("Fail to get correct data");
     }
 
     synchronize();
 
+    // 4. Remove DATA from store via remote access
+    // It should be performed by a memory store that does not own DATA_KEY.
     if (!isLocalKey) {
-      output = memoryStore.remove(DATA_TYPE, dataKey);
-      LOG.log(Level.INFO, "remove({0}): {1}", new Object[]{dataKey, output});
+      output = memoryStore.remove(DATA_TYPE, DATA_KEY);
+      LOG.log(Level.INFO, "remove({0}): {1}", new Object[]{DATA_KEY, output});
 
       if (output == null) {
         throw new RuntimeException("Fail to remove data");
       }
-      if (output.getFirst() != dataKey || output.getSecond() != dataValue) {
+      if (output.getFirst() != DATA_KEY || output.getSecond() != DATA_VALUE) {
         throw new RuntimeException("Fail to remove correct data");
       }
     }
 
     synchronize();
 
-    output = memoryStore.get(DATA_TYPE, dataKey);
-    LOG.log(Level.INFO, "get({0}): {1}", new Object[]{dataKey, output});
+    // 5. AFTER REMOVE: check that the store does not contain DATA
+    output = memoryStore.get(DATA_TYPE, DATA_KEY);
+    LOG.log(Level.INFO, "get({0}): {1}", new Object[]{DATA_KEY, output});
 
     if (output != null) {
       throw new RuntimeException("Remove did not work well");
     }
 
-    // last sync to make sure all evaluators alive until any remote operation is still ongoing
+    // last sync to make sure all evaluators alive until the end of all remote operations
     synchronize();
-
-    LOG.info("FINISH task");
 
     return null;
   }
-
 }

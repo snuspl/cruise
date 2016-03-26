@@ -94,7 +94,6 @@ public final class RemoteEMREEF {
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, RemoteEMDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_DRIVER_STARTED, RemoteEMDriver.DriverStartHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, RemoteEMDriver.ActiveContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_RUNNING, RemoteEMDriver.RunningTaskHandler.class)
         .build();
 
     final Configuration emConfiguration = ElasticMemoryConfiguration.getDriverConfiguration();
@@ -112,11 +111,11 @@ public final class RemoteEMREEF {
   }
 
   public static LauncherStatus runRemoteEM(final Configuration runtimeConf, final Configuration jobConf,
-                                           final int timeOut)
+                                           final int timeout)
       throws InjectionException {
     final Configuration driverConf = getDriverConfiguration();
 
-    return DriverLauncher.getLauncher(runtimeConf).run(Configurations.merge(driverConf, jobConf), timeOut);
+    return DriverLauncher.getLauncher(runtimeConf).run(Configurations.merge(driverConf, jobConf), timeout);
   }
 
   public static void main(final String[] args) throws InjectionException, IOException {
