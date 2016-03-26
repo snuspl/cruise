@@ -75,42 +75,42 @@ public final class DataOperation <T> {
   /**
    * @return true if the operation is requested from the local client
    */
-  public boolean isFromLocalClient() {
+  boolean isFromLocalClient() {
     return !origEvalId.isPresent();
   }
 
   /**
    * @return an Optional with an id of evaluator that initially requests the operation
    */
-  public Optional<String> getOrigEvalId() {
+  Optional<String> getOrigEvalId() {
     return origEvalId;
   }
 
   /**
    * @return an operation id issued by its origin memory store
    */
-  public String getOperationId() {
+  String getOperationId() {
     return operationId;
   }
 
   /**
    * @returns a type of the operation
    */
-  public DataOpType getOperationType() {
+  DataOpType getOperationType() {
     return operationType;
   }
 
   /**
    * @returns a type of data
    */
-  public String getDataType() {
+  String getDataType() {
     return dataType;
   }
 
   /**
    * @return a key of data
    */
-  public long getDataKey() {
+  long getDataKey() {
     return dataKey;
   }
 
@@ -119,14 +119,14 @@ public final class DataOperation <T> {
    * It returns an empty Optional for GET and REMOVE operations.
    * @return an Optional with input data
    */
-  public Optional<T> getDataValue() {
+  Optional<T> getDataValue() {
     return dataValue;
   }
 
   /**
    * Sets the result of the operation.
    */
-  public void setResult(final boolean success, final Optional<T> data) {
+  void setResult(final boolean success, final Optional<T> data) {
     this.isSuccess.set(success);
     this.outputData.set(data);
     finished.set(true);
@@ -135,7 +135,7 @@ public final class DataOperation <T> {
   /**
    * Sets the result of the operation and wakes the waiting thread.
    */
-  public void setResultAndNotifyClient(final boolean success, final Optional<T> data) {
+  void setResultAndNotifyClient(final boolean success, final Optional<T> data) {
     setResult(success, data);
 
     synchronized (monitor) {
@@ -144,9 +144,9 @@ public final class DataOperation <T> {
   }
 
   /**
-   * @return true if the operation is succeeded
+   * @return true if the operation succeeded
    */
-  public boolean isSuccess() {
+  boolean isSuccess() {
     return isSuccess.get();
   }
 
@@ -155,7 +155,7 @@ public final class DataOperation <T> {
    * It returns an empty Optional for PUT operation.
    * @return an Optional with the output data
    */
-  public Optional<T> getOutputData() {
+  Optional<T> getOutputData() {
     return outputData.get();
   }
 
@@ -164,7 +164,7 @@ public final class DataOperation <T> {
    * @param timeout a maximum waiting time in the milliseconds
    * @throws InterruptedException an exception for interrupts in waiting
    */
-  public void waitOperation(final long timeout) throws InterruptedException {
+  void waitOperation(final long timeout) throws InterruptedException {
     if (!finished.get()) {
       synchronized (monitor) {
         monitor.wait(timeout);
