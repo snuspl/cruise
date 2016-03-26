@@ -76,8 +76,8 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
       slaveIds.add(slaveId);
     }
 
-    // checks that slaveId of the message is WORKER_CONTEXT_PREFIX + index,
-    // and data of the message is TASK_PREFIX + index.
+    // checks that slaveId of the message is CONTEXT_ID_PREFIX + index,
+    // and data of the message is TASK_ID_PREFIX + index.
     if (slaveId.startsWith(RemoteEMDriver.CONTEXT_ID_PREFIX)
         && data.startsWith(RemoteEMDriver.TASK_ID_PREFIX)
         && slaveId.substring(RemoteEMDriver.CONTEXT_ID_PREFIX.length())

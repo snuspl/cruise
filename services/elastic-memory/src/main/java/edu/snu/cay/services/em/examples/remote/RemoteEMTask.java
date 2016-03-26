@@ -33,7 +33,7 @@ import java.util.logging.Logger;
  * Task code for testing remote access of memory store.
  * It assumes there are only two evaluators participating in EM service.
  * Tasks code invokes PUT/GET/REMOVE operations of memory store with a single dataKey that belongs to one memory store.
- * The other memory store invoke PUT or REMOVE operations to update remote memory store state.
+ * The other memory store invokes PUT or REMOVE operations to update remote memory store state.
  * After then both memory stores invoke GET operation to confirm that the state of memory store is properly updated.
  */
 final class RemoteEMTask implements Task {

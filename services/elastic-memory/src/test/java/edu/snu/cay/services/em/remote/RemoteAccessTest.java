@@ -27,6 +27,12 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
+/**
+ * Remote access test that uses a RemoteEMREEF example app.
+ * It runs the RemoteEMREEF app and confirms that the app finishes with the correct status.
+ * This test completely depends on the RemoteEMREEF example.
+ * So it's better to modify the RemoteEMREEF example, when you wanna change the test.
+ */
 public class RemoteAccessTest {
 
   private static final int TIMEOUT = 100000;

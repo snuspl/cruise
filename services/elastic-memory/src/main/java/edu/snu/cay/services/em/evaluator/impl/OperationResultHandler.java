@@ -82,7 +82,7 @@ final class OperationResultHandler {
       // return the result to the local client
       operation.setResult(result, Optional.ofNullable(outputData));
     } else {
-      // send the remote store the result (RemoteOpResultMsg)
+      // send the origin store the result (RemoteOpResultMsg)
       try (final TraceScope traceScope = Trace.startSpan("HANDLE_LOCAL_RESULT")) {
         final String dataType = operation.getDataType();
         final DataOpType opType = operation.getOperationType();

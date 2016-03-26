@@ -40,9 +40,9 @@ public final class DataOperation <T> {
   /**
    * States of the operation.
    */
-  private AtomicBoolean finished = new AtomicBoolean(false);
-  private AtomicBoolean isSuccess = new AtomicBoolean(false);
-  private AtomicReference<Optional<T>> outputData = new AtomicReference<>(Optional.<T>empty());
+  private final AtomicBoolean finished = new AtomicBoolean(false);
+  private final AtomicBoolean isSuccess = new AtomicBoolean(false);
+  private final AtomicReference<Optional<T>> outputData = new AtomicReference<>(Optional.<T>empty());
 
   /**
    * A monitoring object to notify a client thread waiting for completion of the operation.
