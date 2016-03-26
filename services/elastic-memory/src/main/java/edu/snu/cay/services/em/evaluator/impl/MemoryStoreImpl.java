@@ -107,7 +107,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   private final class OperationThread implements Runnable {
 
     private final int drainSize = QUEUE_SIZE / 10; // The max number of operations to drain per iteration
-    private final ArrayList<DataOperation> drainedOperations = new ArrayList<>(drainSize);
+    private final List<DataOperation> drainedOperations = new ArrayList<>(drainSize);
 
     /**
      * A loop that dequeues operations and executes them.

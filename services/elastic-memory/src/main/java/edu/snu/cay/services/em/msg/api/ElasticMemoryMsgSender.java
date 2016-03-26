@@ -35,7 +35,7 @@ import java.util.Set;
 public interface ElasticMemoryMsgSender {
 
   /**
-   * Send a RemoteOpMsg that requests the Evaluator specified with {@code destId} to
+   * Sends a RemoteOpMsg that requests the Evaluator specified with {@code destId} to
    * process a data operation, parceling operation metadata into the message.
    * Since the operation can be transmitted multiple times across the multiple evaluators,
    * the message retains {@code origId}, an id of the Evaluator where the operation is generated at the beginning.
@@ -62,7 +62,7 @@ public interface ElasticMemoryMsgSender {
                              @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a CtrlMsg that tells the Evaluator specified with {@code destId} to
+   * Sends a CtrlMsg that tells the Evaluator specified with {@code destId} to
    * send its {@code dataType} data to the Evaluator specified with
    * {@code targetEvalId}.
    * The operation should be given a unique {@code operationId}.
@@ -76,7 +76,7 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a CtrlMsg that tells the Evaluator specified with {@code destId} to
+   * Sends a CtrlMsg that tells the Evaluator specified with {@code destId} to
    * send {@code numUnits} units of its {@code dataType} data to the Evaluator specified with
    * {@code targetEvalId}.
    * The operation should be given a unique {@code operationId}.
@@ -90,7 +90,7 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a DataMsg containing {@code unitIdPairList} to the Evaluator
+   * Sends a DataMsg containing {@code unitIdPairList} to the Evaluator
    * named {@code destId}, specified by the type {@code dataType}.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
@@ -102,7 +102,7 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a DataAckMsg to report to the Driver the success of data transfer.
+   * Sends a DataAckMsg to report to the Driver the success of data transfer.
    * Since the actual range or the number of units might differ from the user's request,
    * ({@code idRangeSet} is sent for the information.
    * Include {@code parentTraceInfo} to continue tracing this message.
@@ -112,7 +112,7 @@ public interface ElasticMemoryMsgSender {
                       @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a RegisMsg to the Driver to register a partition, starting with
+   * Sends a RegisMsg to the Driver to register a partition, starting with
    * {@code unitStartId} and ending with {@code unitEndId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
@@ -122,21 +122,21 @@ public interface ElasticMemoryMsgSender {
                     @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send an UpdateMsg to update the Evaluators' MemoryStore.
+   * Sends an UpdateMsg to update the Evaluators' MemoryStore.
    */
   void sendUpdateMsg(final String destId,
                      final String operationId,
                      @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a UpdateAckMsg to notify the update result.
+   * Sends a UpdateAckMsg to notify the update result.
    */
   void sendUpdateAckMsg(final String operationId,
                         final UpdateResult result,
                         @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Send a FailureMsg to notify the failure to the Driver.
+   * Sends a FailureMsg to notify the failure to the Driver.
    */
   void sendFailureMsg(final String operationId,
                       final String reason,

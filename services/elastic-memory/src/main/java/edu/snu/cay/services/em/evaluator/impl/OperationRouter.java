@@ -57,10 +57,13 @@ public final class OperationRouter {
   }
 
   /**
-   * Return an endpoint id of evaluator that owns a data whose key is {@code dataId}.
+   * Returns the routing result of a given key, {@code dataId}.
+   * It returns an endpoint id of evaluator that owns a data whose key is {@code dataId},
+   * and also returns a boolean that is true when it's an if of local evaluator.
+   * So caller does not need to check that the evaluator id is one of local or not.
    *
-   * @param dataId Identifier of data
-   * @return A pair of a boolean representing locality of data and an endpoint id of an evaluator
+   * @param dataId an id of data
+   * @return a pair of a boolean representing locality of data and an endpoint id of a target evaluator
    */
   public Pair<Boolean, String> route(final long dataId) {
 

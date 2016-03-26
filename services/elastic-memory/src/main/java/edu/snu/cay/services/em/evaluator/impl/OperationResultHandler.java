@@ -27,8 +27,8 @@ import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,7 +39,7 @@ import java.util.logging.Logger;
 final class OperationResultHandler {
   private static final Logger LOG = Logger.getLogger(OperationResultHandler.class.getName());
 
-  private final Map<String, DataOperation> ongoingOperations = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, DataOperation> ongoingOperations = new ConcurrentHashMap<>();
 
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
@@ -47,7 +47,7 @@ final class OperationResultHandler {
 
   @Inject
   private OperationResultHandler(final Serializer serializer,
-                         final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
+                                 final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
     this.serializer = serializer;
     this.msgSender = msgSender;
   }
@@ -58,7 +58,10 @@ final class OperationResultHandler {
    * when receiving the result from the remote store.
    */
   public void registerOperation(final DataOperation operation) {
-    ongoingOperations.put(operation.getOperationId(), operation);
+    final DataOperation unhandledOperation = ongoingOperations.put(operation.getOperationId(), operation);
+    if (unhandledOperation != null) {
+      LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}", unhandledOperation);
+    }
   }
 
   /**
@@ -107,7 +110,7 @@ final class OperationResultHandler {
     final DataOperation finishedOperation = ongoingOperations.remove(operationId);
 
     if (finishedOperation == null) {
-      LOG.log(Level.INFO, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
+      LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
       return;
     }
 

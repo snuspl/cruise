@@ -19,7 +19,6 @@ import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
-import org.apache.reef.util.Optional;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -67,10 +66,9 @@ final class RemoteOperationSender {
       final ByteBuffer inputData = operation.getDataValue().isPresent() ?
           ByteBuffer.wrap(codec.encode(operation.getDataValue().get())) : null;
 
-      final Optional<String> origEvalID = operation.getOrigEvalId();
-
-      msgSender.get().sendRemoteOpMsg(origEvalID.get(), targetEvalId, operation.getOperationType(),
-          operation.getDataType(), operation.getDataKey(), inputData, operation.getOperationId(), traceInfo);
+      msgSender.get().sendRemoteOpMsg((String) operation.getOrigEvalId().get(), targetEvalId,
+          operation.getOperationType(), operation.getDataType(), operation.getDataKey(), inputData,
+          operation.getOperationId(), traceInfo);
     }
 
     // local request threads wait here until get the result
@@ -81,7 +79,8 @@ final class RemoteOperationSender {
         LOG.log(Level.SEVERE, "Interrupted while waiting for executing remote operation", e);
       } finally {
         if (resultHandler.deregisterOperation(operation.getOperationId()) != null) {
-          LOG.log(Level.WARNING, "The operation {0} has no response in timeout.", operation.getOperationId());
+          LOG.log(Level.WARNING, "The operation {0} has no response for {1} ms.",
+              new Object[]{operation.getOperationId(), TIMEOUT_MS});
         }
       }
     }
