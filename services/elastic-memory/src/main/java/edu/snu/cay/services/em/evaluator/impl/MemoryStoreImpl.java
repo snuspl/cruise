@@ -259,7 +259,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
     final Optional<T> outputData = operation.getOutputData();
 
-    return outputData.isPresent() ? new Pair<>(id, operation.getOutputData().get()) : null;
+    return outputData.isPresent() ? new Pair<>(id, outputData.get()) : null;
   }
 
   // TODO #406: enable remote access
@@ -305,7 +305,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
     final Optional<T> outputData = operation.getOutputData();
 
-    return outputData.isPresent() ? new Pair<>(id, operation.getOutputData().get()) : null;
+    return outputData.isPresent() ? new Pair<>(id, outputData.get()) : null;
   }
 
   // TODO #406: enable remote access

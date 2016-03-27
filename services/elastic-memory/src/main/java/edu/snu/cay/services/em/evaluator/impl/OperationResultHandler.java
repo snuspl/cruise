@@ -117,8 +117,8 @@ final class OperationResultHandler {
     final Codec codec = serializer.getCodec(finishedOperation.getDataType());
 
     // GET operation does not have outputData (null)
-    final Object outputData = data == null ? null : codec.decode(data.array());
+    final Optional<Object> outputData = data == null ? Optional.empty() : Optional.of(codec.decode(data.array()));
 
-    finishedOperation.setResultAndNotifyClient(result, Optional.ofNullable(outputData));
+    finishedOperation.setResultAndNotifyClient(result, outputData);
   }
 }
