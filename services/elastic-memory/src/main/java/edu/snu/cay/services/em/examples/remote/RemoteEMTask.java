@@ -32,8 +32,8 @@ import java.util.logging.Logger;
 /**
  * Task code for testing remote access of memory store.
  * It assumes there are only two evaluators participating in EM service.
- * Tasks code invokes PUT/GET/REMOVE operations of memory store with a single DATA_KEY that belongs to one memory store.
- * The other memory store invokes PUT or REMOVE operations to update remote memory store state.
+ * Task code invokes PUT/GET/REMOVE operations of memory store with a single DATA_KEY that belongs to one memory store.
+ * The other memory store invokes PUT or REMOVE operations to update remote memory store state through remote access.
  * After then both memory stores invoke GET operation to confirm that the state of memory store is properly updated.
  */
 final class RemoteEMTask implements Task {
@@ -74,7 +74,7 @@ final class RemoteEMTask implements Task {
 
   /**
    * Synchronize all tasks with a barrier in driver.
-   * Workers can share same view on stores for each step.
+   * Using this method, workers can share same view on stores for each step.
    */
   private void synchronize() {
     aggregationSlave.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, codec.encode(taskId));
@@ -113,7 +113,7 @@ final class RemoteEMTask implements Task {
 
     synchronize();
 
-    // 3. AFTER PUT: check that all workers can get DATA in the store
+    // 3. AFTER PUT: check that all workers can get DATA from the store
     output = memoryStore.get(DATA_TYPE, DATA_KEY);
     LOG.log(Level.INFO, "get({0}): {1}", new Object[]{DATA_KEY, output});
 

@@ -117,7 +117,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Enqueues the data operation sent from the remote memory store.
+   * Handles the data operation sent from the remote memory store.
    */
   private void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
     LOG.log(Level.INFO, "onRemoteOpMsg: {0}", msg);
@@ -139,7 +139,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Handles the result of data operation processed in the remote memory store.
+   * Handles the result of data operation sent from the remote memory store.
    */
   private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
     LOG.log(Level.INFO, "onRemoteOpResultMsg: {0}", msg);
