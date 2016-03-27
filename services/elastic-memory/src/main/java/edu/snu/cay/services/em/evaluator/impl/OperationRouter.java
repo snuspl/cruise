@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.common.parameters.PartitionId;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
+import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -27,6 +28,7 @@ import java.util.logging.Logger;
 /**
  * OperationRouter that redirects incoming operations on specific data ids to corresponding evaluators.
  */
+@Private
 public final class OperationRouter {
 
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());

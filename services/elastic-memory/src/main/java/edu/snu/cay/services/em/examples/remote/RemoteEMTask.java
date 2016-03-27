@@ -44,6 +44,11 @@ final class RemoteEMTask implements Task {
   private static final int DATA_VALUE = 1000;
 
   private final MemoryStore memoryStore;
+
+  /**
+   * A router that is an internal component of EM.
+   * Here we use it in user code for testing purpose.
+   */
   private final OperationRouter router;
 
   private final String taskId;
