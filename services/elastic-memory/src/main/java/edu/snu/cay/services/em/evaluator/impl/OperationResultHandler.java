@@ -91,8 +91,7 @@ final class OperationResultHandler {
         final DataOpType opType = operation.getOperationType();
 
         final Codec codec = serializer.getCodec(dataType);
-        final ByteBuffer data = opType == DataOpType.GET || opType == DataOpType.REMOVE ?
-            ByteBuffer.wrap(codec.encode(outputData)) : null;
+        final ByteBuffer data = outputData != null ? ByteBuffer.wrap(codec.encode(outputData)) : null;
 
         final Optional<String> origEvalId = operation.getOrigEvalId();
 
