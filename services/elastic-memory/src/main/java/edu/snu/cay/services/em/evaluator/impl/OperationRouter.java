@@ -59,10 +59,10 @@ public final class OperationRouter {
   }
 
   /**
-   * Returns the routing result of a given key, {@code dataId}.
-   * It returns an endpoint id of evaluator that owns a data whose key is {@code dataId},
-   * and also returns a boolean that is true when it's an if of local evaluator.
-   * So caller does not need to check that the evaluator id is one of local or not.
+   * Returns the routing result for the given {@code dataId}.
+   * It returns the endpoint id of the evaluator that owns the data whose id is {@code dataId}.
+   * A boolean value is piggybacked, which indicates whether the data is in the local memory store.
+   * So the caller does not need to check that the target evaluator is local or not.
    *
    * @param dataId an id of data
    * @return a pair of a boolean representing locality of data and an endpoint id of a target evaluator

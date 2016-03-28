@@ -53,7 +53,7 @@ final class RemoteOperationSender {
   /**
    * Send a data operation to a target remote evaluator.
    */
-  public void sendOperation(final String targetEvalId, final DataOperation operation) {
+  void sendOperation(final String targetEvalId, final DataOperation operation) {
     final Codec codec = serializer.getCodec(operation.getDataType());
 
     if (operation.isFromLocalClient()) {

@@ -31,8 +31,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver-side message handler.
- * This receives aggregation messages, since driver is an aggregation master.
+ * Driver-side message handler that receives aggregation messages as an aggregation master.
  * Provides a way to synchronize all worker tasks by checking all workers have sent the messages.
  * It sends response messages to all tasks when all messages from the tasks arrive.
  */
@@ -41,7 +40,7 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
 
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
 
-  public static final String MSG_FROM_DRIVER = "MSG_FROM_DRIVER";
+  static final String MSG_FROM_DRIVER = "MSG_FROM_DRIVER";
 
   private final AggregationMaster aggregationMaster;
   private final Codec<String> codec;
@@ -128,7 +127,7 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
           aggregationMaster.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, slaveId, codec.encode(MSG_FROM_DRIVER));
         }
 
-        // reset latch for next iteration
+        // reset latch for next iterations
         msgCountDown = new CountDownLatch(RemoteEMDriver.EVAL_NUM);
       }
     }

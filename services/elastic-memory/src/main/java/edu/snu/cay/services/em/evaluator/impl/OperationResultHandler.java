@@ -57,7 +57,7 @@ final class OperationResultHandler {
    * Registered operations are properly handled by a {@code handleRemoteResult} method
    * when receiving the result from the remote store.
    */
-  public void registerOperation(final DataOperation operation) {
+  void registerOperation(final DataOperation operation) {
     final DataOperation unhandledOperation = ongoingOperations.put(operation.getOperationId(), operation);
     if (unhandledOperation != null) {
       LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}", unhandledOperation);
@@ -72,7 +72,7 @@ final class OperationResultHandler {
    *
    * @return a removed operation or null when the operation is already deregistered.
    */
-  public DataOperation deregisterOperation(final String operationId) {
+  DataOperation deregisterOperation(final String operationId) {
     return ongoingOperations.remove(operationId);
   }
 
@@ -80,7 +80,7 @@ final class OperationResultHandler {
    * Handles the result of data operation that is processed by local memory store.
    * It returns the result to the local client or sends it to the origin evaluator of the data operation.
    */
-  public void handleLocalResult(final DataOperation operation, final boolean result, final Object outputData) {
+  <T> void handleLocalResult(final DataOperation<T> operation, final boolean result, final T outputData) {
     if (operation.isFromLocalClient()) {
       // return the result to the local client
       operation.setResult(result, Optional.ofNullable(outputData));
@@ -106,8 +106,8 @@ final class OperationResultHandler {
    * Handles the result of data operation sent from remote memory store.
    * It always returns the result to the local client.
    */
-  public void handleRemoteResult(final String operationId, final boolean result, final ByteBuffer data) {
-    final DataOperation finishedOperation = ongoingOperations.remove(operationId);
+  <T> void handleRemoteResult(final String operationId, final boolean result, final ByteBuffer data) {
+    final DataOperation<T> finishedOperation = ongoingOperations.remove(operationId);
 
     if (finishedOperation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
@@ -117,7 +117,7 @@ final class OperationResultHandler {
     final Codec codec = serializer.getCodec(finishedOperation.getDataType());
 
     // GET operation does not have outputData (null)
-    final Optional<Object> outputData = data == null ? Optional.empty() : Optional.of(codec.decode(data.array()));
+    final Optional<T> outputData = data == null ? Optional.<T>empty() : Optional.of((T) codec.decode(data.array()));
 
     finishedOperation.setResultAndNotifyClient(result, outputData);
   }

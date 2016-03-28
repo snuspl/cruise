@@ -44,7 +44,7 @@
 },
 
 /**
- * An avro message format for sending a data operation to a remote evaluator.
+ * An avro message format for sending a data operation to remote evaluator.
  * {@code dataValue} is used only for PUT operations.
  */
 {
@@ -62,7 +62,7 @@
 },
 
 /**
- * An avro message format for sending a result of data operation to a source evaluator.
+ * An avro message format for sending a result of data operation to the source evaluator.
  * {@code dataValue} is used only for GET and REMOVE operations.
  */
 {

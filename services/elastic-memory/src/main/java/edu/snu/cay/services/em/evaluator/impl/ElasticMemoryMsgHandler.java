@@ -119,7 +119,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   /**
    * Handles the data operation sent from the remote memory store.
    */
-  private void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
+  private <T> void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
     LOG.log(Level.INFO, "onRemoteOpMsg: {0}", msg);
 
     final RemoteOpMsg remoteOpMsg = msg.getRemoteOpMsg();
@@ -130,10 +130,11 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final String operationId = msg.getOperationId().toString();
 
     final Codec codec = serializer.getCodec(dataType);
-    final Object data = remoteOpMsg.getDataValue() != null ? codec.decode(remoteOpMsg.getDataValue().array()) : null;
+    final Optional<T> data = remoteOpMsg.getDataValue() == null ?
+        Optional.<T>empty() : Optional.of((T) codec.decode(remoteOpMsg.getDataValue().array()));
 
-    final DataOperation<?> operation = new DataOperation<>(Optional.of(origEvalId),
-        operationId, operationType, dataType, dataKey, Optional.ofNullable(data));
+    final DataOperation<T> operation = new DataOperation<>(Optional.of(origEvalId),
+        operationId, operationType, dataType, dataKey, data);
 
     memoryStore.onNext(operation);
   }

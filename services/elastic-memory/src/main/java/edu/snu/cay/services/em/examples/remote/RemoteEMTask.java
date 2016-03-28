@@ -150,7 +150,7 @@ final class RemoteEMTask implements Task {
       throw new RuntimeException("Remove did not work well");
     }
 
-    // last sync to make sure all evaluators alive until the end of all remote operations
+    // last sync to make sure all evaluators are alive until the end of all remote operations
     synchronize();
 
     return null;

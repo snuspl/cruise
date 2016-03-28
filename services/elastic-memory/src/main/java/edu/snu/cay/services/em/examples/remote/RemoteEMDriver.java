@@ -40,7 +40,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Driver code for EMExample.
+ * Driver code for RemoteEM Example.
  * Two evaluators communicate with each other via remote access feature.
  * Worker tasks are controlled by {@code DriverSideMsgHandler} to check they perform correctly.
  */
@@ -57,7 +57,6 @@ final class RemoteEMDriver {
   private final EvaluatorRequestor requestor;
 
   private final AggregationManager aggregationManager;
-  private final DriverSideMsgHandler driverSideMsgHandler;
 
   private final ElasticMemoryConfiguration emConf;
   private final HTraceParameters traceParameters;
@@ -65,12 +64,10 @@ final class RemoteEMDriver {
   @Inject
   private RemoteEMDriver(final EvaluatorRequestor requestor,
                          final AggregationManager aggregationManager,
-                         final DriverSideMsgHandler driverSideMsgHandler,
                          final ElasticMemoryConfiguration emConf,
                          final HTraceParameters traceParameters) throws InjectionException {
     this.requestor = requestor;
     this.aggregationManager = aggregationManager;
-    this.driverSideMsgHandler = driverSideMsgHandler;
     this.emConf = emConf;
     this.traceParameters = traceParameters;
   }

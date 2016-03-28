@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * It maintains metadata and states of the operation during execution.
  */
 @Private
-public final class DataOperation <T> {
+public final class DataOperation<T> {
 
   /**
    * Metadata of the operation.
@@ -54,13 +54,13 @@ public final class DataOperation <T> {
   /**
    * A constructor for an operation.
    *
-   * @param origEvalId an Optional with an id of original evaluator where the operation is generated.
-   *                   It is empty, when the operation is requested from a local client.
+   * @param origEvalId an Optional with the id of the original evaluator where the operation is generated.
+   *                   It is empty when the operation is requested from the local client.
    * @param operationId an id of operation
    * @param operationType a type of operation
    * @param dataType a type of data
    * @param dataKey a key of data
-   * @param dataValue an Optional with a value of data. It is empty, when the operation is one of GET or REMOVE.
+   * @param dataValue an Optional with the value of data. It is empty when the operation is one of GET or REMOVE.
    */
   DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
                 final String dataType, final long dataKey, final Optional<T> dataValue) {
@@ -80,7 +80,7 @@ public final class DataOperation <T> {
   }
 
   /**
-   * @return an Optional with an id of evaluator that initially requests the operation
+   * @return an Optional with the id of evaluator that initially requested the operation
    */
   Optional<String> getOrigEvalId() {
     return origEvalId;
@@ -115,7 +115,7 @@ public final class DataOperation <T> {
   }
 
   /**
-   * Returns an Optional with a value of input data for PUT operation.
+   * Returns an Optional with the value of input data for PUT operation.
    * It returns an empty Optional for GET and REMOVE operations.
    * @return an Optional with input data
    */
