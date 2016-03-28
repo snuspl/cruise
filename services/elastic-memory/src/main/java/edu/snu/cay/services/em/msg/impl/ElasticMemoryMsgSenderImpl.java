@@ -32,6 +32,7 @@ import org.apache.reef.wake.IdentifierFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -46,6 +47,8 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgSenderImpl.class.getName());
 
+  private static final String SEND_REMOTE_OP_MSG = "sendRemoteOpMsg";
+  private static final String SEND_REMOTE_OP_RESULT_MSG = "sendRemoteOpResultMsg";
   private static final String SEND_CTRL_MSG = "sendCtrlMsg";
   private static final String SEND_DATA_MSG = "sendDataMsg";
   private static final String SEND_DATA_ACK_MSG = "sendDataAckMsg";
@@ -85,6 +88,71 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "send", new Object[]{destId, msg});
   }
 
+
+  @Override
+  public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
+                              final String dataType, final long dataKey, final ByteBuffer inputData,
+                              final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendRemoteOpMsgScope = Trace.startSpan(SEND_REMOTE_OP_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
+          operationType, dataType, dataKey, inputData});
+
+      // the operation begins with a local client, when the origId is null
+      final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
+
+      final RemoteOpMsg remoteOpMsg = RemoteOpMsg.newBuilder()
+          .setOrigEvalId(origEvalId)
+          .setOpType(operationType)
+          .setDataType(dataType)
+          .setDataKey(dataKey)
+          .setDataValue(inputData)
+          .build();
+
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.RemoteOpMsg)
+              .setSrcId(emNetworkSetup.getMyId().toString())
+              .setDestId(destId)
+              .setOperationId(operationId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setRemoteOpMsg(remoteOpMsg)
+              .build()
+      );
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
+          operationType, dataType, dataKey});
+    }
+  }
+
+  @Override
+  public void sendRemoteOpResultMsg(final String destId, final boolean isSuccess, final ByteBuffer outputData,
+                                    final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendRemoteOpResultMsgScope = Trace.startSpan(SEND_REMOTE_OP_RESULT_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
+          isSuccess, outputData});
+
+      final RemoteOpResultMsg remoteOpResultMsg = RemoteOpResultMsg.newBuilder()
+          .setIsSuccess(isSuccess)
+          .setDataValue(outputData)
+          .build();
+
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.RemoteOpResultMsg)
+              .setSrcId(emNetworkSetup.getMyId().toString())
+              .setDestId(destId)
+              .setOperationId(operationId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setRemoteOpResultMsg(remoteOpResultMsg)
+              .build()
+      );
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
+          isSuccess, outputData});
+    }
+  }
 
   @Override
   public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,

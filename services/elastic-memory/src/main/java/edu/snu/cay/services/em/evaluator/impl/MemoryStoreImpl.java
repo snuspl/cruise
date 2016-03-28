@@ -15,14 +15,18 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.avro.DataOpType;
+import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.network.util.Pair;
+import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
@@ -38,8 +42,11 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 @Private
-public final class MemoryStoreImpl implements MemoryStore {
+public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
+
+  private static final int QUEUE_SIZE = 100;
+  private static final int QUEUE_TIMEOUT_MS = 3000;
 
   /**
    * This map uses data types, represented as strings, for keys and inner {@code TreeMaps} for values.
@@ -56,50 +63,173 @@ public final class MemoryStoreImpl implements MemoryStore {
   private final ReadWriteLock readWriteLock;
 
   private final OperationRouter router;
+  private final OperationResultHandler resultHandler;
+  private final RemoteOperationSender remoteSender;
+
+  /**
+   * A counter for issuing ids for operations requested from local clients.
+   */
+  private final AtomicLong operationIdCounter = new AtomicLong(0);
+
+  /**
+   * A queue for enqueueing operations from remote memory stores.
+   */
+  private final BlockingQueue<DataOperation> operationQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
+  private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
-                          final OperationRouter router) {
+                          final OperationRouter router,
+                          final OperationResultHandler resultHandler,
+                          final RemoteOperationSender remoteSender) {
     hTrace.initialize();
     this.router = router;
+    this.resultHandler = resultHandler;
+    this.remoteSender = remoteSender;
     dataMap = new HashMap<>();
     readWriteLock = new ReentrantReadWriteLock(true);
+    initialize();
+  }
+
+  private void initialize() {
+    executorService.execute(new OperationThread());
   }
 
   @Override
-  public <T> void put(final String dataType, final long id, final T value) {
-    if (!router.isLocal(id)) {
-      LOG.log(Level.WARNING, "This id is not local: {0}", id);
-      return;
-    }
-
-    readWriteLock.writeLock().lock();
-
+  public void onNext(final DataOperation dataOperation) {
     try {
-      if (!dataMap.containsKey(dataType)) {
-        dataMap.put(dataType, new TreeMap<Long, Object>());
-      }
-      dataMap.get(dataType).put(id, value);
-
-    } finally {
-      readWriteLock.writeLock().unlock();
+      operationQueue.put(dataOperation);
+    } catch (final InterruptedException e) {
+      LOG.log(Level.SEVERE, "Interrupted while waiting for enqueueing an operation", e);
     }
   }
 
+  private final class OperationThread implements Runnable {
+
+    private final int drainSize = QUEUE_SIZE / 10; // The max number of operations to drain per iteration
+    private final List<DataOperation> drainedOperations = new ArrayList<>(drainSize);
+
+    /**
+     * A loop that dequeues operations and executes them.
+     * Dequeues are only performed through this thread.
+     */
+    @Override
+    public void run() {
+
+      while (true) {
+        // First, poll and execute a single operation.
+        // Poll with a timeout will prevent busy waiting, when the queue is empty.
+        try {
+          final DataOperation operation = operationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+          if (operation == null) {
+            continue;
+          }
+          executeOperation(operation);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+          continue;
+        }
+
+        // Then, drain up to drainSize of the remaining queue and execute.
+        // drainTo method is much faster than multiple polls.
+        if (operationQueue.drainTo(drainedOperations, drainSize) == 0) {
+          continue;
+        }
+
+        for (final DataOperation operation : drainedOperations) {
+          executeOperation(operation);
+        }
+
+        drainedOperations.clear();
+      }
+    }
+  }
+
+  private void executeOperation(final DataOperation operation) {
+    final long dataKey = operation.getDataKey();
+
+    final Pair<Boolean, String> routingResult = router.route(dataKey);
+
+    final boolean isLocal = routingResult.getFirst();
+
+    // 1) process local things or 2) send it off to remote memory store corresponding to the routing result
+    if (isLocal) {
+      executeLocalOperation(operation);
+    } else {
+      final String targetEvalId = routingResult.getSecond();
+      remoteSender.sendOperation(targetEvalId, operation);
+    }
+  }
+
+  private void executeLocalOperation(final DataOperation operation) {
+    final DataOpType operationType = operation.getOperationType();
+    final String dataType = operation.getDataType();
+    final long key = operation.getDataKey();
+    final Object value = operation.getDataValue().get();
+
+    final boolean result;
+    final Object outputData;
+    switch (operationType) {
+    case PUT:
+      readWriteLock.writeLock().lock();
+      try {
+        if (!dataMap.containsKey(dataType)) {
+          dataMap.put(dataType, new TreeMap<Long, Object>());
+        }
+        dataMap.get(dataType).put(key, value);
+        result = true;
+        outputData = null;
+      } finally {
+        readWriteLock.writeLock().unlock();
+      }
+      break;
+    case GET:
+      readWriteLock.readLock().lock();
+      try {
+        result = dataMap.containsKey(dataType);
+        outputData = result ? dataMap.get(dataType).get(key) : null;
+      } finally {
+        readWriteLock.readLock().unlock();
+      }
+      break;
+    case REMOVE:
+      readWriteLock.writeLock().lock();
+      try {
+        if (!dataMap.containsKey(dataType)) {
+          result = false;
+          outputData = null;
+        } else {
+          outputData = dataMap.get(dataType).remove(key);
+          result = outputData != null;
+        }
+      } finally {
+        readWriteLock.writeLock().unlock();
+      }
+      break;
+    default:
+      throw new RuntimeException("Undefined operation");
+    }
+
+    resultHandler.handleLocalResult(operation, result, outputData);
+  }
+
+  @Override
+  public <T> boolean put(final String dataType, final long id, final T value) {
+
+    final String operationId = Long.toString(operationIdCounter.getAndIncrement());
+    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
+        dataType, id, Optional.of(value));
+
+    executeOperation(operation);
+
+    return operation.isSuccess();
+  }
+
+  // TODO #406: enable remote access
   @Override
   public <T> void putList(final String dataType, final List<Long> ids, final List<T> values) {
     if (ids.size() != values.size()) {
       throw new RuntimeException("Different list sizes: ids " + ids.size() + ", values " + values.size());
-    }
-
-    final Map<Long, T> idValueMap = new HashMap<>();
-
-    for (int index = 0; index < ids.size(); index++) {
-      if (!router.isLocal(ids.get(index))) {
-        LOG.log(Level.WARNING, "This id is not local: {0}", ids.get(index));
-      } else {
-        idValueMap.put(ids.get(index), values.get(index));
-      }
     }
 
     readWriteLock.writeLock().lock();
@@ -109,7 +239,10 @@ public final class MemoryStoreImpl implements MemoryStore {
         dataMap.put(dataType, new TreeMap<Long, Object>());
       }
       final Map<Long, Object> innerMap = dataMap.get(dataType);
-      innerMap.putAll(idValueMap);
+
+      for (int index = 0; index < ids.size(); index++) {
+        innerMap.put(ids.get(index), values.get(index));
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -117,25 +250,19 @@ public final class MemoryStoreImpl implements MemoryStore {
 
   @Override
   public <T> Pair<Long, T> get(final String dataType, final long id) {
-    readWriteLock.readLock().lock();
 
-    try {
-      if (!dataMap.containsKey(dataType)) {
-        return null;
-      }
+    final String operationId = Long.toString(operationIdCounter.getAndIncrement());
+    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
+        dataType, id, Optional.<T>empty());
 
-      final T retObj = (T) dataMap.get(dataType).get(id);
-      if (retObj == null) {
-        return null;
-      }
+    executeOperation(operation);
 
-      return new Pair<>(id, retObj);
+    final Optional<T> outputData = operation.getOutputData();
 
-    } finally {
-      readWriteLock.readLock().unlock();
-    }
+    return outputData.isPresent() ? new Pair<>(id, outputData.get()) : null;
   }
 
+  // TODO #406: enable remote access
   @Override
   public <T> Map<Long, T> getAll(final String dataType) {
     readWriteLock.readLock().lock();
@@ -151,6 +278,7 @@ public final class MemoryStoreImpl implements MemoryStore {
     }
   }
 
+  // TODO #406: enable remote access
   @Override
   public <T> Map<Long, T> getRange(final String dataType, final long startId, final long endId) {
     readWriteLock.readLock().lock();
@@ -168,25 +296,19 @@ public final class MemoryStoreImpl implements MemoryStore {
 
   @Override
   public <T> Pair<Long, T> remove(final String dataType, final long id) {
-    readWriteLock.writeLock().lock();
 
-    try {
-      if (!dataMap.containsKey(dataType)) {
-        return null;
-      }
+    final String operationId = Long.toString(operationIdCounter.getAndIncrement());
+    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.REMOVE,
+        dataType, id, Optional.<T>empty());
 
-      final T retObj = (T) dataMap.get(dataType).remove(id);
-      if (retObj == null) {
-        return null;
-      }
+    executeOperation(operation);
 
-      return new Pair<>(id, retObj);
+    final Optional<T> outputData = operation.getOutputData();
 
-    } finally {
-      readWriteLock.writeLock().unlock();
-    }
+    return outputData.isPresent() ? new Pair<>(id, outputData.get()) : null;
   }
 
+  // TODO #406: enable remote access
   @Override
   public <T> Map<Long, T> removeAll(final String dataType) {
     readWriteLock.writeLock().lock();
@@ -202,6 +324,7 @@ public final class MemoryStoreImpl implements MemoryStore {
     }
   }
 
+  // TODO #406: enable remote access
   @Override
   public <T> Map<Long, T> removeRange(final String dataType, final long startId, final long endId) {
     readWriteLock.writeLock().lock();
