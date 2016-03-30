@@ -249,8 +249,6 @@
               <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
               <!-- Output files -->
               <exclude>**/output*/**</exclude>
-              <!-- Deploy scripts -->
-              <exclude>deploy/**</exclude>
             </excludes>
           </configuration>
           <dependencies>

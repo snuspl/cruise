@@ -3,7 +3,7 @@
 ## Salt-Cloud setup (on your Macbook)
 1. Install dependencies listed in https://docs.saltstack.com/en/latest/topics/cloud/azure.html
 	- For the Azure Python SDK: `pip install azure==0.9`
-2. Copy the files from here to /etc/salt/ and do `cd /etc/salt/`
+2. Copy the files from here to /etc/salt/ (creating the directory with `sudo mkdir /etc/salt` if it doesn't exist) and do `cd /etc/salt/`
 3. Set up .cer and .pem files as in https://docs.saltstack.com/en/latest/topics/cloud/azure.html, and set `certificate_path` in `cloud.providers`
 4. In the file `cloud.profiles`, set `ssh_password` (make it difficult!)
 
@@ -11,7 +11,7 @@
 ## Instance Creation (on your Macbook)
 
 4. At `/etc/salt/`, run `sudo salt-cloud -m eml` to create a master vm and a minion vm as specified in the file `eml`
-  - BAD NEWS: Due to the global lock in an Azure Cloud Service, we need to create instances sequentially (10 minutes per instance)
+  - BAD NEWS: Due to the global lock in an Azure Cloud Service, we need to create instances sequentially (10 minutes per instance), (TODO: need to check if saltstack's -P option works)
 5. Open the Azure console to check that all instances are up and running
 6. For the master node, create new endpoints for ports 8088(YARN) and 50070(HDFS)
 7. Do `ssh azureuser@eml.cloudapp.net`, and run `sudo salt '*' cmd.run 'echo hi'` to see 2 responses (including the master)
