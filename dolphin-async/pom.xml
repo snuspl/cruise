@@ -80,11 +80,6 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}.services</groupId>
-      <artifactId>dataloader</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>${project.groupId}.services</groupId>
       <artifactId>ps</artifactId>
       <version>${project.parent.version}</version>
     </dependency>

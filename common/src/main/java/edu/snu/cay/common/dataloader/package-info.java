@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Customized REEF DataLoader.
+ * Customized REEF classes for Data Loading Service.
  */
-package edu.snu.cay.services.dataloader;
+package edu.snu.cay.common.dataloader;

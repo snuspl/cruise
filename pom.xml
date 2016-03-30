@@ -65,7 +65,6 @@
   <modules>
     <module>dolphin</module>
     <module>dolphin-async</module>
-    <module>services/dataloader</module>
     <module>services/elastic-memory</module>
     <module>services/evaluator-manager</module>
     <module>services/shuffle</module>
