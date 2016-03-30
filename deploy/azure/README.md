@@ -24,7 +24,7 @@ Copy and paste `install_reef.sh` (this is required to use the path `salt://insta
 
 ```
 sudo mkdir /srv/salt
-sudo vi /srv/salt/install_reef.sh # Copy and paste go.sh
+sudo vi /srv/salt/install_reef.sh # Copy and paste install_reef.sh
 ```
 
 
