@@ -1,0 +1,24 @@
+# profiles for saltstack
+
+eml-master:
+  provider: eml-azure-config
+  image: 'b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-14_04_4-LTS-amd64-server-20160222-en-us-30GB'
+  size: Small
+  location: 'East Asia'
+  ssh_username: azureuser
+  ssh_password: # TODO
+  service_name: eml
+  slot: production
+  media_link: 'http://portalvhdsgfn05sfpw0zvn.blob.core.windows.net/vhds'
+  virtual_network_name: eml
+
+eml-minion:
+  provider: eml-azure-config
+  image: 'b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-14_04_4-LTS-amd64-server-20160222-en-us-30GB'
+  size: Small
+  location: 'East Asia'
+  ssh_username: azureuser
+  ssh_password: # TODO
+  service_name: eml
+  slot: production
+  media_link: 'http://portalvhdsgfn05sfpw0zvn.blob.core.windows.net/vhds'

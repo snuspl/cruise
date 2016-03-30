@@ -1,0 +1,9 @@
+# This file may be used in addition to, or instead of the files in the
+# cloud.providers.d/ directory. The format for this file, and all files in that
+# directory is identical.
+
+eml-azure-config:
+  driver: azure
+  subscription_id: 0f186b61-0612-4084-81a8-ef5309648a47
+  certificate_path: # TODO
+  script_args: -P git v2015.8.0
