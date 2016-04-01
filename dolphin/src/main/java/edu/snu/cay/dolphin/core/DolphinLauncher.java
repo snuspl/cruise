@@ -16,13 +16,13 @@
 package edu.snu.cay.dolphin.core;
 
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.dolphin.core.metric.DriverSideMetricsMsgHandler;
 import edu.snu.cay.dolphin.core.metric.EvalSideMetricsMsgHandler;
 import edu.snu.cay.dolphin.core.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.core.sync.DriverSyncRegister;
 import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.groupcomm.conf.GroupCommParameters;
-import edu.snu.cay.services.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
