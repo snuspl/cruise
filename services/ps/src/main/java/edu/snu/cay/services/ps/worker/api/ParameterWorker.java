@@ -17,28 +17,37 @@ package edu.snu.cay.services.ps.worker.api;
 
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
+import java.util.List;
+
 /**
- * A Parameter Server worker (client) that interacts with the server to provide or fetch parameters.
+ * A Parameter Server worker (client) that interacts with the servers to provide or fetch parameters.
  * Works as a set with {@link edu.snu.cay.services.ps.server.concurrent.api.ParameterServer}.
  * @param <K> class type of parameter keys
- * @param <P> class type of parameter values before they are processed at the server
- * @param <V> class type of parameter values after they are processed at the server
+ * @param <P> class type of parameter values before they are processed at the servers
+ * @param <V> class type of parameter values after they are processed at the servers
  */
 @EvaluatorSide
 public interface ParameterWorker<K, P, V> {
 
   /**
-   * Send a {@code preValue} associated with a certain {@code key} to the server.
+   * Send a {@code preValue} associated with a certain {@code key} to the servers.
    * @param key key object representing what is being sent
-   * @param preValue value to push to the server
+   * @param preValue value to push to the servers
    */
   void push(K key, P preValue);
 
   /**
-   * Fetch a value associated with a certain {@code key} from the server.
+   * Fetch a value associated with a certain {@code key} from the servers.
    * @param key key object representing the expected value
    * @return value specified by the {@code key}, or {@code null} if something unexpected happens (see implementation)
    */
   V pull(K key);
-}
 
+  /**
+   * Fetch values associated with certain {@code key}s from the servers.
+   * @param keys a list of key objects representing the expected values
+   * @return a list of values by the given {@code key}s. Some position can be {@code null}
+   *         if something unexpected happens. (see implementation)
+   */
+  List<V> pull(List<K> keys);
+}

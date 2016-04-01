@@ -33,6 +33,7 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -182,6 +183,35 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     final PullOp pullOp = new PullOp(encodedKey);
     partitions[getPartitionIndex(encodedKey.getHash())].enqueue(pullOp);
     return pullOp.get();
+  }
+
+  @Override
+  public List<V> pull(final List<K> keys) {
+    // transform keys to encoded keys
+    final List<EncodedKey<K>> encodedKeys = new ArrayList<>(keys.size());
+    for (final K key : keys) {
+      try {
+        encodedKeys.add(encodedKeyCache.get(key));
+      } catch (final ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    return pullEncodedKeys(encodedKeys);
+  }
+
+  public List<V> pullEncodedKeys(final List<EncodedKey<K>> encodedKeys) {
+    final List<PullOp> pullOps = new ArrayList<>(encodedKeys.size());
+    for (final EncodedKey<K> encodedKey : encodedKeys) {
+      final PullOp pullOp = new PullOp(encodedKey);
+      pullOps.add(pullOp);
+      partitions[getPartitionIndex(encodedKey.getHash())].enqueue(pullOp);
+    }
+    final List<V> values = new ArrayList<>(pullOps.size());
+    for (final PullOp pullOp : pullOps) {
+      values.add(pullOp.get());
+    }
+    return values;
   }
 
   public void invalidateAll() {
