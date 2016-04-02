@@ -19,6 +19,7 @@ import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -26,6 +27,9 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,14 +44,15 @@ final class RemoteEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(RemoteEMTask.class.getName());
 
   private static final String DATA_TYPE = "INTEGER";
-  private static final long DATA_KEY = 0;
-  private static final int DATA_VALUE = 1000;
+  private static final long DATA_KEY0 = 0;
+  private static final long DATA_KEY1 = 1;
+  private static final int DATA_VALUE0 = 1000;
+  private static final int DATA_VALUE1 = 1001;
 
   private final MemoryStore memoryStore;
 
   /**
-   * A router that is an internal component of EM.
-   * Here we use it in user code for testing purpose.
+   * A router that is an internal component of EM. Here we use it in user code for testing purpose.
    */
   private final OperationRouter router;
 
@@ -73,8 +78,8 @@ final class RemoteEMTask implements Task {
   }
 
   /**
-   * Synchronize all tasks with a barrier in driver.
-   * Using this method, workers can share same view on stores for each step.
+   * Synchronize all tasks with a barrier in driver. Using this method, workers can share same view on stores for each
+   * step.
    */
   private void synchronize() {
     aggregationSlave.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, codec.encode(taskId));
@@ -85,7 +90,103 @@ final class RemoteEMTask implements Task {
 
     LOG.info("RemoteEMTask commencing...");
 
-    final boolean isLocalKey = router.route(DATA_KEY).getFirst();
+    final List<Long> keys = new LinkedList<>();
+    keys.add(DATA_KEY0);
+    keys.add(DATA_KEY1);
+
+    final List<Integer> values = new LinkedList<>();
+    values.add(DATA_VALUE0);
+    values.add(DATA_VALUE1);
+
+    Pair<Long, Integer> outputPair;
+    Map<Long, Integer> outputMap;
+
+    final boolean isLocalKey = !router.route(new LongRange(0, 1)).getFirst().isEmpty();
+
+    // 1. INITIAL STATE: check that the store does not contain DATA
+    outputMap = memoryStore.getRange(DATA_TYPE, DATA_KEY0, DATA_KEY1);
+    LOG.log(Level.INFO, "getRange({0}, {1}): {2}", new Object[]{DATA_KEY0, DATA_KEY1, outputMap});
+
+    if (!outputMap.isEmpty()) {
+      throw new RuntimeException("Wrong initial state");
+    }
+
+    synchronize();
+
+    // 2. Put DATA into store via remote access
+    // It should be performed by a memory store that does not own DATA_KEY.
+    if (!isLocalKey) {
+      memoryStore.putList(DATA_TYPE, keys, values);
+    }
+
+    synchronize();
+
+    // 3. AFTER PUT: check that all workers can get DATA from the store
+    outputPair = memoryStore.get(DATA_TYPE, DATA_KEY0);
+    LOG.log(Level.INFO, "get({0}): {1}", new Object[]{DATA_KEY0, outputPair});
+
+    if (outputPair == null) {
+      throw new RuntimeException("Fail to get data");
+    }
+    if (outputPair.getFirst() != DATA_KEY0 || outputPair.getSecond() != DATA_VALUE0) {
+      throw new RuntimeException("Fail to get correct data");
+    }
+
+    outputPair = memoryStore.get(DATA_TYPE, DATA_KEY1);
+    LOG.log(Level.INFO, "get({0}): {1}", new Object[]{DATA_KEY1, outputPair});
+
+    if (outputPair == null) {
+      throw new RuntimeException("Fail to get data");
+    }
+    if (outputPair.getFirst() != DATA_KEY1 || outputPair.getSecond() != DATA_VALUE1) {
+      throw new RuntimeException("Fail to get correct data");
+    }
+
+    outputMap = memoryStore.getRange(DATA_TYPE, 0, 1);
+    LOG.log(Level.INFO, "getRange({0}, {1}): {2}", new Object[]{DATA_KEY0, DATA_KEY1, outputMap});
+
+    if (!outputMap.containsKey(DATA_KEY0) || !outputMap.containsKey(DATA_KEY1)) {
+      throw new RuntimeException("Fail to get data");
+    }
+    if (!outputMap.get(DATA_KEY0).equals(DATA_VALUE0) || !outputMap.get(DATA_KEY1).equals(DATA_VALUE1)) {
+      throw new RuntimeException("Fail to get correct data");
+    }
+
+    synchronize();
+
+    // 4. Remove DATA from the store via remote access
+    // It should be performed by a memory store that does not own DATA_KEY.
+    if (!isLocalKey) {
+      outputMap = memoryStore.removeRange(DATA_TYPE, DATA_KEY0, DATA_KEY1);
+      LOG.log(Level.INFO, "removeRange({0}, {1}): {2}", new Object[]{DATA_KEY0, DATA_KEY1, outputMap});
+
+      if (!outputMap.containsKey(DATA_KEY0) || !outputMap.containsKey(DATA_KEY1)) {
+        throw new RuntimeException("Fail to remove data");
+      }
+      if (!outputMap.get(DATA_KEY0).equals(DATA_VALUE0) || !outputMap.get(DATA_KEY1).equals(DATA_VALUE1)) {
+        throw new RuntimeException("Fail to remove correct data");
+      }
+    }
+
+    synchronize();
+
+    // 5. AFTER REMOVE: check that the store does not contain DATA
+    outputMap = memoryStore.getRange(DATA_TYPE, DATA_KEY0, DATA_KEY1);
+    LOG.log(Level.INFO, "getRange({0}, {1}): {2}", new Object[]{DATA_KEY0, DATA_KEY1, outputMap});
+
+    if (!outputMap.isEmpty()) {
+      throw new RuntimeException("RemoveRange did not work");
+    }
+
+    // last sync to make sure all evaluators are alive until the end of all remote operations
+    synchronize();
+
+    return null;
+  }
+}
+
+/*
+    final boolean isLocalKey = !router.route(new LongRange(DATA_KEY)).getFirst().isEmpty();
 
     boolean isSuccess;
     Pair<Long, Integer> output;
@@ -152,7 +253,4 @@ final class RemoteEMTask implements Task {
 
     // last sync to make sure all evaluators are alive until the end of all remote operations
     synchronize();
-
-    return null;
-  }
-}
+*/

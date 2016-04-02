@@ -56,8 +56,8 @@
     {"name": "origEvalId", "type": "string"},
     {"name": "opType", "type": {"type": "enum", "name": "DataOpType", "symbols": ["PUT", "GET", "REMOVE"]}},
     {"name": "dataType", "type": "string"},
-    {"name": "dataKey", "type": "long"},
-    {"name": "dataValue", "type": ["null", "bytes"], "default": null}
+    {"name": "dataKeyRanges", "type": {"type": "array", "items": "AvroLongRange"}},
+    {"name": "dataKVPairList", "type": {"type": "array", "items": "UnitIdPair"}}
   ]
 },
 
@@ -71,8 +71,8 @@
   "name": "RemoteOpResultMsg",
   "fields":
   [
-    {"name": "isSuccess", "type": "boolean"},
-    {"name": "dataValue", "type": ["null", "bytes"], "default": null}
+    {"name": "dataKVPairList", "type": {"type": "array", "items": "UnitIdPair"}},
+    {"name": "failedKeyRanges", "type": {"type": "array", "items": "AvroLongRange"}}
   ]
 },
 

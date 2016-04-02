@@ -32,11 +32,7 @@ import org.apache.reef.wake.IdentifierFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 
 
@@ -91,22 +87,28 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                              final String dataType, final long dataKey, final ByteBuffer inputData,
-                              final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+                              final String dataType, final List<LongRange> dataKeyRanges,
+                              final List<UnitIdPair> dataKVPairList, final String operationId,
+                              @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpMsgScope = Trace.startSpan(SEND_REMOTE_OP_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType, dataKey, inputData});
+          operationType, dataType, dataKeyRanges, dataKVPairList});
 
       // the operation begins with a local client, when the origId is null
       final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
+
+      final List<AvroLongRange> avroLongRangeList = new ArrayList<>(dataKeyRanges.size());
+      for (final LongRange range : dataKeyRanges) {
+        avroLongRangeList.add(AvroUtils.toAvroLongRange(range));
+      }
 
       final RemoteOpMsg remoteOpMsg = RemoteOpMsg.newBuilder()
           .setOrigEvalId(origEvalId)
           .setOpType(operationType)
           .setDataType(dataType)
-          .setDataKey(dataKey)
-          .setDataValue(inputData)
+          .setDataKeyRanges(avroLongRangeList)
+          .setDataKVPairList(dataKVPairList)
           .build();
 
       send(destId,
@@ -121,21 +123,27 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       );
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType, dataKey});
+          operationType, dataType, dataKeyRanges, dataKVPairList});
     }
   }
 
   @Override
-  public void sendRemoteOpResultMsg(final String destId, final boolean isSuccess, final ByteBuffer outputData,
-                                    final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+  public void sendRemoteOpResultMsg(final String destId, final List<UnitIdPair> dataKVPairList,
+                                    final List<LongRange> failedRanges, final String operationId,
+                                    @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpResultMsgScope = Trace.startSpan(SEND_REMOTE_OP_RESULT_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
-          isSuccess, outputData});
+          failedRanges, dataKVPairList});
+
+      final List<AvroLongRange> avroLongRangeList = new ArrayList<>(failedRanges.size());
+      for (final LongRange range : failedRanges) {
+        avroLongRangeList.add(AvroUtils.toAvroLongRange(range));
+      }
 
       final RemoteOpResultMsg remoteOpResultMsg = RemoteOpResultMsg.newBuilder()
-          .setIsSuccess(isSuccess)
-          .setDataValue(outputData)
+          .setDataKVPairList(dataKVPairList)
+          .setFailedKeyRanges(avroLongRangeList)
           .build();
 
       send(destId,
@@ -150,7 +158,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       );
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
-          isSuccess, outputData});
+          failedRanges, dataKVPairList});
     }
   }
 

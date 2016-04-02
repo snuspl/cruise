@@ -17,12 +17,7 @@ package edu.snu.cay.utils;
 
 import org.apache.commons.lang.math.LongRange;
 
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.NavigableSet;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * Utilities for dealing with {@code LongRange}s.
