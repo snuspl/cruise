@@ -67,9 +67,8 @@ final class OperationResultAggregator {
   }
 
   /**
-   * Handles the result of data operation that is processed by local memory store.
-   * It waits
-   * It returns the result to the local client or sends it to the origin evaluator of the data operation.
+   * Handles the result of data operation processed by local memory store.
+   * It waits until all remote sub operations are finished and their outputs are fully aggregated.
    */
   <T> void submitResultAndWaitRemoteOps(final DataOperation<T> operation, final Map<Long, T> localOutput) {
     operation.commitResult(localOutput, Collections.EMPTY_LIST);
@@ -84,11 +83,11 @@ final class OperationResultAggregator {
     } finally {
       deregisterOperation(operation.getOperationId());
     }
+    // TODO #421: handle failures of operation (timeout, failed to locate).
   }
 
   /**
-   * Handles the result of data operation sent from remote memory store.
-   * It always returns the result to the local client.
+   * Aggregates the result of data operation sent from remote memory store.
    */
   <T> void submitRemoteResult(final String operationId, final List<UnitIdPair> remoteOutput,
                               final List<AvroLongRange> failedRanges) {

@@ -88,7 +88,7 @@ public final class DataOperation<T> {
    * @param dataType a type of data
    * @param dataKeyRange a range of data keys
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
-   *                        It is empty when the operation is on eof GET or REMOVE.
+   *                        It is empty when the operation is one of GET or REMOVE.
    */
   DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
                 final String dataType, final LongRange dataKeyRange,
@@ -115,7 +115,8 @@ public final class DataOperation<T> {
    * @param operationType a type of operation
    * @param dataType a type of data
    * @param dataKey a key of data
-   * @param dataValue a value of data
+   * @param dataValue an Optional with the value of data.
+   *                  It is empty when the operation is one of GET or REMOVE.
    */
   DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
                 final String dataType, final long dataKey, final Optional<T> dataValue) {
@@ -188,7 +189,8 @@ public final class DataOperation<T> {
   }
 
   /**
-   * Set a count of latch, which {@code waitOperation} will wait until its count becomes zero.
+   * Set a count of latch that {@code waitOperation} will wait until the count becomes zero.
+   * Only {@code commitResult} method counts down the latch.
    * @param numSubOp a number of sub operations
    */
   void setCountDownLatch(final int numSubOp) {
@@ -221,7 +223,7 @@ public final class DataOperation<T> {
   }
 
   /**
-   * Returns a list of key ranges that the sub operation failed to locate.
+   * Returns a list of key ranges that the sub operations failed to locate.
    */
   List<AvroLongRange> getFailedRanges() {
     synchronized (failedRanges) {

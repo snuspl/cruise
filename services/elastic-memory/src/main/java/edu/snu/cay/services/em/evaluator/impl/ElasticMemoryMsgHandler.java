@@ -136,6 +136,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       dataKeyRanges.add(AvroUtils.fromAvroLongRange(avroRange));
     }
 
+    // decode data values
     final Optional<SortedMap<Long, T>> dataKeyValueMap;
     if (dataKVPairList.isEmpty()) {
       dataKeyValueMap = Optional.empty();
@@ -153,6 +154,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final DataOperation<T> operation = new DataOperation<>(Optional.of(origEvalId),
         operationId, operationType, dataType, dataKeyRanges, dataKeyValueMap);
 
+    // enqueue operation requested from remote store into memory store
     memoryStore.onNext(operation);
   }
 
