@@ -44,9 +44,9 @@ public interface ParameterWorker<K, P, V> {
   V pull(K key);
 
   /**
-   * Fetch values associated with certain {@code key}s from the servers.
+   * Fetch values associated with certain {@code keys} from the servers.
    * @param keys a list of key objects representing the expected values
-   * @return a list of values by the given {@code key}s. Some position can be {@code null}
+   * @return a list of values specified by the given {@code keys}. Some positions can be {@code null}
    *         if something unexpected happens. (see implementation)
    */
   List<V> pull(List<K> keys);
