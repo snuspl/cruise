@@ -22,6 +22,7 @@ import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
@@ -115,6 +116,11 @@ public final class ConcurrentParameterWorker<K, P, V> implements ParameterWorker
         return valueWrapper.getValue();
       }
     }
+  }
+
+  @Override
+  public List<V> pull(final List<K> keys) {
+    throw new RuntimeException("Not Implemented");
   }
 
   /**
