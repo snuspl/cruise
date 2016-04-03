@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.evaluator.api;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.util.Pair;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,7 +38,7 @@ public interface MemoryStore {
    * @param value data item to register
    * @param <T> actual data type
    */
-  <T> void put(String dataType, long id, T value);
+  <T> void put(String dataType, long id, @Nonnull T value);
 
   /**
    * Register data items of a certain data type to this store.

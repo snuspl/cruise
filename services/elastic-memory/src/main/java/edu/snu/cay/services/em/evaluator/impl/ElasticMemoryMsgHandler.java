@@ -136,19 +136,19 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       dataKeyRanges.add(AvroUtils.fromAvroLongRange(avroRange));
     }
 
-    // decode data values
     final Optional<SortedMap<Long, T>> dataKeyValueMap;
-    if (dataKVPairList.isEmpty()) {
-      dataKeyValueMap = Optional.empty();
-    } else {
-      dataKeyValueMap = Optional.of((SortedMap<Long, T>) new TreeMap<Long, T>());
+    if (operationType.equals(DataOpType.PUT)) {
+      final SortedMap<Long, T> dataMap = new TreeMap<>();
+      dataKeyValueMap = Optional.of(dataMap);
 
+      // decode data values
       final Codec codec = serializer.getCodec(dataType);
-
       for (final UnitIdPair dataKVPair : dataKVPairList) {
         final T dataValue = (T) codec.decode(dataKVPair.getUnit().array());
-        dataKeyValueMap.get().put(dataKVPair.getId(), dataValue);
+        dataMap.put(dataKVPair.getId(), dataValue);
       }
+    } else {
+      dataKeyValueMap = Optional.empty();
     }
 
     final DataOperation<T> operation = new DataOperation<>(Optional.of(origEvalId),

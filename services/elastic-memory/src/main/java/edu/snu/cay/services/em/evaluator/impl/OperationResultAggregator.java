@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 
 /**
  * A class that handles the result of data operations both from local and remote memory stores.
- * The results are routed to a local client or an origin memory store where the operation is started.
+ * The results are routed to a local client or an original memory store where the operation is started.
  */
 final class OperationResultAggregator {
   private static final Logger LOG = Logger.getLogger(OperationResultAggregator.class.getName());
@@ -52,7 +52,7 @@ final class OperationResultAggregator {
    */
   void registerOperation(final DataOperation operation, final int numSubOperations) {
     final DataOperation unhandledOperation = ongoingOperations.put(operation.getOperationId(), operation);
-    operation.setCountDownLatch(numSubOperations);
+    operation.setNumSubOps(numSubOperations);
 
     if (unhandledOperation != null) {
       LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}", unhandledOperation);
@@ -70,7 +70,7 @@ final class OperationResultAggregator {
    * Handles the result of data operation processed by local memory store.
    * It waits until all remote sub operations are finished and their outputs are fully aggregated.
    */
-  <T> void submitResultAndWaitRemoteOps(final DataOperation<T> operation, final Map<Long, T> localOutput) {
+  <T> void submitLocalResult(final DataOperation<T> operation, final Map<Long, T> localOutput) {
     operation.commitResult(localOutput, Collections.EMPTY_LIST);
 
     // wait until all sub operations are finished

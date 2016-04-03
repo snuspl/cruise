@@ -42,7 +42,7 @@ public final class DataOperation<T> {
   private final DataOpType operationType;
   private final String dataType;
 
-  // unmodifiable data structures
+  // unmodifiable list and map to ensure that the contents are immutable
   private final List<LongRange> dataKeyRanges;
   private final Optional<SortedMap<Long, T>> dataKeyValueMap;
 
@@ -50,7 +50,10 @@ public final class DataOperation<T> {
    * States of the operation.
    */
   private CountDownLatch subOpCountDownLatch = new CountDownLatch(0);
-  private final List<AvroLongRange> failedRanges = new LinkedList<>(); // ranges that failed to locate the store
+
+  // ranges that remote sub operations failed to execute due to wrong routing
+  // it happens only when ownership of data key are updated, unknown to the original store
+  private final List<AvroLongRange> failedRanges = new LinkedList<>();
   private final ConcurrentMap<Long, T> outputData = new ConcurrentHashMap<>();
 
   /**
@@ -180,24 +183,24 @@ public final class DataOperation<T> {
   }
 
   /**
-   * Returns an Optional with the list of input data values for PUT operation.
+   * Returns an Optional with the map of input data keys and its values for PUT operation.
    * It returns an empty Optional for GET and REMOVE operations.
-   * @return an Optional with the list of input data
+   * @return an Optional with the map of input keys and its values
    */
   Optional<SortedMap<Long, T>> getDataKeyValueMap() {
     return dataKeyValueMap;
   }
 
   /**
-   * Set a count of latch that {@code waitOperation} will wait until the count becomes zero.
-   * Only {@code commitResult} method counts down the latch.
-   * @param numSubOp a number of sub operations
+   * Set a counter number that {@link #waitOperation(long)} will wait until the count becomes zero.
+   * Only {@link #commitResult(Map, List<AvroLongRange>)} method counts down the latch.
+   * @param numSubOps a number of sub operations
    */
-  void setCountDownLatch(final int numSubOp) {
-    if (numSubOp == 0) {
+  void setNumSubOps(final int numSubOps) {
+    if (numSubOps == 0) {
       return;
     }
-    subOpCountDownLatch = new CountDownLatch(numSubOp);
+    subOpCountDownLatch = new CountDownLatch(numSubOps);
   }
 
   /**
@@ -210,7 +213,7 @@ public final class DataOperation<T> {
 
   /**
    * Commits results of sub operations, which compose the operation.
-   * It counts down the latch, so it might trigger a return of {@waitOperation} method.
+   * It counts down the latch, so it might trigger a return of {@link #waitOperation(long)} method.
    * @param output an output data of the sub operation
    * @param failedRangeList a list of failed key ranges of the sub operation
    */

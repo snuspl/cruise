@@ -172,7 +172,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     final Map<String, List<LongRange>> remoteKeyRangesMap = routingResult.getSecond();
 
     if (operation.isFromLocalClient()) {
-      resultAggregator.registerOperation(operation, remoteKeyRangesMap.size() + 1);
+      final int numSubOps = remoteKeyRangesMap.size() + 1; // +1 for local operation
+      resultAggregator.registerOperation(operation, numSubOps);
     }
 
     // send remote operation only when the operation is requested from the local client
@@ -192,11 +193,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     // handle local result
     if (operation.isFromLocalClient()) {
       // a. submit the local result and wait until all remote operations complete
-      resultAggregator.submitResultAndWaitRemoteOps(operation, localOutputData);
+      resultAggregator.submitLocalResult(operation, localOutputData);
     } else {
-      // b. send the local result to the origin store
+      // b. send the local result to the original store
       final Collection<List<LongRange>> failedRanges = remoteKeyRangesMap.values();
-      sendResultToOriginStore(operation, localOutputData, failedRanges);
+      sendResultToOrigin(operation, localOutputData, failedRanges);
     }
   }
 
@@ -217,8 +218,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
         final NavigableMap<Long, T> innerMap = (NavigableMap<Long, T>) dataMap.get(dataType);
 
         for (final LongRange keyRange : subKeyRanges) {
-          final SortedMap<Long, T> subMap =
-              dataKeyValueMap.subMap(keyRange.getMinimumLong(), keyRange.getMaximumLong() + 1);
+          // extract range-matching entries from the map and put it all to dataMap
+          final SortedMap<Long, T> subMap;
+          if (keyRange.getMaximumLong() == Long.MAX_VALUE) {
+            subMap = dataKeyValueMap.tailMap(keyRange.getMinimumLong());
+          } else {
+            // +1 to include maximum value
+            subMap = dataKeyValueMap.subMap(keyRange.getMinimumLong(), keyRange.getMaximumLong() + 1);
+          }
 
           innerMap.putAll(subMap);
         }
@@ -274,7 +281,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
    * Sends sub operations to target remote evaluators.
    */
   private <T> void sendOperationsToRemoteStores(final DataOperation<T> operation,
-                                        final Map<String, List<LongRange>> remoteKeyRangesMap) {
+                                                final Map<String, List<LongRange>> remoteKeyRangesMap) {
 
     final Codec codec = serializer.getCodec(operation.getDataType());
 
@@ -294,7 +301,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
           // encode all data value and put them into dataKVPairList
           for (final LongRange range : keyRanges) {
-            final Map<Long, T> subMap = keyValueMap.subMap(range.getMinimumLong(), range.getMaximumLong() + 1);
+            // extract range-matching entries from the map and put it all to dataMap
+            final Map<Long, T> subMap;
+            if (range.getMaximumLong() == Long.MAX_VALUE) {
+              subMap = keyValueMap.tailMap(range.getMinimumLong());
+            } else {
+              // +1 to include maximum value
+              subMap = keyValueMap.subMap(range.getMinimumLong(), range.getMaximumLong() + 1);
+            }
 
             for (final Map.Entry<Long, T> dataKVPair : subMap.entrySet()) {
               final ByteBuffer encodedData = ByteBuffer.wrap(codec.encode(dataKVPair.getValue()));
@@ -314,11 +328,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   /**
-   * Sends the result to origin store.
+   * Sends the result to the original store.
    */
-  private <T> void sendResultToOriginStore(final DataOperation<T> operation, final Map<Long, T> localOutputData,
-                                   final Collection<List<LongRange>> remoteKeyRanges) {
-    // send the origin store the result (RemoteOpResultMsg)
+  private <T> void sendResultToOrigin(final DataOperation<T> operation, final Map<Long, T> localOutputData,
+                                      final Collection<List<LongRange>> remoteKeyRanges) {
+    // send the original store the result (RemoteOpResultMsg)
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
       final String dataType = operation.getDataType();
       final Codec codec = serializer.getCodec(dataType);
