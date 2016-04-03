@@ -3,7 +3,7 @@
 ## Salt-Cloud setup (on your Macbook)
 1. Install dependencies listed in https://docs.saltstack.com/en/latest/topics/cloud/azure.html
 	- For the Azure Python SDK: `pip install azure==0.9`
-2. Copy the files from here to /etc/salt/ (creating the directory with `sudo mkdir /etc/salt` if it doesn't exist) and do `cd /etc/salt/`
+2. Copy the files from here to /etc/salt/ (creating the directory with `sudo mkdir /etc/salt` if it doesn't exist) and do `cd /etc/salt/` (For example, you should see /etc/salt/cloud.providers)
 3. Set up .cer and .pem files as in https://docs.saltstack.com/en/latest/topics/cloud/azure.html, and set `certificate_path` in `cloud.providers`
 4. In the file `cloud.profiles`, set `ssh_password` (make it difficult!)
 
