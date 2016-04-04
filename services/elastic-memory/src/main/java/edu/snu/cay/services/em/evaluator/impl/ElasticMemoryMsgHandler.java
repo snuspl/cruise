@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
+import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
@@ -57,7 +58,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_UPDATE_MSG = "onUpdateMsg";
 
   private final RemoteAccessibleMemoryStore memoryStore;
-  private final OperationResultHandler resultHandler;
+  private final OperationResultAggregator resultAggregator;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
@@ -74,11 +75,11 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
   @Inject
   private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore memoryStore,
-                                  final OperationResultHandler resultHandler,
+                                  final OperationResultAggregator resultAggregator,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   final Serializer serializer) {
     this.memoryStore = memoryStore;
-    this.resultHandler = resultHandler;
+    this.resultAggregator = resultAggregator;
     this.serializer = serializer;
     this.sender = sender;
   }
@@ -126,16 +127,34 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final String origEvalId = remoteOpMsg.getOrigEvalId().toString();
     final DataOpType operationType = remoteOpMsg.getOpType();
     final String dataType = remoteOpMsg.getDataType().toString();
-    final long dataKey = remoteOpMsg.getDataKey();
+    final List<AvroLongRange> avroLongRangeList = remoteOpMsg.getDataKeyRanges();
+    final List<UnitIdPair> dataKVPairList = remoteOpMsg.getDataKVPairList();
     final String operationId = msg.getOperationId().toString();
 
-    final Codec codec = serializer.getCodec(dataType);
-    final Optional<T> data = remoteOpMsg.getDataValue() == null ?
-        Optional.<T>empty() : Optional.of((T) codec.decode(remoteOpMsg.getDataValue().array()));
+    final List<LongRange> dataKeyRanges = new ArrayList<>(avroLongRangeList.size());
+    for (final AvroLongRange avroRange : avroLongRangeList) {
+      dataKeyRanges.add(AvroUtils.fromAvroLongRange(avroRange));
+    }
+
+    final Optional<SortedMap<Long, T>> dataKeyValueMap;
+    if (operationType.equals(DataOpType.PUT)) {
+      final SortedMap<Long, T> dataMap = new TreeMap<>();
+      dataKeyValueMap = Optional.of(dataMap);
+
+      // decode data values
+      final Codec codec = serializer.getCodec(dataType);
+      for (final UnitIdPair dataKVPair : dataKVPairList) {
+        final T dataValue = (T) codec.decode(dataKVPair.getUnit().array());
+        dataMap.put(dataKVPair.getId(), dataValue);
+      }
+    } else {
+      dataKeyValueMap = Optional.empty();
+    }
 
     final DataOperation<T> operation = new DataOperation<>(Optional.of(origEvalId),
-        operationId, operationType, dataType, dataKey, data);
+        operationId, operationType, dataType, dataKeyRanges, dataKeyValueMap);
 
+    // enqueue operation requested from remote store into memory store
     memoryStore.onNext(operation);
   }
 
@@ -147,10 +166,10 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
     final String operationId = msg.getOperationId().toString();
-    final boolean isSuccess = remoteOpResultMsg.getIsSuccess();
-    final ByteBuffer data = remoteOpResultMsg.getDataValue();
+    final List<UnitIdPair> dataKVPairList = remoteOpResultMsg.getDataKVPairList();
+    final List<AvroLongRange> failedRanges = remoteOpResultMsg.getFailedKeyRanges();
 
-    resultHandler.handleRemoteResult(operationId, isSuccess, data);
+    resultAggregator.submitRemoteResult(operationId, dataKVPairList, failedRanges);
   }
 
   /**

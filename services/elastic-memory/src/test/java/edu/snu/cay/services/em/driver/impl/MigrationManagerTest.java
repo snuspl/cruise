@@ -30,7 +30,6 @@ import org.junit.Test;
 
 import javax.annotation.Nullable;
 
-import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -242,14 +241,16 @@ public class MigrationManagerTest {
 
     @Override
     public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final String dataType, final long dataKey, final ByteBuffer inputData,
-                                final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+                                final String dataType, final List<LongRange> dataKeyRanges,
+                                final List<UnitIdPair> dataKVPairList, final String operationId,
+                                @Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendRemoteOpResultMsg(final String destId, final boolean isSuccess, final ByteBuffer outputData,
-                                      final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    public void sendRemoteOpResultMsg(final String destId, final List<UnitIdPair> dataKVPairList,
+                                      final List<LongRange> failedRanges, final String operationId,
+                                      @Nullable final TraceInfo parentTraceInfo) {
 
     }
 

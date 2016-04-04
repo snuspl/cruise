@@ -24,7 +24,6 @@ import org.htrace.TraceInfo;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
 
@@ -46,8 +45,8 @@ public interface ElasticMemoryMsgSender {
                        final String destId,
                        final DataOpType operationType,
                        final String dataType,
-                       final long dataKey,
-                       final ByteBuffer inputData,
+                       final List<LongRange> dataKeyRanges,
+                       final List<UnitIdPair> dataKVPairList,
                        final String operationId,
                        @Nullable final TraceInfo parentTraceInfo);
 
@@ -56,8 +55,8 @@ public interface ElasticMemoryMsgSender {
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
   void sendRemoteOpResultMsg(final String destId,
-                             final boolean isSuccess,
-                             final ByteBuffer outputData,
+                             final List<UnitIdPair> dataKVPairList,
+                             final List<LongRange> failedRanges,
                              final String operationId,
                              @Nullable final TraceInfo parentTraceInfo);
 

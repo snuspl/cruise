@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.evaluator.api;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.util.Pair;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,14 +32,15 @@ public interface MemoryStore {
 
   /**
    * Register a data item of a certain data type to this store.
+   * MemoryStore does not permit null for data values.
    *
    * @param dataType string that represents a certain data type
    * @param id global unique identifier of item
    * @param value data item to register
    * @param <T> actual data type
-   * @return true if the operation succeeded
+   * @return a {@link Pair} of the data id and a boolean that is true when the operation succeeded
    */
-  <T> boolean put(String dataType, long id, T value);
+  <T> Pair<Long, Boolean> put(String dataType, long id, @Nonnull T value);
 
   /**
    * Register data items of a certain data type to this store.
@@ -47,8 +49,9 @@ public interface MemoryStore {
    * @param ids list of global unique identifiers for each item
    * @param values list of data items to register
    * @param <T> actual data type
+   * @return a map of data ids and booleans that are true when the operation succeeded for each id
    */
-  <T> void putList(String dataType, List<Long> ids, List<T> values);
+  <T> Map<Long, Boolean> putList(String dataType, List<Long> ids, List<T> values);
 
   /**
    * Fetch a certain data item from this store.
