@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
+import edu.snu.cay.services.em.avro.AvroLongRange;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
@@ -362,9 +363,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> void put(final String dataType, final long id, final T value) {
+  public <T> Pair<Long, Boolean> put(final String dataType, final long id, final T value) {
     if (value == null) {
-      return;
+      return new Pair<>(id, false);
     }
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
@@ -373,10 +374,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
         dataType, id, Optional.of(value));
 
     executeOperation(operation);
+
+    return new Pair<>(id, operation.getFailedRanges().isEmpty());
   }
 
   @Override
-  public <T> void putList(final String dataType, final List<Long> ids, final List<T> values) {
+  public <T> Map<Long, Boolean> putList(final String dataType, final List<Long> ids, final List<T> values) {
     if (ids.size() != values.size()) {
       throw new RuntimeException("Different list sizes: ids " + ids.size() + ", values " + values.size());
     }
@@ -394,6 +397,64 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
         dataType, longRangeSet, Optional.of(dataKeyValueMap));
 
     executeOperation(operation);
+
+    return setResultForPutList(ids, operation.getFailedRanges());
+  }
+
+  /**
+   * Returns a result map for putList operation.
+   * The map has entries for all input data keys and corresponding boolean values
+   * that are false for failed keys and true for succeeded keys
+   */
+  private Map<Long, Boolean> setResultForPutList(final List<Long> keys, final List<AvroLongRange> failedRanges) {
+    final Map<Long, Boolean> resultMap = new HashMap<>(keys.size());
+    if (failedRanges.isEmpty()) {
+      for (final long key : keys) {
+        resultMap.put(key, true);
+      }
+      return resultMap;
+    }
+
+    // sort failedRanges and ids to compare them
+    final NavigableSet<LongRange> failedRangeSet = LongRangeUtils.createLongRangeSet();
+    for (final AvroLongRange range : failedRanges) {
+      failedRangeSet.add(new LongRange(range.getMin(), range.getMax()));
+    }
+    Collections.sort(keys);
+
+    // set the result of input keys
+    // set false for elements included in failedRanges and true for others
+    final Iterator<LongRange> rangeIterator = failedRangeSet.iterator();
+    LongRange range = rangeIterator.next();
+    int keyIdx;
+    for (keyIdx = 0; keyIdx < keys.size(); keyIdx++) {
+      final long key = keys.get(keyIdx);
+      if (range.getMinimumLong() > key) {
+        resultMap.put(key, false);
+        // go to next key
+        continue;
+      }
+
+      if (range.getMaximumLong() < key) {
+        if (rangeIterator.hasNext()) {
+          // go to next range
+          range = rangeIterator.next();
+          keyIdx--;
+          continue;
+        } else {
+          // break from the loop
+          // then a below loop will put all remaining keys to resultMap
+          break;
+        }
+      }
+      resultMap.put(key, true);
+    }
+
+    // put all remaining keys to resultMap
+    for (; keyIdx < keys.size(); keyIdx++) {
+      resultMap.put(keys.get(keyIdx), false);
+    }
+    return resultMap;
   }
 
   @Override

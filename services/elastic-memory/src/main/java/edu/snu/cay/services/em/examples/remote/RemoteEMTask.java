@@ -36,7 +36,7 @@ import java.util.logging.Logger;
 /**
  * Task code for testing remote access of memory store.
  * It assumes there are only two evaluators participating in EM service.
- * Task code invokes PUT/GET/REMOVE operations of memory store with a single DATA_KEY that belongs to one memory store.
+ * Task code invokes PUT/GET/REMOVE operations of memory store with two DATA_KEYs that belongs to one memory store.
  * The other memory store invokes PUT or REMOVE operations to update remote memory store state through remote access.
  * After then both memory stores invoke GET operation to confirm that the state of memory store is properly updated.
  */
@@ -116,7 +116,14 @@ final class RemoteEMTask implements Task {
     // 2. Put DATA into store via remote access
     // It should be performed by a memory store that does not own DATA_KEY.
     if (!isLocalKey) {
-      memoryStore.putList(DATA_TYPE, keys, values);
+      final Map<Long, Boolean> putResult = memoryStore.putList(DATA_TYPE, keys, values);
+
+      LOG.log(Level.INFO, "putList({0}, {1}): {2}", new Object[]{keys, values, putResult});
+      for (final Map.Entry<Long, Boolean> entry : putResult.entrySet()) {
+        if (!entry.getValue()) {
+          throw new RuntimeException("Fail to put data");
+        }
+      }
     }
 
     synchronize();
