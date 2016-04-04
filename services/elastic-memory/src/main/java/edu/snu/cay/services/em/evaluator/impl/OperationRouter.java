@@ -63,6 +63,7 @@ public final class OperationRouter {
 
   /**
    * Decompose a list of key ranges into local ranges and remote ranges.
+   * TODO #424: improve and optimize routing for range
    * @param dataKeyRanges a list of key ranges
    * @return a pair of a list of local key range and
    * a map composed of an endpoint id of remote evaluator and a corresponding key range list.

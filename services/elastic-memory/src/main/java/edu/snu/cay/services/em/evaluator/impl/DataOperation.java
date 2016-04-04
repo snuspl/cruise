@@ -41,8 +41,6 @@ public final class DataOperation<T> {
   private final String operationId;
   private final DataOpType operationType;
   private final String dataType;
-
-  // unmodifiable list and map to ensure that the contents are immutable
   private final List<LongRange> dataKeyRanges;
   private final Optional<SortedMap<Long, T>> dataKeyValueMap;
 
@@ -55,6 +53,14 @@ public final class DataOperation<T> {
   // it happens only when ownership of data key are updated, unknown to the original store
   private final List<AvroLongRange> failedRanges = new LinkedList<>();
   private final ConcurrentMap<Long, T> outputData = new ConcurrentHashMap<>();
+
+  private static <T> Optional<SortedMap<Long, T>> unmodifiableMap(final Optional<SortedMap<Long, T>> map) {
+    if (map.isPresent()) {
+      return Optional.of(Collections.unmodifiableSortedMap(map.get()));
+    } else {
+      return map;
+    }
+  }
 
   /**
    * A constructor for an operation composed of multiple data key ranges.
@@ -74,12 +80,8 @@ public final class DataOperation<T> {
     this.operationId = operationId;
     this.operationType = operationType;
     this.dataType = dataType;
-    this.dataKeyRanges = Collections.unmodifiableList(dataKeyRanges);
-    if (dataKeyValueMap.isPresent()) {
-      this.dataKeyValueMap = Optional.of(Collections.unmodifiableSortedMap(dataKeyValueMap.get()));
-    } else {
-      this.dataKeyValueMap = dataKeyValueMap;
-    }
+    this.dataKeyRanges = dataKeyRanges;
+    this.dataKeyValueMap = dataKeyValueMap;
   }
 
   /**
@@ -100,14 +102,12 @@ public final class DataOperation<T> {
     this.operationId = operationId;
     this.operationType = operationType;
     this.dataType = dataType;
+
     final List<LongRange> keyRanges = new ArrayList<>(1);
     keyRanges.add(dataKeyRange);
-    this.dataKeyRanges = Collections.unmodifiableList(keyRanges);
-    if (dataKeyValueMap.isPresent()) {
-      this.dataKeyValueMap = Optional.of(Collections.unmodifiableSortedMap(dataKeyValueMap.get()));
-    } else {
-      this.dataKeyValueMap = dataKeyValueMap;
-    }
+    this.dataKeyRanges = keyRanges;
+
+    this.dataKeyValueMap = dataKeyValueMap;
   }
 
   /**
@@ -127,14 +127,16 @@ public final class DataOperation<T> {
     this.operationId = operationId;
     this.operationType = operationType;
     this.dataType = dataType;
+
     final List<LongRange> keyRanges = new ArrayList<>(1);
     keyRanges.add(new LongRange(dataKey));
-    this.dataKeyRanges = Collections.unmodifiableList(keyRanges);
+    this.dataKeyRanges = keyRanges;
+
     final SortedMap<Long, T> keyValueMap;
     if (dataValue.isPresent()) {
       keyValueMap = new TreeMap<>();
       keyValueMap.put(dataKey, dataValue.get());
-      this.dataKeyValueMap = Optional.of(Collections.unmodifiableSortedMap(keyValueMap));
+      this.dataKeyValueMap = Optional.of(keyValueMap);
     } else {
       this.dataKeyValueMap = Optional.empty();
     }
@@ -176,6 +178,8 @@ public final class DataOperation<T> {
   }
 
   /**
+   * Returns a range of data keys.
+   * The method assumes that callers never try to modify the returned object.
    * @return a range of data keys
    */
   List<LongRange> getDataKeyRanges() {
@@ -184,6 +188,7 @@ public final class DataOperation<T> {
 
   /**
    * Returns an Optional with the map of input data keys and its values for PUT operation.
+   * The method assumes that callers never try to modify the returned object.
    * It returns an empty Optional for GET and REMOVE operations.
    * @return an Optional with the map of input keys and its values
    */
