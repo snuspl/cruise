@@ -34,13 +34,11 @@ import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
-import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
@@ -133,7 +131,6 @@ public final class ElasticMemoryConfiguration {
 
   private static JavaConfigurationBuilder getNetworkConfigurationBuilder() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(EMCodec.class, ElasticMemoryMsgCodec.class)
-        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class);
+        .bindNamedParameter(EMCodec.class, ElasticMemoryMsgCodec.class);
   }
 }

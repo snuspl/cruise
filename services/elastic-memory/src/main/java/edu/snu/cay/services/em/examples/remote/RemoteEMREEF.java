@@ -18,14 +18,13 @@ package edu.snu.cay.services.em.examples.remote;
 
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
-import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
-import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
@@ -34,6 +33,7 @@ import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.IOException;
 import java.util.logging.Level;
@@ -66,8 +66,6 @@ public final class RemoteEMREEF {
 
     cl.registerShortNameOfClass(OnLocal.class);
     HTraceParameters.registerShortNames(cl);
-    cl.registerShortNameOfClass(Iterations.class);
-    cl.registerShortNameOfClass(PeriodMillis.class);
 
     cl.processCommandLine(args);
     return TANG.newInjector(cb.build());
@@ -96,8 +94,6 @@ public final class RemoteEMREEF {
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, RemoteEMDriver.ActiveContextHandler.class)
         .build();
 
-    final Configuration emConfiguration = ElasticMemoryConfiguration.getDriverConfiguration();
-
     final Configuration aggregationConf = AggregationConfiguration.newBuilder()
         .addAggregationClient(RemoteEMDriver.AGGREGATION_CLIENT_ID,
             DriverSideMsgHandler.class,
@@ -106,8 +102,14 @@ public final class RemoteEMREEF {
         .getDriverConfiguration();
 
     // spawn the name server at the driver
-    return Configurations.merge(driverConfiguration, emConfiguration, aggregationConf,
-        NameServerConfiguration.CONF.build(), LocalNameResolverConfiguration.CONF.build());
+    return Configurations.merge(driverConfiguration,
+        ElasticMemoryConfiguration.getDriverConfiguration(),
+        aggregationConf,
+        NameServerConfiguration.CONF.build(),
+        LocalNameResolverConfiguration.CONF.build(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+            .build());
   }
 
   public static LauncherStatus runRemoteEM(final Configuration runtimeConf, final Configuration jobConf,
