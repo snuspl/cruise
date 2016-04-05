@@ -101,7 +101,9 @@ public final class AsyncDolphinLauncher {
       // local or yarn runtime
       final boolean onLocal = basicParameterInjector.getNamedInstance(OnLocal.class);
       final Configuration runTimeConf = onLocal ?
-          getLocalRuntimeConfiguration(basicParameterInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class)) :
+          getLocalRuntimeConfiguration(
+              basicParameterInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class),
+              basicParameterInjector.getNamedInstance(JVMHeapSlack.class)) :
           getYarnRuntimeConfiguration(basicParameterInjector.getNamedInstance(JVMHeapSlack.class));
 
       // configuration for the parameter server
@@ -221,9 +223,10 @@ public final class AsyncDolphinLauncher {
         .build();
   }
 
-  private static Configuration getLocalRuntimeConfiguration(final int maxNumEvalLocal) {
+  private static Configuration getLocalRuntimeConfiguration(final int maxNumEvalLocal, final double heapSlack) {
     return LocalRuntimeConfiguration.CONF
         .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, Integer.toString(maxNumEvalLocal))
+        .set(LocalRuntimeConfiguration.JVM_HEAP_SLACK, Double.toString(heapSlack))
         .build();
   }
 
