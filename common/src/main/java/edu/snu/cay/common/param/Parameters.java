@@ -68,4 +68,10 @@ public final class Parameters {
                   default_value = "2")
   public final class NumWorkerThreads implements Name<Integer> {
   }
+
+  @NamedParameter(doc = "The fraction of the container memory NOT to use for the Java Heap",
+                  short_name = "heapSlack",
+                  default_value = "0.0")
+  public final class JVMHeapSlack implements Name<Double> {
+  }
 }
