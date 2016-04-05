@@ -18,6 +18,11 @@ package edu.snu.cay.async;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
+import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.optimizer.api.Optimizer;
+import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
+import edu.snu.cay.services.em.plan.api.PlanExecutor;
+import edu.snu.cay.services.em.plan.conf.PlanExecutorClass;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
@@ -27,6 +32,10 @@ import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerNumPartitions;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerQueueSize;
+import edu.snu.cay.utils.trace.HTraceParameters;
+import edu.snu.cay.utils.trace.parameters.ReceiverHost;
+import edu.snu.cay.utils.trace.parameters.ReceiverPort;
+import edu.snu.cay.utils.trace.parameters.ReceiverType;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.DriverConfiguration;
@@ -172,6 +181,8 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);
+
+    // add ps parameters
     basicParameterClassList.add(NumServers.class);
     basicParameterClassList.add(NumPartitions.class);
     basicParameterClassList.add(ServerQueueSize.class);
@@ -179,6 +190,16 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
     basicParameterClassList.add(WorkerKeyCacheSize.class);
+
+    // add em parameters
+    basicParameterClassList.add(OptimizerClass.class);
+    basicParameterClassList.add(PlanExecutorClass.class);
+
+    // add trace parameters
+    basicParameterClassList.add(ReceiverType.class);
+    basicParameterClassList.add(ReceiverHost.class);
+    basicParameterClassList.add(ReceiverPort.class);
+
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {
       cl.registerShortNameOfClass(basicParameterClass);
     }
@@ -251,8 +272,24 @@ public final class AsyncDolphinLauncher {
             WorkerSynchronizer.MessageHandler.class)
         .build();
 
+    final Class<? extends Optimizer> optimizerClass;
+    final Class<? extends PlanExecutor> executorClass;
+    try {
+      optimizerClass = (Class<? extends Optimizer>) Class.forName(injector.getNamedInstance(OptimizerClass.class));
+      executorClass = (Class<? extends PlanExecutor>) Class.forName(injector.getNamedInstance(PlanExecutorClass.class));
+    } catch (final ClassNotFoundException e) {
+      throw new RuntimeException("Reflection failed", e);
+    }
+    final Configuration optimizerConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(Optimizer.class, optimizerClass)
+        .bindImplementation(PlanExecutor.class, executorClass)
+        .build();
+
     return Configurations.merge(driverConfWithDataLoad,
+        ElasticMemoryConfiguration.getDriverConfiguration(),
         aggregationServiceConf.getDriverConfiguration(),
+        HTraceParameters.getStaticConfiguration(),
+        optimizerConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         Tang.Factory.getTang().newConfigurationBuilder()

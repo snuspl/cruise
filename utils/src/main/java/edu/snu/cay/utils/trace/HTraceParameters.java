@@ -51,11 +51,16 @@ public final class HTraceParameters {
    */
   public Configuration getConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(HTraceParameters.class, HTraceParameters.class)
         .bindConstructor(SpanReceiver.class, ReceiverConstructor.class)
         .bindNamedParameter(ReceiverType.class, receiver)
         .bindNamedParameter(ReceiverHost.class, receiverHost)
         .bindNamedParameter(ReceiverPort.class, Integer.toString(receiverPort))
+        .build();
+  }
+
+  public static Configuration getStaticConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindConstructor(SpanReceiver.class, ReceiverConstructor.class)
         .build();
   }
 

@@ -20,12 +20,14 @@ import edu.snu.cay.async.WorkerSynchronizer;
 import edu.snu.cay.async.examples.recommendation.NMFParameters.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,11 +43,14 @@ final class NMFWorker implements Worker {
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
   private final WorkerSynchronizer workerSynchronizer;
   private final NMFDataParser dataParser;
-  private final List<NMFData> workload = new ArrayList<>();
   private final int numRows;
   private final int numColumns;
   private final double stepSize;
   private final double lambda;
+
+  private static final String DATA_TYPE = "NMF";
+  private final DataIdFactory<Long> idFactory;
+  private final MemoryStore memoryStore;
 
   private int iteration = 0;
 
@@ -56,7 +61,9 @@ final class NMFWorker implements Worker {
                     @Parameter(NumRows.class) final int numRows,
                     @Parameter(NumColumns.class) final int numColumns,
                     @Parameter(StepSize.class) final double stepSize,
-                    @Parameter(Lambda.class) final double lambda) {
+                    @Parameter(Lambda.class) final double lambda,
+                    final DataIdFactory<Long> idFactory,
+                    final MemoryStore memoryStore) {
     this.parameterWorker = parameterWorker;
     this.workerSynchronizer = workerSynchronizer;
     this.dataParser = dataParser;
@@ -64,17 +71,30 @@ final class NMFWorker implements Worker {
     this.numColumns = numColumns;
     this.stepSize = stepSize;
     this.lambda = lambda;
+    this.idFactory = idFactory;
+    this.memoryStore = memoryStore;
   }
 
   @Override
   public void initialize() {
-    workload.addAll(dataParser.parse());
+    final List<NMFData> dataValues = dataParser.parse();
+    final List<Long> dataKeys;
+    try {
+      dataKeys = idFactory.getIds(dataValues.size());
+    } catch (final IdGenerationException e) {
+      throw new RuntimeException(e);
+    }
+
+    memoryStore.putList(DATA_TYPE, dataKeys, dataValues);
     workerSynchronizer.globalBarrier();
   }
 
   @Override
   public void run() {
     double loss = 0.0;
+
+    final Map<Long, NMFData> dataMap = memoryStore.getAll(DATA_TYPE);
+    final Collection<NMFData> workload = dataMap.values();
 
     for (final NMFData datum : workload) {
       final int lIndex = -datum.getRowIndex(); // use an negative index for L matrix.
@@ -123,6 +143,5 @@ final class NMFWorker implements Worker {
       }
       System.out.println();
     }
-    workload.clear();
   }
 }
