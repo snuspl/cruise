@@ -88,6 +88,11 @@
       <artifactId>cay-common</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
+    <dependency>
+      <groupId>${project.groupId}.services</groupId>
+      <artifactId>elastic-memory</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
