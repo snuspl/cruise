@@ -242,7 +242,7 @@ final class AsyncDolphinDriver {
                   .build(),
               psDriver.getContextConfiguration(), emConf.getContextConfiguration());
           final Configuration serviceConf = Configurations.merge(psDriver.getServerServiceConfiguration(),
-              emConf.getServiceConfigurationWithoutNameResolver(contextId));
+              emConf.getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
           final Configuration traceConf = traceParameters.getConfiguration();
           final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class).build();
@@ -286,7 +286,8 @@ final class AsyncDolphinDriver {
               psDriver.getContextConfiguration(), emConf.getContextConfiguration(),
               aggregationManager.getContextConfiguration());
           final Configuration serviceConf = Configurations.merge(
-              psDriver.getWorkerServiceConfiguration(), emConf.getServiceConfigurationWithoutNameResolver(contextId),
+              psDriver.getWorkerServiceConfiguration(),
+              emConf.getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
               aggregationManager.getServiceConfigurationWithoutNameResolver());
           final Configuration traceConf = traceParameters.getConfiguration();
           final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()

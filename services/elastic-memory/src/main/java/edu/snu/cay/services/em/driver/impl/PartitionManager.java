@@ -15,11 +15,13 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
+import edu.snu.cay.services.em.common.parameters.NumPartitions;
 import edu.snu.cay.utils.LongRangeUtils;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -59,31 +61,48 @@ public final class PartitionManager {
 
   /**
    * A mapping that maintains each evaluator have taken which partitions.
-   * A key of map is an evaluator id and and a value of map is a partition id.
+   * Note that we will integrate other data structures (e.g., evalPartitions) to this one
+   * while moving toward partition-based data management.
    * TODO #346: Clean up data structures managing data id partitions
    */
-  private final Map<String, Integer> evalPartitionMap;
+  private final Map<String, Set<Integer>> evalIdToPartitionIds;
+
+  /**
+   * The number of total partitions.
+   */
+  private final int numPartitions;
 
   @Inject
-  private PartitionManager() {
-    this.evalPartitionMap = new HashMap<>();
+  private PartitionManager(@Parameter(NumPartitions.class) final int numPartitions) {
+    this.evalIdToPartitionIds = new HashMap<>();
     this.evalPartitions = new HashMap<>();
     this.globalPartitions = new HashMap<>();
+    this.numPartitions = numPartitions;
   }
 
   /**
-   * Register an evaluator and allocate a partition to the evaluator.
+   * Register an evaluator and allocate partitions to the evaluator.
    * @param contextId an id of context
-   * @return a id of allocated partition
+   * @param numInitialEvals the number of initial evaluators.
+   * @return id of the allocated MemoryStore
    */
-  public synchronized int registerEvaluator(final String contextId) {
-    if (evalPartitionMap.containsKey(contextId)) {
+  public synchronized int registerEvaluator(final String contextId,
+                                            final int numInitialEvals) {
+    if (evalIdToPartitionIds.containsKey(contextId)) {
       throw new RuntimeException("This evaluator is already registered. Its context Id is " + contextId);
     }
-    final int partitionId = numEvalCounter.getAndIncrement();
-    LOG.log(Level.INFO, "contextId: {0}, partitionId: {1}", new Object[]{contextId, partitionId});
-    evalPartitionMap.put(contextId, Integer.valueOf(partitionId));
-    return partitionId;
+
+    final int memoryStoreId = numEvalCounter.getAndIncrement();
+    LOG.log(Level.FINE, "MemoryStore({0}) is registered to {1}", new Object[]{memoryStoreId, contextId});
+
+    // If NumPartition = 31 and NumInitialEval = 5, then MemoryStore0 takes {0, 6, 12, 18, 24, 30}
+    // and MemoryStore3 takes {3, 9, 15, 21, 2:96}
+    evalIdToPartitionIds.put(contextId, new HashSet<Integer>());
+    final int numPartitionsPerEval = numPartitions / numInitialEvals;
+    for (int partitionId = memoryStoreId; partitionId < numPartitions; partitionId += numPartitionsPerEval) {
+      evalIdToPartitionIds.get(contextId).add(partitionId);
+    }
+    return memoryStoreId;
   }
 
   /**

@@ -108,12 +108,17 @@ final class RemoteEMDriver {
           partialContextConf, emConf.getContextConfiguration(), aggregationManager.getContextConfiguration());
 
       final Configuration serviceConf = Configurations.merge(
-          emConf.getServiceConfiguration(contextId, EVAL_NUM),
-          aggregationManager.getServiceConfigurationWithoutNameResolver(),
+<<<<<<< HEAD
+          emConf.getServiceConfiguration(contextId), aggregationManager.getServiceConfigurationWithoutNameResolver(),
           Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
             .build());
-
+||||||| merged common ancestors
+          emConf.getServiceConfiguration(contextId), aggregationManager.getServiceConfigurationWithoutNameResolver());
+=======
+          emConf.getServiceConfiguration(contextId, EVAL_NUM),
+          aggregationManager.getServiceConfigurationWithoutNameResolver());
+>>>>>>> [CAY-428] Fix the size and number of EM's partitions in initialization
 
       final Configuration traceConf = traceParameters.getConfiguration();
 

@@ -26,8 +26,9 @@ public interface PartitionFunc {
 
   /**
    * Return a partition id of data with {@code dataId}.
+   * The number of partitions is assumed to be within the integer range.
    * @param dataId a id of data
    * @return an id of partition that the data
    */
-  long partition(long dataId);
+  int getPartitionId(long dataId);
 }

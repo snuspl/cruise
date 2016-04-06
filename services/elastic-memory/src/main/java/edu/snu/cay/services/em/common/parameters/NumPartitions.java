@@ -13,7 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Common parameters related to EM.
- */
 package edu.snu.cay.services.em.common.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Number of partitions", short_name = "num_partitions", default_value = "1024")
+public final class NumPartitions implements Name<Integer> {
+}

@@ -537,11 +537,17 @@ public final class DolphinDriver {
     final Configuration aggregationServiceConf = aggregationManager.getServiceConfigurationWithoutNameResolver();
     final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
     final Configuration workloadServiceConf = WorkloadPartition.getServiceConfiguration();
-    final Configuration emServiceConf =
-        emConf.getServiceConfigurationWithoutNameResolver(contextId, dataLoadingService.getNumberOfPartitions());
+<<<<<<< HEAD
+    final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver(contextId);
     final Configuration idConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
+||||||| merged common ancestors
+    final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver(contextId);
+=======
+    final Configuration emServiceConf =
+        emConf.getServiceConfigurationWithoutNameResolver(contextId, dataLoadingService.getNumberOfPartitions());
+>>>>>>> [CAY-428] Fix the size and number of EM's partitions in initialization
     final Configuration traceConf = traceParameters.getConfiguration();
     return Configurations.merge(
         userParameters.getServiceConf(), groupCommServiceConf, workloadServiceConf, emServiceConf, idConf,

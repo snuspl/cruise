@@ -15,7 +15,9 @@
  */
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.common.parameters.PartitionId;
+import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
+import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
+import edu.snu.cay.services.em.common.parameters.NumPartitions;
 import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
@@ -52,16 +54,19 @@ public final class ElasticMemoryConfiguration {
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
   private final String driverId;
+  private final int numPartitions;
   private final PartitionManager partitionManager;
 
   @Inject
   private ElasticMemoryConfiguration(final NameServer nameServer,
                                      final LocalAddressProvider localAddressProvider,
                                      @Parameter(DriverIdentifier.class) final String driverId,
+                                     @Parameter(NumPartitions.class) final int numPartitions,
                                      final PartitionManager partitionManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
+    this.numPartitions = numPartitions;
     this.partitionManager = partitionManager;
   }
 
@@ -96,18 +101,25 @@ public final class ElasticMemoryConfiguration {
    * Sets up ElasticMemoryMsg codec/handler and ElasticMemoryStore, both required for Elastic Memory.
    *
    * @param contextId Identifier of the context that the service will run on
+   * @param numInitialEvals The number of Evaluators that are allocated initially.
    * @return service configuration that should be passed along with a ContextConfiguration
    */
-  public Configuration getServiceConfiguration(final String contextId) {
+  public Configuration getServiceConfiguration(final String contextId,
+                                               final int numInitialEvals) {
     final Configuration nameClientConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
         .build();
 
-    return Configurations.merge(getServiceConfigurationWithoutNameResolver(contextId), nameClientConf);
+    return Configurations.merge(getServiceConfigurationWithoutNameResolver(contextId, numInitialEvals), nameClientConf);
   }
 
-  public Configuration getServiceConfigurationWithoutNameResolver(final String contextId) {
+  public Configuration getServiceConfigurationWithoutNameResolver(final String contextId,
+                                                                  final int numInitialEvals) {
+    if (numPartitions < numInitialEvals) {
+      throw new RuntimeException("NumPartitions should be greater than or equal to the number of NumInitialEvals.");
+    }
+
     final Configuration networkConf = getNetworkConfigurationBuilder()
         .bindNamedParameter(EMMessageHandler.class,
             edu.snu.cay.services.em.evaluator.impl.ElasticMemoryMsgHandler.class)
@@ -117,13 +129,15 @@ public final class ElasticMemoryConfiguration {
         .set(ServiceConfiguration.SERVICES, MemoryStoreImpl.class)
         .build();
 
-    final int partitionId = partitionManager.registerEvaluator(contextId);
+    final int memoryStoreId = partitionManager.registerEvaluator(contextId, numInitialEvals);
 
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindImplementation(RemoteAccessibleMemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(DriverIdentifier.class, driverId)
-        .bindNamedParameter(PartitionId.class, Integer.toString(partitionId))
+        .bindNamedParameter(MemoryStoreId.class, Integer.toString(memoryStoreId))
+        .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
+        .bindNamedParameter(NumInitialEvals.class, Integer.toString(numInitialEvals))
         .build();
 
     return Configurations.merge(networkConf, serviceConf, otherConf);
