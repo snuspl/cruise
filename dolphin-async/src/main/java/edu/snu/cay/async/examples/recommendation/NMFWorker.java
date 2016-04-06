@@ -54,6 +54,7 @@ final class NMFWorker implements Worker {
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore memoryStore;
 
+  // data key ranges assigned to this worker
   private Set<LongRange> dataKeyRanges;
 
   private int iteration = 0;

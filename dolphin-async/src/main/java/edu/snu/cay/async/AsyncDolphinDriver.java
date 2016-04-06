@@ -103,6 +103,11 @@ final class AsyncDolphinDriver {
   private final ElasticMemoryConfiguration emConf;
 
   /**
+   * Class providing a configuration for HTrace
+   */
+  private final HTraceParameters traceParameters;
+
+  /**
    * Number of worker-side evaluators that have successfully passed {@link ActiveContextHandler}.
    */
   private final AtomicInteger runningWorkerContextCount;
@@ -137,8 +142,6 @@ final class AsyncDolphinDriver {
    * Number of computation threads for each evaluator.
    */
   private final int numWorkerThreads;
-
-  private final HTraceParameters traceParameters;
 
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,

@@ -278,6 +278,7 @@ public final class AsyncDolphinLauncher {
             WorkerSynchronizer.MessageHandler.class)
         .build();
 
+    // set up an optimizer configuration
     final Class<? extends Optimizer> optimizerClass;
     final Class<? extends PlanExecutor> executorClass;
     try {
