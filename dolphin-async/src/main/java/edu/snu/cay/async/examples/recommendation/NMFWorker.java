@@ -96,7 +96,7 @@ final class NMFWorker implements Worker {
 
     // TODO #302: initialize WorkloadPartition here
 
-    // it is because, current MemoryStore do not support getList
+    // We should convert the ids into ranges, because the current MemoryStore API takes ranges not a list
     dataKeyRanges = LongRangeUtils.generateDenseLongRanges(new TreeSet<>(dataKeys));
 
     workerSynchronizer.globalBarrier();
