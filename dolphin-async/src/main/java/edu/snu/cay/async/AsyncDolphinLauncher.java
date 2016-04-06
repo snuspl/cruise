@@ -110,8 +110,10 @@ public final class AsyncDolphinLauncher {
       // local or yarn runtime
       final boolean onLocal = basicParameterInjector.getNamedInstance(OnLocal.class);
       final Configuration runTimeConf = onLocal ?
-          getLocalRuntimeConfiguration(basicParameterInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class)) :
-          getYarnRuntimeConfiguration();
+          getLocalRuntimeConfiguration(
+              basicParameterInjector.getNamedInstance(LocalRuntimeMaxNumEvaluators.class),
+              basicParameterInjector.getNamedInstance(JVMHeapSlack.class)) :
+          getYarnRuntimeConfiguration(basicParameterInjector.getNamedInstance(JVMHeapSlack.class));
 
       // configuration for the parameter server
       final Configuration parameterServerConf = ParameterServerConfigurationBuilder.newBuilder()
@@ -172,7 +174,7 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(15);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(21);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -181,6 +183,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(Timeout.class);
     basicParameterClassList.add(LocalRuntimeMaxNumEvaluators.class);
     basicParameterClassList.add(Iterations.class);
+    basicParameterClassList.add(JVMHeapSlack.class);
 
     // add ps parameters
     basicParameterClassList.add(NumServers.class);
@@ -235,13 +238,16 @@ public final class AsyncDolphinLauncher {
     return parameterConfBuilder.build();
   }
 
-  private static Configuration getYarnRuntimeConfiguration() {
-    return YarnClientConfiguration.CONF.build();
+  private static Configuration getYarnRuntimeConfiguration(final double heapSlack) {
+    return YarnClientConfiguration.CONF
+        .set(YarnClientConfiguration.JVM_HEAP_SLACK, Double.toString(heapSlack))
+        .build();
   }
 
-  private static Configuration getLocalRuntimeConfiguration(final int maxNumEvalLocal) {
+  private static Configuration getLocalRuntimeConfiguration(final int maxNumEvalLocal, final double heapSlack) {
     return LocalRuntimeConfiguration.CONF
         .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, Integer.toString(maxNumEvalLocal))
+        .set(LocalRuntimeConfiguration.JVM_HEAP_SLACK, Double.toString(heapSlack))
         .build();
   }
 
