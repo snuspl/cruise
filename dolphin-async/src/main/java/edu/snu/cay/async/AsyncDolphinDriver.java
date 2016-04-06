@@ -103,7 +103,7 @@ final class AsyncDolphinDriver {
   private final ElasticMemoryConfiguration emConf;
 
   /**
-   * Class providing a configuration for HTrace
+   * Class providing a configuration for HTrace.
    */
   private final HTraceParameters traceParameters;
 
