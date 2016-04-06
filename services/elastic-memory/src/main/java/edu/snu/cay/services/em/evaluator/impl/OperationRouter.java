@@ -84,8 +84,8 @@ public final class OperationRouter {
 
     // Partitions are initially distributed across Evaluators in round-robin.
     for (int partitionId = 0; partitionId < numPartitions; partitionId++) {
-      final int initialEvalId = partitionId % numInitialEvals;
-      partitionIdToEvalId[partitionId] = initialEvalId;
+      final int evalId = partitionId % numInitialEvals;
+      partitionIdToEvalId[partitionId] = evalId;
     }
   }
 

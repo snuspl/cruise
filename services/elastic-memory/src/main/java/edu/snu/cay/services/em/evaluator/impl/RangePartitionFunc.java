@@ -17,8 +17,6 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumPartitions;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -43,7 +41,4 @@ public final class RangePartitionFunc implements PartitionFunc {
     return (int) (dataId / partitionSize);
   }
 
-  @NamedParameter(doc = "A number of bits representing partition size", default_value = "32")
-  public final class PartitionSizeBits implements Name<Integer> {
-  }
 }

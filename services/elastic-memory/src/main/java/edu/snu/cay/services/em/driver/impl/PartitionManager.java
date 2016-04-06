@@ -83,7 +83,7 @@ public final class PartitionManager {
   /**
    * Register an evaluator and allocate partitions to the evaluator.
    * @param contextId an id of context
-   * @param numInitialEvals the number of initial evaluators.
+   * @param numInitialEvals the number of initial evaluators
    * @return id of the allocated MemoryStore
    */
   public synchronized int registerEvaluator(final String contextId,
@@ -96,7 +96,7 @@ public final class PartitionManager {
     LOG.log(Level.FINE, "MemoryStore({0}) is registered to {1}", new Object[]{memoryStoreId, contextId});
 
     // If NumPartition = 31 and NumInitialEval = 5, then MemoryStore0 takes {0, 6, 12, 18, 24, 30}
-    // and MemoryStore3 takes {3, 9, 15, 21, 2:96}
+    // and MemoryStore3 takes {3, 9, 15, 21, 27}
     evalIdToPartitionIds.put(contextId, new HashSet<Integer>());
     final int numPartitionsPerEval = numPartitions / numInitialEvals;
     for (int partitionId = memoryStoreId; partitionId < numPartitions; partitionId += numPartitionsPerEval) {

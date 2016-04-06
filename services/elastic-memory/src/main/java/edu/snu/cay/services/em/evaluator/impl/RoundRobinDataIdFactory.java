@@ -60,7 +60,7 @@ public final class RoundRobinDataIdFactory implements DataIdFactory<Long> {
     // the remainders should be taken by the corresponding Evaluators. For example,
     // when there are 23 partitions and 4 Evaluators, then the Evaluators take (6, 6, 6, 5) partitions respectively.
     final int numPartitionsInEval = numPartitions / numInitialEvals +
-          ((numPartitions % numInitialEvals >= memoryStoreId) ? 1 : 0);
+          ((numPartitions % numInitialEvals > memoryStoreId) ? 1 : 0);
 
     final long partitionSize = Long.MAX_VALUE / numPartitions;
     final long offset =  count / numPartitionsInEval;
