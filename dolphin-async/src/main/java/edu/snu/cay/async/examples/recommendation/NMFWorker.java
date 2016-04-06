@@ -24,6 +24,8 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.utils.LongRangeUtils;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -52,6 +54,8 @@ final class NMFWorker implements Worker {
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore memoryStore;
 
+  private Set<LongRange> dataKeyRanges;
+
   private int iteration = 0;
 
   @Inject
@@ -79,6 +83,7 @@ final class NMFWorker implements Worker {
   public void initialize() {
     final List<NMFData> dataValues = dataParser.parse();
     final List<Long> dataKeys;
+
     try {
       dataKeys = idFactory.getIds(dataValues.size());
     } catch (final IdGenerationException e) {
@@ -86,6 +91,13 @@ final class NMFWorker implements Worker {
     }
 
     memoryStore.putList(DATA_TYPE, dataKeys, dataValues);
+
+
+    // TODO #302: initialize WorkloadPartition here
+
+    // it is because, current MemoryStore do not support getList
+    dataKeyRanges = LongRangeUtils.generateDenseLongRanges(new TreeSet<>(dataKeys));
+
     workerSynchronizer.globalBarrier();
   }
 
@@ -93,8 +105,13 @@ final class NMFWorker implements Worker {
   public void run() {
     double loss = 0.0;
 
-    final Map<Long, NMFData> dataMap = memoryStore.getAll(DATA_TYPE);
-    final Collection<NMFData> workload = dataMap.values();
+    // TODO #302: update dataKeyRanges when there's an update in assigned workload
+
+    final List<NMFData> workload = new LinkedList<>();
+    for (final LongRange range : dataKeyRanges) {
+      final Map<Long, NMFData> subMap = memoryStore.getRange(DATA_TYPE, range.getMinimumLong(), range.getMaximumLong());
+      workload.addAll(subMap.values());
+    }
 
     for (final NMFData datum : workload) {
       final int lIndex = -datum.getRowIndex(); // use an negative index for L matrix.
