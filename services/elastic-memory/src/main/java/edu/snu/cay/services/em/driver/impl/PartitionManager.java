@@ -98,11 +98,10 @@ public final class PartitionManager {
     // Partitions are only assigned to the initial MemoryStores.
     // Other MemoryStores who are added by EM.add() take existing partitions.
     if (memoryStoreId < numPartitions) {
-      // If NumPartition = 31 and NumInitialEval = 5, then MemoryStore0 takes {0, 6, 12, 18, 24, 30}
-      // and MemoryStore3 takes {3, 9, 15, 21, 27}
+      // If NumPartition = 31 and NumInitialEval = 5, then MemoryStore0 takes {0, 5, 10, 15, 20, 25, 30}
+      // and MemoryStore3 takes {3, 8, 13, 18, 23, 28}
       evalIdToPartitionIds.put(contextId, new HashSet<Integer>());
-      final int numPartitionsPerEval = numPartitions / numInitialEvals;
-      for (int partitionId = memoryStoreId; partitionId < numPartitions; partitionId += numPartitionsPerEval) {
+      for (int partitionId = memoryStoreId; partitionId < numPartitions; partitionId += numInitialEvals) {
         evalIdToPartitionIds.get(contextId).add(partitionId);
       }
     }
