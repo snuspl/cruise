@@ -95,12 +95,16 @@ public final class PartitionManager {
     final int memoryStoreId = numEvalCounter.getAndIncrement();
     LOG.log(Level.FINE, "MemoryStore({0}) is registered to {1}", new Object[]{memoryStoreId, contextId});
 
-    // If NumPartition = 31 and NumInitialEval = 5, then MemoryStore0 takes {0, 6, 12, 18, 24, 30}
-    // and MemoryStore3 takes {3, 9, 15, 21, 27}
-    evalIdToPartitionIds.put(contextId, new HashSet<Integer>());
-    final int numPartitionsPerEval = numPartitions / numInitialEvals;
-    for (int partitionId = memoryStoreId; partitionId < numPartitions; partitionId += numPartitionsPerEval) {
-      evalIdToPartitionIds.get(contextId).add(partitionId);
+    // Partitions are only assigned to the initial MemoryStores.
+    // Other MemoryStores who are added by EM.add() take existing partitions.
+    if (memoryStoreId < numPartitions) {
+      // If NumPartition = 31 and NumInitialEval = 5, then MemoryStore0 takes {0, 6, 12, 18, 24, 30}
+      // and MemoryStore3 takes {3, 9, 15, 21, 27}
+      evalIdToPartitionIds.put(contextId, new HashSet<Integer>());
+      final int numPartitionsPerEval = numPartitions / numInitialEvals;
+      for (int partitionId = memoryStoreId; partitionId < numPartitions; partitionId += numPartitionsPerEval) {
+        evalIdToPartitionIds.get(contextId).add(partitionId);
+      }
     }
     return memoryStoreId;
   }
