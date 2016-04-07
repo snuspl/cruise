@@ -28,17 +28,15 @@ import javax.inject.Inject;
  */
 public final class RangePartitionFunc implements PartitionFunc {
 
-  private final int numPartitions;
+  private final long partitionSize;
 
   @Inject
   private RangePartitionFunc(@Parameter(NumPartitions.class) final int numPartitions) {
-    this.numPartitions = numPartitions;
+    this.partitionSize = Long.MAX_VALUE / numPartitions;
   }
 
   @Override
   public int getPartitionId(final long dataId) {
-    final long partitionSize = Long.MAX_VALUE / numPartitions;
     return (int) (dataId / partitionSize);
   }
-
 }
