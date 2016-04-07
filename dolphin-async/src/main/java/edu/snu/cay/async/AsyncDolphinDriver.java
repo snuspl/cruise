@@ -244,11 +244,11 @@ final class AsyncDolphinDriver {
           final Configuration serviceConf = Configurations.merge(psDriver.getServerServiceConfiguration(),
               emConf.getServiceConfigurationWithoutNameResolver(contextId));
           final Configuration traceConf = traceParameters.getConfiguration();
-          final Configuration emIdConf = Tang.Factory.getTang().newConfigurationBuilder()
+          final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class).build();
 
           activeContext.submitContextAndService(contextConf,
-              Configurations.merge(serviceConf, traceConf, paramConf, emIdConf));
+              Configurations.merge(serviceConf, traceConf, paramConf, emDataIdConf));
         }
       };
     }
@@ -312,10 +312,10 @@ final class AsyncDolphinDriver {
               .set(TaskConfiguration.IDENTIFIER, AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex)
               .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
               .build();
-          final Configuration emIdConf = Tang.Factory.getTang().newConfigurationBuilder()
+          final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class).build();
 
-          activeContext.submitTask(Configurations.merge(taskConf, workerConf, emIdConf));
+          activeContext.submitTask(Configurations.merge(taskConf, workerConf, emDataIdConf));
         }
       };
     }
