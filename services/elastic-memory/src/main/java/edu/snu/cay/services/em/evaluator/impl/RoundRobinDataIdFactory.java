@@ -65,8 +65,8 @@ public final class RoundRobinDataIdFactory implements DataIdFactory<Long> {
     // Whenever getId() is called, one partition is chosen in round-robin.
     final int partitionId = memoryStoreId + numInitialEvals * (count.intValue() % numPartitionsInEval);
 
-    // A new key (p * partitionSize + offset) is assigned to the partition whose id is p,
-    // where partition p contains keys within the range of [p * partitionSize, (p+1) * partitionSize).
+    // A key (p * partitionSize + offset) is issued, where p is id of the chosen partition
+    // and partition p contains keys within the range of [p * partitionSize, (p+1) * partitionSize).
     final long partitionSize = Long.MAX_VALUE / numPartitions;
     final long offset = count / numPartitionsInEval;
     if (offset >= partitionSize) {
