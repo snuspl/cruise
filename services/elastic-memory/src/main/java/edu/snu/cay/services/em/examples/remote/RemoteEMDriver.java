@@ -26,12 +26,14 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.TaskConfiguration;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
@@ -106,7 +108,10 @@ final class RemoteEMDriver {
           partialContextConf, emConf.getContextConfiguration(), aggregationManager.getContextConfiguration());
 
       final Configuration serviceConf = Configurations.merge(
-          emConf.getServiceConfiguration(contextId), aggregationManager.getServiceConfigurationWithoutNameResolver());
+          emConf.getServiceConfiguration(contextId), aggregationManager.getServiceConfigurationWithoutNameResolver(),
+          Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+            .build());
 
       final Configuration traceConf = traceParameters.getConfiguration();
 

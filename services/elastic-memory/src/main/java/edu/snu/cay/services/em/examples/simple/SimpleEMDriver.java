@@ -27,6 +27,8 @@ import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
+import org.apache.reef.wake.IdentifierFactory;
 import org.htrace.Sampler;
 import org.htrace.Trace;
 import org.htrace.TraceScope;
@@ -121,7 +123,10 @@ final class SimpleEMDriver {
       final Configuration contextConf = Configurations.merge(
           partialContextConf, emConf.getContextConfiguration());
 
-      final Configuration emServiceConf = emConf.getServiceConfiguration(contextId);
+      final Configuration serviceConf = Configurations.merge(emConf.getServiceConfiguration(contextId),
+          Tang.Factory.getTang().newConfigurationBuilder()
+              .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+              .build());
 
       final Configuration traceConf = traceParameters.getConfiguration();
 
@@ -131,7 +136,7 @@ final class SimpleEMDriver {
           .build();
 
       allocatedEvaluator.submitContextAndService(contextConf,
-          Configurations.merge(emServiceConf, traceConf, exampleConf));
+          Configurations.merge(serviceConf, traceConf, exampleConf));
       LOG.info((evalCount + 1) + " evaluators active!");
     }
   }

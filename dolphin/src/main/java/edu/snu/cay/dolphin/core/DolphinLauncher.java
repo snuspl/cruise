@@ -41,6 +41,7 @@ import org.apache.reef.io.data.output.TaskOutputStreamProviderLocal;
 import org.apache.reef.io.network.group.impl.driver.GroupCommService;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -49,6 +50,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -151,6 +153,10 @@ public final class DolphinLauncher {
             EvalSideMetricsMsgHandler.class)
         .build();
 
+    final Configuration idConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+        .build();
+
     return Configurations.merge(driverConfWithDataLoad,
         outputServiceConf,
         optimizerParameters.getConfiguration(),
@@ -161,6 +167,7 @@ public final class DolphinLauncher {
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),
         aggregationConf.getDriverConfiguration(),
+        idConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         dolphinParameters.getDriverConf(),

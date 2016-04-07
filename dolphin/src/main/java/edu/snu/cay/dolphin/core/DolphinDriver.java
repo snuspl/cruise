@@ -62,6 +62,7 @@ import org.apache.reef.io.network.group.impl.config.GatherOperatorSpec;
 import org.apache.reef.io.network.group.impl.config.ReduceOperatorSpec;
 import org.apache.reef.io.network.group.impl.config.ScatterOperatorSpec;
 import org.apache.reef.io.network.group.impl.driver.CommunicationGroupDriverImpl;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Parameter;
@@ -71,6 +72,7 @@ import org.apache.reef.tang.formats.ConfigurationModule;
 import org.apache.reef.task.Task;
 import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.Codec;
 import org.apache.reef.wake.time.event.StartTime;
 import org.htrace.Sampler;
@@ -536,9 +538,12 @@ public final class DolphinDriver {
     final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
     final Configuration workloadServiceConf = WorkloadPartition.getServiceConfiguration();
     final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver(contextId);
+    final Configuration idConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+        .build();
     final Configuration traceConf = traceParameters.getConfiguration();
     return Configurations.merge(
-        userParameters.getServiceConf(), groupCommServiceConf, workloadServiceConf, emServiceConf,
+        userParameters.getServiceConf(), groupCommServiceConf, workloadServiceConf, emServiceConf, idConf,
         aggregationServiceConf, metricCollectionServiceConf, outputServiceConf, keyValueStoreServiceConf, traceConf);
   }
 

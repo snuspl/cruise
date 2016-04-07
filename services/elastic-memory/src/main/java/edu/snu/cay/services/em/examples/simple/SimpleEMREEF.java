@@ -25,6 +25,7 @@ import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
@@ -33,6 +34,7 @@ import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.IOException;
 import java.util.logging.Level;
@@ -110,11 +112,14 @@ public final class SimpleEMREEF {
         .set(DriverConfiguration.ON_TASK_MESSAGE, SimpleEMDriver.TaskMessageHandler.class)
         .build();
 
-    final Configuration emConfiguration = ElasticMemoryConfiguration.getDriverConfiguration();
-
     // spawn the name server at the driver
-    return Configurations.merge(driverConfiguration, emConfiguration,
-        NameServerConfiguration.CONF.build(), LocalNameResolverConfiguration.CONF.build());
+    return Configurations.merge(driverConfiguration,
+        ElasticMemoryConfiguration.getDriverConfiguration(),
+        NameServerConfiguration.CONF.build(),
+        LocalNameResolverConfiguration.CONF.build(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+            .build());
   }
 
   public static LauncherStatus runSimpleEM(final Configuration runtimeConf, final Configuration jobConf,
