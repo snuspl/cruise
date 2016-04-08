@@ -11,7 +11,8 @@
 ## Instance Creation (on your Macbook)
 
 4. At `/etc/salt/`, run `sudo salt-cloud -m eml` to create a master vm and a minion vm as specified in the file `eml`
-  - BAD NEWS: Due to the global lock in an Azure Cloud Service, we need to create instances sequentially (10 minutes per instance), (TODO: need to check if saltstack's -P option works)
+  - BAD NEWS: Due to the global lock in an Azure Cloud Service, we need to create instances sequentially (10 minutes per instance)
+  - Do not use the `-P` option; salt will throw an exception regarding Azure's global lock
 5. Open the Azure console to check that all instances are up and running
 6. For the master node, create new endpoints for ports 8088(YARN) and 50070(HDFS)
 7. Do `ssh azureuser@eml.cloudapp.net`, and run `sudo salt '*' cmd.run 'echo hi'` to see 2 responses (including the master)
