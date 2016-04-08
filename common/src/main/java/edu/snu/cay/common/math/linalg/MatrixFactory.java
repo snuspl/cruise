@@ -58,7 +58,7 @@ public interface MatrixFactory {
    * @param vectors list of concatenating vectors
    * @return a generated matrix
    */
-  Matrix horzcatDense(List<Vector> vectors);
+  Matrix horzcatVecDense(List<Vector> vectors);
 
   /**
    * Creates a CSC matrix by horizontal concatenation of vectors.
@@ -66,5 +66,21 @@ public interface MatrixFactory {
    * @param vectors list of concatenating vectors
    * @return a generated matrix
    */
-  Matrix horzcatSparse(List<Vector> vectors);
+  Matrix horzcatVecSparse(List<Vector> vectors);
+
+  /**
+   * Creates a dense matrix by horizontal concatenation of matrices.
+   * All matrices should have the same number of rows.
+   * @param matrices list of concatenating matrices
+   * @return a generated matrix
+   */
+  Matrix horzcatMatDense(List<Matrix> matrices);
+
+  /**
+   * Creates a dense matrix by vertical concatenation of matrices.
+   * All matrices should have the same number of columns.
+   * @param matrices list of concatenating matrices
+   * @return a generated matrix
+   */
+  Matrix vertcatMatDense(List<Matrix> matrices);
 }

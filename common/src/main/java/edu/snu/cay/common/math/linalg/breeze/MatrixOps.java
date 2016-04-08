@@ -17,10 +17,12 @@ package edu.snu.cay.common.math.linalg.breeze;
 
 import breeze.generic.UFunc;
 import breeze.linalg.Matrix$;
+import breeze.linalg.support.CanSlice2;
 import breeze.linalg.support.CanTranspose;
 import breeze.math.*;
 import breeze.storage.Zero;
 import breeze.storage.Zero$;
+import scala.package$;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 
@@ -37,6 +39,18 @@ public final class MatrixOps {
 
   private MatrixOps() {
   }
+
+  // colon colon
+  static final scala.collection.immutable.$colon$colon$ COLON_COLON = package$.MODULE$.$colon$colon();
+
+  // set operators
+  static final UFunc.InPlaceImpl2 SET_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpSet();
+
+  // slice operators
+  static final CanSlice2 SLICE_COL_D = breeze.linalg.DenseMatrix.canSliceCol();
+  static final CanSlice2 SLICE_ROW_D = breeze.linalg.DenseMatrix.canSliceRow();
+  static final CanSlice2 SLICE_COLS_D = breeze.linalg.DenseMatrix.canSliceCols();
+  static final CanSlice2 SLICE_ROWS_D = breeze.linalg.DenseMatrix.canSliceRows();
 
   // transpose operators
   static final CanTranspose T_D = breeze.linalg.DenseMatrix.canTranspose();

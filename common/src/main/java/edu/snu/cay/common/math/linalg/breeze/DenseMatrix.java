@@ -18,6 +18,7 @@ package edu.snu.cay.common.math.linalg.breeze;
 import breeze.linalg.NumericOps;
 import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.Vector;
+import scala.runtime.RichInt;
 
 /**
  * Matrix implementation based on breeze dense matrix.
@@ -90,6 +91,58 @@ public class DenseMatrix implements Matrix {
   @Override
   public double get(final int rowIndex, final int columnIndex) {
     return breezeMatrix.apply(rowIndex, columnIndex);
+  }
+
+  /**
+   * Returns the column specified by the index.
+   * Modifying the return value also changes the original matrix.
+   * @param index an index in range [0, columns)
+   * @return a column vector specified by given index
+   */
+  @Override
+  public DenseVector sliceColumn(final int index) {
+    return new DenseVector((breeze.linalg.DenseVector<Double>)
+        breezeMatrix.apply(MatrixOps.COLON_COLON, index, MatrixOps.SLICE_COL_D));
+  }
+
+  /**
+   * Returns the row specified by the index.
+   * Modifying the return value also changes the original matrix.
+   * @param index an index in range [0, rows)
+   * @return a row vector specified by given index
+   */
+  @Override
+  public DenseVector sliceRow(final int index) {
+    return new DenseVector((breeze.linalg.DenseVector<Double>) ((breeze.linalg.Transpose)
+        breezeMatrix.apply(index, MatrixOps.COLON_COLON, MatrixOps.SLICE_ROW_D)).inner());
+  }
+
+  /**
+   * Returns the columns specified by the index range.
+   * Does not include {@code end}th column.
+   * Modifying the return value also changes the original matrix.
+   * @param start an index in range [0, columns), less than {@code end}
+   * @param end an index in range (0, columns], greater than {@code start}
+   * @return a partial matrix which contains columns specified by given index range
+   */
+  @Override
+  public DenseMatrix sliceColumns(final int start, final int end) {
+    return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+        breezeMatrix.apply(MatrixOps.COLON_COLON, new RichInt(start).until(end), MatrixOps.SLICE_COLS_D));
+  }
+
+  /**
+   * Returns the rows specified by the index range.
+   * Does not include {@code end}th row.
+   * Modifying the return value also changes the original matrix.
+   * @param start an index in range [0, rows), less than {@code end}
+   * @param end an index in range (0, rows], greater than {@code start}
+   * @return a partial matrix which contains rows specified by given index range
+   */
+  @Override
+  public DenseMatrix sliceRows(final int start, final int end) {
+    return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+        breezeMatrix.apply(new RichInt(start).until(end), MatrixOps.COLON_COLON, MatrixOps.SLICE_ROWS_D));
   }
 
   /**
