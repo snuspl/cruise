@@ -15,7 +15,9 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.common.parameters.PartitionId;
+import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
+import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
+import edu.snu.cay.services.em.common.parameters.NumPartitions;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
 import edu.snu.cay.utils.LongRangeUtils;
 import org.apache.commons.lang.math.LongRange;
@@ -40,16 +42,36 @@ public final class OperationRouter {
 
   private String evalPrefix;
 
-  private final int localPartitionId;
+  private final int memoryStoreId;
 
   private final PartitionFunc partitionFunc;
 
+  /**
+   * The number of partitions.
+   */
+  private final int numPartitions;
+
+  /**
+   * The number of initial Evaluators.
+   */
+  private final int numInitialEvals;
+
+  /**
+   * The location of partitions. It keeps just an index of MemoryStores,
+   * so prefix should be added to get the Evaluator's endpoint id (See {@link #route(long)}).
+   */
+  private final int[] partitionIdToEvalId;
+
   @Inject
   private OperationRouter(final PartitionFunc partitionFunc,
-                          @Parameter(PartitionId.class) final int partitionId) {
-    this.localPartitionId = partitionId;
+                          @Parameter(NumPartitions.class) final int numPartitions,
+                          @Parameter(NumInitialEvals.class) final int numInitialEvals,
+                          @Parameter(MemoryStoreId.class) final int memoryStoreId) {
     this.partitionFunc = partitionFunc;
-
+    this.memoryStoreId = memoryStoreId;
+    this.numPartitions = numPartitions;
+    this.numInitialEvals = numInitialEvals;
+    this.partitionIdToEvalId = new int[numPartitions];
   }
 
   /**
@@ -59,6 +81,12 @@ public final class OperationRouter {
     this.localEndPointId = endPointId;
     this.evalPrefix = endPointId.split("-")[0];
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", localEndPointId);
+
+    // Partitions are initially distributed across Evaluators in round-robin.
+    for (int partitionId = 0; partitionId < numPartitions; partitionId++) {
+      final int evalId = partitionId % numInitialEvals;
+      partitionIdToEvalId[partitionId] = evalId;
+    }
   }
 
   /**
@@ -107,7 +135,7 @@ public final class OperationRouter {
     final Map<Integer, SortedSet<Long>> partitionedKeysMap = new HashMap<>();
 
     for (long dataKey = dataKeyRange.getMinimumLong(); dataKey <= dataKeyRange.getMaximumLong(); dataKey++) {
-      final int partitionId = (int) partitionFunc.partition(dataKey);
+      final int partitionId = partitionFunc.getPartitionId(dataKey);
       if (!partitionedKeysMap.containsKey(partitionId)) {
         partitionedKeysMap.put(partitionId, new TreeSet<Long>());
       }
@@ -120,7 +148,8 @@ public final class OperationRouter {
       final List<LongRange> rangeList =
           new ArrayList<>(LongRangeUtils.generateDenseLongRanges(partitionedKeysEntry.getValue()));
       final int partitionId = partitionedKeysEntry.getKey();
-      if (partitionId == localPartitionId) {
+      final int targetEvalId = partitionIdToEvalId[partitionId];
+      if (targetEvalId == memoryStoreId) {
         localKeyRanges = rangeList;
       } else {
         remoteKeyRanges.put(evalPrefix + '-' + partitionId, rangeList);
@@ -140,11 +169,12 @@ public final class OperationRouter {
    * @return a pair of a boolean representing locality of data and an endpoint id of a target evaluator
    */
   public Pair<Boolean, String> route(final long dataId) {
-    final int partitionId = (int) partitionFunc.partition(dataId);
-    if (localPartitionId == partitionId) {
+    final int partitionId = partitionFunc.getPartitionId(dataId);
+    final int targetEvalId = partitionIdToEvalId[partitionId];
+    if (targetEvalId == memoryStoreId) {
       return new Pair<>(true, localEndPointId);
     } else {
-      return new Pair<>(false, evalPrefix + '-' + partitionId);
+      return new Pair<>(false, evalPrefix + '-' + targetEvalId);
     }
   }
 }

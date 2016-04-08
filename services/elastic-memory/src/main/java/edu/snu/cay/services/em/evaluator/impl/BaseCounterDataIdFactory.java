@@ -15,7 +15,8 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.common.parameters.PartitionId;
+import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
+import edu.snu.cay.services.em.common.parameters.NumPartitions;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.reef.tang.annotations.Parameter;
@@ -32,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * To guarantee that different factories create unique data ids without asking to the driver or
  * to other evaluators, the driver should bind a unique NamedParameter {@code Base} to each factory.
  *
- * Note that this factory can only create up to 2^{@code partitionSizeBits} global unique ids.
+ * Note that this factory can only create up to (Long.MAX_VALUE / NumPartitions) global unique ids.
  * Beyond that, the methods throw Exceptions, because the ids are not guaranteed to be unique.
  */
 public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
@@ -55,10 +56,10 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
   private final long partitionSize;
 
   @Inject
-  private BaseCounterDataIdFactory(@Parameter(PartitionId.class) final int partitionId,
-                                   @Parameter(RangePartitionFunc.PartitionSizeBits.class) final int partitionSizeBits) {
-    this.base = (long) partitionId << partitionSizeBits;
-    this.partitionSize = 1L << partitionSizeBits;
+  private BaseCounterDataIdFactory(@Parameter(MemoryStoreId.class) final int memoryStoreId,
+                                   @Parameter(NumPartitions.class) final int numPartitions) {
+    this.partitionSize = Long.MAX_VALUE / numPartitions;
+    this.base = memoryStoreId * partitionSize;
   }
 
   @Override

@@ -23,6 +23,7 @@ import edu.snu.cay.dolphin.core.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.core.sync.DriverSyncRegister;
 import edu.snu.cay.dolphin.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.groupcomm.conf.GroupCommParameters;
+import edu.snu.cay.services.em.common.parameters.ElasticMemoryParameters;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriverConfiguration;
 import edu.snu.cay.services.shuffle.driver.impl.StaticPushShuffleManager;
@@ -67,18 +68,21 @@ public final class DolphinLauncher {
   private final OptimizerParameters optimizerParameters;
   private final PlanExecutorParameters planExecutorParameters;
   private final GroupCommParameters groupCommParameters;
+  private final ElasticMemoryParameters elasticMemoryParameters;
 
   @Inject
   private DolphinLauncher(final DolphinParameters dolphinParameters,
                           final HTraceParameters traceParameters,
                           final OptimizerParameters optimizerParameters,
                           final PlanExecutorParameters planExecutorParameters,
-                          final GroupCommParameters groupCommParameters) {
+                          final GroupCommParameters groupCommParameters,
+                          final ElasticMemoryParameters elasticMemoryParameters) {
     this.dolphinParameters = dolphinParameters;
     this.traceParameters = traceParameters;
     this.optimizerParameters = optimizerParameters;
     this.planExecutorParameters = planExecutorParameters;
     this.groupCommParameters = groupCommParameters;
+    this.elasticMemoryParameters = elasticMemoryParameters;
   }
 
   public static LauncherStatus run(final Configuration dolphinConfig, final Configuration... driverConfigs) {
@@ -163,6 +167,7 @@ public final class DolphinLauncher {
         planExecutorParameters.getConfiguration(),
         traceParameters.getConfiguration(),
         groupCommParameters.getConfiguration(),
+        elasticMemoryParameters.getConfiguration(),
         SyncNetworkSetup.getDriverConfiguration(),
         GroupCommService.getConfiguration(),
         ElasticMemoryConfiguration.getDriverConfiguration(),

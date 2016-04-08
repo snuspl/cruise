@@ -21,7 +21,7 @@ import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
-import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import edu.snu.cay.utils.LongRangeUtils;
@@ -62,6 +62,7 @@ import java.util.logging.Logger;
 @Unit
 final class SimpleEMDriver {
   private static final Logger LOG = Logger.getLogger(SimpleEMDriver.class.getName());
+  private static final int NUM_EVAL = 2;
   private static final String CONTEXT_ID_PREFIX = "Context-";
   public static final String TASK_ID_PREFIX = "Task-";
 
@@ -97,7 +98,7 @@ final class SimpleEMDriver {
     @Override
     public void onNext(final StartTime startTime) {
       SimpleEMDriver.this.requestor.submit(EvaluatorRequest.newBuilder()
-          .setNumber(2)
+          .setNumber(NUM_EVAL)
           .setMemory(64)
           .setNumberOfCores(1)
           .build());
@@ -123,11 +124,10 @@ final class SimpleEMDriver {
       final Configuration contextConf = Configurations.merge(
           partialContextConf, emConf.getContextConfiguration());
 
-      final Configuration serviceConf = Configurations.merge(emConf.getServiceConfiguration(contextId),
+      final Configuration serviceConf = Configurations.merge(emConf.getServiceConfiguration(contextId, NUM_EVAL),
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
               .build());
-
       final Configuration traceConf = traceParameters.getConfiguration();
 
       final Configuration exampleConf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -152,7 +152,7 @@ final class SimpleEMDriver {
       final String taskId = contextId.replace(CONTEXT_ID_PREFIX, TASK_ID_PREFIX);
 
       final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class).build();
+          .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class).build();
 
       final Configuration taskConf = Configurations.merge(
           TaskConfiguration.CONF

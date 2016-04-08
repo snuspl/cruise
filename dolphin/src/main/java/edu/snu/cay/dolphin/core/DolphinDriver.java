@@ -36,7 +36,7 @@ import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
-import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.shuffle.common.ShuffleDescriptionImpl;
 import edu.snu.cay.services.shuffle.driver.ShuffleDriver;
@@ -537,7 +537,8 @@ public final class DolphinDriver {
     final Configuration aggregationServiceConf = aggregationManager.getServiceConfigurationWithoutNameResolver();
     final Configuration metricCollectionServiceConf = MetricsCollectionService.getServiceConfiguration();
     final Configuration workloadServiceConf = WorkloadPartition.getServiceConfiguration();
-    final Configuration emServiceConf = emConf.getServiceConfigurationWithoutNameResolver(contextId);
+    final Configuration emServiceConf =
+        emConf.getServiceConfigurationWithoutNameResolver(contextId, dataLoadingService.getNumberOfPartitions());
     final Configuration idConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
         .build();
@@ -672,9 +673,9 @@ public final class DolphinDriver {
       }
     }
 
-    // Bind the implementation of DataIdFactory, which guarantees EM's MemoryStores generate disjoint ids each other
+    // Bind the implementation of DataIdFactory, which issues ids evenly across partitions.
     dolphinTaskConfBuilder
-        .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class);
+        .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class);
 
     // Case 1: Evaluator configured with a Group Communication context has been given,
     //         representing a Controller Task

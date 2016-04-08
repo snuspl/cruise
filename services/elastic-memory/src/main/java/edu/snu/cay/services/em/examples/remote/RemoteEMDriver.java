@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.examples.remote;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
-import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -108,7 +108,8 @@ final class RemoteEMDriver {
           partialContextConf, emConf.getContextConfiguration(), aggregationManager.getContextConfiguration());
 
       final Configuration serviceConf = Configurations.merge(
-          emConf.getServiceConfiguration(contextId), aggregationManager.getServiceConfigurationWithoutNameResolver(),
+          emConf.getServiceConfiguration(contextId, EVAL_NUM),
+          aggregationManager.getServiceConfigurationWithoutNameResolver(),
           Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
             .build());
@@ -132,7 +133,7 @@ final class RemoteEMDriver {
       final String taskId = contextId.replace(CONTEXT_ID_PREFIX, TASK_ID_PREFIX);
 
       final Configuration idConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class)
+          .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class)
           .build();
 
       final Configuration taskConf = Configurations.merge(

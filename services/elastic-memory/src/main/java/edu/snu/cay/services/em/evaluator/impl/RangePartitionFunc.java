@@ -15,35 +15,28 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
+import edu.snu.cay.services.em.common.parameters.NumPartitions;
 import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
 /**
  * An implementation of PartitionFunc.
- * It partitions ids with range-based partitioning.
+ * It partitions ids with range-based partitioning, where partition p takes
+ * keys within [p * PARTITION_SIZE, (p+1) * PARTITION_SIZE).
  */
 public final class RangePartitionFunc implements PartitionFunc {
 
-  private final int partitionSizeBits;
+  private final long partitionSize;
 
   @Inject
-  private RangePartitionFunc(@Parameter(PartitionSizeBits.class) final int partitionSizeBits) {
-    if (partitionSizeBits <= 0 || partitionSizeBits > 32) {
-      throw new RuntimeException("PartitionSizeBits should be a positive value no greater than 32");
-    }
-    this.partitionSizeBits = partitionSizeBits;
+  private RangePartitionFunc(@Parameter(NumPartitions.class) final int numPartitions) {
+    this.partitionSize = Long.MAX_VALUE / numPartitions;
   }
 
   @Override
-  public long partition(final long dataId) {
-    return dataId >> partitionSizeBits;
-  }
-
-  @NamedParameter(doc = "A number of bits representing partition size", default_value = "32")
-  public final class PartitionSizeBits implements Name<Integer> {
+  public int getPartitionId(final long dataId) {
+    return (int) (dataId / partitionSize);
   }
 }
