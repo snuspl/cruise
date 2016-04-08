@@ -40,7 +40,7 @@ public final class MatrixOps {
   private MatrixOps() {
   }
 
-  // colon colon
+  // colon operator
   static final scala.collection.immutable.$colon$colon$ COLON_COLON = package$.MODULE$.$colon$colon();
 
   // set operators

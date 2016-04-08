@@ -94,10 +94,7 @@ public class DenseMatrix implements Matrix {
   }
 
   /**
-   * Returns the column specified by the index.
-   * Modifying the return value also changes the original matrix.
-   * @param index an index in range [0, columns)
-   * @return a column vector specified by given index
+   * {@inheritDoc}
    */
   @Override
   public DenseVector sliceColumn(final int index) {
@@ -106,10 +103,7 @@ public class DenseMatrix implements Matrix {
   }
 
   /**
-   * Returns the row specified by the index.
-   * Modifying the return value also changes the original matrix.
-   * @param index an index in range [0, rows)
-   * @return a row vector specified by given index
+   * {@inheritDoc}
    */
   @Override
   public DenseVector sliceRow(final int index) {
@@ -118,12 +112,7 @@ public class DenseMatrix implements Matrix {
   }
 
   /**
-   * Returns the columns specified by the index range.
-   * Does not include {@code end}th column.
-   * Modifying the return value also changes the original matrix.
-   * @param start an index in range [0, columns), less than {@code end}
-   * @param end an index in range (0, columns], greater than {@code start}
-   * @return a partial matrix which contains columns specified by given index range
+   * {@inheritDoc}
    */
   @Override
   public DenseMatrix sliceColumns(final int start, final int end) {
@@ -132,12 +121,7 @@ public class DenseMatrix implements Matrix {
   }
 
   /**
-   * Returns the rows specified by the index range.
-   * Does not include {@code end}th row.
-   * Modifying the return value also changes the original matrix.
-   * @param start an index in range [0, rows), less than {@code end}
-   * @param end an index in range (0, rows], greater than {@code start}
-   * @return a partial matrix which contains rows specified by given index range
+   * {@inheritDoc}
    */
   @Override
   public DenseMatrix sliceRows(final int start, final int end) {
