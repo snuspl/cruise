@@ -59,6 +59,42 @@ public interface Matrix {
   double get(int rowIndex, int columnIndex);
 
   /**
+   * Returns the column specified by the index.
+   * Modifying the return value also changes the original matrix.
+   * @param index an index in range [0, columns)
+   * @return a column vector specified by the given index
+   */
+  Vector sliceColumn(int index);
+
+  /**
+   * Returns the row specified by the index.
+   * Modifying the return value also changes the original matrix.
+   * @param index an index in range [0, rows)
+   * @return a row vector specified by the given index
+   */
+  Vector sliceRow(int index);
+
+  /**
+   * Returns the columns specified by the index range.
+   * Inclusive for {@code start}, exclusive for {@code end}.
+   * Modifying the return value also changes the original matrix.
+   * @param start an index in range [0, columns], less than or equal to {@code end}
+   * @param end an index in range [0, columns], greater than or equal to {@code start}
+   * @return a partial matrix which contains columns specified by the given index range
+   */
+  Matrix sliceColumns(int start, int end);
+
+  /**
+   * Returns the rows specified by the index range.
+   * Inclusive for {@code start}, exclusive for {@code end}.
+   * Modifying the return value also changes the original matrix.
+   * @param start an index in range [0, rows], less than or equal to {@code end}
+   * @param end an index in range [0, rows], greater than or equal to {@code start}
+   * @return a partial matrix which contains rows specified by the given index range
+   */
+  Matrix sliceRows(int start, int end);
+
+  /**
    * Sets a matrix element.
    * @param rowIndex an index in range [0, rows)
    * @param columnIndex an index in range [0, columns)

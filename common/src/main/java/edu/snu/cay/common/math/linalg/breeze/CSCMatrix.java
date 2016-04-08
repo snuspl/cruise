@@ -92,6 +92,38 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
+   * Not supported for CSC matrix.
+   */
+  @Override
+  public Vector sliceColumn(final int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Not supported for CSC matrix.
+   */
+  @Override
+  public Vector sliceRow(final int index) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Not supported for CSC matrix.
+   */
+  @Override
+  public Matrix sliceColumns(final int start, final int end) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Not supported for CSC matrix.
+   */
+  @Override
+  public Matrix sliceRows(final int start, final int end) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
    * Sets a matrix element.
    * @param rowIndex an index in range [0, rows)
    * @param columnIndex an index in range [0, columns)
