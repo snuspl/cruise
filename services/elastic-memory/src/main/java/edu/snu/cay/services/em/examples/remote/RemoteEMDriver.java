@@ -114,7 +114,6 @@ final class RemoteEMDriver {
             .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
             .build());
 
-
       final Configuration traceConf = traceParameters.getConfiguration();
 
       allocatedEvaluator.submitContextAndService(contextConf,

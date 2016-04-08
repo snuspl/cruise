@@ -169,7 +169,6 @@ public final class OperationRouter {
    * @return a pair of a boolean representing locality of data and an endpoint id of a target evaluator
    */
   public Pair<Boolean, String> route(final long dataId) {
-
     final int partitionId = partitionFunc.getPartitionId(dataId);
     final int targetEvalId = partitionIdToEvalId[partitionId];
     if (targetEvalId == memoryStoreId) {

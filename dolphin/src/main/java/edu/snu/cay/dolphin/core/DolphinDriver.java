@@ -673,7 +673,7 @@ public final class DolphinDriver {
       }
     }
 
-    // Bind the implementation of DataIdFactory, which generates ids evenly across partitions.
+    // Bind the implementation of DataIdFactory, which issues ids evenly across partitions.
     dolphinTaskConfBuilder
         .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class);
 
