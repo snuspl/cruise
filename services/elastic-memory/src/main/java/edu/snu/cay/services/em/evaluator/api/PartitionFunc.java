@@ -22,7 +22,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * A partition function that partitions data ids into corresponding partitions.
  */
 @DefaultImplementation(RangePartitionFunc.class)
-public interface PartitionFunc {
+public interface PartitionFunc<K> {
 
   /**
    * Return a partition id of data with {@code dataId}.
@@ -30,5 +30,5 @@ public interface PartitionFunc {
    * @param dataId a id of data
    * @return an id of partition that the data
    */
-  int getPartitionId(long dataId);
+  int getPartitionId(K dataId);
 }

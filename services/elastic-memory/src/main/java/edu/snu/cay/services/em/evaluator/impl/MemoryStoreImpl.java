@@ -54,7 +54,7 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 @Private
-public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
+public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
   private static final int QUEUE_SIZE = 100;
@@ -363,7 +363,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> Pair<Long, Boolean> put(final String dataType, final long id, final T value) {
+  public <T> Pair<Long, Boolean> put(final String dataType, final Long id, final T value) {
     if (value == null) {
       return new Pair<>(id, false);
     }
@@ -458,7 +458,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> Pair<Long, T> get(final String dataType, final long id) {
+  public <T> Pair<Long, T> get(final String dataType, final Long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
@@ -488,7 +488,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> Map<Long, T> getRange(final String dataType, final long startId, final long endId) {
+  public <T> Map<Long, T> getRange(final String dataType, final Long startId, final Long endId) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
@@ -501,7 +501,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> Pair<Long, T> remove(final String dataType, final long id) {
+  public <T> Pair<Long, T> remove(final String dataType, final Long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
     final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.REMOVE,
@@ -530,7 +530,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> Map<Long, T> removeRange(final String dataType, final long startId, final long endId) {
+  public <T> Map<Long, T> removeRange(final String dataType, final Long startId, final Long endId) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
