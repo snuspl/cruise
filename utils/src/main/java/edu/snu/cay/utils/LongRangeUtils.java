@@ -40,7 +40,7 @@ public final class LongRangeUtils {
    * It guarantees the total order if the ranges are disjoint,
    * but when the ranges are overlapping, the order is not determined..
    */
-  private static final Comparator<LongRange> LONG_RANGE_COMPARATOR =
+  public static final Comparator<LongRange> LONG_RANGE_COMPARATOR =
       new Comparator<LongRange>() {
         @Override
         public int compare(final LongRange o1, final LongRange o2) {

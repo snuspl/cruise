@@ -136,9 +136,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       dataKeyRanges.add(AvroUtils.fromAvroLongRange(avroRange));
     }
 
-    final Optional<SortedMap<Long, T>> dataKeyValueMap;
+    final Optional<NavigableMap<Long, T>> dataKeyValueMap;
     if (operationType.equals(DataOpType.PUT)) {
-      final SortedMap<Long, T> dataMap = new TreeMap<>();
+      final NavigableMap<Long, T> dataMap = new TreeMap<>();
       dataKeyValueMap = Optional.of(dataMap);
 
       // decode data values
@@ -154,7 +154,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final DataOperation<T> operation = new DataOperation<>(Optional.of(origEvalId),
         operationId, operationType, dataType, dataKeyRanges, dataKeyValueMap);
 
-    // enqueue operation requested from remote store into memory store
+    // enqueue operation into memory store
     memoryStore.onNext(operation);
   }
 
@@ -167,9 +167,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
     final String operationId = msg.getOperationId().toString();
     final List<UnitIdPair> dataKVPairList = remoteOpResultMsg.getDataKVPairList();
-    final List<AvroLongRange> failedRanges = remoteOpResultMsg.getFailedKeyRanges();
+    final List<AvroLongRange> failedAvroRanges = remoteOpResultMsg.getFailedKeyRanges();
 
-    resultAggregator.submitRemoteResult(operationId, dataKVPairList, failedRanges);
+    resultAggregator.submitRemoteResult(operationId, dataKVPairList, failedAvroRanges);
   }
 
   /**

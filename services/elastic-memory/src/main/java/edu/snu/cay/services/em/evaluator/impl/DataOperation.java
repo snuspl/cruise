@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.avro.AvroLongRange;
 import edu.snu.cay.services.em.avro.DataOpType;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.Private;
@@ -42,7 +41,7 @@ public final class DataOperation<T> {
   private final DataOpType operationType;
   private final String dataType;
   private final List<LongRange> dataKeyRanges;
-  private final Optional<SortedMap<Long, T>> dataKeyValueMap;
+  private final Optional<NavigableMap<Long, T>> dataKeyValueMap;
 
   /**
    * States of the operation.
@@ -51,16 +50,8 @@ public final class DataOperation<T> {
 
   // ranges that remote sub operations failed to execute due to wrong routing
   // it happens only when ownership of data key are updated, unknown to the original store
-  private final List<AvroLongRange> failedRanges = new LinkedList<>();
+  private final List<LongRange> failedRanges = new LinkedList<>();
   private final ConcurrentMap<Long, T> outputData = new ConcurrentHashMap<>();
-
-  private static <T> Optional<SortedMap<Long, T>> unmodifiableMap(final Optional<SortedMap<Long, T>> map) {
-    if (map.isPresent()) {
-      return Optional.of(Collections.unmodifiableSortedMap(map.get()));
-    } else {
-      return map;
-    }
-  }
 
   /**
    * A constructor for an operation composed of multiple data key ranges.
@@ -75,7 +66,7 @@ public final class DataOperation<T> {
    */
   DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
                 final String dataType, final List<LongRange> dataKeyRanges,
-                final Optional<SortedMap<Long, T>> dataKeyValueMap) {
+                final Optional<NavigableMap<Long, T>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -97,7 +88,7 @@ public final class DataOperation<T> {
    */
   DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
                 final String dataType, final LongRange dataKeyRange,
-                final Optional<SortedMap<Long, T>> dataKeyValueMap) {
+                final Optional<NavigableMap<Long, T>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -132,7 +123,7 @@ public final class DataOperation<T> {
     keyRanges.add(new LongRange(dataKey));
     this.dataKeyRanges = keyRanges;
 
-    final SortedMap<Long, T> keyValueMap;
+    final NavigableMap<Long, T> keyValueMap;
     if (dataValue.isPresent()) {
       keyValueMap = new TreeMap<>();
       keyValueMap.put(dataKey, dataValue.get());
@@ -192,13 +183,13 @@ public final class DataOperation<T> {
    * It returns an empty Optional for GET and REMOVE operations.
    * @return an Optional with the map of input keys and its values
    */
-  Optional<SortedMap<Long, T>> getDataKeyValueMap() {
+  Optional<NavigableMap<Long, T>> getDataKeyValueMap() {
     return dataKeyValueMap;
   }
 
   /**
    * Set a counter number that {@link #waitOperation(long)} will wait until the count becomes zero.
-   * Only {@link #commitResult(Map, List<AvroLongRange>)} method counts down the latch.
+   * Only {@link #commitResult(Map, List<LongRange>)} method counts down the latch.
    * @param numSubOps a number of sub operations
    */
   void setNumSubOps(final int numSubOps) {
@@ -206,6 +197,10 @@ public final class DataOperation<T> {
       return;
     }
     subOpCountDownLatch = new CountDownLatch(numSubOps);
+  }
+
+  int getNumSubOps() {
+    return (int) subOpCountDownLatch.getCount();
   }
 
   /**
@@ -222,21 +217,17 @@ public final class DataOperation<T> {
    * @param output an output data of the sub operation
    * @param failedRangeList a list of failed key ranges of the sub operation
    */
-  void commitResult(final Map<Long, T> output, final List<AvroLongRange> failedRangeList) {
+  void commitResult(final Map<Long, T> output, final List<LongRange> failedRangeList) {
     this.outputData.putAll(output);
-    synchronized (failedRanges) {
-      this.failedRanges.addAll(failedRangeList);
-    }
+    this.failedRanges.addAll(failedRangeList);
     subOpCountDownLatch.countDown();
   }
 
   /**
    * Returns a list of key ranges that the sub operations failed to locate.
    */
-  List<AvroLongRange> getFailedRanges() {
-    synchronized (failedRanges) {
-      return Collections.unmodifiableList(failedRanges);
-    }
+  List<LongRange> getFailedRanges() {
+    return Collections.unmodifiableList(failedRanges);
   }
 
   /**

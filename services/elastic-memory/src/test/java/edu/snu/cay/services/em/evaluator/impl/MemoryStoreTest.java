@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
+import edu.snu.cay.services.em.common.parameters.NumPartitions;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -48,6 +49,7 @@ import static org.junit.Assert.*;
  * Test class for checking the thread safeness of MemoryStore.
  */
 public final class MemoryStoreTest {
+  private static final int NUM_PARTITIONS = 32;
 
   private static final String DATA_TYPE = "DATA_TYPE";
   private static final String MSG_SIZE_ASSERTION = "size of final memory store";
@@ -64,6 +66,7 @@ public final class MemoryStoreTest {
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(1))
+        .bindNamedParameter(NumPartitions.class, Integer.toString(NUM_PARTITIONS))
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
@@ -88,7 +91,7 @@ public final class MemoryStoreTest {
           countDownLatch, memoryStore, index, numThreads, putsPerThread, 1, IndexParity.ALL_INDEX);
     }
     ThreadUtils.runConcurrently(threads);
-    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
+    final boolean allThreadsFinished = countDownLatch.await(90, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
