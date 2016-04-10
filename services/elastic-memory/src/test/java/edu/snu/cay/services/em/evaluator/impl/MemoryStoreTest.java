@@ -54,7 +54,7 @@ public final class MemoryStoreTest {
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_REMOVE_ALL_ASSERTION = "getAll() after removeAll()";
 
-  private MemoryStore memoryStore;
+  private MemoryStore<Long> memoryStore;
 
   @Before
   public void setUp() throws InjectionException {
@@ -67,7 +67,7 @@ public final class MemoryStoreTest {
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
-    memoryStore = injector.getInstance(MemoryStore.class);
+    memoryStore = (MemoryStore<Long>) injector.getInstance(MemoryStore.class);
   }
 
   /**
@@ -110,7 +110,7 @@ public final class MemoryStoreTest {
     final CountDownLatch countDownLatch = new CountDownLatch(numThreads);
 
     for (int i = 0; i < totalNumberOfObjects; i++) {
-      memoryStore.put(DATA_TYPE, i, i);
+      memoryStore.put(DATA_TYPE, (long) i, i);
     }
 
     final Runnable[] threads = new Runnable[numThreads];
@@ -152,7 +152,7 @@ public final class MemoryStoreTest {
       if (i / numThreadPerOperation / itemsPerPutOrRemove % 2 == 0) {
         continue;
       }
-      memoryStore.put(DATA_TYPE, i, i);
+      memoryStore.put(DATA_TYPE, (long) i, i);
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadPerOperation];
@@ -246,7 +246,7 @@ public final class MemoryStoreTest {
     final CountDownLatch countDownLatch = new CountDownLatch(2 * numThreadsPerOperation);
 
     for (int i = 0; i < totalNumberOfObjects; i++) {
-      memoryStore.put(DATA_TYPE, i, i);
+      memoryStore.put(DATA_TYPE, (long) i, i);
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
@@ -290,7 +290,7 @@ public final class MemoryStoreTest {
       if (i / numThreadsPerOperation / itemsPerPutOrRemove % 2 == 0) {
         continue;
       }
-      memoryStore.put(DATA_TYPE, i, i);
+      memoryStore.put(DATA_TYPE, (long) i, i);
     }
 
     final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
@@ -357,14 +357,14 @@ public final class MemoryStoreTest {
         }
 
         if (itemsPerPut == 1) {
-          final int itemIndex = numThreads * i + myIndex;
+          final long itemIndex = numThreads * i + myIndex;
           memoryStore.put(DATA_TYPE, itemIndex, i);
         } else {
-          final int itemStartIndex = (numThreads * i + myIndex) * itemsPerPut;
+          final long itemStartIndex = (numThreads * i + myIndex) * itemsPerPut;
           final List<Long> ids = new ArrayList<>(itemsPerPut);
-          final List<Integer> values = new ArrayList<>(itemsPerPut);
-          for (int itemIndex = itemStartIndex; itemIndex < itemStartIndex + itemsPerPut; itemIndex++) {
-            ids.add((long)itemIndex);
+          final List<Long> values = new ArrayList<>(itemsPerPut);
+          for (long itemIndex = itemStartIndex; itemIndex < itemStartIndex + itemsPerPut; itemIndex++) {
+            ids.add(itemIndex);
             values.add(itemIndex);
           }
           memoryStore.putList(DATA_TYPE, ids, values);
@@ -408,11 +408,11 @@ public final class MemoryStoreTest {
         }
 
         if (itemsPerRemove == 1) {
-          final int itemIndex = numThreads * i + myIndex;
+          final long itemIndex = numThreads * i + myIndex;
           memoryStore.remove(DATA_TYPE, itemIndex);
         } else {
-          final int itemStartIndex = (numThreads * i + myIndex) * itemsPerRemove;
-          final int itemEndIndex = itemStartIndex + itemsPerRemove - 1;
+          final long itemStartIndex = (numThreads * i + myIndex) * itemsPerRemove;
+          final long itemEndIndex = itemStartIndex + itemsPerRemove - 1;
           memoryStore.removeRange(DATA_TYPE, itemStartIndex, itemEndIndex);
         }
       }
@@ -444,13 +444,13 @@ public final class MemoryStoreTest {
       for (int i = 0; i < getsPerThread; i++) {
         final int getMethod = random.nextInt(3);
         if (getMethod == 0) {
-          memoryStore.get(DATA_TYPE, random.nextInt(totalNumberOfObjects));
+          memoryStore.get(DATA_TYPE, (long) random.nextInt(totalNumberOfObjects));
 
         } else if (getMethod == 1) {
           final int startId = random.nextInt(totalNumberOfObjects);
           final int endId = random.nextInt(totalNumberOfObjects - startId) + startId;
 
-          final Map<Long, Object> subMap = memoryStore.getRange(DATA_TYPE, startId, endId);
+          final Map<Long, Object> subMap = memoryStore.getRange(DATA_TYPE, (long) startId, (long) endId);
           if (subMap == null) {
             continue;
           }

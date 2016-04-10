@@ -49,12 +49,12 @@ final class RemoteEMTask implements Task {
   private static final int DATA_VALUE0 = 1000;
   private static final int DATA_VALUE1 = 1001;
 
-  private final MemoryStore memoryStore;
+  private final MemoryStore<Long> memoryStore;
 
   /**
    * A router that is an internal component of EM. Here we use it in user code for testing purpose.
    */
-  private final OperationRouter router;
+  private final OperationRouter<Long> router;
 
   private final String taskId;
 
@@ -63,8 +63,8 @@ final class RemoteEMTask implements Task {
   private final SerializableCodec<String> codec;
 
   @Inject
-  private RemoteEMTask(final MemoryStore memorystore,
-                       final OperationRouter router,
+  private RemoteEMTask(final MemoryStore<Long> memorystore,
+                       final OperationRouter<Long> router,
                        final AggregationSlave aggregationSlave,
                        final EvalSideMsgHandler msgHandler,
                        final SerializableCodec<String> codec,
@@ -149,7 +149,7 @@ final class RemoteEMTask implements Task {
       throw new RuntimeException("Fail to get correct data");
     }
 
-    outputMap = memoryStore.getRange(DATA_TYPE, 0, 1);
+    outputMap = memoryStore.getRange(DATA_TYPE, 0L, 1L);
     LOG.log(Level.INFO, "getRange({0}, {1}): {2}", new Object[]{DATA_KEY0, DATA_KEY1, outputMap});
 
     if (!outputMap.containsKey(DATA_KEY0) || !outputMap.containsKey(DATA_KEY1)) {
