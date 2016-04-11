@@ -152,7 +152,7 @@ public final class OperationRouter {
       if (targetEvalId == memoryStoreId) {
         localKeyRanges = rangeList;
       } else {
-        remoteKeyRanges.put(evalPrefix + '-' + partitionId, rangeList);
+        remoteKeyRanges.put(evalPrefix + '-' + targetEvalId, rangeList);
       }
     }
 
