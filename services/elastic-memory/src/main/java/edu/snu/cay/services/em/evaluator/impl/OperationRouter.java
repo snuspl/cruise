@@ -125,7 +125,7 @@ public final class OperationRouter {
       }
 
       final Map<String, List<LongRange>> partialRemoteKeyRangesMap = routingResult.getSecond();
-      // merge remote sub ranges that targets same evaluator
+      // merge sub ranges held by the same remote evaluator
       for (final Map.Entry<String, List<LongRange>> remoteEntry : partialRemoteKeyRangesMap.entrySet()) {
         final List<LongRange> remoteRanges = remoteKeyRangesMap.get(remoteEntry.getKey());
         if (remoteRanges != null) {

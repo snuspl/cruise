@@ -211,7 +211,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
      * Executes sub operation on data keys assigned to this partition.
      * All operations both from remote and local clients are executed via this method.
      */
-    public <T> Map<Long, T> executeSubOperation(final DataOperation<T> operation, final List<LongRange> subKeyRanges) {
+    private <T> Map<Long, T> executeSubOperation(final DataOperation<T> operation, final List<LongRange> subKeyRanges) {
       final DataOpType operationType = operation.getOperationType();
 
       final Map<Long, T> outputData = new HashMap<>();
@@ -266,7 +266,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
       return outputData;
     }
 
-    public <T> Map<Long, T> getAll() {
+    /**
+     * Returns all data in a partition.
+     * It is for supporting getAll method of MemoryStore.
+     */
+    private <T> Map<Long, T> getAll() {
       rwLock.readLock().lock();
       try {
         return (Map<Long, T>) ((TreeMap) subDataMap).clone();
@@ -275,7 +279,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
       }
     }
 
-    public <T> Map<Long, T> removeAll() {
+    /**
+     * Removes all data in a partition.
+     * It is for supporting removeAll method of MemoryStore.
+     */
+    private <T> Map<Long, T> removeAll() {
       final Map<Long, T> result;
       rwLock.writeLock().lock();
       try {
@@ -288,14 +296,18 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
       return result;
     }
 
-    public int getNumUnits() {
+    /**
+     * Returns a number of data in a partition.
+     * It is for supporting getNumUnits method of MemoryStore.
+     */
+    private int getNumUnits() {
       return subDataMap.size();
     }
   }
 
   /**
-   * Executes an operation requested from a remote client.
-   * It enqueues sub operations into corresponding Partitions' queues.
+   * Enqueues operations requested from a remote client.
+   * The enqueued operations are executed by {@code OperationThread}s.
    */
   @Override
   public void onNext(final DataOperation operation) {
