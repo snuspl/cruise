@@ -26,6 +26,10 @@ public final class VectorOps {
   private VectorOps() {
   }
 
+  // set operators
+  static final UFunc.InPlaceImpl2 SET_DD = breeze.linalg.DenseVector.dv_dv_UpdateOp_Double_OpSet();
+  static final UFunc.InPlaceImpl2 SET_DS = breeze.linalg.DenseVector.dv_v_InPlaceOp_Double_OpSet();
+
   // scalar addition operator
   static final UFunc.UImpl2 ADD_DT = breeze.linalg.DenseVector.dv_s_Op_Double_OpAdd();
   static final UFunc.InPlaceImpl2 ADDI_DT = breeze.linalg.DenseVector.dv_s_UpdateOp_Double_OpAdd();

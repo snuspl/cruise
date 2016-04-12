@@ -95,6 +95,38 @@ public interface Matrix {
   Matrix sliceRows(int start, int end);
 
   /**
+   * Put a column vector to the column specified by the index.
+   * @param index an index in range [0, columns)
+   * @param vector a column vector
+   */
+  void putColumn(int index, Vector vector);
+
+  /**
+   * Put a row vector to the row specified by the index.
+   * @param index an index in range [0, rows)
+   * @param vector a row vector
+   */
+  void putRow(int index, Vector vector);
+
+  /**
+   * Put a matrix to the columns specified by the index range.
+   * Inclusive for {@code start}, exclusive for {@code end}.
+   * @param start an index in range [0, columns], less than or equal to {@code end}
+   * @param end an index in range [0, columns], greater than or equal to {@code start}
+   * @param matrix a matrix with dimension (rows * (end - start))
+   */
+  void putColumns(int start, int end, Matrix matrix);
+
+  /**
+   * Put a matrix to the rows specified by the index range.
+   * Inclusive for {@code start}, exclusive for {@code end}.
+   * @param start an index in range [0, rows], less than or equal to {@code end}
+   * @param end an index in range [0, rows], greater than or equal to {@code start}
+   * @param matrix a matrix with dimension ((end - start) * columns)
+   */
+  void putRows(int start, int end, Matrix matrix);
+
+  /**
    * Sets a matrix element.
    * @param rowIndex an index in range [0, rows)
    * @param columnIndex an index in range [0, columns)
