@@ -100,7 +100,7 @@ public final class MatrixOpsTest {
     assertEquals(mat2, mat5.sliceRows(0, 3));
     assertEquals(vec3, mat5.sliceRow(3));
     final List<Matrix> denseMatrixList = Lists.newArrayList(mat2);
-    // transform a vector to the matrix and transpose it to make it a row vector
+    // convert vec3 into a matrix and transpose it to make it have only one row (similar to a row vector)
     denseMatrixList.add(matrixFactory.horzcatVecDense(Lists.<Vector>newArrayList(vec3)).transpose());
     assertEquals(matrixFactory.vertcatMatDense(denseMatrixList), mat5);
   }
