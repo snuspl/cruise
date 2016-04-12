@@ -105,10 +105,6 @@ public final class MatrixFactoryTest {
     assertEquals(mat2, horzMat.sliceColumns(4, 8));
     assertEquals(mat1, vertMat.sliceRows(0, 3));
     assertEquals(mat2, vertMat.sliceRows(3, 6));
-    horzMat.putColumns(3, 7, mat2);
-    vertMat.putRows(1, 4, mat2);
-    assertEquals(mat2, horzMat.sliceColumns(3, 7));
-    assertEquals(mat2, vertMat.sliceRows(1, 4));
   }
 
   /**
