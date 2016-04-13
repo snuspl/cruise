@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 final class OperationResultAggregator {
   private static final Logger LOG = Logger.getLogger(OperationResultAggregator.class.getName());
 
-  private final ConcurrentMap<String, DataOperation> ongoingOperations = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, LongKeyOperation> ongoingOperations = new ConcurrentHashMap<>();
 
   private static final long TIMEOUT_MS = 40000;
 
@@ -50,8 +50,8 @@ final class OperationResultAggregator {
    * Registered operations would be removed by {@code submitResultAndWaitRemoteOps} method
    * when the operations are finished.
    */
-  void registerOperation(final DataOperation operation, final int numSubOperations) {
-    final DataOperation unhandledOperation = ongoingOperations.put(operation.getOperationId(), operation);
+  void registerOperation(final LongKeyOperation operation, final int numSubOperations) {
+    final LongKeyOperation unhandledOperation = ongoingOperations.put(operation.getOperationId(), operation);
     operation.setNumSubOps(numSubOperations);
 
     if (unhandledOperation != null) {
@@ -70,7 +70,7 @@ final class OperationResultAggregator {
    * Handles the result of data operation processed by local memory store.
    * It waits until all remote sub operations are finished and their outputs are fully aggregated.
    */
-  <T> void submitLocalResult(final DataOperation<T> operation, final Map<Long, T> localOutput) {
+  <T> void submitLocalResult(final LongKeyOperation<T> operation, final Map<Long, T> localOutput) {
     operation.commitResult(localOutput, Collections.EMPTY_LIST);
 
     // wait until all sub operations are finished
@@ -91,7 +91,7 @@ final class OperationResultAggregator {
    */
   <T> void submitRemoteResult(final String operationId, final List<UnitIdPair> remoteOutput,
                               final List<AvroLongRange> failedRanges) {
-    final DataOperation<T> operation = ongoingOperations.get(operationId);
+    final LongKeyOperation<T> operation = ongoingOperations.get(operationId);
 
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);

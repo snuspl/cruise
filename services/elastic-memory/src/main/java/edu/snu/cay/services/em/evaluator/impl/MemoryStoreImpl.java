@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 import edu.snu.cay.services.em.avro.AvroLongRange;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
@@ -89,7 +90,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   /**
    * A queue for enqueueing operations from remote memory stores.
    */
-  private final BlockingQueue<DataOperation> operationQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
+  private final BlockingQueue<LongKeyOperation> operationQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
   private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
   @Inject
@@ -113,9 +114,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public void onNext(final DataOperation dataOperation) {
+  public void onNext(final DataOperation<Long> longDataOperation) {
     try {
-      operationQueue.put(dataOperation);
+      operationQueue.put((LongKeyOperation) longDataOperation);
     } catch (final InterruptedException e) {
       LOG.log(Level.SEVERE, "Interrupted while waiting for enqueueing an operation", e);
     }
@@ -124,7 +125,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private final class OperationThread implements Runnable {
 
     private final int drainSize = QUEUE_SIZE / 10; // The max number of operations to drain per iteration
-    private final List<DataOperation> drainedOperations = new ArrayList<>(drainSize);
+    private final List<LongKeyOperation> drainedOperations = new ArrayList<>(drainSize);
 
     /**
      * A loop that dequeues operations and executes them.
@@ -137,7 +138,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         // First, poll and execute a single operation.
         // Poll with a timeout will prevent busy waiting, when the queue is empty.
         try {
-          final DataOperation operation = operationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+          final LongKeyOperation operation = operationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (operation == null) {
             continue;
           }
@@ -153,7 +154,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
           continue;
         }
 
-        for (final DataOperation operation : drainedOperations) {
+        for (final LongKeyOperation operation : drainedOperations) {
           executeOperation(operation);
         }
 
@@ -163,7 +164,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
 
-  private <T> void executeOperation(final DataOperation<T> operation) {
+  private <T> void executeOperation(final LongKeyOperation<T> operation) {
 
     final List<LongRange> dataKeyRanges = operation.getDataKeyRanges();
 
@@ -202,7 +203,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     }
   }
 
-  private <T> Map<Long, T> executeLocalOperation(final DataOperation<T> operation, final List<LongRange> subKeyRanges) {
+  private <T> Map<Long, T> executeLocalOperation(final LongKeyOperation<T> operation,
+                                                 final List<LongRange> subKeyRanges) {
     final DataOpType operationType = operation.getOperationType();
     final String dataType = operation.getDataType();
 
@@ -281,7 +283,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   /**
    * Sends sub operations to target remote evaluators.
    */
-  private <T> void sendOperationsToRemoteStores(final DataOperation<T> operation,
+  private <T> void sendOperationsToRemoteStores(final LongKeyOperation<T> operation,
                                                 final Map<String, List<LongRange>> remoteKeyRangesMap) {
 
     final Codec codec = serializer.getCodec(operation.getDataType());
@@ -331,7 +333,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   /**
    * Sends the result to the original store.
    */
-  private <T> void sendResultToOrigin(final DataOperation<T> operation, final Map<Long, T> localOutputData,
+  private <T> void sendResultToOrigin(final LongKeyOperation<T> operation, final Map<Long, T> localOutputData,
                                       final Collection<List<LongRange>> remoteKeyRanges) {
     // send the original store the result (RemoteOpResultMsg)
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
@@ -370,7 +372,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
+    final LongKeyOperation<T> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
         dataType, id, Optional.of(value));
 
     executeOperation(operation);
@@ -393,7 +395,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       dataKeyValueMap.put(ids.get(idx), values.get(idx));
     }
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
+    final LongKeyOperation<T> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
         dataType, longRangeSet, Optional.of(dataKeyValueMap));
 
     executeOperation(operation);
@@ -462,7 +464,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
+    final LongKeyOperation<T> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
         dataType, id, Optional.<T>empty());
 
     executeOperation(operation);
@@ -492,7 +494,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
+    final LongKeyOperation<T> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
         dataType, new LongRange(startId, endId), Optional.<SortedMap<Long, T>>empty());
 
     executeOperation(operation);
@@ -504,8 +506,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public <T> Pair<Long, T> remove(final String dataType, final Long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.REMOVE,
-        dataType, id, Optional.<T>empty());
+    final LongKeyOperation<T> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId,
+        DataOpType.REMOVE, dataType, id, Optional.<T>empty());
 
     executeOperation(operation);
 
@@ -534,8 +536,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.REMOVE,
-        dataType, new LongRange(startId, endId), Optional.<SortedMap<Long, T>>empty());
+    final LongKeyOperation<T> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId,
+        DataOpType.REMOVE, dataType, new LongRange(startId, endId), Optional.<SortedMap<Long, T>>empty());
 
     executeOperation(operation);
 

@@ -40,7 +40,7 @@ public interface MemoryStore<K> {
    * @param dataType string that represents a certain data type
    * @param id global unique identifier of item
    * @param value data item to register
-   * @param <T> actual data type
+   * @param <V> actual data type
    * @return a {@link Pair} of the data id and a boolean that is true when the operation succeeded
    */
   <V> Pair<K, Boolean> put(String dataType, K id, @Nonnull V value);

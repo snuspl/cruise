@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.AvroLongRange;
 import edu.snu.cay.services.em.avro.DataOpType;
+import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.util.Optional;
@@ -32,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  * It maintains metadata and states of the operation during execution.
  */
 @Private
-public final class DataOperation<T> {
+public final class LongKeyOperation<T> implements DataOperation<Long> {
 
   /**
    * Metadata of the operation.
@@ -73,9 +74,9 @@ public final class DataOperation<T> {
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
-  DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                final String dataType, final List<LongRange> dataKeyRanges,
-                final Optional<SortedMap<Long, T>> dataKeyValueMap) {
+  LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
+                   final String dataType, final List<LongRange> dataKeyRanges,
+                   final Optional<SortedMap<Long, T>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -95,9 +96,9 @@ public final class DataOperation<T> {
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
-  DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                final String dataType, final LongRange dataKeyRange,
-                final Optional<SortedMap<Long, T>> dataKeyValueMap) {
+  LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
+                   final String dataType, final LongRange dataKeyRange,
+                   final Optional<SortedMap<Long, T>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -121,8 +122,8 @@ public final class DataOperation<T> {
    * @param dataValue an Optional with the value of data.
    *                  It is empty when the operation is one of GET or REMOVE.
    */
-  DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                final String dataType, final long dataKey, final Optional<T> dataValue) {
+  LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
+                   final String dataType, final long dataKey, final Optional<T> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
