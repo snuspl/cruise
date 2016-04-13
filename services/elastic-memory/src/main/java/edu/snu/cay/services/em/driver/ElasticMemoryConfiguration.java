@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.driver;
 
+import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumPartitions;
@@ -36,6 +37,7 @@ import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
+import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.JavaConfigurationBuilder;
@@ -138,6 +140,7 @@ public final class ElasticMemoryConfiguration {
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(memoryStoreId))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(numInitialEvals))
+        .bindNamedParameter(KeyCodecName.class, SerializableCodec.class) // TODO #441: Make it configurable later.
         .build();
 
     return Configurations.merge(networkConf, serviceConf, otherConf);
