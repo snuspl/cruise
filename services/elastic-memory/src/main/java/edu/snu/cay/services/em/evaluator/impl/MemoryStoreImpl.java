@@ -68,7 +68,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
    * {@code TreeMap}s are used for guaranteeing log(n) read and write operations, especially
    * {@code getRange()} and {@code removeRange()} which are ranged queries based on the ids.
    */
-  private final Map<String, Map<Integer, Partition>> typeToPartitions = new HashMap<>();
+  private final Map<String, Map<Integer, Block>> typeToBlocks = new HashMap<>();
 
   private final OperationRouter router;
   private final OperationResultAggregator resultAggregator;
@@ -84,9 +84,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   /**
    * A queue for operations requested from remote clients.
    * It maintains operations as sub operations corresponding to the routing result.
-   * It also maintains corresponding partitions to avoid revisiting the routing table.
+   * It also maintains corresponding blocks to avoid revisiting the routing table.
    */
-  private final BlockingQueue<Tuple3<DataOperation, List<LongRange>, Partition>> subOperationQueue
+  private final BlockingQueue<Tuple3<DataOperation, List<LongRange>, Block>> subOperationQueue
       = new ArrayBlockingQueue<>(QUEUE_SIZE);
   private ExecutorService executorService;
 
@@ -118,23 +118,21 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   /**
-   * Initialize partitions for a specific {@code dataType}.
-   * Each partition holds sub data map, which composes whole data map for MemoryStore.
+   * Initialize blocks for a specific {@code dataType}.
+   * Each block holds sub data map, which composes whole data map for MemoryStore.
    */
-  private synchronized void initPartitions(final String dataType) {
-    if (typeToPartitions.containsKey(dataType)) {
+  private synchronized void initBlocks(final String dataType) {
+    if (typeToBlocks.containsKey(dataType)) {
       return;
     }
 
-    final Map<Integer, Partition> initialPartitions = new HashMap<>();
-
-    final List<Integer> localPartitions = router.getPartitions();
-    for (final int partitionIdx : localPartitions) {
-      initialPartitions.put(partitionIdx, new Partition());
+    final Map<Integer, Block> initialBlocks = new HashMap<>();
+    for (final int blockIdx : router.getLocalBlockIds()) {
+      initialBlocks.put(blockIdx, new Block());
     }
 
-    // must put initialPartitions into typeToPartitions after completely initialize it
-    typeToPartitions.put(dataType, initialPartitions);
+    // must put initialBlocks into typeToBlocks after completely initialize it
+    typeToBlocks.put(dataType, initialBlocks);
   }
 
   /**
@@ -145,8 +143,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     // The max number of operations to drain per iteration
     private static final int DRAIN_SIZE = QUEUE_SIZE / 10;
 
-    // Thread does not need to perform routing, because the queue element already has List<LongRange> and Partition.
-    private final List<Tuple3<DataOperation, List<LongRange>, Partition>> drainedSubOperations =
+    // Thread does not need to perform routing, because the queue element already has List<LongRange> and Block.
+    private final List<Tuple3<DataOperation, List<LongRange>, Block>> drainedSubOperations =
         new ArrayList<>(DRAIN_SIZE);
 
     @Override
@@ -155,16 +153,16 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
         // First, poll and execute a single operation.
         // Poll with a timeout will prevent busy waiting, when the queue is empty.
         try {
-          final Tuple3<DataOperation, List<LongRange>, Partition> subOperation =
+          final Tuple3<DataOperation, List<LongRange>, Block> subOperation =
               subOperationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (subOperation == null) {
             continue;
           }
           final DataOperation operation = subOperation.getFirst();
           final List<LongRange> subKeyRanges = subOperation.getSecond();
-          final Partition partition = subOperation.getThird();
+          final Block block = subOperation.getThird();
 
-          final Map<Long, Object> result = partition.executeSubOperation(operation, subKeyRanges);
+          final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRanges);
           resultAggregator.submitLocalResult(operation, result, Collections.EMPTY_LIST);
         } catch (final InterruptedException e) {
           LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
@@ -177,12 +175,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
           continue;
         }
 
-        for (final Tuple3<DataOperation, List<LongRange>, Partition> subOperation : drainedSubOperations) {
+        for (final Tuple3<DataOperation, List<LongRange>, Block> subOperation : drainedSubOperations) {
           final DataOperation operation = subOperation.getFirst();
           final List<LongRange> subKeyRanges = subOperation.getSecond();
-          final Partition partition = subOperation.getThird();
+          final Block block = subOperation.getThird();
 
-          final Map<Long, Object> result = partition.executeSubOperation(operation, subKeyRanges);
+          final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRanges);
           resultAggregator.submitLocalResult(operation, result, Collections.EMPTY_LIST);
         }
 
@@ -192,11 +190,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   /**
-   * Partition class that has a {@code subDataMap}, which is an unit of EM's move.
+   * Block class that has a {@code subDataMap}, which is an unit of EM's move.
    * Also it's a concurrency unit for data operations because it has a {@code ReadWriteLock},
    * which regulates accesses to {@code subDataMap}.
    */
-  private final class Partition {
+  private final class Block {
     /**
      * The map serves as a collection of data of the same data type.
      * It's implementation {@code TreeMap} is used for guaranteeing log(n) read and write operations, especially
@@ -205,13 +203,13 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     private final NavigableMap<Long, Object> subDataMap = new TreeMap<>();
 
     /**
-     * A read-write lock for {@code subDataMap} of the partition.
+     * A read-write lock for {@code subDataMap} of the block.
      * Let's set fairness option as true to prevent starvation.
      */
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
 
     /**
-     * Executes sub operation on data keys assigned to this partition.
+     * Executes sub operation on data keys assigned to this block.
      * All operations both from remote and local clients are executed via this method.
      */
     private <T> Map<Long, T> executeSubOperation(final DataOperation<T> operation, final List<LongRange> subKeyRanges) {
@@ -270,7 +268,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     }
 
     /**
-     * Returns all data in a partition.
+     * Returns all data in a block.
      * It is for supporting getAll method of MemoryStore.
      */
     private <T> Map<Long, T> getAll() {
@@ -283,7 +281,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     }
 
     /**
-     * Removes all data in a partition.
+     * Removes all data in a block.
      * It is for supporting removeAll method of MemoryStore.
      */
     private <T> Map<Long, T> removeAll() {
@@ -300,7 +298,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     }
 
     /**
-     * Returns a number of data in a partition.
+     * Returns a number of data in a block.
      * It is for supporting getNumUnits method of MemoryStore.
      */
     private int getNumUnits() {
@@ -328,11 +326,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     resultAggregator.registerOp(operation, numSubOps);
 
     if (!localKeyRangesMap.isEmpty()) {
-      if (typeToPartitions.containsKey(dataType)) {
+      if (typeToBlocks.containsKey(dataType)) {
         enqueueOperation(operation, localKeyRangesMap);
       } else {
         if (operation.getOperationType() == DataOpType.PUT) {
-          initPartitions(dataType);
+          initBlocks(dataType);
           enqueueOperation(operation, localKeyRangesMap);
         }
       }
@@ -351,16 +349,16 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
    * Enqueues local sub operations to {@code subOperationQueue}.
    */
   private void enqueueOperation(final DataOperation operation,
-                                final Map<Integer, List<LongRange>> partitionedKeyRangesMap) {
-    final Map<Integer, Partition> partitions = typeToPartitions.get(operation.getDataType());
+                                final Map<Integer, List<LongRange>> blockToKeyRanges) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(operation.getDataType());
 
-    for (final Map.Entry<Integer, List<LongRange>> entry : partitionedKeyRangesMap.entrySet()) {
-      final int partitionId = entry.getKey();
+    for (final Map.Entry<Integer, List<LongRange>> entry : blockToKeyRanges.entrySet()) {
+      final int blockId = entry.getKey();
       final List<LongRange> subKeyRanges = entry.getValue();
 
-      final Partition partition = partitions.get(partitionId);
+      final Block block = blocks.get(blockId);
       try {
-        subOperationQueue.put(new Tuple3<>(operation, subKeyRanges, partition));
+        subOperationQueue.put(new Tuple3<>(operation, subKeyRanges, block));
       } catch (final InterruptedException e) {
         LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
       }
@@ -391,35 +389,35 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   /**
-   * Executes sub local operations directly, not via queueing into Partitions.
+   * Executes sub local operations directly, not via queueing.
    */
   private <T> Map<Long, T> executeLocalOperation(final DataOperation<T> operation,
-                                                 final Map<Integer, List<LongRange>> partitionedKeyRanges) {
-    if (partitionedKeyRanges.isEmpty()) {
+                                                 final Map<Integer, List<LongRange>> blockToKeyRanges) {
+    if (blockToKeyRanges.isEmpty()) {
       return Collections.EMPTY_MAP;
     }
 
     final String dataType = operation.getDataType();
-    if (!typeToPartitions.containsKey(dataType)) {
+    if (!typeToBlocks.containsKey(dataType)) {
       if (operation.getOperationType() == DataOpType.PUT) {
-        initPartitions(dataType);
+        initBlocks(dataType);
       } else {
         return Collections.EMPTY_MAP;
       }
     }
 
-    final Map<Integer, Partition> partitions = typeToPartitions.get(operation.getDataType());
+    final Map<Integer, Block> blocks = typeToBlocks.get(operation.getDataType());
 
     final Map<Long, T> outputData;
-    final Iterator<Map.Entry<Integer, List<LongRange>>> rangeIterator = partitionedKeyRanges.entrySet().iterator();
+    final Iterator<Map.Entry<Integer, List<LongRange>>> rangeIterator = blockToKeyRanges.entrySet().iterator();
 
     // first execute a head range to reuse the returned map object for a return map
     if (rangeIterator.hasNext()) {
       final Map.Entry<Integer, List<LongRange>> entry = rangeIterator.next();
-      final Partition partition = partitions.get(entry.getKey());
+      final Block block = blocks.get(entry.getKey());
       final List<LongRange> subKeyRanges = entry.getValue();
 
-      outputData = partition.executeSubOperation(operation, subKeyRanges);
+      outputData = block.executeSubOperation(operation, subKeyRanges);
     } else {
       return Collections.EMPTY_MAP;
     }
@@ -427,10 +425,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     // execute remaining ranges if exist
     while (rangeIterator.hasNext()) {
       final Map.Entry<Integer, List<LongRange>> entry = rangeIterator.next();
-      final Partition partition = partitions.get(entry.getKey());
+      final Block block = blocks.get(entry.getKey());
       final List<LongRange> subKeyRanges = entry.getValue();
 
-      final Map<Long, T> partialOutput = partition.executeSubOperation(operation, subKeyRanges);
+      final Map<Long, T> partialOutput = block.executeSubOperation(operation, subKeyRanges);
       outputData.putAll(partialOutput);
     }
 
@@ -441,16 +439,16 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
    * Sends sub operations to target remote evaluators.
    */
   private <T> void sendOperationToRemoteStores(final DataOperation<T> operation,
-                                               final Map<String, List<LongRange>> remoteKeyRangesMap) {
+                                               final Map<String, List<LongRange>> evalToKeyRanges) {
 
-    if (remoteKeyRangesMap.isEmpty()) {
+    if (evalToKeyRanges.isEmpty()) {
       return;
     }
 
     final Codec codec = serializer.getCodec(operation.getDataType());
 
     // send sub operations to all remote stores that owns partial range of the main operation (RemoteOpMsg)
-    for (final Map.Entry<String, List<LongRange>> remoteEntry : remoteKeyRangesMap.entrySet()) {
+    for (final Map.Entry<String, List<LongRange>> remoteEntry : evalToKeyRanges.entrySet()) {
       try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {
         final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
 
@@ -593,28 +591,28 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
   @Override
   public <T> Map<Long, T> getAll(final String dataType) {
-    if (!typeToPartitions.containsKey(dataType)) {
+    if (!typeToBlocks.containsKey(dataType)) {
       return Collections.EMPTY_MAP;
     }
 
     final Map<Long, T> result;
-    final Collection<Partition> partitions = typeToPartitions.get(dataType).values();
+    final Collection<Block> blocks = typeToBlocks.get(dataType).values();
 
-    final Iterator<Partition> partitionIterator = partitions.iterator();
+    final Iterator<Block> blockIterator = blocks.iterator();
 
-    // first execute on a head partition to reuse the returned map object for a return map
-    if (partitionIterator.hasNext()) {
-      final Partition partition = partitionIterator.next();
-      result = partition.getAll();
+    // first execute on a head block to reuse the returned map object for a return map
+    if (blockIterator.hasNext()) {
+      final Block block = blockIterator.next();
+      result = block.getAll();
     } else {
       return Collections.EMPTY_MAP;
     }
 
-    // execute on remaining partitions if exist
-    while (partitionIterator.hasNext()) {
-      final Partition partition = partitionIterator.next();
+    // execute on remaining blocks if exist
+    while (blockIterator.hasNext()) {
+      final Block block = blockIterator.next();
       // huge memory pressure may happen here
-      result.putAll((Map<Long, T>) partition.getAll());
+      result.putAll((Map<Long, T>) block.getAll());
     }
 
     return result;
@@ -649,29 +647,29 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
   @Override
   public <T> Map<Long, T> removeAll(final String dataType) {
-    if (!typeToPartitions.containsKey(dataType)) {
+    if (!typeToBlocks.containsKey(dataType)) {
       return Collections.EMPTY_MAP;
     }
 
     final Map<Long, T> result;
-    final Collection<Partition> partitions = typeToPartitions.get(dataType).values();
+    final Collection<Block> blocks = typeToBlocks.get(dataType).values();
 
 
-    final Iterator<Partition> partitionIterator = partitions.iterator();
+    final Iterator<Block> blockIterator = blocks.iterator();
 
-    // first execute on a head partition to reuse the returned map object for a return map
-    if (partitionIterator.hasNext()) {
-      final Partition partition = partitionIterator.next();
-      result = partition.removeAll();
+    // first execute on a head block to reuse the returned map object for a return map
+    if (blockIterator.hasNext()) {
+      final Block block = blockIterator.next();
+      result = block.removeAll();
     } else {
       return Collections.EMPTY_MAP;
     }
 
-    // execute on remaining partitions if exist
-    while (partitionIterator.hasNext()) {
-      final Partition partition = partitionIterator.next();
+    // execute on remaining blocks if exist
+    while (blockIterator.hasNext()) {
+      final Block block = blockIterator.next();
       // huge memory pressure may happen here
-      result.putAll((Map<Long, T>) partition.removeAll());
+      result.putAll((Map<Long, T>) block.removeAll());
     }
 
     return result;
@@ -692,19 +690,19 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
   @Override
   public Set<String> getDataTypes() {
-    return new HashSet<>(typeToPartitions.keySet());
+    return new HashSet<>(typeToBlocks.keySet());
   }
 
   @Override
   public int getNumUnits(final String dataType) {
-    if (typeToPartitions.containsKey(dataType)) {
+    if (typeToBlocks.containsKey(dataType)) {
       return 0;
     }
 
     int numUnits = 0;
-    final Collection<Partition> partitions = typeToPartitions.get(dataType).values();
-    for (final Partition partition : partitions) {
-      numUnits += partition.getNumUnits();
+    final Collection<Block> blocks = typeToBlocks.get(dataType).values();
+    for (final Block block : blocks) {
+      numUnits += block.getNumUnits();
     }
     return numUnits;
   }

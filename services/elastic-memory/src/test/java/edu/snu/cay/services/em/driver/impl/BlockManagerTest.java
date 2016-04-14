@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
 /**
  * Thread safeness checks for PartitionManager.
  */
-public final class PartitionManagerTest {
+public final class BlockManagerTest {
 
 
   // Put evaluator id or data type index at the end of these prefixes before use.

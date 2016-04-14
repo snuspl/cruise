@@ -16,8 +16,8 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
+import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
-import edu.snu.cay.services.em.common.parameters.NumPartitions;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.reef.tang.annotations.Parameter;
@@ -28,21 +28,21 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Issues ids for the MemoryStore to access data locally at the first time.
- * To distribute the data evenly to partitions, it assigns ids in round-robin fashion.
- * This factory also guarantees that Partition p has the data whose key is within
- * [p * PARTITION_SIZE, (p+1) * PARTITION_SIZE).
+ * To distribute the data evenly to blocks, it assigns ids in round-robin fashion.
+ * This factory also guarantees that Block b has the data whose key is within
+ * [b * BLOCK_SIZE, (p+1) * BLOCK_SIZE).
  */
 public final class RoundRobinDataIdFactory implements DataIdFactory<Long> {
   private final int memoryStoreId;
-  private final int numPartitions;
+  private final int numTotalBlocks;
   private final int numInitialEvals;
 
   @Inject
   private RoundRobinDataIdFactory(@Parameter(MemoryStoreId.class) final int memoryStoreId,
-                                  @Parameter(NumPartitions.class) final int numPartitions,
+                                  @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                                   @Parameter(NumInitialEvals.class) final int numInitialEvals) {
     this.memoryStoreId = memoryStoreId;
-    this.numPartitions = numPartitions;
+    this.numTotalBlocks = numTotalBlocks;
     this.numInitialEvals = numInitialEvals;
   }
 
@@ -56,23 +56,23 @@ public final class RoundRobinDataIdFactory implements DataIdFactory<Long> {
   public Long getId() throws IdGenerationException {
     final Long count = counter.getAndIncrement();
 
-    // If the number of partitions is not divisible by the number of initial Evaluators,
+    // If the number of blocks is not divisible by the number of initial Evaluators,
     // the remainders should be taken by the corresponding Evaluators. For example,
-    // when there are 23 partitions and 4 Evaluators, then the Evaluators take (6, 6, 6, 5) partitions respectively.
-    final int numPartitionsInEval = numPartitions / numInitialEvals +
-          ((numPartitions % numInitialEvals > memoryStoreId) ? 1 : 0);
+    // when there are 23 blocks and 4 Evaluators, then the Evaluators take (6, 6, 6, 5) blocks respectively.
+    final int numBlocksInEval = numTotalBlocks / numInitialEvals +
+          ((numTotalBlocks % numInitialEvals > memoryStoreId) ? 1 : 0);
 
-    // Whenever getId() is called, one partition is chosen in round-robin.
-    final int partitionId = memoryStoreId + numInitialEvals * (count.intValue() % numPartitionsInEval);
+    // Whenever getId() is called, one block is chosen in round-robin.
+    final int blockId = memoryStoreId + numInitialEvals * (count.intValue() % numBlocksInEval);
 
-    // A key (p * partitionSize + offset) is issued, where p is id of the chosen partition
-    // and partition p contains keys within the range of [p * partitionSize, (p+1) * partitionSize).
-    final long partitionSize = Long.MAX_VALUE / numPartitions;
-    final long offset = count / numPartitionsInEval;
-    if (offset >= partitionSize) {
-      throw new IdGenerationException("The number of ids in one partition has exceeded its limit.");
+    // A key (p * blockSize + offset) is issued, where p is id of the chosen block
+    // and block p contains keys within the range of [p * blockSize, (p+1) * blockSize).
+    final long blockSize = Long.MAX_VALUE / numTotalBlocks;
+    final long offset = count / numBlocksInEval;
+    if (offset >= blockSize) {
+      throw new IdGenerationException("The number of ids in one block has exceeded its limit.");
     }
-    return partitionId * partitionSize + offset;
+    return blockId * blockSize + offset;
   }
 
   @Override

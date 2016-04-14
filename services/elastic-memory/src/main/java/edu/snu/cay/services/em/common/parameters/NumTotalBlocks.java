@@ -13,22 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.api;
+package edu.snu.cay.services.em.common.parameters;
 
-import edu.snu.cay.services.em.evaluator.impl.RangePartitionFunc;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * A partition function that partitions data ids into corresponding partitions.
- */
-@DefaultImplementation(RangePartitionFunc.class)
-public interface PartitionFunc {
-
-  /**
-   * Return a partition id of data with {@code dataId}.
-   * The number of partitions is assumed to be within the integer range.
-   * @param dataId a id of data
-   * @return an id of partition that the data
-   */
-  int getPartitionId(long dataId);
+@NamedParameter(doc = "Number of total blocks", short_name = "numTotalBlocks", default_value = "1024")
+public final class NumTotalBlocks implements Name<Integer> {
 }

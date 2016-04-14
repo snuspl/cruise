@@ -16,9 +16,9 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
+import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
-import edu.snu.cay.services.em.common.parameters.NumPartitions;
-import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
+import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.utils.LongRangeUtils;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.Private;
@@ -41,14 +41,14 @@ public final class OperationRouter {
 
   private String evalPrefix;
 
-  private final int localMemoryStoreId;
+  private final int localStoreId;
 
-  private final PartitionFunc partitionFunc;
+  private final BlockResolver blockResolver;
 
   /**
-   * The number of partitions.
+   * The number of total blocks.
    */
-  private final int numPartitions;
+  private final int numTotalBlocks;
 
   /**
    * The number of initial Evaluators.
@@ -56,37 +56,36 @@ public final class OperationRouter {
   private final int numInitialEvals;
 
   /**
-   * The location of partitions. It keeps just an index of MemoryStores,
+   * The location of blocks. It keeps just an index of MemoryStores,
    * so prefix should be added to get the Evaluator's endpoint id (See {@link #route(long)}).
    */
-  private final Map<Integer, List<Integer>> storeToPartitions;
-  private final int[] pIdToMemoryStoreId;
+  private final int[] blockIdToStoreId;
+  private final List<Integer> localBlocks;
 
   // TODO #380: we have to improve router to provide different routing tables for each dataType.
   @Inject
-  private OperationRouter(final PartitionFunc partitionFunc,
-                          @Parameter(NumPartitions.class) final int numPartitions,
+  private OperationRouter(final BlockResolver blockResolver,
+                          @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                           @Parameter(NumInitialEvals.class) final int numInitialEvals,
                           @Parameter(MemoryStoreId.class) final int memoryStoreId) {
-    this.partitionFunc = partitionFunc;
-    this.localMemoryStoreId = memoryStoreId;
-    this.numPartitions = numPartitions;
+    this.blockResolver = blockResolver;
+    this.localStoreId = memoryStoreId;
+    this.numTotalBlocks = numTotalBlocks;
     this.numInitialEvals = numInitialEvals;
-    this.storeToPartitions = new HashMap<>(numInitialEvals);
-    this.pIdToMemoryStoreId = new int[numPartitions];
-    initPartitions();
+    this.localBlocks = new ArrayList<>(numTotalBlocks / numInitialEvals + 1); // +1 for remainders
+    this.blockIdToStoreId = new int[numTotalBlocks];
+    initBlocks();
   }
 
-  private void initPartitions() {
-    for (int storeIdx = 0; storeIdx < numInitialEvals; storeIdx++) {
-      storeToPartitions.put(storeIdx, new LinkedList<Integer>());
+  private void initBlocks() {
+    for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
+      localBlocks.add(blockId);
     }
 
-    // Partitions are initially distributed across Evaluators in round-robin.
-    for (int partitionIdx = 0; partitionIdx < numPartitions; partitionIdx++) {
-      final int storeIdx = partitionIdx % numInitialEvals;
-      pIdToMemoryStoreId[partitionIdx] = storeIdx;
-      storeToPartitions.get(storeIdx).add(partitionIdx);
+    // blocks are initially distributed across Evaluators in round-robin.
+    for (int blockIdx = 0; blockIdx < numTotalBlocks; blockIdx++) {
+      final int storeIdx = blockIdx % numInitialEvals;
+      blockIdToStoreId[blockIdx] = storeIdx;
     }
   }
 
@@ -102,7 +101,7 @@ public final class OperationRouter {
    * Decompose a list of key ranges into local ranges and remote ranges.
    * TODO #424: improve and optimize routing for range
    * @param dataKeyRanges a list of key ranges
-   * @return a map composed of a partition id and a corresponding key range list and
+   * @return a map composed of a block id and a corresponding key range list and
    * a map composed of an endpoint id of remote evaluator and a corresponding key range list.
    */
   public Pair<Map<Integer, List<LongRange>>, Map<String, List<LongRange>>> route(final List<LongRange> dataKeyRanges) {
@@ -114,7 +113,7 @@ public final class OperationRouter {
       final Pair<Map<Integer, List<LongRange>>, Map<String, List<LongRange>>> routingResult = route(dataKeyRange);
 
       final Map<Integer, List<LongRange>> partialLocalKeyRangesMap = routingResult.getFirst();
-      // merge local sub ranges that targets same partition
+      // merge local sub ranges that targets same block
       for (final Map.Entry<Integer, List<LongRange>> localEntry : partialLocalKeyRangesMap.entrySet()) {
         final List<LongRange> localRanges = localKeyRangesMap.get(localEntry.getKey());
         if (localRanges != null) {
@@ -141,32 +140,32 @@ public final class OperationRouter {
   /**
    * Decompose a key range into local ranges and remote ranges.
    * @param dataKeyRange a key range
-   * @return a map composed of a partition id and a corresponding key range list and
+   * @return a map composed of a block id and a corresponding key range list and
    * a map composed of an endpoint id of remote evaluator and a corresponding key range list.
    */
   public Pair<Map<Integer, List<LongRange>>, Map<String, List<LongRange>>> route(final LongRange dataKeyRange) {
     final Map<Integer, List<LongRange>> localKeyRanges = new HashMap<>();
     final Map<String, List<LongRange>> remoteKeyRanges = new HashMap<>();
 
-    final Map<Integer, SortedSet<Long>> partitionedKeysMap = new HashMap<>();
+    final Map<Integer, SortedSet<Long>> blockToKeysMap = new HashMap<>();
 
     for (long dataKey = dataKeyRange.getMinimumLong(); dataKey <= dataKeyRange.getMaximumLong(); dataKey++) {
-      final int partitionId = partitionFunc.getPartitionId(dataKey);
-      if (!partitionedKeysMap.containsKey(partitionId)) {
-        partitionedKeysMap.put(partitionId, new TreeSet<Long>());
+      final int blockId = blockResolver.getBlockId(dataKey);
+      if (!blockToKeysMap.containsKey(blockId)) {
+        blockToKeysMap.put(blockId, new TreeSet<Long>());
       }
-      final SortedSet<Long> dataKeys = partitionedKeysMap.get(partitionId);
+      final SortedSet<Long> dataKeys = blockToKeysMap.get(blockId);
       dataKeys.add(dataKey);
     }
 
     // translate ids to ranges
-    for (final Map.Entry<Integer, SortedSet<Long>> partitionedKeysEntry : partitionedKeysMap.entrySet()) {
+    for (final Map.Entry<Integer, SortedSet<Long>> blockToKeys : blockToKeysMap.entrySet()) {
       final List<LongRange> rangeList =
-          new ArrayList<>(LongRangeUtils.generateDenseLongRanges(partitionedKeysEntry.getValue()));
-      final int partitionId = partitionedKeysEntry.getKey();
-      final int memoryStoreId = pIdToMemoryStoreId[partitionId];
-      if (memoryStoreId == localMemoryStoreId) {
-        localKeyRanges.put(partitionId, rangeList);
+          new ArrayList<>(LongRangeUtils.generateDenseLongRanges(blockToKeys.getValue()));
+      final int blockId = blockToKeys.getKey();
+      final int memoryStoreId = blockIdToStoreId[blockId];
+      if (memoryStoreId == localStoreId) {
+        localKeyRanges.put(blockId, rangeList);
       } else {
         remoteKeyRanges.put(getEvalId(memoryStoreId), rangeList);
       }
@@ -182,20 +181,20 @@ public final class OperationRouter {
    * So the caller does not need to check that the target evaluator is local or not.
    *
    * @param dataId an id of data
-   * @return a pair of an id of partition and and an Optional with an endpoint id of a target evaluator
+   * @return a pair of an id of block and and an Optional with an endpoint id of a target evaluator
    */
   public Pair<Integer, Optional<String>> route(final long dataId) {
-    final int partitionId = partitionFunc.getPartitionId(dataId);
-    final int memoryStoreId = pIdToMemoryStoreId[partitionId];
-    if (memoryStoreId == localMemoryStoreId) {
-      return new Pair<>(partitionId, Optional.<String>empty());
+    final int blockId = blockResolver.getBlockId(dataId);
+    final int memoryStoreId = blockIdToStoreId[blockId];
+    if (memoryStoreId == localStoreId) {
+      return new Pair<>(blockId, Optional.<String>empty());
     } else {
-      return new Pair<>(partitionId, Optional.of(getEvalId(memoryStoreId)));
+      return new Pair<>(blockId, Optional.of(getEvalId(memoryStoreId)));
     }
   }
 
-  public List<Integer> getPartitions() {
-    return storeToPartitions.get(localMemoryStoreId);
+  public List<Integer> getLocalBlockIds() {
+    return Collections.unmodifiableList(localBlocks);
   }
 
   /**

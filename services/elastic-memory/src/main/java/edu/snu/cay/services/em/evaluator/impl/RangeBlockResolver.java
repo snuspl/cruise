@@ -15,28 +15,28 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.common.parameters.NumPartitions;
-import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
+import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
 /**
- * An implementation of PartitionFunc.
- * It partitions ids with range-based partitioning, where partition p takes
- * keys within [p * PARTITION_SIZE, (p+1) * PARTITION_SIZE).
+ * An implementation of BlockResolver.
+ * It groups data keys into blocks with range-based partitioning, where block b takes
+ * keys within [b * BLOCK_SIZE, (b+1) * BLOCK_SIZE).
  */
-public final class RangePartitionFunc implements PartitionFunc {
+public final class RangeBlockResolver implements BlockResolver {
 
-  private final long partitionSize;
+  private final long blockSize;
 
   @Inject
-  private RangePartitionFunc(@Parameter(NumPartitions.class) final int numPartitions) {
-    this.partitionSize = Long.MAX_VALUE / numPartitions;
+  private RangeBlockResolver(@Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
+    this.blockSize = Long.MAX_VALUE / numTotalBlocks;
   }
 
   @Override
-  public int getPartitionId(final long dataId) {
-    return (int) (dataId / partitionSize);
+  public int getBlockId(final long dataKey) {
+    return (int) (dataKey / blockSize);
   }
 }

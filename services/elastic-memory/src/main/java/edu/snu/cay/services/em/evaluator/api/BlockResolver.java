@@ -13,11 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.common.parameters;
+package edu.snu.cay.services.em.evaluator.api;
 
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
+import edu.snu.cay.services.em.evaluator.impl.RangeBlockResolver;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
-@NamedParameter(doc = "Number of partitions", short_name = "numPartitions", default_value = "1024")
-public final class NumPartitions implements Name<Integer> {
+/**
+ * An interface for store to resolve the block of specific data key.
+ */
+@DefaultImplementation(RangeBlockResolver.class)
+public interface BlockResolver {
+
+  /**
+   * Return a block id of data with {@code dataId}.
+   * The number of blocks is assumed to be within the integer range.
+   * @param dataKey a key of data
+   * @return an id of block that the data belongs to
+   */
+  int getBlockId(long dataKey);
 }
