@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# EXAMPLE USAGE 
-# ./run_nmf.sh -maxIter 10 -local true -input sample_recommendation -row 100 -col 100 -rank 5 -stepSize 0.01 -lambda 0.01 -split 3 -maxNumEvalLocal 4 -timeout 300000
+# EXAMPLE USAGE
+# ./run_nmf.sh -maxIter 500 -local true -split 4 -maxNumEvalLocal 5 -numWorkerThreads 1 -input sample_nmf -batchSize 5 -rank 30 -stepSize 0.01 -printMat true -timeout 300000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
@@ -24,7 +24,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=edu.snu.cay.async.examples.recommendation.NMFREEF
+ALG=edu.snu.cay.async.examples.nmf.NMFREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOGGING_CONFIG $ALG $*"
 echo $CMD

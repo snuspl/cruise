@@ -17,7 +17,7 @@ package edu.snu.cay.async.examples.mlr;
 
 import edu.snu.cay.async.AsyncDolphinConfiguration;
 import edu.snu.cay.async.AsyncDolphinLauncher;
-import edu.snu.cay.async.examples.recommendation.DenseVectorCodec;
+import edu.snu.cay.async.examples.nmf.DenseVectorCodec;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 

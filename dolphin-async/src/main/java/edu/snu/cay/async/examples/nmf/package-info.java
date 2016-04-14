@@ -16,4 +16,4 @@
 /**
  * Classes for recommendation algorithm.
  */
-package edu.snu.cay.async.examples.recommendation;
+package edu.snu.cay.async.examples.nmf;

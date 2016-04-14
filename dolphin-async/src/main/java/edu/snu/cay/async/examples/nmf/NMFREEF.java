@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.async.examples.recommendation;
+package edu.snu.cay.async.examples.nmf;
 
-import edu.snu.cay.async.examples.recommendation.NMFParameters.*;
+import edu.snu.cay.async.examples.nmf.NMFParameters.*;
 import edu.snu.cay.async.AsyncDolphinConfiguration;
 import edu.snu.cay.async.AsyncDolphinLauncher;
 
@@ -36,11 +36,12 @@ public final class NMFREEF {
         .setUpdaterClass(NMFUpdater.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
-        .addParameterClass(NumRows.class)
-        .addParameterClass(NumColumns.class)
         .addParameterClass(Rank.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
+        .addParameterClass(BatchSize.class)
+        .addParameterClass(PrintMatrices.class)
+        .addParameterClass(LogPeriod.class)
         .build());
   }
 }
