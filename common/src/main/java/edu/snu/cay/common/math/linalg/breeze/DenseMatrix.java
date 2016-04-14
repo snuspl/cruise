@@ -18,6 +18,7 @@ package edu.snu.cay.common.math.linalg.breeze;
 import breeze.linalg.NumericOps;
 import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.Vector;
+import scala.runtime.RichInt;
 
 /**
  * Matrix implementation based on breeze dense matrix.
@@ -90,6 +91,42 @@ public class DenseMatrix implements Matrix {
   @Override
   public double get(final int rowIndex, final int columnIndex) {
     return breezeMatrix.apply(rowIndex, columnIndex);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public DenseVector sliceColumn(final int index) {
+    return new DenseVector((breeze.linalg.DenseVector<Double>)
+        breezeMatrix.apply(MatrixOps.COLON_COLON, index, MatrixOps.SLICE_COL_D));
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public DenseVector sliceRow(final int index) {
+    return new DenseVector((breeze.linalg.DenseVector<Double>) ((breeze.linalg.Transpose)
+        breezeMatrix.apply(index, MatrixOps.COLON_COLON, MatrixOps.SLICE_ROW_D)).inner());
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public DenseMatrix sliceColumns(final int start, final int end) {
+    return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+        breezeMatrix.apply(MatrixOps.COLON_COLON, new RichInt(start).until(end), MatrixOps.SLICE_COLS_D));
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public DenseMatrix sliceRows(final int start, final int end) {
+    return new DenseMatrix((breeze.linalg.DenseMatrix<Double>)
+        breezeMatrix.apply(new RichInt(start).until(end), MatrixOps.COLON_COLON, MatrixOps.SLICE_ROWS_D));
   }
 
   /**

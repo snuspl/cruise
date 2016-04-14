@@ -72,15 +72,15 @@ public final class MatrixOpsTest {
     denseVectorList3.add(vec1.scale(value4[0]).add(vec2.scale(value4[1])));
 
     final Matrix mat1 = matrixFactory.createDenseZeros(3, 2);
-    final Matrix mat2 = matrixFactory.horzcatDense(denseVectorList1);
-    final Matrix mat3 = matrixFactory.horzcatDense(denseVectorList2);
+    final Matrix mat2 = matrixFactory.horzcatVecDense(denseVectorList1);
+    final Matrix mat3 = matrixFactory.horzcatVecDense(denseVectorList2);
 
     assertEquals(mat1.add(mat2), mat2);
     assertEquals(mat1.sub(mat2), mat2.mul(-1.0));
     mat1.addi(mat2).muli(2.0).subi(mat2).muli(mat2);
     assertEquals(mat2.mul(mat2), mat1);
 
-    assertEquals(mat2.mmul(mat3), matrixFactory.horzcatDense(denseVectorList3));
+    assertEquals(mat2.mmul(mat3), matrixFactory.horzcatVecDense(denseVectorList3));
     assertEquals(mat2.mmul(vec3), vec1.scale(vec3.get(0)).add(vec2.scale(vec3.get(1))));
     assertEquals(mat2.mmul(vec5), mat2.mmul(vec3));
   }
@@ -110,8 +110,8 @@ public final class MatrixOpsTest {
     sparseVectorList2.add(vec5);
 
     final Matrix mat1 = matrixFactory.createCSCZeros(7, 2, 0);
-    final Matrix mat2 = matrixFactory.horzcatSparse(sparseVectorList1);
-    final Matrix mat3 = matrixFactory.horzcatSparse(sparseVectorList2);
+    final Matrix mat2 = matrixFactory.horzcatVecSparse(sparseVectorList1);
+    final Matrix mat3 = matrixFactory.horzcatVecSparse(sparseVectorList2);
 
     assertEquals(mat1.add(mat2), mat2);
     assertEquals(mat1.sub(mat2), mat2.mul(-1.0));
@@ -123,7 +123,7 @@ public final class MatrixOpsTest {
     sparseVectorList3.add(vec1.scale(vec4.get(0)).add(vec2.scale(vec4.get(1))));
     sparseVectorList3.add(vec1.scale(vec5.get(0)).add(vec2.scale(vec5.get(1))));
 
-    assertEquals(mat2.mmul(mat3), matrixFactory.horzcatSparse(sparseVectorList3));
+    assertEquals(mat2.mmul(mat3), matrixFactory.horzcatVecSparse(sparseVectorList3));
     assertEquals(mat2.mmul(vec3), vec1.scale(vec3.get(0)).add(vec2.scale(vec3.get(1))));
   }
 
@@ -151,10 +151,10 @@ public final class MatrixOpsTest {
     sparseVectorList2.add(vectorFactory.createSparse(index2[0], value2[0], 2));
     sparseVectorList2.add(vectorFactory.createSparse(index2[1], value2[1], 2));
 
-    final Matrix dMat1 = matrixFactory.horzcatDense(denseVectorList1);
-    final Matrix dMat2 = matrixFactory.horzcatDense(denseVectorList2);
-    final Matrix sMat1 = matrixFactory.horzcatSparse(sparseVectorList1);
-    final Matrix sMat2 = matrixFactory.horzcatSparse(sparseVectorList2);
+    final Matrix dMat1 = matrixFactory.horzcatVecDense(denseVectorList1);
+    final Matrix dMat2 = matrixFactory.horzcatVecDense(denseVectorList2);
+    final Matrix sMat1 = matrixFactory.horzcatVecSparse(sparseVectorList1);
+    final Matrix sMat2 = matrixFactory.horzcatVecSparse(sparseVectorList2);
 
     assertEquals(dMat1.add(sMat1), sMat1.addi(dMat1));
     assertEquals(sMat1.subi(dMat1), dMat1);

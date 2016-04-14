@@ -19,8 +19,10 @@ import breeze.storage.Zero;
 import breeze.storage.Zero$;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
+import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.Vector;
+import scala.Predef;
 import scala.collection.JavaConversions;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
@@ -35,6 +37,7 @@ public final class DefaultMatrixFactory implements MatrixFactory {
 
   private static final ClassTag TAG = ClassTag$.MODULE$.Double();
   private static final Zero ZERO = Zero$.MODULE$.forClass(Double.TYPE);
+  private static final Predef.$less$colon$less CONFORMS = Predef.conforms();
 
   @Inject
   private DefaultMatrixFactory() {
@@ -84,7 +87,7 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    * @return a generated matrix
    */
   @Override
-  public DenseMatrix horzcatDense(final List<Vector> vectors) {
+  public DenseMatrix horzcatVecDense(final List<Vector> vectors) {
     final List<breeze.linalg.DenseVector<Double>> breezeVecList = Lists.transform(vectors,
         new Function<Vector, breeze.linalg.DenseVector<Double>>() {
           public breeze.linalg.DenseVector<Double> apply(final Vector vector) {
@@ -102,7 +105,7 @@ public final class DefaultMatrixFactory implements MatrixFactory {
    * @return a generated matrix
    */
   @Override
-  public CSCMatrix horzcatSparse(final List<Vector> vectors) {
+  public CSCMatrix horzcatVecSparse(final List<Vector> vectors) {
     final List<breeze.linalg.SparseVector<Double>> breezeVecList = Lists.transform(vectors,
         new Function<Vector, breeze.linalg.SparseVector<Double>>() {
           public breeze.linalg.SparseVector<Double> apply(final Vector vector) {
@@ -111,5 +114,41 @@ public final class DefaultMatrixFactory implements MatrixFactory {
         });
     return new CSCMatrix(
         breeze.linalg.SparseVector.horzcat(JavaConversions.asScalaBuffer(breezeVecList), ZERO, TAG));
+  }
+
+  /**
+   * Creates a dense matrix by horizontal concatenation of matrices.
+   * All matrices should be instances of {@link DenseMatrix} and have the same number of rows.
+   * @param matrices list of concatenating matrices
+   * @return a generated matrix
+   */
+  @Override
+  public Matrix horzcatMatDense(final List<Matrix> matrices) {
+    final List<breeze.linalg.DenseMatrix<Double>> breezeMatList = Lists.transform(matrices,
+        new Function<Matrix, breeze.linalg.DenseMatrix<Double>>() {
+          public breeze.linalg.DenseMatrix<Double> apply(final Matrix matrix) {
+            return ((DenseMatrix) matrix).getBreezeMatrix();
+          }
+        });
+    return new DenseMatrix(breeze.linalg.DenseMatrix.horzcat(JavaConversions.asScalaBuffer(breezeMatList),
+        CONFORMS, MatrixOps.SET_DD, TAG, ZERO));
+  }
+
+  /**
+   * Creates a dense matrix by vertical concatenation of matrices.
+   * All matrices should be instances of {@link DenseMatrix} and have the same number of columns.
+   * @param matrices list of concatenating matrices
+   * @return a generated matrix
+   */
+  @Override
+  public Matrix vertcatMatDense(final List<Matrix> matrices) {
+    final List<breeze.linalg.DenseMatrix<Double>> breezeMatList = Lists.transform(matrices,
+        new Function<Matrix, breeze.linalg.DenseMatrix<Double>>() {
+          public breeze.linalg.DenseMatrix<Double> apply(final Matrix matrix) {
+            return ((DenseMatrix) matrix).getBreezeMatrix();
+          }
+        });
+    return new DenseMatrix(breeze.linalg.DenseMatrix.vertcat(JavaConversions.asScalaBuffer(breezeMatList),
+        MatrixOps.SET_DD, TAG, ZERO));
   }
 }

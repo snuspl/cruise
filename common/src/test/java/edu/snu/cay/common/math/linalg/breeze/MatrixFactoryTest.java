@@ -76,8 +76,35 @@ public final class MatrixFactoryTest {
       }
     }
 
-    assertEquals(matrixFactory.horzcatDense(denseVectorList), mat3);
+    assertEquals(matrixFactory.horzcatVecDense(denseVectorList), mat3);
     assertArrayEquals(((DenseMatrix) mat3).toArray(), ArrayUtils.addAll(value, value), 0.0);
+
+    final List<Matrix> denseMatrixList = new ArrayList<>();
+    denseMatrixList.add(mat1);
+    denseMatrixList.add(mat2);
+    final Matrix horzMat = matrixFactory.horzcatMatDense(denseMatrixList);
+    final Matrix vertMat = matrixFactory.vertcatMatDense(denseMatrixList);
+
+    for (int i = 0; i < horzMat.getColumns(); i++) {
+      if (i < mat1.getColumns()) {
+        assertEquals(mat1.sliceColumn(i), horzMat.sliceColumn(i));
+      } else {
+        assertEquals(mat2.sliceColumn(i - mat1.getColumns()), horzMat.sliceColumn(i));
+      }
+    }
+
+    for (int i = 0; i < vertMat.getRows(); i++) {
+      if (i < mat1.getRows()) {
+        assertEquals(mat1.sliceRow(i), vertMat.sliceRow(i));
+      } else {
+        assertEquals(mat2.sliceRow(i - mat1.getRows()), vertMat.sliceRow(i));
+      }
+    }
+
+    assertEquals(mat1, horzMat.sliceColumns(0, 4));
+    assertEquals(mat2, horzMat.sliceColumns(4, 8));
+    assertEquals(mat1, vertMat.sliceRows(0, 3));
+    assertEquals(mat2, vertMat.sliceRows(3, 6));
   }
 
   /**
@@ -96,7 +123,7 @@ public final class MatrixFactoryTest {
     sparseVectorList.add(vec3);
 
     final Matrix mat1 = matrixFactory.createCSCZeros(10, 3, 0);
-    final Matrix mat2 = matrixFactory.horzcatSparse(sparseVectorList);
+    final Matrix mat2 = matrixFactory.horzcatVecSparse(sparseVectorList);
 
     assertEquals(mat1.size(), 30);
     assertEquals(mat2.size(), 30);
