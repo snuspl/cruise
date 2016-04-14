@@ -236,8 +236,11 @@ final class MLRWorker implements Worker {
       // error * x is multiplied at run()
       gradient.get(i).scalei(stepSize / batchSize);
 
-      // gradient for regularization
-      gradient.get(i).axpy(-stepSize * lambda, models.get(i));
+      if (lambda != 0) {
+        // gradient for regularization
+        // skip this part entirely if lambda is zero, to avoid regularization overheads
+        gradient.get(i).axpy(-stepSize * lambda, models.get(i));
+      }
 
       worker.push(i, gradient.get(i));
 
@@ -270,16 +273,18 @@ final class MLRWorker implements Worker {
     }
     loss /= numInstances;
 
-    for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
-      final Vector model = models.get(classIndex);
-      double l2norm = 0;
-      for (int vectorIndex = 0; vectorIndex < model.length(); ++vectorIndex) {
-        l2norm += model.get(vectorIndex) * model.get(vectorIndex);
+    if (lambda != 0) {
+      // skip this part entirely if lambda is zero, to avoid regularization operation overheads
+      for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
+        final Vector model = models.get(classIndex);
+        double l2norm = 0;
+        for (int vectorIndex = 0; vectorIndex < model.length(); ++vectorIndex) {
+          l2norm += model.get(vectorIndex) * model.get(vectorIndex);
+        }
+        loss += l2norm * lambda / 2;
       }
-      loss += l2norm * lambda / 2;
     }
     loss /= numClasses;
-
     return loss;
   }
 
