@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
@@ -29,6 +30,7 @@ import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
@@ -57,7 +59,6 @@ import java.util.logging.Logger;
 public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
-  private static final int QUEUE_THREAD_NUM = 8;
   private static final int QUEUE_SIZE = 1024;
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
@@ -87,31 +88,33 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
    */
   private final BlockingQueue<Tuple3<DataOperation, List<LongRange>, Partition>> subOperationQueue
       = new ArrayBlockingQueue<>(QUEUE_SIZE);
-  private ExecutorService executorService = Executors.newFixedThreadPool(QUEUE_THREAD_NUM);
-
+  private ExecutorService executorService;
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter router,
                           final OperationResultAggregator resultAggregator,
                           final InjectionFuture<ElasticMemoryMsgSender> msgSender,
-                          final Serializer serializer) {
+                          final Serializer serializer,
+                          @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
     this.resultAggregator = resultAggregator;
     this.msgSender = msgSender;
     this.serializer = serializer;
-    initThreads();
+    this.executorService = initExecutor(numStoreThreads);
   }
 
   /**
    * Initialize threads that dequeue and execute operation from the {@code subOperationQueue}.
    * That is, these threads serve operations requested from remote clients.
    */
-  private void initThreads() {
-    for (int i = 0; i < QUEUE_THREAD_NUM; i++) {
-      executorService.submit(new OperationThread());
+  private ExecutorService initExecutor(final int numStoreThreads) {
+    final ExecutorService executor = Executors.newFixedThreadPool(numStoreThreads);
+    for (int i = 0; i < numStoreThreads; i++) {
+      executor.submit(new OperationThread());
     }
+    return executor;
   }
 
   /**
@@ -140,7 +143,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
    */
   private final class OperationThread implements Runnable {
     // The max number of operations to drain per iteration
-    private static final int DRAIN_SIZE = QUEUE_SIZE / QUEUE_THREAD_NUM;
+    private static final int DRAIN_SIZE = QUEUE_SIZE / 10;
 
     // Thread does not need to perform routing, because the queue element already has List<LongRange> and Partition.
     private final List<Tuple3<DataOperation, List<LongRange>, Partition>> drainedSubOperations =

@@ -18,6 +18,6 @@ package edu.snu.cay.services.em.common.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of partitions", short_name = "numPartitions", default_value = "1024")
-public final class NumPartitions implements Name<Integer> {
+@NamedParameter(doc = "Number of threads in MemoryStore", short_name = "numStoreThreads", default_value =  "8")
+public class NumStoreThreads implements Name<Integer> {
 }

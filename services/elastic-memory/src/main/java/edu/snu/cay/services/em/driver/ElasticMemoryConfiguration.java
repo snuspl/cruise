@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.driver;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumPartitions;
+import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
@@ -55,6 +56,7 @@ public final class ElasticMemoryConfiguration {
   private final LocalAddressProvider localAddressProvider;
   private final String driverId;
   private final int numPartitions;
+  private final int numStoreThreads;
   private final PartitionManager partitionManager;
 
   @Inject
@@ -62,11 +64,13 @@ public final class ElasticMemoryConfiguration {
                                      final LocalAddressProvider localAddressProvider,
                                      @Parameter(DriverIdentifier.class) final String driverId,
                                      @Parameter(NumPartitions.class) final int numPartitions,
+                                     @Parameter(NumStoreThreads.class) final int numStoreThreads,
                                      final PartitionManager partitionManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
     this.numPartitions = numPartitions;
+    this.numStoreThreads = numStoreThreads;
     this.partitionManager = partitionManager;
   }
 
@@ -137,6 +141,7 @@ public final class ElasticMemoryConfiguration {
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(memoryStoreId))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
+        .bindNamedParameter(NumStoreThreads.class, Integer.toString(numStoreThreads))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(numInitialEvals))
         .build();
 

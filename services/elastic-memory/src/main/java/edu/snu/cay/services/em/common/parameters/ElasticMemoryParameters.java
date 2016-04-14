@@ -27,10 +27,13 @@ import javax.inject.Inject;
  */
 public final class ElasticMemoryParameters {
   private final int numPartitions;
+  private final int numStoreThreads;
 
   @Inject
-  private ElasticMemoryParameters(@Parameter(NumPartitions.class) final int numPartitions) {
+  private ElasticMemoryParameters(@Parameter(NumPartitions.class) final int numPartitions,
+                                  @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     this.numPartitions = numPartitions;
+    this.numStoreThreads = numStoreThreads;
   }
 
   /**
@@ -40,6 +43,7 @@ public final class ElasticMemoryParameters {
   public Configuration getConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NumPartitions.class, String.valueOf(numPartitions))
+        .bindNamedParameter(NumStoreThreads.class, String.valueOf(numStoreThreads))
         .build();
   }
 
@@ -49,6 +53,7 @@ public final class ElasticMemoryParameters {
    * @return The CommandLine after short names are registered.
    */
   public static CommandLine registerShortNames(final CommandLine commandLine) {
-    return commandLine.registerShortNameOfClass(NumPartitions.class);
+    return commandLine.registerShortNameOfClass(NumPartitions.class)
+        .registerShortNameOfClass(NumStoreThreads.class);
   }
 }
