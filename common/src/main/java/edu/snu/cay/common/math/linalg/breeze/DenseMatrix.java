@@ -130,6 +130,64 @@ public class DenseMatrix implements Matrix {
   }
 
   /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void putColumn(final int index, final Vector vector) {
+    if (vector.isDense()) {
+      ((NumericOps) breezeMatrix.apply(MatrixOps.COLON_COLON, index, MatrixOps.SLICE_COL_D))
+          .$colon$eq(((DenseVector) vector).getBreezeVector(), VectorOps.SET_DD);
+    } else {
+      ((NumericOps) breezeMatrix.apply(MatrixOps.COLON_COLON, index, MatrixOps.SLICE_COL_D))
+          .$colon$eq(((SparseVector) vector).getBreezeVector(), VectorOps.SET_DS);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void putRow(final int index, final Vector vector) {
+    if (vector.isDense()) {
+      ((NumericOps) ((breeze.linalg.Transpose)
+          breezeMatrix.apply(index, MatrixOps.COLON_COLON, MatrixOps.SLICE_ROW_D)).inner())
+          .$colon$eq(((DenseVector) vector).getBreezeVector(), VectorOps.SET_DD);
+    } else {
+      ((NumericOps) ((breeze.linalg.Transpose)
+          breezeMatrix.apply(index, MatrixOps.COLON_COLON, MatrixOps.SLICE_ROW_D)).inner())
+          .$colon$eq(((SparseVector) vector).getBreezeVector(), VectorOps.SET_DS);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void putColumns(final int start, final int end, final Matrix matrix) {
+    if (matrix.isDense()) {
+      ((NumericOps) breezeMatrix.apply(MatrixOps.COLON_COLON, new RichInt(start).until(end), MatrixOps.SLICE_COLS_D))
+          .$colon$eq(((DenseMatrix) matrix).breezeMatrix, MatrixOps.SET_DD);
+    } else {
+      ((NumericOps) breezeMatrix.apply(MatrixOps.COLON_COLON, new RichInt(start).until(end), MatrixOps.SLICE_COLS_D))
+          .$colon$eq(((CSCMatrix) matrix).getBreezeMatrix(), MatrixOps.SET_DS);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void putRows(final int start, final int end, final Matrix matrix) {
+    if (matrix.isDense()) {
+      ((NumericOps) breezeMatrix.apply(new RichInt(start).until(end), MatrixOps.COLON_COLON, MatrixOps.SLICE_ROWS_D))
+          .$colon$eq(((DenseMatrix) matrix).breezeMatrix, MatrixOps.SET_DD);
+    } else {
+      ((NumericOps) breezeMatrix.apply(new RichInt(start).until(end), MatrixOps.COLON_COLON, MatrixOps.SLICE_ROWS_D))
+          .$colon$eq(((CSCMatrix) matrix).getBreezeMatrix(), MatrixOps.SET_DS);
+    }
+  }
+
+  /**
    * Sets a matrix element.
    * @param rowIndex an index in range [0, rows)
    * @param columnIndex an index in range [0, columns)

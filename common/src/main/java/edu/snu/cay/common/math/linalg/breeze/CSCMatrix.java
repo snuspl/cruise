@@ -124,6 +124,38 @@ public final class CSCMatrix implements Matrix {
   }
 
   /**
+   * Not supported for CSC matrix.
+   */
+  @Override
+  public void putColumn(final int index, final Vector vector) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Not supported for CSC matrix.
+   */
+  @Override
+  public void putRow(final int index, final Vector vector) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Not supported for CSC matrix.
+   */
+  @Override
+  public void putColumns(final int start, final int end, final Matrix matrix) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Not supported for CSC matrix.
+   */
+  @Override
+  public void putRows(final int start, final int end, final Matrix matrix) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
    * Sets a matrix element.
    * @param rowIndex an index in range [0, rows)
    * @param columnIndex an index in range [0, columns)

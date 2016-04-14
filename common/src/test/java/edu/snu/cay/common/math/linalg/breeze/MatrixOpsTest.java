@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.common.math.linalg.breeze;
 
+import com.google.common.collect.Lists;
 import edu.snu.cay.common.math.linalg.Matrix;
 import edu.snu.cay.common.math.linalg.MatrixFactory;
 import edu.snu.cay.common.math.linalg.Vector;
@@ -83,6 +84,25 @@ public final class MatrixOpsTest {
     assertEquals(mat2.mmul(mat3), matrixFactory.horzcatVecDense(denseVectorList3));
     assertEquals(mat2.mmul(vec3), vec1.scale(vec3.get(0)).add(vec2.scale(vec3.get(1))));
     assertEquals(mat2.mmul(vec5), mat2.mmul(vec3));
+
+    final Matrix mat4 = matrixFactory.createDenseZeros(3, 3);
+    mat4.putColumns(0, 2, mat2);
+    mat4.putColumn(2, vec1);
+    assertEquals(mat2, mat4.sliceColumns(0, 2));
+    assertEquals(vec1, mat4.sliceColumn(2));
+    final List<Vector> denseVectorList4 = Lists.newArrayList(denseVectorList1);
+    denseVectorList4.add(vec1);
+    assertEquals(matrixFactory.horzcatVecDense(denseVectorList4), mat4);
+
+    final Matrix mat5 = matrixFactory.createDenseZeros(4, 2);
+    mat5.putRows(0, 3, mat2);
+    mat5.putRow(3, vec3);
+    assertEquals(mat2, mat5.sliceRows(0, 3));
+    assertEquals(vec3, mat5.sliceRow(3));
+    final List<Matrix> denseMatrixList = Lists.newArrayList(mat2);
+    // convert vec3 into a matrix and transpose it to make it have only one row (similar to a row vector)
+    denseMatrixList.add(matrixFactory.horzcatVecDense(Lists.<Vector>newArrayList(vec3)).transpose());
+    assertEquals(matrixFactory.vertcatMatDense(denseMatrixList), mat5);
   }
 
 

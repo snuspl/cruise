@@ -39,11 +39,9 @@ public final class OperationRouter {
 
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 
-  private String localEndPointId;
-
   private String evalPrefix;
 
-  private final int memoryStoreId;
+  private final int localMemoryStoreId;
 
   private final PartitionFunc partitionFunc;
 
@@ -61,8 +59,8 @@ public final class OperationRouter {
    * The location of partitions. It keeps just an index of MemoryStores,
    * so prefix should be added to get the Evaluator's endpoint id (See {@link #route(long)}).
    */
-  private final int[] partitionToStore;
   private final Map<Integer, List<Integer>> storeToPartitions;
+  private final int[] pIdToMemoryStoreId;
 
   // TODO #380: we have to improve router to provide different routing tables for each dataType.
   @Inject
@@ -71,20 +69,23 @@ public final class OperationRouter {
                           @Parameter(NumInitialEvals.class) final int numInitialEvals,
                           @Parameter(MemoryStoreId.class) final int memoryStoreId) {
     this.partitionFunc = partitionFunc;
-    this.memoryStoreId = memoryStoreId;
+    this.localMemoryStoreId = memoryStoreId;
     this.numPartitions = numPartitions;
     this.numInitialEvals = numInitialEvals;
-
     this.storeToPartitions = new HashMap<>(numInitialEvals);
+    this.pIdToMemoryStoreId = new int[numPartitions];
+    initPartitions();
+  }
+
+  private void initPartitions() {
     for (int storeIdx = 0; storeIdx < numInitialEvals; storeIdx++) {
       storeToPartitions.put(storeIdx, new LinkedList<Integer>());
     }
 
-    this.partitionToStore = new int[numPartitions];
+    // Partitions are initially distributed across Evaluators in round-robin.
     for (int partitionIdx = 0; partitionIdx < numPartitions; partitionIdx++) {
-      // Partitions are initially distributed across Evaluators in round-robin.
       final int storeIdx = partitionIdx % numInitialEvals;
-      partitionToStore[partitionIdx] = storeIdx;
+      pIdToMemoryStoreId[partitionIdx] = storeIdx;
       storeToPartitions.get(storeIdx).add(partitionIdx);
     }
   }
@@ -93,9 +94,8 @@ public final class OperationRouter {
    * Initialize the router.
    */
   public void initialize(final String endPointId) {
-    this.localEndPointId = endPointId;
     this.evalPrefix = endPointId.split("-")[0];
-    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", localEndPointId);
+    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endPointId);
   }
 
   /**
@@ -164,12 +164,11 @@ public final class OperationRouter {
       final List<LongRange> rangeList =
           new ArrayList<>(LongRangeUtils.generateDenseLongRanges(partitionedKeysEntry.getValue()));
       final int partitionId = partitionedKeysEntry.getKey();
-      final int targetStoreId = partitionToStore[partitionId];
-      if (targetStoreId == memoryStoreId) {
+      final int memoryStoreId = pIdToMemoryStoreId[partitionId];
+      if (memoryStoreId == localMemoryStoreId) {
         localKeyRanges.put(partitionId, rangeList);
       } else {
-        // we assume that the values of store id and eval id mapped to each other are same.
-        remoteKeyRanges.put(evalPrefix + '-' + targetStoreId, rangeList);
+        remoteKeyRanges.put(getEvalId(memoryStoreId), rangeList);
       }
     }
 
@@ -187,15 +186,26 @@ public final class OperationRouter {
    */
   public Pair<Integer, Optional<String>> route(final long dataId) {
     final int partitionId = partitionFunc.getPartitionId(dataId);
-    final int targetEvalId = partitionToStore[partitionId];
-    if (targetEvalId == memoryStoreId) {
+    final int memoryStoreId = pIdToMemoryStoreId[partitionId];
+    if (memoryStoreId == localMemoryStoreId) {
       return new Pair<>(partitionId, Optional.<String>empty());
     } else {
-      return new Pair<>(partitionId, Optional.of(evalPrefix + '-' + targetEvalId));
+      return new Pair<>(partitionId, Optional.of(getEvalId(memoryStoreId)));
     }
   }
 
   public List<Integer> getPartitions() {
-    return storeToPartitions.get(memoryStoreId);
+    return storeToPartitions.get(localMemoryStoreId);
+  }
+
+  /**
+   * Converts the MemoryStore id to the corresponding Evaluator's endpoint id.
+   * MemoryStore id is assumed to be assigned by the suffix of context id
+   * (See {@link edu.snu.cay.services.em.driver.impl.PartitionManager#registerEvaluator(String, int)})
+   * @param memoryStoreId MemoryStore's identifier
+   * @return the endpoint id to access the MemoryStore.
+   */
+  private String getEvalId(final int memoryStoreId) {
+    return evalPrefix + '-' + memoryStoreId;
   }
 }

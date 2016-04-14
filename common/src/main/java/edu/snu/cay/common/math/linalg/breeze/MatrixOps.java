@@ -45,6 +45,7 @@ public final class MatrixOps {
 
   // set operators
   static final UFunc.InPlaceImpl2 SET_DD = breeze.linalg.DenseMatrix.dm_dm_UpdateOp_Double_OpSet();
+  static final UFunc.InPlaceImpl2 SET_DS = breeze.linalg.CSCMatrix.dm_csc_InPlace_OpSet_Double();
 
   // slice operators
   static final CanSlice2 SLICE_COL_D = breeze.linalg.DenseMatrix.canSliceCol();
