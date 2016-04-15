@@ -151,6 +151,32 @@
 },
 
 /**
+ * Request message to update ownership of the block.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": “OwnershipMsg”,
+  "fields": [
+      {"name": "blockId", "type": integer},
+      {"name": "memoryStoreId", "type": integer}
+  ]
+},
+
+/**
+ * Response message to update ownership of the block.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": “OwnershipACKMsg”,
+  "fields": [
+      {"name": "blockId", "type": integer},
+      {"name": "memoryStoreId", "type": integer}
+  ]
+},
+
+/**
  * Response message from evaluators to the driver notifying the update result.
  */
 {
