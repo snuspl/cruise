@@ -46,6 +46,18 @@ public interface Vector extends Iterable<VectorEntry> {
   double get(int index);
 
   /**
+   * Returns a smaller vector that starts and ends at the specified indices.
+   * Inclusive for {@code start}, exclusive for {@code end}.
+   * The returned vector has indices [0, {@code end} - {@code start}).
+   * If {@code start >= end}, then this returns an empty DenseVector with length 0.
+   * Modifying the return value also changes the original vector.
+   * @param start an index in range [0, length]
+   * @param end an index in range [0, length]
+   * @return a partial vector which contains values specified by the given index range
+   */
+  Vector slice(int start, int end);
+
+  /**
    * Sets an element to given value.
    * @param index an index in range [0, length)
    * @param value value to be set
