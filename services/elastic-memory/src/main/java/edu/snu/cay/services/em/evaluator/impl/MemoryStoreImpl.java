@@ -84,12 +84,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   /**
    * A queue for operations requested from remote clients.
-   * It maintains operations as sub operations corresponding to the routing result.
-   * It also maintains corresponding blocks to avoid revisiting the routing table.
+   * Its element is composed of a operation, a sub key range, and a corresponding block id.
    */
   private final BlockingQueue<Tuple3<LongKeyOperation, LongRange, Integer>> subOperationQueue
       = new ArrayBlockingQueue<>(QUEUE_SIZE);
-  private ExecutorService executorService;
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
@@ -103,24 +101,23 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     this.resultAggregator = resultAggregator;
     this.msgSender = msgSender;
     this.serializer = serializer;
-    this.executorService = initExecutor(numStoreThreads);
+    initExecutor(numStoreThreads);
   }
 
   /**
    * Initialize threads that dequeue and execute operation from the {@code subOperationQueue}.
    * That is, these threads serve operations requested from remote clients.
    */
-  private ExecutorService initExecutor(final int numStoreThreads) {
+  private void initExecutor(final int numStoreThreads) {
     final ExecutorService executor = Executors.newFixedThreadPool(numStoreThreads);
     for (int i = 0; i < numStoreThreads; i++) {
       executor.submit(new OperationThread());
     }
-    return executor;
   }
 
   /**
    * Initialize blocks for a specific {@code dataType}.
-   * Each block holds sub data map, which composes whole data map for MemoryStore.
+   * Each block holds the subset of the data that is assigned to this MemoryStore.
    */
   private synchronized void initBlocks(final String dataType) {
     if (typeToBlocks.containsKey(dataType)) {
@@ -166,7 +163,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       final int blockId = subOperation.getThird();
 
       final Optional<String> remoteEvalId = router.resolveEval(blockId);
-      if (!remoteEvalId.isPresent()) {
+      final boolean isLocal = !remoteEvalId.isPresent();
+      if (isLocal) {
         final Block block = typeToBlocks.get(operation.getDataType()).get(blockId);
         final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRange);
         resultAggregator.submitLocalResult(operation, result, Collections.EMPTY_LIST);
@@ -175,7 +173,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         final List<LongRange> failedRanges = new ArrayList<>(1);
         failedRanges.add(subKeyRange);
 
-        // TODO #00: failedRange does not need to be a list
         // submit it as a local result, because we do not even start the remote operation
         resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, failedRanges);
       }
@@ -307,12 +304,13 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final Iterator<LongRange> rangeIterator = dataKeyRanges.iterator();
 
-    // handle the first case separate to reuse a returned map object
+    // handle the first case separately to reuse a returned map object
     if (rangeIterator.hasNext()) {
       final LongRange keyRange = rangeIterator.next();
       blockToSubKeyRangeMap = router.resolveBlocks(keyRange);
     } else {
       LOG.log(Level.SEVERE, "Invalid operation");
+      resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, Collections.EMPTY_LIST);
       return;
     }
     while (rangeIterator.hasNext()) {
@@ -432,6 +430,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     if (evalToSubKeyRangesMap.isEmpty()) {
       return;
     }
+    LOG.log(Level.SEVERE, "REMOTE ACCESS!!", operation);
 
     final Codec codec = serializer.getCodec(operation.getDataType());
 
@@ -685,7 +684,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   @Override
   public int getNumUnits(final String dataType) {
-    if (typeToBlocks.containsKey(dataType)) {
+    if (!typeToBlocks.containsKey(dataType)) {
       return 0;
     }
 

@@ -189,7 +189,7 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   }
 
   /**
-   * Set a counter number that {@link #waitOperation(long)} will wait until the count becomes zero.
+   * Sets a counter number that {@link #waitOperation(long)} will wait until the count becomes zero.
    * Only {@link #commitResult(Map, List<LongRange>)} method counts down the latch.
    * @param numSubOps a number of sub operations
    */
@@ -200,6 +200,10 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
     subOpCountDownLatch = new CountDownLatch(numSubOps);
   }
 
+  /**
+   * Returns the number of sub operations that is not finished yet.
+   * @return the number of ongoing sub operations
+   */
   int getNumSubOps() {
     return (int) subOpCountDownLatch.getCount();
   }

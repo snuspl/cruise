@@ -55,7 +55,7 @@ public final class OperationRouter {
   private final int numInitialEvals;
 
   /**
-   * The location of partitions. It keeps just an index of MemoryStores,
+   * The location of blocks. It keeps just an index of MemoryStores,
    * so prefix should be added to get the Evaluator's endpoint id.
    */
   private final int[] blockIdToStoreId;
@@ -73,10 +73,13 @@ public final class OperationRouter {
     this.numInitialEvals = numInitialEvals;
     this.localBlocks = new ArrayList<>(numTotalBlocks / numInitialEvals + 1); // +1 for remainders
     this.blockIdToStoreId = new int[numTotalBlocks];
-    initBlocks();
+    initRouter();
   }
 
-  private void initBlocks() {
+  /**
+   * Initializes the routing table and its local block list.
+   */
+  private void initRouter() {
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
       localBlocks.add(blockId);
     }
@@ -89,7 +92,8 @@ public final class OperationRouter {
   }
 
   /**
-   * Initializes the router.
+   * Initializes the router, providing a prefix of evaluator to locate remote evaluators.
+   * It is invoked when the service context is started.
    */
   public void initialize(final String endPointId) {
     this.evalPrefix = endPointId.split("-")[0];
@@ -99,7 +103,7 @@ public final class OperationRouter {
   /**
    * Routes the data key range of the operation.
    * @param dataKeyRanges a range of data keys
-   * @return a pair of a map between a partition id and a corresponding sub key range,
+   * @return a pair of a map between a block id and a corresponding sub key range,
    * and a map between evaluator id and corresponding sub key ranges.
    */
   public Pair<Map<Integer, LongRange>, Map<String, List<LongRange>>> route(final List<LongRange> dataKeyRanges) {
@@ -152,6 +156,12 @@ public final class OperationRouter {
     return blockResolver.resolveBlocks(dataKeyRange);
   }
 
+  /**
+   * Resolves an evaluator id for a block id.
+   * It returns empty when the block belongs to the local MemoryStore.
+   * @param blockId an id of block
+   * @return an Optional with an evaluator id
+   */
   public Optional<String> resolveEval(final int blockId) {
     final int memoryStoreId = blockIdToStoreId[blockId];
     if (memoryStoreId == localStoreId) {
@@ -162,8 +172,7 @@ public final class OperationRouter {
   }
 
   /**
-   * Returns a list of local block ids.
-   * @return a list of block ids.
+   * @return a list of block ids in the local MemoryStore
    */
   public List<Integer> getLocalBlockIds() {
     return Collections.unmodifiableList(localBlocks);

@@ -49,7 +49,7 @@ import static org.junit.Assert.*;
  * Test class for checking the thread safeness of MemoryStore.
  */
 public final class MemoryStoreTest {
-  private static final int NUM_PARTITIONS = 32;
+  private static final int NUM_TOTAL_BLOCKS = 32;
 
   private static final String DATA_TYPE = "DATA_TYPE";
   private static final String MSG_SIZE_ASSERTION = "size of final memory store";
@@ -66,7 +66,7 @@ public final class MemoryStoreTest {
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(1))
-        .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_PARTITIONS))
+        .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);

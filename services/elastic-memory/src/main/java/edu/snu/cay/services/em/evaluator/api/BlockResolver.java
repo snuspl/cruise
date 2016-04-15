@@ -35,5 +35,11 @@ public interface BlockResolver {
    */
   int resolveBlock(long dataKey);
 
+  /**
+   * Return block ids for a range of data keys, which may span over multiple blocks.
+   * Each block contains a single sub key range.
+   * @param dataKeyRange a range of data keys
+   * @return a map between a block id and a range of data keys
+   */
   Map<Integer, LongRange> resolveBlocks(LongRange dataKeyRange);
 }

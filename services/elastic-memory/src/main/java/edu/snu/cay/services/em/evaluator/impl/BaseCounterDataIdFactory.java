@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * Note that this factory can only create up to (Long.MAX_VALUE / NumTotalBlocks) global unique ids.
  * Beyond that, the methods throw Exceptions, because the ids are not guaranteed to be unique.
+ * This DataIdFactory assumes that there's only one block for each store.
  */
 public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
 
@@ -51,20 +52,20 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
   private final long base;
 
   /**
-   * A size of one partition, which means the number of ids the id factory can generate.
+   * A size of one block, which means the number of ids the id factory can generate.
    */
-  private final long partitionSize;
+  private final long blockSize;
 
   @Inject
   private BaseCounterDataIdFactory(@Parameter(MemoryStoreId.class) final int memoryStoreId,
-                                   @Parameter(NumTotalBlocks.class) final int numPartitions) {
-    this.partitionSize = Long.MAX_VALUE / numPartitions;
-    this.base = memoryStoreId * partitionSize;
+                                   @Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
+    this.blockSize = Long.MAX_VALUE / numTotalBlocks;
+    this.base = memoryStoreId * blockSize;
   }
 
   @Override
   public Long getId() throws IdGenerationException {
-    if (counter.get() == partitionSize) {
+    if (counter.get() == blockSize) {
       throw new IdGenerationException("No more id available");
     }
     return base + counter.getAndIncrement();
@@ -72,7 +73,7 @@ public final class BaseCounterDataIdFactory implements DataIdFactory<Long> {
 
   @Override
   public List<Long> getIds(final int size) throws IdGenerationException {
-    if (counter.get() + size > partitionSize) {
+    if (counter.get() + size > blockSize) {
       throw new IdGenerationException("No more id available");
     }
     final Vector<Long> idVector = new Vector<>();

@@ -44,9 +44,11 @@ import java.util.logging.Logger;
 final class OperationResultAggregator {
   private static final Logger LOG = Logger.getLogger(OperationResultAggregator.class.getName());
 
+  /**
+   * A map holding ongoing operations until they finish.
+   * It only maintains operations requested from local clients.
+   */
   private final ConcurrentMap<String, LongKeyOperation> ongoingOp = new ConcurrentHashMap<>();
-  private final ConcurrentMap<String, ConcurrentMap<String, LongKeyOperation>> ongoingReceivedOp =
-      new ConcurrentHashMap<>();
 
   private static final long TIMEOUT_MS = 40000;
 
@@ -68,24 +70,13 @@ final class OperationResultAggregator {
   void registerOp(final LongKeyOperation operation, final int numSubOperations) {
 
     if (operation.isFromLocalClient()) {
-
       final LongKeyOperation unhandledOperation = ongoingOp.put(operation.getOperationId(), operation);
       if (unhandledOperation != null) {
         LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}", unhandledOperation);
       }
-    } //else {
-//
-//      final String origEvalId = (String) operation.getOrigEvalId().get();
-//      if (!ongoingReceivedOp.containsKey(origEvalId)) {
-//        ongoingReceivedOp.put(origEvalId, new ConcurrentHashMap<String, LongKeyOperation>());
-//      }
-//
-//      final Map<String, LongKeyOperation> operations = ongoingReceivedOp.get(origEvalId);
-//      unhandledOperation = operations.put(operation.getOperationId(), operation);
-//    }
+    }
+
     operation.setNumSubOps(numSubOperations);
-
-
   }
 
   /**
@@ -94,17 +85,6 @@ final class OperationResultAggregator {
   private void deregisterOp(final String operationId) {
     ongoingOp.remove(operationId);
   }
-
-//  private void deregisterReceivedOp(final String origEvalId, final String operationId) {
-//    final Map<String, LongKeyOperation> operations = ongoingReceivedOp.get(origEvalId);
-//    if (operations != null) {
-//      operations.remove(operationId);
-//    }
-//
-//    if (operations.isEmpty()) {
-//      ongoingReceivedOp.remove(origEvalId);
-//    }
-//  }
 
   /**
    * Handles the result of data operation processed by local memory store.
@@ -117,7 +97,6 @@ final class OperationResultAggregator {
     if (!operation.isFromLocalClient()) {
       if (operation.getNumSubOps() <= 0) {
         sendResultToOrigin(operation);
-//        deregisterReceivedOp(operation.getOrigEvalId().get(), operation.getOperationId());
       }
     } else {
       // wait until all remote sub operations are finished
@@ -176,7 +155,7 @@ final class OperationResultAggregator {
 
       final List<UnitIdPair> dataKVPairList;
       if (operation.getOperationType() == DataOpType.GET || operation.getOperationType() == DataOpType.REMOVE) {
-        dataKVPairList = new LinkedList<>();
+        dataKVPairList = new ArrayList<>(outputData.size());
 
         for (final Map.Entry<Long, T> dataKVPair : outputData.entrySet()) {
           final ByteBuffer encodedData = ByteBuffer.wrap(codec.encode(dataKVPair.getValue()));
