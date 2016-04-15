@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.DataOpType;
+import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.util.Optional;
@@ -31,7 +32,7 @@ import java.util.concurrent.TimeUnit;
  * It maintains metadata and states of the operation during execution.
  */
 @Private
-public final class DataOperation<T> {
+public final class LongKeyOperation<V> implements DataOperation<Long> {
 
   /**
    * Metadata of the operation.
@@ -41,7 +42,7 @@ public final class DataOperation<T> {
   private final DataOpType operationType;
   private final String dataType;
   private final List<LongRange> dataKeyRanges;
-  private final Optional<NavigableMap<Long, T>> dataKeyValueMap;
+  private final Optional<NavigableMap<Long, V>> dataKeyValueMap;
 
   /**
    * States of the operation.
@@ -51,7 +52,7 @@ public final class DataOperation<T> {
   // ranges that remote sub operations failed to execute due to wrong routing
   // it happens only when ownership of data key are updated, unknown to the original store
   private final List<LongRange> failedRanges = new LinkedList<>();
-  private final ConcurrentMap<Long, T> outputData = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Long, V> outputData = new ConcurrentHashMap<>();
 
   /**
    * A constructor for an operation composed of multiple data key ranges.
@@ -64,9 +65,9 @@ public final class DataOperation<T> {
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
-  DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                final String dataType, final List<LongRange> dataKeyRanges,
-                final Optional<NavigableMap<Long, T>> dataKeyValueMap) {
+  LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
+                   final String dataType, final List<LongRange> dataKeyRanges,
+                   final Optional<NavigableMap<Long, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -86,9 +87,9 @@ public final class DataOperation<T> {
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
-  DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                final String dataType, final LongRange dataKeyRange,
-                final Optional<NavigableMap<Long, T>> dataKeyValueMap) {
+  LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
+                   final String dataType, final LongRange dataKeyRange,
+                   final Optional<NavigableMap<Long, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -112,8 +113,8 @@ public final class DataOperation<T> {
    * @param dataValue an Optional with the value of data.
    *                  It is empty when the operation is one of GET or REMOVE.
    */
-  DataOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                final String dataType, final long dataKey, final Optional<T> dataValue) {
+  LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
+                   final String dataType, final long dataKey, final Optional<V> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -123,7 +124,7 @@ public final class DataOperation<T> {
     keyRanges.add(new LongRange(dataKey));
     this.dataKeyRanges = keyRanges;
 
-    final NavigableMap<Long, T> keyValueMap;
+    final NavigableMap<Long, V> keyValueMap;
     if (dataValue.isPresent()) {
       keyValueMap = new TreeMap<>();
       keyValueMap.put(dataKey, dataValue.get());
@@ -183,7 +184,7 @@ public final class DataOperation<T> {
    * It returns an empty Optional for GET and REMOVE operations.
    * @return an Optional with the map of input keys and its values
    */
-  Optional<NavigableMap<Long, T>> getDataKeyValueMap() {
+  Optional<NavigableMap<Long, V>> getDataKeyValueMap() {
     return dataKeyValueMap;
   }
 
@@ -217,7 +218,7 @@ public final class DataOperation<T> {
    * @param output an output data of the sub operation
    * @param failedRangeList a list of failed key ranges of the sub operation
    */
-  void commitResult(final Map<Long, T> output, final List<LongRange> failedRangeList) {
+  void commitResult(final Map<Long, V> output, final List<LongRange> failedRangeList) {
     this.outputData.putAll(output);
     this.failedRanges.addAll(failedRangeList);
     subOpCountDownLatch.countDown();
@@ -235,7 +236,7 @@ public final class DataOperation<T> {
    * It returns an empty map for PUT operation.
    * @return an empty map with the output data
    */
-  Map<Long, T> getOutputData() {
+  Map<Long, V> getOutputData() {
     return Collections.unmodifiableMap(outputData);
   }
 }

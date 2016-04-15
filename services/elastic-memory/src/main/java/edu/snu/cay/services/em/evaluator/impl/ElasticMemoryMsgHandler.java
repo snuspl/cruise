@@ -151,7 +151,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       dataKeyValueMap = Optional.empty();
     }
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.of(origEvalId),
+    final LongKeyOperation<T> operation = new LongKeyOperation<>(Optional.of(origEvalId),
         operationId, operationType, dataType, dataKeyRanges, dataKeyValueMap);
 
     // enqueue operation into memory store

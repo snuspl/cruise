@@ -44,8 +44,8 @@ import java.util.logging.Logger;
 final class OperationResultAggregator {
   private static final Logger LOG = Logger.getLogger(OperationResultAggregator.class.getName());
 
-  private final ConcurrentMap<String, DataOperation> ongoingOp = new ConcurrentHashMap<>();
-  private final ConcurrentMap<String, ConcurrentMap<String, DataOperation>> ongoingReceivedOp =
+  private final ConcurrentMap<String, LongKeyOperation> ongoingOp = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, ConcurrentMap<String, LongKeyOperation>> ongoingReceivedOp =
       new ConcurrentHashMap<>();
 
   private static final long TIMEOUT_MS = 40000;
@@ -65,9 +65,9 @@ final class OperationResultAggregator {
    * Registered operations would be removed by {@code submitResultAndWaitRemoteOps} method
    * when the operations are finished.
    */
-  void registerOp(final DataOperation operation, final int numSubOperations) {
+  void registerOp(final LongKeyOperation operation, final int numSubOperations) {
 
-    final DataOperation unhandledOperation;
+    final LongKeyOperation unhandledOperation;
 
     if (operation.isFromLocalClient()) {
       unhandledOperation = ongoingOp.put(operation.getOperationId(), operation);
@@ -75,10 +75,10 @@ final class OperationResultAggregator {
 
       final String origEvalId = (String) operation.getOrigEvalId().get();
       if (!ongoingReceivedOp.containsKey(origEvalId)) {
-        ongoingReceivedOp.put(origEvalId, new ConcurrentHashMap<String, DataOperation>());
+        ongoingReceivedOp.put(origEvalId, new ConcurrentHashMap<String, LongKeyOperation>());
       }
 
-      final Map<String, DataOperation> operations = ongoingReceivedOp.get(origEvalId);
+      final Map<String, LongKeyOperation> operations = ongoingReceivedOp.get(origEvalId);
       unhandledOperation = operations.put(operation.getOperationId(), operation);
     }
     operation.setNumSubOps(numSubOperations);
@@ -96,7 +96,7 @@ final class OperationResultAggregator {
   }
 
   private void deregisterReceivedOp(final String origEvalId, final String operationId) {
-    final Map<String, DataOperation> operations = ongoingReceivedOp.get(origEvalId);
+    final Map<String, LongKeyOperation> operations = ongoingReceivedOp.get(origEvalId);
     if (operations != null) {
       operations.remove(operationId);
     }
@@ -110,7 +110,7 @@ final class OperationResultAggregator {
    * Handles the result of data operation processed by local memory store.
    * It waits until all remote sub operations are finished and their outputs are fully aggregated.
    */
-  <T> void submitLocalResult(final DataOperation<T> operation, final Map<Long, T> localOutput,
+  <V> void submitLocalResult(final LongKeyOperation<V> operation, final Map<Long, V> localOutput,
                              final List<LongRange> failedRanges) {
     operation.commitResult(localOutput, failedRanges);
 
@@ -137,10 +137,10 @@ final class OperationResultAggregator {
   /**
    * Aggregates the result of data operation sent from remote memory store.
    */
-  <T> void submitRemoteResult(final String operationId, final List<UnitIdPair> remoteOutput,
+  <V> void submitRemoteResult(final String operationId, final List<UnitIdPair> remoteOutput,
                               final List<AvroLongRange> failedAvroRanges) {
 
-    final DataOperation<T> operation = ongoingOp.get(operationId);
+    final LongKeyOperation<V> operation = ongoingOp.get(operationId);
 
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
@@ -149,9 +149,9 @@ final class OperationResultAggregator {
 
     final Codec codec = serializer.getCodec(operation.getDataType());
 
-    final Map<Long, T> dataKeyValueMap = new HashMap<>(remoteOutput.size());
+    final Map<Long, V> dataKeyValueMap = new HashMap<>(remoteOutput.size());
     for (final UnitIdPair dataKeyValuePair : remoteOutput) {
-      dataKeyValueMap.put(dataKeyValuePair.getId(), (T) codec.decode(dataKeyValuePair.getUnit().array()));
+      dataKeyValueMap.put(dataKeyValuePair.getId(), (V) codec.decode(dataKeyValuePair.getUnit().array()));
     }
 
     final List<LongRange> failedRanges = new ArrayList<>(failedAvroRanges.size());
@@ -165,7 +165,7 @@ final class OperationResultAggregator {
   /**
    * Sends the result to the original store.
    */
-  private <T> void sendResultToOrigin(final DataOperation<T> operation) {
+  private <T> void sendResultToOrigin(final LongKeyOperation<T> operation) {
     // send the original store the result (RemoteOpResultMsg)
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
       final String dataType = operation.getDataType();

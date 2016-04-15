@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
-import edu.snu.cay.services.em.evaluator.impl.DataOperation;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.wake.EventHandler;
@@ -25,5 +24,5 @@ import org.apache.reef.wake.EventHandler;
  */
 @EvaluatorSide
 @Private
-public interface RemoteAccessibleMemoryStore extends MemoryStore, EventHandler<DataOperation> {
+public interface RemoteAccessibleMemoryStore<K> extends MemoryStore<K>, EventHandler<DataOperation<K>> {
 }

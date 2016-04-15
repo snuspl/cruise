@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
+import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
@@ -56,7 +57,7 @@ import java.util.logging.Logger;
  */
 @EvaluatorSide
 @Private
-public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
+public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> {
   private static final Logger LOG = Logger.getLogger(MemoryStoreImpl.class.getName());
 
   private static final int QUEUE_SIZE = 1024;
@@ -70,7 +71,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
    */
   private final Map<String, Map<Integer, Block>> typeToBlocks = new HashMap<>();
 
-  private final OperationRouter router;
+  private final OperationRouter<Long> router;
   private final OperationResultAggregator resultAggregator;
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
@@ -86,13 +87,13 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
    * It maintains operations as sub operations corresponding to the routing result.
    * It also maintains corresponding blocks to avoid revisiting the routing table.
    */
-  private final BlockingQueue<Tuple3<DataOperation, List<LongRange>, Block>> subOperationQueue
+  private final BlockingQueue<Tuple3<LongKeyOperation, List<LongRange>, Block>> subOperationQueue
       = new ArrayBlockingQueue<>(QUEUE_SIZE);
   private ExecutorService executorService;
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
-                          final OperationRouter router,
+                          final OperationRouter<Long> router,
                           final OperationResultAggregator resultAggregator,
                           final InjectionFuture<ElasticMemoryMsgSender> msgSender,
                           final Serializer serializer,
@@ -144,7 +145,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     private static final int DRAIN_SIZE = QUEUE_SIZE / 10;
 
     // Thread does not need to perform routing, because the queue element already has List<LongRange> and Block.
-    private final List<Tuple3<DataOperation, List<LongRange>, Block>> drainedSubOperations =
+    private final List<Tuple3<LongKeyOperation, List<LongRange>, Block>> drainedSubOperations =
         new ArrayList<>(DRAIN_SIZE);
 
     @Override
@@ -153,12 +154,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
         // First, poll and execute a single operation.
         // Poll with a timeout will prevent busy waiting, when the queue is empty.
         try {
-          final Tuple3<DataOperation, List<LongRange>, Block> subOperation =
+          final Tuple3<LongKeyOperation, List<LongRange>, Block> subOperation =
               subOperationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (subOperation == null) {
             continue;
           }
-          final DataOperation operation = subOperation.getFirst();
+          final LongKeyOperation operation = subOperation.getFirst();
           final List<LongRange> subKeyRanges = subOperation.getSecond();
           final Block block = subOperation.getThird();
 
@@ -175,8 +176,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
           continue;
         }
 
-        for (final Tuple3<DataOperation, List<LongRange>, Block> subOperation : drainedSubOperations) {
-          final DataOperation operation = subOperation.getFirst();
+        for (final Tuple3<LongKeyOperation, List<LongRange>, Block> subOperation : drainedSubOperations) {
+          final LongKeyOperation operation = subOperation.getFirst();
           final List<LongRange> subKeyRanges = subOperation.getSecond();
           final Block block = subOperation.getThird();
 
@@ -212,19 +213,20 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
      * Executes sub operation on data keys assigned to this block.
      * All operations both from remote and local clients are executed via this method.
      */
-    private <T> Map<Long, T> executeSubOperation(final DataOperation<T> operation, final List<LongRange> subKeyRanges) {
+    private <V> Map<Long, V> executeSubOperation(final LongKeyOperation<V> operation,
+                                                 final List<LongRange> subKeyRanges) {
       final DataOpType operationType = operation.getOperationType();
 
-      final Map<Long, T> outputData = new HashMap<>();
+      final Map<Long, V> outputData = new HashMap<>();
       switch (operationType) {
       case PUT:
         rwLock.writeLock().lock();
         try {
-          final NavigableMap<Long, T> dataKeyValueMap = operation.getDataKeyValueMap().get();
+          final NavigableMap<Long, V> dataKeyValueMap = operation.getDataKeyValueMap().get();
 
           for (final LongRange keyRange : subKeyRanges) {
             // extract matching entries from the input kv data map and put it all to subDataMap
-            final NavigableMap<Long, T> subMap =
+            final NavigableMap<Long, V> subMap =
                 dataKeyValueMap.subMap(keyRange.getMinimumLong(), true, keyRange.getMaximumLong(), true);
             subDataMap.putAll(subMap);
           }
@@ -239,8 +241,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
         rwLock.readLock().lock();
         try {
           for (final LongRange keyRange : subKeyRanges) {
-            final Map<Long, T> partialOutput =
-                (Map<Long, T>) subDataMap.subMap(keyRange.getMinimumLong(), true, keyRange.getMaximumLong(), true);
+            final Map<Long, V> partialOutput =
+                (Map<Long, V>) subDataMap.subMap(keyRange.getMinimumLong(), true, keyRange.getMaximumLong(), true);
             outputData.putAll(partialOutput);
           }
         } finally {
@@ -251,8 +253,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
         rwLock.writeLock().lock();
         try {
           for (final LongRange keyRange : subKeyRanges) {
-            final Map<Long, T> partialOutput =
-                (Map<Long, T>) subDataMap.subMap(keyRange.getMinimumLong(), true, keyRange.getMaximumLong(), true);
+            final Map<Long, V> partialOutput =
+                (Map<Long, V>) subDataMap.subMap(keyRange.getMinimumLong(), true, keyRange.getMaximumLong(), true);
             outputData.putAll(partialOutput);
           }
           subDataMap.keySet().removeAll(outputData.keySet());
@@ -271,10 +273,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
      * Returns all data in a block.
      * It is for supporting getAll method of MemoryStore.
      */
-    private <T> Map<Long, T> getAll() {
+    private <V> Map<Long, V> getAll() {
       rwLock.readLock().lock();
       try {
-        return (Map<Long, T>) ((TreeMap) subDataMap).clone();
+        return (Map<Long, V>) ((TreeMap) subDataMap).clone();
       } finally {
         rwLock.readLock().unlock();
       }
@@ -284,11 +286,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
      * Removes all data in a block.
      * It is for supporting removeAll method of MemoryStore.
      */
-    private <T> Map<Long, T> removeAll() {
-      final Map<Long, T> result;
+    private <V> Map<Long, V> removeAll() {
+      final Map<Long, V> result;
       rwLock.writeLock().lock();
       try {
-        result = (Map<Long, T>) ((TreeMap) subDataMap).clone();
+        result = (Map<Long, V>) ((TreeMap) subDataMap).clone();
         subDataMap.clear();
       } finally {
         rwLock.writeLock().unlock();
@@ -311,8 +313,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
    * The enqueued operations are executed by {@code OperationThread}s.
    */
   @Override
-  public void onNext(final DataOperation operation) {
-
+  public void onNext(final DataOperation<Long> op) {
+    final LongKeyOperation operation = (LongKeyOperation) op;
     final String dataType = operation.getDataType();
 
     final List<LongRange> dataKeyRanges = operation.getDataKeyRanges();
@@ -348,7 +350,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   /**
    * Enqueues local sub operations to {@code subOperationQueue}.
    */
-  private void enqueueOperation(final DataOperation operation,
+  private void enqueueOperation(final LongKeyOperation operation,
                                 final Map<Integer, List<LongRange>> blockToKeyRanges) {
     final Map<Integer, Block> blocks = typeToBlocks.get(operation.getDataType());
 
@@ -357,6 +359,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
       final List<LongRange> subKeyRanges = entry.getValue();
 
       final Block block = blocks.get(blockId);
+
       try {
         subOperationQueue.put(new Tuple3<>(operation, subKeyRanges, block));
       } catch (final InterruptedException e) {
@@ -368,7 +371,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   /**
    * Executes an operation requested from a local client.
    */
-  private <T> void executeOperation(final DataOperation<T> operation) {
+  private <T> void executeOperation(final LongKeyOperation<T> operation) {
 
     final List<LongRange> dataKeyRanges = operation.getDataKeyRanges();
 
@@ -391,7 +394,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   /**
    * Executes sub local operations directly, not via queueing.
    */
-  private <T> Map<Long, T> executeLocalOperation(final DataOperation<T> operation,
+  private <T> Map<Long, T> executeLocalOperation(final LongKeyOperation<T> operation,
                                                  final Map<Integer, List<LongRange>> blockToKeyRanges) {
     if (blockToKeyRanges.isEmpty()) {
       return Collections.EMPTY_MAP;
@@ -438,9 +441,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   /**
    * Sends sub operations to target remote evaluators.
    */
-  private <T> void sendOperationToRemoteStores(final DataOperation<T> operation,
+  private <V> void sendOperationToRemoteStores(final LongKeyOperation<V> operation,
                                                final Map<String, List<LongRange>> evalToKeyRanges) {
-
     if (evalToKeyRanges.isEmpty()) {
       return;
     }
@@ -457,16 +459,16 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
         final List<UnitIdPair> dataKVPairList;
         if (operation.getOperationType() == DataOpType.PUT) {
-          final NavigableMap<Long, T> keyValueMap = operation.getDataKeyValueMap().get();
+          final NavigableMap<Long, V> keyValueMap = operation.getDataKeyValueMap().get();
 
           dataKVPairList = new LinkedList<>();
 
           // encode all data value and put them into dataKVPairList
           for (final LongRange range : keyRanges) {
             // extract range-matching entries from the input data map
-            final Map<Long, T> subMap = keyValueMap.subMap(range.getMinimumLong(), true, range.getMaximumLong(), true);
+            final Map<Long, V> subMap = keyValueMap.subMap(range.getMinimumLong(), true, range.getMaximumLong(), true);
 
-            for (final Map.Entry<Long, T> dataKVPair : subMap.entrySet()) {
+            for (final Map.Entry<Long, V> dataKVPair : subMap.entrySet()) {
               final ByteBuffer encodedData = ByteBuffer.wrap(codec.encode(dataKVPair.getValue()));
               dataKVPairList.add(new UnitIdPair(encodedData, dataKVPair.getKey()));
             }
@@ -484,14 +486,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> Pair<Long, Boolean> put(final String dataType, final long id, final T value) {
+  public <V> Pair<Long, Boolean> put(final String dataType, final Long id, final V value) {
     if (value == null) {
       return new Pair<>(id, false);
     }
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
+    final LongKeyOperation<V> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
         dataType, id, Optional.of(value));
 
     executeOperation(operation);
@@ -500,7 +502,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> Map<Long, Boolean> putList(final String dataType, final List<Long> ids, final List<T> values) {
+  public <V> Map<Long, Boolean> putList(final String dataType, final List<Long> ids, final List<V> values) {
     if (ids.size() != values.size()) {
       throw new RuntimeException("Different list sizes: ids " + ids.size() + ", values " + values.size());
     }
@@ -509,12 +511,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
 
     final List<LongRange> longRangeSet = new ArrayList<>(LongRangeUtils.generateDenseLongRanges(new TreeSet<>(ids)));
 
-    final NavigableMap<Long, T> dataKeyValueMap = new TreeMap<>();
+    final NavigableMap<Long, V> dataKeyValueMap = new TreeMap<>();
     for (int idx = 0; idx < ids.size(); idx++) {
       dataKeyValueMap.put(ids.get(idx), values.get(idx));
     }
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
+    final LongKeyOperation<V> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId, DataOpType.PUT,
         dataType, longRangeSet, Optional.of(dataKeyValueMap));
 
     executeOperation(operation);
@@ -575,27 +577,27 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> Pair<Long, T> get(final String dataType, final long id) {
+  public <V> Pair<Long, V> get(final String dataType, final Long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
-        dataType, id, Optional.<T>empty());
+    final LongKeyOperation<V> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
+        dataType, id, Optional.<V>empty());
 
     executeOperation(operation);
 
-    final T outputData = operation.getOutputData().get(id);
+    final V outputData = operation.getOutputData().get(id);
 
     return outputData == null ? null : new Pair<>(id, outputData);
   }
 
   @Override
-  public <T> Map<Long, T> getAll(final String dataType) {
+  public <V> Map<Long, V> getAll(final String dataType) {
     if (!typeToBlocks.containsKey(dataType)) {
       return Collections.EMPTY_MAP;
     }
 
-    final Map<Long, T> result;
+    final Map<Long, V> result;
     final Collection<Block> blocks = typeToBlocks.get(dataType).values();
 
     final Iterator<Block> blockIterator = blocks.iterator();
@@ -612,19 +614,19 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     while (blockIterator.hasNext()) {
       final Block block = blockIterator.next();
       // huge memory pressure may happen here
-      result.putAll((Map<Long, T>) block.getAll());
+      result.putAll((Map<Long, V>) block.getAll());
     }
 
     return result;
   }
 
   @Override
-  public <T> Map<Long, T> getRange(final String dataType, final long startId, final long endId) {
+  public <V> Map<Long, V> getRange(final String dataType, final Long startId, final Long endId) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
-        dataType, new LongRange(startId, endId), Optional.<NavigableMap<Long, T>>empty());
+    final LongKeyOperation<V> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId, DataOpType.GET,
+        dataType, new LongRange(startId, endId), Optional.<NavigableMap<Long, V>>empty());
 
     executeOperation(operation);
 
@@ -632,26 +634,26 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
   }
 
   @Override
-  public <T> Pair<Long, T> remove(final String dataType, final long id) {
+  public <V> Pair<Long, V> remove(final String dataType, final Long id) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.REMOVE,
-        dataType, id, Optional.<T>empty());
+    final LongKeyOperation<V> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId,
+        DataOpType.REMOVE, dataType, id, Optional.<V>empty());
 
     executeOperation(operation);
 
-    final T outputData = operation.getOutputData().get(id);
+    final V outputData = operation.getOutputData().get(id);
 
     return outputData == null ? null : new Pair<>(id, outputData);
   }
 
   @Override
-  public <T> Map<Long, T> removeAll(final String dataType) {
+  public <V> Map<Long, V> removeAll(final String dataType) {
     if (!typeToBlocks.containsKey(dataType)) {
       return Collections.EMPTY_MAP;
     }
 
-    final Map<Long, T> result;
+    final Map<Long, V> result;
     final Collection<Block> blocks = typeToBlocks.get(dataType).values();
 
 
@@ -669,19 +671,19 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore {
     while (blockIterator.hasNext()) {
       final Block block = blockIterator.next();
       // huge memory pressure may happen here
-      result.putAll((Map<Long, T>) block.removeAll());
+      result.putAll((Map<Long, V>) block.removeAll());
     }
 
     return result;
   }
 
   @Override
-  public <T> Map<Long, T> removeRange(final String dataType, final long startId, final long endId) {
+  public <V> Map<Long, V> removeRange(final String dataType, final Long startId, final Long endId) {
 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final DataOperation<T> operation = new DataOperation<>(Optional.<String>empty(), operationId, DataOpType.REMOVE,
-        dataType, new LongRange(startId, endId), Optional.<NavigableMap<Long, T>>empty());
+    final LongKeyOperation<V> operation = new LongKeyOperation<>(Optional.<String>empty(), operationId,
+        DataOpType.REMOVE, dataType, new LongRange(startId, endId), Optional.<NavigableMap<Long, V>>empty());
 
     executeOperation(operation);
 

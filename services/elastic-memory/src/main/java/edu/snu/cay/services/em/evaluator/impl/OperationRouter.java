@@ -35,7 +35,7 @@ import java.util.logging.Logger;
  * OperationRouter that redirects incoming operations on specific data ids to corresponding evaluators.
  */
 @Private
-public final class OperationRouter {
+public final class OperationRouter<K> {
 
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 
@@ -56,8 +56,8 @@ public final class OperationRouter {
   private final int numInitialEvals;
 
   /**
-   * The location of blocks. It keeps just an index of MemoryStores,
-   * so prefix should be added to get the Evaluator's endpoint id (See {@link #route(long)}).
+   * The location of partitions. It keeps just an index of MemoryStores,
+   * so prefix should be added to get the Evaluator's endpoint id (See {@link #route(Object)})}).
    */
   private final int[] blockIdToStoreId;
   private final List<Integer> localBlocks;
@@ -183,7 +183,7 @@ public final class OperationRouter {
    * @param dataId an id of data
    * @return a pair of an id of block and and an Optional with an endpoint id of a target evaluator
    */
-  public Pair<Integer, Optional<String>> route(final long dataId) {
+  public Pair<Integer, Optional<String>> route(final K dataId) {
     final int blockId = blockResolver.getBlockId(dataId);
     final int memoryStoreId = blockIdToStoreId[blockId];
     if (memoryStoreId == localStoreId) {

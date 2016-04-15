@@ -26,7 +26,7 @@ import javax.inject.Inject;
  * It groups data keys into blocks with range-based partitioning, where block b takes
  * keys within [b * BLOCK_SIZE, (b+1) * BLOCK_SIZE).
  */
-public final class RangeBlockResolver implements BlockResolver {
+public final class RangeBlockResolver implements BlockResolver<Long> {
 
   private final long blockSize;
 
@@ -36,7 +36,7 @@ public final class RangeBlockResolver implements BlockResolver {
   }
 
   @Override
-  public int getBlockId(final long dataKey) {
+  public int getBlockId(final Long dataKey) {
     return (int) (dataKey / blockSize);
   }
 }

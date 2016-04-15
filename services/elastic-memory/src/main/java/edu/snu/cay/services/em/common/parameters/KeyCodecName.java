@@ -13,22 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.api;
+package edu.snu.cay.services.em.common.parameters;
 
-import edu.snu.cay.services.em.evaluator.impl.RangeBlockResolver;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-/**
- * An interface for store to resolve the block of specific data key.
- */
-@DefaultImplementation(RangeBlockResolver.class)
-public interface BlockResolver<K> {
-
-  /**
-   * Return a block id of data with {@code dataId}.
-   * The number of blocks is assumed to be within the integer range.
-   * @param dataKey a key of data
-   * @return an id of block that the data belongs to
-   */
-  int getBlockId(K dataKey);
+@NamedParameter(doc = "codec class for encoding and decoding key objects in EM")
+public class KeyCodecName implements Name<Codec> {
 }

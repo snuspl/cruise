@@ -72,7 +72,7 @@ public final class ComputeTask implements Task {
 
   private final ShuffleProvider shuffleProvider;
   private final String taskId;
-  private final MemoryStore memoryStore;
+  private final MemoryStore<Long> memoryStore;
   private final UserComputeTask userComputeTask;
   private final CommunicationGroupClient commGroup;
   private final Broadcast.Receiver<CtrlMessage> ctrlMessageBroadcast;
@@ -95,7 +95,7 @@ public final class ComputeTask implements Task {
                      final ShuffleProvider shuffleProvider,
                      @Parameter(DataPreRunShuffle.class) final String preRunShuffleName,
                      @Parameter(DataPostRunShuffle.class) final String postRunShuffleName,
-                     final MemoryStore memoryStore,
+                     final MemoryStore<Long> memoryStore,
                      final UserComputeTask userComputeTask,
                      @Parameter(TaskConfigurationOptions.Identifier.class) final String taskId,
                      @Parameter(CommunicationGroup.class) final String commGroupName,

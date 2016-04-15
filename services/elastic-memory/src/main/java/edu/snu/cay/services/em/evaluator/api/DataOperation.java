@@ -15,20 +15,8 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
-import edu.snu.cay.services.em.evaluator.impl.RangeBlockResolver;
-import org.apache.reef.tang.annotations.DefaultImplementation;
-
 /**
- * An interface for store to resolve the block of specific data key.
+ * DataOperation handled in MemoryStore.
  */
-@DefaultImplementation(RangeBlockResolver.class)
-public interface BlockResolver<K> {
-
-  /**
-   * Return a block id of data with {@code dataId}.
-   * The number of blocks is assumed to be within the integer range.
-   * @param dataKey a key of data
-   * @return an id of block that the data belongs to
-   */
-  int getBlockId(K dataKey);
+public interface DataOperation<K> {
 }
