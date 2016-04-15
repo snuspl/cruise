@@ -16,13 +16,17 @@
 package edu.snu.cay.services.em.evaluator.api;
 
 import edu.snu.cay.services.em.evaluator.impl.RangeBlockResolver;
+import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.DefaultImplementation;
+
+import java.util.List;
 
 /**
  * An interface for store to resolve the block of specific data key.
  */
 @DefaultImplementation(RangeBlockResolver.class)
-public interface BlockResolver<K> {
+public interface BlockResolver {
 
   /**
    * Return a block id of data with {@code dataId}.
@@ -30,5 +34,7 @@ public interface BlockResolver<K> {
    * @param dataKey a key of data
    * @return an id of block that the data belongs to
    */
-  int getBlockId(K dataKey);
+  int resolveBlock(long dataKey);
+
+  List<Pair<Integer, LongRange>> resolveBlocks(LongRange dataKeyRange);
 }

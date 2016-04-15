@@ -27,6 +27,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +55,7 @@ final class RemoteEMTask implements Task {
   /**
    * A router that is an internal component of EM. Here we use it in user code for testing purpose.
    */
-  private final OperationRouter<Long> router;
+  private final OperationRouter router;
 
   private final String taskId;
 
@@ -64,7 +65,7 @@ final class RemoteEMTask implements Task {
 
   @Inject
   private RemoteEMTask(final MemoryStore<Long> memorystore,
-                       final OperationRouter<Long> router,
+                       final OperationRouter router,
                        final AggregationSlave aggregationSlave,
                        final EvalSideMsgHandler msgHandler,
                        final SerializableCodec<String> codec,
@@ -101,7 +102,9 @@ final class RemoteEMTask implements Task {
     Pair<Long, Integer> outputPair;
     Map<Long, Integer> outputMap;
 
-    final boolean isLocalKey = !router.route(new LongRange(0, 1)).getFirst().isEmpty();
+    final List<LongRange> rangeList = new ArrayList<>(1);
+    rangeList.add(new LongRange(0, 1));
+    final boolean isLocalKey = !router.route(rangeList).getFirst().isEmpty();
 
     // 1. INITIAL STATE: check that the store does not contain DATA
     outputMap = memoryStore.getRange(DATA_TYPE, DATA_KEY0, DATA_KEY1);
