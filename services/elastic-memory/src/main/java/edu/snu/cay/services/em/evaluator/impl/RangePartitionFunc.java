@@ -26,7 +26,7 @@ import javax.inject.Inject;
  * It partitions ids with range-based partitioning, where partition p takes
  * keys within [p * PARTITION_SIZE, (p+1) * PARTITION_SIZE).
  */
-public final class RangePartitionFunc implements PartitionFunc {
+public final class RangePartitionFunc implements PartitionFunc<Long> {
 
   private final long partitionSize;
 
@@ -36,7 +36,7 @@ public final class RangePartitionFunc implements PartitionFunc {
   }
 
   @Override
-  public int getPartitionId(final long dataId) {
+  public int getPartitionId(final Long dataId) {
     return (int) (dataId / partitionSize);
   }
 }
