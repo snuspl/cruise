@@ -82,7 +82,8 @@ public final class VectorOpsTest {
     assertEquals(vec1.get(2), sliceVec.get(0), EPSILON);
     assertEquals(vec1.get(3), sliceVec.get(1), EPSILON);
 
-    vec1.set(0, 1.0);
+    // check that changes on sliceVec affect the original vector
+    sliceVec.set(0, 1.0);
     assertEquals(vec1.get(2), sliceVec.get(0), EPSILON);
     assertEquals(vec1.get(3), sliceVec.get(1), EPSILON);
   }
