@@ -91,7 +91,7 @@ public final class MemoryStoreTest {
           countDownLatch, memoryStore, index, numThreads, putsPerThread, 1, IndexParity.ALL_INDEX);
     }
     ThreadUtils.runConcurrently(threads);
-    final boolean allThreadsFinished = countDownLatch.await(90, TimeUnit.SECONDS);
+    final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
 
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
