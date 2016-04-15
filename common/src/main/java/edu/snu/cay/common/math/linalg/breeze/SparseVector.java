@@ -19,6 +19,7 @@ import breeze.linalg.NumericOps;
 import breeze.linalg.package$;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
+import org.apache.commons.lang.NotImplementedException;
 import scala.Tuple2;
 import scala.collection.JavaConversions;
 
@@ -75,6 +76,11 @@ public class SparseVector implements Vector {
   @Override
   public double get(final int index) {
     return breezeVector.array().apply(index);
+  }
+
+  @Override
+  public Vector slice(final int start, final int end) {
+    throw new NotImplementedException();
   }
 
   /**

@@ -17,6 +17,7 @@ package edu.snu.cay.common.math.linalg.breeze;
 
 import breeze.generic.UFunc;
 import breeze.linalg.SparseVector;
+import breeze.linalg.support.CanSlice;
 
 /**
  * Class for breeze vector operators.
@@ -29,6 +30,9 @@ public final class VectorOps {
   // set operators
   static final UFunc.InPlaceImpl2 SET_DD = breeze.linalg.DenseVector.dv_dv_UpdateOp_Double_OpSet();
   static final UFunc.InPlaceImpl2 SET_DS = breeze.linalg.DenseVector.dv_v_InPlaceOp_Double_OpSet();
+
+  // slice operators
+  static final CanSlice SLICE_D = breeze.linalg.DenseVector.canSlice();
 
   // scalar addition operator
   static final UFunc.UImpl2 ADD_DT = breeze.linalg.DenseVector.dv_s_Op_Double_OpAdd();

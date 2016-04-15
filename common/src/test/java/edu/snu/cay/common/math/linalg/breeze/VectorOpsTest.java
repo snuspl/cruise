@@ -29,6 +29,7 @@ import static org.junit.Assert.assertEquals;
  */
 public final class VectorOpsTest {
 
+  private static final double EPSILON = 0.01;
   private VectorFactory factory;
 
   @Before
@@ -75,6 +76,15 @@ public final class VectorOpsTest {
     vec4.subi(1);
     vec3.addi(-2);
     assertEquals(vec3, vec4);
+
+    final Vector sliceVec = vec1.slice(2, 4);
+    assertEquals(2, sliceVec.length());
+    assertEquals(vec1.get(2), sliceVec.get(0), EPSILON);
+    assertEquals(vec1.get(3), sliceVec.get(1), EPSILON);
+
+    vec1.set(0, 1.0);
+    assertEquals(vec1.get(2), sliceVec.get(0), EPSILON);
+    assertEquals(vec1.get(3), sliceVec.get(1), EPSILON);
   }
 
   /**

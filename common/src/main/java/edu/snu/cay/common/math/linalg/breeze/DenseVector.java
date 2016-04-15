@@ -21,6 +21,7 @@ import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import scala.Tuple2;
 import scala.collection.JavaConversions;
+import scala.runtime.RichInt;
 
 import java.util.Iterator;
 
@@ -76,6 +77,16 @@ public class DenseVector implements Vector {
   public double get(final int index) {
     return breezeVector.apply(index);
   }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public DenseVector slice(final int start, final int end) {
+    return new DenseVector((breeze.linalg.DenseVector<Double>)
+        breezeVector.apply(new RichInt(start).until(end), VectorOps.SLICE_D));
+  }
+
 
   /**
    * Sets an element to given value.
