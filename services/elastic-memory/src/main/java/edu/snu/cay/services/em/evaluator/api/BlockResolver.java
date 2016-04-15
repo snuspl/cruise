@@ -17,10 +17,9 @@ package edu.snu.cay.services.em.evaluator.api;
 
 import edu.snu.cay.services.em.evaluator.impl.RangeBlockResolver;
 import org.apache.commons.lang.math.LongRange;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import java.util.List;
+import java.util.Map;
 
 /**
  * An interface for store to resolve the block of specific data key.
@@ -36,5 +35,5 @@ public interface BlockResolver {
    */
   int resolveBlock(long dataKey);
 
-  List<Pair<Integer, LongRange>> resolveBlocks(LongRange dataKeyRange);
+  Map<Integer, LongRange> resolveBlocks(LongRange dataKeyRange);
 }

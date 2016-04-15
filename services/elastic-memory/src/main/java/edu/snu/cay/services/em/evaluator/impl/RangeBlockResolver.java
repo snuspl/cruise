@@ -18,12 +18,11 @@ package edu.snu.cay.services.em.evaluator.impl;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import org.apache.commons.lang.math.LongRange;
-import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * An implementation of BlockResolver.
@@ -45,25 +44,25 @@ public final class RangeBlockResolver implements BlockResolver {
   }
 
   @Override
-  public List<Pair<Integer, LongRange>> resolveBlocks(final LongRange dataKeyRange) {
+  public Map<Integer, LongRange> resolveBlocks(final LongRange dataKeyRange) {
     final long headKey = dataKeyRange.getMinimumLong();
     final long tailKey = dataKeyRange.getMaximumLong();
 
     final int headBlockId = (int) (headKey / blockSize);
     final int tailBlockId = (int) (tailKey / blockSize);
 
-    final List<Pair<Integer, LongRange>> blockToKeyRange = new LinkedList<>();
+    final Map<Integer, LongRange> blockToKeyRange = new HashMap<>();
 
     if (headBlockId == tailBlockId) {
-      blockToKeyRange.add(new Pair<>(headBlockId, dataKeyRange));
+      blockToKeyRange.put(headBlockId, dataKeyRange);
     } else {
-      blockToKeyRange.add(new Pair<>(headBlockId, new LongRange(headKey, (headBlockId + 1) * blockSize - 1)));
+      blockToKeyRange.put(headBlockId, new LongRange(headKey, (headBlockId + 1) * blockSize - 1));
 
       for (int blockId = headBlockId + 1; blockId < tailBlockId; blockId++) {
-        blockToKeyRange.add(new Pair<>(blockId, new LongRange(blockId * blockSize, (blockId + 1) * blockSize - 1)));
+        blockToKeyRange.put(blockId, new LongRange(blockId * blockSize, (blockId + 1) * blockSize - 1));
       }
 
-      blockToKeyRange.add(new Pair<>(tailBlockId, new LongRange(tailBlockId * blockSize, tailKey)));
+      blockToKeyRange.put(tailBlockId, new LongRange(tailBlockId * blockSize, tailKey));
     }
 
     return blockToKeyRange;

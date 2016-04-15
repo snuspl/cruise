@@ -99,21 +99,21 @@ public final class OperationRouter {
   /**
    * Routes the data key range of the operation.
    * @param dataKeyRanges a range of data keys
-   * @return a pair of a list of pair between a partition id and a corresponding sub key range,
+   * @return a pair of a map between a partition id and a corresponding sub key range,
    * and a map between evaluator id and corresponding sub key ranges.
    */
-  public Pair<List<Pair<Integer, LongRange>>, Map<String, List<LongRange>>> route(final List<LongRange> dataKeyRanges) {
-    final List<Pair<Integer, LongRange>> localBlockToSubKeyRangeList = new LinkedList<>();
+  public Pair<Map<Integer, LongRange>, Map<String, List<LongRange>>> route(final List<LongRange> dataKeyRanges) {
+    final Map<Integer, LongRange> localBlockToSubKeyRangeMap = new HashMap<>();
     final Map<String, List<LongRange>> remoteEvalToSubKeyRangesMap = new HashMap<>();
 
     // dataKeyRanges has at least one element
     // In most cases, there are only one range in dataKeyRanges
     for (final LongRange keyRange : dataKeyRanges) {
 
-      final List<Pair<Integer, LongRange>> blockToSubKeyRangeList = resolveBlocks(keyRange);
-      for (final Pair<Integer, LongRange> blockToSubKeyRange : blockToSubKeyRangeList) {
-        final int blockId = blockToSubKeyRange.getFirst();
-        final LongRange subKeyRange = blockToSubKeyRange.getSecond();
+      final Map<Integer, LongRange> blockToSubKeyRangeMap = resolveBlocks(keyRange);
+      for (final Map.Entry<Integer, LongRange> blockToSubKeyRange : blockToSubKeyRangeMap.entrySet()) {
+        final int blockId = blockToSubKeyRange.getKey();
+        final LongRange subKeyRange = blockToSubKeyRange.getValue();
 
         final Optional<String> remoteEvalId = resolveEval(blockId);
 
@@ -125,19 +125,30 @@ public final class OperationRouter {
           final List<LongRange> remoteRangeList = remoteEvalToSubKeyRangesMap.get(remoteEvalId.get());
           remoteRangeList.add(subKeyRange);
         } else {
-          localBlockToSubKeyRangeList.add(blockToSubKeyRange);
+          localBlockToSubKeyRangeMap.put(blockId, subKeyRange);
         }
       }
     }
 
-    return new Pair<>(localBlockToSubKeyRangeList, remoteEvalToSubKeyRangesMap);
+    return new Pair<>(localBlockToSubKeyRangeMap, remoteEvalToSubKeyRangesMap);
   }
 
+  /**
+   * Resolves a block id for a data key.
+   * @param dataKey a key of data
+   * @return a block id
+   */
   public int resolveBlock(final Long dataKey) {
     return blockResolver.resolveBlock(dataKey);
   }
 
-  public List<Pair<Integer, LongRange>> resolveBlocks(final LongRange dataKeyRange) {
+  /**
+   * Resolves block ids for a range of data keys.
+   * Each block contains a sub key range.
+   * @param dataKeyRange a range of data keys
+   * @return a map between a block id and a range of data keys
+   */
+  public Map<Integer, LongRange> resolveBlocks(final LongRange dataKeyRange) {
     return blockResolver.resolveBlocks(dataKeyRange);
   }
 
@@ -150,6 +161,10 @@ public final class OperationRouter {
     }
   }
 
+  /**
+   * Returns a list of local block ids.
+   * @return a list of block ids.
+   */
   public List<Integer> getLocalBlockIds() {
     return Collections.unmodifiableList(localBlocks);
   }
