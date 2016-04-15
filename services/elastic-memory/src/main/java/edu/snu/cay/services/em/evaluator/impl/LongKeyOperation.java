@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  * It maintains metadata and states of the operation during execution.
  */
 @Private
-public final class LongKeyOperation<T> implements DataOperation<Long> {
+public final class LongKeyOperation<V> implements DataOperation<Long> {
 
   /**
    * Metadata of the operation.
@@ -43,7 +43,7 @@ public final class LongKeyOperation<T> implements DataOperation<Long> {
   private final DataOpType operationType;
   private final String dataType;
   private final List<LongRange> dataKeyRanges;
-  private final Optional<SortedMap<Long, T>> dataKeyValueMap;
+  private final Optional<SortedMap<Long, V>> dataKeyValueMap;
 
   /**
    * States of the operation.
@@ -53,9 +53,9 @@ public final class LongKeyOperation<T> implements DataOperation<Long> {
   // ranges that remote sub operations failed to execute due to wrong routing
   // it happens only when ownership of data key are updated, unknown to the original store
   private final List<AvroLongRange> failedRanges = new LinkedList<>();
-  private final ConcurrentMap<Long, T> outputData = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Long, V> outputData = new ConcurrentHashMap<>();
 
-  private static <T> Optional<SortedMap<Long, T>> unmodifiableMap(final Optional<SortedMap<Long, T>> map) {
+  private static <V> Optional<SortedMap<Long, V>> unmodifiableMap(final Optional<SortedMap<Long, V>> map) {
     if (map.isPresent()) {
       return Optional.of(Collections.unmodifiableSortedMap(map.get()));
     } else {
@@ -76,7 +76,7 @@ public final class LongKeyOperation<T> implements DataOperation<Long> {
    */
   LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
                    final String dataType, final List<LongRange> dataKeyRanges,
-                   final Optional<SortedMap<Long, T>> dataKeyValueMap) {
+                   final Optional<SortedMap<Long, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -98,7 +98,7 @@ public final class LongKeyOperation<T> implements DataOperation<Long> {
    */
   LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
                    final String dataType, final LongRange dataKeyRange,
-                   final Optional<SortedMap<Long, T>> dataKeyValueMap) {
+                   final Optional<SortedMap<Long, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -123,7 +123,7 @@ public final class LongKeyOperation<T> implements DataOperation<Long> {
    *                  It is empty when the operation is one of GET or REMOVE.
    */
   LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                   final String dataType, final long dataKey, final Optional<T> dataValue) {
+                   final String dataType, final long dataKey, final Optional<V> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -133,7 +133,7 @@ public final class LongKeyOperation<T> implements DataOperation<Long> {
     keyRanges.add(new LongRange(dataKey));
     this.dataKeyRanges = keyRanges;
 
-    final SortedMap<Long, T> keyValueMap;
+    final SortedMap<Long, V> keyValueMap;
     if (dataValue.isPresent()) {
       keyValueMap = new TreeMap<>();
       keyValueMap.put(dataKey, dataValue.get());
@@ -193,7 +193,7 @@ public final class LongKeyOperation<T> implements DataOperation<Long> {
    * It returns an empty Optional for GET and REMOVE operations.
    * @return an Optional with the map of input keys and its values
    */
-  Optional<SortedMap<Long, T>> getDataKeyValueMap() {
+  Optional<SortedMap<Long, V>> getDataKeyValueMap() {
     return dataKeyValueMap;
   }
 
@@ -223,7 +223,7 @@ public final class LongKeyOperation<T> implements DataOperation<Long> {
    * @param output an output data of the sub operation
    * @param failedRangeList a list of failed key ranges of the sub operation
    */
-  void commitResult(final Map<Long, T> output, final List<AvroLongRange> failedRangeList) {
+  void commitResult(final Map<Long, V> output, final List<AvroLongRange> failedRangeList) {
     this.outputData.putAll(output);
     synchronized (failedRanges) {
       this.failedRanges.addAll(failedRangeList);
@@ -245,7 +245,7 @@ public final class LongKeyOperation<T> implements DataOperation<Long> {
    * It returns an empty map for PUT operation.
    * @return an empty map with the output data
    */
-  Map<Long, T> getOutputData() {
+  Map<Long, V> getOutputData() {
     return Collections.unmodifiableMap(outputData);
   }
 }
