@@ -17,8 +17,9 @@ package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
+import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
-import edu.snu.cay.services.em.common.parameters.NumPartitions;
+import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
@@ -56,19 +57,22 @@ public final class ElasticMemoryConfiguration {
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
   private final String driverId;
-  private final int numPartitions;
+  private final int numTotalBlocks;
+  private final int numStoreThreads;
   private final PartitionManager partitionManager;
 
   @Inject
   private ElasticMemoryConfiguration(final NameServer nameServer,
                                      final LocalAddressProvider localAddressProvider,
                                      @Parameter(DriverIdentifier.class) final String driverId,
-                                     @Parameter(NumPartitions.class) final int numPartitions,
+                                     @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
+                                     @Parameter(NumStoreThreads.class) final int numStoreThreads,
                                      final PartitionManager partitionManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
-    this.numPartitions = numPartitions;
+    this.numTotalBlocks = numTotalBlocks;
+    this.numStoreThreads = numStoreThreads;
     this.partitionManager = partitionManager;
   }
 
@@ -118,8 +122,8 @@ public final class ElasticMemoryConfiguration {
 
   public Configuration getServiceConfigurationWithoutNameResolver(final String contextId,
                                                                   final int numInitialEvals) {
-    if (numPartitions < numInitialEvals) {
-      throw new RuntimeException("NumPartitions should be greater than or equal to the number of NumInitialEvals.");
+    if (numTotalBlocks < numInitialEvals) {
+      throw new RuntimeException("NumTotalBlocks should be greater than or equal to the number of NumInitialEvals.");
     }
 
     final Configuration networkConf = getNetworkConfigurationBuilder()
@@ -138,7 +142,8 @@ public final class ElasticMemoryConfiguration {
         .bindImplementation(RemoteAccessibleMemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(memoryStoreId))
-        .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
+        .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
+        .bindNamedParameter(NumStoreThreads.class, Integer.toString(numStoreThreads))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(numInitialEvals))
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class) // TODO #441: Make it configurable later.
         .build();

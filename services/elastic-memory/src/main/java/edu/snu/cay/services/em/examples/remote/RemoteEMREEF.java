@@ -17,6 +17,7 @@
 package edu.snu.cay.services.em.examples.remote;
 
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.services.em.common.parameters.ElasticMemoryParameters;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
@@ -65,6 +66,7 @@ public final class RemoteEMREEF {
     final CommandLine cl = new CommandLine(cb);
 
     cl.registerShortNameOfClass(OnLocal.class);
+    ElasticMemoryParameters.registerShortNames(cl);
     HTraceParameters.registerShortNames(cl);
 
     cl.processCommandLine(args);

@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
+import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -48,6 +49,7 @@ import static org.junit.Assert.*;
  * Test class for checking the thread safeness of MemoryStore.
  */
 public final class MemoryStoreTest {
+  private static final int NUM_TOTAL_BLOCKS = 32;
 
   private static final String DATA_TYPE = "DATA_TYPE";
   private static final String MSG_SIZE_ASSERTION = "size of final memory store";
@@ -64,6 +66,7 @@ public final class MemoryStoreTest {
         .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(0))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(1))
+        .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_TOTAL_BLOCKS))
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);

@@ -16,14 +16,13 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
+import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
-import edu.snu.cay.services.em.common.parameters.NumPartitions;
-import edu.snu.cay.services.em.evaluator.api.PartitionFunc;
-import edu.snu.cay.utils.LongRangeUtils;
-import org.apache.commons.lang.math.LongRange;
+import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.util.Optional;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -31,25 +30,24 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * OperationRouter that redirects incoming operations on specific data ids to corresponding evaluators.
+ * OperationRouter that redirects incoming operations on specific data ids to corresponding blocks and evaluators.
+ * @param <K> type of data key
  */
 @Private
 public final class OperationRouter<K> {
 
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 
-  private String localEndPointId;
-
   private String evalPrefix;
 
-  private final int localMemoryStoreId;
+  private final int localStoreId;
 
-  private final PartitionFunc partitionFunc;
+  private final BlockResolver<K> blockResolver;
 
   /**
-   * The number of partitions.
+   * The number of total blocks.
    */
-  private final int numPartitions;
+  private final int numTotalBlocks;
 
   /**
    * The number of initial Evaluators.
@@ -57,125 +55,128 @@ public final class OperationRouter<K> {
   private final int numInitialEvals;
 
   /**
-   * The location of partitions. It keeps just an index of MemoryStores,
-   * so prefix should be added to get the Evaluator's endpoint id (See {@link #route(Object)})}).
+   * The location of blocks. It keeps just an index of MemoryStores,
+   * so prefix should be added to get the Evaluator's endpoint id.
    */
-  private final int[] pIdToMemoryStoreId;
+  private final int[] blockIdToStoreId;
+  private final List<Integer> localBlocks;
 
+  // TODO #380: we have to improve router to provide different routing tables for each dataType.
   @Inject
-  private OperationRouter(final PartitionFunc partitionFunc,
-                          @Parameter(NumPartitions.class) final int numPartitions,
+  private OperationRouter(final BlockResolver<K> blockResolver,
+                          @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                           @Parameter(NumInitialEvals.class) final int numInitialEvals,
                           @Parameter(MemoryStoreId.class) final int memoryStoreId) {
-    this.partitionFunc = partitionFunc;
-    this.localMemoryStoreId = memoryStoreId;
-    this.numPartitions = numPartitions;
+    this.blockResolver = blockResolver;
+    this.localStoreId = memoryStoreId;
+    this.numTotalBlocks = numTotalBlocks;
     this.numInitialEvals = numInitialEvals;
-    this.pIdToMemoryStoreId = new int[numPartitions];
+    this.localBlocks = new ArrayList<>(numTotalBlocks / numInitialEvals + 1); // +1 for remainders
+    this.blockIdToStoreId = new int[numTotalBlocks];
+    initRouter();
   }
 
   /**
-   * Initialize the router.
+   * Initializes the routing table and its local block list.
+   */
+  private void initRouter() {
+    for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
+      localBlocks.add(blockId);
+    }
+
+    // blocks are initially distributed across Evaluators in round-robin.
+    for (int blockIdx = 0; blockIdx < numTotalBlocks; blockIdx++) {
+      final int storeIdx = blockIdx % numInitialEvals;
+      blockIdToStoreId[blockIdx] = storeIdx;
+    }
+  }
+
+  /**
+   * Initializes the router, providing a prefix of evaluator to locate remote evaluators.
+   * It is invoked when the service context is started.
    */
   public void initialize(final String endPointId) {
-    this.localEndPointId = endPointId;
     this.evalPrefix = endPointId.split("-")[0];
-    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", localEndPointId);
-
-    // Partitions are initially distributed across Evaluators in round-robin.
-    for (int partitionId = 0; partitionId < numPartitions; partitionId++) {
-      final int memoryStoreId = partitionId % numInitialEvals;
-      pIdToMemoryStoreId[partitionId] = memoryStoreId;
-    }
+    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endPointId);
   }
 
   /**
-   * Decompose a list of key ranges into local ranges and remote ranges.
-   * TODO #424: improve and optimize routing for range
-   * @param dataKeyRanges a list of key ranges
-   * @return a pair of a list of local key range and
-   * a map composed of an endpoint id of remote evaluator and a corresponding key range list.
+   * Routes the data key range of the operation.
+   * @param dataKeyRanges a range of data keys
+   * @return a pair of a map between a block id and a corresponding sub key range,
+   * and a map between evaluator id and corresponding sub key ranges.
    */
-  public Pair<List<LongRange>, Map<String, List<LongRange>>> route(final List<LongRange> dataKeyRanges) {
-    final List<LongRange> localKeyRanges = new LinkedList<>();
-    final Map<String, List<LongRange>> remoteKeyRangesMap = new HashMap<>();
+  public Pair<Map<Integer, Pair<K, K>>, Map<String, List<Pair<K, K>>>> route(final List<Pair<K, K>> dataKeyRanges) {
+    final Map<Integer, Pair<K, K>> localBlockToSubKeyRangeMap = new HashMap<>();
+    final Map<String, List<Pair<K, K>>> remoteEvalToSubKeyRangesMap = new HashMap<>();
 
-    // perform routing for each dataKeyRanges of the operation
-    for (final LongRange dataKeyRange : dataKeyRanges) {
-      final Pair<List<LongRange>, Map<String, List<LongRange>>> routingResult = route(dataKeyRange);
+    // dataKeyRanges has at least one element
+    // In most cases, there are only one range in dataKeyRanges
+    for (final Pair<K, K> keyRange : dataKeyRanges) {
 
-      final Map<String, List<LongRange>> partialRemoteKeyRangesMap = routingResult.getSecond();
+      final Map<Integer, Pair<K, K>> blockToSubKeyRangeMap = resolveBlocks(keyRange.getFirst(), keyRange.getSecond());
+      for (final Map.Entry<Integer, Pair<K, K>> blockToSubKeyRange : blockToSubKeyRangeMap.entrySet()) {
+        final int blockId = blockToSubKeyRange.getKey();
+        final Pair<K, K> minMaxKeyPair = blockToSubKeyRange.getValue();
 
-      // merge remote sub operations that targets same evaluator
-      for (final Map.Entry<String, List<LongRange>> remoteEntry : partialRemoteKeyRangesMap.entrySet()) {
-        final List<LongRange> remoteRanges = remoteKeyRangesMap.get(remoteEntry.getKey());
-        if (remoteRanges != null) {
-          remoteRanges.addAll(remoteEntry.getValue());
+        final Optional<String> remoteEvalId = resolveEval(blockId);
+
+        // aggregate sub ranges for the same evaluator
+        if (remoteEvalId.isPresent()) {
+          if (!remoteEvalToSubKeyRangesMap.containsKey(remoteEvalId.get())) {
+            remoteEvalToSubKeyRangesMap.put(remoteEvalId.get(), new LinkedList<Pair<K, K>>());
+          }
+          final List<Pair<K, K>> remoteRangeList = remoteEvalToSubKeyRangesMap.get(remoteEvalId.get());
+          remoteRangeList.add(minMaxKeyPair);
         } else {
-          remoteKeyRangesMap.put(remoteEntry.getKey(), remoteEntry.getValue());
+          localBlockToSubKeyRangeMap.put(blockId, minMaxKeyPair);
         }
       }
-
-      final List<LongRange> partialLocalKeyRanges = routingResult.getFirst();
-      localKeyRanges.addAll(partialLocalKeyRanges);
     }
-    return new Pair<>(localKeyRanges, remoteKeyRangesMap);
+
+    return new Pair<>(localBlockToSubKeyRangeMap, remoteEvalToSubKeyRangesMap);
   }
 
   /**
-   * Decompose a key range into local ranges and remote ranges.
-   * @param dataKeyRange a key range
-   * @return a pair of a list of local key range and
-   * a map composed of an endpoint id of remote evaluator and a corresponding key range list.
+   * Resolves a block id for a data key.
+   * @param dataKey a key of data
+   * @return a block id
    */
-  public Pair<List<LongRange>, Map<String, List<LongRange>>> route(final LongRange dataKeyRange) {
-    List<LongRange> localKeyRanges = Collections.EMPTY_LIST;
-    final Map<String, List<LongRange>> remoteKeyRanges = new HashMap<>();
-
-    final Map<Integer, SortedSet<Long>> partitionedKeysMap = new HashMap<>();
-
-    for (long dataKey = dataKeyRange.getMinimumLong(); dataKey <= dataKeyRange.getMaximumLong(); dataKey++) {
-      final int partitionId = partitionFunc.getPartitionId(dataKey);
-      if (!partitionedKeysMap.containsKey(partitionId)) {
-        partitionedKeysMap.put(partitionId, new TreeSet<Long>());
-      }
-      final SortedSet<Long> dataKeys = partitionedKeysMap.get(partitionId);
-      dataKeys.add(dataKey);
-    }
-
-    // translate ids to ranges
-    for (final Map.Entry<Integer, SortedSet<Long>> partitionedKeysEntry : partitionedKeysMap.entrySet()) {
-      final List<LongRange> rangeList =
-          new ArrayList<>(LongRangeUtils.generateDenseLongRanges(partitionedKeysEntry.getValue()));
-      final int partitionId = partitionedKeysEntry.getKey();
-      final int memoryStoreId = pIdToMemoryStoreId[partitionId];
-      if (memoryStoreId == localMemoryStoreId) {
-        localKeyRanges = rangeList;
-      } else {
-        remoteKeyRanges.put(getEvalId(memoryStoreId), rangeList);
-      }
-    }
-
-    return new Pair<>(localKeyRanges, remoteKeyRanges);
+  int resolveBlock(final K dataKey) {
+    return blockResolver.resolveBlock(dataKey);
   }
 
   /**
-   * Returns the routing result for the given {@code dataId}.
-   * It returns the endpoint id of the evaluator that owns the data whose id is {@code dataId}.
-   * A boolean value is piggybacked, which indicates whether the data is in the local memory store.
-   * So the caller does not need to check that the target evaluator is local or not.
-   *
-   * @param dataId an id of data
-   * @return a pair of a boolean representing locality of data and an endpoint id of a target evaluator
+   * Resolves block ids for a range of data keys, which may span over multiple blocks.
+   * Each block contains a sub key range.
+   * @param minKey a minimum key of the range
+   * @param maxKey a maximum key of the range
+   * @return a map between a block id and a range of data keys
    */
-  public Pair<Boolean, String> route(final K dataId) {
-    final int partitionId = partitionFunc.getPartitionId(dataId);
-    final int memoryStoreId = pIdToMemoryStoreId[partitionId];
-    if (memoryStoreId == localMemoryStoreId) {
-      return new Pair<>(true, localEndPointId);
+  Map<Integer, Pair<K, K>> resolveBlocks(final K minKey, final K maxKey) {
+    return blockResolver.resolveBlocksForOrderedKeys(minKey, maxKey);
+  }
+
+  /**
+   * Resolves an evaluator id for a block id.
+   * It returns empty when the block belongs to the local MemoryStore.
+   * @param blockId an id of block
+   * @return an Optional with an evaluator id
+   */
+  Optional<String> resolveEval(final int blockId) {
+    final int memoryStoreId = blockIdToStoreId[blockId];
+    if (memoryStoreId == localStoreId) {
+      return Optional.empty();
     } else {
-      return new Pair<>(false, getEvalId(memoryStoreId));
+      return Optional.of(getEvalId(memoryStoreId));
     }
+  }
+
+  /**
+   * @return a list of block ids in the local MemoryStore
+   */
+  List<Integer> getLocalBlockIds() {
+    return Collections.unmodifiableList(localBlocks);
   }
 
   /**

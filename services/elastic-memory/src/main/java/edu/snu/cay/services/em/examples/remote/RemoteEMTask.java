@@ -19,7 +19,6 @@ import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -27,6 +26,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +64,7 @@ final class RemoteEMTask implements Task {
 
   @Inject
   private RemoteEMTask(final MemoryStore<Long> memorystore,
-                       final OperationRouter<Long> router,
+                       final OperationRouter router,
                        final AggregationSlave aggregationSlave,
                        final EvalSideMsgHandler msgHandler,
                        final SerializableCodec<String> codec,
@@ -101,7 +101,9 @@ final class RemoteEMTask implements Task {
     Pair<Long, Integer> outputPair;
     Map<Long, Integer> outputMap;
 
-    final boolean isLocalKey = !router.route(new LongRange(0, 1)).getFirst().isEmpty();
+    final List<Pair<Long, Long>> rangeList = new ArrayList<>(1);
+    rangeList.add(new Pair<>(0L, 1L));
+    final boolean isLocalKey = !router.route(rangeList).getFirst().isEmpty();
 
     // 1. INITIAL STATE: check that the store does not contain DATA
     outputMap = memoryStore.getRange(DATA_TYPE, DATA_KEY0, DATA_KEY1);

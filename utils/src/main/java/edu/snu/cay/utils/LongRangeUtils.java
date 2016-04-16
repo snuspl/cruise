@@ -16,13 +16,9 @@
 package edu.snu.cay.utils;
 
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.io.network.util.Pair;
 
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.NavigableSet;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * Utilities for dealing with {@code LongRange}s.
@@ -40,7 +36,7 @@ public final class LongRangeUtils {
    * It guarantees the total order if the ranges are disjoint,
    * but when the ranges are overlapping, the order is not determined..
    */
-  private static final Comparator<LongRange> LONG_RANGE_COMPARATOR =
+  public static final Comparator<LongRange> LONG_RANGE_COMPARATOR =
       new Comparator<LongRange>() {
         @Override
         public int compare(final LongRange o1, final LongRange o2) {
@@ -169,5 +165,31 @@ public final class LongRangeUtils {
 
       return complement;
     }
+  }
+
+  /**
+   * Converts a list of LongRanges to the list of Pairs.
+   * @param rangeList the list of long ranges.
+   * @return the list of pairs, where each pair corresponds to the original range.
+   */
+  public static List<Pair<Long, Long>> fromRangesToPairs(final List<LongRange> rangeList) {
+    final List<Pair<Long, Long>> pairList = new ArrayList<>(rangeList.size());
+    for (final LongRange range : rangeList) {
+      pairList.add(new Pair<>(range.getMinimumLong(), range.getMaximumLong()));
+    }
+    return pairList;
+  }
+
+  /**
+   * Converts a list of LongRanges to the list of Pairs.
+   * @param pairList the list of long pairs.
+   * @return the list of ranges, where each range corresponds to the original pair.
+   */
+  public static List<LongRange> fromPairsToRanges(final List<Pair<Long, Long>> pairList) {
+    final List<LongRange> rangeList = new ArrayList<>(pairList.size());
+    for (final Pair<Long, Long> pair : pairList) {
+      rangeList.add(new LongRange(pair.getFirst(), pair.getSecond()));
+    }
+    return rangeList;
   }
 }

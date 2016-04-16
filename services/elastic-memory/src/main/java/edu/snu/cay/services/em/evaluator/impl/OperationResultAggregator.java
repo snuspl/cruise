@@ -16,11 +16,21 @@
 package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.avro.AvroLongRange;
+import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
+import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
+import edu.snu.cay.services.em.utils.AvroUtils;
+import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.io.serialization.Codec;
+import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.util.Optional;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
 import javax.inject.Inject;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -34,15 +44,22 @@ import java.util.logging.Logger;
 final class OperationResultAggregator {
   private static final Logger LOG = Logger.getLogger(OperationResultAggregator.class.getName());
 
-  private final ConcurrentMap<String, LongKeyOperation> ongoingOperations = new ConcurrentHashMap<>();
+  /**
+   * A map holding ongoing operations until they finish.
+   * It only maintains operations requested from local clients.
+   */
+  private final ConcurrentMap<String, LongKeyOperation> ongoingOp = new ConcurrentHashMap<>();
 
   private static final long TIMEOUT_MS = 40000;
 
   private final Serializer serializer;
+  private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   @Inject
-  private OperationResultAggregator(final Serializer serializer) {
+  private OperationResultAggregator(final Serializer serializer,
+                                    final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
     this.serializer = serializer;
+    this.msgSender = msgSender;
   }
 
   /**
@@ -50,48 +67,60 @@ final class OperationResultAggregator {
    * Registered operations would be removed by {@code submitResultAndWaitRemoteOps} method
    * when the operations are finished.
    */
-  void registerOperation(final LongKeyOperation operation, final int numSubOperations) {
-    final LongKeyOperation unhandledOperation = ongoingOperations.put(operation.getOperationId(), operation);
-    operation.setNumSubOps(numSubOperations);
+  void registerOp(final LongKeyOperation operation, final int numSubOperations) {
 
-    if (unhandledOperation != null) {
-      LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}", unhandledOperation);
+    if (operation.isFromLocalClient()) {
+      final LongKeyOperation unhandledOperation = ongoingOp.put(operation.getOperationId(), operation);
+      if (unhandledOperation != null) {
+        LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}",
+            unhandledOperation.getOperationId());
+      }
     }
+
+    operation.setNumSubOps(numSubOperations);
   }
 
   /**
    * Deregisters an operation after its remote access is finished.
    */
-  private void deregisterOperation(final String operationId) {
-    ongoingOperations.remove(operationId);
+  private void deregisterOp(final String operationId) {
+    ongoingOp.remove(operationId);
   }
 
   /**
    * Handles the result of data operation processed by local memory store.
    * It waits until all remote sub operations are finished and their outputs are fully aggregated.
    */
-  <T> void submitLocalResult(final LongKeyOperation<T> operation, final Map<Long, T> localOutput) {
-    operation.commitResult(localOutput, Collections.EMPTY_LIST);
+  <V> void submitLocalResult(final LongKeyOperation<V> operation, final Map<Long, V> localOutput,
+                             final List<LongRange> failedRanges) {
+    operation.commitResult(localOutput, failedRanges);
 
-    // wait until all sub operations are finished
-    try {
-      if (!operation.waitOperation(TIMEOUT_MS)) {
-        LOG.log(Level.SEVERE, "operation timeout");
+    if (!operation.isFromLocalClient()) {
+      if (operation.getNumSubOps() <= 0) {
+        sendResultToOrigin(operation);
       }
-    } catch (final InterruptedException e) {
-      LOG.log(Level.SEVERE, "Interrupted while waiting for executing remote operation", e);
-    } finally {
-      deregisterOperation(operation.getOperationId());
+    } else {
+      // wait until all remote sub operations are finished
+      try {
+        if (!operation.waitOperation(TIMEOUT_MS)) {
+          LOG.log(Level.SEVERE, "Operation timeout. Operation: {0}", operation);
+        }
+      } catch (final InterruptedException e) {
+        LOG.log(Level.SEVERE, "Interrupted while waiting for executing remote operation", e);
+      } finally {
+        deregisterOp(operation.getOperationId());
+      }
+      // TODO #421: handle failures of operation (timeout, failed to locate).
     }
-    // TODO #421: handle failures of operation (timeout, failed to locate).
   }
 
   /**
    * Aggregates the result of data operation sent from remote memory store.
    */
-  <T> void submitRemoteResult(final String operationId, final List<UnitIdPair> remoteOutput,
-                              final List<AvroLongRange> failedRanges) {
-    final LongKeyOperation<T> operation = ongoingOperations.get(operationId);
+  <V> void submitRemoteResult(final String operationId, final List<UnitIdPair> remoteOutput,
+                              final List<AvroLongRange> failedAvroRanges) {
+
+    final LongKeyOperation<V> operation = ongoingOp.get(operationId);
 
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
@@ -100,11 +129,45 @@ final class OperationResultAggregator {
 
     final Codec codec = serializer.getCodec(operation.getDataType());
 
-    final Map<Long, T> dataKeyValueMap = new HashMap<>(remoteOutput.size());
+    final Map<Long, V> dataKeyValueMap = new HashMap<>(remoteOutput.size());
     for (final UnitIdPair dataKeyValuePair : remoteOutput) {
-      dataKeyValueMap.put(dataKeyValuePair.getId(), (T) codec.decode(dataKeyValuePair.getUnit().array()));
+      dataKeyValueMap.put(dataKeyValuePair.getId(), (V) codec.decode(dataKeyValuePair.getUnit().array()));
+    }
+
+    final List<LongRange> failedRanges = new ArrayList<>(failedAvroRanges.size());
+    for (final AvroLongRange avroRange : failedAvroRanges) {
+      failedRanges.add(AvroUtils.fromAvroLongRange(avroRange));
     }
 
     operation.commitResult(dataKeyValueMap, failedRanges);
+  }
+
+  /**
+   * Sends the result to the original store.
+   */
+  private <T> void sendResultToOrigin(final LongKeyOperation<T> operation) {
+    // send the original store the result (RemoteOpResultMsg)
+    try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
+      final String dataType = operation.getDataType();
+      final Codec codec = serializer.getCodec(dataType);
+
+      final Optional<String> origEvalId = operation.getOrigEvalId();
+      final Map<Long, T> outputData = operation.getOutputData();
+
+      final List<UnitIdPair> dataKVPairList;
+      if (operation.getOperationType() == DataOpType.GET || operation.getOperationType() == DataOpType.REMOVE) {
+        dataKVPairList = new ArrayList<>(outputData.size());
+
+        for (final Map.Entry<Long, T> dataKVPair : outputData.entrySet()) {
+          final ByteBuffer encodedData = ByteBuffer.wrap(codec.encode(dataKVPair.getValue()));
+          dataKVPairList.add(new UnitIdPair(encodedData, dataKVPair.getKey()));
+        }
+      } else {
+        dataKVPairList = Collections.EMPTY_LIST;
+      }
+
+      msgSender.get().sendRemoteOpResultMsg(origEvalId.get(), dataKVPairList, operation.getFailedRanges(),
+          operation.getOperationId(), TraceInfo.fromSpan(traceScope.getSpan()));
+    }
   }
 }
