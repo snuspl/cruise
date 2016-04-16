@@ -142,18 +142,18 @@ public final class OperationRouter<K> {
    * @param dataKey a key of data
    * @return a block id
    */
-  public int resolveBlock(final K dataKey) {
+  int resolveBlock(final K dataKey) {
     return blockResolver.resolveBlock(dataKey);
   }
 
   /**
    * Resolves block ids for a range of data keys, which may span over multiple blocks.
    * Each block contains a sub key range.
-   * @param minKey a maximum key of the range
-   * @param maxKey a minimum key of the range
+   * @param minKey a minimum key of the range
+   * @param maxKey a maximum key of the range
    * @return a map between a block id and a range of data keys
    */
-  public Map<Integer, Pair<K, K>> resolveBlocks(final K minKey, final K maxKey) {
+  Map<Integer, Pair<K, K>> resolveBlocks(final K minKey, final K maxKey) {
     return blockResolver.resolveBlocksForOrderedKeys(minKey, maxKey);
   }
 
@@ -163,7 +163,7 @@ public final class OperationRouter<K> {
    * @param blockId an id of block
    * @return an Optional with an evaluator id
    */
-  public Optional<String> resolveEval(final int blockId) {
+  Optional<String> resolveEval(final int blockId) {
     final int memoryStoreId = blockIdToStoreId[blockId];
     if (memoryStoreId == localStoreId) {
       return Optional.empty();
@@ -175,7 +175,7 @@ public final class OperationRouter<K> {
   /**
    * @return a list of block ids in the local MemoryStore
    */
-  public List<Integer> getLocalBlockIds() {
+  List<Integer> getLocalBlockIds() {
     return Collections.unmodifiableList(localBlocks);
   }
 

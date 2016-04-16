@@ -39,9 +39,9 @@ public interface BlockResolver<K> {
   /**
    * Returns block ids for a range of data keys, which may span over multiple blocks.
    * Each block contains a single sub key range.
-   * It is valid when only the key has total ordering and the key space is split into each block in a contiguously.
-   * @param minKey a maximum key of the range
-   * @param maxKey a minimum key of the range
+   * It is valid only when the key has total ordering, and blocks split the key space into contiguous ranges.
+   * @param minKey a minimum key of the range
+   * @param maxKey a maximum key of the range
    * @return a map between a block id and a range of data keys
    */
   Map<Integer, Pair<K, K>> resolveBlocksForOrderedKeys(K minKey, K maxKey);

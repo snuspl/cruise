@@ -156,14 +156,14 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   }
 
   /**
-   * @returns a type of the operation
+   * @return a type of the operation
    */
   DataOpType getOperationType() {
     return operationType;
   }
 
   /**
-   * @returns a type of data
+   * @return a type of data
    */
   String getDataType() {
     return dataType;
