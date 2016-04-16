@@ -52,6 +52,8 @@ final class SynchronizationManager {
     this.aggregationMaster = aggregationMaster;
     this.numWorkers = dataLoadingService.getNumberOfPartitions();
     this.blockedWorkerIds = Collections.synchronizedSet(new HashSet<String>());
+
+    LOG.log(Level.FINE, "Total number of workers participating in the synchronization = {0}", numWorkers);
   }
 
   private void broadcastResponseMessages() {
@@ -68,6 +70,9 @@ final class SynchronizationManager {
     @Override
     public void onNext(final AggregationMessage aggregationMessage) {
       final String slaveId = aggregationMessage.getSourceId().toString();
+      LOG.log(Level.FINE, "Receive a synchronization message from {0}. {1} messages have been received out of {2}.",
+          new Object[]{slaveId, blockedWorkerIds.size(), numWorkers});
+
       if (blockedWorkerIds.contains(slaveId)) {
         LOG.log(Level.WARNING, "Multiple synchronization requests from {0}", slaveId);
       } else {
