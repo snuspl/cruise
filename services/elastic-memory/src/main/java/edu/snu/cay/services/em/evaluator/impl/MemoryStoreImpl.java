@@ -358,7 +358,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   /**
    * Executes an operation requested from a local client.
    */
-  private <T> void executeOperation(final LongKeyOperation<T> operation) {
+  private <V> void executeOperation(final LongKeyOperation<V> operation) {
 
     // route key ranges of the operation
     final List<LongRange> dataKeyRanges = operation.getDataKeyRanges();
@@ -372,7 +372,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // send remote operations first and execute local operations
     sendOperationToRemoteStores(operation, remoteEvalToSubKeyRangesMap);
-    final Map<Long, T> localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangeMap);
+    final Map<Long, V> localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangeMap);
 
     // submit the local result and wait until all remote operations complete
     resultAggregator.submitLocalResult(operation, localOutputData, Collections.EMPTY_LIST);
@@ -381,7 +381,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   /**
    * Executes sub local operations directly, not via queueing.
    */
-  private <T> Map<Long, T> executeLocalOperation(final LongKeyOperation<T> operation,
+  private <V> Map<Long, V> executeLocalOperation(final LongKeyOperation<V> operation,
                                                  final Map<Integer, LongRange> blockToSubKeyRangeList) {
     if (blockToSubKeyRangeList.isEmpty()) {
       return Collections.EMPTY_MAP;
@@ -402,7 +402,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final Map<Integer, Block> blocks = typeToBlocks.get(operation.getDataType());
 
-    final Map<Long, T> outputData;
+    final Map<Long, V> outputData;
     final Iterator<Map.Entry<Integer, LongRange>> blockToSubKeyRangeIterator =
         blockToSubKeyRangeList.entrySet().iterator();
 
@@ -423,7 +423,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       final Block block = blocks.get(blockToSubKeyRange.getKey());
       final LongRange subKeyRange = blockToSubKeyRange.getValue();
 
-      final Map<Long, T> partialOutput = block.executeSubOperation(operation, subKeyRange);
+      final Map<Long, V> partialOutput = block.executeSubOperation(operation, subKeyRange);
       outputData.putAll(partialOutput);
     }
 
