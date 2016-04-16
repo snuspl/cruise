@@ -67,6 +67,8 @@ final class NMFWorker implements Worker {
   // data key ranges assigned to this worker
   private Set<LongRange> dataKeyRanges;
 
+  private final Tracer tracer;
+
   /**
    * Number of iterations.
    */
@@ -100,6 +102,8 @@ final class NMFWorker implements Worker {
     this.lMatrix = Maps.newHashMap();
     this.rMatrix = Maps.newHashMap();
     this.gradients = Maps.newHashMap();
+
+    this.tracer = new Tracer();
   }
 
   @Override
@@ -152,22 +156,32 @@ final class NMFWorker implements Worker {
 
   private void pushAndClearGradients() {
     // push gradients
+    tracer.startPush();
     for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
       parameterWorker.push(entry.getKey(), entry.getValue());
     }
+    tracer.finishPush(gradients.size());
     // clear gradients
     gradients.clear();
   }
 
   private void pullRMatrix() {
+    tracer.startPull();
     final List<Vector> vectors = parameterWorker.pull(keys);
     for (int i = 0; i < keys.size(); ++i) {
       rMatrix.put(keys.get(i), vectors.get(i));
     }
+    tracer.finishPull(keys.size());
   }
 
   @Override
   public void run() {
+    final long iterationBegin = System.currentTimeMillis();
+    double loss = 0.0;
+    int elemCount = 0;
+    int rowCount = 0;
+    tracer.reset();
+
     // TODO #302: update dataKeyRanges when there's an update in assigned workload
 
     final List<NMFData> workload = new LinkedList<>();
@@ -176,13 +190,10 @@ final class NMFWorker implements Worker {
       workload.addAll(subMap.values());
     }
 
-    double loss = 0.0;
-    int elemCount = 0;
-    int rowCount = 0;
-
     pullRMatrix();
 
     for (final NMFData datum : workload) {
+      tracer.startCompute();
       final int rowIdx = datum.getRowIndex();
       final Vector lVec = lMatrix.get(rowIdx); // L_{i, *} : i-th row of L
 
@@ -213,6 +224,7 @@ final class NMFWorker implements Worker {
         // iterative mean = c(t+1) = c(t) + (x - c(t)) / (t + 1)
         loss += (error * error - loss) / ++elemCount;
       }
+      tracer.finishCompute(datum.getColumns().size());
 
       if (++rowCount % batchSize == 0) {
         pushAndClearGradients();
@@ -220,16 +232,26 @@ final class NMFWorker implements Worker {
       }
 
       if (logPeriod > 0 && rowCount % logPeriod == 0) {
-        LOG.log(Level.INFO, "Iteration: {0}, Count: {1}, Loss: {2}", new Object[]{iteration, rowCount, loss});
-        loss = 0.0;
-        elemCount = 0;
+        final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
+        LOG.log(Level.INFO, "Iteration: {0}, Row Count: {1}, Loss: {2}, Avg Comp Per Row: {3}, " +
+            "Sum Comp: {4}, Avg Pull: {5}, Sum Pull: {6}, Avg Push: {7}, " +
+            "Sum Push: {8}, DvT: {9}, RvT: {10}, Elapsed Time: {11}",
+            new Object[]{iteration, rowCount, String.format("%g", loss), tracer.getComputeAvgTime(),
+                tracer.getComputeSumTime(), tracer.getPullAvgTime(), tracer.getPullSumTime(), tracer.getPushAvgTime(),
+                tracer.getPushSumTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
       }
     }
 
     pushAndClearGradients();
-    LOG.log(Level.INFO, "End iteration: {0}, Count: {1}, Loss: {2}", new Object[]{iteration, rowCount, loss});
-
     ++iteration;
+
+    final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
+    LOG.log(Level.INFO, "End iteration: {0}, Row Count: {1}, Loss: {2}, Avg Comp Per Row: {3}, " +
+            "Sum Comp: {4}, Avg Pull: {5}, Sum Pull: {6}, Avg Push: {7}, " +
+            "Sum Push: {8}, DvT: {9}, RvT: {10}, Elapsed Time: {11}",
+        new Object[]{iteration, rowCount, String.format("%g", loss), tracer.getComputeAvgTime(),
+            tracer.getComputeSumTime(), tracer.getPullAvgTime(), tracer.getPullSumTime(), tracer.getPushAvgTime(),
+            tracer.getPushSumTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
   }
 
   @Override
