@@ -71,7 +71,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    */
   private final Map<String, Map<Integer, Block>> typeToBlocks = new HashMap<>();
 
-  private final OperationRouter router;
+  private final OperationRouter<Long> router;
   private final OperationResultAggregator resultAggregator;
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
@@ -86,7 +86,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    * A queue for operations requested from remote clients.
    * Its element is composed of a operation, a sub key range, and a corresponding block id.
    */
-  private final BlockingQueue<Tuple3<LongKeyOperation, LongRange, Integer>> subOperationQueue
+  private final BlockingQueue<Tuple3<LongKeyOperation, Pair<Long, Long>, Integer>> subOperationQueue
       = new ArrayBlockingQueue<>(QUEUE_SIZE);
 
   @Inject
@@ -145,7 +145,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         // First, poll and execute a single operation.
         // Poll with a timeout will prevent busy waiting, when the queue is empty.
         try {
-          final Tuple3<LongKeyOperation, LongRange, Integer> subOperation =
+          final Tuple3<LongKeyOperation, Pair<Long, Long>, Integer> subOperation =
               subOperationQueue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (subOperation == null) {
             continue;
@@ -157,9 +157,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       }
     }
 
-    private void handleSubOperation(final Tuple3<LongKeyOperation, LongRange, Integer> subOperation) {
+    private void handleSubOperation(final Tuple3<LongKeyOperation, Pair<Long, Long>, Integer> subOperation) {
       final LongKeyOperation operation = subOperation.getFirst();
-      final LongRange subKeyRange = subOperation.getSecond();
+      final Pair<Long, Long> subKeyRange = subOperation.getSecond();
       final int blockId = subOperation.getThird();
 
       final Optional<String> remoteEvalId = router.resolveEval(blockId);
@@ -171,7 +171,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       } else {
         // treat remote ranges as failed ranges, because we do not allow more than one hop in remote access
         final List<LongRange> failedRanges = new ArrayList<>(1);
-        failedRanges.add(subKeyRange);
+        failedRanges.add(new LongRange(subKeyRange.getFirst(), subKeyRange.getSecond()));
 
         // submit it as a local result, because we do not even start the remote operation
         resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, failedRanges);
@@ -202,7 +202,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
      * Executes sub operation on data keys assigned to this block.
      * All operations both from remote and local clients are executed via this method.
      */
-    private <V> Map<Long, V> executeSubOperation(final LongKeyOperation<V> operation, final LongRange keyRange) {
+    private <V> Map<Long, V> executeSubOperation(final LongKeyOperation<V> operation, final Pair<Long, Long> keyRange) {
       final DataOpType operationType = operation.getOperationType();
 
       final Map<Long, V> outputData = new HashMap<>();
@@ -214,7 +214,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
           // extract matching entries from the input kv data map and put it all to subDataMap
           final NavigableMap<Long, V> subMap =
-              dataKeyValueMap.subMap(keyRange.getMinimumLong(), true, keyRange.getMaximumLong(), true);
+              dataKeyValueMap.subMap(keyRange.getFirst(), true, keyRange.getSecond(), true);
           subDataMap.putAll(subMap);
 
           // PUT operations always succeed for all the ranges, because it overwrites map with the given input value.
@@ -226,8 +226,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       case GET:
         rwLock.readLock().lock();
         try {
-          outputData.putAll((Map<Long, V>) subDataMap.subMap(keyRange.getMinimumLong(), true,
-              keyRange.getMaximumLong(), true));
+          outputData.putAll((Map<Long, V>) subDataMap.subMap(keyRange.getFirst(), true,
+              keyRange.getSecond(), true));
         } finally {
           rwLock.readLock().unlock();
         }
@@ -235,8 +235,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       case REMOVE:
         rwLock.writeLock().lock();
         try {
-          outputData.putAll((Map<Long, V>) subDataMap.subMap(keyRange.getMinimumLong(), true,
-              keyRange.getMaximumLong(), true));
+          outputData.putAll((Map<Long, V>) subDataMap.subMap(keyRange.getFirst(), true,
+              keyRange.getSecond(), true));
           subDataMap.keySet().removeAll(outputData.keySet());
         } finally {
           rwLock.writeLock().unlock();
@@ -307,7 +307,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     // handle the first iteration separately to reuse a returned map object
     if (rangeIterator.hasNext()) {
       final LongRange keyRange = rangeIterator.next();
-      blockToSubKeyRangeMap = router.resolveBlocks(keyRange);
+      blockToSubKeyRangeMap = router.resolveBlocks(keyRange.getMinimumLong(), keyRange.getMaximumLong());
     } else {
       LOG.log(Level.SEVERE, "Invalid operation");
       resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, Collections.EMPTY_LIST);
@@ -316,7 +316,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     while (rangeIterator.hasNext()) {
       final LongRange keyRange = rangeIterator.next();
       // blockIds for blockToSubKeyRangeMap never overlap
-      blockToSubKeyRangeMap.putAll(router.resolveBlocks(keyRange));
+      blockToSubKeyRangeMap.putAll(router.resolveBlocks(keyRange.getMinimumLong(), keyRange.getMaximumLong()));
     }
 
     final int numSubOps = blockToSubKeyRangeMap.size();
@@ -345,10 +345,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     for (final Map.Entry<Integer, Pair<Long, Long>> blockToSubKeyRange : blockToKeyRangeMap.entrySet()) {
       final int blockId = blockToSubKeyRange.getKey();
       final Pair<Long, Long> minMaxKeyPair = blockToSubKeyRange.getValue();
-      final LongRange subKeyRange = new LongRange(minMaxKeyPair.getFirst(), minMaxKeyPair.getSecond());
 
       try {
-        subOperationQueue.put(new Tuple3<>(operation, subKeyRange, blockId));
+        subOperationQueue.put(new Tuple3<>(operation, minMaxKeyPair, blockId));
       } catch (final InterruptedException e) {
         LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
       }
@@ -362,10 +361,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // route key ranges of the operation
     final List<LongRange> dataKeyRanges = operation.getDataKeyRanges();
-    final Pair<Map<Integer, LongRange>, Map<String, List<LongRange>>> routingResult =
-        router.route(dataKeyRanges);
-    final Map<Integer, LongRange> localBlockToSubKeyRangeMap = routingResult.getFirst();
-    final Map<String, List<LongRange>> remoteEvalToSubKeyRangesMap = routingResult.getSecond();
+    final Pair<Map<Integer, Pair<Long, Long>>, Map<String, List<Pair<Long, Long>>>> routingResult =
+        router.route(LongRangeUtils.fromRangesToPairs(dataKeyRanges));
+    final Map<Integer, Pair<Long, Long>> localBlockToSubKeyRangeMap = routingResult.getFirst();
+    final Map<String, List<Pair<Long, Long>>> remoteEvalToSubKeyRangesMap = routingResult.getSecond();
 
     final int numSubOps = remoteEvalToSubKeyRangesMap.size() + 1; // +1 for local operation
     resultAggregator.registerOp(operation, numSubOps);
@@ -382,7 +381,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    * Executes sub local operations directly, not via queueing.
    */
   private <V> Map<Long, V> executeLocalOperation(final LongKeyOperation<V> operation,
-                                                 final Map<Integer, LongRange> blockToSubKeyRangeList) {
+                                                 final Map<Integer, Pair<Long, Long>> blockToSubKeyRangeList) {
     if (blockToSubKeyRangeList.isEmpty()) {
       return Collections.EMPTY_MAP;
     }
@@ -403,14 +402,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     final Map<Integer, Block> blocks = typeToBlocks.get(operation.getDataType());
 
     final Map<Long, V> outputData;
-    final Iterator<Map.Entry<Integer, LongRange>> blockToSubKeyRangeIterator =
+    final Iterator<Map.Entry<Integer, Pair<Long, Long>>> blockToSubKeyRangeIterator =
         blockToSubKeyRangeList.entrySet().iterator();
 
     // first execute a head range to reuse the returned map object for a return map
     if (blockToSubKeyRangeIterator.hasNext()) {
-      final Map.Entry<Integer, LongRange> blockToSubKeyRange = blockToSubKeyRangeIterator.next();
+      final Map.Entry<Integer, Pair<Long, Long>> blockToSubKeyRange = blockToSubKeyRangeIterator.next();
       final Block block = blocks.get(blockToSubKeyRange.getKey());
-      final LongRange subKeyRange = blockToSubKeyRange.getValue();
+      final Pair<Long, Long> subKeyRange = blockToSubKeyRange.getValue();
 
       outputData = block.executeSubOperation(operation, subKeyRange);
     } else {
@@ -419,9 +418,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // execute remaining ranges if exist
     while (blockToSubKeyRangeIterator.hasNext()) {
-      final Map.Entry<Integer, LongRange> blockToSubKeyRange = blockToSubKeyRangeIterator.next();
+      final Map.Entry<Integer, Pair<Long, Long>> blockToSubKeyRange = blockToSubKeyRangeIterator.next();
       final Block block = blocks.get(blockToSubKeyRange.getKey());
-      final LongRange subKeyRange = blockToSubKeyRange.getValue();
+      final Pair<Long, Long> subKeyRange = blockToSubKeyRange.getValue();
 
       final Map<Long, V> partialOutput = block.executeSubOperation(operation, subKeyRange);
       outputData.putAll(partialOutput);
@@ -434,7 +433,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    * Sends sub operations to target remote evaluators.
    */
   private <V> void sendOperationToRemoteStores(final LongKeyOperation<V> operation,
-                                               final Map<String, List<LongRange>> evalToSubKeyRangesMap) {
+                                               final Map<String, List<Pair<Long, Long>>> evalToSubKeyRangesMap) {
     if (evalToSubKeyRangesMap.isEmpty()) {
       return;
     }
@@ -442,12 +441,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     final Codec codec = serializer.getCodec(operation.getDataType());
 
     // send sub operations to all remote stores that owns partial range of the main operation (RemoteOpMsg)
-    for (final Map.Entry<String, List<LongRange>> evalToSubKeyRange : evalToSubKeyRangesMap.entrySet()) {
+    for (final Map.Entry<String, List<Pair<Long, Long>>> evalToSubKeyRange : evalToSubKeyRangesMap.entrySet()) {
       try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {
         final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
 
         final String targetEvalId = evalToSubKeyRange.getKey();
-        final List<LongRange> keyRangeList = evalToSubKeyRange.getValue();
+        final List<Pair<Long, Long>> keyRangeList = evalToSubKeyRange.getValue();
 
         final List<UnitIdPair> dataKVPairList;
         if (operation.getOperationType() == DataOpType.PUT) {
@@ -455,11 +454,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
           dataKVPairList = new LinkedList<>();
 
-          for (final LongRange keyRange : keyRangeList) {
+          for (final Pair<Long, Long> keyRange : keyRangeList) {
 
             // extract range-matching entries from the input data map
-            final Map<Long, V> subMap = keyValueMap.subMap(keyRange.getMinimumLong(), true,
-                keyRange.getMaximumLong(), true);
+            final Map<Long, V> subMap = keyValueMap.subMap(keyRange.getFirst(), true,
+                keyRange.getSecond(), true);
 
             // encode data values and put them into dataKVPairList
             for (final Map.Entry<Long, V> dataKVPair : subMap.entrySet()) {
@@ -473,8 +472,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         }
 
         msgSender.get().sendRemoteOpMsg(operation.getOrigEvalId().get(), targetEvalId,
-            operation.getOperationType(), operation.getDataType(), keyRangeList, dataKVPairList,
-            operation.getOperationId(), traceInfo);
+            operation.getOperationType(), operation.getDataType(), LongRangeUtils.fromPairsToRanges(keyRangeList),
+            dataKVPairList, operation.getOperationId(), traceInfo);
       }
     }
   }

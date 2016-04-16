@@ -19,7 +19,6 @@ import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -55,7 +54,7 @@ final class RemoteEMTask implements Task {
   /**
    * A router that is an internal component of EM. Here we use it in user code for testing purpose.
    */
-  private final OperationRouter router;
+  private final OperationRouter<Long> router;
 
   private final String taskId;
 
@@ -102,8 +101,8 @@ final class RemoteEMTask implements Task {
     Pair<Long, Integer> outputPair;
     Map<Long, Integer> outputMap;
 
-    final List<LongRange> rangeList = new ArrayList<>(1);
-    rangeList.add(new LongRange(0, 1));
+    final List<Pair<Long, Long>> rangeList = new ArrayList<>(1);
+    rangeList.add(new Pair<>(0L, 1L));
     final boolean isLocalKey = !router.route(rangeList).getFirst().isEmpty();
 
     // 1. INITIAL STATE: check that the store does not contain DATA

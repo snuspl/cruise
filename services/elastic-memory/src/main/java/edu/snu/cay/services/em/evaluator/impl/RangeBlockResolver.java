@@ -44,7 +44,7 @@ public final class RangeBlockResolver implements BlockResolver<Long> {
   }
 
   @Override
-  public Map<Integer, Pair<Long, Long>> resolveBlocksforOrderedKeys(final Long minKey, final Long maxKey) {
+  public Map<Integer, Pair<Long, Long>> resolveBlocksForOrderedKeys(final Long minKey, final Long maxKey) {
 
     final int headBlockId = (int) (minKey / blockSize);
     final int tailBlockId = (int) (maxKey / blockSize);
