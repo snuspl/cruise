@@ -72,7 +72,8 @@ final class OperationResultAggregator {
     if (operation.isFromLocalClient()) {
       final LongKeyOperation unhandledOperation = ongoingOp.put(operation.getOperationId(), operation);
       if (unhandledOperation != null) {
-        LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}", unhandledOperation);
+        LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}",
+            unhandledOperation.getOperationId());
       }
     }
 

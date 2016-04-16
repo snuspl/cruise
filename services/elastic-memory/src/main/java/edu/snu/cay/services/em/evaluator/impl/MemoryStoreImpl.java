@@ -169,7 +169,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRange);
         resultAggregator.submitLocalResult(operation, result, Collections.EMPTY_LIST);
       } else {
-        // treat remote ranges as failed ranges
+        // treat remote ranges as failed ranges, because we do not allow more than one hop in remote access
         final List<LongRange> failedRanges = new ArrayList<>(1);
         failedRanges.add(subKeyRange);
 
@@ -322,10 +322,13 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     final int numSubOps = blockToSubKeyRangeMap.size();
     resultAggregator.registerOp(operation, numSubOps);
 
+    // enqueue operation
     if (!blockToSubKeyRangeMap.isEmpty()) {
+      // progress only when the store has blocks for a data type of the operation
       if (typeToBlocks.containsKey(dataType)) {
         enqueueOperation(operation, blockToSubKeyRangeMap);
       } else {
+        // otherwise, initialize blocks and continue the operation only when it's operation type is PUT
         if (operation.getOperationType() == DataOpType.PUT) {
           initBlocks(dataType);
           enqueueOperation(operation, blockToSubKeyRangeMap);
@@ -338,8 +341,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    * Enqueues local sub operations to {@code subOperationQueue}.
    */
   private void enqueueOperation(final LongKeyOperation operation,
-                                final Map<Integer, LongRange> blockToKeyRangeList) {
-    for (final Map.Entry<Integer, LongRange> blockToSubKeyRange : blockToKeyRangeList.entrySet()) {
+                                final Map<Integer, LongRange> blockToKeyRangeMap) {
+    for (final Map.Entry<Integer, LongRange> blockToSubKeyRange : blockToKeyRangeMap.entrySet()) {
       final int blockId = blockToSubKeyRange.getKey();
       final LongRange subKeyRange = blockToSubKeyRange.getValue();
 
@@ -384,6 +387,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     }
 
     final String dataType = operation.getDataType();
+
+    // if there's no initialized block for a data type of the operation,
+    // initialize blocks and continue the operation only when it's operation type is PUT,
+    // else do not execute the operation.
     if (!typeToBlocks.containsKey(dataType)) {
       if (operation.getOperationType() == DataOpType.PUT) {
         initBlocks(dataType);
@@ -430,7 +437,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     if (evalToSubKeyRangesMap.isEmpty()) {
       return;
     }
-    LOG.log(Level.SEVERE, "REMOTE ACCESS!!", operation);
 
     final Codec codec = serializer.getCodec(operation.getDataType());
 
@@ -535,12 +541,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     int keyIdx;
     for (keyIdx = 0; keyIdx < inputKeys.size(); keyIdx++) {
       final long key = inputKeys.get(keyIdx);
+      // skip keys that is smaller than the left end of range
       if (range.getMinimumLong() > key) {
-        resultMap.put(key, false);
+        resultMap.put(key, true);
         // go to next key
         continue;
       }
 
+      // skip ranges whose right end is smaller than the key
       if (range.getMaximumLong() < key) {
         if (rangeIterator.hasNext()) {
           // go to next range
@@ -553,12 +561,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
           break;
         }
       }
-      resultMap.put(key, true);
+      resultMap.put(key, false);
     }
 
     // put all remaining keys to resultMap
     for (; keyIdx < inputKeys.size(); keyIdx++) {
-      resultMap.put(inputKeys.get(keyIdx), false);
+      resultMap.put(inputKeys.get(keyIdx), true);
     }
     return resultMap;
   }

@@ -51,7 +51,7 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
 
   // ranges that remote sub operations failed to execute due to wrong routing
   // it happens only when ownership of data key are updated, unknown to the original store
-  private final List<LongRange> failedRanges = new LinkedList<>();
+  private final List<LongRange> failedRanges = Collections.synchronizedList(new LinkedList<LongRange>());
   private final ConcurrentMap<Long, V> outputData = new ConcurrentHashMap<>();
 
   /**
