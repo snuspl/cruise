@@ -17,7 +17,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
-import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -29,7 +29,7 @@ import java.util.Map;
  * It groups data keys into blocks with range-based partitioning, where block b takes
  * keys within [b * BLOCK_SIZE, (b+1) * BLOCK_SIZE).
  */
-public final class RangeBlockResolver implements BlockResolver {
+public final class RangeBlockResolver implements BlockResolver<Long> {
 
   private final long blockSize;
 
@@ -39,30 +39,34 @@ public final class RangeBlockResolver implements BlockResolver {
   }
 
   @Override
-  public int resolveBlock(final long dataKey) {
+  public int resolveBlock(final Long dataKey) {
     return (int) (dataKey / blockSize);
   }
 
   @Override
-  public Map<Integer, LongRange> resolveBlocks(final LongRange dataKeyRange) {
-    final long headKey = dataKeyRange.getMinimumLong();
-    final long tailKey = dataKeyRange.getMaximumLong();
+  public Map<Integer, Pair<Long, Long>> resolveBlocksforOrderedKeys(final Long minKey, final Long maxKey) {
 
-    final int headBlockId = (int) (headKey / blockSize);
-    final int tailBlockId = (int) (tailKey / blockSize);
+    final int headBlockId = (int) (minKey / blockSize);
+    final int tailBlockId = (int) (maxKey / blockSize);
 
-    final Map<Integer, LongRange> blockToKeyRange = new HashMap<>();
+    final Map<Integer, Pair<Long, Long>> blockToKeyRange = new HashMap<>();
 
     if (headBlockId == tailBlockId) {
-      blockToKeyRange.put(headBlockId, dataKeyRange);
+      // a case when dataKeyRange is in a single block (most common case)
+      blockToKeyRange.put(headBlockId, new Pair<>(minKey, maxKey));
     } else {
-      blockToKeyRange.put(headBlockId, new LongRange(headKey, (headBlockId + 1) * blockSize - 1));
+      // a case when dataKeyRange spans across the multiple blocks
+      final long rightEndInHeadBlock = headBlockId * blockSize + blockSize - 1;
+      blockToKeyRange.put(headBlockId, new Pair<>(minKey, rightEndInHeadBlock));
 
       for (int blockId = headBlockId + 1; blockId < tailBlockId; blockId++) {
-        blockToKeyRange.put(blockId, new LongRange(blockId * blockSize, (blockId + 1) * blockSize - 1));
+        final long leftEnd = blockId * blockSize;
+        final long rightEnd = leftEnd + blockSize - 1;
+        blockToKeyRange.put(blockId, new Pair<>(leftEnd, rightEnd));
       }
 
-      blockToKeyRange.put(tailBlockId, new LongRange(tailBlockId * blockSize, tailKey));
+      final long leftEndInTailBlock = tailBlockId * blockSize;
+      blockToKeyRange.put(tailBlockId, new Pair<>(leftEndInTailBlock, maxKey));
     }
 
     return blockToKeyRange;

@@ -31,7 +31,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * OperationRouter that redirects incoming operations on specific data ids to corresponding evaluators.
+ * OperationRouter that redirects incoming operations on specific data ids to corresponding blocks and evaluators.
  */
 @Private
 public final class OperationRouter {
@@ -42,7 +42,7 @@ public final class OperationRouter {
 
   private final int localStoreId;
 
-  private final BlockResolver blockResolver;
+  private final BlockResolver<Long> blockResolver;
 
   /**
    * The number of total blocks.
@@ -63,7 +63,7 @@ public final class OperationRouter {
 
   // TODO #380: we have to improve router to provide different routing tables for each dataType.
   @Inject
-  private OperationRouter(final BlockResolver blockResolver,
+  private OperationRouter(final BlockResolver<Long> blockResolver,
                           @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                           @Parameter(NumInitialEvals.class) final int numInitialEvals,
                           @Parameter(MemoryStoreId.class) final int memoryStoreId) {
@@ -114,10 +114,11 @@ public final class OperationRouter {
     // In most cases, there are only one range in dataKeyRanges
     for (final LongRange keyRange : dataKeyRanges) {
 
-      final Map<Integer, LongRange> blockToSubKeyRangeMap = resolveBlocks(keyRange);
-      for (final Map.Entry<Integer, LongRange> blockToSubKeyRange : blockToSubKeyRangeMap.entrySet()) {
+      final Map<Integer, Pair<Long, Long>> blockToSubKeyRangeMap = resolveBlocks(keyRange);
+      for (final Map.Entry<Integer, Pair<Long, Long>> blockToSubKeyRange : blockToSubKeyRangeMap.entrySet()) {
         final int blockId = blockToSubKeyRange.getKey();
-        final LongRange subKeyRange = blockToSubKeyRange.getValue();
+        final Pair<Long, Long> minMaxKeyPair = blockToSubKeyRange.getValue();
+        final LongRange subKeyRange = new LongRange(minMaxKeyPair.getFirst(), minMaxKeyPair.getSecond());
 
         final Optional<String> remoteEvalId = resolveEval(blockId);
 
@@ -147,13 +148,13 @@ public final class OperationRouter {
   }
 
   /**
-   * Resolves block ids for a range of data keys.
+   * Resolves block ids for a range of data keys, which may span over multiple blocks.
    * Each block contains a sub key range.
    * @param dataKeyRange a range of data keys
    * @return a map between a block id and a range of data keys
    */
-  public Map<Integer, LongRange> resolveBlocks(final LongRange dataKeyRange) {
-    return blockResolver.resolveBlocks(dataKeyRange);
+  public Map<Integer, Pair<Long, Long>> resolveBlocks(final LongRange dataKeyRange) {
+    return blockResolver.resolveBlocksforOrderedKeys(dataKeyRange.getMinimumLong(), dataKeyRange.getMaximumLong());
   }
 
   /**

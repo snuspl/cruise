@@ -16,30 +16,33 @@
 package edu.snu.cay.services.em.evaluator.api;
 
 import edu.snu.cay.services.em.evaluator.impl.RangeBlockResolver;
-import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Map;
 
 /**
  * An interface for store to resolve the block of specific data key.
+ * @param <K> type of data key
  */
 @DefaultImplementation(RangeBlockResolver.class)
-public interface BlockResolver {
+public interface BlockResolver<K> {
 
   /**
-   * Return a block id of data with {@code dataId}.
+   * Returns a block id of data with {@code dataId}.
    * The number of blocks is assumed to be within the integer range.
    * @param dataKey a key of data
    * @return an id of block that the data belongs to
    */
-  int resolveBlock(long dataKey);
+  int resolveBlock(K dataKey);
 
   /**
-   * Return block ids for a range of data keys, which may span over multiple blocks.
+   * Returns block ids for a range of data keys, which may span over multiple blocks.
    * Each block contains a single sub key range.
-   * @param dataKeyRange a range of data keys
+   * It is valid when only the key has total ordering and the key space is split into each block in a contiguously야.
+   * @param minKey a maximum key of the range
+   * @param maxKey a minimum key of the range
    * @return a map between a block id and a range of data keys
    */
-  Map<Integer, LongRange> resolveBlocks(LongRange dataKeyRange);
+  Map<Integer, Pair<K, K>> resolveBlocksforOrderedKeys(K minKey, K maxKey);
 }

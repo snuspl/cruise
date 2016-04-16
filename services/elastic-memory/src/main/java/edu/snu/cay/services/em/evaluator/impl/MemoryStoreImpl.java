@@ -300,11 +300,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     // route key ranges of the operation
     final List<LongRange> dataKeyRanges = operation.getDataKeyRanges();
 
-    final Map<Integer, LongRange> blockToSubKeyRangeMap;
+    final Map<Integer, Pair<Long, Long>> blockToSubKeyRangeMap;
 
     final Iterator<LongRange> rangeIterator = dataKeyRanges.iterator();
 
-    // handle the first case separately to reuse a returned map object
+    // handle the first iteration separately to reuse a returned map object
     if (rangeIterator.hasNext()) {
       final LongRange keyRange = rangeIterator.next();
       blockToSubKeyRangeMap = router.resolveBlocks(keyRange);
@@ -341,10 +341,11 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    * Enqueues local sub operations to {@code subOperationQueue}.
    */
   private void enqueueOperation(final LongKeyOperation operation,
-                                final Map<Integer, LongRange> blockToKeyRangeMap) {
-    for (final Map.Entry<Integer, LongRange> blockToSubKeyRange : blockToKeyRangeMap.entrySet()) {
+                                final Map<Integer, Pair<Long, Long>> blockToKeyRangeMap) {
+    for (final Map.Entry<Integer, Pair<Long, Long>> blockToSubKeyRange : blockToKeyRangeMap.entrySet()) {
       final int blockId = blockToSubKeyRange.getKey();
-      final LongRange subKeyRange = blockToSubKeyRange.getValue();
+      final Pair<Long, Long> minMaxKeyPair = blockToSubKeyRange.getValue();
+      final LongRange subKeyRange = new LongRange(minMaxKeyPair.getFirst(), minMaxKeyPair.getSecond());
 
       try {
         subOperationQueue.put(new Tuple3<>(operation, subKeyRange, blockId));
@@ -389,8 +390,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     final String dataType = operation.getDataType();
 
     // if there's no initialized block for a data type of the operation,
-    // initialize blocks and continue the operation only when it's operation type is PUT,
-    // else do not execute the operation.
+    // initialize blocks and continue the operation only when it's operation type is PUT.
+    // for other types of operation do not execute the operation.
     if (!typeToBlocks.containsKey(dataType)) {
       if (operation.getOperationType() == DataOpType.PUT) {
         initBlocks(dataType);
