@@ -124,6 +124,7 @@
   "fields":
   [
     {"name": "dataType", "type": "string"},
+    {"name": "blockId", "type": ["null", "int"], "default": null},
     {"name": "units", "type": {"type": "array", "items": "UnitIdPair"}}
   ]
 },

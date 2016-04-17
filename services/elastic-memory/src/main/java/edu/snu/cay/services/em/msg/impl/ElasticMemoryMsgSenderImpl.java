@@ -227,7 +227,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
-                          final String operationId, final TraceInfo parentTraceInfo) {
+                          final int blockId, final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataMsg",
@@ -236,6 +236,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       final DataMsg dataMsg = DataMsg.newBuilder()
           .setDataType(dataType)
           .setUnits(unitIdPairList)
+          .setBlockId(blockId)
           .build();
 
       send(destId,

@@ -57,7 +57,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_CTRL_MSG = "onCtrlMsg";
   private static final String ON_UPDATE_MSG = "onUpdateMsg";
 
-  private final RemoteAccessibleMemoryStore memoryStore;
+  private final RemoteAccessibleMemoryStore<Long> memoryStore;
   private final OperationResultAggregator resultAggregator;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
@@ -74,7 +74,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private final Set<LongRange> movingRanges = Collections.synchronizedSet(new HashSet<LongRange>());
 
   @Inject
-  private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore memoryStore,
+  private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore<Long> memoryStore,
                                   final OperationResultAggregator resultAggregator,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   final Serializer serializer) {
@@ -226,11 +226,29 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   /**
    * Called when the Driver initiates data migration.
    */
-  private void onCtrlMsgBlocks(final AvroElasticMemoryMessage msg, final TraceScope onCtrlMsgScope) {
+  private void onCtrlMsgBlocks(final AvroElasticMemoryMessage msg, final TraceScope parentTraceInfo) {
     final String operationId = msg.getOperationId().toString();
     final CtrlMsg ctrlMsg = msg.getCtrlMsg();
     final String dataType = ctrlMsg.getDataType().toString();
+    final Codec codec = serializer.getCodec(dataType);
+    final List<Integer> blockIds = ctrlMsg.getBlockIds();
 
+    for (final int blockId : blockIds) {
+      // Send the data as unit of block
+      final Map<Long, Object> blockData = memoryStore.getBlock(dataType, blockId);
+      final List<UnitIdPair> unitIdPairList = new ArrayList<>(blockData.size());
+      for (final Map.Entry<Long, Object> idObject : blockData.entrySet()) {
+        final long id = idObject.getKey();
+          // Include the units only if they are not moving already.
+          final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+              .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
+              .setId(id)
+              .build();
+          unitIdPairList.add(unitIdPair);
+      }
+      sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
+        blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+    }
   }
 
   /**
@@ -291,7 +309,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     movingRanges.addAll(ranges);
 
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
-        operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+        -1, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
 
   /**
@@ -353,7 +371,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     movingRanges.addAll(ranges);
 
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
-        operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+        -1, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
 
   /**

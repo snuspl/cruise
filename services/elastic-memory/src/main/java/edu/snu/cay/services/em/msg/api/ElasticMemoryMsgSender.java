@@ -97,6 +97,7 @@ public interface ElasticMemoryMsgSender {
   void sendDataMsg(final String destId,
                    final String dataType,
                    final List<UnitIdPair> unitIdPairList,
+                   final int blockId,
                    final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
 
