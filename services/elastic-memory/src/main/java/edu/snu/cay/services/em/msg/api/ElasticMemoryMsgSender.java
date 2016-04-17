@@ -143,7 +143,8 @@ public interface ElasticMemoryMsgSender {
   void sendOwnershipMsg(final Optional<String> destId,
                         final String operationId,
                         final int blockId,
-                        final int storeId,
+                        final int oldOwnerId,
+                        final int newOwnerId,
                         @Nullable final TraceInfo parentTraceInfo);
   /**
    * Sends a FailureMsg to notify the failure to the Driver.

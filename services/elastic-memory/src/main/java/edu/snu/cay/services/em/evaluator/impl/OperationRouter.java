@@ -187,9 +187,12 @@ public final class OperationRouter<K> {
    * Updates the owner of the block.
    * @param blockId id of the block to update its ownership.
    * @param storeId id of the MemoryStore that will be new owner.
+   * @return id of the MemoryStore who was the owner before update.
    */
-  void updateOwnership(final int blockId, final int storeId) {
+  int updateOwnership(final int blockId, final int storeId) {
+    final int oldOwner = blockIdToStoreId[blockId];
     blockIdToStoreId[blockId] = storeId;
+    return oldOwner;
   }
 
   /**

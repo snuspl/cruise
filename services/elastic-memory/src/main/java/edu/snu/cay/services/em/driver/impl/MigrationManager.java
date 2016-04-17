@@ -15,11 +15,7 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.AvroLongRange;
-import edu.snu.cay.services.em.avro.Result;
-import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.driver.parameters.UpdateTimeoutMillis;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -28,6 +24,7 @@ import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
@@ -408,5 +405,16 @@ final class MigrationManager {
         .setSrcId("")
         .setDestId("")
         .build();
+  }
+
+  void updateOwner(final String operationId, final int blockId, final int oldOwnerId, final int newOwnerId,
+                   @Nullable final TraceInfo traceInfo) {
+    final Migration migrationInfo = ongoingMigrations.get(operationId);
+    final String senderId = migrationInfo.getSenderId();
+    final String receiverId = migrationInfo.getReceiverId();
+    partitionManager.updateOwner(blockId, oldOwnerId, newOwnerId);
+
+    // Send the update message to the source memoryStore
+    sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
   }
 }

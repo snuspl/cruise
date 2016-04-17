@@ -162,7 +162,8 @@
   "name": "OwnershipMsg",
   "fields": [
       {"name": "blockId", "type": "int"},
-      {"name": "memoryStoreId", "type": "int"}
+      {"name": "oldOwnerId", "type": "int"},
+      {"name": "newOwnerId", "type": "int"}
   ]
 },
 
@@ -175,7 +176,8 @@
   "name": "OwnershipACKMsg",
   "fields": [
       {"name": "blockId", "type": "int"},
-      {"name": "memoryStoreId", "type": "int"}
+      {"name": "oldOwnerId", "type": "int"},
+      {"name": "newOwnerId", "type": "int"}
   ]
 },
 

@@ -37,7 +37,7 @@ interface MoveHandler<K> {
    * @param storeId id of the MemoryStore who will be the owner
    * @return True if the update is successful, false otherwise.
    */
-  boolean updateOwnership(String dataType, int blockId, int storeId);
+  int updateOwnership(String dataType, int blockId, int storeId);
 
   /**
    * Sends the data in the blocks to another MemoryStore.

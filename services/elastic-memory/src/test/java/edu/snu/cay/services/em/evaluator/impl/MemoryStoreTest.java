@@ -553,9 +553,10 @@ final class MockedMsgSender implements ElasticMemoryMsgSender {
 
   @Override
   public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final int blockId,
-                               final int storeId, @Nullable final TraceInfo parentTraceInfo) {
+                               final int oldOwnerId, final int newOwnerId, @Nullable final TraceInfo parentTraceInfo) {
 
   }
+
 
   @Override
   public void sendFailureMsg(final String operationId, final String reason, @Nullable final TraceInfo parentTraceInfo) {

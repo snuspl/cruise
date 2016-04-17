@@ -189,11 +189,11 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
       // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
       // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
-      final int storeId = Integer.valueOf(msg.getDestId().toString().split("-")[1]);
-      memoryStore.updateOwnership(dataType, blockId, storeId); // Need a proper synchronization
+      final int newOwnerId = Integer.valueOf(msg.getDestId().toString().split("-")[1]);
+      final int oldOwnerId = memoryStore.updateOwnership(dataType, blockId, newOwnerId); // TODO #000: synchronization
 
       // Notify the driver that the ownership has been updated by setting empty destination id.
-      sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, blockId, storeId,
+      sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, blockId, oldOwnerId, newOwnerId,
           TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
   }

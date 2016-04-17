@@ -42,6 +42,8 @@ public final class PartitionManager {
 
   private final AtomicInteger numEvalCounter = new AtomicInteger(0);
 
+  private String evalIdPrefix = null;
+
   /**
    * This map holds the partitions of all evaluators by using data type as a key.
    * We can easily check the uniqueness of a partition when we register it.
@@ -68,6 +70,11 @@ public final class PartitionManager {
   private final Map<String, Set<Integer>> evalIdToBlockIds;
 
   /**
+   * A mapping that maintains which block is owned by which Evaluator.
+   */
+  private final Map<Integer, String> blockIdToEvalId;
+
+  /**
    * The number of total blocks.
    */
   private final int numTotalBlocks;
@@ -77,6 +84,7 @@ public final class PartitionManager {
     this.evalIdToBlockIds = new HashMap<>();
     this.evalPartitions = new HashMap<>();
     this.globalPartitions = new HashMap<>();
+    blockIdToEvalId = new HashMap<>(numTotalBlocks);
     this.numTotalBlocks = numTotalBlocks;
   }
 
@@ -95,7 +103,12 @@ public final class PartitionManager {
       throw new RuntimeException("This evaluator is already registered. Its context Id is " + contextId);
     }
 
-    final int memoryStoreId = Integer.valueOf(contextId.split("-")[1]);
+    if (evalIdPrefix == null) {
+      // The same prefix is used in ElasticMemoryConfiguration and OperationRouter.
+      evalIdPrefix = contextId.split("-")[0];
+    }
+
+    final int memoryStoreId = getMemoryStoreId(contextId);
     final int numActiveEvals = numEvalCounter.incrementAndGet();
     LOG.log(Level.FINE, "MemoryStore({0}) is registered to {1}", new Object[]{memoryStoreId, contextId});
 
@@ -112,6 +125,29 @@ public final class PartitionManager {
       }
     }
     return memoryStoreId;
+  }
+
+  /**
+   * Updates the owner of the block to another MemoryStore.
+   * @param blockId id of the block to update its owner
+   * @param oldOwnerId id of the MemoryStore who used to own the block
+   * @param newOwnerId id of the MemoryStore who will own the block
+   */
+  public synchronized void updateOwner(final int blockId, final int oldOwnerId, final int newOwnerId) {
+    final String oldEvalId = getEvalId(oldOwnerId);
+    final String newEvalId = getEvalId(newOwnerId);
+
+    if (!evalIdToBlockIds.containsKey(oldEvalId)) {
+      throw new RuntimeException("MemoryStore that was in " + oldEvalId + "has been lost.");
+    }
+
+    if (!evalIdToBlockIds.containsKey(newEvalId)) {
+      throw new RuntimeException("MemoryStore that was in " + newEvalId + "has been lost.");
+    }
+
+    evalIdToBlockIds.get(oldEvalId).remove(blockId);
+    evalIdToBlockIds.get(newEvalId).add(blockId);
+    blockIdToEvalId.put(blockId, newEvalId);
   }
 
   /**
@@ -437,5 +473,13 @@ public final class PartitionManager {
 
       return target;
     }
+  }
+
+  private String getEvalId(final int memoryStoreId) {
+    return evalIdPrefix + memoryStoreId;
+  }
+
+  private int getMemoryStoreId(final String evalId) {
+    return Integer.valueOf(evalId.split("-")[1]);
   }
 }

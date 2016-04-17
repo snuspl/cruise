@@ -365,12 +365,13 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendOwnershipMsg(final Optional<String> destIdOptional, final String operationId, final int blockId,
-                               final int storeId, @Nullable final TraceInfo parentTraceInfo) {
+                               final int oldOwnerId, final int newOwnerId, @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendUpdateAckMsgScope = Trace.startSpan(SEND_OWNERSHIP_MSG, parentTraceInfo)) {
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
               .setBlockId(blockId)
-              .setMemoryStoreId(storeId)
+              .setOldOwnerId(oldOwnerId)
+              .setNewOwnerId(newOwnerId)
               .build();
 
       final String destId = destIdOptional.isPresent() ? destIdOptional.get() : driverId;
