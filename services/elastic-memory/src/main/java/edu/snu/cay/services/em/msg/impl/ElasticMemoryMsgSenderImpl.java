@@ -229,6 +229,30 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
+  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+                          final List<Integer> blocks, final String operationId,
+                          @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendCtrlMsgScope = Trace.startSpan(SEND_CTRL_MSG, parentTraceInfo)) {
+
+      final CtrlMsg ctrlMsg = CtrlMsg.newBuilder()
+          .setDataType(dataType)
+          .setCtrlMsgType(CtrlMsgType.Blocks)
+          .setBlockIds(blocks)
+          .build();
+
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.CtrlMsg)
+              .setSrcId(destId)
+              .setDestId(targetEvalId)
+              .setOperationId(operationId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setCtrlMsg(ctrlMsg)
+              .build());
+    }
+}
+
+  @Override
   public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
                           final int blockId, final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendDataMsgScope = Trace.startSpan(SEND_DATA_MSG, parentTraceInfo)) {

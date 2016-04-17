@@ -523,6 +523,13 @@ final class MockedMsgSender implements ElasticMemoryMsgSender {
   }
 
   @Override
+  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+                          final List<Integer> blocks, final String operationId,
+                          @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
   public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
                           final int blockId, final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 

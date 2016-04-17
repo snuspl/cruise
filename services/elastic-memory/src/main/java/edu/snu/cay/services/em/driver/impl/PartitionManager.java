@@ -75,6 +75,11 @@ public final class PartitionManager {
   private final Map<Integer, String> blockIdToEvalId;
 
   /**
+   * Holds the block ids which are being moved.
+   */
+  private final Set<Integer> movingBlocks;
+
+  /**
    * The number of total blocks.
    */
   private final int numTotalBlocks;
@@ -84,7 +89,8 @@ public final class PartitionManager {
     this.evalIdToBlockIds = new HashMap<>();
     this.evalPartitions = new HashMap<>();
     this.globalPartitions = new HashMap<>();
-    blockIdToEvalId = new HashMap<>(numTotalBlocks);
+    this.blockIdToEvalId = new HashMap<>(numTotalBlocks);
+    this.movingBlocks = new HashSet<>(numTotalBlocks);
     this.numTotalBlocks = numTotalBlocks;
   }
 
@@ -481,5 +487,41 @@ public final class PartitionManager {
 
   private int getMemoryStoreId(final String evalId) {
     return Integer.valueOf(evalId.split("-")[1]);
+  }
+
+  /**
+   * Choose the blocks from the Evaluator.
+   * @param evalId id of Evaluator to choose the blocks
+   * @param numBlocks the maximum number of blocks to choose
+   * @return list of block ids that have been chosen.
+   */
+  synchronized List<Integer> chooseBlocks(final String evalId, final int numBlocks) {
+    final Set<Integer> blockIds = evalIdToBlockIds.get(evalId);
+    if (blockIds == null) {
+      throw new RuntimeException("The data does not exist in " + evalId);
+    }
+
+    final List<Integer> blockIdList = new ArrayList<>(Math.min(blockIds.size(), numBlocks));
+    int count = 0;
+
+    // Choose blocks at most the number of requested blocks. The blocks that are already moving, are skipped.
+    for (final Integer blockId : blockIds) {
+      if (!movingBlocks.contains(blockId)) {
+        blockIdList.add(blockId);
+        movingBlocks.add(blockId);
+        count++;
+      }
+
+      if (count == numBlocks) {
+        break;
+      }
+    }
+
+    if (blockIdList.size() < numBlocks) {
+      LOG.log(Level.WARNING, "{0} Blocks are chosen from {1}, while {2} blocks are requested",
+          new Object[] {blockIdList.size(), evalId, numBlocks});
+    }
+
+    return blockIdList;
   }
 }

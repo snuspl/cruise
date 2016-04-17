@@ -185,6 +185,36 @@ final class MigrationManager {
     sender.get().sendCtrlMsg(senderId, dataType, receiverId, numUnits, operationId, traceInfo);
   }
 
+  public synchronized void startMigration(final String operationId,
+                                          final String senderId,
+                                          final String receiverId,
+                                          final String dataType,
+                                          final int numBlocks,
+                                          @Nullable final TraceInfo traceInfo,
+                                          @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
+    if (ongoingMigrations.containsKey(operationId)) {
+      LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
+      return;
+    }
+
+    callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType));
+
+    if (!partitionManager.checkDataType(senderId, dataType)) {
+      final String reason = new StringBuilder()
+          .append("No data is movable in ").append(senderId)
+          .append(" of type ").append(dataType)
+          .append(". Requested numBlocks: ").append(numBlocks)
+          .toString();
+      failMigration(operationId, reason);
+      return;
+    }
+
+    final List<Integer> blocks = partitionManager.chooseBlocks(senderId, numBlocks);
+
+    sender.get().sendCtrlMsg(senderId, dataType, receiverId, blocks, operationId, traceInfo);
+  }
+
   /**
    * Set the range information after the data has been transferred. Since Evaluators generate dense ranges
    * when sending DataAckMsg, we can count the number of moved units directly from the ranges.
@@ -411,7 +441,7 @@ final class MigrationManager {
     callbackRouter.onCompleted(msg);
   }
 
-   private synchronized void notifySuccess(final String moveOperationId, final List<Integer> blocks) {
+  private synchronized void notifySuccess(final String moveOperationId, final List<Integer> blocks) {
     final ResultMsg resultMsg = ResultMsg.newBuilder()
         .setResult(Result.SUCCESS)
         .setBlockIds(blocks)

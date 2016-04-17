@@ -89,6 +89,23 @@ public interface ElasticMemoryMsgSender {
                    final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
 
+   /**
+   * Sends a CtrlMsg to initiate moving data to the source Evaluator.
+   * @param destId id of the Evaluator that receives this message
+    *              (i.e., source Evaluator in terms of the data)
+   * @param dataType type of the data to move
+   * @param targetEvalId id of the Evaluator that receives the data
+   * @param blocks block ids to move
+   * @param operationId id associated with this operation
+   * @param parentTraceInfo Trace information for HTrace
+   */
+  void sendCtrlMsg(final String destId,
+                   final String dataType,
+                   final String targetEvalId,
+                   final List<Integer> blocks,
+                   final String operationId,
+                   @Nullable final TraceInfo parentTraceInfo);
+
   /**
    * Sends a DataMsg containing {@code unitIdPairList} to the Evaluator
    * named {@code destId}, specified by the type {@code dataType}.

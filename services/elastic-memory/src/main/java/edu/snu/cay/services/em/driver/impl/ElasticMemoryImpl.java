@@ -158,6 +158,16 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     }
   }
 
+  @Override
+  public void move(final String dataType, final int numBlocks, final String srcEvalId, final String destEvalId,
+                   @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
+    try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
+      final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
+      partitionManager.chooseBlocks(srcEvalId, numBlocks);
+//      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, , traceInfo);
+    }
+  }
+
   /**
    * Apply the updates in the Driver and Evaluators' status.
    * It is synchronized to restrict at most one thread call this method at one time

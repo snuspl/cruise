@@ -278,6 +278,13 @@ public class MigrationManagerTest {
                             final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     }
 
+    @Override
+    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+                            final List<Integer> blocks, final String operationId,
+                            @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
     /**
      * Do nothing because this is called by Evaluator.
      */
