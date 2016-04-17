@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.util.Optional;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -51,6 +52,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private static final String SEND_REGIS_MSG = "sendRegisMsg";
   private static final String SEND_UPDATE_MSG = "sendUpdateMsg";
   private static final String SEND_UPDATE_ACK_MSG = "sendUpdateAckMsg";
+  private static final String SEND_OWNERSHIP_MSG = "sendOwnershipMsg";
   private static final String SEND_FAILURE_MSG = "sendFailureMsg";
 
   private final EMNetworkSetup emNetworkSetup;
@@ -358,6 +360,30 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateAckMsg",
           new Object[]{operationId, result});
+    }
+  }
+
+  @Override
+  public void sendOwnershipMsg(final Optional<String> destIdOptional, final String operationId, final int blockId,
+                               final int storeId, @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendUpdateAckMsgScope = Trace.startSpan(SEND_OWNERSHIP_MSG, parentTraceInfo)) {
+      final OwnershipMsg ownershipMsg =
+          OwnershipMsg.newBuilder()
+              .setBlockId(blockId)
+              .setMemoryStoreId(storeId)
+              .build();
+
+      final String destId = destIdOptional.isPresent() ? destIdOptional.get() : driverId;
+
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.UpdateAckMsg)
+              .setSrcId(emNetworkSetup.getMyId().toString())
+              .setDestId(destId)
+              .setOperationId(operationId)
+              .setOwnershipMsg(ownershipMsg)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .build());
     }
   }
 

@@ -135,7 +135,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   @Override
   public boolean updateOwnership(final String dataType, final int blockId, final int storeId) {
-    return false;
+    router.updateOwnership(blockId, storeId);
+    return true; // TODO #999 Do we really need boolean here?
   }
 
   @Override

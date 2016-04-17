@@ -182,18 +182,19 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final String dataType = dataMsg.getDataType().toString();
       final Codec codec = serializer.getCodec(dataType);
       final String operationId = msg.getOperationId().toString();
+      final int blockId = dataMsg.getBlockId();
 
-      // Compress the ranges so the number of ranges minimizes.
-      final SortedSet<Long> newIds = new TreeSet<>();
-      for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
-        final long id = unitIdPair.getId();
-        newIds.add(id);
-      }
-      final Set<LongRange> longRangeSet = LongRangeUtils.generateDenseLongRanges(newIds);
+      final Map<Long, Object> dataMap = toDataMap(dataMsg.getUnits(), codec);
+      memoryStore.putBlock(dataType, blockId, dataMap);
 
-      // store the items in the pendingUpdates, so the items will be added later.
-      pendingUpdates.put(operationId, new Add(dataType, codec, dataMsg.getUnits(), longRangeSet));
-      sender.get().sendDataAckMsg(longRangeSet, operationId, TraceInfo.fromSpan(onDataMsgScope.getSpan()));
+      // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
+      // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
+      final int storeId = Integer.valueOf(msg.getDestId().toString().split("-")[1]);
+      memoryStore.updateOwnership(dataType, blockId, storeId); // Need a proper synchronization
+
+      // Notify the driver that the ownership has been updated by setting empty destination id.
+      sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, blockId, storeId,
+          TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
   }
 
@@ -233,19 +234,10 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     final Codec codec = serializer.getCodec(dataType);
     final List<Integer> blockIds = ctrlMsg.getBlockIds();
 
+    // Send the data as unit of block
     for (final int blockId : blockIds) {
-      // Send the data as unit of block
       final Map<Long, Object> blockData = memoryStore.getBlock(dataType, blockId);
-      final List<UnitIdPair> unitIdPairList = new ArrayList<>(blockData.size());
-      for (final Map.Entry<Long, Object> idObject : blockData.entrySet()) {
-        final long id = idObject.getKey();
-          // Include the units only if they are not moving already.
-          final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-              .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
-              .setId(id)
-              .build();
-          unitIdPairList.add(unitIdPair);
-      }
+      final List<UnitIdPair> unitIdPairList = toUnitIdPairs(blockData, codec);
       sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
         blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
     }
@@ -429,5 +421,34 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       }
     }
     return false;
+  }
+
+  /**
+   * Convert the Avro unit id pairs, to a data map.
+   */
+  private Map<Long, Object> toDataMap(final List<UnitIdPair> unitIdPairs, final Codec codec) {
+    final Map<Long, Object> dataMap = new HashMap<>(unitIdPairs.size());
+    for (final UnitIdPair unitIdPair : unitIdPairs) {
+      dataMap.put(unitIdPair.getId(), codec.decode(unitIdPair.getUnit().array()));
+    }
+    return dataMap;
+  }
+
+  /**
+   * Convert the data map into unit id pairs, which can be transferred via Avro.
+   */
+  private List<UnitIdPair> toUnitIdPairs(final Map<Long, Object> dataMap, final Codec codec) {
+    final List<UnitIdPair> unitIdPairs = new ArrayList<>(dataMap.size());
+    for (final Map.Entry<Long, Object> idObject : dataMap.entrySet()) {
+      final long id = idObject.getKey();
+      // Include the units only if they are not moving already.
+
+      final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+          .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
+          .setId(id)
+          .build();
+      unitIdPairs.add(unitIdPair);
+    }
+    return unitIdPairs;
   }
 }

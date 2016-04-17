@@ -24,6 +24,7 @@ import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
@@ -31,9 +32,12 @@ import java.util.logging.Logger;
 
 /**
  * OperationRouter that redirects incoming operations on specific data ids to corresponding blocks and evaluators.
+ * Note that this class is not thread-safe, which means client of this class must synchronize explicitly for
+ * concurrent access.
  * @param <K> type of data key
  */
 @Private
+@NotThreadSafe
 public final class OperationRouter<K> {
 
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
@@ -177,6 +181,15 @@ public final class OperationRouter<K> {
    */
   List<Integer> getLocalBlockIds() {
     return Collections.unmodifiableList(localBlocks);
+  }
+
+  /**
+   * Updates the owner of the block.
+   * @param blockId id of the block to update its ownership.
+   * @param storeId id of the MemoryStore that will be new owner.
+   */
+  void updateOwnership(final int blockId, final int storeId) {
+    blockIdToStoreId[blockId] = storeId;
   }
 
   /**

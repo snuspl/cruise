@@ -237,7 +237,7 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
         "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
-        "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg"]}},
+        "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg", "OwnershipMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
@@ -251,7 +251,8 @@
     {"name": "updateMsg", "type": ["null", "UpdateMsg"], "default": null},
     {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null},
     {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
-    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null}
+    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
+    {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null}
   ]
 }
 ]

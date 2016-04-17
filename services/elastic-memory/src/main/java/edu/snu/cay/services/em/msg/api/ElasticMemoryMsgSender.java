@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.util.Optional;
 import org.htrace.TraceInfo;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -135,6 +136,15 @@ public interface ElasticMemoryMsgSender {
                         final UpdateResult result,
                         @Nullable final TraceInfo parentTraceInfo);
 
+  /**
+   * Sends a request to update ownership for the given block.
+   * @param destId Specifies the destination. The recipient is Driver when this field is empty.
+   */
+  void sendOwnershipMsg(final Optional<String> destId,
+                        final String operationId,
+                        final int blockId,
+                        final int storeId,
+                        @Nullable final TraceInfo parentTraceInfo);
   /**
    * Sends a FailureMsg to notify the failure to the Driver.
    */

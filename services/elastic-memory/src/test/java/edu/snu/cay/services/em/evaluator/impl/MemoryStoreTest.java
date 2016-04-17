@@ -29,6 +29,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.util.Optional;
 import org.htrace.HTraceConfiguration;
 import org.htrace.Span;
 import org.htrace.SpanReceiver;
@@ -547,6 +548,12 @@ final class MockedMsgSender implements ElasticMemoryMsgSender {
   @Override
   public void sendUpdateAckMsg(final String operationId, final UpdateResult result,
                                @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final int blockId,
+                               final int storeId, @Nullable final TraceInfo parentTraceInfo) {
 
   }
 
