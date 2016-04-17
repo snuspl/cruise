@@ -67,7 +67,9 @@ final class NMFWorker implements Worker {
   // data key ranges assigned to this worker
   private Set<LongRange> dataKeyRanges;
 
-  private final Tracer tracer;
+  private final Tracer pushTracer;
+  private final Tracer pullTracer;
+  private final Tracer computeTracer;
 
   /**
    * Number of iterations.
@@ -103,7 +105,9 @@ final class NMFWorker implements Worker {
     this.rMatrix = Maps.newHashMap();
     this.gradients = Maps.newHashMap();
 
-    this.tracer = new Tracer();
+    this.pushTracer = new Tracer();
+    this.pullTracer = new Tracer();
+    this.computeTracer = new Tracer();
   }
 
   @Override
@@ -156,22 +160,28 @@ final class NMFWorker implements Worker {
 
   private void pushAndClearGradients() {
     // push gradients
-    tracer.startPush();
+    pushTracer.start();
     for (final Map.Entry<Integer, Vector> entry : gradients.entrySet()) {
       parameterWorker.push(entry.getKey(), entry.getValue());
     }
-    tracer.finishPush(gradients.size());
+    pushTracer.end(gradients.size());
     // clear gradients
     gradients.clear();
   }
 
   private void pullRMatrix() {
-    tracer.startPull();
+    pullTracer.start();
     final List<Vector> vectors = parameterWorker.pull(keys);
     for (int i = 0; i < keys.size(); ++i) {
       rMatrix.put(keys.get(i), vectors.get(i));
     }
-    tracer.finishPull(keys.size());
+    pullTracer.end(keys.size());
+  }
+
+  private void resetTracers() {
+    pushTracer.reset();
+    pullTracer.reset();
+    computeTracer.reset();
   }
 
   @Override
@@ -180,7 +190,7 @@ final class NMFWorker implements Worker {
     double loss = 0.0;
     int elemCount = 0;
     int rowCount = 0;
-    tracer.reset();
+    resetTracers();
 
     // TODO #302: update dataKeyRanges when there's an update in assigned workload
 
@@ -193,7 +203,7 @@ final class NMFWorker implements Worker {
     pullRMatrix();
 
     for (final NMFData datum : workload) {
-      tracer.startCompute();
+      computeTracer.start();
       final int rowIdx = datum.getRowIndex();
       final Vector lVec = lMatrix.get(rowIdx); // L_{i, *} : i-th row of L
 
@@ -226,7 +236,7 @@ final class NMFWorker implements Worker {
         // iterative mean = c(t+1) = c(t) + (x - c(t)) / (t + 1)
         loss += (error * error - loss) / ++elemCount;
       }
-      tracer.finishCompute(datum.getColumns().size());
+      computeTracer.end(datum.getColumns().size());
 
       if (++rowCount % batchSize == 0) {
         pushAndClearGradients();
@@ -238,9 +248,9 @@ final class NMFWorker implements Worker {
         LOG.log(Level.INFO, "Iteration: {0}, Row Count: {1}, Loss: {2}, Avg Comp Per Row: {3}, " +
             "Sum Comp: {4}, Avg Pull: {5}, Sum Pull: {6}, Avg Push: {7}, " +
             "Sum Push: {8}, DvT: {9}, RvT: {10}, Elapsed Time: {11}",
-            new Object[]{iteration, rowCount, String.format("%g", loss), tracer.getComputeAvgTime(),
-                tracer.getComputeSumTime(), tracer.getPullAvgTime(), tracer.getPullSumTime(), tracer.getPushAvgTime(),
-                tracer.getPushSumTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
+            new Object[]{iteration, rowCount, String.format("%g", loss), computeTracer.avg(),
+                computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
+                pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
       }
     }
 
@@ -251,9 +261,9 @@ final class NMFWorker implements Worker {
     LOG.log(Level.INFO, "End iteration: {0}, Row Count: {1}, Loss: {2}, Avg Comp Per Row: {3}, " +
             "Sum Comp: {4}, Avg Pull: {5}, Sum Pull: {6}, Avg Push: {7}, " +
             "Sum Push: {8}, DvT: {9}, RvT: {10}, Elapsed Time: {11}",
-        new Object[]{iteration, rowCount, String.format("%g", loss), tracer.getComputeAvgTime(),
-            tracer.getComputeSumTime(), tracer.getPullAvgTime(), tracer.getPullSumTime(), tracer.getPushAvgTime(),
-            tracer.getPushSumTime(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
+        new Object[]{iteration, rowCount, String.format("%g", loss), computeTracer.avg(),
+            computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
+            pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
   }
 
   @Override
