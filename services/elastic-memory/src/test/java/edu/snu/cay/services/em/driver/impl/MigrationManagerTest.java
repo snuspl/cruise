@@ -328,8 +328,17 @@ public class MigrationManagerTest {
     public void sendUpdateAckMsg(final String operationId, final UpdateResult result,
                                  @Nullable final TraceInfo parentTraceInfo) {
     }
+
     @Override
-    public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final int blockId, final int oldMemoryStoreId, final int newMemoryStoreId, @Nullable final TraceInfo parentTraceInfo) {
+    public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final String dataType,
+                                 final int blockId, final int oldOwnerId, final int newOwnerId,
+                                 @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendOwnershipAckMsg(final String operationId, final String dataType, final int blockId,
+                                    @Nullable final TraceInfo parentTraceInfo) {
 
     }
 

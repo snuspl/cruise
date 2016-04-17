@@ -161,6 +161,7 @@
   "type": "record",
   "name": "OwnershipMsg",
   "fields": [
+      {"name": "dataType", "type": "string"},
       {"name": "blockId", "type": "int"},
       {"name": "oldOwnerId", "type": "int"},
       {"name": "newOwnerId", "type": "int"}
@@ -173,11 +174,10 @@
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": "OwnershipACKMsg",
+  "name": "OwnershipAckMsg",
   "fields": [
-      {"name": "blockId", "type": "int"},
-      {"name": "oldOwnerId", "type": "int"},
-      {"name": "newOwnerId", "type": "int"}
+      {"name": "dataType", "type": "string"},
+      {"name": "blockId", "type": "int"}
   ]
 },
 
@@ -222,6 +222,7 @@
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
     {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
+    {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null},
     {"name": "msg", "type": ["null", "string"], "default": null}
   ]
 },
@@ -239,7 +240,7 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
         "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
-        "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg", "OwnershipMsg"]}},
+        "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg", "OwnershipMsg", "OwnershipAckMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
@@ -254,7 +255,8 @@
     {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null},
     {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
     {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
-    {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null}
+    {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null},
+    {"name": "ownershipAckMsg", "type": ["null", "OwnershipAckMsg"], "default": null}
   ]
 }
 ]

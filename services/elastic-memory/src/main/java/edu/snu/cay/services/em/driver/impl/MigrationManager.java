@@ -319,6 +319,20 @@ final class MigrationManager {
     updateCounter.countDown();
   }
 
+  synchronized void finishMigration(final String operationId, final int blockId) {
+    final Migration migration = ongoingMigrations.get(operationId);
+    if (migration == null) {
+      LOG.log(Level.WARNING, "Migration with ID {0} was not registered, or it has already been finished.", operationId);
+      return;
+    }
+
+//    migration.checkAndUpdate(Migration.UPDATING_SENDER, Migration.FINISHED);
+
+    ongoingMigrations.remove(operationId);
+    notifySuccess(operationId, migration.getMovedRanges());
+  }
+
+
   /**
    * Fail migration, and notify the failure via callback.
    * @param operationId Identifier of {@code move} operation.
@@ -397,6 +411,15 @@ final class MigrationManager {
     callbackRouter.onCompleted(msg);
   }
 
+   private synchronized void notifySuccess(final String moveOperationId, final List<Integer> blocks) {
+    final ResultMsg resultMsg = ResultMsg.newBuilder()
+        .setResult(Result.SUCCESS)
+        .setBlockIds(blocks)
+        .build();
+    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId + FINISHED_SUFFIX, resultMsg);
+    callbackRouter.onCompleted(msg);
+  }
+
   private static AvroElasticMemoryMessage getEMMessage(final String operationId, final ResultMsg resultMsg) {
     return AvroElasticMemoryMessage.newBuilder()
         .setType(Type.ResultMsg)
@@ -410,11 +433,13 @@ final class MigrationManager {
   void updateOwner(final String operationId, final int blockId, final int oldOwnerId, final int newOwnerId,
                    @Nullable final TraceInfo traceInfo) {
     final Migration migrationInfo = ongoingMigrations.get(operationId);
+    final String dataType = migrationInfo.getDataType();
     final String senderId = migrationInfo.getSenderId();
     final String receiverId = migrationInfo.getReceiverId();
     partitionManager.updateOwner(blockId, oldOwnerId, newOwnerId);
 
     // Send the update message to the source memoryStore
-    sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
+    sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, dataType, blockId, oldOwnerId, newOwnerId,
+        traceInfo);
   }
 }

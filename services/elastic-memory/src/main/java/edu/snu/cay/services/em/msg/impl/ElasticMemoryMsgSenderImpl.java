@@ -54,6 +54,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private static final String SEND_UPDATE_ACK_MSG = "sendUpdateAckMsg";
   private static final String SEND_OWNERSHIP_MSG = "sendOwnershipMsg";
   private static final String SEND_FAILURE_MSG = "sendFailureMsg";
+  private static final String SEND_OWNERSHIP_ACK_MSG = "sendOwnershipAckMsg";
 
   private final EMNetworkSetup emNetworkSetup;
   private final IdentifierFactory identifierFactory;
@@ -364,11 +365,13 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendOwnershipMsg(final Optional<String> destIdOptional, final String operationId, final int blockId,
-                               final int oldOwnerId, final int newOwnerId, @Nullable final TraceInfo parentTraceInfo) {
+  public void sendOwnershipMsg(final Optional<String> destIdOptional, final String operationId, final String dataType,
+                               final int blockId, final int oldOwnerId, final int newOwnerId,
+                               @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendUpdateAckMsgScope = Trace.startSpan(SEND_OWNERSHIP_MSG, parentTraceInfo)) {
       final OwnershipMsg ownershipMsg =
           OwnershipMsg.newBuilder()
+              .setDataType(dataType)
               .setBlockId(blockId)
               .setOldOwnerId(oldOwnerId)
               .setNewOwnerId(newOwnerId)
@@ -383,6 +386,27 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setDestId(destId)
               .setOperationId(operationId)
               .setOwnershipMsg(ownershipMsg)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .build());
+    }
+  }
+
+  @Override
+  public void sendOwnershipAckMsg(final String operationId, final String dataType, final int blockId,
+                                  @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendOwnershipAckMsgScope = Trace.startSpan(SEND_OWNERSHIP_ACK_MSG, parentTraceInfo)) {
+      final OwnershipAckMsg ownershipAckMsg = OwnershipAckMsg.newBuilder()
+          .setDataType(dataType)
+          .setBlockId(blockId)
+          .build();
+
+      send(driverId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.OwnershipAckMsg)
+              .setSrcId(emNetworkSetup.getMyId().toString())
+              .setDestId(driverId)
+              .setOperationId(operationId)
+              .setOwnershipAckMsg(ownershipAckMsg)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
               .build());
     }

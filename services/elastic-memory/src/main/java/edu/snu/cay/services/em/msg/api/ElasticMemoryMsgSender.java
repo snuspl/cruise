@@ -142,10 +142,20 @@ public interface ElasticMemoryMsgSender {
    */
   void sendOwnershipMsg(final Optional<String> destId,
                         final String operationId,
+                        final String dataType,
                         final int blockId,
                         final int oldOwnerId,
                         final int newOwnerId,
                         @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Sends an ACK message to Driver for notifying that the ownership has been updated successful.
+   */
+  void sendOwnershipAckMsg(final String operationId,
+                           final String dataType,
+                           final int blockId,
+                           @Nullable final TraceInfo parentTraceInfo);
+
   /**
    * Sends a FailureMsg to notify the failure to the Driver.
    */

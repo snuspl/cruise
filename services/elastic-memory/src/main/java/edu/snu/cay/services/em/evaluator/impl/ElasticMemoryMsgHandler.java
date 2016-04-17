@@ -56,6 +56,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_DATA_MSG = "onDataMsg";
   private static final String ON_CTRL_MSG = "onCtrlMsg";
   private static final String ON_UPDATE_MSG = "onUpdateMsg";
+  private static final String ON_OWNERSHIP_MSG = "onOwnershipMsg";
 
   private final RemoteAccessibleMemoryStore<Long> memoryStore;
   private final OperationResultAggregator resultAggregator;
@@ -110,11 +111,29 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       onUpdateMsg(innerMsg);
       break;
 
+    case OwnershipMsg:
+      onOwnershipMsg(innerMsg);
+      break;
+
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
 
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+  }
+
+  private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(ON_OWNERSHIP_MSG,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      final String operationId = msg.getOperationId().toString();
+      final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
+      final String dataType = ownershipMsg.getDataType().toString();
+      final int blockId = ownershipMsg.getBlockId();
+      final int newOwnerId = ownershipMsg.getNewOwnerId();
+
+      memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+    }
   }
 
   /**
@@ -193,7 +212,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final int oldOwnerId = memoryStore.updateOwnership(dataType, blockId, newOwnerId); // TODO #000: synchronization
 
       // Notify the driver that the ownership has been updated by setting empty destination id.
-      sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, blockId, oldOwnerId, newOwnerId,
+      sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, dataType, blockId, oldOwnerId, newOwnerId,
           TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
   }
