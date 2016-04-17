@@ -133,6 +133,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final int newOwnerId = ownershipMsg.getNewOwnerId();
 
       memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+      memoryStore.removeBlock(dataType, blockId); // TODO #999: Double-check this is correct.
     }
   }
 
