@@ -133,6 +133,26 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     typeToBlocks.put(dataType, initialBlocks);
   }
 
+  @Override
+  public boolean updateOwnership(final String dataType, final int blockId, final int storeId) {
+    return false;
+  }
+
+  @Override
+  public <V> boolean putData(final String dataType, final int blockId, final Map<Long, V> data) {
+    return false;
+  }
+
+  @Override
+  public Map<Long, Object> getData(final String dataType, final int blockId) {
+    return null;
+  }
+
+  @Override
+  public boolean removeData(final String dataType, final int blockId) {
+    return false;
+  }
+
   /**
    * A runnable that dequeues and executes operations requested from remote clients.
    * Several threads are initiated at the beginning and run as long-running background services.
