@@ -18,6 +18,8 @@ package edu.snu.cay.common.math.linalg;
 import edu.snu.cay.common.math.linalg.breeze.DefaultVectorFactory;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.util.List;
+
 /**
  * Factory interface for {@link Vector}.
  */
@@ -60,4 +62,12 @@ public interface VectorFactory {
    * @return created vector
    */
   Vector createSparse(int[] index, double[] data, int length);
+
+  /**
+   * Creates a dense vector by concatenating several vectors.
+   * The values are deep copies; modifying the return vector does not affect the original vectors.
+   * @param vectors list of vectors to concatenate
+   * @return the vector created by concatenation
+   */
+  Vector concatDense(final List<Vector> vectors);
 }

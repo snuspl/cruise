@@ -19,11 +19,16 @@ import breeze.math.Semiring;
 import breeze.math.Semiring$;
 import breeze.storage.Zero;
 import breeze.storage.Zero$;
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
+import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import scala.collection.JavaConversions;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 
 import javax.inject.Inject;
+import java.util.List;
 
 /**
  * Factory class for breeze based vector.
@@ -94,5 +99,19 @@ public final class DefaultVectorFactory implements VectorFactory {
   public SparseVector createSparse(final int[] index, final double[] data, final int length) {
     assert (index.length == data.length);
     return new SparseVector(new breeze.linalg.SparseVector(index, data, length, ZERO));
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public DenseVector concatDense(final List<Vector> vectors) {
+    final List<breeze.linalg.DenseVector<Double>> breezeVecList = Lists.transform(vectors,
+        new Function<Vector, breeze.linalg.DenseVector<Double>>() {
+          public breeze.linalg.DenseVector<Double> apply(final Vector vector) {
+            return ((DenseVector) vector).getBreezeVector();
+          }
+        });
+    return new DenseVector(
+        breeze.linalg.DenseVector.vertcat(JavaConversions.asScalaBuffer(breezeVecList), VectorOps.SET_DD, TAG, ZERO));
   }
 }
