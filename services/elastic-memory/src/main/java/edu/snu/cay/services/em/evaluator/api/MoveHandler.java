@@ -18,7 +18,6 @@ package edu.snu.cay.services.em.evaluator.api;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.annotations.audience.Private;
 
-import java.util.List;
 import java.util.Map;
 
 /**

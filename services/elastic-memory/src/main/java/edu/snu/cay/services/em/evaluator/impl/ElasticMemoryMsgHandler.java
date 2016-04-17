@@ -258,7 +258,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final Map<Long, Object> blockData = memoryStore.getBlock(dataType, blockId);
       final List<UnitIdPair> unitIdPairList = toUnitIdPairs(blockData, codec);
       sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
-        blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+          blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
     }
   }
 

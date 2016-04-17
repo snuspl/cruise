@@ -250,7 +250,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setCtrlMsg(ctrlMsg)
               .build());
     }
-}
+  }
 
   @Override
   public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
