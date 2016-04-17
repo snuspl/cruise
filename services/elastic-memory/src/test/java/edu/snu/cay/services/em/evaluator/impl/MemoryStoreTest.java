@@ -571,7 +571,6 @@ final class MockedMsgSender implements ElasticMemoryMsgSender {
 
   }
 
-
   @Override
   public void sendFailureMsg(final String operationId, final String reason, @Nullable final TraceInfo parentTraceInfo) {
 

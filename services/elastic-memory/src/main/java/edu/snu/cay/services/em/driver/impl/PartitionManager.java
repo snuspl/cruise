@@ -524,4 +524,13 @@ public final class PartitionManager {
 
     return blockIdList;
   }
+
+  /**
+   * @param evalId id of the Evaluator
+   * @return the number of blocks owned by the Evaluator.
+   */
+  public synchronized int getNumBloks(final String evalId) {
+    final Set<Integer> blockIds = evalIdToBlockIds.get(evalId);
+    return blockIds.size();
+  }
 }

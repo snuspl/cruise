@@ -162,9 +162,10 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   public void move(final String dataType, final int numBlocks, final String srcEvalId, final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
+      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
-      partitionManager.chooseBlocks(srcEvalId, numBlocks);
-//      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, , traceInfo);
+      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, numBlocks, traceInfo,
+          finishedCallback);
     }
   }
 
