@@ -104,9 +104,11 @@
   "fields":
   [
     {"name": "dataType", "type": "string"},
-    {"name": "ctrlMsgType", "type": {"type": "enum", "name": "CtrlMsgType", "symbols": ["IdRange", "NumUnits"]}},
+    {"name": "ctrlMsgType",
+     "type": {"type": "enum", "name": "CtrlMsgType", "symbols": ["IdRange", "NumUnits", "Blocks"]}},
     {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
-    {"name": "numUnits", "type": ["null", "int"], "default": null}
+    {"name": "numUnits", "type": ["null", "int"], "default": null},
+    {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null}
   ]
 },
 
@@ -156,10 +158,10 @@
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": “OwnershipMsg”,
+  "name": "OwnershipMsg",
   "fields": [
-      {"name": "blockId", "type": integer},
-      {"name": "memoryStoreId", "type": integer}
+      {"name": "blockId", "type": "int"},
+      {"name": "memoryStoreId", "type": "int"}
   ]
 },
 
@@ -169,10 +171,10 @@
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
-  "name": “OwnershipACKMsg”,
+  "name": "OwnershipACKMsg",
   "fields": [
-      {"name": "blockId", "type": integer},
-      {"name": "memoryStoreId", "type": integer}
+      {"name": "blockId", "type": "int"},
+      {"name": "memoryStoreId", "type": "int"}
   ]
 },
 

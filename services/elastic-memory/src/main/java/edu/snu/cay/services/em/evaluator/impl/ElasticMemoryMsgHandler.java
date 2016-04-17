@@ -213,10 +213,24 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
         onCtrlMsgNumUnits(msg, onCtrlMsgScope);
         break;
 
+      case Blocks:
+        onCtrlMsgBlocks(msg, onCtrlMsgScope);
+        break;
+
       default:
         throw new RuntimeException("Unexpected control message type: " + ctrlMsgType);
       }
     }
+  }
+
+  /**
+   * Called when the Driver initiates data migration.
+   */
+  private void onCtrlMsgBlocks(final AvroElasticMemoryMessage msg, final TraceScope onCtrlMsgScope) {
+    final String operationId = msg.getOperationId().toString();
+    final CtrlMsg ctrlMsg = msg.getCtrlMsg();
+    final String dataType = ctrlMsg.getDataType().toString();
+
   }
 
   /**
