@@ -13,7 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.async.examples.recommendation;
+package edu.snu.cay.async.examples.nmf;
+
+import org.apache.reef.io.network.util.Pair;
+
+import java.util.List;
 
 /**
  * Data object for non-negative matrix factorization.
@@ -21,26 +25,19 @@ package edu.snu.cay.async.examples.recommendation;
 final class NMFData {
 
   private final int rowIndex;
-  private final int colIndex;
-  private final double value;
+  private final List<Pair<Integer, Double>> columns;
 
   NMFData(final int rowIndex,
-          final int colIndex,
-          final double value) {
+          final List<Pair<Integer, Double>> columns) {
     this.rowIndex = rowIndex;
-    this.colIndex = colIndex;
-    this.value = value;
+    this.columns = columns;
   }
 
-  public int getRowIndex() {
+  int getRowIndex() {
     return rowIndex;
   }
 
-  public int getColIndex() {
-    return colIndex;
-  }
-
-  public double getValue() {
-    return value;
-  }
+  List<Pair<Integer, Double>> getColumns() {
+    return columns;
+  };
 }
