@@ -105,7 +105,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
 
       final int blockId = ownershipAckMsg.getBlockId();
-      migrationManager.finishMigration(operationId, blockId);
+      migrationManager.markBlockAsMoved(operationId, blockId);
     }
   }
 

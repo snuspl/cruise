@@ -185,6 +185,17 @@ final class MigrationManager {
     sender.get().sendCtrlMsg(senderId, dataType, receiverId, numUnits, operationId, traceInfo);
   }
 
+  /**
+   * Start migration of the data, which moves data blocks from the sender to the receiver Evaluator.
+   * Note that operationId should be unique.
+   * @param operationId Identifier of the {@code move} operation.
+   * @param senderId Identifier of the sender.
+   * @param receiverId Identifier of the receiver.
+   * @param dataType Type of the data.
+   * @param numBlocks Number of blocks to move.
+   * @param traceInfo Information for Trace.
+   * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
+   */
   public synchronized void startMigration(final String operationId,
                                           final String senderId,
                                           final String receiverId,
@@ -349,17 +360,24 @@ final class MigrationManager {
     updateCounter.countDown();
   }
 
-  synchronized void finishMigration(final String operationId, final int blockId) {
+  /**
+   * Mark one block as moved.
+   * @param operationId Identifier of {@code move} operation.
+   * @param blockId Identifier of the moved block.
+   */
+  synchronized void markBlockAsMoved(final String operationId, final int blockId) {
     final Migration migration = ongoingMigrations.get(operationId);
     if (migration == null) {
       LOG.log(Level.WARNING, "Migration with ID {0} was not registered, or it has already been finished.", operationId);
       return;
     }
 
-//    migration.checkAndUpdate(Migration.UPDATING_SENDER, Migration.FINISHED);
+    migration.markBlockAsMoved(blockId);
 
-    ongoingMigrations.remove(operationId);
-    notifySuccess(operationId, migration.getMovedRanges());
+    if (migration.isComplete()) {
+      ongoingMigrations.remove(operationId);
+      notifySuccess(operationId, migration.getBlockIds());
+    }
   }
 
 
@@ -465,10 +483,9 @@ final class MigrationManager {
     final Migration migrationInfo = ongoingMigrations.get(operationId);
     final String dataType = migrationInfo.getDataType();
     final String senderId = migrationInfo.getSenderId();
-    final String receiverId = migrationInfo.getReceiverId();
     partitionManager.updateOwner(blockId, oldOwnerId, newOwnerId);
 
-    // Send the update message to the source memoryStore
+    // Send the OwnershipMessage to update the owner in the sender memoryStore
     sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, dataType, blockId, oldOwnerId, newOwnerId,
         traceInfo);
   }
