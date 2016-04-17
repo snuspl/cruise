@@ -62,7 +62,7 @@ final class NMFWorker implements Worker {
 
   private static final String DATA_TYPE = "NMF";
   private final DataIdFactory<Long> idFactory;
-  private final MemoryStore memoryStore;
+  private final MemoryStore<Long> memoryStore;
 
   // data key ranges assigned to this worker
   private Set<LongRange> dataKeyRanges;
@@ -85,7 +85,7 @@ final class NMFWorker implements Worker {
                     @Parameter(LogPeriod.class) final int logPeriod,
                     final NMFModelGenerator modelGenerator,
                     final DataIdFactory<Long> idFactory,
-                    final MemoryStore memoryStore) {
+                    final MemoryStore<Long> memoryStore) {
     this.parameterWorker = parameterWorker;
     this.workerSynchronizer = workerSynchronizer;
     this.dataParser = dataParser;
@@ -203,16 +203,18 @@ final class NMFWorker implements Worker {
         final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
 
         // compute gradients with l2 regularization
-        final Vector lGrad = rVec.scale(error); // e * R_{*, j}'
+        // lGrad = 2 * e * R_{*, j}' + 2 * lambda * L_{i, *}
+        final Vector lGrad = rVec.scale(error / batchSize);
         if (lambda != 0.0D) {
-          lGrad.axpy(lambda, lVec); // lambda * L_{i, *}
+          lGrad.axpy(lambda, lVec);
         }
-        lGrad.scalei(2.0 * stepSize / batchSize);
-        final Vector rGrad = lVec.scale(error); // e * L_{i, *}'
+        lGrad.scalei(2.0D * stepSize);
+        // rGrad = 2 * e + L_{i, *}' + 2 * lambda + R_{j, *}
+        final Vector rGrad = lVec.scale(error / batchSize);
         if (lambda != 0.0D) {
-          rGrad.axpy(lambda, rVec); // lambda * R_{*, j}
+          rGrad.axpy(lambda, rVec);
         }
-        rGrad.scalei(2.0 * stepSize / batchSize);
+        rGrad.scalei(2.0D * stepSize);
 
         // update L matrix
         modelGenerator.getValidVector(lVec.subi(lGrad));
@@ -257,25 +259,32 @@ final class NMFWorker implements Worker {
   @Override
   public void cleanup() {
     // print generated matrices
-    if (printMatrices) {
-      // print L matrix
-      for (final Map.Entry<Integer, Vector> entry : lMatrix.entrySet()) {
-        System.out.printf("L(%d, *):", entry.getKey());
-        for (final VectorEntry valueEntry : entry.getValue()) {
-          System.out.print(" " + valueEntry.value());
-        }
-        System.out.println();
-      }
-
-      // print transposed R matrix
-      pullRMatrix();
-      for (final Map.Entry<Integer, Vector> entry : rMatrix.entrySet()) {
-        System.out.printf("R(*, %d):", entry.getKey());
-        for (final VectorEntry valueEntry : entry.getValue()) {
-          System.out.print(" " + valueEntry.value());
-        }
-        System.out.println();
-      }
+    if (!printMatrices) {
+      return;
     }
+    // print L matrix
+    final StringBuilder lsb = new StringBuilder();
+    for (final Map.Entry<Integer, Vector> entry : lMatrix.entrySet()) {
+      lsb.append(String.format("L(%d, *):", entry.getKey()));
+      for (final VectorEntry valueEntry : entry.getValue()) {
+        lsb.append(' ');
+        lsb.append(valueEntry.value());
+      }
+      lsb.append('\n');
+    }
+    LOG.log(Level.INFO, lsb.toString());
+
+    // print transposed R matrix
+    pullRMatrix();
+    final StringBuilder rsb = new StringBuilder();
+    for (final Map.Entry<Integer, Vector> entry : rMatrix.entrySet()) {
+      rsb.append(String.format("R(*, %d):", entry.getKey()));
+      for (final VectorEntry valueEntry : entry.getValue()) {
+        rsb.append(' ');
+        rsb.append(valueEntry.value());
+      }
+      rsb.append('\n');
+    }
+    LOG.log(Level.INFO, rsb.toString());
   }
 }
