@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.common.math.linalg.breeze;
 
+import com.google.common.collect.Lists;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
@@ -24,12 +25,14 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 /**
  * This tests {@link DefaultVectorFactory}.
  */
 public final class VectorFactoryTest {
 
+  private static final double EPSILON = 0.01;
   private VectorFactory factory;
 
   @Before
@@ -59,6 +62,15 @@ public final class VectorFactoryTest {
       assertEquals(vec2.get(i), value[i], 0.0);
     }
     assertEquals(vec2, vec3);
+
+    final Vector vec4 = factory.concatDense(Lists.newArrayList(vec1, vec2));
+    for (int i = 0; i < 10; i++) {
+      assertEquals(vec1.get(i), vec4.get(i), EPSILON);
+      assertEquals(vec2.get(i), vec4.get(i + 10), EPSILON);
+    }
+
+    vec4.set(1, 10);
+    assertNotEquals(vec1.get(1), vec4.get(1), EPSILON);
   }
 
   /**

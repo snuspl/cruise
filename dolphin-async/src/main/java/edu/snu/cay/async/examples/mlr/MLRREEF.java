@@ -44,6 +44,7 @@ public final class MLRREEF {
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
         .addParameterClass(LossLogPeriod.class)
+        .addParameterClass(NumFeaturesPerPartition.class)
         .build());
   }
 
@@ -71,5 +72,10 @@ public final class MLRREEF {
                   short_name = "lossLogPeriod",
                   default_value = "0")
   final class LossLogPeriod implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "number of features for each model partition",
+                  short_name = "featuresPerPartition")
+  final class NumFeaturesPerPartition implements Name<Integer> {
   }
 }
