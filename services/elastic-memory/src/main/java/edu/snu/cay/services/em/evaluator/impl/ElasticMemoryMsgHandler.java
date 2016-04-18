@@ -132,8 +132,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final int blockId = ownershipMsg.getBlockId();
       final int newOwnerId = ownershipMsg.getNewOwnerId();
 
+      // Update the owner of the block to the new one. Note that once the ownership is updated,
+      // then the data is never accessed locally, so it is safe to remove the local data block.
       memoryStore.updateOwnership(dataType, blockId, newOwnerId);
-      memoryStore.removeBlock(dataType, blockId); // TODO #999: Double-check this is correct.
+      memoryStore.removeBlock(dataType, blockId);
+
+      sender.get().sendOwnershipAckMsg(operationId, dataType, blockId,
+          TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
     }
   }
 
@@ -210,7 +215,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
       // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
       final int newOwnerId = Integer.valueOf(msg.getDestId().toString().split("-")[1]);
-      final int oldOwnerId = memoryStore.updateOwnership(dataType, blockId, newOwnerId); // TODO #000: synchronization
+      final int oldOwnerId = memoryStore.updateOwnership(dataType, blockId, newOwnerId);
 
       // Notify the driver that the ownership has been updated by setting empty destination id.
       sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, dataType, blockId, oldOwnerId, newOwnerId,

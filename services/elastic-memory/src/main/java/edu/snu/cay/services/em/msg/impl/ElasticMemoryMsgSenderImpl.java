@@ -405,7 +405,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.UpdateAckMsg)
+              .setType(Type.OwnershipMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(destId)
               .setOperationId(operationId)
@@ -423,7 +423,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
           .setDataType(dataType)
           .setBlockId(blockId)
           .build();
-
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
               .setType(Type.OwnershipAckMsg)

@@ -139,7 +139,7 @@ public final class PartitionManager {
    * @param oldOwnerId id of the MemoryStore who used to own the block
    * @param newOwnerId id of the MemoryStore who will own the block
    */
-  public synchronized void updateOwner(final int blockId, final int oldOwnerId, final int newOwnerId) {
+  synchronized void updateOwner(final int blockId, final int oldOwnerId, final int newOwnerId) {
     final String oldEvalId = getEvalId(oldOwnerId);
     final String newEvalId = getEvalId(newOwnerId);
 
@@ -482,7 +482,7 @@ public final class PartitionManager {
   }
 
   private String getEvalId(final int memoryStoreId) {
-    return evalIdPrefix + memoryStoreId;
+    return evalIdPrefix + '-' + memoryStoreId;
   }
 
   private int getMemoryStoreId(final String evalId) {
@@ -529,7 +529,7 @@ public final class PartitionManager {
    * @param evalId id of the Evaluator
    * @return the number of blocks owned by the Evaluator.
    */
-  public synchronized int getNumBloks(final String evalId) {
+  public synchronized int getNumBlocks(final String evalId) {
     final Set<Integer> blockIds = evalIdToBlockIds.get(evalId);
     return blockIds.size();
   }
@@ -541,7 +541,7 @@ public final class PartitionManager {
   synchronized void markBlockAsMoved(final int blockId) {
     final boolean removed = movingBlocks.remove(blockId);
     if (!removed) {
-      LOG.log(Level.WARNING ,"The block {0} has already been marked as finished", blockId);
+      LOG.log(Level.WARNING, "The block {0} has already been marked as finished", blockId);
     }
   }
 }

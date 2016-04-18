@@ -43,9 +43,8 @@ interface MoveHandler<K> {
    * @param dataType the type of the data
    * @param blockId the identifier of block to send
    * @param data the data to put
-   * @return True if the update is successful, false otherwise.
    */
-  <V> boolean putBlock(String dataType, int blockId, Map<K, V> data);
+  <V> void putBlock(String dataType, int blockId, Map<K, V> data);
 
   /**
    * Gets the data in the block.
@@ -59,7 +58,6 @@ interface MoveHandler<K> {
    * Removes the data from the MemoryStore.
    * @param dataType the type of the data
    * @param blockId id of the block to remove
-   * @return True if the data has been removed successfully, false otherwise.
    */
-  boolean removeBlock(String dataType, int blockId);
+  void removeBlock(String dataType, int blockId);
 }

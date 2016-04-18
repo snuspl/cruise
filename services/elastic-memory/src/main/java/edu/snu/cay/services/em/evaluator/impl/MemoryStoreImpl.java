@@ -151,8 +151,19 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> boolean putBlock(final String dataType, final int blockId, final Map<Long, V> data) {
-    return false;
+  public <V> void putBlock(final String dataType, final int blockId, final Map<Long, V> data) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (null == blocks) {
+      throw new RuntimeException("Data type " + dataType + " does not exist.");
+    }
+
+    if (blocks.containsKey(blockId)) {
+      throw new RuntimeException("Block with id " + blockId + " already exists.");
+    }
+
+    final Block block = new Block();
+    block.subDataMap.putAll(data);
+    blocks.put(blockId, block);
   }
 
   @Override
@@ -171,8 +182,16 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public boolean removeBlock(final String dataType, final int blockId) {
-    return false;
+  public void removeBlock(final String dataType, final int blockId) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (null == blocks) {
+      throw new RuntimeException("Data type " + dataType + " does not exist.");
+    }
+
+    final Block block = blocks.remove(blockId);
+    if (null == block) {
+      throw new RuntimeException("Block with id " + blockId + " does not exist.");
+    }
   }
 
   /**

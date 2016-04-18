@@ -213,15 +213,8 @@ final class MigrationManager {
     final List<Integer> blocks = partitionManager.chooseBlocks(senderId, numBlocks);
 
     // Check early failure conditions:
-    // 1) sender does not have data in the type.
-    // 2) there is no block to move (maybe all blocks are moving).
-    if (!partitionManager.checkDataType(senderId, dataType)) {
-      final String reason =
-          "No data is movable in " + senderId + " of type " + dataType
-          + ". Requested numBlocks: " + numBlocks;
-      failMigration(operationId, reason);
-      return;
-    } else if (blocks.size() == 0) {
+    // there is no block to move (maybe all blocks are moving).
+    if (blocks.size() == 0) {
       final String reason =
           "There is no block to move in " + senderId + " of type. Requested numBlocks: " + numBlocks;
       failMigration(operationId, reason);
