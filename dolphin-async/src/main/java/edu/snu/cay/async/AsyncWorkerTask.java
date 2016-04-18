@@ -75,6 +75,7 @@ final class AsyncWorkerTask implements Task {
     final ExecutorService executorService = Executors.newFixedThreadPool(numWorkerThreads);
     final Future[] futures = new Future[numWorkerThreads];
 
+    LOG.log(Level.INFO, "Initializing {0} worker threads", numWorkerThreads);
     for (int index = 0; index < numWorkerThreads; index++) {
       // since a single injector only gives singleton instances,
       // we need to fork the given injector every time we spawn a new thread
