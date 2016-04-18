@@ -27,18 +27,22 @@ import org.apache.reef.task.Task;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
-  public static final String DATATYPE = "INTEGER";
-  private static final int NUM_DATA = 10;
+  static final String DATATYPE = "INTEGER";
+  private static final int NUM_DATA = 20;
 
   private final MemoryStore memoryStore;
   private final SimpleEMTaskReady simpleEMTaskReady;
   private final HeartBeatTriggerManager heartBeatTriggerManager;
   private final int iterations;
   private final long periodMillis;
+
+  private final List<Long> ids;
 
   @Inject
   private SimpleEMTask(
@@ -55,7 +59,7 @@ final class SimpleEMTask implements Task {
     this.iterations = iterations;
     this.periodMillis = periodMillis;
 
-    final List<Long> ids = dataIdFactory.getIds(NUM_DATA);
+    this.ids = dataIdFactory.getIds(NUM_DATA);
     // Just use ids as data (data do not matter)
     this.memoryStore.putList(DATATYPE, ids, ids);
 
@@ -65,12 +69,11 @@ final class SimpleEMTask implements Task {
   public byte[] call(final byte[] memento) throws InterruptedException {
     LOG.info("SimpleEMTask commencing...");
 
-    LOG.info("Before sleep, memory store contains: ");
-    LOG.info(memoryStore.getAll(DATATYPE).toString());
-    // Should be either
-    // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    // or
-    // [2^32, 2^32+1, 2^32+2, 2^32+3, 2^32+4, 2^32+5, 2^32+6, 2^32+7, 2^32+8, 2^32+9]
+    LOG.log(Level.INFO, "Before sleep, memory store contains {0} blocks", memoryStore.getAll(DATATYPE));
+
+    final Map<Long, Object> initialData = memoryStore.getRange(DATATYPE, ids.get(0), ids.get(NUM_DATA - 1));
+    assert initialData.keySet().containsAll(ids);
+    assert initialData.values().containsAll(ids);
 
     simpleEMTaskReady.setReady(true);
     heartBeatTriggerManager.triggerHeartBeat();
@@ -80,10 +83,10 @@ final class SimpleEMTask implements Task {
     LOG.info("Sleep for: " + sleepMillis);
     Thread.sleep(sleepMillis);
 
-    LOG.info("After sleep, memory store contains: ");
-    LOG.info(memoryStore.getAll(DATATYPE).toString());
-    // Evaluator that receives on the last iteration should have more than before
-    // Evaluator that sends on the last iterations should have less than before
+    LOG.log(Level.INFO, "After sleep, memory store contains {0} blocks", memoryStore.getAll(DATATYPE));
+    final Map<Long, Object> dataAfterMove = memoryStore.getRange(DATATYPE, ids.get(0), ids.get(NUM_DATA - 1));
+    assert dataAfterMove.keySet().containsAll(ids); // The same data must be loaded even after moved.
+    assert dataAfterMove.values().containsAll(ids);
 
     return null;
   }

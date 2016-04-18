@@ -47,6 +47,7 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -62,6 +63,7 @@ import java.util.logging.Logger;
 @Unit
 final class SimpleEMDriver {
   private static final Logger LOG = Logger.getLogger(SimpleEMDriver.class.getName());
+  private static final Random RANDOM = new Random();
   private static final int NUM_EVAL = 2;
   private static final String CONTEXT_ID_PREFIX = "Context-";
   public static final String TASK_ID_PREFIX = "Task-";
@@ -193,14 +195,13 @@ final class SimpleEMDriver {
       String destId = secondContextId;
 
       for (int i = 0; i < iterations; i++) {
-        final CountDownLatch transferredLatch = new CountDownLatch(1);
         final CountDownLatch finishedLatch = new CountDownLatch(1);
 
-        final int initialSrcNumUnits = getNumUnits(srcId);
-        final int initialDestNumUnits = getNumUnits(destId);
-        final int numToMove = initialSrcNumUnits / 2;
-
-        LOG.info("Move partitions of total size " + numToMove + " from " + srcId + " to " + destId);
+        final int initialSrcNumBlocks = getNumBlocks(srcId);
+        final int initialDestNumBlocks = getNumBlocks(destId);
+        final int numToMove = Math.max(1, RANDOM.nextInt(initialSrcNumBlocks)); // Move at least one block
+        LOG.log(Level.INFO, "Move {0} blocks from {1} to {2} (Initial number of blocks: {3} / {4} respectively)",
+            new Object[]{numToMove, srcId, destId, initialSrcNumBlocks, initialDestNumBlocks});
 
         final boolean[] moveSucceeded = {false};
 
@@ -209,15 +210,7 @@ final class SimpleEMDriver {
               new EventHandler<AvroElasticMemoryMessage>() {
                 @Override
                 public void onNext(final AvroElasticMemoryMessage emMsg) {
-                  LOG.log(Level.INFO, "Move {0} data transfer completed.", emMsg.getOperationId());
-                  transferredLatch.countDown();
-                }
-              },
-              new EventHandler<AvroElasticMemoryMessage>() {
-                @Override
-                public void onNext(final AvroElasticMemoryMessage emMsg) {
-                  moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS)
-                      ? true : false;
+                  moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS);
                   LOG.log(Level.INFO, "Move {0} succeeded {1} with result {2}",
                       new Object[]{emMsg.getOperationId(), moveSucceeded[0],
                           emMsg.getResultMsg() == null ? "" : emMsg.getResultMsg().getResult()});
@@ -229,22 +222,12 @@ final class SimpleEMDriver {
 
         // Wait for move to succeed
         try {
-          LOG.log(Level.INFO, "Waiting for data transfers to finish on iteration {0}", i);
-          transferredLatch.await();
-
-          // Number of units should be unchanged until applyUpdates() is done.
-          checkNumUnits(srcId, initialSrcNumUnits);
-          checkNumUnits(destId, initialDestNumUnits);
-
-          LOG.log(Level.INFO, "Applying updates on iteration {0}", i);
-          emService.applyUpdates();
-
-          // After update, number of units should be applied accordingly.
-          checkNumUnits(srcId, initialSrcNumUnits - numToMove);
-          checkNumUnits(destId, initialDestNumUnits + numToMove);
-
           LOG.log(Level.INFO, "Waiting for move to finish on iteration {0}", i);
-          transferredLatch.await();
+          finishedLatch.await();
+
+          // After moved, number of units should be applied accordingly.
+          checkBlocks(srcId, initialSrcNumBlocks - numToMove);
+          checkBlocks(destId, initialDestNumBlocks + numToMove);
 
           if (moveSucceeded[0]) {
             LOG.log(Level.INFO, "Move finished on iteration {0}", i);
@@ -272,9 +255,21 @@ final class SimpleEMDriver {
     }
   }
 
+  private void checkBlocks(final String evalId, final int expected) {
+    final int actual = getNumBlocks(evalId);
+    if (actual != expected) {
+      final String msg = evalId + "should have " + expected + ", but has " + actual + " blocks";
+      throw new RuntimeException(msg);
+    }
+  }
+
   private int getNumUnits(final String evalId) {
     final Set<LongRange> rangeSet = partitionManager.getRangeSet(evalId, SimpleEMTask.DATATYPE);
     final int numUnits = (int) LongRangeUtils.getNumUnits(rangeSet);
     return numUnits;
+  }
+
+  private int getNumBlocks(final String evalId) {
+    return partitionManager.getNumBlocks(evalId);
   }
 }
