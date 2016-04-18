@@ -196,33 +196,39 @@ final class MigrationManager {
    * @param traceInfo Information for Trace.
    * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
    */
-  public synchronized void startMigration(final String operationId,
-                                          final String senderId,
-                                          final String receiverId,
-                                          final String dataType,
-                                          final int numBlocks,
-                                          @Nullable final TraceInfo traceInfo,
-                                          @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
+  synchronized void startMigration(final String operationId,
+                                   final String senderId,
+                                   final String receiverId,
+                                   final String dataType,
+                                   final int numBlocks,
+                                   @Nullable final TraceInfo traceInfo,
+                                   @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     if (ongoingMigrations.containsKey(operationId)) {
       LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
       return;
     }
 
     callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
-    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType));
 
+    final List<Integer> blocks = partitionManager.chooseBlocks(senderId, numBlocks);
+
+    // Check early failure conditions:
+    // 1) sender does not have data in the type.
+    // 2) there is no block to move (maybe all blocks are moving).
     if (!partitionManager.checkDataType(senderId, dataType)) {
-      final String reason = new StringBuilder()
-          .append("No data is movable in ").append(senderId)
-          .append(" of type ").append(dataType)
-          .append(". Requested numBlocks: ").append(numBlocks)
-          .toString();
+      final String reason =
+          "No data is movable in " + senderId + " of type " + dataType
+          + ". Requested numBlocks: " + numBlocks;
+      failMigration(operationId, reason);
+      return;
+    } else if (blocks.size() == 0) {
+      final String reason =
+          "There is no block to move in " + senderId + " of type. Requested numBlocks: " + numBlocks;
       failMigration(operationId, reason);
       return;
     }
 
-    final List<Integer> blocks = partitionManager.chooseBlocks(senderId, numBlocks);
-
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, blocks));
     sender.get().sendCtrlMsg(senderId, dataType, receiverId, blocks, operationId, traceInfo);
   }
 
@@ -373,6 +379,7 @@ final class MigrationManager {
     }
 
     migration.markBlockAsMoved(blockId);
+    partitionManager.markBlockAsMoved(blockId);
 
     if (migration.isComplete()) {
       ongoingMigrations.remove(operationId);

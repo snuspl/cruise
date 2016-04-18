@@ -533,4 +533,15 @@ public final class PartitionManager {
     final Set<Integer> blockIds = evalIdToBlockIds.get(evalId);
     return blockIds.size();
   }
+
+  /**
+   * Mark the block as moved.
+   * @param blockId id of the block
+   */
+  synchronized void markBlockAsMoved(final int blockId) {
+    final boolean removed = movingBlocks.remove(blockId);
+    if (!removed) {
+      LOG.log(Level.WARNING ,"The block {0} has already been marked as finished", blockId);
+    }
+  }
 }
