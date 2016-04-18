@@ -18,6 +18,7 @@ package edu.snu.cay.async.examples.nmf;
 import edu.snu.cay.async.examples.nmf.NMFParameters.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
@@ -30,10 +31,13 @@ import javax.inject.Inject;
 final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
 
   private final NMFModelGenerator modelGenerator;
+  private final double stepSize;
 
   @Inject
-  private NMFUpdater(final NMFModelGenerator modelGenerator) {
+  private NMFUpdater(final NMFModelGenerator modelGenerator,
+                     @Parameter(StepSize.class) final double stepSize) {
     this.modelGenerator = modelGenerator;
+    this.stepSize = stepSize;
   }
 
   @Override
@@ -43,7 +47,7 @@ final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
 
   @Override
   public Vector update(final Vector oldValue, final Vector deltaValue) {
-    final Vector newVec = oldValue.subi(deltaValue);
+    final Vector newVec = oldValue.axpy(-stepSize, deltaValue);
     // assume that all vectors are dense vectors
     return modelGenerator.getValidVector(newVec);
   }
