@@ -50,7 +50,7 @@ public final class SimpleEMREEF {
   private static final Logger LOG = Logger.getLogger(SimpleEMREEF.class.getName());
   private static final int TIMEOUT = 100000;
   private static final Tang TANG = Tang.Factory.getTang();
-  private static final int NUM_BLOCKS = 20; // Each MemoryStore owns 1 blocks
+  private static final int NUM_BLOCKS = 20; // Each MemoryStore owns 10 blocks
 
   @NamedParameter(doc = "Whether or not to run on the local runtime", short_name = "local", default_value = "true")
   public static final class OnLocal implements Name<Boolean> {

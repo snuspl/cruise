@@ -63,7 +63,6 @@ final class Migration {
    * @param receiverId Identifier of the receiver.
    * @param dataType Type of data.
    */
-  @Deprecated
   public Migration(final String senderId,
                    final String receiverId,
                    final String dataType) {

@@ -380,7 +380,6 @@ final class MigrationManager {
     }
   }
 
-
   /**
    * Fail migration, and notify the failure via callback.
    * @param operationId Identifier of {@code move} operation.
@@ -478,6 +477,14 @@ final class MigrationManager {
         .build();
   }
 
+  /**
+   * Updates the owner of the block.
+   * @param operationId id of the operation
+   * @param blockId id of the block
+   * @param oldOwnerId MemoryStore id which was the owner of the block
+   * @param newOwnerId MemoryStore id which will be the owner of the block
+   * @param traceInfo Trace information used in HTrace
+   */
   void updateOwner(final String operationId, final int blockId, final int oldOwnerId, final int newOwnerId,
                    @Nullable final TraceInfo traceInfo) {
     final Migration migrationInfo = ongoingMigrations.get(operationId);

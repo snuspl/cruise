@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
   static final String DATATYPE = "INTEGER";
-  private static final int NUM_DATA = 20;
+  private static final int NUM_DATA = 20; // As each MemoryStore has 10 blocks, each block has 2 items.
 
   private final MemoryStore memoryStore;
   private final SimpleEMTaskReady simpleEMTaskReady;
@@ -42,6 +42,9 @@ final class SimpleEMTask implements Task {
   private final int iterations;
   private final long periodMillis;
 
+  /**
+   * Keys to put/get the data with.
+   */
   private final List<Long> ids;
 
   @Inject
@@ -85,7 +88,7 @@ final class SimpleEMTask implements Task {
 
     LOG.log(Level.INFO, "After sleep, memory store contains {0} blocks", memoryStore.getAll(DATATYPE));
     final Map<Long, Object> dataAfterMove = memoryStore.getRange(DATATYPE, ids.get(0), ids.get(NUM_DATA - 1));
-    assert dataAfterMove.keySet().containsAll(ids); // The same data must be loaded even after moved.
+    assert dataAfterMove.keySet().containsAll(ids); // Even after move(), all the loaded data must be same as original.
     assert dataAfterMove.values().containsAll(ids);
 
     return null;

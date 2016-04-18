@@ -255,6 +255,9 @@ final class SimpleEMDriver {
     }
   }
 
+  /**
+   * Checks the expected number of blocks are in the Evaluator.
+   */
   private void checkBlocks(final String evalId, final int expected) {
     final int actual = getNumBlocks(evalId);
     if (actual != expected) {
@@ -269,6 +272,9 @@ final class SimpleEMDriver {
     return numUnits;
   }
 
+  /**
+   * Gets the number of blocks in the Evaluator.
+   */
   private int getNumBlocks(final String evalId) {
     return partitionManager.getNumBlocks(evalId);
   }

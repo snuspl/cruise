@@ -42,6 +42,9 @@ public final class PartitionManager {
 
   private final AtomicInteger numEvalCounter = new AtomicInteger(0);
 
+  /**
+   * This is set when one of the Evaluator is registered.
+   */
   private String evalIdPrefix = null;
 
   /**
@@ -481,10 +484,16 @@ public final class PartitionManager {
     }
   }
 
+  /**
+   * Converts the MemoryStore id to Evaluator id.
+   */
   private String getEvalId(final int memoryStoreId) {
     return evalIdPrefix + '-' + memoryStoreId;
   }
 
+  /**
+   * Converts the Evaluator id to MemoryStore id.
+   */
   private int getMemoryStoreId(final String evalId) {
     return Integer.valueOf(evalId.split("-")[1]);
   }

@@ -325,6 +325,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     // Keep the moving ranges to avoid duplicate request, before the data is removed from the MemoryStore.
     movingRanges.addAll(ranges);
 
+    // Block id is undefined, so mark as -1; we will not use this type of message afterward.
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
         -1, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
@@ -387,6 +388,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     // Keep the moving ranges to avoid duplicate request, before the data is removed from the MemoryStore.
     movingRanges.addAll(ranges);
 
+    // Block id is undefined, so mark as -1; we will not use this type of message afterward.
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
         -1, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
@@ -449,7 +451,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Convert the Avro unit id pairs, to a data map.
+   * Converts the Avro unit id pairs, to a data map.
    */
   private Map<Long, Object> toDataMap(final List<UnitIdPair> unitIdPairs, final Codec codec) {
     final Map<Long, Object> dataMap = new HashMap<>(unitIdPairs.size());
@@ -460,14 +462,13 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   /**
-   * Convert the data map into unit id pairs, which can be transferred via Avro.
+   * Converts the data map into unit id pairs, which can be transferred via Avro.
    */
   private List<UnitIdPair> toUnitIdPairs(final Map<Long, Object> dataMap, final Codec codec) {
     final List<UnitIdPair> unitIdPairs = new ArrayList<>(dataMap.size());
     for (final Map.Entry<Long, Object> idObject : dataMap.entrySet()) {
       final long id = idObject.getKey();
       // Include the units only if they are not moving already.
-
       final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
           .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
           .setId(id)
