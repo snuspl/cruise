@@ -202,6 +202,7 @@ final class NMFWorker implements Worker {
 
   @Override
   public void run() {
+    ++iteration;
     final long iterationBegin = System.currentTimeMillis();
     double lossSum = 0.0;
     int elemCount = 0;
@@ -282,7 +283,6 @@ final class NMFWorker implements Worker {
     }
 
     pushAndClearGradients();
-    ++iteration;
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
     LOG.log(Level.INFO, "End Iteration: {0}, Row Count: {1}, Avg Loss: {2}, Sum Loss : {3}, " +
