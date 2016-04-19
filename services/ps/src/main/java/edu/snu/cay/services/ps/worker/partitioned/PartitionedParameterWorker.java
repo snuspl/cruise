@@ -23,7 +23,7 @@ import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerNumPartitions;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerNumThreads;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -53,8 +53,8 @@ import java.util.logging.Logger;
  * There are a few client-side optimizations that can be configured.
  * A serialized and hashed representation of a key is cached, avoiding these costs.
  * See {@link WorkerKeyCacheSize}.
- * The remaining configurations are related to the worker-side partitions.
- * See {@link Partition}.
+ * The remaining configurations are related to the worker-side threads.
+ * See {@link WorkerThread}.
  */
 @EvaluatorSide
 public final class PartitionedParameterWorker<K, P, V> implements ParameterWorker<K, P, V> {
@@ -76,9 +76,9 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   private final ConcurrentMap<K, PullFuture<V>> pendingPulls;
 
   /**
-   * Number of partitions.
+   * Number of threads.
    */
-  private final int numPartitions;
+  private final int numThreads;
 
   /**
    * Max size of each partition's queue.
@@ -91,14 +91,14 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   private final long expireTimeout;
 
   /**
-   * Thread pool, where each Partition is submitted.
+   * Thread pool, where each thread is submitted.
    */
   private final ExecutorService threadPool;
 
   /**
-   * Running partitions.
+   * Running threads.
    */
-  private final Partition<K, P, V>[] partitions;
+  private final WorkerThread<K, P, V>[] threads;
 
   /**
    * A cache that stores encoded (serialized) keys and hashes.
@@ -113,7 +113,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   private final InjectionFuture<PartitionedWorkerMsgSender<K, P>> sender;
 
   @Inject
-  private PartitionedParameterWorker(@Parameter(WorkerNumPartitions.class) final int numPartitions,
+  private PartitionedParameterWorker(@Parameter(WorkerNumThreads.class) final int numThreads,
                                      @Parameter(WorkerQueueSize.class) final int queueSize,
                                      @Parameter(WorkerExpireTimeout.class) final long expireTimeout,
                                      @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
@@ -121,15 +121,15 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
                                      final ParameterUpdater<K, P, V> parameterUpdater,
                                      final ServerResolver serverResolver,
                                      final InjectionFuture<PartitionedWorkerMsgSender<K, P>> sender) {
-    this.numPartitions = numPartitions;
+    this.numThreads = numThreads;
     this.queueSize = queueSize;
     this.expireTimeout = expireTimeout;
     this.parameterUpdater = parameterUpdater;
     this.serverResolver = serverResolver;
     this.sender = sender;
     this.pendingPulls = new ConcurrentHashMap<>();
-    this.threadPool = Executors.newFixedThreadPool(numPartitions);
-    this.partitions = initPartitions();
+    this.threadPool = Executors.newFixedThreadPool(numThreads);
+    this.threads = initThreads();
     this.encodedKeyCache = CacheBuilder.newBuilder()
         .maximumSize(keyCacheSize)
         .build(new CacheLoader<K, EncodedKey<K>>() {
@@ -141,14 +141,14 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   }
 
   /**
-   * Call after initializing numPartitions and threadPool.
+   * Call after initializing threadPool.
    */
   @SuppressWarnings("unchecked")
-  private Partition<K, P, V>[] initPartitions() {
-    LOG.log(Level.INFO, "Initializing {0} partitions", numPartitions);
-    final Partition<K, P, V>[] initialized = new Partition[numPartitions];
-    for (int i = 0; i < numPartitions; i++) {
-      initialized[i] = new Partition<>(pendingPulls, serverResolver, sender, queueSize, expireTimeout);
+  private WorkerThread<K, P, V>[] initThreads() {
+    LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
+    final WorkerThread<K, P, V>[] initialized = new WorkerThread[numThreads];
+    for (int i = 0; i < numThreads; i++) {
+      initialized[i] = new WorkerThread<>(pendingPulls, serverResolver, sender, queueSize, expireTimeout);
       threadPool.submit(initialized[i]);
     }
     return initialized;
@@ -167,7 +167,9 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   }
 
   public void push(final EncodedKey<K> encodedKey, final P preValue) {
-    partitions[getPartitionIndex(encodedKey.getHash())].enqueue(new PushOp(encodedKey, preValue));
+    final int partitionId = getPartitionIndex(encodedKey.getHash());
+    final int threadId = partitionId % numThreads;
+    threads[threadId].enqueue(new PushOp(encodedKey, preValue));
   }
 
   @Override
@@ -181,7 +183,9 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
 
   public V pull(final EncodedKey<K> encodedKey) {
     final PullOp pullOp = new PullOp(encodedKey);
-    partitions[getPartitionIndex(encodedKey.getHash())].enqueue(pullOp);
+    final int partitionId = getPartitionIndex(encodedKey.getHash());
+    final int threadId = partitionId % numThreads;
+    threads[threadId].enqueue(pullOp);
     return pullOp.get();
   }
 
@@ -205,7 +209,9 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     for (final EncodedKey<K> encodedKey : encodedKeys) {
       final PullOp pullOp = new PullOp(encodedKey);
       pullOps.add(pullOp);
-      partitions[getPartitionIndex(encodedKey.getHash())].enqueue(pullOp);
+      final int partitionId = getPartitionIndex(encodedKey.getHash());
+      final int threadId = partitionId % numThreads;
+      threads[threadId].enqueue(pullOp);
     }
     final List<V> values = new ArrayList<>(pullOps.size());
     for (final PullOp pullOp : pullOps) {
@@ -215,13 +221,13 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   }
 
   public void invalidateAll() {
-    for (int i = 0; i < numPartitions; i++) {
-      partitions[i].invalidateAll();
+    for (int i = 0; i < numThreads; i++) {
+      threads[i].invalidateAll();
     }
   }
 
   private int getPartitionIndex(final int keyHash) {
-    return keyHash % numPartitions;
+    return keyHash % numThreads;
   }
 
   /**
@@ -229,12 +235,12 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
    */
   public void close() {
     // Close all partitions
-    for (int i = 0; i < numPartitions; i++) {
-      partitions[i].close();
+    for (int i = 0; i < numThreads; i++) {
+      threads[i].close();
     }
     // Wait for shutdown to complete on all partitions
-    for (int i = 0; i < numPartitions; i++) {
-      partitions[i].waitForShutdown();
+    for (int i = 0; i < numThreads; i++) {
+      threads[i].waitForShutdown();
     }
   }
 
@@ -418,7 +424,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
    * This means pull operations are queued behind push operations.
    * We should further explore this trade-off with real ML workloads.
    */
-  private static class Partition<K, P, V> implements Runnable {
+  private static class WorkerThread<K, P, V> implements Runnable {
     private static final long QUEUE_TIMEOUT_MS = 3000;
 
     private final LoadingCache<EncodedKey<K>, Wrapped<V>> kvCache;
@@ -429,11 +435,11 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     private volatile boolean close = false;
     private volatile boolean shutdown = false;
 
-    public Partition(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
-                     final ServerResolver serverResolver,
-                     final InjectionFuture<PartitionedWorkerMsgSender<K, P>> sender,
-                     final int queueSize,
-                     final long expireTimeout) {
+    public WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
+                        final ServerResolver serverResolver,
+                        final InjectionFuture<PartitionedWorkerMsgSender<K, P>> sender,
+                        final int queueSize,
+                        final long expireTimeout) {
       kvCache = CacheBuilder.newBuilder()
           .concurrencyLevel(1)
           .expireAfterWrite(expireTimeout, TimeUnit.MILLISECONDS)

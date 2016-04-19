@@ -30,7 +30,7 @@ import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerNumPartitions;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerNumThreads;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerQueueSize;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.parameters.ReceiverHost;
@@ -189,7 +189,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(NumServers.class);
     basicParameterClassList.add(NumPartitions.class);
     basicParameterClassList.add(ServerQueueSize.class);
-    basicParameterClassList.add(WorkerNumPartitions.class);
+    basicParameterClassList.add(WorkerNumThreads.class);
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
     basicParameterClassList.add(WorkerKeyCacheSize.class);

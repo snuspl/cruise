@@ -18,6 +18,6 @@ package edu.snu.cay.services.ps.worker.partitioned.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of partitions", default_value = "2", short_name = "workerNumPartitions")
-public final class WorkerNumPartitions implements Name<Integer> {
+@NamedParameter(doc = "Number of threads in ParameterWorker", default_value = "2", short_name = "workerNumThreads")
+public final class WorkerNumThreads implements Name<Integer> {
 }
