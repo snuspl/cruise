@@ -153,7 +153,8 @@ final class NMFWorker implements Worker {
     keys.ensureCapacity(keySet.size());
     keys.addAll(keySet);
 
-    LOG.log(Level.INFO, "Batch Size = {0}", batchSize);
+    LOG.log(Level.INFO, "Step size = {0}", stepSize);
+    LOG.log(Level.INFO, "Batch size = {0}", batchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
     LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
 
