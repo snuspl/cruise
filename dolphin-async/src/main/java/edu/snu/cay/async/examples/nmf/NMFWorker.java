@@ -202,7 +202,7 @@ final class NMFWorker implements Worker {
   @Override
   public void run() {
     final long iterationBegin = System.currentTimeMillis();
-    double loss = 0.0;
+    double lossSum = 0.0;
     int elemCount = 0;
     int rowCount = 0;
     resetTracers();
@@ -254,8 +254,8 @@ final class NMFWorker implements Worker {
         saveRMatrixGradient(colIdx, rGrad);
 
         // aggregate loss
-        // iterative mean = c(t+1) = c(t) + (x - c(t)) / (t + 1)
-        loss += (error * error - loss) / ++elemCount;
+        lossSum += error * error;
+        ++elemCount;
       }
 
       // update L matrix
@@ -271,11 +271,11 @@ final class NMFWorker implements Worker {
 
       if (logPeriod > 0 && rowCount % logPeriod == 0) {
         final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-        LOG.log(Level.INFO, "Iteration: {0}, Row Count: {1}, Loss: {2}, Avg Comp Per Row: {3}, " +
-            "Sum Comp: {4}, Avg Pull: {5}, Sum Pull: {6}, Avg Push: {7}, " +
-            "Sum Push: {8}, DvT: {9}, RvT: {10}, Elapsed Time: {11}",
-            new Object[]{iteration, rowCount, String.format("%g", loss), computeTracer.avg(),
-                computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
+        LOG.log(Level.INFO, "Iteration: {0}, Row Count: {1}, Avg Loss: {2}, Sum Loss : {3}, " +
+            "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
+            "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
+            new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
+                computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
                 pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
       }
     }
@@ -284,11 +284,11 @@ final class NMFWorker implements Worker {
     ++iteration;
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    LOG.log(Level.INFO, "End iteration: {0}, Row Count: {1}, Loss: {2}, Avg Comp Per Row: {3}, " +
-            "Sum Comp: {4}, Avg Pull: {5}, Sum Pull: {6}, Avg Push: {7}, " +
-            "Sum Push: {8}, DvT: {9}, RvT: {10}, Elapsed Time: {11}",
-        new Object[]{iteration, rowCount, String.format("%g", loss), computeTracer.avg(),
-            computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
+    LOG.log(Level.INFO, "End Iteration: {0}, Row Count: {1}, Avg Loss: {2}, Sum Loss : {3}, " +
+            "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
+            "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
+        new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
+            computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
             pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
   }
 
