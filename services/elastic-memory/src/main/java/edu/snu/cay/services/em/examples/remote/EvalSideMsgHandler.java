@@ -22,6 +22,7 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,6 +37,7 @@ final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
 
   private final SerializableCodec<String> codec;
   private CountDownLatch latch;
+  private AtomicReference<String> receivedMsg = new AtomicReference<>();
 
   @Inject
   private EvalSideMsgHandler(final SerializableCodec<String> codec) {
@@ -46,22 +48,22 @@ final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
   @Override
   public void onNext(final AggregationMessage message) {
     final String data = codec.decode(message.getData().array());
-    if (!data.equals(DriverSideMsgHandler.MSG_FROM_DRIVER)) {
-      throw new RuntimeException(String.format("A wrong data %s was sent from the driver but we expect %s", data,
-          DriverSideMsgHandler.MSG_FROM_DRIVER));
-    } else {
-      LOG.log(Level.INFO, "Message from the driver: {0}", data);
-    }
+
+    LOG.log(Level.INFO, "Message from the driver: {0}", data);
+
+    receivedMsg.set(data);
 
     latch.countDown();
   }
 
-  void waitForMessage() {
+  long waitForMessage() {
     try {
       latch.await();
     } catch (final InterruptedException e) {
       throw new RuntimeException("Unexpected exception", e);
     }
     latch = new CountDownLatch(1);
+
+    return Long.valueOf(receivedMsg.get());
   }
 }

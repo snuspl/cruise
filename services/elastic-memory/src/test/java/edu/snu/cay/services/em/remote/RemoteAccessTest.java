@@ -35,7 +35,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class RemoteAccessTest {
 
-  private static final int TIMEOUT = 100000;
+  private static final int TIMEOUT_MS = 100000;
 
   @Test
   public void runTest() throws InjectionException {
@@ -47,7 +47,7 @@ public class RemoteAccessTest {
 
     LauncherStatus status;
     try {
-      status = RemoteEMREEF.runRemoteEM(runtimeConf, traceConf, TIMEOUT);
+      status = RemoteEMREEF.runRemoteEM(runtimeConf, traceConf, TIMEOUT_MS);
     } catch (final InjectionException e) {
       status = LauncherStatus.failed(e);
     }

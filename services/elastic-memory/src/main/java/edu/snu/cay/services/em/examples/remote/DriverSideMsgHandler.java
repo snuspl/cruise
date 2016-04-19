@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,12 +41,14 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
 
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
 
-  static final String MSG_FROM_DRIVER = "MSG_FROM_DRIVER";
+  static final String SYNC_WORKERS = "SYNC_WORKERS";
 
   private final AggregationMaster aggregationMaster;
   private final Codec<String> codec;
   private CountDownLatch msgCountDown;
   private final Set<String> workerIds;
+
+  private AtomicLong countAggregator = new AtomicLong(0);
 
   @Inject
   private DriverSideMsgHandler(final AggregationMaster aggregationMaster,
@@ -72,27 +75,12 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
       workerIds.add(workerId);
     }
 
-    if (validateMsg(workerId, data)) {
-      msgCountDown.countDown();
-    } else {
-      throw new RuntimeException(String.format("WorkerId %s should not send message with data %s.", workerId, data));
+    if (!data.equals(SYNC_WORKERS)) {
+      final long count = Long.valueOf(data);
+      countAggregator.addAndGet(count);
     }
-  }
 
-  /**
-   * Checks the validity of messages sent from workers.
-   * It checks that workerId of the message is CONTEXT_ID_PREFIX + index,
-   * and data of the message is TASK_ID_PREFIX + index.
-   *
-   * @param workerId an id of worker
-   * @param data a data sent from worker
-   * @return true if the msg is valid
-   */
-  private boolean validateMsg(final String workerId, final String data) {
-    return workerId.startsWith(RemoteEMDriver.CONTEXT_ID_PREFIX)
-        && data.startsWith(RemoteEMDriver.TASK_ID_PREFIX)
-        && workerId.substring(RemoteEMDriver.CONTEXT_ID_PREFIX.length())
-        .equals(data.substring(RemoteEMDriver.TASK_ID_PREFIX.length()));
+    msgCountDown.countDown();
   }
 
   /**
@@ -113,22 +101,28 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
     @Override
     public void run() {
       while (true) {
+        final long aggregatedCount;
 
         // wait until all workers send a message
         try {
           msgCountDown.await();
+          // reset for next iterations
+          aggregatedCount = countAggregator.getAndSet(0);
+          msgCountDown = new CountDownLatch(RemoteEMDriver.EVAL_NUM);
         } catch (final InterruptedException e) {
           throw new RuntimeException(e);
         }
 
         // send response message to all workers
-        for (final String slaveId : workerIds) {
-          LOG.log(Level.INFO, "Sending a message to {0}", slaveId);
-          aggregationMaster.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, slaveId, codec.encode(MSG_FROM_DRIVER));
-        }
+        sendResponseToWorkers(aggregatedCount);
+      }
+    }
 
-        // reset latch for next iterations
-        msgCountDown = new CountDownLatch(RemoteEMDriver.EVAL_NUM);
+    private void sendResponseToWorkers(final long aggregatedCount) {
+      for (final String slaveId : workerIds) {
+        LOG.log(Level.INFO, "Sending a message to {0}", slaveId);
+        aggregationMaster.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, slaveId,
+            codec.encode(Long.toString(aggregatedCount)));
       }
     }
   }

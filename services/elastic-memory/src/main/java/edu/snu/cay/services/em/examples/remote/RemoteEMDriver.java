@@ -82,7 +82,7 @@ final class RemoteEMDriver {
     public void onNext(final StartTime startTime) {
       requestor.submit(EvaluatorRequest.newBuilder()
           .setNumber(EVAL_NUM)
-          .setMemory(64)
+          .setMemory(1024)
           .setNumberOfCores(1)
           .build());
     }
