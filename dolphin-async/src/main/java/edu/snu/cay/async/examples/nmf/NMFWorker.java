@@ -166,7 +166,7 @@ final class NMFWorker implements Worker {
     if (grad == null) {
       // l2 regularization term. 2 * lambda * R_{*, j}
       if (lambda != 0.0D) {
-        newGrad.axpy(lambda, rMatrix.get(key));
+        newGrad.axpy(2.0D * lambda, rMatrix.get(key));
       }
       gradients.put(key, newGrad);
     } else {
