@@ -121,7 +121,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    * Handles the data operation sent from the remote memory store.
    */
   private <T> void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
-    LOG.log(Level.INFO, "onRemoteOpMsg: {0}", msg);
+    LOG.log(Level.FINE, "onRemoteOpMsg: {0}", msg);
 
     final RemoteOpMsg remoteOpMsg = msg.getRemoteOpMsg();
     final String origEvalId = remoteOpMsg.getOrigEvalId().toString();
@@ -162,7 +162,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    * Handles the result of data operation sent from the remote memory store.
    */
   private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
-    LOG.log(Level.INFO, "onRemoteOpResultMsg: {0}", msg);
+    LOG.log(Level.FINE, "onRemoteOpResultMsg: {0}", msg);
 
     final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
     final String operationId = msg.getOperationId().toString();

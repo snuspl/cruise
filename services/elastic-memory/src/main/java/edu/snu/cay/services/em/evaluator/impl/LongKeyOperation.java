@@ -201,14 +201,6 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   }
 
   /**
-   * Returns the number of sub operations that is not finished yet.
-   * @return the number of ongoing sub operations
-   */
-  int getNumSubOps() {
-    return (int) subOpCountDownLatch.getCount();
-  }
-
-  /**
    * Starts waiting for completion of the operation within a bounded time.
    * @param timeout a maximum waiting time in the milliseconds
    */
@@ -221,18 +213,23 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
    * It counts down the latch, so it might trigger a return of {@link #waitOperation(long)} method.
    * @param output an output data of the sub operation
    * @param failedRangeList a list of failed key ranges of the sub operation
+   * @return the number of remaining sub operations
    */
-  void commitResult(final Map<Long, V> output, final List<LongRange> failedRangeList) {
+  int commitResult(final Map<Long, V> output, final List<LongRange> failedRangeList) {
     this.outputData.putAll(output);
     this.failedRanges.addAll(failedRangeList);
-    subOpCountDownLatch.countDown();
+
+    synchronized (subOpCountDownLatch) {
+      subOpCountDownLatch.countDown();
+      return (int) subOpCountDownLatch.getCount();
+    }
   }
 
   /**
    * Returns a list of key ranges that the sub operations failed to locate.
    */
   List<LongRange> getFailedRanges() {
-    return Collections.unmodifiableList(failedRanges);
+    return failedRanges;
   }
 
   /**
@@ -241,6 +238,6 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
    * @return an empty map with the output data
    */
   Map<Long, V> getOutputData() {
-    return Collections.unmodifiableMap(outputData);
+    return outputData;
   }
 }
