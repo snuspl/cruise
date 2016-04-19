@@ -84,7 +84,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   /**
    * A queue for operations requested from remote clients.
-   * Its element is composed of a operation, a sub key range, and a corresponding block id.
+   * Its element is composed of a operation, sub key ranges, and a corresponding block id.
    */
   private final BlockingQueue<Tuple3<LongKeyOperation, List<Pair<Long, Long>>, Integer>> subOperationQueue
       = new ArrayBlockingQueue<>(QUEUE_SIZE);
@@ -172,8 +172,10 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRanges);
         resultAggregator.submitLocalResult(operation, result, Collections.EMPTY_LIST);
       } else {
-        LOG.log(Level.WARNING, "Block location is not consistent. BlockId: {1}, Owner in local routing table: {0}",
+        LOG.log(Level.WARNING,
+            "This MemoryStore was considered the Block {0}'s owner, but the local router assumes {1} as the owner",
             new Object[]{blockId, remoteEvalId.get()});
+
         // treat remote ranges as failed ranges, because we do not allow more than one hop in remote access
         final List<LongRange> failedRanges = new ArrayList<>(1);
         for (final Pair<Long, Long> subKeyRange : subKeyRanges) {

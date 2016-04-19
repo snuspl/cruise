@@ -48,6 +48,8 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
   private CountDownLatch msgCountDown;
   private final Set<String> workerIds;
 
+  // a counter to aggregate counts from workers
+  // it is re-initialized to zero after broadcasting the aggregated result to workers
   private AtomicLong countAggregator = new AtomicLong(0);
 
   @Inject
@@ -75,6 +77,7 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
       workerIds.add(workerId);
     }
 
+    // workers send two types of messages: 1) sync request and 2) the count value to aggregate
     if (!data.equals(SYNC_WORKERS)) {
       final long count = Long.valueOf(data);
       countAggregator.addAndGet(count);
@@ -106,7 +109,7 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
         // wait until all workers send a message
         try {
           msgCountDown.await();
-          // reset for next iterations
+          // reset for next iteration
           aggregatedCount = countAggregator.getAndSet(0);
           msgCountDown = new CountDownLatch(RemoteEMDriver.EVAL_NUM);
         } catch (final InterruptedException e) {
@@ -114,6 +117,7 @@ final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
         }
 
         // send response message to all workers
+        // response message contains aggregated count from workers ("0" for sync request)
         sendResponseToWorkers(aggregatedCount);
       }
     }

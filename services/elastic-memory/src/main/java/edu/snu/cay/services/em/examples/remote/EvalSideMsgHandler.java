@@ -56,6 +56,11 @@ final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
     latch.countDown();
   }
 
+  /**
+   * Wait until driver sends a response message.
+   * It returns the aggregated count, which is contained in the message.
+   * @return an aggregated count
+   */
   long waitForMessage() {
     try {
       latch.await();

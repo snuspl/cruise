@@ -50,8 +50,10 @@ import java.util.logging.Logger;
 final class RemoteEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(RemoteEMTask.class.getName());
 
-  private static final String MSG_LOCAL_SIZE_ASSERTION = "size of final local memory store";
-  private static final String MSG_GLOBAL_SIZE_ASSERTION = "size of final global memory store";
+  private static final String MSG_LOCAL_SIZE_MISMATCH =
+      "the number of items in the local MemoryStore is not as expected";
+  private static final String MSG_GLOBAL_SIZE_MISMATCH =
+      "the number of items in the local MemoryStore is not as expected";
   private static final String MSG_OPERATION_FAILED = "not all operations succeeded";
 
   private static final String DATA_TYPE = "INTEGER";
@@ -170,23 +172,16 @@ final class RemoteEMTask implements Task {
     return null;
   }
 
-  private void runTest(final Test test) {
+  private void runTest(final Runnable test) {
     final long startTime = System.currentTimeMillis();
     LOG.log(Level.INFO, "Test start: {0}", test.toString());
 
-    try {
-      test.run();
-    } catch (final InterruptedException e) {
-      LOG.log(Level.SEVERE, "Test is interrupted", e);
-    } catch (final IdGenerationException e) {
-      LOG.log(Level.SEVERE, "Id generation exception happens while test", e);
-    }
+    test.run();
 
     final long endTime = System.currentTimeMillis();
+    LOG.log(Level.INFO, "Test end: {0}", test.toString());
 
     testNameToTimeList.add(new Pair<>(test.toString(), endTime - startTime));
-
-    LOG.log(Level.INFO, "Test end: {0}", test.toString());
     cleanUp();
   }
 
@@ -216,19 +211,15 @@ final class RemoteEMTask implements Task {
     return new Pair<>(startKey, endKey);
   }
 
-  private interface Test {
-    void run() throws InterruptedException, IdGenerationException;
-  }
-
   /**
    * A test that puts the data of random keys through one memory store.
    * The keys are naturally distributed to global memory stores.
    * Check that all the data are correctly put via remote access.
    */
-  private class TestRandomPutGetRemove implements Test {
+  private class TestRandomPutGetRemove implements Runnable {
 
     @Override
-    public void run() throws InterruptedException, IdGenerationException {
+    public void run() {
 
       final int numItems = 10000;
       Map<Long, Integer> outputMap;
@@ -266,7 +257,7 @@ final class RemoteEMTask implements Task {
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != numItems) {
-        throw new RuntimeException(MSG_GLOBAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
 
       synchronize();
@@ -283,7 +274,7 @@ final class RemoteEMTask implements Task {
       outputMap = memoryStore.getRange(DATA_TYPE, 0L, maxDataKey);
       LOG.log(Level.FINE, "outputMap.size: {0}", new Object[]{outputMap.size()});
       if (outputMap.size() != 0) {
-        throw new RuntimeException(MSG_GLOBAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
     }
   }
@@ -294,27 +285,27 @@ final class RemoteEMTask implements Task {
    * Also check that the consistency of the store is preserved
    * when multiple threads try to put single objects concurrently.
    */
-  private class TestMultiThreadRemotePutSingle implements Test {
+  private class TestMultiThreadRemotePutSingle implements Runnable {
 
     @Override
-    public void run() throws InterruptedException {
+    public void run() {
       final int numThreads = 8;
       final int putsPerThread = 2000;
       final int totalNumberOfObjects = numThreads * putsPerThread;
       final DataIdFactory<Long> remoteIdFactory = initDataIdFactory(nextRemoteStoreId);
 
-      final Callable[] threads = new Callable[numThreads];
+      final List<Callable<Long>> threads = new ArrayList<>(numThreads);
       for (int index = 0; index < numThreads; index++) {
-        threads[index] = new PutThread(putsPerThread, 1, remoteIdFactory);
+        threads.add(index, new PutThread(putsPerThread, 1, remoteIdFactory));
       }
-      final Future<Long>[] futures = ThreadUtils.runConcurrentlyWithResult(threads);
+      final List<Future<Long>> futures = ThreadUtils.runConcurrentlyWithResult(threads);
 
       long numTotalPutSuccess = 0;
       // check that all threads have finished successfully without falling into deadlocks or infinite loops
       for (int index = 0; index < numThreads; index++) {
         try {
-          numTotalPutSuccess += futures[index].get();
-        } catch (final ExecutionException e) {
+          numTotalPutSuccess += futures.get(index).get();
+        } catch (final ExecutionException | InterruptedException e) {
           LOG.log(Level.SEVERE, "Test thread failed", e);
         }
       }
@@ -327,7 +318,7 @@ final class RemoteEMTask implements Task {
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
-        throw new RuntimeException(MSG_LOCAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_LOCAL_SIZE_MISMATCH);
       }
     }
   }
@@ -338,28 +329,28 @@ final class RemoteEMTask implements Task {
    * Also check that the consistency of the store is preserved
    * when multiple threads try to put a range of objects concurrently.
    */
-  private class TestMultiThreadRemotePutRange implements Test {
+  private class TestMultiThreadRemotePutRange implements Runnable {
 
     @Override
-    public void run() throws InterruptedException {
+    public void run() {
       final int numThreads = 8;
       final int itemsPerPut = 10;
       final int putsPerThread = 1000;
       final int totalNumberOfObjects = numThreads * itemsPerPut * putsPerThread;
       final DataIdFactory<Long> remoteIdFactory = initDataIdFactory(nextRemoteStoreId);
 
-      final Callable[] threads = new Callable[numThreads];
+      final List<Callable<Long>> threads = new ArrayList<>(numThreads);
       for (int index = 0; index < numThreads; index++) {
-        threads[index] = new PutThread(putsPerThread, itemsPerPut, remoteIdFactory);
+        threads.add(index, new PutThread(putsPerThread, itemsPerPut, remoteIdFactory));
       }
-      final Future<Long>[] futures = ThreadUtils.runConcurrentlyWithResult(threads);
+      final List<Future<Long>> futures = ThreadUtils.runConcurrentlyWithResult(threads);
 
       long numTotalPutSuccess = 0;
       // check that all threads have finished successfully without falling into deadlocks or infinite loops
       for (int index = 0; index < numThreads; index++) {
         try {
-          numTotalPutSuccess += futures[index].get();
-        } catch (final ExecutionException e) {
+          numTotalPutSuccess += futures.get(index).get();
+        } catch (final ExecutionException | InterruptedException e) {
           LOG.log(Level.SEVERE, "Test thread failed", e);
         }
       }
@@ -373,7 +364,7 @@ final class RemoteEMTask implements Task {
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
-        throw new RuntimeException(MSG_GLOBAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
     }
   }
@@ -384,31 +375,31 @@ final class RemoteEMTask implements Task {
    * Also check that the consistency of the store is preserved
    * when multiple threads try to put single objects concurrently.
    */
-  private class TestMultiThreadRemotePutGetSingle implements Test {
+  private class TestMultiThreadRemotePutGetSingle implements Runnable {
 
     @Override
-    public void run() throws InterruptedException {
+    public void run() {
       final int numThreads = 8;
       final int putsPerThread = 2000;
       final int getsPerThread = 2000;
       final int totalNumberOfObjects = numThreads * putsPerThread;
       final DataIdFactory<Long> remoteIdFactory = initDataIdFactory(nextRemoteStoreId);
 
-      final Callable[] threads = new Callable[numThreads * 2];
+      final List<Callable<Long>> threads = new ArrayList<>(numThreads * 2);
       for (int index = 0; index < numThreads; index++) {
-        threads[2 * index] = new PutThread(putsPerThread, 1, remoteIdFactory);
-        threads[2 * index + 1] = new GetThread(getsPerThread, 1);
+        threads.add(2 * index, new PutThread(putsPerThread, 1, remoteIdFactory));
+        threads.add(2 * index + 1, new GetThread(getsPerThread, 1));
       }
-      final Future<Long>[] futures = ThreadUtils.runConcurrentlyWithResult(threads);
+      final List<Future<Long>> futures = ThreadUtils.runConcurrentlyWithResult(threads);
 
       long numTotalPutSuccess = 0;
       long numTotalGetSuccess = 0;
       // check that all threads have finished successfully without falling into deadlocks or infinite loops
       for (int index = 0; index < numThreads; index++) {
         try {
-          numTotalPutSuccess += futures[2 * index].get();
-          numTotalGetSuccess += futures[2 * index + 1].get();
-        } catch (final ExecutionException e) {
+          numTotalPutSuccess += futures.get(2 * index).get();
+          numTotalGetSuccess += futures.get(2 * index + 1).get();
+        } catch (final ExecutionException | InterruptedException e) {
           LOG.log(Level.SEVERE, "Test thread failed", e);
         }
       }
@@ -425,7 +416,7 @@ final class RemoteEMTask implements Task {
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
-        throw new RuntimeException(MSG_GLOBAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
     }
   }
@@ -436,10 +427,10 @@ final class RemoteEMTask implements Task {
    * Also check that the consistency of the store is preserved
    * when multiple threads try to put a range of objects concurrently.
    */
-  private class TestMultiThreadRemotePutGetRange implements Test {
+  private class TestMultiThreadRemotePutGetRange implements Runnable {
 
     @Override
-    public void run() throws InterruptedException {
+    public void run() {
       final int numThreads = 8;
       final int itemsPerPut = 10;
       final int itemsPerGet = 10;
@@ -448,21 +439,21 @@ final class RemoteEMTask implements Task {
       final int totalNumberOfObjects = numThreads * itemsPerPut * putsPerThread;
       final DataIdFactory<Long> remoteIdFactory = initDataIdFactory(nextRemoteStoreId);
 
-      final Callable[] threads = new Callable[numThreads * 2];
+      final List<Callable<Long>> threads = new ArrayList<>(numThreads * 2);
       for (int index = 0; index < numThreads; index++) {
-        threads[2 * index] = new PutThread(putsPerThread, itemsPerPut, remoteIdFactory);
-        threads[2 * index + 1] = new GetThread(getsPerThread, itemsPerGet);
+        threads.add(2 * index, new PutThread(putsPerThread, itemsPerPut, remoteIdFactory));
+        threads.add(2 * index + 1, new GetThread(getsPerThread, itemsPerGet));
       }
-      final Future<Long>[] futures = ThreadUtils.runConcurrentlyWithResult(threads);
+      final List<Future<Long>> futures = ThreadUtils.runConcurrentlyWithResult(threads);
 
       long numTotalPutSuccess = 0;
       long numTotalGetSuccess = 0;
       // check that all threads have finished successfully without falling into deadlocks or infinite loops
       for (int index = 0; index < numThreads; index++) {
         try {
-          numTotalPutSuccess += futures[2 * index].get();
-          numTotalGetSuccess += futures[2 * index + 1].get();
-        } catch (final ExecutionException e) {
+          numTotalPutSuccess += futures.get(2 * index).get();
+          numTotalGetSuccess += futures.get(2 * index + 1).get();
+        } catch (final ExecutionException | InterruptedException e) {
           LOG.log(Level.SEVERE, "Test thread failed", e);
         }
       }
@@ -479,7 +470,7 @@ final class RemoteEMTask implements Task {
 
       // check that the total number of objects equal the expected number
       if (numUnits != totalNumberOfObjects) {
-        throw new RuntimeException(MSG_LOCAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_LOCAL_SIZE_MISMATCH);
       }
     }
   }
@@ -490,10 +481,10 @@ final class RemoteEMTask implements Task {
    * Also check that the consistency of the store is preserved
    * when multiple threads try to put single objects concurrently.
    */
-  private class TestMultiThreadRemotePutGetRemoveSingle implements Test {
+  private class TestMultiThreadRemotePutGetRemoveSingle implements Runnable {
 
     @Override
-    public void run() throws InterruptedException {
+    public void run() {
       final int numThreads = 8;
       final int putsPerThread = 3000;
       final int getsPerThread = 3000;
@@ -501,13 +492,13 @@ final class RemoteEMTask implements Task {
       final int totalNumberOfObjects = numThreads * putsPerThread;
       final DataIdFactory<Long> remoteIdFactory = initDataIdFactory(nextRemoteStoreId);
 
-      final Callable[] threads = new Callable[numThreads * 3];
+      final List<Callable<Long>> threads = new ArrayList<>(numThreads * 3);
       for (int index = 0; index < numThreads; index++) {
-        threads[3 * index] = new PutThread(putsPerThread, 1, remoteIdFactory);
-        threads[3 * index + 1] = new GetThread(getsPerThread, 1);
-        threads[3 * index + 2] = new RemoveThread(removesPerThread, 1);
+        threads.add(3 * index, new PutThread(putsPerThread, 1, remoteIdFactory));
+        threads.add(3 * index + 1, new GetThread(getsPerThread, 1));
+        threads.add(3 * index + 2, new RemoveThread(removesPerThread, 1));
       }
-      final Future<Long>[] futures = ThreadUtils.runConcurrentlyWithResult(threads);
+      final List<Future<Long>> futures = ThreadUtils.runConcurrentlyWithResult(threads);
 
       long numTotalPutSuccess = 0;
       long numTotalGetSuccess = 0;
@@ -515,10 +506,10 @@ final class RemoteEMTask implements Task {
       // check that all threads have finished successfully without falling into deadlocks or infinite loops
       for (int index = 0; index < numThreads; index++) {
         try {
-          numTotalPutSuccess += futures[3 * index].get();
-          numTotalGetSuccess += futures[3 * index + 1].get();
-          numTotalRemoveSuccess += futures[3 * index + 2].get();
-        } catch (final ExecutionException e) {
+          numTotalPutSuccess += futures.get(3 * index).get();
+          numTotalGetSuccess += futures.get(3 * index + 1).get();
+          numTotalRemoveSuccess += futures.get(3 * index + 2).get();
+        } catch (final ExecutionException | InterruptedException e) {
           LOG.log(Level.SEVERE, "Test thread failed", e);
         }
       }
@@ -542,7 +533,7 @@ final class RemoteEMTask implements Task {
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != totalNumberOfObjects * RemoteEMDriver.EVAL_NUM - numGlobalRemoves) {
-        throw new RuntimeException(MSG_GLOBAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
     }
   }
@@ -553,10 +544,10 @@ final class RemoteEMTask implements Task {
    * Also check that the consistency of the store is preserved
    * when multiple threads try to put a range of objects concurrently.
    */
-  private class TestMultiThreadRemotePutGetRemoveRange implements Test {
+  private class TestMultiThreadRemotePutGetRemoveRange implements Runnable {
 
     @Override
-    public void run() throws InterruptedException {
+    public void run() {
       final int numThreads = 8;
       final int itemsPerPut = 10;
       final int itemsPerGet = 10;
@@ -567,13 +558,13 @@ final class RemoteEMTask implements Task {
       final int totalNumberOfObjects = numThreads * itemsPerPut * putsPerThread;
       final DataIdFactory<Long> remoteIdFactory = initDataIdFactory(nextRemoteStoreId);
 
-      final Callable[] threads = new Callable[numThreads * 3];
+      final List<Callable<Long>> threads = new ArrayList<>(numThreads * 3);
       for (int index = 0; index < numThreads; index++) {
-        threads[3 * index] = new PutThread(putsPerThread, itemsPerPut, remoteIdFactory);
-        threads[3 * index + 1] = new GetThread(getsPerThread, itemsPerGet);
-        threads[3 * index + 2] = new RemoveThread(removesPerThread, itemsPerRemove);
+        threads.add(3 * index, new PutThread(putsPerThread, itemsPerPut, remoteIdFactory));
+        threads.add(3 * index + 1, new GetThread(getsPerThread, itemsPerGet));
+        threads.add(3 * index + 2, new RemoveThread(removesPerThread, itemsPerRemove));
       }
-      final Future<Long>[] futures = ThreadUtils.runConcurrentlyWithResult(threads);
+      final List<Future<Long>> futures = ThreadUtils.runConcurrentlyWithResult(threads);
 
       long numTotalPutSuccess = 0;
       long numTotalGetSuccess = 0;
@@ -581,10 +572,10 @@ final class RemoteEMTask implements Task {
       // check that all threads have finished successfully without falling into deadlocks or infinite loops
       for (int index = 0; index < numThreads; index++) {
         try {
-          numTotalPutSuccess += futures[3 * index].get();
-          numTotalGetSuccess += futures[3 * index + 1].get();
-          numTotalRemoveSuccess += futures[3 * index + 2].get();
-        } catch (final ExecutionException e) {
+          numTotalPutSuccess += futures.get(3 * index).get();
+          numTotalGetSuccess += futures.get(3 * index + 1).get();
+          numTotalRemoveSuccess += futures.get(3 * index + 2).get();
+        } catch (final ExecutionException | InterruptedException e) {
           LOG.log(Level.SEVERE, "Test thread failed", e);
         }
       }
@@ -608,7 +599,7 @@ final class RemoteEMTask implements Task {
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != totalNumberOfObjects * RemoteEMDriver.EVAL_NUM - numGlobalRemoves) {
-        throw new RuntimeException(MSG_GLOBAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
     }
   }
@@ -618,10 +609,10 @@ final class RemoteEMTask implements Task {
    * Checks that the all the operations by multiple threads are performed successfully.
    * The purpose of the test is to check that DataIdFactory works correctly, issuing local data keys.
    */
-  private class TestMultiThreadLocalPut implements Test {
+  private class TestMultiThreadLocalPut implements Runnable {
 
     @Override
-    public void run() throws InterruptedException, IdGenerationException {
+    public void run() {
       final Random random = new Random();
 
       final int numThreads = 8;
@@ -629,18 +620,18 @@ final class RemoteEMTask implements Task {
       final int putsPerThread = random.nextInt(10000) + 10000;
       final int totalNumberOfObjects = numThreads * itemsPerPut * putsPerThread;
 
-      final Callable[] threads = new Callable[numThreads];
+      final List<Callable<Long>> threads = new ArrayList<>(numThreads);
       for (int index = 0; index < numThreads; index++) {
-        threads[index] = new PutThread(putsPerThread, itemsPerPut, localDataIdFactory);
+        threads.add(index, new PutThread(putsPerThread, itemsPerPut, localDataIdFactory));
       }
-      final Future<Long>[] futures = ThreadUtils.runConcurrentlyWithResult(threads);
+      final List<Future<Long>> futures = ThreadUtils.runConcurrentlyWithResult(threads);
 
       long numTotalPutSuccess = 0;
       // check that all threads have finished successfully without falling into deadlocks or infinite loops
       for (int index = 0; index < numThreads; index++) {
         try {
-          numTotalPutSuccess += futures[index].get();
-        } catch (final ExecutionException e) {
+          numTotalPutSuccess += futures.get(index).get();
+        } catch (final ExecutionException | InterruptedException e) {
           LOG.log(Level.SEVERE, "Test thread failed", e);
         }
       }
@@ -656,7 +647,7 @@ final class RemoteEMTask implements Task {
 
       // check that the total number of objects equal the expected number
       if (outputMap.size() != totalNumberOfObjects) {
-        throw new RuntimeException(MSG_LOCAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_LOCAL_SIZE_MISMATCH);
       }
     }
   }
@@ -666,10 +657,10 @@ final class RemoteEMTask implements Task {
    * Checks that the all the operations by multiple threads are performed successfully.
    * At the end of the test, stores should have different number of local data, based on its own store id.
    */
-  private class TestMultiThreadRelayedPutSingle implements Test {
+  private class TestMultiThreadRelayedPutSingle implements Runnable {
 
     @Override
-    public void run() throws InterruptedException {
+    public void run() {
       final int numThreads = 8;
       final int putsPerThread = 5000;
       final int remotePutsPerThread = putsPerThread + localMemoryStoreId; // different number for each store
@@ -684,21 +675,21 @@ final class RemoteEMTask implements Task {
         throw new RuntimeException(e);
       }
 
-      final Callable[] threads = new Callable[numThreads * 2];
+      final List<Callable<Long>> threads = new ArrayList<>(numThreads * 2);
       for (int index = 0; index < numThreads; index++) {
-        threads[2 * index] = new PutThread(remotePutsPerThread, 1, remoteIdFactory);
-        threads[2 * index + 1] = new PutThread(putsPerThread, 1, localDataIdFactory);
+        threads.add(2 * index, new PutThread(remotePutsPerThread, 1, remoteIdFactory));
+        threads.add(2 * index + 1, new PutThread(putsPerThread, 1, localDataIdFactory));
       }
-      final Future<Long>[] futures = ThreadUtils.runConcurrentlyWithResult(threads);
+      final List<Future<Long>> futures = ThreadUtils.runConcurrentlyWithResult(threads);
 
       long numTotalRemotePutSuccess = 0;
       long numTotalLocalPutSuccess = 0;
       // check that all threads have finished successfully without falling into deadlocks or infinite loops
       for (int index = 0; index < numThreads; index++) {
         try {
-          numTotalRemotePutSuccess += futures[2 * index].get();
-          numTotalLocalPutSuccess += futures[2 * index + 1].get();
-        } catch (final ExecutionException e) {
+          numTotalRemotePutSuccess += futures.get(2 * index).get();
+          numTotalLocalPutSuccess += futures.get(2 * index + 1).get();
+        } catch (final ExecutionException | InterruptedException e) {
           LOG.log(Level.SEVERE, "Test thread failed", e);
         }
       }
@@ -713,7 +704,7 @@ final class RemoteEMTask implements Task {
           numThreads * (putsPerThread + prevRemoteStoreId);
 
       if (memoryStore.getAll(DATA_TYPE).size() != totalNumberOfLocalObjects) {
-        throw new RuntimeException(MSG_LOCAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_LOCAL_SIZE_MISMATCH);
       }
 
       int expectedNumGlobalData = 0;
@@ -726,7 +717,7 @@ final class RemoteEMTask implements Task {
       final long numGlobalData = syncGlobalCount(numLocalData);
       LOG.log(Level.FINE, "numLocalData: {0}, numGlobalData: {1}", new Object[]{numLocalData, numGlobalData});
       if (numGlobalData != expectedNumGlobalData) {
-        throw new RuntimeException(MSG_GLOBAL_SIZE_ASSERTION);
+        throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
     }
   }
@@ -858,9 +849,9 @@ final class RemoteEMTask implements Task {
    * The changes are happen in separate steps with a global synchronized barrier.
    * At each step, all stores invoke get operation to confirm that the own state is correct.
    */
-  private class TestSimpleScenario implements Test {
+  private class TestSimpleScenario implements Runnable {
 
-    public void run() throws IdGenerationException {
+    public void run() {
 
       final long dataKey0 = 0;
       final long dataKey1 = 1;
