@@ -23,6 +23,7 @@ import edu.snu.cay.async.WorkerSynchronizer;
 import edu.snu.cay.async.examples.nmf.NMFParameters.*;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
+import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -48,9 +49,15 @@ final class NMFWorker implements Worker {
 
   private final ParameterWorker<Integer, Vector, Vector> parameterWorker;
   private final WorkerSynchronizer workerSynchronizer;
+  private final VectorFactory vectorFactory;
   private final NMFDataParser dataParser;
+  private final int rank;
   private final double stepSize;
   private final double lambda;
+  /**
+   * Mini-batch size used for mini-batch gradient descent.
+   * If less than {@code 1}, a standard gradient descent method is used.
+   */
   private final int batchSize;
   private final boolean printMatrices;
   private final int logPeriod;
@@ -80,6 +87,8 @@ final class NMFWorker implements Worker {
   private NMFWorker(final NMFDataParser dataParser,
                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                     final WorkerSynchronizer workerSynchronizer,
+                    final VectorFactory vectorFactory,
+                    @Parameter(Rank.class) final int rank,
                     @Parameter(StepSize.class) final double stepSize,
                     @Parameter(Lambda.class) final double lambda,
                     @Parameter(BatchSize.class) final int batchSize,
@@ -90,7 +99,9 @@ final class NMFWorker implements Worker {
                     final MemoryStore<Long> memoryStore) {
     this.parameterWorker = parameterWorker;
     this.workerSynchronizer = workerSynchronizer;
+    this.vectorFactory = vectorFactory;
     this.dataParser = dataParser;
+    this.rank = rank;
     this.stepSize = stepSize;
     this.lambda = lambda;
     this.batchSize = batchSize;
@@ -142,7 +153,8 @@ final class NMFWorker implements Worker {
     keys.ensureCapacity(keySet.size());
     keys.addAll(keySet);
 
-    LOG.log(Level.INFO, "Batch Size = {0}", batchSize);
+    LOG.log(Level.INFO, "Step size = {0}", stepSize);
+    LOG.log(Level.INFO, "Batch size = {0}", batchSize);
     LOG.log(Level.INFO, "Total number of keys = {0}", keys.size());
     LOG.log(Level.INFO, "Total number of input rows = {0}", dataValues.size());
 
@@ -152,6 +164,10 @@ final class NMFWorker implements Worker {
   private void saveRMatrixGradient(final int key, final Vector newGrad) {
     final Vector grad = gradients.get(key);
     if (grad == null) {
+      // l2 regularization term. 2 * lambda * R_{*, j}
+      if (lambda != 0.0D) {
+        newGrad.axpy(2.0D * lambda, rMatrix.get(key));
+      }
       gradients.put(key, newGrad);
     } else {
       grad.addi(newGrad);
@@ -186,8 +202,9 @@ final class NMFWorker implements Worker {
 
   @Override
   public void run() {
+    ++iteration;
     final long iterationBegin = System.currentTimeMillis();
-    double loss = 0.0;
+    double lossSum = 0.0;
     int elemCount = 0;
     int rowCount = 0;
     resetTracers();
@@ -206,63 +223,73 @@ final class NMFWorker implements Worker {
       computeTracer.start();
       final int rowIdx = datum.getRowIndex();
       final Vector lVec = lMatrix.get(rowIdx); // L_{i, *} : i-th row of L
+      final Vector lGradSum;
+      if (lambda != 0.0D) {
+        // l2 regularization term. 2 * lambda * L_{i, *}
+        lGradSum = lVec.scale(2.0D * lambda);
+      } else {
+        lGradSum = vectorFactory.createDenseZeros(rank);
+      }
 
       for (final Pair<Integer, Double> column : datum.getColumns()) { // a pair of column index and value
         final int colIdx = column.getFirst();
         final Vector rVec = rMatrix.get(colIdx); // R_{*, j} : j-th column of R
         final double error = lVec.dot(rVec) - column.getSecond(); // e = L_{i, *} * R_{*, j} - D_{i, j}
 
-        // compute gradients with l2 regularization
-        // lGrad = 2 * e * R_{*, j}' + 2 * lambda * L_{i, *}
-        final Vector lGrad = rVec.scale(error / batchSize);
-        if (lambda != 0.0D) {
-          lGrad.axpy(lambda, lVec);
+        // compute gradients
+        // lGrad = 2 * e * R_{*, j}'
+        // rGrad = 2 * e * L_{i, *}'
+        final Vector lGrad;
+        final Vector rGrad;
+        if (batchSize > 0) {
+          lGrad = rVec.scale(2.0D * error / batchSize);
+          rGrad = lVec.scale(2.0D * error / batchSize);
+        } else {
+          lGrad = rVec.scale(2.0D * error);
+          rGrad = lVec.scale(2.0D * error);
         }
-        lGrad.scalei(2.0D * stepSize);
-        // rGrad = 2 * e + L_{i, *}' + 2 * lambda + R_{j, *}
-        final Vector rGrad = lVec.scale(error / batchSize);
-        if (lambda != 0.0D) {
-          rGrad.axpy(lambda, rVec);
-        }
-        rGrad.scalei(2.0D * stepSize);
 
-        // update L matrix
-        modelGenerator.getValidVector(lVec.subi(lGrad));
+        // aggregate L matrix gradients
+        lGradSum.addi(lGrad);
 
         // save R matrix gradients
         saveRMatrixGradient(colIdx, rGrad);
 
         // aggregate loss
-        // iterative mean = c(t+1) = c(t) + (x - c(t)) / (t + 1)
-        loss += (error * error - loss) / ++elemCount;
+        lossSum += error * error;
+        ++elemCount;
       }
+
+      // update L matrix
+      modelGenerator.getValidVector(lVec.axpy(-stepSize, lGradSum));
+
+      ++rowCount;
       computeTracer.end(datum.getColumns().size());
 
-      if (++rowCount % batchSize == 0) {
+      if (batchSize > 0 && rowCount % batchSize == 0) {
         pushAndClearGradients();
         pullRMatrix();
       }
 
       if (logPeriod > 0 && rowCount % logPeriod == 0) {
         final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-        LOG.log(Level.INFO, "Iteration: {0}, Row Count: {1}, Loss: {2}, Avg Comp Per Row: {3}, " +
-            "Sum Comp: {4}, Avg Pull: {5}, Sum Pull: {6}, Avg Push: {7}, " +
-            "Sum Push: {8}, DvT: {9}, RvT: {10}, Elapsed Time: {11}",
-            new Object[]{iteration, rowCount, String.format("%g", loss), computeTracer.avg(),
-                computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
+        LOG.log(Level.INFO, "Iteration: {0}, Row Count: {1}, Avg Loss: {2}, Sum Loss : {3}, " +
+            "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
+            "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
+            new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
+                computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
                 pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
       }
     }
 
     pushAndClearGradients();
-    ++iteration;
 
     final double elapsedTime = (System.currentTimeMillis() - iterationBegin) / 1000.0D;
-    LOG.log(Level.INFO, "End iteration: {0}, Row Count: {1}, Loss: {2}, Avg Comp Per Row: {3}, " +
-            "Sum Comp: {4}, Avg Pull: {5}, Sum Pull: {6}, Avg Push: {7}, " +
-            "Sum Push: {8}, DvT: {9}, RvT: {10}, Elapsed Time: {11}",
-        new Object[]{iteration, rowCount, String.format("%g", loss), computeTracer.avg(),
-            computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
+    LOG.log(Level.INFO, "End Iteration: {0}, Row Count: {1}, Avg Loss: {2}, Sum Loss : {3}, " +
+            "Avg Comp Per Row: {4}, Sum Comp: {5}, Avg Pull: {6}, Sum Pull: {7}, Avg Push: {8}, " +
+            "Sum Push: {9}, DvT: {10}, RvT: {11}, Elapsed Time: {12}",
+        new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
+            computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
             pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
   }
 
