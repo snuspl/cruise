@@ -34,6 +34,7 @@ import java.util.logging.Logger;
  * It handles a global view of the partitions of all Evaluators, so we can guarantee that all partitions are unique.
  * This class is thread-safe, so many users can request to register/remove/move partitions at the same time.
  */
+// TODO #90: We need to handle the failures for Move.
 @ThreadSafe
 @DriverSide
 @Private

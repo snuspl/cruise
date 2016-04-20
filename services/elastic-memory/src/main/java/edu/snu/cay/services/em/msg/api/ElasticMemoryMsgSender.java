@@ -90,7 +90,7 @@ public interface ElasticMemoryMsgSender {
                    @Nullable final TraceInfo parentTraceInfo);
 
    /**
-   * Sends a CtrlMsg to initiate moving data to the source Evaluator.
+   * Sends a CtrlMsg to initiate moving data blocks to the source Evaluator.
    * @param destId id of the Evaluator that receives this message
     *              (i.e., source Evaluator in terms of the data)
    * @param dataType type of the data to move

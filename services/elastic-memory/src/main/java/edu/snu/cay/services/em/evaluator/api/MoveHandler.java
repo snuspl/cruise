@@ -44,7 +44,7 @@ interface MoveHandler<K> {
    * @param blockId the identifier of block to send
    * @param data the data to put
    */
-  <V> void putBlock(String dataType, int blockId, Map<K, V> data);
+  void putBlock(String dataType, int blockId, Map<K, Object> data);
 
   /**
    * Gets the data in the block.

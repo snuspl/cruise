@@ -63,6 +63,7 @@ final class Migration {
    * @param receiverId Identifier of the receiver.
    * @param dataType Type of data.
    */
+  @Deprecated
   public Migration(final String senderId,
                    final String receiverId,
                    final String dataType) {
@@ -78,6 +79,7 @@ final class Migration {
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
    * @param dataType Type of data.
+   * @param blockIds Identifiers of the blocks to move.
    */
   public Migration(final String senderId,
                    final String receiverId,
@@ -177,9 +179,9 @@ final class Migration {
   void markBlockAsMoved(final int blockId) {
     if (!blockIds.contains(blockId) || movedBlockIds.contains(blockId)) {
       LOG.log(Level.WARNING, "Block id {0} seems to have finished already.", blockId);
+    } else {
+      movedBlockIds.add(blockId);
     }
-
-    movedBlockIds.add(blockId);
   }
 
   /**

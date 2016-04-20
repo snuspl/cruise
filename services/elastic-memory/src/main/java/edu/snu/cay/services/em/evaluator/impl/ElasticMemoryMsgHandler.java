@@ -132,9 +132,12 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final int blockId = ownershipMsg.getBlockId();
       final int newOwnerId = ownershipMsg.getNewOwnerId();
 
-      // Update the owner of the block to the new one. Note that once the ownership is updated,
-      // then the data is never accessed locally, so it is safe to remove the local data block.
+      // Update the owner of the block to the new one.
+      // Operations being executed keep a read lock on router while being executed.
       memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+
+      // After the ownership is updated, the data is never accessed locally,
+      // so it is safe to remove the local data block.
       memoryStore.removeBlock(dataType, blockId);
 
       sender.get().sendOwnershipAckMsg(operationId, dataType, blockId,

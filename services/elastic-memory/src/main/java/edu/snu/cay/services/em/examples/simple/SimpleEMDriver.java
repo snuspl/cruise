@@ -211,7 +211,7 @@ final class SimpleEMDriver {
                 @Override
                 public void onNext(final AvroElasticMemoryMessage emMsg) {
                   moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS);
-                  LOG.log(Level.INFO, "Move {0} succeeded {1} with result {2}",
+                  LOG.log(Level.INFO, "Was Move {0} successful? {1}. The result: {2}",
                       new Object[]{emMsg.getOperationId(), moveSucceeded[0],
                           emMsg.getResultMsg() == null ? "" : emMsg.getResultMsg().getResult()});
                   finishedLatch.countDown();
@@ -225,9 +225,9 @@ final class SimpleEMDriver {
           LOG.log(Level.INFO, "Waiting for move to finish on iteration {0}", i);
           finishedLatch.await();
 
-          // After moved, number of units should be applied accordingly.
-          checkBlocks(srcId, initialSrcNumBlocks - numToMove);
-          checkBlocks(destId, initialDestNumBlocks + numToMove);
+          // After moved, number of blocks should be updated accordingly.
+          checkNumBlocks(srcId, initialSrcNumBlocks - numToMove);
+          checkNumBlocks(destId, initialDestNumBlocks + numToMove);
 
           if (moveSucceeded[0]) {
             LOG.log(Level.INFO, "Move finished on iteration {0}", i);
@@ -258,7 +258,7 @@ final class SimpleEMDriver {
   /**
    * Checks the expected number of blocks are in the Evaluator.
    */
-  private void checkBlocks(final String evalId, final int expected) {
+  private void checkNumBlocks(final String evalId, final int expected) {
     final int actual = getNumBlocks(evalId);
     if (actual != expected) {
       final String msg = evalId + "should have " + expected + ", but has " + actual + " blocks";

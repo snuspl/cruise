@@ -151,7 +151,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   @Override
-  public <V> void putBlock(final String dataType, final int blockId, final Map<Long, V> data) {
+  public void putBlock(final String dataType, final int blockId, final Map<Long, Object> data) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
       throw new RuntimeException("Data type " + dataType + " does not exist.");
@@ -435,6 +435,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // route key ranges of the operation
     final List<LongRange> dataKeyRanges = operation.getDataKeyRanges();
+    final Map<Long, V> localOutputData;
     try {
       routerLock.readLock().lock();
       final Pair<Map<Integer, Pair<Long, Long>>, Map<String, List<Pair<Long, Long>>>> routingResult =
@@ -448,14 +449,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
       // send remote operations first and execute local operations
       sendOperationToRemoteStores(operation, remoteEvalToSubKeyRangesMap);
-      final Map<Long, V> localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangeMap);
-
-      // submit the local result and wait until all remote operations complete
-      resultAggregator.submitLocalResult(operation, localOutputData, Collections.EMPTY_LIST);
+      localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangeMap);
 
     } finally {
       routerLock.readLock().unlock();
     }
+
+    // submit the local result and wait until all remote operations complete
+    resultAggregator.submitLocalResult(operation, localOutputData, Collections.EMPTY_LIST);
   }
 
   /**

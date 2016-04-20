@@ -28,7 +28,6 @@ import org.apache.reef.task.Task;
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 final class SimpleEMTask implements Task {
@@ -72,8 +71,7 @@ final class SimpleEMTask implements Task {
   public byte[] call(final byte[] memento) throws InterruptedException {
     LOG.info("SimpleEMTask commencing...");
 
-    LOG.log(Level.INFO, "Before sleep, memory store contains {0} blocks", memoryStore.getAll(DATATYPE));
-
+    // TODO #464: Add getList() and removeList() in MemoryStore API
     final Map<Long, Object> initialData = memoryStore.getRange(DATATYPE, ids.get(0), ids.get(NUM_DATA - 1));
     assert initialData.keySet().containsAll(ids);
     assert initialData.values().containsAll(ids);
@@ -86,7 +84,6 @@ final class SimpleEMTask implements Task {
     LOG.info("Sleep for: " + sleepMillis);
     Thread.sleep(sleepMillis);
 
-    LOG.log(Level.INFO, "After sleep, memory store contains {0} blocks", memoryStore.getAll(DATATYPE));
     final Map<Long, Object> dataAfterMove = memoryStore.getRange(DATATYPE, ids.get(0), ids.get(NUM_DATA - 1));
     assert dataAfterMove.keySet().containsAll(ids); // Even after move(), all the loaded data must be same as original.
     assert dataAfterMove.values().containsAll(ids);

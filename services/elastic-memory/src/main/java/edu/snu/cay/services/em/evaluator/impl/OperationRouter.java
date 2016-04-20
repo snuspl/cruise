@@ -104,7 +104,8 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * Routes the data key range of the operation.
+   * Routes the data key range of the operation. Note that this method must be synchronized to prevent other threads
+   * from updating the routing information while reading it.
    * @param dataKeyRanges a range of data keys
    * @return a pair of a map between a block id and a corresponding sub key range,
    * and a map between evaluator id and corresponding sub key ranges.
@@ -163,6 +164,8 @@ public final class OperationRouter<K> {
   /**
    * Resolves an evaluator id for a block id.
    * It returns empty when the block belongs to the local MemoryStore.
+   * Note that this method must be synchronized to prevent other threads
+   * from updating the routing information while reading it.
    * @param blockId an id of block
    * @return an Optional with an evaluator id
    */
@@ -183,7 +186,8 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * Updates the owner of the block.
+   * Updates the owner of the block. Note that this method must be synchronized
+   * to prevent other threads from reading the routing information while updating it.
    * @param blockId id of the block to update its ownership.
    * @param storeId id of the MemoryStore that will be new owner.
    * @return id of the MemoryStore who was the owner before update.
