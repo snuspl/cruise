@@ -23,7 +23,7 @@ import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerNumThreads;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.ParameterWorkerNumThreads;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerQueueSize;
 import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -113,7 +113,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   private final InjectionFuture<PartitionedWorkerMsgSender<K, P>> sender;
 
   @Inject
-  private PartitionedParameterWorker(@Parameter(WorkerNumThreads.class) final int numThreads,
+  private PartitionedParameterWorker(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
                                      @Parameter(WorkerQueueSize.class) final int queueSize,
                                      @Parameter(WorkerExpireTimeout.class) final long expireTimeout,
                                      @Parameter(WorkerKeyCacheSize.class) final int keyCacheSize,
