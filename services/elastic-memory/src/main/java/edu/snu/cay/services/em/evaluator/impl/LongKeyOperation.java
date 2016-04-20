@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A class that represents a single data operation.
@@ -47,6 +48,7 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   /**
    * States of the operation.
    */
+  private final AtomicInteger subOpCounter = new AtomicInteger(0);
   private CountDownLatch subOpCountDownLatch = new CountDownLatch(0);
 
   // ranges that remote sub operations failed to execute due to wrong routing
@@ -189,15 +191,20 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   }
 
   /**
-   * Sets a counter number that {@link #waitOperation(long)} will wait until the count becomes zero.
-   * Only {@link #commitResult(Map, List<LongRange>)} method counts down the latch.
-   * @param numSubOps a number of sub operations
+   * Sets the total number of sub operations for an atomic counter. For operation from local clients,
+   * it also initializes a latch that {@link #waitOperation(long)} will wait until the count becomes zero.
+   * Only {@link #commitResult(Map, List<LongRange>)} method counts them down.
+   * @param numSubOps the total number of sub operations
    */
   void setNumSubOps(final int numSubOps) {
     if (numSubOps == 0) {
       return;
     }
-    subOpCountDownLatch = new CountDownLatch(numSubOps);
+
+    if (isFromLocalClient()) {
+      subOpCountDownLatch = new CountDownLatch(numSubOps);
+    }
+    subOpCounter.set(numSubOps);
   }
 
   /**
@@ -209,8 +216,9 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   }
 
   /**
-   * Commits results of sub operations, which compose the operation.
-   * It counts down the latch, so it might trigger a return of {@link #waitOperation(long)} method.
+   * Commits results of sub operations and returns the number of remaining sub operations.
+   * For operations from local clients, it counts down the latch and might trigger
+   * a return of {@link #waitOperation(long)} method.
    * @param output an output data of the sub operation
    * @param failedRangeList a list of failed key ranges of the sub operation
    * @return the number of remaining sub operations
@@ -219,10 +227,10 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
     this.outputData.putAll(output);
     this.failedRanges.addAll(failedRangeList);
 
-    synchronized (subOpCountDownLatch) {
+    if (isFromLocalClient()) {
       subOpCountDownLatch.countDown();
-      return (int) subOpCountDownLatch.getCount();
     }
+    return subOpCounter.decrementAndGet();
   }
 
   /**

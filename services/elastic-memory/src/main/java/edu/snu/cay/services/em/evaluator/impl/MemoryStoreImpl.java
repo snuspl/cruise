@@ -333,6 +333,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // cannot resolve any block. invalid data keys
     if (blockToSubKeyRangesMap.isEmpty()) {
+      resultAggregator.registerOp(operation, 1);
       // TODO #421: should handle fail case different from empty case
       resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, operation.getDataKeyRanges());
       LOG.log(Level.SEVERE, "Failed Op [Id: {0}, origId: {1}]",
@@ -346,6 +347,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       if (operation.getOperationType() == DataOpType.PUT) {
         initBlocks(dataType);
       } else {
+        resultAggregator.registerOp(operation, 1);
         // submit empty result for other types of operations
         resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, operation.getDataKeyRanges());
 

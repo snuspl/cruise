@@ -95,6 +95,9 @@ final class OperationResultAggregator {
                              final List<LongRange> failedRanges) {
     final int numRemainingSubOps = operation.commitResult(localOutput, failedRanges);
 
+    LOG.log(Level.FINEST, "Local sub operation succeed. OpId: {0}, numRemainingSubOps: {1}",
+        new Object[]{operation.getOperationId(), numRemainingSubOps});
+
     if (!operation.isFromLocalClient()) {
       if (numRemainingSubOps == 0) {
         sendResultToOrigin(operation);
