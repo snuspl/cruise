@@ -177,7 +177,9 @@ final class Migration {
    * @param blockId id of the block to mark as moved.
    */
   void markBlockAsMoved(final int blockId) {
-    if (!blockIds.contains(blockId) || movedBlockIds.contains(blockId)) {
+    if (!blockIds.contains(blockId)) {
+      LOG.log(Level.WARNING, "Block id {0} was not asked to move.", blockId);
+    } else if (movedBlockIds.contains(blockId)) {
       LOG.log(Level.WARNING, "Block id {0} seems to have finished already.", blockId);
     } else {
       movedBlockIds.add(blockId);
@@ -189,16 +191,6 @@ final class Migration {
    */
   boolean isComplete() {
     // Fails early when the size is not equal.
-    if (movedBlockIds.size() != blockIds.size()) {
-      return false;
-    }
-
-    // return false if any of blocks are left.
-    for (final int blockId : blockIds) {
-      if (!movedBlockIds.contains(blockId)) {
-        return false;
-      }
-    }
-    return true;
+    return movedBlockIds.size() == blockIds.size();
   }
 }
