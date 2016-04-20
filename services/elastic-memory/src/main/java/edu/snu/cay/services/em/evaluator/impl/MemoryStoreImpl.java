@@ -141,8 +141,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   @Override
   public int updateOwnership(final String dataType, final int blockId, final int storeId) {
+    routerLock.writeLock().lock();
     try {
-      routerLock.writeLock().lock();
       final int oldOwnerId = router.updateOwnership(blockId, storeId);
       return oldOwnerId;
     } finally {
@@ -223,9 +223,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       final Pair<Long, Long> subKeyRange = subOperation.getSecond();
       final int blockId = subOperation.getThird();
 
+      routerLock.readLock().lock();
       try {
-        routerLock.readLock().lock();
-
         final Optional<String> remoteEvalId = router.resolveEval(blockId);
         final boolean isLocal = !remoteEvalId.isPresent();
         if (isLocal) {
@@ -371,9 +370,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final Iterator<LongRange> rangeIterator = dataKeyRanges.iterator();
 
+    routerLock.readLock().lock();
     try {
-      routerLock.readLock().lock();
-
       // handle the first iteration separately to reuse a returned map object
       if (rangeIterator.hasNext()) {
         final LongRange keyRange = rangeIterator.next();
@@ -436,8 +434,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     // route key ranges of the operation
     final List<LongRange> dataKeyRanges = operation.getDataKeyRanges();
     final Map<Long, V> localOutputData;
+
+    routerLock.readLock().lock();
     try {
-      routerLock.readLock().lock();
       final Pair<Map<Integer, Pair<Long, Long>>, Map<String, List<Pair<Long, Long>>>> routingResult =
           router.route(LongRangeUtils.fromRangesToPairs(dataKeyRanges));
 
