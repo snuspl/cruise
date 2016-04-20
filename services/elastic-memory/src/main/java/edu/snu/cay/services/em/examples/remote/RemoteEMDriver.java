@@ -87,7 +87,7 @@ final class RemoteEMDriver {
           // sometimes JVM fails due to GC overhead (not OOM).
           // I confirmed that the test succeed with 256 Mb in local and 512 Mb in cluster (by Jenkins) respectively.
           // Since it differs for environment, for reliability 1024 Mb has been chosen.
-          // It can be reduced in future, after minimizing memory consumption in routing.
+          // TODO #465: minimize GC overhead
           .setMemory(1024)
           .setNumberOfCores(1)
           .build());

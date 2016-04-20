@@ -125,9 +125,7 @@ final class RemoteEMTask implements Task {
    */
   private void synchronize() {
     aggregationSlave.send(RemoteEMDriver.AGGREGATION_CLIENT_ID, codec.encode(DriverSideMsgHandler.SYNC_WORKERS));
-    LOG.info("SYNC START");
     msgHandler.waitForMessage();
-    LOG.info("SYNC END");
   }
 
   /**
@@ -144,7 +142,7 @@ final class RemoteEMTask implements Task {
    * Cleans up memory store after each test.
    */
   private void cleanUp() {
-    // wait until previous test are finished completely
+    // wait until previous test is finished completely
     synchronize();
     memoryStore.removeAll(DATA_TYPE);
 
@@ -192,20 +190,12 @@ final class RemoteEMTask implements Task {
     }
   }
 
-  private long getRandomLongKey(final Random random) {
-    long key = random.nextLong() % maxDataKey;
-    while (key < 0) {
-      key = random.nextLong() % maxDataKey;
-    }
-    return key;
+  private long getRandomLongKey() {
+    return ThreadLocalRandom.current().nextLong(maxDataKey + 1);
   }
 
-  private Pair<Long, Long> getRandomLongRangeKey(final Random random, final int length) {
-    final long randomKey = getRandomLongKey(random);
-    long startKey = randomKey - (length - 1);
-    if (startKey < 0) {
-      startKey = startKey + length;
-    }
+  private Pair<Long, Long> getRandomLongRangeKey(final int length) {
+    final long startKey = ThreadLocalRandom.current().nextLong(maxDataKey + 1 - (length - 1));
     final long endKey = startKey + (length - 1);
 
     return new Pair<>(startKey, endKey);
@@ -232,11 +222,9 @@ final class RemoteEMTask implements Task {
       synchronize();
 
       if (localMemoryStoreId == 0) {
-        final Random random = new Random();
-
         final Set<Long> keySet = new HashSet<>();
         while (keySet.size() < numItems) {
-          final long key = getRandomLongKey(random);
+          final long key = getRandomLongKey();
           keySet.add(key);
         }
 
@@ -783,18 +771,16 @@ final class RemoteEMTask implements Task {
     public Long call() throws Exception {
       long numGetSuccess = 0;
 
-      final Random random = new Random();
-
       for (int i = 0; i < getsPerThread; i++) {
         if (itemsPerGet == 1) {
-          final long key = getRandomLongKey(random);
+          final long key = getRandomLongKey();
           final Pair<Long, Object> res = memoryStore.get(DATA_TYPE, key);
 
           if (res != null) {
             numGetSuccess++;
           }
         } else {
-          final Pair<Long, Long> range = getRandomLongRangeKey(random, itemsPerGet);
+          final Pair<Long, Long> range = getRandomLongRangeKey(itemsPerGet);
           final Map<Long, Object> res = memoryStore.getRange(DATA_TYPE, range.getFirst(), range.getSecond());
 
           numGetSuccess += res.size();
@@ -822,18 +808,16 @@ final class RemoteEMTask implements Task {
     public Long call() throws Exception {
       long numRemoveSuccess = 0;
 
-      final Random random = new Random();
-
       for (int i = 0; i < removesPerThread; i++) {
         if (itemsPerRemove == 1) {
-          final long key = getRandomLongKey(random);
+          final long key = getRandomLongKey();
           final Pair<Long, Object> res = memoryStore.remove(DATA_TYPE, key);
 
           if (res != null) {
             numRemoveSuccess++;
           }
         } else {
-          final Pair<Long, Long> range = getRandomLongRangeKey(random, itemsPerRemove);
+          final Pair<Long, Long> range = getRandomLongRangeKey(itemsPerRemove);
           final Map<Long, Object> res = memoryStore.removeRange(DATA_TYPE, range.getFirst(), range.getSecond());
 
           numRemoveSuccess += res.size();
