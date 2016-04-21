@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.util.Optional;
 import org.htrace.TraceInfo;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -88,6 +89,23 @@ public interface ElasticMemoryMsgSender {
                    final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
 
+   /**
+   * Sends a CtrlMsg to initiate moving data blocks to the source Evaluator.
+   * @param destId id of the Evaluator that receives this message
+    *              (i.e., source Evaluator in terms of the data)
+   * @param dataType type of the data to move
+   * @param targetEvalId id of the Evaluator that receives the data
+   * @param blocks block ids to move
+   * @param operationId id associated with this operation
+   * @param parentTraceInfo Trace information for HTrace
+   */
+  void sendCtrlMsg(final String destId,
+                   final String dataType,
+                   final String targetEvalId,
+                   final List<Integer> blocks,
+                   final String operationId,
+                   @Nullable final TraceInfo parentTraceInfo);
+
   /**
    * Sends a DataMsg containing {@code unitIdPairList} to the Evaluator
    * named {@code destId}, specified by the type {@code dataType}.
@@ -97,6 +115,7 @@ public interface ElasticMemoryMsgSender {
   void sendDataMsg(final String destId,
                    final String dataType,
                    final List<UnitIdPair> unitIdPairList,
+                   final int blockId,
                    final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
 
@@ -133,6 +152,26 @@ public interface ElasticMemoryMsgSender {
   void sendUpdateAckMsg(final String operationId,
                         final UpdateResult result,
                         @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Sends a request to update ownership for the given block.
+   * @param destId Specifies the destination. The recipient is Driver when this field is empty.
+   */
+  void sendOwnershipMsg(final Optional<String> destId,
+                        final String operationId,
+                        final String dataType,
+                        final int blockId,
+                        final int oldOwnerId,
+                        final int newOwnerId,
+                        @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Sends an ACK message to Driver for notifying that the ownership has been updated successful.
+   */
+  void sendOwnershipAckMsg(final String operationId,
+                           final String dataType,
+                           final int blockId,
+                           @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Sends a FailureMsg to notify the failure to the Driver.

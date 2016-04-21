@@ -16,7 +16,10 @@
 
 package edu.snu.cay.services.em.examples.simple;
 
+import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
 import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
 import edu.snu.cay.utils.trace.HTraceParameters;
@@ -47,6 +50,7 @@ public final class SimpleEMREEF {
   private static final Logger LOG = Logger.getLogger(SimpleEMREEF.class.getName());
   private static final int TIMEOUT = 100000;
   private static final Tang TANG = Tang.Factory.getTang();
+  private static final int NUM_BLOCKS = 20; // Initially each MemoryStore owns 10 blocks
 
   @NamedParameter(doc = "Whether or not to run on the local runtime", short_name = "local", default_value = "true")
   public static final class OnLocal implements Name<Boolean> {
@@ -140,12 +144,18 @@ public final class SimpleEMREEF {
     final HTraceParameters traceParameters = getTraceParameters(injector);
     final Configuration traceConf = traceParameters.getConfiguration();
 
+    final Configuration emConf = TANG.newConfigurationBuilder()
+        .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_BLOCKS))
+        .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class)
+        .build();
+
     final Configuration exampleConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(Iterations.class, Integer.toString(getIterations(injector)))
         .bindNamedParameter(PeriodMillis.class, Long.toString(getPeriodMillis(injector)))
         .build();
 
-    final LauncherStatus status = runSimpleEM(runtimeConf, Configurations.merge(traceConf, exampleConf), TIMEOUT);
+    final LauncherStatus status = runSimpleEM(runtimeConf,
+        Configurations.merge(traceConf, emConf, exampleConf), TIMEOUT);
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 }

@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
+import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -37,6 +38,7 @@ import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
 
+import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -71,11 +73,17 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    */
   private final Map<String, Map<Integer, Block>> typeToBlocks = new HashMap<>();
 
+  @GuardedBy("routerLock")
   private final OperationRouter<Long> router;
+
+  private final BlockResolver<Long> blockResolver;
+
   private final OperationResultAggregator resultAggregator;
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   private final Serializer serializer;
+
+  private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
   /**
    * A counter for issuing ids for operations requested from local clients.
@@ -92,12 +100,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter<Long> router,
+                          final BlockResolver<Long> blockResolver,
                           final OperationResultAggregator resultAggregator,
                           final InjectionFuture<ElasticMemoryMsgSender> msgSender,
                           final Serializer serializer,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
+    this.blockResolver = blockResolver;
     this.resultAggregator = resultAggregator;
     this.msgSender = msgSender;
     this.serializer = serializer;
@@ -125,12 +135,67 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     }
 
     final Map<Integer, Block> initialBlocks = new HashMap<>();
-    for (final int blockIdx : router.getLocalBlockIds()) {
+    // We don't need to lock router because this method is already synchronized.
+    for (final int blockIdx : router.getInitialLocalBlockIds()) {
       initialBlocks.put(blockIdx, new Block());
     }
 
     // must put initialBlocks into typeToBlocks after completely initialize it
     typeToBlocks.put(dataType, initialBlocks);
+  }
+
+  @Override
+  public int updateOwnership(final String dataType, final int blockId, final int storeId) {
+    routerLock.writeLock().lock();
+    try {
+      final int oldOwnerId = router.updateOwnership(blockId, storeId);
+      return oldOwnerId;
+    } finally {
+      routerLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void putBlock(final String dataType, final int blockId, final Map<Long, Object> data) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (null == blocks) {
+      // If the blocks of the type have not been initialized, then create the blocks.
+      initBlocks(dataType);
+    } else if (blocks.containsKey(blockId)) {
+      throw new RuntimeException("Block with id " + blockId + " already exists.");
+    } else {
+      final Block block = new Block();
+      block.subDataMap.putAll(data);
+      blocks.put(blockId, block);
+    }
+  }
+
+  @Override
+  public Map<Long, Object> getBlock(final String dataType, final int blockId) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (null == blocks) {
+      throw new RuntimeException("Data type " + dataType + " does not exist.");
+    }
+
+    final Block block = blocks.get(blockId);
+    if (null == block) {
+      throw new RuntimeException("Block with id " + blockId + " does not exist.");
+    }
+
+    return block.getAll();
+  }
+
+  @Override
+  public void removeBlock(final String dataType, final int blockId) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (null == blocks) {
+      throw new RuntimeException("Data type " + dataType + " does not exist.");
+    }
+
+    final Block block = blocks.remove(blockId);
+    if (null == block) {
+      throw new RuntimeException("Block with id " + blockId + " does not exist.");
+    }
   }
 
   /**
@@ -162,19 +227,24 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       final Pair<Long, Long> subKeyRange = subOperation.getSecond();
       final int blockId = subOperation.getThird();
 
-      final Optional<String> remoteEvalId = router.resolveEval(blockId);
-      final boolean isLocal = !remoteEvalId.isPresent();
-      if (isLocal) {
-        final Block block = typeToBlocks.get(operation.getDataType()).get(blockId);
-        final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRange);
-        resultAggregator.submitLocalResult(operation, result, Collections.EMPTY_LIST);
-      } else {
-        // treat remote ranges as failed ranges, because we do not allow more than one hop in remote access
-        final List<LongRange> failedRanges = new ArrayList<>(1);
-        failedRanges.add(new LongRange(subKeyRange.getFirst(), subKeyRange.getSecond()));
+      routerLock.readLock().lock();
+      try {
+        final Optional<String> remoteEvalId = router.resolveEval(blockId);
+        final boolean isLocal = !remoteEvalId.isPresent();
+        if (isLocal) {
+          final Block block = typeToBlocks.get(operation.getDataType()).get(blockId);
+          final Map<Long, Object> result = block.executeSubOperation(operation, subKeyRange);
+          resultAggregator.submitLocalResult(operation, result, Collections.EMPTY_LIST);
+        } else {
+          // treat remote ranges as failed ranges, because we do not allow more than one hop in remote access
+          final List<LongRange> failedRanges = new ArrayList<>(1);
+          failedRanges.add(new LongRange(subKeyRange.getFirst(), subKeyRange.getSecond()));
 
-        // submit it as a local result, because we do not even start the remote operation
-        resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, failedRanges);
+          // submit it as a local result, because we do not even start the remote operation
+          resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, failedRanges);
+        }
+      } finally {
+        routerLock.readLock().unlock();
       }
     }
   }
@@ -307,7 +377,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     // handle the first iteration separately to reuse a returned map object
     if (rangeIterator.hasNext()) {
       final LongRange keyRange = rangeIterator.next();
-      blockToSubKeyRangeMap = router.resolveBlocks(keyRange.getMinimumLong(), keyRange.getMaximumLong());
+      blockToSubKeyRangeMap =
+          blockResolver.resolveBlocksForOrderedKeys(keyRange.getMinimumLong(), keyRange.getMaximumLong());
     } else {
       LOG.log(Level.SEVERE, "Invalid operation");
       resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, Collections.EMPTY_LIST);
@@ -316,7 +387,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     while (rangeIterator.hasNext()) {
       final LongRange keyRange = rangeIterator.next();
       // blockIds for blockToSubKeyRangeMap never overlap
-      blockToSubKeyRangeMap.putAll(router.resolveBlocks(keyRange.getMinimumLong(), keyRange.getMaximumLong()));
+      blockToSubKeyRangeMap.putAll(
+          blockResolver.resolveBlocksForOrderedKeys(keyRange.getMinimumLong(), keyRange.getMaximumLong()));
     }
 
     final int numSubOps = blockToSubKeyRangeMap.size();
@@ -361,17 +433,26 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // route key ranges of the operation
     final List<LongRange> dataKeyRanges = operation.getDataKeyRanges();
-    final Pair<Map<Integer, Pair<Long, Long>>, Map<String, List<Pair<Long, Long>>>> routingResult =
-        router.route(LongRangeUtils.fromRangesToPairs(dataKeyRanges));
-    final Map<Integer, Pair<Long, Long>> localBlockToSubKeyRangeMap = routingResult.getFirst();
-    final Map<String, List<Pair<Long, Long>>> remoteEvalToSubKeyRangesMap = routingResult.getSecond();
+    final Map<Long, V> localOutputData;
 
-    final int numSubOps = remoteEvalToSubKeyRangesMap.size() + 1; // +1 for local operation
-    resultAggregator.registerOp(operation, numSubOps);
+    routerLock.readLock().lock();
+    try {
+      final Pair<Map<Integer, Pair<Long, Long>>, Map<String, List<Pair<Long, Long>>>> routingResult =
+          router.route(LongRangeUtils.fromRangesToPairs(dataKeyRanges));
 
-    // send remote operations first and execute local operations
-    sendOperationToRemoteStores(operation, remoteEvalToSubKeyRangesMap);
-    final Map<Long, V> localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangeMap);
+      final Map<Integer, Pair<Long, Long>> localBlockToSubKeyRangeMap = routingResult.getFirst();
+      final Map<String, List<Pair<Long, Long>>> remoteEvalToSubKeyRangesMap = routingResult.getSecond();
+
+      final int numSubOps = remoteEvalToSubKeyRangesMap.size() + 1; // +1 for local operation
+      resultAggregator.registerOp(operation, numSubOps);
+
+      // send remote operations first and execute local operations
+      sendOperationToRemoteStores(operation, remoteEvalToSubKeyRangesMap);
+      localOutputData = executeLocalOperation(operation, localBlockToSubKeyRangeMap);
+
+    } finally {
+      routerLock.readLock().unlock();
+    }
 
     // submit the local result and wait until all remote operations complete
     resultAggregator.submitLocalResult(operation, localOutputData, Collections.EMPTY_LIST);

@@ -24,6 +24,7 @@ import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.util.Optional;
 import org.htrace.TraceInfo;
 import org.junit.Before;
 import org.junit.Test;
@@ -277,12 +278,19 @@ public class MigrationManagerTest {
                             final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     }
 
+    @Override
+    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+                            final List<Integer> blocks, final String operationId,
+                            @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
     /**
      * Do nothing because this is called by Evaluator.
      */
     @Override
     public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
-                            final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+                            final int blockId, final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     }
 
     /**
@@ -326,6 +334,19 @@ public class MigrationManagerTest {
     @Override
     public void sendUpdateAckMsg(final String operationId, final UpdateResult result,
                                  @Nullable final TraceInfo parentTraceInfo) {
+    }
+
+    @Override
+    public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final String dataType,
+                                 final int blockId, final int oldOwnerId, final int newOwnerId,
+                                 @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendOwnershipAckMsg(final String operationId, final String dataType, final int blockId,
+                                    @Nullable final TraceInfo parentTraceInfo) {
+
     }
 
     /**
