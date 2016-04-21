@@ -104,9 +104,11 @@
   "fields":
   [
     {"name": "dataType", "type": "string"},
-    {"name": "ctrlMsgType", "type": {"type": "enum", "name": "CtrlMsgType", "symbols": ["IdRange", "NumUnits"]}},
+    {"name": "ctrlMsgType",
+     "type": {"type": "enum", "name": "CtrlMsgType", "symbols": ["IdRange", "NumUnits", "Blocks"]}},
     {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
-    {"name": "numUnits", "type": ["null", "int"], "default": null}
+    {"name": "numUnits", "type": ["null", "int"], "default": null},
+    {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null}
   ]
 },
 
@@ -122,6 +124,7 @@
   "fields":
   [
     {"name": "dataType", "type": "string"},
+    {"name": "blockId", "type": ["null", "int"], "default": null},
     {"name": "units", "type": {"type": "array", "items": "UnitIdPair"}}
   ]
 },
@@ -148,6 +151,34 @@
   "type": "record",
   "name": "UpdateMsg",
   "fields": []
+},
+
+/**
+ * Request message to update ownership of the block.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "OwnershipMsg",
+  "fields": [
+      {"name": "dataType", "type": "string"},
+      {"name": "blockId", "type": "int"},
+      {"name": "oldOwnerId", "type": "int"},
+      {"name": "newOwnerId", "type": "int"}
+  ]
+},
+
+/**
+ * Response message to update ownership of the block.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "OwnershipAckMsg",
+  "fields": [
+      {"name": "dataType", "type": "string"},
+      {"name": "blockId", "type": "int"}
+  ]
 },
 
 /**
@@ -191,6 +222,7 @@
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
     {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
+    {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null},
     {"name": "msg", "type": ["null", "string"], "default": null}
   ]
 },
@@ -208,7 +240,7 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
         "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
-        "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg"]}},
+        "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg", "OwnershipMsg", "OwnershipAckMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
@@ -222,7 +254,9 @@
     {"name": "updateMsg", "type": ["null", "UpdateMsg"], "default": null},
     {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null},
     {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
-    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null}
+    {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
+    {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null},
+    {"name": "ownershipAckMsg", "type": ["null", "OwnershipAckMsg"], "default": null}
   ]
 }
 ]

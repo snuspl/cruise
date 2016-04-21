@@ -18,7 +18,9 @@ package edu.snu.cay.services.em.driver.impl;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.commons.lang.math.LongRange;
 
-import java.util.Collection;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Encapsulates the status of a migration. It consists of the sender, receiver, data type, and range information.
@@ -27,6 +29,8 @@ import java.util.Collection;
  * Each migration has its states as described in {@link MigrationManager}.
  */
 final class Migration {
+  private static final Logger LOG = Logger.getLogger(Migration.class.getName());
+
   static final String SENDING_DATA = "SENDING_DATA";
   static final String WAITING_UPDATE = "WAITING_UPDATE";
   static final String UPDATING_RECEIVER = "UPDATING_RECEIVER";
@@ -47,17 +51,45 @@ final class Migration {
   private Collection<LongRange> movedRanges;
 
   /**
+   * Ids of blocks to move.
+   */
+  private final List<Integer> blockIds;
+
+  private final Set<Integer> movedBlockIds;
+
+  /**
    * Creates a new Migration when move() is requested.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
    * @param dataType Type of data.
    */
+  @Deprecated
   public Migration(final String senderId,
                    final String receiverId,
                    final String dataType) {
     this.senderId = senderId;
     this.receiverId = receiverId;
     this.dataType = dataType;
+    this.blockIds = new ArrayList<>(0);
+    this.movedBlockIds = new HashSet<>(0);
+  }
+
+  /**
+   * Creates a new Migration when move() is requested.
+   * @param senderId Identifier of the sender.
+   * @param receiverId Identifier of the receiver.
+   * @param dataType Type of data.
+   * @param blockIds Identifiers of the blocks to move.
+   */
+  public Migration(final String senderId,
+                   final String receiverId,
+                   final String dataType,
+                   final List<Integer> blockIds) {
+    this.senderId = senderId;
+    this.receiverId = receiverId;
+    this.dataType = dataType;
+    this.blockIds = blockIds;
+    this.movedBlockIds = new HashSet<>(blockIds.size());
   }
 
   private StateMachine initStateMachine() {
@@ -131,5 +163,34 @@ final class Migration {
    */
   void checkAndUpdate(final String expectedCurrentState, final String target) {
     stateMachine.checkAndSetState(expectedCurrentState, target);
+  }
+
+  /**
+   * @return ids of the blocks that move
+   */
+  List<Integer> getBlockIds() {
+    return blockIds;
+  }
+
+  /**
+   * Marks one block as moved.
+   * @param blockId id of the block to mark as moved.
+   */
+  void markBlockAsMoved(final int blockId) {
+    if (!blockIds.contains(blockId)) {
+      LOG.log(Level.WARNING, "Block id {0} was not asked to move.", blockId);
+    } else if (movedBlockIds.contains(blockId)) {
+      LOG.log(Level.WARNING, "Block id {0} seems to have finished already.", blockId);
+    } else {
+      movedBlockIds.add(blockId);
+    }
+  }
+
+  /**
+   * @return True if all the blocks have moved successfully.
+   */
+  boolean isComplete() {
+    // Fails early when the size is not equal.
+    return movedBlockIds.size() == blockIds.size();
   }
 }

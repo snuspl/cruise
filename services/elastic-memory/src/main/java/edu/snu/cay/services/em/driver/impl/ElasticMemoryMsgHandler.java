@@ -15,11 +15,7 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.AvroLongRange;
-import edu.snu.cay.services.em.avro.FailureMsg;
-import edu.snu.cay.services.em.avro.RegisMsg;
-import edu.snu.cay.services.em.avro.UpdateResult;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
@@ -50,6 +46,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_REGIS_MSG = "onRegisMsg";
   private static final String ON_DATA_ACK_MSG = "onDataAckMsg";
   private static final String ON_UPDATE_ACK_MSG = "onUpdateAckMsg";
+  private static final String ON_OWNERSHIP_MSG = "onOwnershipMsg";
+  private static final String ON_OWNERSHIP_ACK_MSG = "onOwnershipAckMsg";
   private static final String ON_FAILURE_MSG = "onFailureMsg";
 
   private final PartitionManager partitionManager;
@@ -80,6 +78,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       onUpdateAckMsg(innerMsg);
       break;
 
+    case OwnershipMsg:
+      onOwnershipMsg(innerMsg);
+      break;
+
+    case OwnershipAckMsg:
+      onOwnershipAckMsg(innerMsg);
+      break;
+
     case FailureMsg:
       onFailureMsg(innerMsg);
       break;
@@ -89,6 +95,33 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     }
 
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+  }
+
+  private void onOwnershipAckMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(ON_OWNERSHIP_ACK_MSG,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      final String operationId = msg.getOperationId().toString();
+      final OwnershipAckMsg ownershipAckMsg = msg.getOwnershipAckMsg();
+
+      final int blockId = ownershipAckMsg.getBlockId();
+      migrationManager.markBlockAsMoved(operationId, blockId);
+    }
+  }
+
+  private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(ON_OWNERSHIP_MSG,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      final String operationId = msg.getOperationId().toString();
+      final int blockId = msg.getOwnershipMsg().getBlockId();
+      final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
+      final int newOwnerId = msg.getOwnershipMsg().getNewOwnerId();
+
+      // Update the owner and send ownership message to the old Owner.
+      final TraceInfo traceInfo = TraceInfo.fromSpan(onOwnershipMsgScope.getSpan());
+      migrationManager.updateOwner(operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
+    }
   }
 
   private void onRegisMsg(final AvroElasticMemoryMessage msg) {

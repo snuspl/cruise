@@ -29,6 +29,7 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.util.Optional;
 import org.htrace.HTraceConfiguration;
 import org.htrace.Span;
 import org.htrace.SpanReceiver;
@@ -522,8 +523,15 @@ final class MockedMsgSender implements ElasticMemoryMsgSender {
   }
 
   @Override
+  public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+                          final List<Integer> blocks, final String operationId,
+                          @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
   public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
-                          final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+                          final int blockId, final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 
   }
 
@@ -547,6 +555,19 @@ final class MockedMsgSender implements ElasticMemoryMsgSender {
   @Override
   public void sendUpdateAckMsg(final String operationId, final UpdateResult result,
                                @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final String dataType,
+                               final int blockId, final int oldOwnerId, final int newOwnerId,
+                               @Nullable final TraceInfo parentTraceInfo) {
+
+  }
+
+  @Override
+  public void sendOwnershipAckMsg(final String operationId, final String dataType, final int blockId,
+                                  @Nullable final TraceInfo parentTraceInfo) {
 
   }
 

@@ -240,15 +240,12 @@ final class AsyncDolphinDriver {
               ContextConfiguration.CONF
                   .set(ContextConfiguration.IDENTIFIER, contextId)
                   .build(),
-              psDriver.getContextConfiguration(), emConf.getContextConfiguration());
-          final Configuration serviceConf = Configurations.merge(psDriver.getServerServiceConfiguration(),
-              emConf.getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
+              psDriver.getContextConfiguration());
+          final Configuration serviceConf = Configurations.merge(psDriver.getServerServiceConfiguration());
           final Configuration traceConf = traceParameters.getConfiguration();
-          final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class).build();
 
           activeContext.submitContextAndService(contextConf,
-              Configurations.merge(serviceConf, traceConf, paramConf, emDataIdConf));
+              Configurations.merge(serviceConf, traceConf, paramConf));
         }
       };
     }

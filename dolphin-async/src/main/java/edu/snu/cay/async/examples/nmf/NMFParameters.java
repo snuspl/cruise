@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.async.examples.recommendation;
+package edu.snu.cay.async.examples.nmf;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
@@ -23,14 +23,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
  */
 final class NMFParameters {
 
-  @NamedParameter(doc = "number of rows in input matrix.", short_name = "row")
-  static final class NumRows implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "number of columns in input matrix.", short_name = "col")
-  static final class NumColumns implements Name<Integer> {
-  }
-
   @NamedParameter(doc = "rank of matrix factorization.", short_name = "rank")
   static final class Rank implements Name<Integer> {
   }
@@ -39,7 +31,7 @@ final class NMFParameters {
   static final class StepSize implements Name<Double> {
   }
 
-  @NamedParameter(doc = "regularization constant value", short_name = "lambda")
+  @NamedParameter(doc = "regularization constant value", short_name = "lambda", default_value = "0.0")
   static final class Lambda implements Name<Double> {
   }
 
@@ -53,5 +45,19 @@ final class NMFParameters {
 
   @NamedParameter(doc = "minimum value for initial elements", short_name = "initMin", default_value = "0.0")
   static final class InitialMin implements Name<Double> {
+  }
+
+  @NamedParameter(doc = "size of mini-batch", short_name = "batchSize", default_value = "1")
+  static final class BatchSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "whether generated matrices are printed or not at the end", short_name = "printMat",
+                  default_value = "false")
+  static final class PrintMatrices implements Name<Boolean> {
+  }
+
+  @NamedParameter(doc = "minimum number of input rows when logging execution status", short_name = "logPeriod",
+                  default_value = "0")
+  static final class LogPeriod implements Name<Integer> {
   }
 }

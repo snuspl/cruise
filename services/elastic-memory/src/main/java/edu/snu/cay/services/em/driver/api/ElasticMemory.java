@@ -94,6 +94,18 @@ public interface ElasticMemory {
             @Nullable EventHandler<AvroElasticMemoryMessage> finishedCallback);
 
   /**
+   * Move a certain number of blocks to another Evaluator.
+   *
+   * @param dataType data type to perform this operation
+   * @param numBlocks the number of blocks to move
+   * @param srcEvalId identifier of the source evaluator
+   * @param destEvalId identifier of the destination evaluator
+   * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
+   */
+  void move(String dataType, int numBlocks, String srcEvalId, String destEvalId,
+            @Nullable EventHandler<AvroElasticMemoryMessage> finishedCallback);
+
+  /**
    * Apply the intermediate changes in EM's states by the migration.
    * To avoid race condition, EM requests for Users to call this method explicitly.
    * But once EM allows remote access to the data, we can remove this barrier

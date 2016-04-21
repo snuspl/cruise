@@ -15,11 +15,7 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.AvroLongRange;
-import edu.snu.cay.services.em.avro.Result;
-import edu.snu.cay.services.em.avro.ResultMsg;
-import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.driver.parameters.UpdateTimeoutMillis;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -28,6 +24,7 @@ import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
@@ -189,6 +186,46 @@ final class MigrationManager {
   }
 
   /**
+   * Start migration of the data, which moves data blocks from the sender to the receiver Evaluator.
+   * Note that operationId should be unique.
+   * @param operationId Identifier of the {@code move} operation.
+   * @param senderId Identifier of the sender.
+   * @param receiverId Identifier of the receiver.
+   * @param dataType Type of the data.
+   * @param numBlocks Number of blocks to move.
+   * @param traceInfo Information for Trace.
+   * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
+   */
+  synchronized void startMigration(final String operationId,
+                                   final String senderId,
+                                   final String receiverId,
+                                   final String dataType,
+                                   final int numBlocks,
+                                   @Nullable final TraceInfo traceInfo,
+                                   @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
+    if (ongoingMigrations.containsKey(operationId)) {
+      LOG.log(Level.WARNING, "Failed to register migration with id {0}. Already exists", operationId);
+      return;
+    }
+
+    callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
+
+    final List<Integer> blocks = partitionManager.chooseBlocksToMove(senderId, numBlocks);
+
+    // Check early failure conditions:
+    // there is no block to move (maybe all blocks are moving).
+    if (blocks.size() == 0) {
+      final String reason =
+          "There is no block to move in " + senderId + " of type. Requested numBlocks: " + numBlocks;
+      failMigration(operationId, reason);
+      return;
+    }
+
+    ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType, blocks));
+    sender.get().sendCtrlMsg(senderId, dataType, receiverId, blocks, operationId, traceInfo);
+  }
+
+  /**
    * Set the range information after the data has been transferred. Since Evaluators generate dense ranges
    * when sending DataAckMsg, we can count the number of moved units directly from the ranges.
    * @param operationId Identifier of {@code move} operation.
@@ -323,6 +360,27 @@ final class MigrationManager {
   }
 
   /**
+   * Mark one block as moved.
+   * @param operationId Identifier of {@code move} operation.
+   * @param blockId Identifier of the moved block.
+   */
+  synchronized void markBlockAsMoved(final String operationId, final int blockId) {
+    final Migration migration = ongoingMigrations.get(operationId);
+    if (migration == null) {
+      LOG.log(Level.WARNING, "Migration with ID {0} was not registered, or it has already been finished.", operationId);
+      return;
+    }
+
+    migration.markBlockAsMoved(blockId);
+    partitionManager.markBlockAsMoved(blockId);
+
+    if (migration.isComplete()) {
+      ongoingMigrations.remove(operationId);
+      notifySuccess(operationId, migration.getBlockIds());
+    }
+  }
+
+  /**
    * Fail migration, and notify the failure via callback.
    * @param operationId Identifier of {@code move} operation.
    * @param reason a reason for the failure.
@@ -400,6 +458,15 @@ final class MigrationManager {
     callbackRouter.onCompleted(msg);
   }
 
+  private synchronized void notifySuccess(final String moveOperationId, final List<Integer> blocks) {
+    final ResultMsg resultMsg = ResultMsg.newBuilder()
+        .setResult(Result.SUCCESS)
+        .setBlockIds(blocks)
+        .build();
+    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId + FINISHED_SUFFIX, resultMsg);
+    callbackRouter.onCompleted(msg);
+  }
+
   private static AvroElasticMemoryMessage getEMMessage(final String operationId, final ResultMsg resultMsg) {
     return AvroElasticMemoryMessage.newBuilder()
         .setType(Type.ResultMsg)
@@ -408,5 +475,25 @@ final class MigrationManager {
         .setSrcId("")
         .setDestId("")
         .build();
+  }
+
+  /**
+   * Updates the owner of the block.
+   * @param operationId id of the operation
+   * @param blockId id of the block
+   * @param oldOwnerId MemoryStore id which was the owner of the block
+   * @param newOwnerId MemoryStore id which will be the owner of the block
+   * @param traceInfo Trace information used in HTrace
+   */
+  void updateOwner(final String operationId, final int blockId, final int oldOwnerId, final int newOwnerId,
+                   @Nullable final TraceInfo traceInfo) {
+    final Migration migrationInfo = ongoingMigrations.get(operationId);
+    final String dataType = migrationInfo.getDataType();
+    final String senderId = migrationInfo.getSenderId();
+    partitionManager.updateOwner(blockId, oldOwnerId, newOwnerId);
+
+    // Send the OwnershipMessage to update the owner in the sender memoryStore
+    sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, dataType, blockId, oldOwnerId, newOwnerId,
+        traceInfo);
   }
 }

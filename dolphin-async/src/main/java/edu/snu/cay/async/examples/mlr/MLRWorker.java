@@ -59,9 +59,19 @@ final class MLRWorker implements Worker {
   private final int numClasses;
 
   /**
-   * Number of features for each data instance.
+   * Number of features for each data instance and class model.
    */
   private final int numFeatures;
+
+  /**
+   * Number of features of each model partition.
+   */
+  private final int numFeaturesPerPartition;
+
+  /**
+   * Number of model partitions for each class.
+   */
+  private final int numPartitionsPerClass;
 
   /**
    * Number of data instances to process before pushing gradients to the server.
@@ -96,7 +106,8 @@ final class MLRWorker implements Worker {
   /**
    * Model vectors that represent each class.
    */
-  private List<Vector> models;
+  private final Vector[] models;
+
 
   /**
    * Cumulated gradients that will be pushed to the server.
@@ -104,9 +115,9 @@ final class MLRWorker implements Worker {
   private List<Vector> gradient;
 
   /**
-   * A list from 0 to (numClasses-1) that will be used during {@code worker.pull()}.
+   * A list from 0 to {@code numClasses * numPartitionsPerClass} that will be used during {@code worker.pull()}.
    */
-  private List<Integer> classIndices;
+  private List<Integer> classPartitionIndices;
 
   /**
    * Number of times {@code run()} has been called.
@@ -119,6 +130,7 @@ final class MLRWorker implements Worker {
                     final ParameterWorker<Integer, Vector, Vector> worker,
                     @Parameter(NumClasses.class) final int numClasses,
                     @Parameter(NumFeatures.class) final int numFeatures,
+                    @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                     @Parameter(BatchSize.class) final int batchSize,
                     @Parameter(StepSize.class) final double stepSize,
                     @Parameter(Lambda.class) final double lambda,
@@ -129,11 +141,17 @@ final class MLRWorker implements Worker {
     this.worker = worker;
     this.numClasses = numClasses;
     this.numFeatures = numFeatures;
+    this.numFeaturesPerPartition = numFeaturesPerPartition;
+    if (numFeatures % numFeaturesPerPartition != 0) {
+      throw new RuntimeException("Uneven model partitions");
+    }
+    this.numPartitionsPerClass = numFeatures / numFeaturesPerPartition;
     this.batchSize = batchSize;
     this.stepSize = stepSize;
     this.lambda = lambda;
     this.lossLogPeriod = lossLogPeriod;
     this.vectorFactory = vectorFactory;
+    this.models = new Vector[numClasses];
     this.iteration = 0;
   }
 
@@ -145,11 +163,16 @@ final class MLRWorker implements Worker {
     data = mlrParser.parse();
 
     gradient = new ArrayList<>(numClasses);
-    classIndices = new ArrayList<>(numClasses);
+    classPartitionIndices = new ArrayList<>(numClasses * numPartitionsPerClass);
     for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
       // initialize gradients to zero vectors
       gradient.add(vectorFactory.createDenseZeros(numFeatures));
-      classIndices.add(classIndex);
+      for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
+        // 0 ~ (numPartitionsPerClass - 1) is for class 0
+        // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
+        // and so on
+        classPartitionIndices.add(classIndex * numPartitionsPerClass + partitionIndex);
+      }
     }
 
     // all workers should start at the same time
@@ -158,7 +181,7 @@ final class MLRWorker implements Worker {
 
   @Override
   public void run() {
-    models = worker.pull(classIndices);
+    pullModels();
 
     int numInstances = 0;
     for (final Pair<Vector, Integer> entry : data) {
@@ -206,7 +229,7 @@ final class MLRWorker implements Worker {
   public void cleanup() {
     synchronizer.globalBarrier();
 
-    models = worker.pull(classIndices);
+    pullModels();
     int numInstances = 0;
     int correctPredictions = 0;
     for (final Pair<Vector, Integer> entry : data) {
@@ -225,27 +248,46 @@ final class MLRWorker implements Worker {
     LOG.log(Level.INFO, "Prediction accuracy on training dataset: {0}", (float) correctPredictions / numInstances);
   }
 
+  private void pullModels() {
+    final List<Vector> partitions = worker.pull(classPartitionIndices);
+    for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
+      // 0 ~ (numPartitionsPerClass - 1) is for class 0
+      // numPartitionsPerClass ~ (2 * numPartitionsPerClass - 1) is for class 1
+      // and so on
+      final List<Vector> partialModelsForThisClass =
+          partitions.subList(classIndex * numPartitionsPerClass, (classIndex  + 1) * numPartitionsPerClass);
+
+      // concat partitions into one long vector
+      models[classIndex] = vectorFactory.concatDense(partialModelsForThisClass);
+    }
+  }
+
   private void refreshModel() {
     pushAndResetGradients();
-    models = worker.pull(classIndices);
+    pullModels();
   }
 
   private void pushAndResetGradients() {
-    for (int i = 0; i < numClasses; i++) {
+    for (int classIndex = 0; classIndex < numClasses; classIndex++) {
       // gradient_j = -stepSize * error_j * x
       // error * x is multiplied at run()
-      gradient.get(i).scalei(stepSize / batchSize);
+      gradient.get(classIndex).scalei(stepSize / batchSize);
 
       if (lambda != 0) {
         // gradient for regularization
         // skip this part entirely if lambda is zero, to avoid regularization overheads
-        gradient.get(i).axpy(-stepSize * lambda, models.get(i));
+        gradient.get(classIndex).axpy(-stepSize * lambda, models[classIndex]);
       }
 
-      worker.push(i, gradient.get(i));
+      for (int partitionIndex = 0; partitionIndex < numPartitionsPerClass; ++partitionIndex) {
+        final int partitionStart = partitionIndex * numFeaturesPerPartition;
+        final int partitionEnd = (partitionIndex + 1) * numFeaturesPerPartition;
+        worker.push(classIndex * numPartitionsPerClass + partitionIndex,
+            gradient.get(classIndex).slice(partitionStart, partitionEnd));
+      }
 
       // reset this gradient to zero
-      gradient.set(i, vectorFactory.createDenseZeros(numFeatures));
+      gradient.set(classIndex, vectorFactory.createDenseZeros(numFeatures));
     }
   }
 
@@ -276,7 +318,7 @@ final class MLRWorker implements Worker {
     if (lambda != 0) {
       // skip this part entirely if lambda is zero, to avoid regularization operation overheads
       for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
-        final Vector model = models.get(classIndex);
+        final Vector model = models[classIndex];
         double l2norm = 0;
         for (int vectorIndex = 0; vectorIndex < model.length(); ++vectorIndex) {
           l2norm += model.get(vectorIndex) * model.get(vectorIndex);
@@ -292,9 +334,9 @@ final class MLRWorker implements Worker {
    * Compute the probability vector of the given data instance, represented by {@code features}.
    */
   private Vector predict(final Vector features) {
-    final double[] predict = new double[models.size()];
-    for (int i = 0; i < models.size(); i++) {
-      predict[i] = models.get(i).dot(features);
+    final double[] predict = new double[numClasses];
+    for (int classIndex = 0; classIndex < numClasses; ++classIndex) {
+      predict[classIndex] = models[classIndex].dot(features);
     }
     return softmax(vectorFactory.createDense(predict));
   }

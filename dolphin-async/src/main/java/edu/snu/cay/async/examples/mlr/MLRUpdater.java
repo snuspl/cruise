@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.async.examples.mlr;
 
+import edu.snu.cay.async.examples.mlr.MLRREEF.NumFeaturesPerPartition;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
@@ -30,14 +31,14 @@ import java.util.Random;
  */
 final class MLRUpdater implements ParameterUpdater<Integer, Vector, Vector> {
 
-  private final int numFeatures;
+  private final int numFeaturesPerPartition;
   private final VectorFactory vectorFactory;
   private final Random random;
 
   @Inject
-  private MLRUpdater(@Parameter(MLRREEF.NumFeatures.class) final int numFeatures,
+  private MLRUpdater(@Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
                      final VectorFactory vectorFactory) {
-    this.numFeatures = numFeatures;
+    this.numFeaturesPerPartition = numFeaturesPerPartition;
     this.vectorFactory = vectorFactory;
     this.random = new Random();
   }
@@ -54,8 +55,8 @@ final class MLRUpdater implements ParameterUpdater<Integer, Vector, Vector> {
 
   @Override
   public Vector initValue(final Integer key) {
-    final double[] features = new double[numFeatures];
-    for (int featureIndex = 0; featureIndex < numFeatures; featureIndex++) {
+    final double[] features = new double[numFeaturesPerPartition];
+    for (int featureIndex = 0; featureIndex < numFeaturesPerPartition; featureIndex++) {
       features[featureIndex] = random.nextGaussian() * 0.01;
     }
     return vectorFactory.createDense(features);

@@ -56,8 +56,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_DATA_MSG = "onDataMsg";
   private static final String ON_CTRL_MSG = "onCtrlMsg";
   private static final String ON_UPDATE_MSG = "onUpdateMsg";
+  private static final String ON_OWNERSHIP_MSG = "onOwnershipMsg";
 
-  private final RemoteAccessibleMemoryStore memoryStore;
+  private final RemoteAccessibleMemoryStore<Long> memoryStore;
   private final OperationResultAggregator resultAggregator;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
@@ -74,7 +75,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private final Set<LongRange> movingRanges = Collections.synchronizedSet(new HashSet<LongRange>());
 
   @Inject
-  private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore memoryStore,
+  private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore<Long> memoryStore,
                                   final OperationResultAggregator resultAggregator,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   final Serializer serializer) {
@@ -110,11 +111,38 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       onUpdateMsg(innerMsg);
       break;
 
+    case OwnershipMsg:
+      onOwnershipMsg(innerMsg);
+      break;
+
     default:
       throw new RuntimeException("Unexpected message: " + msg);
     }
 
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+  }
+
+  private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onOwnershipMsgScope = Trace.startSpan(ON_OWNERSHIP_MSG,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      final String operationId = msg.getOperationId().toString();
+      final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
+      final String dataType = ownershipMsg.getDataType().toString();
+      final int blockId = ownershipMsg.getBlockId();
+      final int newOwnerId = ownershipMsg.getNewOwnerId();
+
+      // Update the owner of the block to the new one.
+      // Operations being executed keep a read lock on router while being executed.
+      memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+
+      // After the ownership is updated, the data is never accessed locally,
+      // so it is safe to remove the local data block.
+      memoryStore.removeBlock(dataType, blockId);
+
+      sender.get().sendOwnershipAckMsg(operationId, dataType, blockId,
+          TraceInfo.fromSpan(onOwnershipMsgScope.getSpan()));
+    }
   }
 
   /**
@@ -182,18 +210,19 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final String dataType = dataMsg.getDataType().toString();
       final Codec codec = serializer.getCodec(dataType);
       final String operationId = msg.getOperationId().toString();
+      final int blockId = dataMsg.getBlockId();
 
-      // Compress the ranges so the number of ranges minimizes.
-      final SortedSet<Long> newIds = new TreeSet<>();
-      for (final UnitIdPair unitIdPair : dataMsg.getUnits()) {
-        final long id = unitIdPair.getId();
-        newIds.add(id);
-      }
-      final Set<LongRange> longRangeSet = LongRangeUtils.generateDenseLongRanges(newIds);
+      final Map<Long, Object> dataMap = toDataMap(dataMsg.getUnits(), codec);
+      memoryStore.putBlock(dataType, blockId, dataMap);
 
-      // store the items in the pendingUpdates, so the items will be added later.
-      pendingUpdates.put(operationId, new Add(dataType, codec, dataMsg.getUnits(), longRangeSet));
-      sender.get().sendDataAckMsg(longRangeSet, operationId, TraceInfo.fromSpan(onDataMsgScope.getSpan()));
+      // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
+      // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
+      final int newOwnerId = Integer.valueOf(msg.getDestId().toString().split("-")[1]);
+      final int oldOwnerId = memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+
+      // Notify the driver that the ownership has been updated by setting empty destination id.
+      sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, dataType, blockId, oldOwnerId, newOwnerId,
+          TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
   }
 
@@ -213,9 +242,32 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
         onCtrlMsgNumUnits(msg, onCtrlMsgScope);
         break;
 
+      case Blocks:
+        onCtrlMsgBlocks(msg, onCtrlMsgScope);
+        break;
+
       default:
         throw new RuntimeException("Unexpected control message type: " + ctrlMsgType);
       }
+    }
+  }
+
+  /**
+   * Called when the Driver initiates data migration.
+   */
+  private void onCtrlMsgBlocks(final AvroElasticMemoryMessage msg, final TraceScope parentTraceInfo) {
+    final String operationId = msg.getOperationId().toString();
+    final CtrlMsg ctrlMsg = msg.getCtrlMsg();
+    final String dataType = ctrlMsg.getDataType().toString();
+    final Codec codec = serializer.getCodec(dataType);
+    final List<Integer> blockIds = ctrlMsg.getBlockIds();
+
+    // Send the data as unit of block
+    for (final int blockId : blockIds) {
+      final Map<Long, Object> blockData = memoryStore.getBlock(dataType, blockId);
+      final List<UnitIdPair> unitIdPairList = toUnitIdPairs(blockData, codec);
+      sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
+          blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
     }
   }
 
@@ -276,8 +328,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     // Keep the moving ranges to avoid duplicate request, before the data is removed from the MemoryStore.
     movingRanges.addAll(ranges);
 
+    // Block id is undefined, so mark as -1; we will not use this type of message afterward.
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
-        operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+        -1, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
 
   /**
@@ -338,8 +391,9 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     // Keep the moving ranges to avoid duplicate request, before the data is removed from the MemoryStore.
     movingRanges.addAll(ranges);
 
+    // Block id is undefined, so mark as -1; we will not use this type of message afterward.
     sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
-        operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+        -1, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
 
   /**
@@ -397,5 +451,33 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       }
     }
     return false;
+  }
+
+  /**
+   * Converts the Avro unit id pairs, to a data map.
+   */
+  private Map<Long, Object> toDataMap(final List<UnitIdPair> unitIdPairs, final Codec codec) {
+    final Map<Long, Object> dataMap = new HashMap<>(unitIdPairs.size());
+    for (final UnitIdPair unitIdPair : unitIdPairs) {
+      dataMap.put(unitIdPair.getId(), codec.decode(unitIdPair.getUnit().array()));
+    }
+    return dataMap;
+  }
+
+  /**
+   * Converts the data map into unit id pairs, which can be transferred via Avro.
+   */
+  private List<UnitIdPair> toUnitIdPairs(final Map<Long, Object> dataMap, final Codec codec) {
+    final List<UnitIdPair> unitIdPairs = new ArrayList<>(dataMap.size());
+    for (final Map.Entry<Long, Object> idObject : dataMap.entrySet()) {
+      final long id = idObject.getKey();
+      // Include the units only if they are not moving already.
+      final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
+          .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
+          .setId(id)
+          .build();
+      unitIdPairs.add(unitIdPair);
+    }
+    return unitIdPairs;
   }
 }
