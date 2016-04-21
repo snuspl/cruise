@@ -53,7 +53,7 @@ final class RemoteEMTask implements Task {
   private static final String MSG_LOCAL_SIZE_MISMATCH =
       "the number of items in the local MemoryStore is not as expected";
   private static final String MSG_GLOBAL_SIZE_MISMATCH =
-      "the number of items in the local MemoryStore is not as expected";
+      "the number of items in the global MemoryStore is not as expected";
   private static final String MSG_OPERATION_FAILED = "not all operations succeeded";
 
   private static final String DATA_TYPE = "INTEGER";
@@ -70,6 +70,10 @@ final class RemoteEMTask implements Task {
   private final int localMemoryStoreId;
   private final int prevRemoteStoreId;
   private final int nextRemoteStoreId;
+
+  /**
+   * The maximum data key that EM can accept.
+   */
   private final long maxDataKey;
 
   private final AggregationSlave aggregationSlave;
@@ -79,8 +83,8 @@ final class RemoteEMTask implements Task {
   private List<Pair<String, Long>> testNameToTimeList = new LinkedList<>();
 
   @Inject
-  private RemoteEMTask(final MemoryStore<Long> memorystore,
-                       final OperationRouter router,
+  private RemoteEMTask(final MemoryStore<Long> memoryStore,
+                       final OperationRouter<Long> router,
                        final AggregationSlave aggregationSlave,
                        final EvalSideMsgHandler msgHandler,
                        final SerializableCodec<String> codec,
@@ -89,7 +93,7 @@ final class RemoteEMTask implements Task {
                        @Parameter(MemoryStoreId.class) final int localMemoryStoreId,
                        @Parameter(NumTotalBlocks.class) final int numTotalBlocks)
       throws InjectionException {
-    this.memoryStore = memorystore;
+    this.memoryStore = memoryStore;
     this.router = router;
     this.aggregationSlave = aggregationSlave;
     this.msgHandler = msgHandler;
@@ -103,6 +107,9 @@ final class RemoteEMTask implements Task {
     this.maxDataKey = Long.MAX_VALUE - Long.MAX_VALUE % (Long.MAX_VALUE / numTotalBlocks) - 1;
   }
 
+  /**
+   * Initializes a DataIdFactory for a store whose id is {@code memoryStoreId}.
+   */
   private DataIdFactory<Long> initDataIdFactory(final int memoryStoreId) {
 
     final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
@@ -194,6 +201,9 @@ final class RemoteEMTask implements Task {
     return ThreadLocalRandom.current().nextLong(maxDataKey + 1);
   }
 
+  /**
+   * Returns a pair of data key that composes a range of certain length.
+   */
   private Pair<Long, Long> getRandomLongRangeKey(final int length) {
     final long startKey = ThreadLocalRandom.current().nextLong(maxDataKey + 1 - (length - 1));
     final long endKey = startKey + (length - 1);
