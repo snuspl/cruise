@@ -62,7 +62,7 @@ public final class OperationRouter<K> {
    * so prefix should be added to get the Evaluator's endpoint id.
    */
   private final int[] blockIdToStoreId;
-  private final List<Integer> localBlocks;
+  private final List<Integer> initialLocalBlocks;
 
   // TODO #380: we have to improve router to provide different routing tables for each dataType.
   @Inject
@@ -74,7 +74,7 @@ public final class OperationRouter<K> {
     this.localStoreId = memoryStoreId;
     this.numTotalBlocks = numTotalBlocks;
     this.numInitialEvals = numInitialEvals;
-    this.localBlocks = new ArrayList<>(numTotalBlocks / numInitialEvals + 1); // +1 for remainders
+    this.initialLocalBlocks = new ArrayList<>(numTotalBlocks / numInitialEvals + 1); // +1 for remainders
     this.blockIdToStoreId = new int[numTotalBlocks];
     initRouter();
   }
@@ -84,7 +84,7 @@ public final class OperationRouter<K> {
    */
   private void initRouter() {
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
-      localBlocks.add(blockId);
+      initialLocalBlocks.add(blockId);
     }
 
     // blocks are initially distributed across Evaluators in round-robin.
@@ -118,7 +118,8 @@ public final class OperationRouter<K> {
     // In most cases, there are only one range in dataKeyRanges
     for (final Pair<K, K> keyRange : dataKeyRanges) {
 
-      final Map<Integer, Pair<K, K>> blockToSubKeyRangeMap = resolveBlocks(keyRange.getFirst(), keyRange.getSecond());
+      final Map<Integer, Pair<K, K>> blockToSubKeyRangeMap =
+          blockResolver.resolveBlocksForOrderedKeys(keyRange.getFirst(), keyRange.getSecond());
       for (final Map.Entry<Integer, Pair<K, K>> blockToSubKeyRange : blockToSubKeyRangeMap.entrySet()) {
         final int blockId = blockToSubKeyRange.getKey();
         final Pair<K, K> minMaxKeyPair = blockToSubKeyRange.getValue();
@@ -142,26 +143,6 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * Resolves a block id for a data key.
-   * @param dataKey a key of data
-   * @return a block id
-   */
-  int resolveBlock(final K dataKey) {
-    return blockResolver.resolveBlock(dataKey);
-  }
-
-  /**
-   * Resolves block ids for a range of data keys, which may span over multiple blocks.
-   * Each block contains a sub key range.
-   * @param minKey a minimum key of the range
-   * @param maxKey a maximum key of the range
-   * @return a map between a block id and a range of data keys
-   */
-  Map<Integer, Pair<K, K>> resolveBlocks(final K minKey, final K maxKey) {
-    return blockResolver.resolveBlocksForOrderedKeys(minKey, maxKey);
-  }
-
-  /**
    * Resolves an evaluator id for a block id.
    * It returns empty when the block belongs to the local MemoryStore.
    * Note that this method must be synchronized to prevent other threads
@@ -179,10 +160,10 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * @return a list of block ids in the local MemoryStore
+   * @return a list of block ids which are initially assigned to the local MemoryStore.
    */
-  List<Integer> getLocalBlockIds() {
-    return Collections.unmodifiableList(localBlocks);
+  List<Integer> getInitialLocalBlockIds() {
+    return Collections.unmodifiableList(initialLocalBlocks);
   }
 
   /**

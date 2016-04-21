@@ -483,13 +483,6 @@ public final class PartitionManager {
   }
 
   /**
-   * Converts the MemoryStore id to Evaluator id.
-   */
-  private String getEvalId(final int memoryStoreId) {
-    return evalIdPrefix + '-' + memoryStoreId;
-  }
-
-  /**
    * Converts the Evaluator id to MemoryStore id.
    */
   private int getMemoryStoreId(final String evalId) {
@@ -497,12 +490,12 @@ public final class PartitionManager {
   }
 
   /**
-   * Choose the blocks from the Evaluator.
+   * Choose the blocks in the Evaluator to move to another Evaluator.
    * @param evalId id of Evaluator to choose the blocks
    * @param numBlocks the maximum number of blocks to choose
    * @return list of block ids that have been chosen.
    */
-  synchronized List<Integer> chooseBlocks(final String evalId, final int numBlocks) {
+  synchronized List<Integer> chooseBlocksToMove(final String evalId, final int numBlocks) {
     final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
     if (blockIds == null) {
       throw new RuntimeException("The data does not exist in " + evalId);

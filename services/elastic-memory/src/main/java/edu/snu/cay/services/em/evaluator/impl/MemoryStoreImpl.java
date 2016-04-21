@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 import edu.snu.cay.services.em.avro.DataOpType;
 import edu.snu.cay.services.em.avro.UnitIdPair;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
+import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -75,6 +76,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   @GuardedBy("routerLock")
   private final OperationRouter<Long> router;
 
+  private final BlockResolver<Long> blockResolver;
+
   private final OperationResultAggregator resultAggregator;
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
@@ -97,12 +100,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter<Long> router,
+                          final BlockResolver<Long> blockResolver,
                           final OperationResultAggregator resultAggregator,
                           final InjectionFuture<ElasticMemoryMsgSender> msgSender,
                           final Serializer serializer,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
+    this.blockResolver = blockResolver;
     this.resultAggregator = resultAggregator;
     this.msgSender = msgSender;
     this.serializer = serializer;
@@ -131,7 +136,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final Map<Integer, Block> initialBlocks = new HashMap<>();
     // We don't need to lock router because this method is already synchronized.
-    for (final int blockIdx : router.getLocalBlockIds()) {
+    for (final int blockIdx : router.getInitialLocalBlockIds()) {
       initialBlocks.put(blockIdx, new Block());
     }
 
@@ -154,16 +159,15 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public void putBlock(final String dataType, final int blockId, final Map<Long, Object> data) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      throw new RuntimeException("Data type " + dataType + " does not exist.");
-    }
-
-    if (blocks.containsKey(blockId)) {
+      // If the blocks of the type have not been initialized, then create the blocks.
+      initBlocks(dataType);
+    } else if (blocks.containsKey(blockId)) {
       throw new RuntimeException("Block with id " + blockId + " already exists.");
+    } else {
+      final Block block = new Block();
+      block.subDataMap.putAll(data);
+      blocks.put(blockId, block);
     }
-
-    final Block block = new Block();
-    block.subDataMap.putAll(data);
-    blocks.put(blockId, block);
   }
 
   @Override
@@ -370,42 +374,38 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final Iterator<LongRange> rangeIterator = dataKeyRanges.iterator();
 
-    routerLock.readLock().lock();
-    try {
-      // handle the first iteration separately to reuse a returned map object
-      if (rangeIterator.hasNext()) {
-        final LongRange keyRange = rangeIterator.next();
-        blockToSubKeyRangeMap = router.resolveBlocks(keyRange.getMinimumLong(), keyRange.getMaximumLong());
+    // handle the first iteration separately to reuse a returned map object
+    if (rangeIterator.hasNext()) {
+      final LongRange keyRange = rangeIterator.next();
+      blockToSubKeyRangeMap =
+          blockResolver.resolveBlocksForOrderedKeys(keyRange.getMinimumLong(), keyRange.getMaximumLong());
+    } else {
+      LOG.log(Level.SEVERE, "Invalid operation");
+      resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, Collections.EMPTY_LIST);
+      return;
+    }
+    while (rangeIterator.hasNext()) {
+      final LongRange keyRange = rangeIterator.next();
+      // blockIds for blockToSubKeyRangeMap never overlap
+      blockToSubKeyRangeMap.putAll(
+          blockResolver.resolveBlocksForOrderedKeys(keyRange.getMinimumLong(), keyRange.getMaximumLong()));
+    }
+
+    final int numSubOps = blockToSubKeyRangeMap.size();
+    resultAggregator.registerOp(operation, numSubOps);
+
+    // enqueue operation
+    if (!blockToSubKeyRangeMap.isEmpty()) {
+      // progress only when the store has blocks for a data type of the operation
+      if (typeToBlocks.containsKey(dataType)) {
+        enqueueOperation(operation, blockToSubKeyRangeMap);
       } else {
-        LOG.log(Level.SEVERE, "Invalid operation");
-        resultAggregator.submitLocalResult(operation, Collections.EMPTY_MAP, Collections.EMPTY_LIST);
-        return;
-      }
-      while (rangeIterator.hasNext()) {
-        final LongRange keyRange = rangeIterator.next();
-        // blockIds for blockToSubKeyRangeMap never overlap
-        blockToSubKeyRangeMap.putAll(router.resolveBlocks(keyRange.getMinimumLong(), keyRange.getMaximumLong()));
-      }
-
-      final int numSubOps = blockToSubKeyRangeMap.size();
-      resultAggregator.registerOp(operation, numSubOps);
-
-      // enqueue operation
-      if (!blockToSubKeyRangeMap.isEmpty()) {
-        // progress only when the store has blocks for a data type of the operation
-        if (typeToBlocks.containsKey(dataType)) {
+        // otherwise, initialize blocks and continue the operation only when it's operation type is PUT
+        if (operation.getOperationType() == DataOpType.PUT) {
+          initBlocks(dataType);
           enqueueOperation(operation, blockToSubKeyRangeMap);
-        } else {
-          // otherwise, initialize blocks and continue the operation only when it's operation type is PUT
-          if (operation.getOperationType() == DataOpType.PUT) {
-            initBlocks(dataType);
-            enqueueOperation(operation, blockToSubKeyRangeMap);
-          }
         }
       }
-
-    } finally {
-      routerLock.readLock().unlock();
     }
   }
 

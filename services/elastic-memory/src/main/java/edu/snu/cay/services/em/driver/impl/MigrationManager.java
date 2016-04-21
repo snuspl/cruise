@@ -210,7 +210,7 @@ final class MigrationManager {
 
     callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
 
-    final List<Integer> blocks = partitionManager.chooseBlocks(senderId, numBlocks);
+    final List<Integer> blocks = partitionManager.chooseBlocksToMove(senderId, numBlocks);
 
     // Check early failure conditions:
     // there is no block to move (maybe all blocks are moving).
