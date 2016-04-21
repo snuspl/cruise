@@ -20,7 +20,7 @@ import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
-import edu.snu.cay.services.em.evaluator.impl.BaseCounterDataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
@@ -311,7 +311,7 @@ final class AsyncDolphinDriver {
               .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
               .build();
           final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(DataIdFactory.class, BaseCounterDataIdFactory.class).build();
+              .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class).build();
 
           activeContext.submitTask(Configurations.merge(taskConf, workerConf, emDataIdConf));
         }
