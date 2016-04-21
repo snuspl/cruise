@@ -183,7 +183,7 @@ public final class PartitionedParameterServer<K, P, V> {
     private final K key;
     private final P preValue;
 
-    PushOp(final K key, final P preValue) {
+    public PushOp(final K key, final P preValue) {
       this.key = key;
       this.preValue = preValue;
     }
@@ -214,7 +214,7 @@ public final class PartitionedParameterServer<K, P, V> {
     private final K key;
     private final String srcId;
 
-    PullOp(final K key, final String srcId) {
+    public PullOp(final K key, final String srcId) {
       this.key = key;
       this.srcId = srcId;
     }
@@ -257,7 +257,7 @@ public final class PartitionedParameterServer<K, P, V> {
 
     private volatile boolean shutdown = false;
 
-    ServerThread(final int queueSize) {
+    public ServerThread(final int queueSize) {
       this.kvStore = new HashMap<>();
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
@@ -275,7 +275,7 @@ public final class PartitionedParameterServer<K, P, V> {
      *
      * @param op the operation to enqueue
      */
-    void enqueue(final Op<K, V> op) {
+    public void enqueue(final Op<K, V> op) {
       try {
         queue.put(op);
       } catch (final InterruptedException e) {
@@ -286,7 +286,7 @@ public final class PartitionedParameterServer<K, P, V> {
     /**
      * @return number of pending operations in the queue.
      */
-    int opsPending() {
+    public int opsPending() {
       return queue.size();
     }
 
