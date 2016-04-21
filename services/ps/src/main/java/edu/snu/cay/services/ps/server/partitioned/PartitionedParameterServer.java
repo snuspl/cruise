@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.server.partitioned;
 
+import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
@@ -25,6 +26,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -63,6 +65,11 @@ public final class PartitionedParameterServer<K, P, V> {
   private final int queueSize;
 
   /**
+   * The list of local partitions.
+   */
+  private final List<Integer> localPartitions;
+
+  /**
    * Thread pool, where each Partition is submitted.
    */
   private final ExecutorService threadPool;
@@ -83,12 +90,14 @@ public final class PartitionedParameterServer<K, P, V> {
   private final PartitionedServerSideReplySender<K, V> sender;
 
   @Inject
-  private PartitionedParameterServer(@Parameter(ServerNumThreads.class) final int numThreads,
+  private PartitionedParameterServer(@Parameter(EndpointId.class) final String endpointId,
+                                     @Parameter(ServerNumThreads.class) final int numThreads,
                                      @Parameter(ServerQueueSize.class) final int queueSize,
                                      final ServerResolver serverResolver,
                                      final ParameterUpdater<K, P, V> parameterUpdater,
                                      final PartitionedServerSideReplySender<K, V> sender) {
     this.numThreads = numThreads;
+    this.localPartitions = serverResolver.getPartitions(endpointId);
     this.serverResolver = serverResolver;
     this.queueSize = queueSize;
     this.threadPool = Executors.newFixedThreadPool(numThreads);
@@ -125,7 +134,7 @@ public final class PartitionedParameterServer<K, P, V> {
    */
   public void push(final K key, final P preValue, final int keyHash) {
     final int partitionId = serverResolver.resolvePartition(keyHash);
-    final int threadId = partitionId % numThreads;
+    final int threadId = localPartitions.indexOf(partitionId) % numThreads;
     threads.get(threadId).enqueue(new PushOp(key, preValue));
   }
 
@@ -141,7 +150,7 @@ public final class PartitionedParameterServer<K, P, V> {
    */
   public void pull(final K key, final String srcId, final int keyHash) {
     final int partitionId = serverResolver.resolvePartition(keyHash);
-    final int threadId = partitionId % numThreads;
+    final int threadId = localPartitions.indexOf(partitionId) % numThreads;
     threads.get(threadId).enqueue(new PullOp(key, srcId));
   }
 
