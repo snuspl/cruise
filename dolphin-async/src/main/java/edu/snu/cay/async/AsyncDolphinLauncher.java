@@ -27,6 +27,7 @@ import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
@@ -174,7 +175,7 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(21);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(22);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -188,6 +189,7 @@ public final class AsyncDolphinLauncher {
     // add ps parameters
     basicParameterClassList.add(NumServers.class);
     basicParameterClassList.add(NumPartitions.class);
+    basicParameterClassList.add(ServerNumThreads.class);
     basicParameterClassList.add(ServerQueueSize.class);
     basicParameterClassList.add(ParameterWorkerNumThreads.class);
     basicParameterClassList.add(WorkerQueueSize.class);

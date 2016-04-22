@@ -20,6 +20,7 @@ import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
 import edu.snu.cay.services.ps.examples.add.parameters.*;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
@@ -56,6 +57,7 @@ public final class PartitionedPSExampleREEF {
   private final int startKey;
   private final int numServers;
   private final int serverNumPartitions;
+  private final int serverNumThreads;
   private final int serverQueueSize;
   private final int workerNumPartitions;
   private final int workerQueueSize;
@@ -70,6 +72,7 @@ public final class PartitionedPSExampleREEF {
                                    @Parameter(StartKey.class) final int startKey,
                                    @Parameter(NumServers.class) final int numServers,
                                    @Parameter(NumPartitions.class) final int serverNumPartitions,
+                                   @Parameter(ServerNumThreads.class) final int serverNumThreads,
                                    @Parameter(ServerQueueSize.class) final int serverQueueSize,
                                    @Parameter(ParameterWorkerNumThreads.class) final int workerNumPartitions,
                                    @Parameter(WorkerQueueSize.class) final int workerQueueSize,
@@ -82,6 +85,7 @@ public final class PartitionedPSExampleREEF {
     this.startKey = startKey;
     this.numServers = numServers;
     this.serverNumPartitions = serverNumPartitions;
+    this.serverNumThreads = serverNumThreads;
     this.serverQueueSize = serverQueueSize;
     this.workerNumPartitions = workerNumPartitions;
     this.workerQueueSize = workerQueueSize;
@@ -113,6 +117,7 @@ public final class PartitionedPSExampleREEF {
         .bindNamedParameter(StartKey.class, Integer.toString(startKey))
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(serverNumPartitions))
+        .bindNamedParameter(ServerNumThreads.class, Integer.toString(serverNumThreads))
         .bindNamedParameter(ServerQueueSize.class, Integer.toString(serverQueueSize))
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(workerNumPartitions))
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
@@ -155,6 +160,7 @@ public final class PartitionedPSExampleREEF {
     cl.registerShortNameOfClass(StartKey.class);
     cl.registerShortNameOfClass(NumServers.class);
     cl.registerShortNameOfClass(NumPartitions.class);
+    cl.registerShortNameOfClass(ServerNumThreads.class);
     cl.registerShortNameOfClass(ServerQueueSize.class);
     cl.registerShortNameOfClass(ParameterWorkerNumThreads.class);
     cl.registerShortNameOfClass(WorkerQueueSize.class);

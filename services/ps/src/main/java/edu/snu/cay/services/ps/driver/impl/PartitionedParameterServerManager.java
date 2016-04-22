@@ -24,6 +24,7 @@ import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySend
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySenderImpl;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
@@ -48,7 +49,8 @@ import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
  * Manager class for a Partitioned Parameter Server, that supports atomic,
  * in-order processing of push and pull operations, running on a single Evaluator.
  * Partitions are based on the hash of the key.
- * Each partition consists of a queue, kvStore, and thread.
+ * Several servers threads are spawned (for each server) to handle disjoint sets of partitions.
+ * Each server thread has its own queue and kvStore.
  *
  * This manager does NOT handle server or worker faults.
  */
@@ -56,6 +58,7 @@ import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
 public final class PartitionedParameterServerManager implements ParameterServerManager {
   private final int numServers;
   private final int numPartitions;
+  private final int serverNumThreads;
   private final int queueSize;
   private final AtomicInteger workerCount;
   private final AtomicInteger serverCount;
@@ -63,9 +66,11 @@ public final class PartitionedParameterServerManager implements ParameterServerM
   @Inject
   private PartitionedParameterServerManager(@Parameter(NumServers.class) final int numServers,
                                             @Parameter(NumPartitions.class) final int numPartitions,
+                                            @Parameter(ServerNumThreads.class) final int serverNumThreads,
                                             @Parameter(ServerQueueSize.class) final int queueSize) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
+    this.serverNumThreads = serverNumThreads;
     this.queueSize = queueSize;
     this.workerCount = new AtomicInteger(0);
     this.serverCount = new AtomicInteger(0);
@@ -110,6 +115,7 @@ public final class PartitionedParameterServerManager implements ParameterServerM
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
+        .bindNamedParameter(ServerNumThreads.class, Integer.toString(serverNumThreads))
         .bindNamedParameter(ServerQueueSize.class, Integer.toString(queueSize))
         .build();
   }
