@@ -17,6 +17,7 @@ package edu.snu.cay.services.ps.server.partitioned;
 
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -38,9 +39,9 @@ import java.util.logging.Logger;
 /**
  * A Partitioned Parameter Server.
  * Receives push and pull operations from (e.g., from the network) and immediately queues them.
- * The processing loop (for each partition) applies these operations in order; for pull operations
+ * The processing loop in each thread applies these operations in order; for pull operations
  * this results in a send call via {@link PartitionedServerSideReplySender}.
- * For more information about the partition implementation, see {@link Partition}.
+ * For more information about the implementation, see {@link ServerThread}.
  *
  * Supports a static number of partitions (the number of partitions is fixed at construction time).
  */
@@ -49,19 +50,24 @@ public final class PartitionedParameterServer<K, P, V> {
   private static final Logger LOG = Logger.getLogger(PartitionedParameterServer.class.getName());
 
   /**
-   * Network Connection Service endpoint of this ParameterServer.
-   */
-  private final String endpointId;
-
-  /**
    * ServerResolver that maps hashed keys to partitions.
    */
   private final ServerResolver serverResolver;
 
   /**
-   * Max size of each partition's queue.
+   * The number of threads to run operations.
+   */
+  private final int numThreads;
+
+  /**
+   * Max size of each thread's queue.
    */
   private final int queueSize;
+
+  /**
+   * The list of local partitions.
+   */
+  private final List<Integer> localPartitions;
 
   /**
    * Thread pool, where each Partition is submitted.
@@ -69,9 +75,9 @@ public final class PartitionedParameterServer<K, P, V> {
   private final ExecutorService threadPool;
 
   /**
-   * Running partitions.
+   * Running threads. A thread can process operations of more than one partition.
    */
-  private final Map<Integer, Partition<K, V>> partitions;
+  private final Map<Integer, ServerThread<K, V>> threads;
 
   /**
    * Object for processing preValues and applying updates to existing values.
@@ -85,30 +91,32 @@ public final class PartitionedParameterServer<K, P, V> {
 
   @Inject
   private PartitionedParameterServer(@Parameter(EndpointId.class) final String endpointId,
+                                     @Parameter(ServerNumThreads.class) final int numThreads,
                                      @Parameter(ServerQueueSize.class) final int queueSize,
                                      final ServerResolver serverResolver,
                                      final ParameterUpdater<K, P, V> parameterUpdater,
                                      final PartitionedServerSideReplySender<K, V> sender) {
-    this.endpointId = endpointId;
+    this.numThreads = numThreads;
+    this.localPartitions = serverResolver.getPartitions(endpointId);
     this.serverResolver = serverResolver;
     this.queueSize = queueSize;
-    this.threadPool = Executors.newFixedThreadPool(serverResolver.getPartitions(endpointId).size());
-    this.partitions = initPartitions();
+    this.threadPool = Executors.newFixedThreadPool(numThreads);
+    this.threads = initThreads();
     this.parameterUpdater = parameterUpdater;
     this.sender = sender;
   }
 
   /**
-   * Call after initializing numPartitions and threadPool.
+   * Call after initializing threadPool.
    */
-  private Map<Integer, Partition<K, V>> initPartitions() {
-    final Map<Integer, Partition<K, V>> initialized = new HashMap<>();
-    final List<Integer> localPartitions = serverResolver.getPartitions(endpointId);
-    LOG.log(Level.INFO, "Initializing {0} partitions", localPartitions.size());
-    for (final int partitionIndex : localPartitions) {
-      final Partition<K, V> partition = new Partition<>(queueSize);
-      initialized.put(partitionIndex, partition);
-      threadPool.submit(partition);
+  private Map<Integer, ServerThread<K, V>> initThreads() {
+    final Map<Integer, ServerThread<K, V>> initialized = new HashMap<>();
+
+    LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
+    for (int threadIndex = 0; threadIndex < numThreads; threadIndex++) {
+      final ServerThread<K, V> thread = new ServerThread<>(queueSize);
+      initialized.put(threadIndex, thread);
+      threadPool.submit(thread);
     }
     return initialized;
   }
@@ -118,28 +126,32 @@ public final class PartitionedParameterServer<K, P, V> {
    * Uses {@link ParameterUpdater} to generate a value from {@code preValue} and to apply the generated value to
    * the k-v store.
    *
-   * The push operation is enqueued to its partition and returned immediately.
+   * The push operation is enqueued to the queue that is assigned to its partition and returned immediately.
    *
    * @param key key object that {@code preValue} is associated with
    * @param preValue preValue sent from the worker
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
   public void push(final K key, final P preValue, final int keyHash) {
-    partitions.get(serverResolver.resolvePartition(keyHash)).enqueue(new PushOp(key, preValue));
+    final int partitionId = serverResolver.resolvePartition(keyHash);
+    final int threadId = localPartitions.indexOf(partitionId) % numThreads;
+    threads.get(threadId).enqueue(new PushOp(key, preValue));
   }
 
   /**
    * Reply to srcId via {@link PartitionedServerSideReplySender}
    * with the value corresponding to the key.
    *
-   * The pull operation is enqueued to its partition and returned immediately.
+   * The pull operation is enqueued to the queue that is assigned to its partition and returned immediately.
    *
    * @param key key object that the requested {@code value} is associated with
    * @param srcId network Id of the requester
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
   public void pull(final K key, final String srcId, final int keyHash) {
-    partitions.get(serverResolver.resolvePartition(keyHash)).enqueue(new PullOp(key, srcId));
+    final int partitionId = serverResolver.resolvePartition(keyHash);
+    final int threadId = localPartitions.indexOf(partitionId) % numThreads;
+    threads.get(threadId).enqueue(new PullOp(key, srcId));
   }
 
   /**
@@ -147,7 +159,7 @@ public final class PartitionedParameterServer<K, P, V> {
    */
   public int opsPending() {
     int sum = 0;
-    for (final Partition<K, V> partition : partitions.values()) {
+    for (final ServerThread<K, V> partition : threads.values()) {
       sum += partition.opsPending();
     }
     return sum;
@@ -222,10 +234,9 @@ public final class PartitionedParameterServer<K, P, V> {
   }
 
   /**
-   * A partition of the parameter server. Must be started as a thread.
    * All push and pull operations should be sent to the appropriate partition.
-   * The partition's processing loop dequeues and applies operations to its local kvStore.
-   * The queue and single thread per partition ensures that all operations on a key
+   * Each partition is assigned to a thread, whose processing loop dequeues and applies operations to its local kvStore.
+   * A partition is queued and handled by single thread, which ensures that all operations on a key
    * are performed atomically, in order (no updates can be lost).
    *
    * The single queue-and-thread design provides a simple guarantee of atomicity for applying operations.
@@ -236,7 +247,7 @@ public final class PartitionedParameterServer<K, P, V> {
    * Workers block for pulls, while sending pushes asynchronously.
    * We should further explore this trade-off with real ML workloads.
    */
-  private static class Partition<K, V> implements Runnable {
+  private static class ServerThread<K, V> implements Runnable {
     private static final long QUEUE_TIMEOUT_MS = 3000;
 
     private final Map<K, V> kvStore;
@@ -246,7 +257,7 @@ public final class PartitionedParameterServer<K, P, V> {
 
     private volatile boolean shutdown = false;
 
-    public Partition(final int queueSize) {
+    public ServerThread(final int queueSize) {
       this.kvStore = new HashMap<>();
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;

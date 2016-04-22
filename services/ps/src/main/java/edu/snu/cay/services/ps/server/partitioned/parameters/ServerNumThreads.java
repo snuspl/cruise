@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.partitioned.parameters;
+package edu.snu.cay.services.ps.server.partitioned.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of partitions", default_value = "2", short_name = "workerNumPartitions")
-public final class WorkerNumPartitions implements Name<Integer> {
+@NamedParameter(doc = "Number of the threads that run operations in each server",
+                default_value = "2",
+                short_name = "serverNumThreads")
+public final class ServerNumThreads implements Name<Integer> {
 }
