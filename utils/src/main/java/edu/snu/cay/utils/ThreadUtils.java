@@ -15,8 +15,12 @@
  */
 package edu.snu.cay.utils;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public final class ThreadUtils {
 
@@ -36,5 +40,23 @@ public final class ThreadUtils {
       pool.submit(thread);
     }
     pool.shutdown();
+  }
+
+  /**
+   * Use a thread pool to concurrently execute threads.
+   * It returns futures of submitted threads.
+   * Note that this method does NOT wait for the termination of all threads before returning.
+   * @return a list of futures
+   */
+  public static <T> List<Future<T>> runConcurrentlyWithResult(final List<Callable<T>> threads) {
+
+    final List<Future<T>> futures = new ArrayList<>(threads.size());
+
+    final ExecutorService pool = Executors.newFixedThreadPool(threads.size());
+    for (final Callable<T> thread : threads) {
+      final Future<T> future = pool.submit(thread);
+      futures.add(future);
+    }
+    return futures;
   }
 }

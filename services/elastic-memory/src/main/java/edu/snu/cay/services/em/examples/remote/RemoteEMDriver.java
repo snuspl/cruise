@@ -82,7 +82,13 @@ final class RemoteEMDriver {
     public void onNext(final StartTime startTime) {
       requestor.submit(EvaluatorRequest.newBuilder()
           .setNumber(EVAL_NUM)
-          .setMemory(64)
+          // task in this example performs a large amount of remote accesses.
+          // since remote operation requires much object creation (routing, getting remote data, encoding/decoding),
+          // sometimes JVM fails due to GC overhead (not OOM).
+          // I confirmed that the test succeed with 256 Mb in local and 512 Mb in cluster (by Jenkins) respectively.
+          // Since it differs for environment, for reliability 1024 Mb has been chosen.
+          // TODO #465: minimize GC overhead
+          .setMemory(1024)
           .setNumberOfCores(1)
           .build());
     }

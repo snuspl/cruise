@@ -93,17 +93,22 @@ final class OperationResultAggregator {
    */
   <V> void submitLocalResult(final LongKeyOperation<V> operation, final Map<Long, V> localOutput,
                              final List<LongRange> failedRanges) {
-    operation.commitResult(localOutput, failedRanges);
+    final int numRemainingSubOps = operation.commitResult(localOutput, failedRanges);
+
+    LOG.log(Level.FINEST, "Local sub operation succeed. OpId: {0}, numRemainingSubOps: {1}",
+        new Object[]{operation.getOperationId(), numRemainingSubOps});
 
     if (!operation.isFromLocalClient()) {
-      if (operation.getNumSubOps() <= 0) {
+      if (numRemainingSubOps == 0) {
         sendResultToOrigin(operation);
       }
     } else {
       // wait until all remote sub operations are finished
       try {
         if (!operation.waitOperation(TIMEOUT_MS)) {
-          LOG.log(Level.SEVERE, "Operation timeout. Operation: {0}", operation);
+          LOG.log(Level.SEVERE, "Operation timeout. OpId: {0}", operation.getOperationId());
+        } else {
+          LOG.log(Level.FINE, "Operation successfully finished. OpId: {0}", operation.getOperationId());
         }
       } catch (final InterruptedException e) {
         LOG.log(Level.SEVERE, "Interrupted while waiting for executing remote operation", e);
@@ -139,13 +144,20 @@ final class OperationResultAggregator {
       failedRanges.add(AvroUtils.fromAvroLongRange(avroRange));
     }
 
-    operation.commitResult(dataKeyValueMap, failedRanges);
+    final int numRemainingSubOps = operation.commitResult(dataKeyValueMap, failedRanges);
+
+    LOG.log(Level.FINEST, "Remote sub operation succeed. OpId: {0}, numRemainingSubOps: {1}",
+        new Object[]{operationId, numRemainingSubOps});
   }
 
   /**
    * Sends the result to the original store.
    */
   private <T> void sendResultToOrigin(final LongKeyOperation<T> operation) {
+
+    LOG.log(Level.FINEST, "Send result to origin. OpId: {0}, OrigId: {1}",
+        new Object[]{operation.getOperationId(), operation.getOrigEvalId()});
+
     // send the original store the result (RemoteOpResultMsg)
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
       final String dataType = operation.getDataType();

@@ -110,8 +110,9 @@ public final class OperationRouter<K> {
    * @return a pair of a map between a block id and a corresponding sub key range,
    * and a map between evaluator id and corresponding sub key ranges.
    */
-  public Pair<Map<Integer, Pair<K, K>>, Map<String, List<Pair<K, K>>>> route(final List<Pair<K, K>> dataKeyRanges) {
-    final Map<Integer, Pair<K, K>> localBlockToSubKeyRangeMap = new HashMap<>();
+  public Pair<Map<Integer, List<Pair<K, K>>>, Map<String, List<Pair<K, K>>>> route(
+      final List<Pair<K, K>> dataKeyRanges) {
+    final Map<Integer, List<Pair<K, K>>> localBlockToSubKeyRangesMap = new HashMap<>();
     final Map<String, List<Pair<K, K>>> remoteEvalToSubKeyRangesMap = new HashMap<>();
 
     // dataKeyRanges has at least one element
@@ -126,7 +127,7 @@ public final class OperationRouter<K> {
 
         final Optional<String> remoteEvalId = resolveEval(blockId);
 
-        // aggregate sub ranges for the same evaluator
+        // aggregate sub ranges
         if (remoteEvalId.isPresent()) {
           if (!remoteEvalToSubKeyRangesMap.containsKey(remoteEvalId.get())) {
             remoteEvalToSubKeyRangesMap.put(remoteEvalId.get(), new LinkedList<Pair<K, K>>());
@@ -134,12 +135,16 @@ public final class OperationRouter<K> {
           final List<Pair<K, K>> remoteRangeList = remoteEvalToSubKeyRangesMap.get(remoteEvalId.get());
           remoteRangeList.add(minMaxKeyPair);
         } else {
-          localBlockToSubKeyRangeMap.put(blockId, minMaxKeyPair);
+          if (!localBlockToSubKeyRangesMap.containsKey(blockId)) {
+            localBlockToSubKeyRangesMap.put(blockId, new LinkedList<Pair<K, K>>());
+          }
+          final List<Pair<K, K>> localRangeList = localBlockToSubKeyRangesMap.get(blockId);
+          localRangeList.add(minMaxKeyPair);
         }
       }
     }
 
-    return new Pair<>(localBlockToSubKeyRangeMap, remoteEvalToSubKeyRangesMap);
+    return new Pair<>(localBlockToSubKeyRangesMap, remoteEvalToSubKeyRangesMap);
   }
 
   /**
