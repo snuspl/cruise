@@ -270,7 +270,7 @@ final class RemoteEMTask implements Task {
 
       // check that the total number of objects equal the expected number
       outputMap = memoryStore.getRange(DATA_TYPE, 0L, maxDataKey);
-      LOG.log(Level.FINE, "outputMap.size: {0}", new Object[]{outputMap.size()});
+      LOG.log(Level.FINE, "outputMap.size: {0}", outputMap.size());
       if (outputMap.size() != 0) {
         throw new RuntimeException(MSG_GLOBAL_SIZE_MISMATCH);
       }
@@ -304,7 +304,7 @@ final class RemoteEMTask implements Task {
         try {
           numTotalPutSuccess += futures.get(index).get();
         } catch (final ExecutionException | InterruptedException e) {
-          LOG.log(Level.SEVERE, "Test thread failed", e);
+          throw new RuntimeException("Test thread failed", e);
         }
       }
       if (numTotalPutSuccess != totalNumberOfObjects) {
@@ -349,7 +349,7 @@ final class RemoteEMTask implements Task {
         try {
           numTotalPutSuccess += futures.get(index).get();
         } catch (final ExecutionException | InterruptedException e) {
-          LOG.log(Level.SEVERE, "Test thread failed", e);
+          throw new RuntimeException("Test thread failed", e);
         }
       }
 
@@ -398,7 +398,7 @@ final class RemoteEMTask implements Task {
           numTotalPutSuccess += futures.get(2 * index).get();
           numTotalGetSuccess += futures.get(2 * index + 1).get();
         } catch (final ExecutionException | InterruptedException e) {
-          LOG.log(Level.SEVERE, "Test thread failed", e);
+          throw new RuntimeException("Test thread failed", e);
         }
       }
 
@@ -452,7 +452,7 @@ final class RemoteEMTask implements Task {
           numTotalPutSuccess += futures.get(2 * index).get();
           numTotalGetSuccess += futures.get(2 * index + 1).get();
         } catch (final ExecutionException | InterruptedException e) {
-          LOG.log(Level.SEVERE, "Test thread failed", e);
+          throw new RuntimeException("Test thread failed", e);
         }
       }
 
@@ -508,7 +508,7 @@ final class RemoteEMTask implements Task {
           numTotalGetSuccess += futures.get(3 * index + 1).get();
           numTotalRemoveSuccess += futures.get(3 * index + 2).get();
         } catch (final ExecutionException | InterruptedException e) {
-          LOG.log(Level.SEVERE, "Test thread failed", e);
+          throw new RuntimeException("Test thread failed", e);
         }
       }
 
@@ -574,7 +574,7 @@ final class RemoteEMTask implements Task {
           numTotalGetSuccess += futures.get(3 * index + 1).get();
           numTotalRemoveSuccess += futures.get(3 * index + 2).get();
         } catch (final ExecutionException | InterruptedException e) {
-          LOG.log(Level.SEVERE, "Test thread failed", e);
+          throw new RuntimeException("Test thread failed", e);
         }
       }
 
@@ -630,7 +630,7 @@ final class RemoteEMTask implements Task {
         try {
           numTotalPutSuccess += futures.get(index).get();
         } catch (final ExecutionException | InterruptedException e) {
-          LOG.log(Level.SEVERE, "Test thread failed", e);
+          throw new RuntimeException("Test thread failed", e);
         }
       }
 
@@ -688,7 +688,7 @@ final class RemoteEMTask implements Task {
           numTotalRemotePutSuccess += futures.get(2 * index).get();
           numTotalLocalPutSuccess += futures.get(2 * index + 1).get();
         } catch (final ExecutionException | InterruptedException e) {
-          LOG.log(Level.SEVERE, "Test thread failed", e);
+          throw new RuntimeException("Test thread failed", e);
         }
       }
 

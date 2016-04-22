@@ -227,8 +227,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       final List<Pair<Long, Long>> subKeyRanges = subOperation.getSecond();
       final int blockId = subOperation.getThird();
 
-      LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, ranges: {2}, block: {3}]]",
-          new Object[]{operation.getOperationId(), operation.getOrigEvalId().get(), subKeyRanges, blockId});
+      LOG.log(Level.FINEST, "Poll op: [OpId: {0}, origId: {1}, block: {2}]]",
+          new Object[]{operation.getOperationId(), operation.getOrigEvalId().get(), blockId});
 
       routerLock.readLock().lock();
       try {
@@ -447,8 +447,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
       }
 
-      LOG.log(Level.FINEST, "Enqueue Op [Id: {0}, range: {1}, block: {2}]",
-          new Object[]{operation.getOperationId(), keyRanges, blockId});
+      LOG.log(Level.FINEST, "Enqueue Op [Id: {0}, block: {1}]",
+          new Object[]{operation.getOperationId(), blockId});
     }
   }
 

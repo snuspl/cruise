@@ -96,7 +96,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
     try (final TraceScope sendRemoteOpMsgScope = Trace.startSpan(SEND_REMOTE_OP_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType, dataKeyRanges, dataKVPairList});
+          operationType, dataType});
 
       // the operation begins with a local client, when the origId is null
       final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
@@ -126,7 +126,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       );
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
-          operationType, dataType, dataKeyRanges, dataKVPairList});
+          operationType, dataType});
     }
   }
 
@@ -136,8 +136,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
                                     @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpResultMsgScope = Trace.startSpan(SEND_REMOTE_OP_RESULT_MSG, parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
-          failedRanges, dataKVPairList});
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
 
       final List<AvroLongRange> avroLongRangeList = new ArrayList<>(failedRanges.size());
       for (final LongRange range : failedRanges) {
@@ -160,8 +159,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .build()
       );
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", new Object[]{destId,
-          failedRanges, dataKVPairList});
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
     }
   }
 
@@ -286,7 +284,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
                              final String operationId, final TraceInfo parentTraceInfo) {
     try (final TraceScope sendDataAckMsgScope = Trace.startSpan(SEND_DATA_ACK_MSG, parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg", new Object[]{operationId});
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg", operationId);
 
       final List<AvroLongRange> avroLongRanges = new ArrayList<>(idRangeSet.size());
       for (final LongRange range : idRangeSet) {
@@ -307,7 +305,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg", new Object[]{operationId});
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendDataAckMsg", operationId);
 
     }
   }
@@ -342,8 +340,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   public void sendUpdateMsg(final String destId, final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendUpdateMsgScope = Trace.startSpan(SEND_UPDATE_MSG, parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateMsg",
-          new Object[]{destId});
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateMsg", destId);
 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
@@ -354,8 +351,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateMsg",
-          new Object[]{});
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendUpdateMsg");
     }
   }
 
