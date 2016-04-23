@@ -48,8 +48,8 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   /**
    * States of the operation.
    */
-  private final AtomicInteger subOpCounter = new AtomicInteger(0);
-  private CountDownLatch subOpCountDownLatch = new CountDownLatch(0);
+  private final AtomicInteger subOpCounter = new AtomicInteger(1);
+  private CountDownLatch remoteOpCountDownLatch = new CountDownLatch(0);
 
   // ranges that remote sub operations failed to execute due to wrong routing
   // it happens only when ownership of data key are updated, unknown to the original store
@@ -153,14 +153,14 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   /**
    * @return an operation id issued by its origin memory store
    */
-  String getOperationId() {
+  String getOpId() {
     return operationId;
   }
 
   /**
    * @return a type of the operation
    */
-  DataOpType getOperationType() {
+  DataOpType getOpType() {
     return operationType;
   }
 
@@ -186,13 +186,13 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
    * It returns an empty Optional for GET and REMOVE operations.
    * @return an Optional with the map of input keys and its values
    */
-  Optional<NavigableMap<Long, V>> getDataKeyValueMap() {
+  Optional<NavigableMap<Long, V>> getDataKVMap() {
     return dataKeyValueMap;
   }
 
   /**
    * Sets the total number of sub operations for an atomic counter. For operation from local clients,
-   * it also initializes a latch that {@link #waitOperation(long)} will wait until the count becomes zero.
+   * it also initializes a latch that {@link #waitRemoteOps(long)} will wait until the count becomes zero.
    * Only {@link #commitResult(Map, List<LongRange>)} method counts them down.
    * @param numSubOps the total number of sub operations
    */
@@ -202,7 +202,7 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
     }
 
     if (isFromLocalClient()) {
-      subOpCountDownLatch = new CountDownLatch(numSubOps);
+      remoteOpCountDownLatch = new CountDownLatch(numSubOps);
     }
     subOpCounter.set(numSubOps);
   }
@@ -211,14 +211,14 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
    * Starts waiting for completion of the operation within a bounded time.
    * @param timeout a maximum waiting time in the milliseconds
    */
-  boolean waitOperation(final long timeout) throws InterruptedException {
-    return subOpCountDownLatch.await(timeout, TimeUnit.MILLISECONDS);
+  boolean waitRemoteOps(final long timeout) throws InterruptedException {
+    return remoteOpCountDownLatch.await(timeout, TimeUnit.MILLISECONDS);
   }
 
   /**
    * Commits results of sub operations and returns the number of remaining sub operations.
    * For operations from local clients, it counts down the latch and might trigger
-   * a return of {@link #waitOperation(long)} method.
+   * a return of {@link #waitRemoteOps(long)} method.
    * @param output an output data of the sub operation
    * @param failedRangeList a list of failed key ranges of the sub operation
    * @return the number of remaining sub operations
@@ -228,7 +228,7 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
     this.failedRanges.addAll(failedRangeList);
 
     if (isFromLocalClient()) {
-      subOpCountDownLatch.countDown();
+      remoteOpCountDownLatch.countDown();
     }
     return subOpCounter.decrementAndGet();
   }
@@ -236,7 +236,7 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   /**
    * Returns a list of key ranges that the sub operations failed to locate.
    */
-  List<LongRange> getFailedRanges() {
+  List<LongRange> getFailedKeyRanges() {
     return failedRanges;
   }
 
