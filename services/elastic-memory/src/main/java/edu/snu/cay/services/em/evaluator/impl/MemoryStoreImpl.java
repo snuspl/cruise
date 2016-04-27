@@ -69,7 +69,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   private final BlockResolver<Long> blockResolver;
 
-  private final RemoteOpExecutor remoteOpExecutor;
+  private final RemoteOpHandler remoteOpHandler;
 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
@@ -89,12 +89,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter<Long> router,
                           final BlockResolver<Long> blockResolver,
-                          final RemoteOpExecutor remoteOpExecutor,
+                          final RemoteOpHandler remoteOpHandler,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
     this.blockResolver = blockResolver;
-    this.remoteOpExecutor = remoteOpExecutor;
+    this.remoteOpHandler = remoteOpHandler;
     initExecutor(numStoreThreads);
   }
 
@@ -465,7 +465,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     }
 
     // send remote operations and wait until all remote operations complete
-    remoteOpExecutor.sendOpToRemoteStores(operation, remoteEvalToSubKeyRangesMap);
+    remoteOpHandler.sendOpToRemoteStores(operation, remoteEvalToSubKeyRangesMap);
   }
 
   /**
@@ -532,7 +532,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         new Object[]{operation.getOpId(), numRemainingSubOps});
 
     if (!operation.isFromLocalClient() && numRemainingSubOps == 0) {
-      remoteOpExecutor.sendResultToOrigin(operation);
+      remoteOpHandler.sendResultToOrigin(operation);
     }
   }
 

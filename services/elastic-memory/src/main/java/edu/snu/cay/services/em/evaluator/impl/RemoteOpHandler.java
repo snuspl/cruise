@@ -43,13 +43,12 @@ import java.util.logging.Logger;
  * It 1) sends operation to remote stores and 2) sends the result of remote operation to the origin store,
  * and 3) receives and handles the received result.
  */
-public final class RemoteOpExecutor implements EventHandler<AvroElasticMemoryMessage> {
-  private static final Logger LOG = Logger.getLogger(RemoteOpExecutor.class.getName());
+final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
+  private static final Logger LOG = Logger.getLogger(RemoteOpHandler.class.getName());
   private static final long TIMEOUT_MS = 40000;
 
   /**
-   * A map holding ongoing operations until they finish.
-   * It only maintains operations requested from local clients.
+   * A map holding ongoing remote operations until they finish.
    */
   private final ConcurrentMap<String, LongKeyOperation> ongoingOp = new ConcurrentHashMap<>();
 
@@ -57,12 +56,18 @@ public final class RemoteOpExecutor implements EventHandler<AvroElasticMemoryMes
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   @Inject
-  private RemoteOpExecutor(final Serializer serializer,
-                           final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
+  private RemoteOpHandler(final Serializer serializer,
+                          final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
     this.serializer = serializer;
     this.msgSender = msgSender;
   }
 
+  /**
+   * Send operation to remote evaluators.
+   * @param operation an operation
+   * @param evalToSubKeyRangesMap a map with an id of remote evaluator and a list of key ranges
+   * @param <V> a type of data
+   */
   <V> void sendOpToRemoteStores(final LongKeyOperation<V> operation,
                                 final Map<String, List<Pair<Long, Long>>> evalToSubKeyRangesMap) {
     if (evalToSubKeyRangesMap.isEmpty()) {
@@ -72,7 +77,7 @@ public final class RemoteOpExecutor implements EventHandler<AvroElasticMemoryMes
     LOG.log(Level.FINEST, "Send op to remote. OpId: {0}, OpType: {1}",
         new Object[]{operation.getOpId(), operation.getOpType()});
 
-    registerOp(operation, evalToSubKeyRangesMap.size());
+    registerOp(operation);
 
     final Codec codec = serializer.getCodec(operation.getDataType());
 
@@ -127,6 +132,9 @@ public final class RemoteOpExecutor implements EventHandler<AvroElasticMemoryMes
     // TODO #421: handle failures of operation (timeout, failed to locate).
   }
 
+  /**
+   * Handles the result of remote operation.
+   */
   @Override
   public void onNext(final AvroElasticMemoryMessage msg) {
 
@@ -135,7 +143,7 @@ public final class RemoteOpExecutor implements EventHandler<AvroElasticMemoryMes
     final List<UnitIdPair> remoteOutput = remoteOpResultMsg.getDataKVPairList();
     final List<AvroLongRange> failedAvroRanges = remoteOpResultMsg.getFailedKeyRanges();
 
-    final LongKeyOperation operation = ongoingOp.remove(operationId);
+    final LongKeyOperation operation = ongoingOp.get(operationId);
 
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
@@ -162,10 +170,8 @@ public final class RemoteOpExecutor implements EventHandler<AvroElasticMemoryMes
 
   /**
    * Registers an operation before sending it to remote memory store.
-   * Registered operations would be removed by {@code submitResultAndWaitRemoteOps} method
-   * when the operations are finished.
    */
-  private void registerOp(final LongKeyOperation operation, final int numSubOperations) {
+  private void registerOp(final LongKeyOperation operation) {
     final LongKeyOperation unhandledOperation = ongoingOp.put(operation.getOpId(), operation);
     if (unhandledOperation != null) {
       LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}",
@@ -176,8 +182,8 @@ public final class RemoteOpExecutor implements EventHandler<AvroElasticMemoryMes
   /**
    * Deregisters an operation after its remote access is finished.
    */
-  private void deregisterOp(final String operationId) {
-    ongoingOp.remove(operationId);
+  private LongKeyOperation deregisterOp(final String operationId) {
+    return ongoingOp.remove(operationId);
   }
 
   /**

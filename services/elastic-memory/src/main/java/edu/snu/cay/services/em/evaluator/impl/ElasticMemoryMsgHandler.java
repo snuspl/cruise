@@ -59,7 +59,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_OWNERSHIP_MSG = "onOwnershipMsg";
 
   private final RemoteAccessibleMemoryStore<Long> memoryStore;
-  private final RemoteOpExecutor remoteOpExecutor;
+  private final RemoteOpHandler remoteOpHandler;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
@@ -76,11 +76,11 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
   @Inject
   private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore<Long> memoryStore,
-                                  final RemoteOpExecutor remoteOpExecutor,
+                                  final RemoteOpHandler remoteOpHandler,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   final Serializer serializer) {
     this.memoryStore = memoryStore;
-    this.remoteOpExecutor = remoteOpExecutor;
+    this.remoteOpHandler = remoteOpHandler;
     this.serializer = serializer;
     this.sender = sender;
   }
@@ -188,7 +188,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    * Handles the result of data operation sent from the remote memory store.
    */
   private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
-    remoteOpExecutor.onNext(msg);
+    remoteOpHandler.onNext(msg);
   }
 
   /**
