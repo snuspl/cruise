@@ -19,9 +19,11 @@ import edu.snu.cay.services.ps.ParameterServerParameters.SerializedCodecConfigur
 import edu.snu.cay.services.ps.ParameterServerParameters.SerializedUpdaterConfiguration;
 import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
 import edu.snu.cay.services.ps.ns.NetworkContextRegister;
+import edu.snu.cay.services.ps.ns.NetworkDriverRegister;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.worker.WorkerSideMsgHandler;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.driver.parameters.DriverStartHandler;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.io.network.naming.NameServer;
@@ -84,6 +86,16 @@ public final class ParameterServerDriver {
     this.updaterConfiguration = configurationSerializer.fromString(serializedUpdaterConf);
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
+  }
+
+  /**
+   * @return Driver configuration that includes the network configuration.
+   */
+  public static Configuration getDriverConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindSetEntry(DriverStartHandler.class, NetworkDriverRegister.RegisterDriverHandler.class)
+        .bindNamedParameter(PSMessageHandler.class, edu.snu.cay.services.ps.driver.impl.PSMessageHandler.class)
+        .build();
   }
 
   /**

@@ -26,6 +26,7 @@ import edu.snu.cay.services.em.plan.conf.PlanExecutorClass;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
+import edu.snu.cay.services.ps.driver.ParameterServerDriver;
 import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
@@ -296,6 +297,7 @@ public final class AsyncDolphinLauncher {
 
     return Configurations.merge(driverConfWithDataLoad,
         ElasticMemoryConfiguration.getDriverConfiguration(),
+        ParameterServerDriver.getDriverConfiguration(),
         aggregationServiceConf.getDriverConfiguration(),
         HTraceParameters.getStaticConfiguration(),
         optimizerConf,
