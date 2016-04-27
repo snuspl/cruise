@@ -16,9 +16,9 @@
 package edu.snu.cay.services.em.evaluator.impl.rangekey;
 
 import edu.snu.cay.services.em.avro.DataOpType;
-import edu.snu.cay.services.em.evaluator.api.DataOperation;
-import org.apache.commons.lang.math.LongRange;
+import edu.snu.cay.services.em.evaluator.api.RangeKeyOperation;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.util.Optional;
 
 import java.util.*;
@@ -29,11 +29,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A class that represents a single data operation.
+ * An implementation of RangeKeyOperation.
  * It maintains metadata and states of the operation during execution.
  */
 @Private
-public final class LongKeyOperation<V> implements DataOperation<Long> {
+public final class RangeKeyOperationImpl<K, V> implements RangeKeyOperation<K, V> {
 
   /**
    * Metadata of the operation.
@@ -42,8 +42,8 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   private final String operationId;
   private final DataOpType operationType;
   private final String dataType;
-  private final List<LongRange> dataKeyRanges;
-  private final Optional<NavigableMap<Long, V>> dataKeyValueMap;
+  private final List<Pair<K, K>> dataKeyRanges;
+  private final Optional<NavigableMap<K, V>> dataKeyValueMap;
 
   /**
    * States of the operation.
@@ -54,8 +54,8 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
 
   // ranges that remote sub operations failed to execute due to wrong routing
   // it happens only when ownership of data key are updated, unknown to the original store
-  private final List<LongRange> failedRanges = Collections.synchronizedList(new LinkedList<LongRange>());
-  private final ConcurrentMap<Long, V> outputData = new ConcurrentHashMap<>();
+  private final List<Pair<K, K>> failedRanges = Collections.synchronizedList(new LinkedList<Pair<K, K>>());
+  private final ConcurrentMap<K, V> outputData = new ConcurrentHashMap<>();
 
   /**
    * A constructor for an operation composed of multiple data key ranges.
@@ -68,9 +68,10 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
-  LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                   final String dataType, final List<LongRange> dataKeyRanges,
-                   final Optional<NavigableMap<Long, V>> dataKeyValueMap) {
+  public RangeKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
+                               final DataOpType operationType, final String dataType,
+                               final List<Pair<K, K>> dataKeyRanges,
+                               final Optional<NavigableMap<K, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
@@ -90,15 +91,16 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
    * @param dataKeyValueMap an Optional with the map of the data keys and data values.
    *                        It is empty when the operation is one of GET or REMOVE.
    */
-  LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                   final String dataType, final LongRange dataKeyRange,
-                   final Optional<NavigableMap<Long, V>> dataKeyValueMap) {
+  public RangeKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
+                               final DataOpType operationType, final String dataType,
+                               final Pair<K, K> dataKeyRange,
+                               final Optional<NavigableMap<K, V>> dataKeyValueMap) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
     this.dataType = dataType;
 
-    final List<LongRange> keyRanges = new ArrayList<>(1);
+    final List<Pair<K, K>> keyRanges = new ArrayList<>(1);
     keyRanges.add(dataKeyRange);
     this.dataKeyRanges = keyRanges;
 
@@ -116,18 +118,19 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
    * @param dataValue an Optional with the value of data.
    *                  It is empty when the operation is one of GET or REMOVE.
    */
-  LongKeyOperation(final Optional<String> origEvalId, final String operationId, final DataOpType operationType,
-                   final String dataType, final long dataKey, final Optional<V> dataValue) {
+  public RangeKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
+                               final DataOpType operationType, final String dataType, final K dataKey,
+                               final Optional<V> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
     this.dataType = dataType;
 
-    final List<LongRange> keyRanges = new ArrayList<>(1);
-    keyRanges.add(new LongRange(dataKey));
+    final List<Pair<K, K>> keyRanges = new ArrayList<>(1);
+    keyRanges.add(new Pair<>(dataKey, dataKey));
     this.dataKeyRanges = keyRanges;
 
-    final NavigableMap<Long, V> keyValueMap;
+    final NavigableMap<K, V> keyValueMap;
     if (dataValue.isPresent()) {
       keyValueMap = new TreeMap<>();
       keyValueMap.put(dataKey, dataValue.get());
@@ -137,67 +140,53 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
     }
   }
 
-  /**
-   * @return true if the operation is requested from the local client
-   */
-  boolean isFromLocalClient() {
+  @Override
+  public boolean isFromLocalClient() {
     return !origEvalId.isPresent();
   }
 
-  /**
-   * @return an Optional with the id of evaluator that initially requested the operation
-   */
-  Optional<String> getOrigEvalId() {
+  @Override
+  public Optional<String> getOrigEvalId() {
     return origEvalId;
   }
 
-  /**
-   * @return an operation id issued by its origin memory store
-   */
-  String getOpId() {
+  @Override
+  public String getOpId() {
     return operationId;
   }
 
-  /**
-   * @return a type of the operation
-   */
-  DataOpType getOpType() {
+  @Override
+  public DataOpType getOpType() {
     return operationType;
   }
 
-  /**
-   * @return a type of data
-   */
-  String getDataType() {
+  @Override
+  public String getDataType() {
     return dataType;
   }
 
   /**
-   * Returns a range of data keys.
    * The method assumes that callers never try to modify the returned object.
-   * @return a range of data keys
    */
-  List<LongRange> getDataKeyRanges() {
+  @Override
+  public List<Pair<K, K>> getDataKeyRanges() {
     return dataKeyRanges;
   }
 
   /**
-   * Returns an Optional with the map of input data keys and its values for PUT operation.
    * The method assumes that callers never try to modify the returned object.
-   * It returns an empty Optional for GET and REMOVE operations.
-   * @return an Optional with the map of input keys and its values
    */
-  Optional<NavigableMap<Long, V>> getDataKVMap() {
+  @Override
+  public Optional<NavigableMap<K, V>> getDataKVMap() {
     return dataKeyValueMap;
   }
 
   /**
-   * Sets the total number of sub operations for an atomic counter. For operation from local clients,
+   * Sets the total number of sub operations for an atomic counter. For operations from local clients,
    * it also initializes a latch that {@link #waitRemoteOps(long)} will wait until the count becomes zero.
-   * Only {@link #commitResult(Map, List<LongRange>)} method counts them down.
-   * @param numSubOps the total number of sub operations
    */
-  void setNumSubOps(final int numSubOps) {
+  @Override
+  public void setNumSubOps(final int numSubOps) {
     if (numSubOps == 0) {
       return;
     }
@@ -208,23 +197,13 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
     subOpCounter.set(numSubOps);
   }
 
-  /**
-   * Starts waiting for completion of the operation within a bounded time.
-   * @param timeout a maximum waiting time in the milliseconds
-   */
-  boolean waitRemoteOps(final long timeout) throws InterruptedException {
+  @Override
+  public boolean waitRemoteOps(final long timeout) throws InterruptedException {
     return remoteOpCountDownLatch.await(timeout, TimeUnit.MILLISECONDS);
   }
 
-  /**
-   * Commits results of sub operations and returns the number of remaining sub operations.
-   * For operations from local clients, it counts down the latch and might trigger
-   * a return of {@link #waitRemoteOps(long)} method.
-   * @param output an output data of the sub operation
-   * @param failedRangeList a list of failed key ranges of the sub operation
-   * @return the number of remaining sub operations
-   */
-  int commitResult(final Map<Long, V> output, final List<LongRange> failedRangeList) {
+  @Override
+  public int commitResult(final Map<K, V> output, final List<Pair<K, K>> failedRangeList) {
     this.outputData.putAll(output);
     this.failedRanges.addAll(failedRangeList);
 
@@ -234,19 +213,13 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
     return subOpCounter.decrementAndGet();
   }
 
-  /**
-   * Returns a list of key ranges that the sub operations failed to locate.
-   */
-  List<LongRange> getFailedKeyRanges() {
-    return failedRanges;
+  @Override
+  public Map<K, V> getOutputData() {
+    return outputData;
   }
 
-  /**
-   * Returns an aggregated output data of the operation.
-   * It returns an empty map for PUT operation.
-   * @return an empty map with the output data
-   */
-  Map<Long, V> getOutputData() {
-    return outputData;
+  @Override
+  public List<Pair<K, K>> getFailedKeyRanges() {
+    return failedRanges;
   }
 }

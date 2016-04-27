@@ -16,14 +16,14 @@
 package edu.snu.cay.services.em.evaluator.impl.rangekey;
 
 import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.common.parameters.KeyCodecName;
+import edu.snu.cay.services.em.evaluator.api.RangeKeyOperation;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
-import edu.snu.cay.services.em.utils.AvroUtils;
-import edu.snu.cay.utils.LongRangeUtils;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
 import org.apache.reef.wake.EventHandler;
 import org.htrace.Trace;
@@ -38,27 +38,26 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * A class that executes all jobs related to remote access.
- * It 1) sends operation to remote stores and 2) sends the result of remote operation to the origin store,
- * and 3) receives and handles the received result.
- */
-final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
+final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage> {
   private static final Logger LOG = Logger.getLogger(RemoteOpHandler.class.getName());
   private static final long TIMEOUT_MS = 40000;
 
   /**
-   * A map holding ongoing remote operations until they finish.
+   * A map holding ongoing operations until they finish.
+   * It only maintains operations requested from local clients.
    */
-  private final ConcurrentMap<String, LongKeyOperation> ongoingOp = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, RangeKeyOperation<K, Object>> ongoingOp = new ConcurrentHashMap<>();
 
   private Serializer serializer;
+  private Codec<K> keyCodec;
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   @Inject
   private RemoteOpHandler(final Serializer serializer,
+                          @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                           final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
     this.serializer = serializer;
+    this.keyCodec = keyCodec;
     this.msgSender = msgSender;
   }
 
@@ -68,8 +67,8 @@ final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
    * @param evalToSubKeyRangesMap a map with an id of remote evaluator and a list of key ranges
    * @param <V> a type of data
    */
-  <V> void sendOpToRemoteStores(final LongKeyOperation<V> operation,
-                                final Map<String, List<Pair<Long, Long>>> evalToSubKeyRangesMap) {
+  <V> void sendOpToRemoteStores(final RangeKeyOperation<K, V> operation,
+                            final Map<String, List<Pair<K, K>>> evalToSubKeyRangesMap) {
     if (evalToSubKeyRangesMap.isEmpty()) {
       return;
     }
@@ -79,32 +78,42 @@ final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
 
     registerOp(operation);
 
-    final Codec codec = serializer.getCodec(operation.getDataType());
+    final Codec<Object> dataCodec = serializer.getCodec(operation.getDataType());
 
     // send sub operations to all remote stores that owns partial range of the main operation (RemoteOpMsg)
-    for (final Map.Entry<String, List<Pair<Long, Long>>> evalToSubKeyRange : evalToSubKeyRangesMap.entrySet()) {
+    for (final Map.Entry<String, List<Pair<K, K>>> evalToSubKeyRange : evalToSubKeyRangesMap.entrySet()) {
       try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_OP")) {
         final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
 
         final String targetEvalId = evalToSubKeyRange.getKey();
-        final List<Pair<Long, Long>> keyRangeList = evalToSubKeyRange.getValue();
+        final List<Pair<K, K>> keyRangeList = evalToSubKeyRange.getValue();
 
-        final List<UnitIdPair> dataKVPairList;
+        // encode key range
+        final List<KeyRange> avroKeyRangeList = new ArrayList<>(keyRangeList.size());
+        for (final Pair<K, K> keyRange : keyRangeList) {
+          final ByteBuffer encodedMinKey = ByteBuffer.wrap(keyCodec.encode(keyRange.getFirst()));
+          final ByteBuffer encodedMaxKey = ByteBuffer.wrap(keyCodec.encode(keyRange.getSecond()));
+          final KeyRange avroKeyRange = new KeyRange(encodedMinKey, encodedMaxKey);
+          avroKeyRangeList.add(avroKeyRange);
+        }
+
+        //encode data value
+        final List<KeyValuePair> dataKVPairList;
         if (operation.getOpType() == DataOpType.PUT) {
-          final NavigableMap<Long, V> keyValueMap = operation.getDataKVMap().get();
+          final NavigableMap<K, V> keyValueMap = operation.getDataKVMap().get();
 
           dataKVPairList = new LinkedList<>();
 
-          for (final Pair<Long, Long> keyRange : keyRangeList) {
-
+          for (final Pair<K, K> keyRange : keyRangeList) {
             // extract range-matching entries from the input data map
-            final Map<Long, V> subMap = keyValueMap.subMap(keyRange.getFirst(), true,
+            final Map<K, V> subMap = keyValueMap.subMap(keyRange.getFirst(), true,
                 keyRange.getSecond(), true);
 
-            // encode data values and put them into dataKVPairList
-            for (final Map.Entry<Long, V> dataKVPair : subMap.entrySet()) {
-              final ByteBuffer encodedData = ByteBuffer.wrap(codec.encode(dataKVPair.getValue()));
-              dataKVPairList.add(new UnitIdPair(encodedData, dataKVPair.getKey()));
+            // encode dataKeyValue and put them into dataKVPairList
+            for (final Map.Entry<K, V> dataKVPair : subMap.entrySet()) {
+              final ByteBuffer encodedKey = ByteBuffer.wrap(keyCodec.encode(dataKVPair.getKey()));
+              final ByteBuffer encodedData = ByteBuffer.wrap(dataCodec.encode(dataKVPair.getValue()));
+              dataKVPairList.add(new KeyValuePair(encodedKey, encodedData));
             }
           }
         } else {
@@ -113,7 +122,7 @@ final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
         }
 
         msgSender.get().sendRemoteOpMsg(operation.getOrigEvalId().get(), targetEvalId,
-            operation.getOpType(), operation.getDataType(), LongRangeUtils.fromPairsToRanges(keyRangeList),
+            operation.getOpType(), operation.getDataType(), avroKeyRangeList,
             dataKVPairList, operation.getOpId(), traceInfo);
       }
     }
@@ -137,13 +146,12 @@ final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
    */
   @Override
   public void onNext(final AvroElasticMemoryMessage msg) {
-
     final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
     final String operationId = msg.getOperationId().toString();
-    final List<UnitIdPair> remoteOutput = remoteOpResultMsg.getDataKVPairList();
-    final List<AvroLongRange> failedAvroRanges = remoteOpResultMsg.getFailedKeyRanges();
+    final List<KeyValuePair> remoteOutput = (List<KeyValuePair>) remoteOpResultMsg.getDataValues();
+    final List<KeyRange> failedAvroKeyRanges = remoteOpResultMsg.getFailedKeyRanges();
 
-    final LongKeyOperation operation = ongoingOp.get(operationId);
+    final RangeKeyOperation<K, Object> operation = ongoingOp.remove(operationId);
 
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
@@ -152,17 +160,23 @@ final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
 
     final Codec codec = serializer.getCodec(operation.getDataType());
 
-    final Map<Long, Object> dataKeyValueMap = new HashMap<>(remoteOutput.size());
-    for (final UnitIdPair dataKeyValuePair : remoteOutput) {
-      dataKeyValueMap.put(dataKeyValuePair.getId(), codec.decode(dataKeyValuePair.getUnit().array()));
+    // decode data
+    final Map<K, Object> dataKeyValueMap = new HashMap<>(remoteOutput.size());
+    for (final KeyValuePair dataKeyValuePair : remoteOutput) {
+      final K dataKey = keyCodec.decode(dataKeyValuePair.getKey().array());
+      final Object dataValue = codec.decode(dataKeyValuePair.getValue().array());
+      dataKeyValueMap.put(dataKey, dataValue);
     }
 
-    final List<LongRange> failedRanges = new ArrayList<>(failedAvroRanges.size());
-    for (final AvroLongRange avroRange : failedAvroRanges) {
-      failedRanges.add(AvroUtils.fromAvroLongRange(avroRange));
+    // decode failed data key ranges
+    final List<Pair<K, K>> failedKeyRanges = new ArrayList<>(failedAvroKeyRanges.size());
+    for (final KeyRange avroKeyRange : failedAvroKeyRanges) {
+      final K minKey = keyCodec.decode(avroKeyRange.getMin().array());
+      final K maxKey = keyCodec.decode(avroKeyRange.getMax().array());
+      failedKeyRanges.add(new Pair<>(minKey, maxKey));
     }
 
-    final int numRemainingSubOps = operation.commitResult(dataKeyValueMap, failedRanges);
+    final int numRemainingSubOps = operation.commitResult(dataKeyValueMap, failedKeyRanges);
 
     LOG.log(Level.FINEST, "Remote sub operation succeed. OpId: {0}, numRemainingSubOps: {1}",
         new Object[]{operationId, numRemainingSubOps});
@@ -171,8 +185,8 @@ final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
   /**
    * Registers an operation before sending it to remote memory store.
    */
-  private void registerOp(final LongKeyOperation operation) {
-    final LongKeyOperation unhandledOperation = ongoingOp.put(operation.getOpId(), operation);
+  private void registerOp(final RangeKeyOperation operation) {
+    final RangeKeyOperation unhandledOperation = ongoingOp.put(operation.getOpId(), operation);
     if (unhandledOperation != null) {
       LOG.log(Level.SEVERE, "Discard the exceptionally unhandled operation: {0}",
           unhandledOperation.getOpId());
@@ -189,7 +203,7 @@ final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
   /**
    * Sends the result to the original store.
    */
-  <T> void sendResultToOrigin(final LongKeyOperation<T> operation) {
+  <V> void sendResultToOrigin(final RangeKeyOperation<K, V> operation) {
 
     LOG.log(Level.FINEST, "Send result to origin. OpId: {0}, OrigId: {1}",
         new Object[]{operation.getOpId(), operation.getOrigEvalId()});
@@ -197,24 +211,36 @@ final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
     // send the original store the result (RemoteOpResultMsg)
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
       final String dataType = operation.getDataType();
-      final Codec codec = serializer.getCodec(dataType);
+      final Codec<Object> dataCodec = serializer.getCodec(dataType);
 
       final Optional<String> origEvalId = operation.getOrigEvalId();
-      final Map<Long, T> outputData = operation.getOutputData();
 
-      final List<UnitIdPair> dataKVPairList;
+      // encode output data
+      final Map<K, V> outputData = operation.getOutputData();
+      final List<KeyValuePair> dataKVPairList;
       if (operation.getOpType() == DataOpType.GET || operation.getOpType() == DataOpType.REMOVE) {
         dataKVPairList = new ArrayList<>(outputData.size());
 
-        for (final Map.Entry<Long, T> dataKVPair : outputData.entrySet()) {
-          final ByteBuffer encodedData = ByteBuffer.wrap(codec.encode(dataKVPair.getValue()));
-          dataKVPairList.add(new UnitIdPair(encodedData, dataKVPair.getKey()));
+        for (final Map.Entry<K, V> dataKVPair : outputData.entrySet()) {
+          final ByteBuffer encodedKey = ByteBuffer.wrap(keyCodec.encode(dataKVPair.getKey()));
+          final ByteBuffer encodedData = ByteBuffer.wrap(dataCodec.encode(dataKVPair.getValue()));
+          dataKVPairList.add(new KeyValuePair(encodedKey, encodedData));
         }
       } else {
         dataKVPairList = Collections.EMPTY_LIST;
       }
 
-      msgSender.get().sendRemoteOpResultMsg(origEvalId.get(), dataKVPairList, operation.getFailedKeyRanges(),
+      // encoded failed key ranges
+      final List<Pair<K, K>> failedKeyRangeList = operation.getFailedKeyRanges();
+      final List<KeyRange> avroFailedKeyRangeList = new ArrayList<>(failedKeyRangeList.size());
+      for (final Pair<K, K> keyRange : failedKeyRangeList) {
+        final ByteBuffer encodedMinKey = ByteBuffer.wrap(keyCodec.encode(keyRange.getFirst()));
+        final ByteBuffer encodedMaxKey = ByteBuffer.wrap(keyCodec.encode(keyRange.getSecond()));
+        final KeyRange avroKeyRange = new KeyRange(encodedMinKey, encodedMaxKey);
+        avroFailedKeyRangeList.add(avroKeyRange);
+      }
+
+      msgSender.get().sendRemoteOpResultMsg(origEvalId.get(), dataKVPairList, avroFailedKeyRangeList,
           operation.getOpId(), TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }
