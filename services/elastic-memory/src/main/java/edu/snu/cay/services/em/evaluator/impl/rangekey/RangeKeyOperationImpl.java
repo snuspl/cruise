@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * It maintains metadata and states of the operation during execution.
  */
 @Private
-public final class RangeKeyOperationImpl<K, V> implements RangeKeyOperation<K, V> {
+final class RangeKeyOperationImpl<K, V> implements RangeKeyOperation<K, V> {
 
   /**
    * Metadata of the operation.

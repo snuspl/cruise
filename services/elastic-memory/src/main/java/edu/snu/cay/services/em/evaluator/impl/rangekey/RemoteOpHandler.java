@@ -38,6 +38,11 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * A class that executes all jobs related to remote access.
+ * It 1) sends operation to remote stores and 2) sends the result of remote operation to the origin store,
+ * and 3) receives and handles the received result.
+ */
 final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage> {
   private static final Logger LOG = Logger.getLogger(RemoteOpHandler.class.getName());
   private static final long TIMEOUT_MS = 40000;
@@ -78,7 +83,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
 
     registerOp(operation);
 
-    final Codec<Object> dataCodec = serializer.getCodec(operation.getDataType());
+    final Codec<V> dataCodec = serializer.getCodec(operation.getDataType());
 
     // send sub operations to all remote stores that owns partial range of the main operation (RemoteOpMsg)
     for (final Map.Entry<String, List<Pair<K, K>>> evalToSubKeyRange : evalToSubKeyRangesMap.entrySet()) {
@@ -151,7 +156,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
     final List<KeyValuePair> remoteOutput = (List<KeyValuePair>) remoteOpResultMsg.getDataValues();
     final List<KeyRange> failedAvroKeyRanges = remoteOpResultMsg.getFailedKeyRanges();
 
-    final RangeKeyOperation<K, Object> operation = ongoingOp.remove(operationId);
+    final RangeKeyOperation<K, Object> operation = ongoingOp.get(operationId);
 
     if (operation == null) {
       LOG.log(Level.WARNING, "The operation is already handled or cancelled due to timeout. OpId: {0}", operationId);
@@ -211,7 +216,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
     // send the original store the result (RemoteOpResultMsg)
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
       final String dataType = operation.getDataType();
-      final Codec<Object> dataCodec = serializer.getCodec(dataType);
+      final Codec<V> dataCodec = serializer.getCodec(dataType);
 
       final Optional<String> origEvalId = operation.getOrigEvalId();
 

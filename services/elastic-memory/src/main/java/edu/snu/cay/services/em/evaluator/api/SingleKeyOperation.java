@@ -37,7 +37,7 @@ public interface SingleKeyOperation<K, V> extends DataOperation {
   Optional<V> getValue();
 
   /**
-   * Commits the results of the operation and triggers a return of {@link #waitRemoteOps(long)} method.
+   * Commits the result of the operation and triggers the return of {@link #waitRemoteOps(long)} method.
    * @param output an output data of the operation
    * @param isSuccess true if the operation finished successfully
    */

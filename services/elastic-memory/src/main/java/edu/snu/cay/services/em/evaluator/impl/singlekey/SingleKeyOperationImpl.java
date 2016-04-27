@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * An implementation of SingleKeyOperation.
  * It maintains metadata and states of the operation during execution.
  */
-public class SingleKeyOperationImpl<K, V> implements SingleKeyOperation<K, V> {
+final class SingleKeyOperationImpl<K, V> implements SingleKeyOperation<K, V> {
 
   /**
    * Metadata of the operation.

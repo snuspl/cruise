@@ -24,6 +24,8 @@ import org.apache.reef.util.Optional;
 public interface DataOperation {
 
   /**
+   * Returns an Optional with the id of evaluator that initially requested the operation.
+   * It returns empty when the operation is requested from a local client.
    * @return an Optional with the id of evaluator that initially requested the operation
    */
   Optional<String> getOrigEvalId();

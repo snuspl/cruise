@@ -25,6 +25,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
 
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
@@ -34,31 +35,47 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * A {@code MemoryStore} implementation for a key of generic type, non-supporting range operations.
+ * All data of one data type is stored in multiple Blocks embedding a {@code ConcurrentHashMap}.
+ * These Blocks are then maintained as values of one big {@code HashMap}, which uses the data types as keys.
+ * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
+ */
 public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> {
   private static final Logger LOG = Logger.getLogger(MemoryStore.class.getName());
 
   private static final int QUEUE_SIZE = 1024;
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
-
+  /**
+   * This map uses data types, represented as strings, for keys and inner map for values.
+   * Each inner map serves as a collection of data of the same data type, which is compose of multiple Blocks.
+   * Each inner map maintains mapping between a Block id and Block itself.
+   */
   private final Map<String, Map<Integer, Block>> typeToBlocks = new HashMap<>();
 
+  @GuardedBy("routerLock")
   private final OperationRouter<K> router;
   private final BlockResolver<K> blockResolver;
-
   private final RemoteOpHandler<K> remoteOpHandler;
 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
+  /**
+   * A counter for issuing ids for operations requested from local clients.
+   */
   private final AtomicLong operationIdCounter = new AtomicLong(0);
 
-  private final BlockingQueue<SingleKeyOperation<K, Object>> operationQueue = new ArrayBlockingQueue(QUEUE_SIZE);
+  /**
+   * A queue for operations requested from remote clients.
+   */
+  private final BlockingQueue<SingleKeyOperation<K, Object>> operationQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
 
   @Inject
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter<K> router,
                           final BlockResolver<K> blockResolver,
-                          final RemoteOpHandler remoteOpHandler,
+                          final RemoteOpHandler<K> remoteOpHandler,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
@@ -68,7 +85,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   /**
-   * Initialize threads that dequeue and execute operation from the {@code subOperationQueue}.
+   * Initialize threads that dequeue and execute operation from the {@code operationQueue}.
    * That is, these threads serve operations requested from remote clients.
    */
   private void initExecutor(final int numStoreThreads) {
@@ -97,7 +114,61 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     typeToBlocks.put(dataType, initialBlocks);
   }
 
-    /**
+  @Override
+  public int updateOwnership(final String dataType, final int blockId, final int storeId) {
+    routerLock.writeLock().lock();
+    try {
+      final int oldOwnerId = router.updateOwnership(blockId, storeId);
+      return oldOwnerId;
+    } finally {
+      routerLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void putBlock(final String dataType, final int blockId, final Map<K, Object> data) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (null == blocks) {
+      // If the blocks of the type have not been initialized, then create the blocks.
+      initBlocks(dataType);
+    } else if (blocks.containsKey(blockId)) {
+      throw new RuntimeException("Block with id " + blockId + " already exists.");
+    } else {
+      final Block block = new Block();
+      block.subDataMap.putAll(data);
+      blocks.put(blockId, block);
+    }
+  }
+
+  @Override
+  public Map<K, Object> getBlock(final String dataType, final int blockId) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (null == blocks) {
+      throw new RuntimeException("Data type " + dataType + " does not exist.");
+    }
+
+    final Block block = blocks.get(blockId);
+    if (null == block) {
+      throw new RuntimeException("Block with id " + blockId + " does not exist.");
+    }
+
+    return block.getAll();
+  }
+
+  @Override
+  public void removeBlock(final String dataType, final int blockId) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (null == blocks) {
+      throw new RuntimeException("Data type " + dataType + " does not exist.");
+    }
+
+    final Block block = blocks.remove(blockId);
+    if (null == block) {
+      throw new RuntimeException("Block with id " + blockId + " does not exist.");
+    }
+  }
+
+  /**
    * A runnable that dequeues and executes operations requested from remote clients.
    * Several threads are initiated at the beginning and run as long-running background services.
    */
@@ -152,9 +223,21 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     }
   }
 
+  /**
+   * Block class that has a {@code subDataMap}, which is an unit of EM's move.
+   */
   private final class Block<V> {
+    /**
+     * The map serves as a collection of data in a Block.
+     * Its implementation is {@code ConcurrentHashMap} to
+     * maximize the performance of concurrent single-key operations.
+     */
     private final ConcurrentMap<K, V> subDataMap = new ConcurrentHashMap<>();
 
+    /**
+     * Executes an operation on a data key assigned to this block.
+     * All operations both from remote and local clients are executed via this method.
+     */
     private V executeOperation(final SingleKeyOperation<K, V> operation) {
       final DataOpType opType = operation.getOpType();
 
@@ -178,18 +261,61 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       return output;
     }
 
+    /**
+     * Returns all data in a block.
+     * It is for supporting getAll method of MemoryStore.
+     */
     private Map<K, V> getAll() {
       return new HashMap<>(subDataMap);
     }
 
+    /**
+     * Removes all data in a block.
+     * It is for supporting removeAll method of MemoryStore.
+     */
     private Map<K, V> removeAll() {
       final Map<K, V> output = new HashMap<>(subDataMap);
       subDataMap.clear();
       return output;
     }
 
+    /**
+     * Returns a number of data in a block.
+     * It is for supporting getNumUnits method of MemoryStore.
+     */
     private int getNumUnits() {
       return subDataMap.size();
+    }
+  }
+
+  /**
+   * Handles operations requested from a remote client.
+   */
+  @Override
+  public void onNext(final DataOperation dataOperation) {
+    final SingleKeyOperation<K, Object> operation = (SingleKeyOperationImpl<K, Object>) dataOperation;
+    final String dataType = operation.getDataType();
+
+    // progress when there're blocks for dataType
+    if (!typeToBlocks.containsKey(dataType)) {
+      // nevertheless, for PUT operations initialize blocks and continue the operation
+      if (operation.getOpType() == DataOpType.PUT) {
+        initBlocks(dataType);
+      } else {
+        // submit empty result for other types of operations
+        submitLocalResult(operation, Optional.empty(), false);
+
+        LOG.log(Level.FINEST, "Blocks for the {0}. Send empty result for operation {1} from {2}",
+            new Object[]{operation.getDataType(), operation.getOpId(), operation.getOrigEvalId().get()});
+        return;
+      }
+    }
+
+    LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}", operation.getOpId());
+    try {
+      operationQueue.put(operation);
+    } catch (final InterruptedException e) {
+      LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
     }
   }
 
@@ -206,7 +332,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       // send operation to remote
       remoteOpHandler.sendOpToRemoteStore(operation, remoteEvalId.get());
     } else {
-      // execute local
+      // execute operation in local
       final String dataType = operation.getDataType();
 
       // if there's no initialized block for a data type of the operation,
@@ -232,7 +358,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
    * Handles the result of data operation processed by local memory store.
    * It waits until all remote sub operations are finished and their outputs are fully aggregated.
    */
-  <V> void submitLocalResult(final SingleKeyOperation<K, V> operation, final Optional<V> localOutput,
+  private <V> void submitLocalResult(final SingleKeyOperation<K, V> operation, final Optional<V> localOutput,
                              final boolean isSuccess) {
     operation.commitResult(localOutput, isSuccess);
 
@@ -247,7 +373,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public <V> Pair<K, Boolean> put(final String dataType, final K id, @Nonnull final V value) {
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl(Optional.<String>empty(), operationId,
+    final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
         DataOpType.PUT, dataType, id, Optional.of(value));
 
     executeOperation(operation);
@@ -330,7 +456,6 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     final Map<K, V> result;
     final Collection<Block> blocks = typeToBlocks.get(dataType).values();
 
-
     final Iterator<Block> blockIterator = blocks.iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
@@ -373,87 +498,5 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       numUnits += block.getNumUnits();
     }
     return numUnits;
-  }
-
-  @Override
-  public int updateOwnership(final String dataType, final int blockId, final int storeId) {
-    routerLock.writeLock().lock();
-    try {
-      final int oldOwnerId = router.updateOwnership(blockId, storeId);
-      return oldOwnerId;
-    } finally {
-      routerLock.writeLock().unlock();
-    }
-  }
-
-  @Override
-  public void putBlock(final String dataType, final int blockId, final Map<K, Object> data) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (null == blocks) {
-      // If the blocks of the type have not been initialized, then create the blocks.
-      initBlocks(dataType);
-    } else if (blocks.containsKey(blockId)) {
-      throw new RuntimeException("Block with id " + blockId + " already exists.");
-    } else {
-      final Block block = new Block();
-      block.subDataMap.putAll(data);
-      blocks.put(blockId, block);
-    }
-  }
-
-  @Override
-  public Map<K, Object> getBlock(final String dataType, final int blockId) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (null == blocks) {
-      throw new RuntimeException("Data type " + dataType + " does not exist.");
-    }
-
-    final Block block = blocks.get(blockId);
-    if (null == block) {
-      throw new RuntimeException("Block with id " + blockId + " does not exist.");
-    }
-
-    return block.getAll();
-  }
-
-  @Override
-  public void removeBlock(final String dataType, final int blockId) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (null == blocks) {
-      throw new RuntimeException("Data type " + dataType + " does not exist.");
-    }
-
-    final Block block = blocks.remove(blockId);
-    if (null == block) {
-      throw new RuntimeException("Block with id " + blockId + " does not exist.");
-    }
-  }
-
-  @Override
-  public void onNext(final DataOperation dataOperation) {
-    final SingleKeyOperation<K, Object> operation = (SingleKeyOperationImpl<K, Object>) dataOperation;
-    final String dataType = operation.getDataType();
-
-    // progress when there're blocks for dataType
-    if (!typeToBlocks.containsKey(dataType)) {
-      // nevertheless, for PUT operations initialize blocks and continue the operation
-      if (operation.getOpType() == DataOpType.PUT) {
-        initBlocks(dataType);
-      } else {
-        // submit empty result for other types of operations
-        submitLocalResult(operation, Optional.empty(), false);
-
-        LOG.log(Level.FINEST, "Blocks for the {0}. Send empty result for operation {1} from {2}",
-            new Object[]{operation.getDataType(), operation.getOpId(), operation.getOrigEvalId().get()});
-        return;
-      }
-    }
-
-    LOG.log(Level.FINEST, "Enqueue Op. OpId: {0}", operation.getOpId());
-    try {
-      operationQueue.put(operation);
-    } catch (final InterruptedException e) {
-      LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
-    }
   }
 }

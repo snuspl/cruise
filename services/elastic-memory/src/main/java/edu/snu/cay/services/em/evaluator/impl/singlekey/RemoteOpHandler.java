@@ -41,7 +41,7 @@ import java.util.logging.Logger;
  * It 1) sends operation to remote stores and 2) sends the result of remote operation to the origin store,
  * and 3) receives and handles the received result.
  */
-public final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage> {
+final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage> {
   private static final Logger LOG = Logger.getLogger(RemoteOpHandler.class.getName());
   private static final long TIMEOUT_MS = 40000;
 
@@ -174,7 +174,7 @@ public final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryM
     // send the original store the result (RemoteOpResultMsg)
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
       final String dataType = operation.getDataType();
-      final Codec<Object> dataCodec = serializer.getCodec(dataType);
+      final Codec<V> dataCodec = serializer.getCodec(dataType);
 
       final Optional<String> origEvalId = operation.getOrigEvalId();
 

@@ -30,7 +30,6 @@ import java.util.NavigableMap;
 public interface RangeKeyOperation<K, V> extends DataOperation {
 
   /**
-   * Returns a range of data keys.
    * @return a range of data keys
    */
   List<Pair<K, K>> getDataKeyRanges();
@@ -50,9 +49,9 @@ public interface RangeKeyOperation<K, V> extends DataOperation {
   void setNumSubOps(final int numSubOps);
 
   /**
-   * Commits the results of a sub operation and returns the number of remaining sub operations.
+   * Commits the result of a sub operation and returns the number of remaining sub operations.
    * When all the sub operations of the operation is finished,
-   * it triggers a return of {@link #waitRemoteOps(long)} method.
+   * it triggers the return of {@link #waitRemoteOps(long)} method.
    * @param output an output data of the sub operation
    * @param failedRangeList a list of failed key ranges of the sub operation
    * @return the number of remaining sub operations
@@ -67,7 +66,7 @@ public interface RangeKeyOperation<K, V> extends DataOperation {
   Map<K, V> getOutputData();
 
   /**
-   * Returns a list of key ranges that the sub operations failed to execute.
+   * @return a list of key ranges that the sub operations failed to execute.
    */
   List<Pair<K, K>> getFailedKeyRanges();
 }

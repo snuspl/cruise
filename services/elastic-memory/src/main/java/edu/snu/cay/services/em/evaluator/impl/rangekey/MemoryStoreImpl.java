@@ -44,11 +44,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A {@code MemoryStore} implementation based on {@code TreeMap}s inside a single {@code HashMap}.
- * All data of one data type is stored in a {@code TreeMap}, ordered by data ids.
- * These {@code TreeMap}s are then maintained as values of one big {@code HashMap}, which uses the data types as keys.
- * A {@code ReentrantReadWriteLock} is used for synchronization between {@code get}, {@code put},
- * and {@code remove} operations.
+ * A {@code MemoryStore} implementation for a key of long type, supporting range operations.
+ * All data of one data type is stored in multiple Blocks embedding a {@code TreeMap}, ordered by data ids.
+ * These Blocks are then maintained as values of one big {@code HashMap}, which uses the data types as keys.
+ * Each Block has {@code ReentrantReadWriteLock} for synchronization between {@code get}, {@code put},
+ * and {@code remove} operations within Block.
  * Assuming EM applications always need to instantiate this class, HTrace initialization is done in the constructor.
  */
 @EvaluatorSide
@@ -60,19 +60,16 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private static final int QUEUE_TIMEOUT_MS = 3000;
 
   /**
-   * This map uses data types, represented as strings, for keys and inner {@code TreeMaps} for values.
-   * Each inner {@code TreeMap} serves as a collection of data of the same data type.
-   * {@code TreeMap}s are used for guaranteeing log(n) read and write operations, especially
-   * {@code getRange()} and {@code removeRange()} which are ranged queries based on the ids.
+   * This map uses data types, represented as strings, for keys and inner map for values.
+   * Each inner map serves as a collection of data of the same data type, which is compose of multiple Blocks.
+   * Each inner map maintains mapping between a Block id and Block itself.
    */
   private final Map<String, Map<Integer, Block>> typeToBlocks = new HashMap<>();
 
   @GuardedBy("routerLock")
   private final OperationRouter<Long> router;
-
   private final BlockResolver<Long> blockResolver;
-
-  private final RemoteOpHandler remoteOpHandler;
+  private final RemoteOpHandler<Long> remoteOpHandler;
 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
@@ -92,7 +89,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   private MemoryStoreImpl(final HTrace hTrace,
                           final OperationRouter<Long> router,
                           final BlockResolver<Long> blockResolver,
-                          final RemoteOpHandler remoteOpHandler,
+                          final RemoteOpHandler<Long> remoteOpHandler,
                           @Parameter(NumStoreThreads.class) final int numStoreThreads) {
     hTrace.initialize();
     this.router = router;
@@ -251,8 +248,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    */
   private final class Block<V> {
     /**
-     * The map serves as a collection of data of the same data type.
-     * It's implementation {@code TreeMap} is used for guaranteeing log(n) read and write operations, especially
+     * The map serves as a collection of data in a Block.
+     * Its implementation {@code TreeMap} is used for guaranteeing log(n) read and write operations, especially
      * {@code getRange()} and {@code removeRange()} which are ranged queries based on the ids.
      */
     private final NavigableMap<Long, V> subDataMap = new TreeMap<>();
@@ -324,7 +321,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
      * Returns all data in a block.
      * It is for supporting getAll method of MemoryStore.
      */
-    private <V> Map<Long, V> getAll() {
+    private Map<Long, V> getAll() {
       rwLock.readLock().lock();
       try {
         return (Map<Long, V>) ((TreeMap) subDataMap).clone();
@@ -337,7 +334,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
      * Removes all data in a block.
      * It is for supporting removeAll method of MemoryStore.
      */
-    private <V> Map<Long, V> removeAll() {
+    private Map<Long, V> removeAll() {
       final Map<Long, V> result;
       rwLock.writeLock().lock();
       try {
@@ -360,8 +357,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   /**
-   * Enqueues operations requested from a remote client.
-   * The enqueued operations are executed by {@code OperationThread}s.
+   * Handles operations requested from a remote client.
    */
   @Override
   public void onNext(final DataOperation dataOperation) {
@@ -416,7 +412,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   }
 
   /**
-   * Enqueues local sub operations to {@code subOperationQueue}.
+   * Enqueues sub operations requested from a remote client to {@code subOperationQueue}.
+   * The enqueued operations are executed by {@code OperationThread}s.
    */
   private void enqueueOperation(final RangeKeyOperation operation,
                                 final Map<Integer, List<Pair<Long, Long>>> blockToKeyRangesMap) {
@@ -502,7 +499,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     // first execute a head range to reuse the returned map object for a return map
     if (blockToSubKeyRangesIterator.hasNext()) {
       final Map.Entry<Integer, List<Pair<Long, Long>>> blockToSubKeyRanges = blockToSubKeyRangesIterator.next();
-      final Block block = blocks.get(blockToSubKeyRanges.getKey());
+      final Block<V> block = blocks.get(blockToSubKeyRanges.getKey());
       final List<Pair<Long, Long>> subKeyRanges = blockToSubKeyRanges.getValue();
 
       outputData = block.executeSubOperation(operation, subKeyRanges);
@@ -513,7 +510,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     // execute remaining ranges if exist
     while (blockToSubKeyRangesIterator.hasNext()) {
       final Map.Entry<Integer, List<Pair<Long, Long>>> blockToSubKeyRanges = blockToSubKeyRangesIterator.next();
-      final Block block = blocks.get(blockToSubKeyRanges.getKey());
+      final Block<V> block = blocks.get(blockToSubKeyRanges.getKey());
       final List<Pair<Long, Long>> subKeyRanges = blockToSubKeyRanges.getValue();
 
       final Map<Long, V> partialOutput = block.executeSubOperation(operation, subKeyRanges);
@@ -527,7 +524,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
    * Handles the result of data operation processed by local memory store.
    * It waits until all remote sub operations are finished and their outputs are fully aggregated.
    */
-  <V> void submitLocalResult(final RangeKeyOperation<Long, V> operation, final Map<Long, V> localOutput,
+  private <V> void submitLocalResult(final RangeKeyOperation<Long, V> operation, final Map<Long, V> localOutput,
                              final List<Pair<Long, Long>> failedRanges) {
     final int numRemainingSubOps = operation.commitResult(localOutput, failedRanges);
 
@@ -666,7 +663,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIterator.hasNext()) {
-      final Block block = blockIterator.next();
+      final Block<V> block = blockIterator.next();
       result = block.getAll();
     } else {
       return Collections.EMPTY_MAP;
@@ -674,9 +671,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // execute on remaining blocks if exist
     while (blockIterator.hasNext()) {
-      final Block block = blockIterator.next();
+      final Block<V> block = blockIterator.next();
       // huge memory pressure may happen here
-      result.putAll((Map<Long, V>) block.getAll());
+      result.putAll(block.getAll());
     }
 
     return result;
@@ -723,7 +720,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIterator.hasNext()) {
-      final Block block = blockIterator.next();
+      final Block<V> block = blockIterator.next();
       result = block.removeAll();
     } else {
       return Collections.EMPTY_MAP;
@@ -731,9 +728,9 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     // execute on remaining blocks if exist
     while (blockIterator.hasNext()) {
-      final Block block = blockIterator.next();
+      final Block<V> block = blockIterator.next();
       // huge memory pressure may happen here
-      result.putAll((Map<Long, V>) block.removeAll());
+      result.putAll(block.removeAll());
     }
 
     return result;
@@ -745,7 +742,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
     final RangeKeyOperation<Long, V> operation = new RangeKeyOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.REMOVE, dataType, new Pair(startId, endId), Optional.<NavigableMap<Long, V>>empty());
+        DataOpType.REMOVE, dataType, new Pair<>(startId, endId), Optional.<NavigableMap<Long, V>>empty());
 
     executeOperation(operation);
 
