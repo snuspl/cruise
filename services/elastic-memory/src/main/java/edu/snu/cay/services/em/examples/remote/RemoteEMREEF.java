@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.examples.remote;
 
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.services.em.common.parameters.ElasticMemoryParameters;
+import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
@@ -130,9 +131,15 @@ public final class RemoteEMREEF {
         YarnClientConfiguration.CONF.build();
 
     final HTraceParameters traceParameters = getTraceParameters(injector);
-    final Configuration traceConf = traceParameters.getConfiguration();
 
-    final LauncherStatus status = runRemoteEM(runtimeConf, traceConf, TIMEOUT);
+    final Configuration jobConf = Configurations.merge(
+        traceParameters.getConfiguration(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(RangeSupport.class, String.valueOf(true)) // use range-based MemoryStore
+            .build()
+    );
+
+    final LauncherStatus status = runRemoteEM(runtimeConf, jobConf, TIMEOUT);
     LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 }

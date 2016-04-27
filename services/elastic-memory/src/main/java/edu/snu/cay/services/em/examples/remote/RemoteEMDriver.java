@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.examples.remote;
 
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
+import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
@@ -30,6 +31,7 @@ import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.EventHandler;
@@ -63,15 +65,19 @@ final class RemoteEMDriver {
   private final ElasticMemoryConfiguration emConf;
   private final HTraceParameters traceParameters;
 
+  private final boolean rangeSupport;
+
   @Inject
   private RemoteEMDriver(final EvaluatorRequestor requestor,
                          final AggregationManager aggregationManager,
                          final ElasticMemoryConfiguration emConf,
-                         final HTraceParameters traceParameters) throws InjectionException {
+                         final HTraceParameters traceParameters,
+                         @Parameter(RangeSupport.class) final boolean rangeSupport) throws InjectionException {
     this.requestor = requestor;
     this.aggregationManager = aggregationManager;
     this.emConf = emConf;
     this.traceParameters = traceParameters;
+    this.rangeSupport = rangeSupport;
   }
 
   /**
@@ -103,7 +109,6 @@ final class RemoteEMDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final int evalCount = activeEvaluatorCount.getAndIncrement();
-
       final String contextId = CONTEXT_ID_PREFIX + evalCount;
 
       final Configuration partialContextConf = ContextConfiguration.CONF
@@ -117,8 +122,8 @@ final class RemoteEMDriver {
           emConf.getServiceConfiguration(contextId, EVAL_NUM),
           aggregationManager.getServiceConfigurationWithoutNameResolver(),
           Tang.Factory.getTang().newConfigurationBuilder()
-            .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-            .build());
+              .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+              .build());
 
       final Configuration traceConf = traceParameters.getConfiguration();
 
@@ -142,11 +147,18 @@ final class RemoteEMDriver {
           .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class)
           .build();
 
+      // configuration for testing range and single key implementation of MemoryStore.
+      final Configuration rangeTestConf =
+          Tang.Factory.getTang().newConfigurationBuilder()
+              .bindNamedParameter(RangeSupport.class, String.valueOf(rangeSupport))
+              .build();
+
       final Configuration taskConf = Configurations.merge(
           TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, taskId)
               .set(TaskConfiguration.TASK, RemoteEMTask.class)
               .build(),
+          rangeTestConf,
           idConf);
 
       activeContext.submitTask(taskConf);
