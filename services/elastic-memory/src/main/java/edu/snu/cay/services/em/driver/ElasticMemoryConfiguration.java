@@ -23,7 +23,8 @@ import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
-import edu.snu.cay.services.em.evaluator.impl.MemoryStoreImpl;
+import edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl;
+import edu.snu.cay.services.em.evaluator.impl.rangekey.ElasticMemoryMsgHandler;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.NetworkContextRegister;
 import edu.snu.cay.services.em.ns.NetworkDriverRegister;
@@ -128,7 +129,7 @@ public final class ElasticMemoryConfiguration {
 
     final Configuration networkConf = getNetworkConfigurationBuilder()
         .bindNamedParameter(EMMessageHandler.class,
-            edu.snu.cay.services.em.evaluator.impl.ElasticMemoryMsgHandler.class)
+            ElasticMemoryMsgHandler.class)
         .build();
 
     final Configuration serviceConf = ServiceConfiguration.CONF

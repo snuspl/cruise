@@ -24,7 +24,7 @@ import java.util.Collection;
  * Encapsulates an update of the MemoryStore's state.
  * The data is added or removed when apply() is called.
  */
-interface Update {
+public interface Update {
   /**
    * Type of the Update.
    */

@@ -23,11 +23,11 @@ import java.util.Collection;
 /**
  * Implementation of Update to remove the data from MemoryStore when apply() is called.
  */
-final class Remove implements Update {
+public final class Remove implements Update {
   private String dataType;
   private Collection<LongRange> ranges;
 
-  Remove(final String dataType, final Collection<LongRange> ranges) {
+  public Remove(final String dataType, final Collection<LongRange> ranges) {
     this.dataType = dataType;
     this.ranges = ranges;
   }

@@ -155,7 +155,7 @@ public final class OperationRouter<K> {
    * @param blockId an id of block
    * @return an Optional with an evaluator id
    */
-  Optional<String> resolveEval(final int blockId) {
+  public Optional<String> resolveEval(final int blockId) {
     final int memoryStoreId = blockIdToStoreId[blockId];
     if (memoryStoreId == localStoreId) {
       return Optional.empty();
@@ -167,7 +167,7 @@ public final class OperationRouter<K> {
   /**
    * @return a list of block ids which are initially assigned to the local MemoryStore.
    */
-  List<Integer> getInitialLocalBlockIds() {
+  public List<Integer> getInitialLocalBlockIds() {
     return Collections.unmodifiableList(initialLocalBlocks);
   }
 
@@ -178,7 +178,7 @@ public final class OperationRouter<K> {
    * @param storeId id of the MemoryStore that will be new owner.
    * @return id of the MemoryStore who was the owner before update.
    */
-  int updateOwnership(final int blockId, final int storeId) {
+  public int updateOwnership(final int blockId, final int storeId) {
     final int oldOwner = blockIdToStoreId[blockId];
     blockIdToStoreId[blockId] = storeId;
     return oldOwner;

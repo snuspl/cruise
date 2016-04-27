@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.avro.UpdateResult;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
