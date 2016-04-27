@@ -15,16 +15,10 @@
  */
 package edu.snu.cay.services.em.driver;
 
-import edu.snu.cay.services.em.common.parameters.KeyCodecName;
-import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
-import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
-import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
+import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
-import edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl;
-import edu.snu.cay.services.em.evaluator.impl.rangekey.ElasticMemoryMsgHandler;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.NetworkContextRegister;
 import edu.snu.cay.services.em.ns.NetworkDriverRegister;
@@ -60,6 +54,7 @@ public final class ElasticMemoryConfiguration {
   private final String driverId;
   private final int numTotalBlocks;
   private final int numStoreThreads;
+  private final boolean rangeSupport;
   private final PartitionManager partitionManager;
 
   @Inject
@@ -68,12 +63,14 @@ public final class ElasticMemoryConfiguration {
                                      @Parameter(DriverIdentifier.class) final String driverId,
                                      @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                                      @Parameter(NumStoreThreads.class) final int numStoreThreads,
+                                     @Parameter(RangeSupport.class) final boolean rangeSupport,
                                      final PartitionManager partitionManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
     this.numTotalBlocks = numTotalBlocks;
     this.numStoreThreads = numStoreThreads;
+    this.rangeSupport = rangeSupport;
     this.partitionManager = partitionManager;
   }
 
@@ -127,20 +124,29 @@ public final class ElasticMemoryConfiguration {
       throw new RuntimeException("NumTotalBlocks should be greater than or equal to the number of NumInitialEvals.");
     }
 
+    // implementations for MemoryStore and MsgHandler class differ regarding to range support
+    // MemoryStore specialized to single-key operations is better in throughput and latency
+    final Class memoryStoreClass = rangeSupport ?
+        edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl.class :
+        edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl.class;
+
+    final Class evalMsgHandlerClass = rangeSupport ?
+        edu.snu.cay.services.em.evaluator.impl.rangekey.ElasticMemoryMsgHandler.class :
+        edu.snu.cay.services.em.evaluator.impl.singlekey.ElasticMemoryMsgHandler.class;
+
     final Configuration networkConf = getNetworkConfigurationBuilder()
-        .bindNamedParameter(EMMessageHandler.class,
-            ElasticMemoryMsgHandler.class)
+        .bindNamedParameter(EMMessageHandler.class, evalMsgHandlerClass)
         .build();
 
     final Configuration serviceConf = ServiceConfiguration.CONF
-        .set(ServiceConfiguration.SERVICES, MemoryStoreImpl.class)
+        .set(ServiceConfiguration.SERVICES, memoryStoreClass)
         .build();
 
     final int memoryStoreId = partitionManager.registerEvaluator(contextId, numInitialEvals);
 
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MemoryStore.class, MemoryStoreImpl.class)
-        .bindImplementation(RemoteAccessibleMemoryStore.class, MemoryStoreImpl.class)
+        .bindImplementation(MemoryStore.class, memoryStoreClass)
+        .bindImplementation(RemoteAccessibleMemoryStore.class, memoryStoreClass)
         .bindNamedParameter(DriverIdentifier.class, driverId)
         .bindNamedParameter(MemoryStoreId.class, Integer.toString(memoryStoreId))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(numTotalBlocks))
