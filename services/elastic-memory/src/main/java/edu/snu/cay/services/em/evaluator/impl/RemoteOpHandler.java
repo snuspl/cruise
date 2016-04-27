@@ -182,8 +182,8 @@ final class RemoteOpHandler implements EventHandler<AvroElasticMemoryMessage> {
   /**
    * Deregisters an operation after its remote access is finished.
    */
-  private LongKeyOperation deregisterOp(final String operationId) {
-    return ongoingOp.remove(operationId);
+  private void deregisterOp(final String operationId) {
+    ongoingOp.remove(operationId);
   }
 
   /**

@@ -48,6 +48,7 @@ public final class LongKeyOperation<V> implements DataOperation<Long> {
   /**
    * States of the operation.
    */
+  // default is 1 for operations failed even before being separated into sub operations
   private final AtomicInteger subOpCounter = new AtomicInteger(1);
   private CountDownLatch remoteOpCountDownLatch = new CountDownLatch(0);
 
