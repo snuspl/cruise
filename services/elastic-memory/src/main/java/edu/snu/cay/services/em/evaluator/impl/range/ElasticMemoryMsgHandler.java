@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.impl.rangekey;
+package edu.snu.cay.services.em.evaluator.impl.range;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
@@ -189,7 +189,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       dataKeyValueMap = Optional.empty();
     }
 
-    final DataOperation operation = new RangeKeyOperationImpl<>(Optional.of(origEvalId),
+    final DataOperation operation = new RangeOperationImpl<>(Optional.of(origEvalId),
         operationId, operationType, dataType, dataKeyRanges, dataKeyValueMap);
 
     // enqueue operation into memory store

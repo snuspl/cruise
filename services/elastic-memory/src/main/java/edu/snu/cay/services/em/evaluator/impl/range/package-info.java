@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Evaluator-side test classes for range-based MemoryStore.
+ * Evaluator-side Elastic Memory classes that are specific to range-based MemoryStore.
  */
-package edu.snu.cay.services.em.evaluator.impl.rangekey;
+package edu.snu.cay.services.em.evaluator.impl.range;

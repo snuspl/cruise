@@ -127,11 +127,11 @@ public final class ElasticMemoryConfiguration {
     // implementations for MemoryStore and MsgHandler class differ regarding to range support
     // MemoryStore specialized to single-key operations is better in throughput and latency
     final Class memoryStoreClass = rangeSupport ?
-        edu.snu.cay.services.em.evaluator.impl.rangekey.MemoryStoreImpl.class :
+        edu.snu.cay.services.em.evaluator.impl.range.MemoryStoreImpl.class :
         edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl.class;
 
     final Class evalMsgHandlerClass = rangeSupport ?
-        edu.snu.cay.services.em.evaluator.impl.rangekey.ElasticMemoryMsgHandler.class :
+        edu.snu.cay.services.em.evaluator.impl.range.ElasticMemoryMsgHandler.class :
         edu.snu.cay.services.em.evaluator.impl.singlekey.ElasticMemoryMsgHandler.class;
 
     final Configuration networkConf = getNetworkConfigurationBuilder()

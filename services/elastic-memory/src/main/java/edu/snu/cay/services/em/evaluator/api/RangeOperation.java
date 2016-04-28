@@ -27,7 +27,7 @@ import java.util.NavigableMap;
  * @param <K> a type of data key
  * @param <V> a type of data value
  */
-public interface RangeKeyOperation<K, V> extends DataOperation {
+public interface RangeOperation<K, V> extends DataOperation {
 
   /**
    * @return a range of data keys
