@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.ns;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.ns.parameters.EMCodec;
+import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
 import edu.snu.cay.services.em.ns.parameters.EMMessageHandler;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;
@@ -31,7 +32,6 @@ import org.apache.reef.wake.remote.Codec;
 import javax.inject.Inject;
 
 public final class EMNetworkSetup {
-  private static final String EM_IDENTIFIER = "EM";
 
   private final NetworkConnectionService networkConnectionService;
   private final Identifier connectionFactoryIdentifier;
@@ -44,10 +44,10 @@ public final class EMNetworkSetup {
       final NetworkConnectionService networkConnectionService,
       final IdentifierFactory identifierFactory,
       @Parameter(EMCodec.class) final Codec<AvroElasticMemoryMessage> codec,
-      @Parameter(EMMessageHandler.class) final EventHandler<Message<AvroElasticMemoryMessage>> handler
-  ) throws NetworkException {
+      @Parameter(EMMessageHandler.class) final EventHandler<Message<AvroElasticMemoryMessage>> handler,
+      @Parameter(EMIdentifier.class) final String identifier) throws NetworkException {
     this.networkConnectionService = networkConnectionService;
-    this.connectionFactoryIdentifier = identifierFactory.getNewInstance(EM_IDENTIFIER);
+    this.connectionFactoryIdentifier = identifierFactory.getNewInstance(identifier);
     this.codec = codec;
     this.handler = handler;
   }

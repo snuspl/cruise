@@ -554,6 +554,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
       throw new RuntimeException("Different list sizes: ids " + ids.size() + ", values " + values.size());
     }
 
+    final long startTime = System.currentTimeMillis();
+
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
     final List<LongRange> longRangeList = new ArrayList<>(LongRangeUtils.generateDenseLongRanges(new TreeSet<>(ids)));
@@ -682,13 +684,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   @Override
   public <V> Map<Long, V> getRange(final String dataType, final Long startId, final Long endId) {
 
+    final long startTime = System.currentTimeMillis();
     final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
     final RangeOperation<Long, V> operation = new RangeOperationImpl<>(Optional.<String>empty(), operationId,
         DataOpType.GET, dataType, new Pair<>(startId, endId), Optional.<NavigableMap<Long, V>>empty());
 
     executeOperation(operation);
-
+    LOG.log(Level.SEVERE, "Get took {0} ms.", System.currentTimeMillis() - startTime);
     return operation.getOutputData();
   }
 

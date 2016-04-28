@@ -18,31 +18,41 @@ package edu.snu.cay.async;
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
+import edu.snu.cay.services.em.driver.EMWrapper;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
+import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
+import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import edu.snu.cay.services.em.ns.EMNetworkSetup;
+import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
 import edu.snu.cay.utils.trace.HTrace;
 import edu.snu.cay.utils.trace.HTraceParameters;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
@@ -63,6 +73,8 @@ final class AsyncDolphinDriver {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinDriver.class.getName());
   private static final String WORKER_CONTEXT = "WorkerContext";
   private static final String SERVER_CONTEXT = "ServerContext";
+  private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
+  private static final String SERVER_EM_IDENTIFIER = "ServerEM";
 
   /**
    * Evaluator Manager, a unified path for requesting evaluators.
@@ -100,7 +112,6 @@ final class AsyncDolphinDriver {
   /**
    * Accessor for configurations of elastic memory service.
    */
-  private final ElasticMemoryConfiguration emConf;
 
   /**
    * Class providing a configuration for HTrace.
@@ -143,11 +154,35 @@ final class AsyncDolphinDriver {
    */
   private final int numWorkerThreads;
 
+  private final IdentifierFactory identifierFactory;
+
+  private final String driverId;
+
+  /**
+   * A Wrapper object of ElasticMemory for Workers.
+   */
+//  private final EMWrapper workerEM;
+
+  /**
+   * A Wrapper object of ElasticMemory for Servers.
+   */
+//  private final EMWrapper serverEM;
+
+  private final ElasticMemory workerMemory;
+  private final ElasticMemory serverMemory;
+  private final EMNetworkSetup workerSetup;
+  private final EMNetworkSetup serverSetup;
+  private final ElasticMemoryConfiguration workerEmConf;
+  private final ElasticMemoryConfiguration serverEmConf;
+
+
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
+                             final Injector injector,
                              final ParameterServerDriver psDriver,
-                             final ElasticMemoryConfiguration emConf,
+                             final IdentifierFactory identifierFactory,
+                             @Parameter(DriverIdentifier.class) final String driverId,
                              final AggregationManager aggregationManager,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
@@ -162,7 +197,8 @@ final class AsyncDolphinDriver {
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.initServerCount = numServers;
     this.psDriver = psDriver;
-    this.emConf = emConf;
+    this.identifierFactory = identifierFactory;
+    this.driverId = driverId;
     this.aggregationManager = aggregationManager;
     this.runningWorkerContextCount = new AtomicInteger(0);
     this.runningServerContextCount = new AtomicInteger(0);
@@ -173,6 +209,28 @@ final class AsyncDolphinDriver {
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
     this.numWorkerThreads = numWorkerThreads;
     this.traceParameters = traceParameters;
+
+    final Injector workerInjector = injector.forkInjector();
+    final Injector serverInjector = injector.forkInjector();
+
+    try {
+      workerInjector.bindVolatileParameter(EMIdentifier.class, WORKER_EM_IDENTIFIER);
+      this.workerEmConf = workerInjector.getInstance(ElasticMemoryConfiguration.class);
+      this.workerSetup = workerInjector.getInstance(EMNetworkSetup.class);
+      this.workerMemory = workerInjector.getInstance(ElasticMemory.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
+    }
+
+    try {
+      serverInjector.bindVolatileParameter(EMIdentifier.class, SERVER_EM_IDENTIFIER);
+      this.serverEmConf = serverInjector.getInstance(ElasticMemoryConfiguration.class);
+      this.serverSetup = serverInjector.getInstance(EMNetworkSetup.class);
+      this.serverMemory = serverInjector.getInstance(ElasticMemory.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
+    }
+
   }
 
   final class StartHandler implements EventHandler<StartTime> {
@@ -192,6 +250,25 @@ final class AsyncDolphinDriver {
       contextActiveHandlersForWorker.add(getSecondContextActiveHandlerForWorker());
       evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
           evalAllocHandlerForWorker, contextActiveHandlersForWorker);
+
+//      workerEM.getNetworkSetup().registerConnectionFactory(identifierFactory.getNewInstance(driverId));
+//      serverEM.getNetworkSetup().registerConnectionFactory(identifierFactory.getNewInstance(driverId));
+      workerSetup.registerConnectionFactory(identifierFactory.getNewInstance(driverId));
+      serverSetup.registerConnectionFactory(identifierFactory.getNewInstance(driverId));
+      LOG.log(Level.SEVERE, "both setup");
+      try {
+//        workerEM.getInstance().checkpoint("");
+        workerMemory.checkpoint("");
+      } catch (final NotImplementedException e) {
+         LOG.log(Level.INFO, "SUCCESS");
+      }
+
+      try {
+//        serverEM.getInstance().checkpoint("");
+        serverMemory.checkpoint("");
+      } catch (final NotImplementedException e) {
+         LOG.log(Level.INFO, "SUCCESS");
+      }
     }
 
     /**
@@ -240,8 +317,13 @@ final class AsyncDolphinDriver {
               ContextConfiguration.CONF
                   .set(ContextConfiguration.IDENTIFIER, contextId)
                   .build(),
-              psDriver.getContextConfiguration());
-          final Configuration serviceConf = Configurations.merge(psDriver.getServerServiceConfiguration());
+              psDriver.getContextConfiguration(),
+//              serverEM.getConf().getContextConfiguration());
+              serverEmConf.getContextConfiguration());
+          final Configuration serviceConf = Configurations.merge(
+              psDriver.getServerServiceConfiguration(),
+//              serverEM.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
+              serverEmConf.getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
           final Configuration traceConf = traceParameters.getConfiguration();
 
           activeContext.submitContextAndService(contextConf,
@@ -280,11 +362,14 @@ final class AsyncDolphinDriver {
               ContextConfiguration.CONF
                   .set(ContextConfiguration.IDENTIFIER, contextId)
                   .build(),
-              psDriver.getContextConfiguration(), emConf.getContextConfiguration(),
+              psDriver.getContextConfiguration(),
+//              workerEM.getConf().getContextConfiguration(),
+              workerEmConf.getContextConfiguration(),
               aggregationManager.getContextConfiguration());
           final Configuration serviceConf = Configurations.merge(
               psDriver.getWorkerServiceConfiguration(),
-              emConf.getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
+//              workerEM.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
+              workerEmConf.getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
               aggregationManager.getServiceConfigurationWithoutNameResolver());
           final Configuration traceConf = traceParameters.getConfiguration();
           final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
