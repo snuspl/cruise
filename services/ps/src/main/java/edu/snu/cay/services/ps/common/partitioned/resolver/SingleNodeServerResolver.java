@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.common.partitioned.resolver;
 
+import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import org.apache.reef.tang.annotations.Parameter;
@@ -22,6 +23,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Resolves to the single server node defined by {@link ServerId}.
@@ -67,5 +69,10 @@ public final class SingleNodeServerResolver implements ServerResolver {
   @Override
   public List<Integer> getPartitions(final String server) {
     return partitions;
+  }
+
+  @Override
+  public void updateRoutingTable(final RoutingInfo routingInfo) {
+    throw new UnsupportedOperationException("This method is only for the dynamic partitioned PS");
   }
 }

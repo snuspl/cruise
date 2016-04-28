@@ -15,11 +15,22 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
+import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.avro.RoutingTableReqMsg;
+import edu.snu.cay.services.ps.avro.RoutingTableRespMsg;
+import edu.snu.cay.utils.SingleMessageExtractor;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,15 +40,48 @@ import java.util.logging.Logger;
  * {@link edu.snu.cay.services.ps.server.partitioned.DynamicPartitionedParameterServer} and
  * {@link edu.snu.cay.services.ps.worker.partitioned.DynamicServerResolver}.
  */
+@DriverSide
 public class PSMessageHandler implements EventHandler<Message<AvroParameterServerMsg>> {
   private static final Logger LOG = Logger.getLogger(PSMessageHandler.class.getName());
+  private final ElasticMemory elasticMemory;
+  private final InjectionFuture<PSMessageSender> sender;
 
   @Inject
-  private PSMessageHandler() {
+  private PSMessageHandler(final ElasticMemory elasticMemory,
+                           final InjectionFuture<PSMessageSender> sender) {
+    this.elasticMemory = elasticMemory;
+    this.sender = sender;
   }
 
   @Override
   public void onNext(final Message<AvroParameterServerMsg> avroParameterServerMsgMessage) {
-    LOG.log(Level.SEVERE, "Message has arrived. The content: {0}", avroParameterServerMsgMessage);
+    final String srcId = avroParameterServerMsgMessage.getSrcId().toString();
+
+    final AvroParameterServerMsg msg = SingleMessageExtractor.extract(avroParameterServerMsgMessage);
+    final RoutingInfo routingInfo = elasticMemory.getRoutingInfo();
+
+    final List<Integer> blockIds = new ArrayList<>(routingInfo.getBlockIdToStoreId().size());
+    final List<Integer> storeIds = new ArrayList<>(routingInfo.getBlockIdToStoreId().size());
+
+    for (final Map.Entry<Integer, Integer> entry : routingInfo.getBlockIdToStoreId().entrySet()) {
+      blockIds.add(entry.getKey());
+      storeIds.add(entry.getValue());
+    }
+
+    final RoutingTableRespMsg routingTableRespMsg = RoutingTableRespMsg.newBuilder()
+        .setBlockIds(blockIds)
+        .setMemoryStoreIds(storeIds)
+        .setEvalIdPrefix(routingInfo.getEvalPrefix())
+        .setBlockSize(routingInfo.getBlockSize())
+        .build();
+
+    final AvroParameterServerMsg responseMsg =
+        AvroParameterServerMsg.newBuilder()
+            .setRoutingTableRespMsg(routingTableRespMsg).build();
+
+    sender.get().send(srcId, responseMsg);
+    routingTableRespMsg.getMemoryStoreIds();
+    routingTableRespMsg.getBlockIds();
+
   }
 }

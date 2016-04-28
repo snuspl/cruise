@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.utils.LongRangeUtils;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.math.LongRange;
@@ -409,6 +410,10 @@ public final class PartitionManager {
         throw new RuntimeException(errorMsg);
       }
     }
+  }
+
+  RoutingInfo getRoutingInfo() {
+    return new RoutingInfo(blockIdToStoreId, evalIdPrefix, Long.MAX_VALUE / numTotalBlocks);
   }
 
   /**

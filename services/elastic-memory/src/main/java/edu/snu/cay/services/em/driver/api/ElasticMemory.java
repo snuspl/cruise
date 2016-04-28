@@ -119,4 +119,6 @@ public interface ElasticMemory {
    * @param evalId identifier of the evaluator whose state should be persisted
    */
   void checkpoint(String evalId);
+
+  RoutingInfo getRoutingInfo();
 }

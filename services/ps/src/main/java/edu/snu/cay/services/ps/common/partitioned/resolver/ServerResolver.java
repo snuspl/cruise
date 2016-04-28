@@ -15,7 +15,10 @@
  */
 package edu.snu.cay.services.ps.common.partitioned.resolver;
 
+import edu.snu.cay.services.em.driver.api.RoutingInfo;
+
 import java.util.List;
+import java.util.Map;
 
 /**
  * A ServerResolver that is queried for the mapping between hashed keys,
@@ -44,4 +47,10 @@ public interface ServerResolver {
    * @return List of global partition indices that are mapped to the server.
    */
   List<Integer> getPartitions(String server);
+
+  /**
+   * Update its routing table.
+   * Note that this method is supported only for the dynamic partitioned ParameterServer.
+   */
+  void updateRoutingTable(RoutingInfo routingInfo);
 }

@@ -15,10 +15,13 @@
  */
 package edu.snu.cay.services.ps.worker;
 
+import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
 import edu.snu.cay.services.ps.ParameterServerParameters.ValueCodecName;
 import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
 import edu.snu.cay.services.ps.avro.ReplyMsg;
+import edu.snu.cay.services.ps.avro.RoutingTableRespMsg;
+import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.Message;
@@ -27,6 +30,9 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -41,6 +47,8 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
    */
   private final AsyncWorkerHandler<K, V> asyncWorkerHandler;
 
+  private final ServerResolver serverResolver;
+
   /**
    * Codec for decoding PS keys.
    */
@@ -53,9 +61,11 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
 
   @Inject
   private WorkerSideMsgHandler(final AsyncWorkerHandler<K, V> asyncWorkerHandler,
-                               @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
+                               final ServerResolver serverResolver,
+                               @Parameter(KeyCodecName.class)final Codec<K> keyCodec,
                                @Parameter(ValueCodecName.class) final Codec<V> valueCodec) {
     this.asyncWorkerHandler = asyncWorkerHandler;
+    this.serverResolver = serverResolver;
     this.keyCodec = keyCodec;
     this.valueCodec = valueCodec;
   }
@@ -74,11 +84,29 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
       onReplyMsg(innerMsg.getReplyMsg());
       break;
 
+    case RoutingTableReplyMsg:
+      onRoutingTableReplyMsg(innerMsg.getRoutingTableRespMsg());
+
     default:
       throw new RuntimeException("Unexpected message type: " + innerMsg.getType().toString());
     }
 
     LOG.exiting(WorkerSideMsgHandler.class.getSimpleName(), "onNext");
+  }
+
+  private void onRoutingTableReplyMsg(final RoutingTableRespMsg routingTableRespMsg) {
+    final List<Integer> blockIds = routingTableRespMsg.getBlockIds();
+    final List<Integer> storeIds = routingTableRespMsg.getMemoryStoreIds();
+    final String evalIdPrefix = routingTableRespMsg.getEvalIdPrefix().toString();
+    final long blockSize = routingTableRespMsg.getBlockSize();
+
+    assert blockIds.size() == storeIds.size();
+
+    final Map<Integer, Integer> blockToStore = new HashMap<>(blockIds.size());
+    for (int i = 0; i < blockIds.size(); i++) {
+      blockToStore.put(blockIds.get(i), storeIds.get(i));
+    }
+    serverResolver.updateRoutingTable(new RoutingInfo(blockToStore, evalIdPrefix, blockSize));
   }
 
   private void onReplyMsg(final ReplyMsg replyMsg) {
