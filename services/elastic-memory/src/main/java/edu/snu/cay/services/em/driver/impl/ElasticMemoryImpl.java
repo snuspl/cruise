@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
@@ -185,5 +186,10 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public void checkpoint(final String evalId) {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public RoutingInfo getRoutingInfo() {
+    return partitionManager.getRoutingInfo();
   }
 }

@@ -15,36 +15,48 @@
  */
 package edu.snu.cay.services.ps.worker.partitioned;
 
+import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Unit;
 
 import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
 
 /**
  * Resolves the server based on Elastic Memory's ownership table. This implementation assumes that Elastic Memory
  * locates the data as follows:
  *    If h is the hashed value of the key, h is stored at block b where b's id = h / BLOCK_SIZE.
  */
-@Unit
 public class DynamicServerResolver implements ServerResolver {
+  private static final Logger LOG = Logger.getLogger(DynamicServerResolver.class.getName());
   private static final long INITIALIZATION_TIMEOUT_MS = 3000;
-  private final Map<Integer, String> blockToServer = new HashMap<>();
+
+  private final InjectionFuture<PartitionedWorkerMsgSender> sender;
+
+  private final Map<Integer, Integer> blockToServer = new HashMap<>();
+
+  private long blockSize = 0;
 
   private volatile boolean initialized = false;
 
   @Inject
-  private DynamicServerResolver() {
+  private DynamicServerResolver(final InjectionFuture<PartitionedWorkerMsgSender> sender) {
+    this.sender = sender;
   }
 
   @Override
   public String resolveServer(final int hash) {
     try {
-      synchronized (this) {
-        if (!initialized) {
-          // initRouter();
+      if (!initialized) {
+        synchronized (this) {
+          sender.get().sendRoutingTableRequestMsg();
           this.wait(INITIALIZATION_TIMEOUT_MS);
         }
       }
@@ -52,12 +64,8 @@ public class DynamicServerResolver implements ServerResolver {
       throw new RuntimeException("Failed to initialize routing table for resolving server", e);
     }
 
-    final int blockId = getBlockId(hash);
-    return blockToServer.get(blockId);
-  }
-
-  private int getBlockId(final int hash) {
-    return -1;
+    final int blockId = (int) (hash / blockSize);
+    return SERVER_ID_PREFIX + blockToServer.get(blockId);
   }
 
   @Override
@@ -73,9 +81,15 @@ public class DynamicServerResolver implements ServerResolver {
   /**
    * Initialize the router to lookup.
    */
-  private void initRouter() {
-    // deserialize.
-    // init router
+  @SuppressWarnings("unchecked")
+  @Override
+  public void updateRoutingTable(final RoutingInfo routingInfo) {
+    final Map<Integer, Integer> routingTable = routingInfo.getBlockIdToStoreId();
+    this.blockSize = routingInfo.getBlockSize();
+    this.blockToServer.putAll(routingTable);
     initialized = true;
+    synchronized (this) {
+      notify();
+    }
   }
 }
