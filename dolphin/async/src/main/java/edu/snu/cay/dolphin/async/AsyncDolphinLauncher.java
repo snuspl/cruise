@@ -40,6 +40,7 @@ import edu.snu.cay.services.ps.driver.impl.dynamic.DynamicPSManager;
 import edu.snu.cay.services.ps.driver.impl.fixed.StaticPSManager;
 import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
+import edu.snu.cay.services.ps.server.parameters.ServerLogPeriod;
 import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
 import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
@@ -240,6 +241,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(NumPartitions.class);
     basicParameterClassList.add(ServerNumThreads.class);
     basicParameterClassList.add(ServerQueueSize.class);
+    basicParameterClassList.add(ServerLogPeriod.class);
     basicParameterClassList.add(ParameterWorkerNumThreads.class);
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
