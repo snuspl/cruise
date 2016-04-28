@@ -296,7 +296,7 @@ public final class AsyncDolphinLauncher {
         .build();
 
     return Configurations.merge(driverConfWithDataLoad,
-        ElasticMemoryConfiguration.getDriverConfiguration(),
+        ElasticMemoryConfiguration.getDriverConfigurationWithoutRegisterDriver(),
         ParameterServerDriver.getDriverConfiguration(),
         aggregationServiceConf.getDriverConfiguration(),
         HTraceParameters.getStaticConfiguration(),

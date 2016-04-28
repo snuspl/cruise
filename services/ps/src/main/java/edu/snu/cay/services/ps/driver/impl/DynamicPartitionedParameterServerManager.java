@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.aggregation.driver.AggregationMaster;
 import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
@@ -70,10 +69,8 @@ import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
  *
  * This manager does NOT handle server or worker faults.
  */
-@Unit
 @DriverSide
 public final class DynamicPartitionedParameterServerManager implements ParameterServerManager {
-  public static final String AGGREGATION_CLIENT_NAME = DynamicPartitionedParameterServerManager.class.getName();
 
   private final int numServers;
   private final int numPartitions;
@@ -81,46 +78,18 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
   private final int queueSize;
   private final AtomicInteger workerCount;
   private final AtomicInteger serverCount;
-  private final AggregationMaster aggregationMaster;
-  private final ElasticMemoryConfiguration emConf;
 
   @Inject
   private DynamicPartitionedParameterServerManager(@Parameter(NumServers.class)final int numServers,
                                                    @Parameter(NumPartitions.class) final int numPartitions,
                                                    @Parameter(ServerNumThreads.class) final int serverNumThreads,
-                                                   @Parameter(ServerQueueSize.class) final int queueSize,
-                                                   final AggregationMaster aggregationMaster,
-                                                   final NameServer nameServer,
-                                                   final LocalAddressProvider localAddressProvider,
-                                                   final IdentifierFactory identifierFactory,
-                                                   @Parameter(NameResolverNameServerAddr.class)
-                                                     final String nameServerAddr,
-                                                   @Parameter(NameResolverNameServerPort.class)
-                                                     final int nameServerPort,
-                                                   @Parameter(DriverIdentifier.class)final String driverId,
-                                                   @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
-                                                   @Parameter(NumStoreThreads.class) final int numStoreThreads)
-      throws InjectionException {
+                                                   @Parameter(ServerQueueSize.class) final int queueSize) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.serverNumThreads = serverNumThreads;
     this.queueSize = queueSize;
     this.workerCount = new AtomicInteger(0);
     this.serverCount = new AtomicInteger(0);
-    this.aggregationMaster = aggregationMaster;
-
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(NameServer.class, nameServer);
-    injector.bindVolatileInstance(IdentifierFactory.class, identifierFactory);
-    injector.bindVolatileInstance(LocalAddressProvider.class, localAddressProvider);
-    injector.bindVolatileParameter(NameResolverNameServerAddr.class, nameServerAddr);
-    injector.bindVolatileParameter(NameResolverNameServerPort.class, nameServerPort);
-    injector.bindVolatileParameter(DriverIdentifier.class, driverId);
-    injector.bindVolatileParameter(NumTotalBlocks.class, numTotalBlocks);
-    injector.bindVolatileParameter(NumStoreThreads.class, numStoreThreads);
-    final PartitionManager partitionManager = injector.forkInjector().getInstance(PartitionManager.class);
-    injector.bindVolatileInstance(PartitionManager.class, partitionManager);
-    this.emConf = injector.getInstance(ElasticMemoryConfiguration.class);
   }
 
   /**
@@ -153,7 +122,6 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
     final int serverIndex = serverCount.getAndIncrement();
 
     return Configurations.merge(
-        emConf.getServiceConfigurationWithoutNameResolver(SERVER_ID_PREFIX + serverIndex, numServers),
         Tang.Factory.getTang().newConfigurationBuilder(
             ServiceConfiguration.CONF
                 .set(ServiceConfiguration.SERVICES, DynamicPartitionedParameterServer.class)
@@ -167,18 +135,5 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
             .bindNamedParameter(ServerNumThreads.class, Integer.toString(serverNumThreads))
             .bindNamedParameter(ServerQueueSize.class, Integer.toString(queueSize))
             .build());
-  }
-
-  /**
-   * Handles the message from ParameterWorkers for synchronizing ownership table.
-   * Sends the global routing table.
-   */
-  public class MessageHandler implements EventHandler<AggregationMessage> {
-    @Override
-    public void onNext(final AggregationMessage aggregationMessage) {
-      Logger.getLogger(MessageHandler.class.getName()).log(Level.SEVERE, "Received message from {0}",
-          aggregationMessage.getSourceId());
-      aggregationMaster.send(AGGREGATION_CLIENT_NAME, aggregationMessage.getSourceId().toString(), new byte[0]);
-    }
   }
 }

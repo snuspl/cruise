@@ -19,6 +19,7 @@ import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
+import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,6 +31,10 @@ import java.util.logging.Logger;
  */
 public class PSMessageHandler implements EventHandler<Message<AvroParameterServerMsg>> {
   private static final Logger LOG = Logger.getLogger(PSMessageHandler.class.getName());
+
+  @Inject
+  private PSMessageHandler() {
+  }
 
   @Override
   public void onNext(final Message<AvroParameterServerMsg> avroParameterServerMsgMessage) {
