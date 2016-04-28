@@ -280,7 +280,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     }
 
     /**
-     * Returns a number of data in a block.
+     * Returns the number of data in a block.
      * It is for supporting getNumUnits method of MemoryStore.
      */
     private int getNumUnits() {
@@ -293,7 +293,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
    */
   @Override
   public void onNext(final DataOperation dataOperation) {
-    final SingleKeyOperation<K, Object> operation = (SingleKeyOperationImpl<K, Object>) dataOperation;
+    final SingleKeyOperation<K, Object> operation = (SingleKeyOperation<K, Object>) dataOperation;
     final String dataType = operation.getDataType();
 
     // progress when there're blocks for dataType

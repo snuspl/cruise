@@ -348,7 +348,7 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
     }
 
     /**
-     * Returns a number of data in a block.
+     * Returns the number of data in a block.
      * It is for supporting getNumUnits method of MemoryStore.
      */
     private int getNumUnits() {
