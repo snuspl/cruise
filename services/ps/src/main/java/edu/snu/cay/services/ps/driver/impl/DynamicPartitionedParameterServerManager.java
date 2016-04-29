@@ -20,6 +20,8 @@ import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.driver.impl.PartitionManager;
+import edu.snu.cay.services.em.evaluator.api.BlockResolver;
+import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
@@ -134,6 +136,7 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
             .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
             .bindNamedParameter(ServerNumThreads.class, Integer.toString(serverNumThreads))
             .bindNamedParameter(ServerQueueSize.class, Integer.toString(queueSize))
+            .bindImplementation(BlockResolver.class, HashBlockResolver.class)
             .build());
   }
 }
