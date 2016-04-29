@@ -49,7 +49,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
   /**
    * This map uses data types, represented as strings, for keys and inner map for values.
-   * Each inner map serves as a collection of data of the same data type, which is compose of multiple Blocks.
+   * Each inner map serves as a collection of data of the same data type, which is composed of multiple Blocks.
    * Each inner map maintains mapping between a Block id and Block itself.
    */
   private final Map<String, Map<Integer, Block>> typeToBlocks = new HashMap<>();
@@ -106,8 +106,8 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
     final Map<Integer, Block> initialBlocks = new HashMap<>();
     // We don't need to lock router because this method is already synchronized.
-    for (final int blockIdx : router.getInitialLocalBlockIds()) {
-      initialBlocks.put(blockIdx, new Block());
+    for (final int blockId : router.getInitialLocalBlockIds()) {
+      initialBlocks.put(blockId, new Block());
     }
 
     // must put initialBlocks into typeToBlocks after completely initialize it

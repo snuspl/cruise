@@ -120,8 +120,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final Map<Integer, Block> initialBlocks = new HashMap<>();
     // We don't need to lock router because this method is already synchronized.
-    for (final int blockIdx : router.getInitialLocalBlockIds()) {
-      initialBlocks.put(blockIdx, new Block());
+    for (final int blockId : router.getInitialLocalBlockIds()) {
+      initialBlocks.put(blockId, new Block());
     }
 
     // must put initialBlocks into typeToBlocks after completely initialize it
