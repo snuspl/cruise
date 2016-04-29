@@ -43,8 +43,13 @@ public final class MLRREEF {
         .addParameterClass(BatchSize.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
-        .addParameterClass(LossLogPeriod.class)
+        .addParameterClass(StatusLogPeriod.class)
         .addParameterClass(NumFeaturesPerPartition.class)
+        .addParameterClass(ModelGaussian.class)
+        .addParameterClass(DecayPeriod.class)
+        .addParameterClass(DecayRate.class)
+        .addParameterClass(TrainErrorDatasetSize.class)
+        .addParameterClass(NumBatchPerLossLog.class)
         .build());
   }
 
@@ -68,14 +73,33 @@ public final class MLRREEF {
   final class Lambda implements Name<Double> {
   }
 
-  @NamedParameter(doc = "number of iterations to wait until logging the loss value",
-                  short_name = "lossLogPeriod",
+  @NamedParameter(short_name = "statusLogPeriod",
                   default_value = "0")
-  final class LossLogPeriod implements Name<Integer> {
+  final class StatusLogPeriod implements Name<Integer> {
   }
 
   @NamedParameter(doc = "number of features for each model partition",
                   short_name = "featuresPerPartition")
   final class NumFeaturesPerPartition implements Name<Integer> {
+  }
+
+  @NamedParameter(short_name = "modelGaussian")
+  final class ModelGaussian implements Name<Double> {
+  }
+
+  @NamedParameter(short_name = "decayPeriod")
+  final class DecayPeriod implements Name<Integer> {
+  }
+
+  @NamedParameter(short_name = "decayRate")
+  final class DecayRate implements Name<Double> {
+  }
+
+  @NamedParameter(short_name = "trainErrorDatasetSize")
+  final class TrainErrorDatasetSize implements Name<Integer> {
+  }
+
+  @NamedParameter(short_name = "numBatchPerLossLog")
+  final class NumBatchPerLossLog implements Name<Integer> {
   }
 }
