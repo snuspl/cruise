@@ -133,6 +133,7 @@ public final class PartitionManager {
       storeIdToBlockIds.put(memoryStoreId, new HashSet<Integer>());
       for (int blockId = memoryStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
         storeIdToBlockIds.get(memoryStoreId).add(blockId);
+        blockIdToStoreId.put(blockId, memoryStoreId);
       }
     }
     return memoryStoreId;
