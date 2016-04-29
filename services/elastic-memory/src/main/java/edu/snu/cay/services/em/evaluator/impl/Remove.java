@@ -17,12 +17,15 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.annotations.audience.Private;
 
 import java.util.Collection;
 
 /**
  * Implementation of Update to remove the data from MemoryStore when apply() is called.
  */
+// TODO #463: Cleanup the data structures and methods for range-based move()
+@Private
 public final class Remove implements Update {
   private String dataType;
   private Collection<LongRange> ranges;

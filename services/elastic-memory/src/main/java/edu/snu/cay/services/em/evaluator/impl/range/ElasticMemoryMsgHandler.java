@@ -53,6 +53,7 @@ import java.util.logging.Logger;
  * Processes control message from the driver and data message from
  * other evaluators.
  */
+// TODO #451: Support range operation other than long type
 @EvaluatorSide
 @Private
 public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<AvroElasticMemoryMessage>> {

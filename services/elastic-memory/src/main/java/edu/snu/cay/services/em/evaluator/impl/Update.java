@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.evaluator.impl;
 
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import org.apache.commons.lang.math.LongRange;
+import org.apache.reef.annotations.audience.Private;
 
 import java.util.Collection;
 
@@ -24,6 +25,8 @@ import java.util.Collection;
  * Encapsulates an update of the MemoryStore's state.
  * The data is added or removed when apply() is called.
  */
+// TODO #463: Cleanup the data structures and methods for range-based move()
+@Private
 public interface Update {
   /**
    * Type of the Update.
