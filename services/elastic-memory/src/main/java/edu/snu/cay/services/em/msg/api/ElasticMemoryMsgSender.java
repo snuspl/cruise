@@ -15,9 +15,7 @@
  */
 package edu.snu.cay.services.em.msg.api;
 
-import edu.snu.cay.services.em.avro.DataOpType;
-import edu.snu.cay.services.em.avro.UnitIdPair;
-import edu.snu.cay.services.em.avro.UpdateResult;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.util.Optional;
@@ -46,9 +44,14 @@ public interface ElasticMemoryMsgSender {
                        final String destId,
                        final DataOpType operationType,
                        final String dataType,
-                       final List<LongRange> dataKeyRanges,
-                       final List<UnitIdPair> dataKVPairList,
+                       final List<KeyRange> dataKeyRanges,
+                       final List<KeyValuePair> dataKVPairList,
                        final String operationId,
+                       @Nullable final TraceInfo parentTraceInfo);
+
+  void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
+                       final String dataType, final DataKey dataKey,
+                       final DataValue dataValue, final String operationId,
                        @Nullable final TraceInfo parentTraceInfo);
 
   /**
@@ -56,8 +59,18 @@ public interface ElasticMemoryMsgSender {
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
   void sendRemoteOpResultMsg(final String destId,
-                             final List<UnitIdPair> dataKVPairList,
-                             final List<LongRange> failedRanges,
+                             final List<KeyValuePair> dataKVPairList,
+                             final List<KeyRange> failedRanges,
+                             final String operationId,
+                             @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Sends a RemoteOpResultMsg that contains the result of the data operation specified with {@code operationId}.
+   * Include {@code parentTraceInfo} to continue tracing this message.
+   */
+  void sendRemoteOpResultMsg(final String destId,
+                             final DataValue dataValue,
+                             final boolean isSuccess,
                              final String operationId,
                              @Nullable final TraceInfo parentTraceInfo);
 
@@ -89,10 +102,10 @@ public interface ElasticMemoryMsgSender {
                    final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
 
-   /**
+  /**
    * Sends a CtrlMsg to initiate moving data blocks to the source Evaluator.
    * @param destId id of the Evaluator that receives this message
-    *              (i.e., source Evaluator in terms of the data)
+   *              (i.e., source Evaluator in terms of the data)
    * @param dataType type of the data to move
    * @param targetEvalId id of the Evaluator that receives the data
    * @param blocks block ids to move

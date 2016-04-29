@@ -15,11 +15,13 @@
  */
 package edu.snu.cay.services.em.remote;
 
+import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.examples.remote.RemoteEMREEF;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -38,22 +40,40 @@ public class RemoteAccessTest {
   private static final int TIMEOUT_MS = 100000;
 
   @Test
-  public void runTest() throws InjectionException {
+  public void runSingleKeyAccessTest() throws InjectionException {
+    final boolean rangeSupport = false;
+    final LauncherStatus status = runTest(rangeSupport);
+
+    assertEquals(LauncherStatus.COMPLETED, status);
+  }
+
+  @Test
+  public void runRangeKeyAccessTest() throws InjectionException {
+    final boolean rangeSupport = true;
+    final LauncherStatus status = runTest(rangeSupport);
+
+    assertEquals(LauncherStatus.COMPLETED, status);
+  }
+
+  private LauncherStatus runTest(final boolean rangeSupport) throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
 
     final Configuration runtimeConf = LocalRuntimeConfiguration.CONF.build();
     final HTraceParameters traceParameters = getTraceParameters(injector);
     final Configuration traceConf = traceParameters.getConfiguration();
 
-    LauncherStatus status;
     try {
-      status = RemoteEMREEF.runRemoteEM(runtimeConf, traceConf, TIMEOUT_MS);
+      final Configuration jobConf = Configurations.merge(
+          Tang.Factory.getTang().newConfigurationBuilder()
+              .bindNamedParameter(RangeSupport.class, String.valueOf(rangeSupport))
+              .build(),
+          traceConf);
+      return RemoteEMREEF.runRemoteEM(runtimeConf, jobConf, TIMEOUT_MS);
     } catch (final InjectionException e) {
-      status = LauncherStatus.failed(e);
+      return LauncherStatus.failed(e);
     }
-
-    assertEquals(LauncherStatus.COMPLETED, status);
   }
+
 
   /**
    * Get HTraceParameters from the parsed command line Injector.

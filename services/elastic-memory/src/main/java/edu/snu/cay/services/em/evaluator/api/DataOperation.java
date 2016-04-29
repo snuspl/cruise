@@ -15,8 +15,45 @@
  */
 package edu.snu.cay.services.em.evaluator.api;
 
+import edu.snu.cay.services.em.avro.DataOpType;
+import org.apache.reef.util.Optional;
+
 /**
  * DataOperation handled in MemoryStore.
  */
-public interface DataOperation<K> {
+public interface DataOperation {
+
+  /**
+   * Returns an Optional with the id of evaluator that initially requested the operation.
+   * It returns empty when the operation is requested from a local client.
+   * @return an Optional with the id of evaluator that initially requested the operation
+   */
+  Optional<String> getOrigEvalId();
+
+  /**
+   * @return an operation id issued by its origin memory store
+   */
+  String getOpId();
+
+  /**
+   * @return a type of the operation
+   */
+  DataOpType getOpType();
+
+  /**
+   * @return a type of data
+   */
+  String getDataType();
+
+  /**
+   * @return true if the operation is requested from the local client
+   */
+  boolean isFromLocalClient();
+
+  /**
+   * Starts waiting for the completion of the operation within a bounded time.
+   * Sub classes should provide a way to wake it up.
+   * @param timeout a maximum waiting time in the milliseconds
+   */
+  boolean waitRemoteOps(long timeout) throws InterruptedException;
 }

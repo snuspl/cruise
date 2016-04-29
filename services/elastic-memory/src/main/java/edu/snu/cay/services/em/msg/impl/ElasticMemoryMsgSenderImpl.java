@@ -90,8 +90,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   @Override
   public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                              final String dataType, final List<LongRange> dataKeyRanges,
-                              final List<UnitIdPair> dataKVPairList, final String operationId,
+                              final String dataType, final List<KeyRange> dataKeyRanges,
+                              final List<KeyValuePair> dataKVPairList, final String operationId,
                               @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpMsgScope = Trace.startSpan(SEND_REMOTE_OP_MSG, parentTraceInfo)) {
 
@@ -101,29 +101,8 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
       // the operation begins with a local client, when the origId is null
       final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
 
-      final List<AvroLongRange> avroLongRangeList = new ArrayList<>(dataKeyRanges.size());
-      for (final LongRange range : dataKeyRanges) {
-        avroLongRangeList.add(AvroUtils.toAvroLongRange(range));
-      }
-
-      final RemoteOpMsg remoteOpMsg = RemoteOpMsg.newBuilder()
-          .setOrigEvalId(origEvalId)
-          .setOpType(operationType)
-          .setDataType(dataType)
-          .setDataKeyRanges(avroLongRangeList)
-          .setDataKVPairList(dataKVPairList)
-          .build();
-
-      send(destId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.RemoteOpMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(destId)
-              .setOperationId(operationId)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-              .setRemoteOpMsg(remoteOpMsg)
-              .build()
-      );
+      send(destId, generateRemoteOpMsg(origEvalId, destId, operationType, dataType,
+          dataKeyRanges, dataKVPairList, operationId, parentTraceInfo));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
           operationType, dataType});
@@ -131,36 +110,100 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendRemoteOpResultMsg(final String destId, final List<UnitIdPair> dataKVPairList,
-                                    final List<LongRange> failedRanges, final String operationId,
+  public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
+                              final String dataType, final DataKey dataKey,
+                              final DataValue dataValue, final String operationId,
+                              @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendRemoteOpMsgScope = Trace.startSpan(SEND_REMOTE_OP_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
+          operationType, dataType});
+
+      // the operation begins with a local client, when the origId is null
+      final String origEvalId = origId == null ? emNetworkSetup.getMyId().toString() : origId;
+
+      send(destId, generateRemoteOpMsg(origEvalId, destId, operationType, dataType,
+          dataKey, dataValue, operationId, parentTraceInfo));
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpMsg", new Object[]{destId,
+          operationType, dataType});
+    }
+  }
+
+  private AvroElasticMemoryMessage generateRemoteOpMsg(final String origId, final String destId,
+                                                       final DataOpType operationType, final String dataType,
+                                                       final Object dataKeys, final Object dataValues,
+                                                       final String operationId,
+                                                       @Nullable final TraceInfo parentTraceInfo) {
+    final RemoteOpMsg remoteOpMsg = RemoteOpMsg.newBuilder()
+        .setOrigEvalId(origId)
+        .setOpType(operationType)
+        .setDataType(dataType)
+        .setDataKeys(dataKeys)
+        .setDataValues(dataValues)
+        .build();
+
+    return AvroElasticMemoryMessage.newBuilder()
+        .setType(Type.RemoteOpMsg)
+        .setSrcId(emNetworkSetup.getMyId().toString())
+        .setDestId(destId)
+        .setOperationId(operationId)
+        .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+        .setRemoteOpMsg(remoteOpMsg)
+        .build();
+  }
+
+  @Override
+  public void sendRemoteOpResultMsg(final String destId, final List<KeyValuePair> dataKVPairList,
+                                    final List<KeyRange> failedRanges, final String operationId,
                                     @Nullable final TraceInfo parentTraceInfo) {
     try (final TraceScope sendRemoteOpResultMsgScope = Trace.startSpan(SEND_REMOTE_OP_RESULT_MSG, parentTraceInfo)) {
 
       LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
 
-      final List<AvroLongRange> avroLongRangeList = new ArrayList<>(failedRanges.size());
-      for (final LongRange range : failedRanges) {
-        avroLongRangeList.add(AvroUtils.toAvroLongRange(range));
-      }
-
-      final RemoteOpResultMsg remoteOpResultMsg = RemoteOpResultMsg.newBuilder()
-          .setDataKVPairList(dataKVPairList)
-          .setFailedKeyRanges(avroLongRangeList)
-          .build();
+      final boolean isSuccess = failedRanges.isEmpty();
 
       send(destId,
-          AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.RemoteOpResultMsg)
-              .setSrcId(emNetworkSetup.getMyId().toString())
-              .setDestId(destId)
-              .setOperationId(operationId)
-              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-              .setRemoteOpResultMsg(remoteOpResultMsg)
-              .build()
-      );
+          generateRemoteOpResultMsg(destId, dataKVPairList, isSuccess, failedRanges, operationId, parentTraceInfo));
 
       LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
     }
+  }
+
+  @Override
+  public void sendRemoteOpResultMsg(final String destId, final DataValue dataValue, final boolean isSuccess,
+                                    final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendRemoteOpResultMsgScope = Trace.startSpan(SEND_REMOTE_OP_RESULT_MSG, parentTraceInfo)) {
+
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
+
+      send(destId,
+          generateRemoteOpResultMsg(destId, dataValue, isSuccess, null, operationId, parentTraceInfo));
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRemoteOpResultMsg", destId);
+    }
+
+  }
+
+  private AvroElasticMemoryMessage generateRemoteOpResultMsg(final String destId,
+                                                             final Object dataValues, final boolean isSuccess,
+                                                             final List<KeyRange> failedRanges,
+                                                             final String operationId,
+                                                             @Nullable final TraceInfo parentTraceInfo) {
+    final RemoteOpResultMsg remoteOpResultMsg = RemoteOpResultMsg.newBuilder()
+        .setIsSuccess(isSuccess)
+        .setDataValues(dataValues)
+        .setFailedKeyRanges(failedRanges)
+        .build();
+
+    return AvroElasticMemoryMessage.newBuilder()
+        .setType(Type.RemoteOpResultMsg)
+        .setSrcId(emNetworkSetup.getMyId().toString())
+        .setDestId(destId)
+        .setOperationId(operationId)
+        .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+        .setRemoteOpResultMsg(remoteOpResultMsg)
+        .build();
   }
 
   @Override

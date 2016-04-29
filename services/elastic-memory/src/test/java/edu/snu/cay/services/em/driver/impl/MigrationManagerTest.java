@@ -15,10 +15,7 @@
  */
 package edu.snu.cay.services.em.driver.impl;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.DataOpType;
-import edu.snu.cay.services.em.avro.UnitIdPair;
-import edu.snu.cay.services.em.avro.UpdateResult;
+import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import org.apache.commons.lang.math.LongRange;
@@ -242,16 +239,29 @@ public class MigrationManagerTest {
 
     @Override
     public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final String dataType, final List<LongRange> dataKeyRanges,
-                                final List<UnitIdPair> dataKVPairList, final String operationId,
+                                final String dataType, final List<KeyRange> dataKeyRanges,
+                                final List<KeyValuePair> dataKVPairList, final String operationId,
                                 @Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendRemoteOpResultMsg(final String destId, final List<UnitIdPair> dataKVPairList,
-                                      final List<LongRange> failedRanges, final String operationId,
+    public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
+                                final String dataType, final DataKey dataKey, final DataValue dataValue,
+                                final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendRemoteOpResultMsg(final String destId, final List<KeyValuePair> dataKVPairList,
+                                      final List<KeyRange> failedRanges, final String operationId,
                                       @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendRemoteOpResultMsg(final String destId, final DataValue dataValue, final boolean isSuccess,
+                                      final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 
     }
 

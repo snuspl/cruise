@@ -43,9 +43,60 @@
   ]
 },
 
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "DataKey",
+  "fields":
+  [
+    {"name": "key", "type": "bytes"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "DataValue",
+  "fields":
+  [
+    {"name": "value", "type": "bytes"}
+  ]
+},
+
+/**
+ * A pair of a single data key and its value.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "KeyValuePair",
+  "fields":
+  [
+    {"name": "key", "type": "bytes"},
+    {"name": "value", "type": "bytes"}
+  ]
+},
+
+/**
+ * Avro version of data key range.
+ * Represents a range of data keys using the min and max values.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "KeyRange",
+  "fields":
+  [
+    {"name": "min", "type": "bytes"},
+    {"name": "max", "type": "bytes"}
+  ]
+},
+
 /**
  * An avro message format for sending a data operation to remote evaluator.
- * {@code dataValue} is used only for PUT operations.
+ * A type of {@code dataKeys} and {@code dataValues} is a union that can be used to
+ * represent operations both of a single key or range keys.
+ * {@code dataValues} is used only for PUT operations.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -56,14 +107,17 @@
     {"name": "origEvalId", "type": "string"},
     {"name": "opType", "type": {"type": "enum", "name": "DataOpType", "symbols": ["PUT", "GET", "REMOVE"]}},
     {"name": "dataType", "type": "string"},
-    {"name": "dataKeyRanges", "type": {"type": "array", "items": "AvroLongRange"}},
-    {"name": "dataKVPairList", "type": {"type": "array", "items": "UnitIdPair"}}
+    {"name": "dataKeys", "type": ["DataKey", {"type": "array", "items": "KeyRange"}]},
+    {"name": "dataValues", "type": ["null", "DataValue", {"type": "array", "items": "KeyValuePair"}]}
   ]
 },
 
 /**
  * An avro message format for sending a result of data operation to the source evaluator.
+ * A type of {@code dataValues} is a union that can be used to
+ * represent operations both of a single key or range keys.
  * {@code dataValue} is used only for GET and REMOVE operations.
+ * {@code failedKeyRanges} is used only for range key operation.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -71,8 +125,9 @@
   "name": "RemoteOpResultMsg",
   "fields":
   [
-    {"name": "dataKVPairList", "type": {"type": "array", "items": "UnitIdPair"}},
-    {"name": "failedKeyRanges", "type": {"type": "array", "items": "AvroLongRange"}}
+    {"name": "isSuccess", "type": "boolean"},
+    {"name": "dataValues", "type": ["null", "DataValue", {"type": "array", "items": "KeyValuePair"}]},
+    {"name": "failedKeyRanges", "type": ["null", {"type": "array", "items": "KeyRange"}], "default": null}
   ]
 },
 

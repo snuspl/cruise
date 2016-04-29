@@ -19,6 +19,7 @@ import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
@@ -82,6 +83,8 @@ final class RemoteEMTask implements Task {
 
   private List<Pair<String, Long>> testNameToTimeList = new LinkedList<>();
 
+  private final boolean rangeSupport;
+
   @Inject
   private RemoteEMTask(final MemoryStore<Long> memoryStore,
                        final OperationRouter<Long> router,
@@ -91,7 +94,8 @@ final class RemoteEMTask implements Task {
                        final DataIdFactory<Long> dataIdFactory,
                        @Parameter(NumInitialEvals.class) final int numInitialEvals,
                        @Parameter(MemoryStoreId.class) final int localMemoryStoreId,
-                       @Parameter(NumTotalBlocks.class) final int numTotalBlocks)
+                       @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
+                       @Parameter(RangeSupport.class) final boolean rangeSupport)
       throws InjectionException {
     this.memoryStore = memoryStore;
     this.router = router;
@@ -105,6 +109,8 @@ final class RemoteEMTask implements Task {
     this.prevRemoteStoreId = (localMemoryStoreId - 1 + numInitialEvals) % numInitialEvals;
     this.nextRemoteStoreId = (localMemoryStoreId + 1) % numInitialEvals;
     this.maxDataKey = Long.MAX_VALUE - Long.MAX_VALUE % (Long.MAX_VALUE / numTotalBlocks) - 1;
+
+    this.rangeSupport = rangeSupport;
   }
 
   /**
@@ -161,16 +167,19 @@ final class RemoteEMTask implements Task {
 
     LOG.info("RemoteEMTask commencing...");
 
-    runTest(new TestRandomPutGetRemove());
+    if (rangeSupport) {
+      runTest(new TestRandomPutGetRemove());
+      runTest(new TestMultiThreadRemotePutRange());
+      runTest(new TestMultiThreadRemotePutGetRange());
+      runTest(new TestMultiThreadRemotePutGetRemoveRange());
+      runTest(new TestMultiThreadLocalPut());
+      runTest(new TestSimpleScenario());
+    }
+
     runTest(new TestMultiThreadRemotePutSingle());
-    runTest(new TestMultiThreadRemotePutRange());
     runTest(new TestMultiThreadRemotePutGetSingle());
-    runTest(new TestMultiThreadRemotePutGetRange());
     runTest(new TestMultiThreadRemotePutGetRemoveSingle());
-    runTest(new TestMultiThreadRemotePutGetRemoveRange());
-    runTest(new TestMultiThreadLocalPut());
     runTest(new TestMultiThreadRelayedPutSingle());
-    runTest(new TestSimpleScenario());
 
     printResult();
 
