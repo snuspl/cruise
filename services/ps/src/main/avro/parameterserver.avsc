@@ -62,7 +62,6 @@
   [
     {"name": "blockIds", "type": {"type": "array", "items": "int"}},
     {"name": "memoryStoreIds", "type": {"type": "array", "items": "int"}},
-    {"name": "evalIdPrefix", "type": "string"},
     {"name": "blockSize", "type": "long"}
   ]
 },

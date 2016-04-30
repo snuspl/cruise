@@ -413,8 +413,11 @@ public final class PartitionManager {
     }
   }
 
+  /**
+   * @return the global Routing information that which blocks exist in which MemoryStores.
+   */
   RoutingInfo getRoutingInfo() {
-    return new RoutingInfo(blockIdToStoreId, evalIdPrefix, Long.MAX_VALUE / numTotalBlocks);
+    return new RoutingInfo(blockIdToStoreId, Long.MAX_VALUE / numTotalBlocks);
   }
 
   /**

@@ -50,9 +50,7 @@ public class PSMessageHandler implements EventHandler<Message<AvroParameterServe
 
   @Inject
   private PSMessageHandler(final InjectionFuture<PSMessageSender> sender,
-                           final Injector injector,
                            final ElasticMemory elasticMemory) {
-    LOG.log(Level.SEVERE, "PSMessageHandler is created by {0}", injector);
     this.elasticMemory = elasticMemory;
     this.sender = sender;
   }
@@ -76,7 +74,6 @@ public class PSMessageHandler implements EventHandler<Message<AvroParameterServe
       final RoutingTableRespMsg routingTableRespMsg = RoutingTableRespMsg.newBuilder()
           .setBlockIds(blockIds)
           .setMemoryStoreIds(storeIds)
-          .setEvalIdPrefix(routingInfo.getEvalPrefix())
           .setBlockSize(routingInfo.getBlockSize())
           .build();
 

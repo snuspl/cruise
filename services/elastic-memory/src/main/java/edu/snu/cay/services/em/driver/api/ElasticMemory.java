@@ -120,5 +120,8 @@ public interface ElasticMemory {
    */
   void checkpoint(String evalId);
 
+  /**
+   * @return the global Routing information that which blocks exist in which MemoryStores.
+   */
   RoutingInfo getRoutingInfo();
 }

@@ -415,8 +415,6 @@ public final class DolphinDriver {
       contextActiveHandlersForComputeTask.add(getSubmittingTaskHandler());
       evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
           evalAllocHandlerForComputeTask, contextActiveHandlersForComputeTask);
-
-
     }
 
     /**
