@@ -101,7 +101,7 @@ public final class PartitionedWorkerMsgSender<K, P> {
             .build());
   }
 
-  void sendRoutingTableRequestMsg() {
+  public void sendRoutingTableRequestMsg() {
     final RoutingTableReqMsg routingTableReqMsg = RoutingTableReqMsg.newBuilder()
         .build();
     send(driverIdentifier,

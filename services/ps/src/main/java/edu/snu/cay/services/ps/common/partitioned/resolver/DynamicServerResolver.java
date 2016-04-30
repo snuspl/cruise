@@ -13,18 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.worker.partitioned;
+package edu.snu.cay.services.ps.common.partitioned.resolver;
 
 import edu.snu.cay.services.em.driver.api.RoutingInfo;
-import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
+import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerMsgSender;
 import org.apache.reef.tang.InjectionFuture;
-import org.apache.reef.tang.annotations.Unit;
 
 import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
