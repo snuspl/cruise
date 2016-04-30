@@ -110,20 +110,4 @@ public final class PartitionedWorkerMsgSender<K, P> {
             .setRoutingTableReqMsg(routingTableReqMsg)
             .build());
   }
-
-  void sendRoutingTableResponseMsg(final String destId,
-                                   final String evalIdPrefix,
-                                   final List<Integer> blockIds,
-                                   final List<Integer> storeIds) {
-    final RoutingTableRespMsg routingTableRespMsg = RoutingTableRespMsg.newBuilder()
-        .setBlockIds(blockIds)
-        .setMemoryStoreIds(storeIds)
-        .setEvalIdPrefix(evalIdPrefix)
-        .build();
-    send(destId,
-        AvroParameterServerMsg.newBuilder()
-        .setType(Type.RoutingTableReplyMsg)
-        .setRoutingTableRespMsg(routingTableRespMsg)
-        .build());
-  }
 }

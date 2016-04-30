@@ -25,14 +25,10 @@ import java.util.Map;
 @Private
 public final class RoutingInfo {
   private final Map<Integer, Integer> blockIdToStoreId;
-  private final String evalPrefix;
   private final long blockSize;
 
-  public RoutingInfo(final Map<Integer, Integer> blockIdToStoreId,
-                     final String evalPrefix,
-                     final long blockSize) {
+  public RoutingInfo(final Map<Integer, Integer> blockIdToStoreId, final long blockSize) {
     this.blockIdToStoreId = blockIdToStoreId;
-    this.evalPrefix = evalPrefix;
     this.blockSize = blockSize;
   }
 
@@ -48,13 +44,5 @@ public final class RoutingInfo {
    */
   public long getBlockSize() {
     return blockSize;
-  }
-
-  /**
-   * @return The prefix that is used to convert memory store id to evaluator id.
-   */
-  public String getEvalPrefix() {
-
-    return evalPrefix;
   }
 }

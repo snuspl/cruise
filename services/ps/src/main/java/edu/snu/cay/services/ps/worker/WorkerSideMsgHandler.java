@@ -98,7 +98,6 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   private void onRoutingTableReplyMsg(final RoutingTableRespMsg routingTableRespMsg) {
     final List<Integer> blockIds = routingTableRespMsg.getBlockIds();
     final List<Integer> storeIds = routingTableRespMsg.getMemoryStoreIds();
-    final String evalIdPrefix = routingTableRespMsg.getEvalIdPrefix().toString();
     final long blockSize = routingTableRespMsg.getBlockSize();
 
     assert blockIds.size() == storeIds.size();
@@ -107,7 +106,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     for (int i = 0; i < blockIds.size(); i++) {
       blockToStore.put(blockIds.get(i), storeIds.get(i));
     }
-    serverResolver.updateRoutingTable(new RoutingInfo(blockToStore, evalIdPrefix, blockSize));
+    serverResolver.updateRoutingTable(new RoutingInfo(blockToStore, blockSize));
   }
 
   private void onReplyMsg(final ReplyMsg replyMsg) {
