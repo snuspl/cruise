@@ -470,7 +470,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
       try {
         queue.put(op);
       } catch (final InterruptedException e) {
-        LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
+        LOG.log(Level.FINEST, "Enqueue failed with InterruptedException", e);
         return;
       }
     }
@@ -508,7 +508,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
           }
           op.apply(kvCache);
         } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+          LOG.log(Level.FINEST, "Poll failed with InterruptedException", e);
           continue;
         }
 

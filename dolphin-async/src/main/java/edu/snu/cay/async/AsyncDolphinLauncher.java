@@ -27,7 +27,9 @@ import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
+import edu.snu.cay.services.ps.driver.impl.DynamicPartitionedParameterServerManager;
 import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
+import edu.snu.cay.services.ps.server.partitioned.DynamicPartitionedParameterServer;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
@@ -119,7 +121,7 @@ public final class AsyncDolphinLauncher {
 
       // configuration for the parameter server
       final Configuration parameterServerConf = ParameterServerConfigurationBuilder.newBuilder()
-          .setManagerClass(PartitionedParameterServerManager.class)
+          .setManagerClass(DynamicPartitionedParameterServerManager.class)
           .setUpdaterClass(asyncDolphinConfiguration.getUpdaterClass())
           .setKeyCodecClass(asyncDolphinConfiguration.getKeyCodecClass())
           .setPreValueCodecClass(asyncDolphinConfiguration.getPreValueCodecClass())
