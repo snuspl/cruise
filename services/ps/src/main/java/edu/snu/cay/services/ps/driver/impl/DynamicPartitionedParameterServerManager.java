@@ -111,6 +111,7 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
             ServiceConfiguration.CONF
                 .set(ServiceConfiguration.SERVICES, DynamicPartitionedParameterServer.class)
                 .build())
+            .bindImplementation(PartitionedParameterServer.class, DynamicPartitionedParameterServer.class)
             .bindImplementation(PartitionedServerSideReplySender.class, PartitionedServerSideReplySenderImpl.class)
             .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + serverIndex)
             .bindNamedParameter(PSMessageHandler.class, PartitionedServerSideMsgHandler.class)

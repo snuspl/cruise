@@ -18,6 +18,7 @@ package edu.snu.cay.services.ps;
 import edu.snu.cay.services.ps.ParameterServerParameters.*;
 import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
 import org.apache.reef.tang.Configuration;

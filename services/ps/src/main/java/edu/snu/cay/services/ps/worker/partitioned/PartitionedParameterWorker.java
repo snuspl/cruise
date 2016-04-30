@@ -20,6 +20,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
+import edu.snu.cay.services.ps.server.partitioned.StaticPartitionedParameterServer;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
@@ -411,7 +412,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   /**
    * A partition for the cache on the Worker.
    * The basic structure is similar to the partition for the Server at
-   * {@link edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer}.
+   * {@link StaticPartitionedParameterServer}.
    *
    * The partitions at the Worker can be independent of the partitions at the Server. In other words,
    * the number of worker-side partitions does not have to be equal to the number of server-side partitions.
