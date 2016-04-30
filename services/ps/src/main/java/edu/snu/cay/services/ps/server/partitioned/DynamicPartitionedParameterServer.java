@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
+import org.apache.commons.collections.functors.ExceptionPredicate;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -131,8 +132,8 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
   public void push(final K key, final P preValue, final int keyHash) {
     final int blockId = blockResolver.resolveBlock(key);
     final int threadId = threadResolver.resolveThread(blockId);
-    LOG.log(Level.INFO, "Enqueue push request for {0} in block: {1} / thread: {2}",
-        new Object[] {key, blockId, threadId});
+    LOG.log(Level.FINEST, "Enqueue push request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
+        new Object[] {key, blockId, threadId, keyHash});
     threads.get(threadId).enqueue(new PushOp(key, preValue));
   }
 
@@ -149,8 +150,8 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
   public void pull(final K key, final String srcId, final int keyHash) {
     final int blockId = blockResolver.resolveBlock(key);
     final int threadId = threadResolver.resolveThread(blockId);
-    LOG.log(Level.INFO, "Enqueue pull request for {0} in block: {1} / thread: {2}",
-        new Object[] {key, blockId, threadId});
+    LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
+        new Object[] {key, blockId, threadId, keyHash});
     threads.get(threadId).enqueue(new PullOp(key, srcId));
   }
 
@@ -182,32 +183,27 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
      */
     @Override
     public void apply(final MemoryStore<K> memoryStore) {
-      LOG.log(Level.FINEST, "(push) before get {0}", key);
-      final Pair<K, V> oldValue = memoryStore.get(DATA_TYPE, key);
+      try {
+        final Pair<K, V> oldKVPair = memoryStore.get(DATA_TYPE, key);
 
-      LOG.log(Level.FINEST, "(push) after get {0}", key);
-      if (null == oldValue) {
-        final Pair<K, Boolean> result = memoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
-        LOG.log(Level.FINE, "The value did not exist. Tried to put initial value. Was it successful? {0}",
-            result.getSecond());
+        final V oldValue;
+        if (null == oldKVPair) {
+          LOG.log(Level.FINE, "The value did not exist. Will use the initial value specified in ParameterUpdater.");
+          oldValue = parameterUpdater.initValue(key);
+        } else {
+          oldValue = oldKVPair.getSecond();
+        }
+
+        final V deltaValue = parameterUpdater.process(key, preValue);
+        if (deltaValue == null) {
+          return;
+        }
+
+        final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
+        memoryStore.put(DATA_TYPE, key, updatedValue);
+      } catch (final Exception e) {
+        LOG.log(Level.WARNING, "Exception occurred", e);
       }
-
-      LOG.log(Level.FINEST, "(push) after put {0}", key);
-
-      final V deltaValue = parameterUpdater.process(key, preValue);
-      if (deltaValue == null) {
-        return;
-      }
-      LOG.log(Level.FINEST, "(push) after update for {0}", key);
-
-      final Pair<K, V> oldValue2 = memoryStore.get(DATA_TYPE, key);
-      final V updatedValue = parameterUpdater.update(oldValue2.getSecond(), deltaValue);
-      LOG.log(Level.FINEST, "(push) after get updated value for {0}", key);
-
-      memoryStore.put(DATA_TYPE, key, updatedValue);
-
-      LOG.log(Level.FINEST, "(push) after put {0}", key);
-      LOG.log(Level.FINEST, "Pushed {0}", key);
     }
   }
 
@@ -229,24 +225,24 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
      */
     @Override
     public void apply(final MemoryStore<K> memoryStore) {
-
-      LOG.log(Level.FINEST, "(pull) before get {0}", key);
       try {
         final Pair<K, V> kvPair = memoryStore.get(DATA_TYPE, key);
+        final V value;
         if (null == kvPair) {
           final Pair<K, Boolean> result = memoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
-          LOG.log(Level.FINE, "The value did not exist. Tried to put initial value. Was it successful? {0}",
-              result.getSecond());
-          LOG.log(Level.FINEST, "(pull) put default value for {0}", key);
+          final boolean isSuccess = result.getSecond();
+          if (!isSuccess) {
+            throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");
+          }
+          final Pair<K, V> initializedPair = memoryStore.get(DATA_TYPE, key);
+          value = initializedPair.getSecond();
+        } else {
+          value = kvPair.getSecond();
         }
+        sender.sendReplyMsg(srcId, key, value);
 
-        LOG.log(Level.FINEST, "(pull) before the updated value for {0}", key);
-        // TODO Need to get again?
-        final Pair<K, V> updatedKvPair = memoryStore.get(DATA_TYPE, key);
-        LOG.log(Level.FINEST, "Pull response for {0} to {1}", new Object[]{key, srcId});
-        sender.sendReplyMsg(srcId, key, updatedKvPair.getSecond());
       } catch (final Exception e) {
-        LOG.log(Level.FINEST, "Exception occurred", e);
+        LOG.log(Level.WARNING, "Exception occurred", e);
       }
     }
   }

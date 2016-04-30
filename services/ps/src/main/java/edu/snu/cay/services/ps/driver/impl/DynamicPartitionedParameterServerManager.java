@@ -15,11 +15,6 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
-import edu.snu.cay.common.aggregation.driver.AggregationMaster;
-import edu.snu.cay.services.em.common.parameters.NumStoreThreads;
-import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
-import edu.snu.cay.services.em.driver.impl.PartitionManager;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
@@ -34,30 +29,18 @@ import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.ContextStopHandler;
-import edu.snu.cay.services.ps.worker.partitioned.DynamicServerResolver;
+import edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerHandler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
-import org.apache.reef.driver.parameters.DriverIdentifier;
-import org.apache.reef.io.network.naming.NameServer;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
-import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.tang.annotations.Unit;
-import org.apache.reef.tang.exceptions.InjectionException;
-import org.apache.reef.wake.EventHandler;
-import org.apache.reef.wake.IdentifierFactory;
-import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
 import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;

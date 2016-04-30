@@ -18,19 +18,17 @@ package edu.snu.cay.services.ps.driver.impl;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
-import edu.snu.cay.services.ps.avro.RoutingTableReqMsg;
 import edu.snu.cay.services.ps.avro.RoutingTableRespMsg;
 import edu.snu.cay.services.ps.avro.Type;
+import edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
 import org.apache.reef.tang.InjectionFuture;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -40,7 +38,7 @@ import java.util.logging.Logger;
  * Receives the messages from ParameterServers and ParameterWorkers.
  * Currently used to exchange the routing table between
  * {@link edu.snu.cay.services.ps.server.partitioned.DynamicPartitionedParameterServer} and
- * {@link edu.snu.cay.services.ps.worker.partitioned.DynamicServerResolver}.
+ * {@link DynamicServerResolver}.
  */
 @DriverSide
 public class PSMessageHandler implements EventHandler<Message<AvroParameterServerMsg>> {
