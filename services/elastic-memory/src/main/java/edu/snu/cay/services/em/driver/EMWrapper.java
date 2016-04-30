@@ -21,6 +21,8 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.exceptions.InjectionException;
 
+import javax.inject.Inject;
+
 /**
  * Wrapper object that is responsible to instantiate ElasticMemory in Driver.
  */
@@ -33,10 +35,13 @@ public final class EMWrapper {
   /**
    * Inject the instances.
    */
-  public EMWrapper(final Injector injector) throws InjectionException {
-    this.elasticMemory = injector.getInstance(ElasticMemory.class);
-    this.conf = injector.getInstance(ElasticMemoryConfiguration.class);
-    this.networkSetup = injector.getInstance(EMNetworkSetup.class);
+  @Inject
+  public EMWrapper(final ElasticMemory elasticMemory,
+                   final ElasticMemoryConfiguration conf,
+                   final EMNetworkSetup networkSetup) throws InjectionException {
+    this.elasticMemory = elasticMemory;
+    this.conf = conf;
+    this.networkSetup = networkSetup;
   }
 
   /**
