@@ -131,6 +131,8 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
   public void push(final K key, final P preValue, final int keyHash) {
     final int blockId = blockResolver.resolveBlock(key);
     final int threadId = threadResolver.resolveThread(blockId);
+    LOG.log(Level.INFO, "Enqueue push request for {0} in block: {1} / thread: {2}",
+        new Object[] {key, blockId, threadId});
     threads.get(threadId).enqueue(new PushOp(key, preValue));
   }
 
@@ -147,6 +149,8 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
   public void pull(final K key, final String srcId, final int keyHash) {
     final int blockId = blockResolver.resolveBlock(key);
     final int threadId = threadResolver.resolveThread(blockId);
+    LOG.log(Level.INFO, "Enqueue pull request for {0} in block: {1} / thread: {2}",
+        new Object[] {key, blockId, threadId});
     threads.get(threadId).enqueue(new PullOp(key, srcId));
   }
 
@@ -178,21 +182,32 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
      */
     @Override
     public void apply(final MemoryStore<K> memoryStore) {
-      final V oldValue = (V) memoryStore.get(DATA_TYPE, key);
+      LOG.log(Level.FINEST, "(push) before get {0}", key);
+      final Pair<K, V> oldValue = memoryStore.get(DATA_TYPE, key);
 
+      LOG.log(Level.FINEST, "(push) after get {0}", key);
       if (null == oldValue) {
         final Pair<K, Boolean> result = memoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
         LOG.log(Level.FINE, "The value did not exist. Tried to put initial value. Was it successful? {0}",
             result.getSecond());
       }
 
+      LOG.log(Level.FINEST, "(push) after put {0}", key);
+
       final V deltaValue = parameterUpdater.process(key, preValue);
       if (deltaValue == null) {
         return;
       }
+      LOG.log(Level.FINEST, "(push) after update for {0}", key);
 
-      final V updatedValue = parameterUpdater.update((V) memoryStore.get(DATA_TYPE, key), deltaValue);
+      final Pair<K, V> oldValue2 = memoryStore.get(DATA_TYPE, key);
+      final V updatedValue = parameterUpdater.update(oldValue2.getSecond(), deltaValue);
+      LOG.log(Level.FINEST, "(push) after get updated value for {0}", key);
+
       memoryStore.put(DATA_TYPE, key, updatedValue);
+
+      LOG.log(Level.FINEST, "(push) after put {0}", key);
+      LOG.log(Level.FINEST, "Pushed {0}", key);
     }
   }
 
@@ -214,16 +229,25 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
      */
     @Override
     public void apply(final MemoryStore<K> memoryStore) {
-      final V value = (V) memoryStore.get(DATA_TYPE, key);
-      if (null == value) {
-        final Pair<K, Boolean> result = memoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
-        LOG.log(Level.FINE, "The value did not exist. Tried to put initial value. Was it successful? {0}",
-            result.getSecond());
-      }
 
-      // TODO Need to get again?
-      final V updated = (V) memoryStore.get(DATA_TYPE, key);
-      sender.sendReplyMsg(srcId, key, updated);
+      LOG.log(Level.FINEST, "(pull) before get {0}", key);
+      try {
+        final Pair<K, V> kvPair = memoryStore.get(DATA_TYPE, key);
+        if (null == kvPair) {
+          final Pair<K, Boolean> result = memoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
+          LOG.log(Level.FINE, "The value did not exist. Tried to put initial value. Was it successful? {0}",
+              result.getSecond());
+          LOG.log(Level.FINEST, "(pull) put default value for {0}", key);
+        }
+
+        LOG.log(Level.FINEST, "(pull) before the updated value for {0}", key);
+        // TODO Need to get again?
+        final Pair<K, V> updatedKvPair = memoryStore.get(DATA_TYPE, key);
+        LOG.log(Level.FINEST, "Pull response for {0} to {1}", new Object[]{key, srcId});
+        sender.sendReplyMsg(srcId, key, updatedKvPair.getSecond());
+      } catch (final Exception e) {
+        LOG.log(Level.FINEST, "Exception occurred", e);
+      }
     }
   }
 
@@ -272,7 +296,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
       try {
         queue.put(op);
       } catch (final InterruptedException e) {
-        LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
+        LOG.log(Level.FINEST, "Enqueue failed with InterruptedException", e);
       }
     }
 
@@ -294,7 +318,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
           }
           op.apply(memoryStore);
         } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+          LOG.log(Level.FINEST, "Poll failed with InterruptedException", e);
           continue;
         }
 
@@ -332,10 +356,13 @@ public final class DynamicPartitionedParameterServer<K, P, V> {
       this.numThreads = numThreads;
     }
 
-    int resolveThread(final int blockId) {
+    synchronized int resolveThread(final int blockId) {
       final Integer threadId = blockToThread.get(blockId);
       if (null == threadId) {
-        return blockToThread.put(blockId, nextIndex.getAndIncrement() % numThreads);
+        int index = nextIndex.getAndIncrement() % numThreads;
+        blockToThread.put(blockId, index);
+        LOG.log(Level.FINEST, "BlockId {0} / ThreadId {1}", new Object[] {blockId, index});
+        return index;
       } else {
         return threadId;
       }

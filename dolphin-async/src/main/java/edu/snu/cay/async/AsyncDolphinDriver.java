@@ -18,6 +18,7 @@ package edu.snu.cay.async;
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
+import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.EMWrapper;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -29,6 +30,7 @@ import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
+import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import edu.snu.cay.utils.trace.HTrace;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.commons.lang.NotImplementedException;
@@ -175,12 +177,13 @@ final class AsyncDolphinDriver {
   private final ElasticMemoryConfiguration workerEmConf;
   private final ElasticMemoryConfiguration serverEmConf;
 
+  private final PSNetworkSetup psNetworkSetup;
 
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
                              final Injector injector,
-                             final ParameterServerDriver psDriver,
+//                             final ParameterServerDriver psDriver,
                              final IdentifierFactory identifierFactory,
                              @Parameter(DriverIdentifier.class) final String driverId,
                              final AggregationManager aggregationManager,
@@ -196,7 +199,7 @@ final class AsyncDolphinDriver {
     this.dataLoadingService = dataLoadingService;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.initServerCount = numServers;
-    this.psDriver = psDriver;
+//    this.psDriver = psDriver;
     this.identifierFactory = identifierFactory;
     this.driverId = driverId;
     this.aggregationManager = aggregationManager;
@@ -215,6 +218,7 @@ final class AsyncDolphinDriver {
 
     try {
       workerInjector.bindVolatileParameter(EMIdentifier.class, WORKER_EM_IDENTIFIER);
+      workerInjector.bindVolatileParameter(RangeSupport.class, Boolean.TRUE);
       this.workerEmConf = workerInjector.getInstance(ElasticMemoryConfiguration.class);
       this.workerSetup = workerInjector.getInstance(EMNetworkSetup.class);
       this.workerMemory = workerInjector.getInstance(ElasticMemory.class);
@@ -224,6 +228,7 @@ final class AsyncDolphinDriver {
 
     try {
       serverInjector.bindVolatileParameter(EMIdentifier.class, SERVER_EM_IDENTIFIER);
+      serverInjector.bindVolatileParameter(RangeSupport.class, Boolean.FALSE);
       this.serverEmConf = serverInjector.getInstance(ElasticMemoryConfiguration.class);
       this.serverSetup = serverInjector.getInstance(EMNetworkSetup.class);
       this.serverMemory = serverInjector.getInstance(ElasticMemory.class);
@@ -231,6 +236,12 @@ final class AsyncDolphinDriver {
       throw new RuntimeException(e);
     }
 
+    try {
+      this.psDriver = serverInjector.getInstance(ParameterServerDriver.class);
+      this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
+    } catch (InjectionException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   final class StartHandler implements EventHandler<StartTime> {
@@ -255,6 +266,7 @@ final class AsyncDolphinDriver {
 //      serverEM.getNetworkSetup().registerConnectionFactory(identifierFactory.getNewInstance(driverId));
       workerSetup.registerConnectionFactory(identifierFactory.getNewInstance(driverId));
       serverSetup.registerConnectionFactory(identifierFactory.getNewInstance(driverId));
+      psNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(driverId));
       LOG.log(Level.SEVERE, "both setup");
       try {
 //        workerEM.getInstance().checkpoint("");
