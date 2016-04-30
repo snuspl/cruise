@@ -22,7 +22,7 @@ import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.examples.add.IntegerCodec;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
-import edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer;
+import edu.snu.cay.services.ps.server.partitioned.StaticPartitionedParameterServer;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySender;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.utils.ThreadUtils;
@@ -43,13 +43,13 @@ import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
 
 
 /**
- * Tests for {@link PartitionedParameterServer}.
+ * Tests for {@link StaticPartitionedParameterServer}.
  */
 public final class PartitionedParameterServerTest {
   private static final Integer KEY = 0;
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
-  private PartitionedParameterServer<Integer, Integer, Integer> server;
+  private StaticPartitionedParameterServer<Integer, Integer, Integer> server;
   private MockPartitionedServerSideReplySender mockSender;
 
   @Before
@@ -83,11 +83,11 @@ public final class PartitionedParameterServerTest {
       }
     });
     mockSender = injector.getInstance(MockPartitionedServerSideReplySender.class);
-    server = injector.getInstance(PartitionedParameterServer.class);
+    server = injector.getInstance(StaticPartitionedParameterServer.class);
   }
 
   /**
-   * Test the performance of {@link PartitionedParameterServer} by
+   * Test the performance of {@link StaticPartitionedParameterServer} by
    * running threads that push values to and pull values from the server, concurrently.
    */
   @Test

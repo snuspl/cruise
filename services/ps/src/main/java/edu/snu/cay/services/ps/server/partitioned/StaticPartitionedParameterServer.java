@@ -15,29 +15,44 @@
  */
 package edu.snu.cay.services.ps.server.partitioned;
 
-import edu.snu.cay.services.em.evaluator.api.BlockResolver;
-import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
-import org.apache.reef.io.network.util.Pair;
+import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A Partitioned Parameter Server, where partitions are dynamically moving in and out.
+ * A Partitioned Parameter Server.
+ * Receives push and pull operations from (e.g., from the network) and immediately queues them.
+ * The processing loop in each thread applies these operations in order; for pull operations
+ * this results in a send call via {@link PartitionedServerSideReplySender}.
+ * For more information about the implementation, see {@link ServerThread}.
+ *
+ * Supports a static number of partitions (the number of partitions is fixed at construction time).
  */
-public final class DynamicPartitionedParameterServer<K, P, V> implements PartitionedParameterServer<K, P, V> {
-  private static final Logger LOG = Logger.getLogger(DynamicPartitionedParameterServer.class.getName());
-  private static final String DATA_TYPE = "SERVER_DATA";
+@EvaluatorSide
+public final class StaticPartitionedParameterServer<K, P, V> implements PartitionedParameterServer<K, P, V> {
+  private static final Logger LOG = Logger.getLogger(StaticPartitionedParameterServer.class.getName());
+
+  /**
+   * ServerResolver that maps hashed keys to partitions.
+   */
+  private final ServerResolver serverResolver;
 
   /**
    * The number of threads to run operations.
@@ -48,6 +63,11 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
    * Max size of each thread's queue.
    */
   private final int queueSize;
+
+  /**
+   * The list of local partitions.
+   */
+  private final List<Integer> localPartitions;
 
   /**
    * Thread pool, where each Partition is submitted.
@@ -69,37 +89,21 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
    */
   private final PartitionedServerSideReplySender<K, V> sender;
 
-  /**
-   * MemoryStore instance to access the data.
-   */
-  private final MemoryStore<K> memoryStore;
-
-  /**
-   * Object for resolving the block id assigned to given data.
-   */
-  private final BlockResolver<K> blockResolver;
-
-  /**
-   * Object for assigning a thread per block.
-   */
-  private final ThreadResolver threadResolver;
-
   @Inject
-  private DynamicPartitionedParameterServer(final MemoryStore<K> memoryStore,
-                                            final BlockResolver<K> blockResolver,
-                                            @Parameter(ServerNumThreads.class)final int numThreads,
-                                            @Parameter(ServerQueueSize.class) final int queueSize,
-                                            final ParameterUpdater<K, P, V> parameterUpdater,
-                                            final PartitionedServerSideReplySender<K, V> sender) {
-    this.memoryStore = memoryStore;
-    this.blockResolver = blockResolver;
+  private StaticPartitionedParameterServer(@Parameter(EndpointId.class) final String endpointId,
+                                           @Parameter(ServerNumThreads.class) final int numThreads,
+                                           @Parameter(ServerQueueSize.class) final int queueSize,
+                                           final ServerResolver serverResolver,
+                                           final ParameterUpdater<K, P, V> parameterUpdater,
+                                           final PartitionedServerSideReplySender<K, V> sender) {
     this.numThreads = numThreads;
+    this.localPartitions = serverResolver.getPartitions(endpointId);
+    this.serverResolver = serverResolver;
     this.queueSize = queueSize;
     this.threadPool = Executors.newFixedThreadPool(numThreads);
     this.threads = initThreads();
     this.parameterUpdater = parameterUpdater;
     this.sender = sender;
-    this.threadResolver = new ThreadResolver(numThreads);
   }
 
   /**
@@ -110,7 +114,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
 
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
     for (int threadIndex = 0; threadIndex < numThreads; threadIndex++) {
-      final ServerThread<K, V> thread = new ServerThread<>(queueSize, memoryStore);
+      final ServerThread<K, V> thread = new ServerThread<>(queueSize);
       initialized.put(threadIndex, thread);
       threadPool.submit(thread);
     }
@@ -119,20 +123,27 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
 
   @Override
   public void push(final K key, final P preValue, final int keyHash) {
-    final int blockId = blockResolver.resolveBlock(key);
-    final int threadId = threadResolver.resolveThread(blockId);
-    LOG.log(Level.FINEST, "Enqueue push request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
-        new Object[] {key, blockId, threadId, keyHash});
+    final int partitionId = serverResolver.resolvePartition(keyHash);
+    final int threadId = localPartitions.indexOf(partitionId) % numThreads;
     threads.get(threadId).enqueue(new PushOp(key, preValue));
   }
 
   @Override
   public void pull(final K key, final String srcId, final int keyHash) {
-    final int blockId = blockResolver.resolveBlock(key);
-    final int threadId = threadResolver.resolveThread(blockId);
-    LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
-        new Object[] {key, blockId, threadId, keyHash});
+    final int partitionId = serverResolver.resolvePartition(keyHash);
+    final int threadId = localPartitions.indexOf(partitionId) % numThreads;
     threads.get(threadId).enqueue(new PullOp(key, srcId));
+  }
+
+  /**
+   * @return number of operations pending, on all queues
+   */
+  public int opsPending() {
+    int sum = 0;
+    for (final ServerThread<K, V> partition : threads.values()) {
+      sum += partition.opsPending();
+    }
+    return sum;
   }
 
   /**
@@ -141,9 +152,9 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
   private interface Op<K, V> {
     /**
      * Method to apply when dequeued by the Partition.
-     * @param memoryStore MemoryStore to store the data
+     * @param kvStore the raw kvStore map, provided by the Partition.
      */
-    void apply(MemoryStore<K> memoryStore);
+    void apply(Map<K, V> kvStore);
   }
 
   /**
@@ -153,7 +164,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
     private final K key;
     private final P preValue;
 
-    PushOp(final K key, final P preValue) {
+    public PushOp(final K key, final P preValue) {
       this.key = key;
       this.preValue = preValue;
     }
@@ -162,28 +173,18 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
      * Read from kvStore, modify (update), and write to kvStore.
      */
     @Override
-    public void apply(final MemoryStore<K> memoryStore) {
-      try {
-        final Pair<K, V> oldKVPair = memoryStore.get(DATA_TYPE, key);
-
-        final V oldValue;
-        if (null == oldKVPair) {
-          LOG.log(Level.FINE, "The value did not exist. Will use the initial value specified in ParameterUpdater.");
-          oldValue = parameterUpdater.initValue(key);
-        } else {
-          oldValue = oldKVPair.getSecond();
-        }
-
-        final V deltaValue = parameterUpdater.process(key, preValue);
-        if (deltaValue == null) {
-          return;
-        }
-
-        final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
-        memoryStore.put(DATA_TYPE, key, updatedValue);
-      } catch (final Exception e) {
-        LOG.log(Level.WARNING, "Exception occurred", e);
+    public void apply(final Map<K, V> kvStore) {
+      if (!kvStore.containsKey(key)) {
+        kvStore.put(key, parameterUpdater.initValue(key));
       }
+
+      final V deltaValue = parameterUpdater.process(key, preValue);
+      if (deltaValue == null) {
+        return;
+      }
+
+      final V updatedValue = parameterUpdater.update(kvStore.get(key), deltaValue);
+      kvStore.put(key, updatedValue);
     }
   }
 
@@ -194,7 +195,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
     private final K key;
     private final String srcId;
 
-    PullOp(final K key, final String srcId) {
+    public PullOp(final K key, final String srcId) {
       this.key = key;
       this.srcId = srcId;
     }
@@ -204,26 +205,12 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
      * To ensure atomicity, the key-value pair should be serialized immediately in sender.
      */
     @Override
-    public void apply(final MemoryStore<K> memoryStore) {
-      try {
-        final Pair<K, V> kvPair = memoryStore.get(DATA_TYPE, key);
-        final V value;
-        if (null == kvPair) {
-          final Pair<K, Boolean> result = memoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
-          final boolean isSuccess = result.getSecond();
-          if (!isSuccess) {
-            throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");
-          }
-          final Pair<K, V> initializedPair = memoryStore.get(DATA_TYPE, key);
-          value = initializedPair.getSecond();
-        } else {
-          value = kvPair.getSecond();
-        }
-        sender.sendReplyMsg(srcId, key, value);
-
-      } catch (final Exception e) {
-        LOG.log(Level.WARNING, "Exception occurred", e);
+    public void apply(final Map<K, V> kvStore) {
+      if (!kvStore.containsKey(key)) {
+        kvStore.put(key, parameterUpdater.initValue(key));
       }
+
+      sender.sendReplyMsg(srcId, key, kvStore.get(key));
     }
   }
 
@@ -243,18 +230,19 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
    */
   private static class ServerThread<K, V> implements Runnable {
     private static final long QUEUE_TIMEOUT_MS = 3000;
+
+    private final Map<K, V> kvStore;
     private final BlockingQueue<Op<K, V>> queue;
     private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
     private final int drainSize; // Max number of operations to drain per iteration.
-    private final MemoryStore<K> memoryStore;
 
     private volatile boolean shutdown = false;
 
-    ServerThread(final int queueSize, final MemoryStore<K> memoryStore) {
+    public ServerThread(final int queueSize) {
+      this.kvStore = new HashMap<>();
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
       this.localOps = new ArrayList<>(drainSize);
-      this.memoryStore = memoryStore;
     }
 
     /**
@@ -268,21 +256,25 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
      *
      * @param op the operation to enqueue
      */
-    void enqueue(final Op<K, V> op) {
+    public void enqueue(final Op<K, V> op) {
       try {
         queue.put(op);
       } catch (final InterruptedException e) {
-        LOG.log(Level.FINEST, "Enqueue failed with InterruptedException", e);
+        LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
       }
     }
 
     /**
      * @return number of pending operations in the queue.
      */
-    int opsPending() {
+    public int opsPending() {
       return queue.size();
     }
 
+    /**
+     * Loop that dequeues operations and applies them.
+     * Dequeues are only performed through this thread.
+     */
     @Override
     public void run() {
       while (!shutdown) {
@@ -292,9 +284,9 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
           if (op == null) {
             continue;
           }
-          op.apply(memoryStore);
+          op.apply(kvStore);
         } catch (final InterruptedException e) {
-          LOG.log(Level.FINEST, "Poll failed with InterruptedException", e);
+          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
           continue;
         }
 
@@ -303,7 +295,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
         // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
         queue.drainTo(localOps, drainSize);
         for (final Op<K, V> op : localOps) {
-          op.apply(memoryStore);
+          op.apply(kvStore);
         }
         localOps.clear();
       }
@@ -314,34 +306,6 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
      */
     public void shutdown() {
       shutdown = true;
-    }
-  }
-
-  /**
-   * Assigns one thread per block.
-   * The first implementation allocates unseen block to threads in a round-robin fashion.
-   * Note that the load is not perfectly distributed evenly, because the blocks that have moved out are not considered.
-   */
-  private static class ThreadResolver {
-    // Naive version: round-robin
-    private final int numThreads;
-    private AtomicInteger nextIndex = new AtomicInteger(0);
-    private Map<Integer, Integer> blockToThread = new HashMap<>();
-
-    ThreadResolver(final int numThreads) {
-      this.numThreads = numThreads;
-    }
-
-    synchronized int resolveThread(final int blockId) {
-      final Integer threadId = blockToThread.get(blockId);
-      if (null == threadId) {
-        int index = nextIndex.getAndIncrement() % numThreads;
-        blockToThread.put(blockId, index);
-        LOG.log(Level.FINEST, "BlockId {0} / ThreadId {1}", new Object[] {blockId, index});
-        return index;
-      } else {
-        return threadId;
-      }
     }
   }
 }

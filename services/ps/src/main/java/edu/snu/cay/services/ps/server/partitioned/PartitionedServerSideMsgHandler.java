@@ -46,7 +46,7 @@ public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHand
   /**
    * The Partitioned Parameter Server.
    */
-  private final DynamicPartitionedParameterServer<K, P, V> parameterServer;
+  private final PartitionedParameterServer<K, P, V> parameterServer;
 
   /**
    * Codec for decoding PS keys.
@@ -59,7 +59,7 @@ public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHand
   private final Codec<P> preValueCodec;
 
   @Inject
-  private PartitionedServerSideMsgHandler(final DynamicPartitionedParameterServer<K, P, V> parameterServer,
+  private PartitionedServerSideMsgHandler(final PartitionedParameterServer<K, P, V> parameterServer,
                                           @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                           @Parameter(PreValueCodecName.class) final Codec<P> preValueCodec) {
     this.parameterServer = parameterServer;
@@ -68,7 +68,7 @@ public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHand
   }
 
   /**
-   * Hand over values given from workers to {@link PartitionedParameterServer}.
+   * Hand over values given from workers to {@link StaticPartitionedParameterServer}.
    * Throws an exception if messages of an unexpected type arrive.
    */
   @Override
