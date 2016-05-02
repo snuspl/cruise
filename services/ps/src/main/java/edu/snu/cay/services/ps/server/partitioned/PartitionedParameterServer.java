@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.ps.server.partitioned;
 
-import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 
 /**
@@ -29,8 +28,8 @@ public interface PartitionedParameterServer<K, P, V> {
 
   /**
    * Process a {@code preValue} sent from a worker and store the resulting value.
-   * Uses {@link ParameterUpdater} to generate a value from {@code preValue} and to apply the generated value to
-   * the k-v store.
+   * Uses {@link edu.snu.cay.services.ps.server.api.ParameterUpdater} to generate a value from {@code preValue} and
+   * to apply the generated value to the k-v store.
    *
    * The push operation is enqueued to the queue that is assigned to its partition and returned immediately.
    *

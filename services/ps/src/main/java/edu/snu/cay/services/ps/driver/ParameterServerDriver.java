@@ -19,11 +19,9 @@ import edu.snu.cay.services.ps.ParameterServerParameters.SerializedCodecConfigur
 import edu.snu.cay.services.ps.ParameterServerParameters.SerializedUpdaterConfiguration;
 import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
 import edu.snu.cay.services.ps.ns.NetworkContextRegister;
-import edu.snu.cay.services.ps.ns.NetworkDriverRegister;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.worker.WorkerSideMsgHandler;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.driver.parameters.DriverStartHandler;
 import org.apache.reef.evaluator.context.parameters.ContextStartHandlers;
 import org.apache.reef.evaluator.context.parameters.ContextStopHandlers;
 import org.apache.reef.io.network.naming.NameServer;

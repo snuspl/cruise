@@ -162,9 +162,9 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
      * Read from kvStore, modify (update), and write to kvStore.
      */
     @Override
-    public void apply(final MemoryStore<K> memoryStore) {
+    public void apply(final MemoryStore<K> pMemoryStore) {
       try {
-        final Pair<K, V> oldKVPair = memoryStore.get(DATA_TYPE, key);
+        final Pair<K, V> oldKVPair = pMemoryStore.get(DATA_TYPE, key);
 
         final V oldValue;
         if (null == oldKVPair) {
@@ -180,7 +180,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
         }
 
         final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
-        memoryStore.put(DATA_TYPE, key, updatedValue);
+        pMemoryStore.put(DATA_TYPE, key, updatedValue);
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
@@ -204,17 +204,17 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
      * To ensure atomicity, the key-value pair should be serialized immediately in sender.
      */
     @Override
-    public void apply(final MemoryStore<K> memoryStore) {
+    public void apply(final MemoryStore<K> pMemoryStore) {
       try {
-        final Pair<K, V> kvPair = memoryStore.get(DATA_TYPE, key);
+        final Pair<K, V> kvPair = pMemoryStore.get(DATA_TYPE, key);
         final V value;
         if (null == kvPair) {
-          final Pair<K, Boolean> result = memoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
+          final Pair<K, Boolean> result = pMemoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
           final boolean isSuccess = result.getSecond();
           if (!isSuccess) {
             throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");
           }
-          final Pair<K, V> initializedPair = memoryStore.get(DATA_TYPE, key);
+          final Pair<K, V> initializedPair = pMemoryStore.get(DATA_TYPE, key);
           value = initializedPair.getSecond();
         } else {
           value = kvPair.getSecond();
@@ -335,7 +335,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
     synchronized int resolveThread(final int blockId) {
       final Integer threadId = blockToThread.get(blockId);
       if (null == threadId) {
-        int index = nextIndex.getAndIncrement() % numThreads;
+        final int index = nextIndex.getAndIncrement() % numThreads;
         blockToThread.put(blockId, index);
         LOG.log(Level.FINEST, "BlockId {0} / ThreadId {1}", new Object[] {blockId, index});
         return index;

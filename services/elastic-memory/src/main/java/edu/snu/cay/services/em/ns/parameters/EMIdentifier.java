@@ -17,8 +17,8 @@ package edu.snu.cay.services.em.ns.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
-import org.apache.reef.wake.remote.Codec;
 
-@NamedParameter(doc = "Identifier that is assigned to each EM instance in the Driver")
+@NamedParameter(doc = "Identifier that is assigned to each EM instance in the Driver",
+                default_value = "EM")
 public final class EMIdentifier implements Name<String> {
 }

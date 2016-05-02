@@ -32,7 +32,7 @@ import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
  * locates the data as follows:
  *    If h is the hashed value of the key, h is stored at block b where b's id = h / BLOCK_SIZE.
  */
-public class DynamicServerResolver implements ServerResolver {
+public final class DynamicServerResolver implements ServerResolver {
   private static final Logger LOG = Logger.getLogger(DynamicServerResolver.class.getName());
   private static final long INITIALIZATION_TIMEOUT_MS = 3000;
 

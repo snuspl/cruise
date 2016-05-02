@@ -28,7 +28,6 @@ import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 /**
  * A Msg Sender for PartitionedWorker.
