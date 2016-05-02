@@ -40,7 +40,6 @@ import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 
 import javax.inject.Inject;
@@ -94,8 +93,9 @@ public final class ElasticMemoryConfiguration {
 
   /**
    * Configuration for REEF driver when using Elastic Memory.
-   * Different from {@link ElasticMemoryConfiguration#getDriverConfiguration()}, this version does not bind the
-   * RegisterDriverHandler. The {@link edu.snu.cay.services.em.ns.EMNetworkSetup#registerConnectionFactory(Identifier)}
+   * Different from {@link ElasticMemoryConfiguration#getDriverConfiguration()},
+   * this version does not bind the RegisterDriverHandler.
+   * The {@link edu.snu.cay.services.em.ns.EMNetworkSetup#registerConnectionFactory(org.apache.reef.wake.Identifier)}
    * should be called explicitly in {@link DriverStartHandler}.
    *
    * Note that this is a workaround to create two instances in dolphin async version for both Workers and Servers.

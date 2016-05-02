@@ -18,7 +18,6 @@ package edu.snu.cay.services.ps.common.partitioned.resolver;
 import edu.snu.cay.services.em.driver.api.RoutingInfo;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * A ServerResolver that is queried for the mapping between hashed keys,

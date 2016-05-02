@@ -20,7 +20,6 @@ import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
 import edu.snu.cay.services.ps.avro.RoutingTableRespMsg;
 import edu.snu.cay.services.ps.avro.Type;
-import edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
@@ -38,10 +37,10 @@ import java.util.logging.Logger;
  * Receives the messages from ParameterServers and ParameterWorkers.
  * Currently used to exchange the routing table between
  * {@link edu.snu.cay.services.ps.server.partitioned.DynamicPartitionedParameterServer} and
- * {@link DynamicServerResolver}.
+ * {@link edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver}.
  */
 @DriverSide
-public class PSMessageHandler implements EventHandler<Message<AvroParameterServerMsg>> {
+public final class PSMessageHandler implements EventHandler<Message<AvroParameterServerMsg>> {
   private static final Logger LOG = Logger.getLogger(PSMessageHandler.class.getName());
   private final ElasticMemory elasticMemory;
   private final InjectionFuture<PSMessageSender> sender;

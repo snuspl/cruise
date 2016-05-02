@@ -18,7 +18,6 @@ package edu.snu.cay.services.em.driver;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.ns.EMNetworkSetup;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 import javax.inject.Inject;

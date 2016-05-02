@@ -43,7 +43,7 @@ final class PSMessageSender {
   }
 
   void send(final String destId, final AvroParameterServerMsg msg) {
-     final Connection<AvroParameterServerMsg> conn = psNetworkSetup.get().getConnectionFactory()
+    final Connection<AvroParameterServerMsg> conn = psNetworkSetup.get().getConnectionFactory()
         .newConnection(identifierFactory.getNewInstance(destId));
     try {
       conn.open();
