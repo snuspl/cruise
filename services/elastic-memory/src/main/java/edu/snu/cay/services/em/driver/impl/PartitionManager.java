@@ -71,7 +71,7 @@ public final class PartitionManager {
    * while moving toward partition-based data management.
    * TODO #346: Clean up data structures managing data id partitions
    */
-  private final Map<Integer, Set<Integer>> storeIdToBlockIds;
+  private final Map<Integer, List<Integer>> storeIdToBlockIds;
 
   /**
    * A mapping that maintains which block is owned by which MemoryStore.
@@ -129,9 +129,10 @@ public final class PartitionManager {
 
       // If NumTotalBlocks = 31 and NumInitialEval = 5, then MemoryStore0 takes {0, 5, 10, 15, 20, 25, 30}
       // and MemoryStore3 takes {3, 8, 13, 18, 23, 28}
-      storeIdToBlockIds.put(memoryStoreId, new HashSet<Integer>());
+      storeIdToBlockIds.put(memoryStoreId, new ArrayList<Integer>());
       for (int blockId = memoryStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
         storeIdToBlockIds.get(memoryStoreId).add(blockId);
+        blockIdToStoreId.put(blockId, memoryStoreId);
       }
     }
     return memoryStoreId;
@@ -412,6 +413,20 @@ public final class PartitionManager {
   }
 
   /**
+   * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
+   */
+  Map<Integer, List<Integer>> getStoreIdToBlockIds() {
+    return storeIdToBlockIds;
+  }
+
+  /**
+   * @return the number of total blocks that exist in this Elastic Memory instance.
+   */
+  int getNumTotalBlocks() {
+    return numTotalBlocks;
+  }
+
+  /**
    * Remove ranges which target range contains whole range.
    * (e.g., [3, 4] [5, 6] when [1, 10] is requested to remove).
    * @return Ranges that are removed. An empty list is returned if there was no range to remove.
@@ -496,7 +511,7 @@ public final class PartitionManager {
    * @return list of block ids that have been chosen.
    */
   synchronized List<Integer> chooseBlocksToMove(final String evalId, final int numBlocks) {
-    final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
+    final List<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
     if (blockIds == null) {
       throw new RuntimeException("The data does not exist in " + evalId);
     }
@@ -530,7 +545,7 @@ public final class PartitionManager {
    * @return the number of blocks owned by the Evaluator.
    */
   public synchronized int getNumBlocks(final String evalId) {
-    final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
+    final List<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
     return blockIds.size();
   }
 

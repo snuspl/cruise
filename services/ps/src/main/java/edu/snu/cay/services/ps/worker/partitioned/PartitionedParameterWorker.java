@@ -411,7 +411,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
   /**
    * A partition for the cache on the Worker.
    * The basic structure is similar to the partition for the Server at
-   * {@link edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer}.
+   * {@link edu.snu.cay.services.ps.server.partitioned.StaticPartitionedParameterServer}.
    *
    * The partitions at the Worker can be independent of the partitions at the Server. In other words,
    * the number of worker-side partitions does not have to be equal to the number of server-side partitions.
@@ -470,7 +470,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
       try {
         queue.put(op);
       } catch (final InterruptedException e) {
-        LOG.log(Level.SEVERE, "Enqueue failed with InterruptedException", e);
+        LOG.log(Level.FINEST, "Enqueue failed with InterruptedException", e);
         return;
       }
     }
@@ -508,7 +508,7 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
           }
           op.apply(kvCache);
         } catch (final InterruptedException e) {
-          LOG.log(Level.SEVERE, "Poll failed with InterruptedException", e);
+          LOG.log(Level.FINEST, "Poll failed with InterruptedException", e);
           continue;
         }
 

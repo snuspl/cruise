@@ -50,13 +50,48 @@
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
+  "name": "RoutingTableReqMsg",
+  "fields":[]
+},
+
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "IdMapping",
+  "fields": [
+    {"name": "memoryStoreId", "type": "int"},
+    {"name": "blockIds", "type": {"type": "array", "items": "int"}},
+    {"name": "endpointId", "type": "string"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "RoutingTableReplyMsg",
+  "fields":
+  [
+    {"name": "idMappings", "type": {"type": "array", "items": "IdMapping"}},
+    {"name": "numTotalBlocks", "type": "int"}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
   "name": "AvroParameterServerMsg",
   "fields":
   [
-    {"name": "type", "type": {"type": "enum", "name": "Type", "symbols": ["PushMsg", "PullMsg", "ReplyMsg"]}},
+    {"name": "type",
+     "type":
+       {"type": "enum",
+        "name": "Type",
+        "symbols": ["PushMsg", "PullMsg", "ReplyMsg", "RoutingTableReqMsg", "RoutingTableReplyMsg"]}},
     {"name": "pushMsg", "type": ["null", "PushMsg"], "default": null},
     {"name": "pullMsg", "type": ["null", "PullMsg"], "default": null},
-    {"name": "replyMsg", "type": ["null", "ReplyMsg"], "default": null}
+    {"name": "replyMsg", "type": ["null", "ReplyMsg"], "default": null},
+    {"name": "routingTableReqMsg", "type": ["null", "RoutingTableReqMsg"], "default": null},
+    {"name": "routingTableReplyMsg", "type": ["null", "RoutingTableReplyMsg"], "default": null}
   ]
 }
 ]

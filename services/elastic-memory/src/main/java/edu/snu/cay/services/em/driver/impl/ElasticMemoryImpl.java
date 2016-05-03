@@ -38,6 +38,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -185,5 +186,15 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public void checkpoint(final String evalId) {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public Map<Integer, List<Integer>> getStoreIdToBlockIds() {
+    return partitionManager.getStoreIdToBlockIds();
+  }
+
+  @Override
+  public int getNumTotalBlocks() {
+    return partitionManager.getNumTotalBlocks();
   }
 }

@@ -688,7 +688,6 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
         DataOpType.GET, dataType, new Pair<>(startId, endId), Optional.<NavigableMap<Long, V>>empty());
 
     executeOperation(operation);
-
     return operation.getOutputData();
   }
 
