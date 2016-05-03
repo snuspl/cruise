@@ -45,7 +45,7 @@ import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
 /**
  * Tests for {@link StaticPartitionedParameterServer}.
  */
-public final class PartitionedParameterServerTest {
+public final class StaticPartitionedParameterServerTest {
   private static final Integer KEY = 0;
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
