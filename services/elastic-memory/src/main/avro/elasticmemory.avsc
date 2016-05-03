@@ -131,6 +131,37 @@
   ]
 },
 
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RoutingInitRequestMsg",
+  "fields":
+  [
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RoutingInitMsg",
+  "fields":
+  [
+    {"name": "blockLocations", "type": {"type": "array", "items": "int"}}
+  ]
+},
+
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RoutingUpdateMsg",
+  "fields":
+  [
+      {"name": "blockIds", "type": {"type": "array", "items": "int"}},
+      {"name": "oldOwnerId", "type": "int"},
+      {"name": "newOwnerId", "type": "int"}
+  ]
+},
+
 /**
  * A record type for evaluators to report a partition addition to the driver.
  * The data type of the partition and its identifier range must be encoded in the message.
@@ -294,7 +325,8 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
+        "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RoutingInitRequestMsg", "RoutingInitMsg",
+         "RoutingUpdateMsg", "RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
         "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg", "OwnershipMsg", "OwnershipAckMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
@@ -302,6 +334,9 @@
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
     {"name": "remoteOpMsg", "type": ["null", "RemoteOpMsg"], "default": null},
     {"name": "remoteOpResultMsg", "type": ["null", "RemoteOpResultMsg"], "default": null},
+    {"name": "routingInitRequestMsg", "type": ["null", "RoutingInitRequestMsg"], "default": null},
+    {"name": "routingInitMsg", "type": ["null", "RoutingInitMsg"], "default": null},
+    {"name": "routingUpdateMsg", "type": ["null", "RoutingUpdateMsg"], "default": null},
     {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},

@@ -15,13 +15,19 @@
  */
 package edu.snu.cay.services.em.ns;
 
+import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
+import org.htrace.Trace;
+import org.htrace.TraceInfo;
+import org.htrace.TraceScope;
 
 import javax.inject.Inject;
 
@@ -33,16 +39,23 @@ import javax.inject.Inject;
 public final class NetworkContextRegister {
 
   private final EMNetworkSetup emNetworkSetup;
-  private final OperationRouter router;
   private final IdentifierFactory identifierFactory;
+  private final OperationRouter router;
+  private final ElasticMemoryMsgSender msgSender;
+
+  private final boolean addedEval;
 
   @Inject
   private NetworkContextRegister(final EMNetworkSetup emNetworkSetup,
+                                 final IdentifierFactory identifierFactory,
                                  final OperationRouter router,
-                                 final IdentifierFactory identifierFactory) {
+                                 final ElasticMemoryMsgSender msgSender,
+                                 @Parameter(AddedEval.class) final boolean addedEval) {
     this.emNetworkSetup = emNetworkSetup;
-    this.router = router;
     this.identifierFactory = identifierFactory;
+    this.router = router;
+    this.msgSender = msgSender;
+    this.addedEval = addedEval;
   }
 
   public final class RegisterContextHandler implements EventHandler<ContextStart> {
@@ -50,7 +63,17 @@ public final class NetworkContextRegister {
     public void onNext(final ContextStart contextStart) {
       final Identifier identifier = identifierFactory.getNewInstance(contextStart.getId());
       emNetworkSetup.registerConnectionFactory(identifier);
-      router.initialize(emNetworkSetup.getMyId().toString());
+
+      // request the info of router initialization to driver, when the evaluator is dynamically added by EM.add()
+      if (addedEval) {
+        try (final TraceScope traceScope = Trace.startSpan("ROUTING_INIT_REQUEST")) {
+          final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
+          msgSender.sendRoutingInitRequestMsg(traceInfo);
+        }
+      } else {
+        final String localId = emNetworkSetup.getMyId().toString();
+        router.initialize(localId);
+      }
     }
   }
 

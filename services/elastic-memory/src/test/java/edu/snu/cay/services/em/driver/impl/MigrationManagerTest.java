@@ -265,6 +265,29 @@ public class MigrationManagerTest {
 
     }
 
+    @Override
+    public void sendRoutingInitRequestMsg(@Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendRoutingInitMsg(final String destId, final List<Integer> blockLocations,
+                                   @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendRoutingUpdateMsg(final String destId, final List<Integer> blocks,
+                                     final String oldOwnerId, final String newOwnerId,
+                                     @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendRoutingUpdateAckMsg(@Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
     /**
      * Check the operation id and range matches.
      */

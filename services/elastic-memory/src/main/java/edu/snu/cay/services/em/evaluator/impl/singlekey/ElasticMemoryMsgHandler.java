@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.utils.SingleMessageExtractor;
@@ -55,6 +56,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   private static final String ON_OWNERSHIP_MSG = "onOwnershipMsg";
 
   private final RemoteAccessibleMemoryStore<K> memoryStore;
+  private final OperationRouter<K> router;
   private final RemoteOpHandler<K> remoteOpHandler;
   private final Codec<K> keyCodec;
   private final Serializer serializer;
@@ -62,11 +64,13 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
   @Inject
   private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore<K> memoryStore,
+                                  final OperationRouter<K> router,
                                   final RemoteOpHandler<K> remoteOpHandler,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                   final Serializer serializer) {
     this.memoryStore = memoryStore;
+    this.router = router;
     this.remoteOpHandler = remoteOpHandler;
     this.keyCodec = keyCodec;
     this.serializer = serializer;
@@ -79,6 +83,10 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
+    case RoutingInitMsg:
+      onRoutingInitMsg(innerMsg);
+      break;
+
     case RemoteOpMsg:
       onRemoteOpMsg(innerMsg);
       break;
@@ -104,6 +112,10 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     }
 
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+  }
+
+  private void onRoutingInitMsg(final AvroElasticMemoryMessage msg) {
+    router.initialize(msg.getDestId().toString(), msg.getRoutingInitMsg().getBlockLocations());
   }
 
   private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
