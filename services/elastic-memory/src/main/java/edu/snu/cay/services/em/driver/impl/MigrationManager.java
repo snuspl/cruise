@@ -377,6 +377,28 @@ final class MigrationManager {
     if (migration.isComplete()) {
       ongoingMigrations.remove(operationId);
       notifySuccess(operationId, migration.getBlockIds());
+      broadcastSuccess(migration);
+    }
+  }
+
+  /**
+   * Broadcast the result of the migration to all active evaluators,
+   * so as to ensure them to update their own routing tables.
+   */
+  private void broadcastSuccess(final Migration migration) {
+    final List<String> activeEvaluatorIds = partitionManager.getActiveEvaluators();
+    final String senderId = migration.getSenderId();
+    final String receiverId = migration.getReceiverId();
+    activeEvaluatorIds.remove(senderId);
+    activeEvaluatorIds.remove(receiverId);
+
+    final List<Integer> blockIds = migration.getBlockIds();
+
+    try (final TraceScope traceScope = Trace.startSpan("ROUTING_UPDATE")) {
+      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
+      for (final String evalId : activeEvaluatorIds) {
+        sender.get().sendRoutingUpdateMsg(evalId, blockIds, senderId, receiverId, traceInfo);
+      }
     }
   }
 

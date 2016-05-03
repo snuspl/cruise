@@ -39,6 +39,7 @@ import org.htrace.TraceScope;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -87,6 +88,10 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       onRoutingInitMsg(innerMsg);
       break;
 
+    case RoutingUpdateMsg:
+      onRoutingUpdateMsg(innerMsg);
+      break;
+
     case RemoteOpMsg:
       onRemoteOpMsg(innerMsg);
       break;
@@ -116,6 +121,22 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
   private void onRoutingInitMsg(final AvroElasticMemoryMessage msg) {
     router.initialize(msg.getDestId().toString(), msg.getRoutingInitMsg().getBlockLocations());
+  }
+
+  private void onRoutingUpdateMsg(final AvroElasticMemoryMessage msg) {
+    final RoutingUpdateMsg routingUpdateMsg = msg.getRoutingUpdateMsg();
+
+    final List<Integer> blockIds = routingUpdateMsg.getBlockIds();
+    final int newOwnerId = routingUpdateMsg.getNewOwnerId();
+    final int oldOwnerId = routingUpdateMsg.getOldOwnerId();
+
+    for (final int blockId : blockIds) {
+      final int actualOldOwnerId = router.updateOwnership(blockId, newOwnerId);
+      if (actualOldOwnerId != oldOwnerId) {
+        LOG.log(Level.WARNING, "The expected old owner of {0} is {1}, but the actual one is {2}.",
+            new Object[]{blockId, oldOwnerId, actualOldOwnerId});
+      }
+    }
   }
 
   private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
