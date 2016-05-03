@@ -323,7 +323,6 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
    * Note that the load is not perfectly distributed evenly, because the blocks that have moved out are not considered.
    */
   private static class ThreadResolver {
-    // Naive version: round-robin
     private final int numThreads;
     private AtomicInteger nextIndex = new AtomicInteger(0);
     private Map<Integer, Integer> blockToThread = new HashMap<>();

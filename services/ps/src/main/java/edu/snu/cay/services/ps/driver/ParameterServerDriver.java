@@ -87,11 +87,16 @@ public final class ParameterServerDriver {
   }
 
   /**
-   * @return Driver configuration that includes the network configuration.
+   * Configuration for REEF driver when using Parameter Server.
+   * The {@link edu.snu.cay.services.ps.ns.PSNetworkSetup#registerConnectionFactory(org.apache.reef.wake.Identifier)}
+   * should be called explicitly in {@link org.apache.reef.runtime.common.driver.DriverStartHandler}.
+   *
+   * Note that this is a workaround to create two instances in dolphin async version for both Workers and Servers.
+   *
+   * @return configuration that should be submitted with a DriverConfiguration
    */
-  public static Configuration getDriverConfiguration() {
+  public static Configuration getDriverConfigurationWithoutRegisterDriver() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-//        .bindSetEntry(DriverStartHandler.class, NetworkDriverRegister.RegisterDriverHandler.class)
         .bindNamedParameter(PSMessageHandler.class, edu.snu.cay.services.ps.driver.impl.PSMessageHandler.class)
         .build();
   }

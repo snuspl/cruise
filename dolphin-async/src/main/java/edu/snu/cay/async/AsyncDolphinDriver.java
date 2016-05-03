@@ -154,8 +154,14 @@ final class AsyncDolphinDriver {
    */
   private final int numWorkerThreads;
 
+  /**
+   * Factory used when establishing network connection.
+   */
   private final IdentifierFactory identifierFactory;
 
+  /**
+   * The Driver's identifier.
+   */
   private final String driverId;
 
   /**
@@ -168,8 +174,14 @@ final class AsyncDolphinDriver {
    */
   private final EMWrapper serverEM;
 
+  /**
+   * To establish connections between the Driver and PS Workers.
+   */
   private final PSNetworkSetup psNetworkSetup;
 
+  /**
+   * Allows PS to get the routing table from EM driver.
+   */
   private final EMRoutingTableManager emRoutingTableManager;
 
   @Inject
@@ -210,17 +222,15 @@ final class AsyncDolphinDriver {
     try {
       workerInjector.bindVolatileParameter(EMIdentifier.class, WORKER_EM_IDENTIFIER);
       workerInjector.bindVolatileParameter(RangeSupport.class, Boolean.TRUE);
+      this.workerEM = workerInjector.getInstance(EMWrapper.class);
 
       serverInjector.bindVolatileParameter(EMIdentifier.class, SERVER_EM_IDENTIFIER);
       serverInjector.bindVolatileParameter(RangeSupport.class, Boolean.FALSE);
-
-      this.workerEM = workerInjector.getInstance(EMWrapper.class);
       this.serverEM = serverInjector.getInstance(EMWrapper.class);
-
+      this.emRoutingTableManager = serverInjector.getInstance(EMRoutingTableManager.class);
       this.psDriver = serverInjector.getInstance(ParameterServerDriver.class);
       this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
 
-      this.emRoutingTableManager = serverInjector.getInstance(EMRoutingTableManager.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }

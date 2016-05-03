@@ -68,7 +68,7 @@ public final class PartitionedServerSideMsgHandler<K, P, V> implements EventHand
   }
 
   /**
-   * Hand over values given from workers to {@link StaticPartitionedParameterServer}.
+   * Hand over values given from workers to {@link PartitionedParameterServer}.
    * Throws an exception if messages of an unexpected type arrive.
    */
   @Override
