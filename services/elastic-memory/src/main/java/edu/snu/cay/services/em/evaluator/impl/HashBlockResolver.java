@@ -31,19 +31,19 @@ import java.util.Map;
  */
 public final class HashBlockResolver<K> implements BlockResolver<K> {
   private Codec keyCodec;
-  private final long blockSize;
+  private final int numTotalBlocks;
 
   @Inject
   HashBlockResolver(@Parameter(KeyCodecName.class) final Codec keyCodec,
                     @Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
-    this.blockSize = Long.MAX_VALUE / numTotalBlocks;
+    this.numTotalBlocks = numTotalBlocks;
     this.keyCodec = keyCodec;
   }
 
   @Override
   public int resolveBlock(final K dataKey) {
     final int hashed = Math.abs(MurmurHash.getInstance().hash(keyCodec.encode(dataKey)));
-    return (int)(hashed / blockSize);
+    return hashed % numTotalBlocks;
   }
 
   @Override
