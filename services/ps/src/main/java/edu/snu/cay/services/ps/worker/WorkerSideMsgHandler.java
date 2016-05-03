@@ -15,12 +15,13 @@
  */
 package edu.snu.cay.services.ps.worker;
 
-import edu.snu.cay.services.em.driver.api.RoutingInfo;
+import edu.snu.cay.services.ps.avro.IdMapping;
+import edu.snu.cay.services.ps.avro.RoutingTableReplyMsg;
+import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
 import edu.snu.cay.services.ps.ParameterServerParameters.ValueCodecName;
 import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
 import edu.snu.cay.services.ps.avro.ReplyMsg;
-import edu.snu.cay.services.ps.avro.RoutingTableRespMsg;
 import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -85,7 +86,7 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
       break;
 
     case RoutingTableReplyMsg:
-      onRoutingTableReplyMsg(innerMsg.getRoutingTableRespMsg());
+      onRoutingTableReplyMsg(innerMsg.getRoutingTableReplyMsg());
       break;
 
     default:
@@ -95,18 +96,22 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     LOG.exiting(WorkerSideMsgHandler.class.getSimpleName(), "onNext");
   }
 
-  private void onRoutingTableReplyMsg(final RoutingTableRespMsg routingTableRespMsg) {
-    final List<Integer> blockIds = routingTableRespMsg.getBlockIds();
-    final List<Integer> storeIds = routingTableRespMsg.getMemoryStoreIds();
-    final long blockSize = routingTableRespMsg.getBlockSize();
+  private void onRoutingTableReplyMsg(final RoutingTableReplyMsg routingTableReplyMsg) {
+    final List<IdMapping> idMappings = routingTableReplyMsg.getIdMappings();
+    final int numTotalBlocks = routingTableReplyMsg.getNumTotalBlocks();
 
-    assert blockIds.size() == storeIds.size();
+    final Map<Integer, List<Integer>> storeIdToBlockIds  = new HashMap<>(idMappings.size());
+    final Map<Integer, String> storeIdToEndpointId = new HashMap<>(idMappings.size());
 
-    final Map<Integer, Integer> blockToStore = new HashMap<>(blockIds.size());
-    for (int i = 0; i < blockIds.size(); i++) {
-      blockToStore.put(blockIds.get(i), storeIds.get(i));
+    for (final IdMapping idMapping : idMappings) {
+      final int memoryStoreId = idMapping.getMemoryStoreId();
+      final List<Integer> blockIds = idMapping.getBlockIds();
+      final String endpointId = idMapping.getEndpointId().toString();
+      storeIdToBlockIds.put(memoryStoreId, blockIds);
+      storeIdToEndpointId.put(memoryStoreId, endpointId);
     }
-    serverResolver.updateRoutingTable(new RoutingInfo(blockToStore, blockSize));
+
+    serverResolver.updateRoutingTable(new EMRoutingTable(storeIdToBlockIds, storeIdToEndpointId, numTotalBlocks));
   }
 
   private void onReplyMsg(final ReplyMsg replyMsg) {

@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.services.ps.common.partitioned.resolver;
 
-import edu.snu.cay.services.em.driver.api.RoutingInfo;
+import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerMsgSender;
 import org.apache.reef.tang.InjectionFuture;
 
@@ -24,8 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
-
-import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
 
 /**
  * Resolves the server based on Elastic Memory's ownership table. This implementation assumes that Elastic Memory
@@ -38,9 +36,18 @@ public final class DynamicServerResolver implements ServerResolver {
 
   private final InjectionFuture<PartitionedWorkerMsgSender> sender;
 
-  private final Map<Integer, Integer> blockToServer = new HashMap<>();
+  /**
+   * Mapping from Block ID to the MemoryStore ID, which is used to resolve the block to MemoryStores.
+   */
+  private final Map<Integer, Integer> blockIdToStoreId = new HashMap<>();
 
-  private long blockSize = 0;
+  /**
+   * Mapping from EM's MemoryStore ID to the PS's NCS endpoint ID.
+   * This mapping rarely changes compared to the blockIdToStoreId.
+   */
+  private final Map<Integer, String> storeIdToEndpointId = new HashMap<>();
+
+  private int numTotalBlocks = 0;
 
   private volatile boolean initialized = false;
 
@@ -62,8 +69,8 @@ public final class DynamicServerResolver implements ServerResolver {
       throw new RuntimeException("Failed to initialize routing table for resolving server", e);
     }
 
-    final int blockId = (int) (hash / blockSize);
-    return SERVER_ID_PREFIX + blockToServer.get(blockId);
+    final int blockId = hash % numTotalBlocks;
+    return storeIdToEndpointId.get(blockIdToStoreId.get(blockId));
   }
 
   @Override
@@ -79,12 +86,20 @@ public final class DynamicServerResolver implements ServerResolver {
   /**
    * Initialize the router to lookup.
    */
-  @SuppressWarnings("unchecked")
   @Override
-  public void updateRoutingTable(final RoutingInfo routingInfo) {
-    final Map<Integer, Integer> routingTable = routingInfo.getBlockIdToStoreId();
-    this.blockSize = routingInfo.getBlockSize();
-    this.blockToServer.putAll(routingTable);
+  public void updateRoutingTable(final EMRoutingTable routingTable) {
+    final Map<Integer, List<Integer>> storeIdToBlockIds = routingTable.getStoreIdToBlockIds();
+
+    numTotalBlocks = routingTable.getNumTotalBlocks();
+    storeIdToEndpointId.putAll(routingTable.getStoreIdToEndpointId());
+
+    for (final Map.Entry<Integer, List<Integer>> entry : storeIdToBlockIds.entrySet()) {
+      final int storeId = entry.getKey();
+      for (final int blockId : entry.getValue()) {
+        blockIdToStoreId.put(blockId, storeId);
+      }
+    }
+
     initialized = true;
     synchronized (this) {
       notify();

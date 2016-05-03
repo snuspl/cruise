@@ -26,6 +26,7 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -121,7 +122,12 @@ public interface ElasticMemory {
   void checkpoint(String evalId);
 
   /**
-   * @return the global Routing information that which blocks exist in which MemoryStores.
+   * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
    */
-  RoutingInfo getRoutingInfo();
+  Map<Integer, List<Integer>> getStoreIdToBlockIds();
+
+  /**
+   * @return the number of total blocks that exist in this Elastic Memory instance.
+   */
+  int getNumTotalBlocks();
 }

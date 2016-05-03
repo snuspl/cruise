@@ -16,7 +16,6 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
-import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.utils.LongRangeUtils;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.math.LongRange;
@@ -72,7 +71,7 @@ public final class PartitionManager {
    * while moving toward partition-based data management.
    * TODO #346: Clean up data structures managing data id partitions
    */
-  private final Map<Integer, Set<Integer>> storeIdToBlockIds;
+  private final Map<Integer, List<Integer>> storeIdToBlockIds;
 
   /**
    * A mapping that maintains which block is owned by which MemoryStore.
@@ -130,7 +129,7 @@ public final class PartitionManager {
 
       // If NumTotalBlocks = 31 and NumInitialEval = 5, then MemoryStore0 takes {0, 5, 10, 15, 20, 25, 30}
       // and MemoryStore3 takes {3, 8, 13, 18, 23, 28}
-      storeIdToBlockIds.put(memoryStoreId, new HashSet<Integer>());
+      storeIdToBlockIds.put(memoryStoreId, new ArrayList<Integer>());
       for (int blockId = memoryStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
         storeIdToBlockIds.get(memoryStoreId).add(blockId);
         blockIdToStoreId.put(blockId, memoryStoreId);
@@ -414,10 +413,17 @@ public final class PartitionManager {
   }
 
   /**
-   * @return the global Routing information that which blocks exist in which MemoryStores.
+   * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
    */
-  RoutingInfo getRoutingInfo() {
-    return new RoutingInfo(blockIdToStoreId, Long.MAX_VALUE / numTotalBlocks);
+  Map<Integer, List<Integer>> getStoreIdToBlockIds() {
+    return storeIdToBlockIds;
+  }
+
+  /**
+   * @return the number of total blocks that exist in this Elastic Memory instance.
+   */
+  int getNumTotalBlocks() {
+    return numTotalBlocks;
   }
 
   /**
@@ -505,7 +511,7 @@ public final class PartitionManager {
    * @return list of block ids that have been chosen.
    */
   synchronized List<Integer> chooseBlocksToMove(final String evalId, final int numBlocks) {
-    final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
+    final List<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
     if (blockIds == null) {
       throw new RuntimeException("The data does not exist in " + evalId);
     }
@@ -539,7 +545,7 @@ public final class PartitionManager {
    * @return the number of blocks owned by the Evaluator.
    */
   public synchronized int getNumBlocks(final String evalId) {
-    final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
+    final List<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
     return blockIds.size();
   }
 

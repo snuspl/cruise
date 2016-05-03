@@ -21,7 +21,6 @@ import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
-import edu.snu.cay.services.em.driver.api.RoutingInfo;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
@@ -39,6 +38,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -189,7 +189,12 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public RoutingInfo getRoutingInfo() {
-    return partitionManager.getRoutingInfo();
+  public Map<Integer, List<Integer>> getStoreIdToBlockIds() {
+    return partitionManager.getStoreIdToBlockIds();
+  }
+
+  @Override
+  public int getNumTotalBlocks() {
+    return partitionManager.getNumTotalBlocks();
   }
 }

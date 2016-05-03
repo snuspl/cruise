@@ -18,6 +18,7 @@ package edu.snu.cay.async;
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
+import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.EMWrapper;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -26,6 +27,8 @@ import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
+import edu.snu.cay.services.ps.driver.impl.EMRoutingTableManager;
+import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import edu.snu.cay.utils.trace.HTrace;
 import edu.snu.cay.utils.trace.HTraceParameters;
@@ -167,11 +170,12 @@ final class AsyncDolphinDriver {
 
   private final PSNetworkSetup psNetworkSetup;
 
+  private final EMRoutingTableManager emRoutingTableManager;
+
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
                              final Injector injector,
-//                             final ParameterServerDriver psDriver,
                              final IdentifierFactory identifierFactory,
                              @Parameter(DriverIdentifier.class) final String driverId,
                              final AggregationManager aggregationManager,
@@ -187,7 +191,6 @@ final class AsyncDolphinDriver {
     this.dataLoadingService = dataLoadingService;
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.initServerCount = numServers;
-//    this.psDriver = psDriver;
     this.identifierFactory = identifierFactory;
     this.driverId = driverId;
     this.aggregationManager = aggregationManager;
@@ -216,6 +219,8 @@ final class AsyncDolphinDriver {
 
       this.psDriver = serverInjector.getInstance(ParameterServerDriver.class);
       this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
+
+      this.emRoutingTableManager = serverInjector.getInstance(EMRoutingTableManager.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -295,6 +300,17 @@ final class AsyncDolphinDriver {
           final Configuration serviceConf = Configurations.merge(
               psDriver.getServerServiceConfiguration(),
               serverEM.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
+
+          final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
+          try {
+            // to synchronize EM's MemoryStore id and PS's Network endpoint.
+            final int memoryStoreId = serviceInjector.getNamedInstance(MemoryStoreId.class);
+            final String endpointId = serviceInjector.getNamedInstance(EndpointId.class);
+            emRoutingTableManager.register(memoryStoreId, endpointId);
+          } catch (final InjectionException e) {
+            throw new RuntimeException(e);
+          }
+
           final Configuration traceConf = traceParameters.getConfiguration();
 
           activeContext.submitContextAndService(contextConf,
