@@ -217,14 +217,13 @@ final class AsyncDolphinDriver {
     this.numWorkerThreads = numWorkerThreads;
     this.traceParameters = traceParameters;
 
-    final Injector workerInjector = injector.forkInjector();
-    final Injector serverInjector = injector.forkInjector();
-
     try {
+      final Injector workerInjector = injector.forkInjector();
       workerInjector.bindVolatileParameter(EMIdentifier.class, WORKER_EM_IDENTIFIER);
       workerInjector.bindVolatileParameter(RangeSupport.class, Boolean.TRUE);
       this.workerEMWrapper = workerInjector.getInstance(EMWrapper.class);
 
+      final Injector serverInjector = injector.forkInjector();
       serverInjector.bindVolatileParameter(EMIdentifier.class, SERVER_EM_IDENTIFIER);
       serverInjector.bindVolatileParameter(RangeSupport.class, Boolean.FALSE);
       this.serverEMWrapper = serverInjector.getInstance(EMWrapper.class);
