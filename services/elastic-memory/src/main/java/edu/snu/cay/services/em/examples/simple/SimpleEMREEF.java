@@ -51,7 +51,7 @@ public final class SimpleEMREEF {
   private static final Logger LOG = Logger.getLogger(SimpleEMREEF.class.getName());
   private static final int TIMEOUT = 100000;
   private static final Tang TANG = Tang.Factory.getTang();
-  private static final int NUM_BLOCKS = 30;
+  private static final int NUM_BLOCKS = 30; // As 3 evaluators will be allocated, each evaluator will own 10 blocks
 
   @NamedParameter(doc = "Whether or not to run on the local runtime", short_name = "local", default_value = "true")
   private static final class OnLocal implements Name<Boolean> {
@@ -144,8 +144,10 @@ public final class SimpleEMREEF {
     final HTraceParameters traceParameters = getTraceParameters(injector);
     final Configuration traceConf = traceParameters.getConfiguration();
 
+    final boolean rangeSupport = false; // use single-key memory store. change it to true to use range-based one
+
     final Configuration emConf = TANG.newConfigurationBuilder()
-        .bindNamedParameter(RangeSupport.class, Boolean.toString(false)) // use single-key memory store
+        .bindNamedParameter(RangeSupport.class, Boolean.toString(rangeSupport))
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_BLOCKS))
         .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class)
         .build();

@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 
 /**
  * Evaluator-side message handler.
- * A task waits response from the driver through this class.
+ * A task waits a response from the driver through this class.
  */
 @EvaluatorSide
 final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
@@ -61,7 +61,7 @@ final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
    * It returns the aggregated count, which is contained in the message.
    * @return an aggregated count
    */
-  long waitForMessage() {
+  synchronized long waitForMessage() {
     try {
       latch.await();
     } catch (final InterruptedException e) {

@@ -210,11 +210,11 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
           submitLocalResult(operation, Optional.ofNullable(result), true);
         } else {
           LOG.log(Level.WARNING,
-              "This store was considered as the owner of block {0} by store {1}," +
-                  " but the local router assumes store {1} as the owner",
-              new Object[]{blockId, operation.getOrigEvalId().get(), remoteEvalId.get()});
+              "Fail to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
+                  " of block {1} by store {2}, but the local router assumes store {3} is the owner",
+              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalId.get()});
 
-          // submit it as a local result, because we do not even start the remote operation
+          // submit the fail result
           submitLocalResult(operation, Optional.<V>empty(), false);
         }
       } finally {
@@ -500,6 +500,11 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     return numUnits;
   }
 
+  /**
+   * Returns the number of local blocks whose type is {@code dataType}.
+   * @param dataType a type of data
+   * @return the number of blocks of specific type
+   */
   public int getNumBlocks(final String dataType) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (blocks == null) {

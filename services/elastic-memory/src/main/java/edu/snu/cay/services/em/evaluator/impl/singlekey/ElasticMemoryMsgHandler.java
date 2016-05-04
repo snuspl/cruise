@@ -130,7 +130,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     final int newOwnerId = getStoreId(routingUpdateMsg.getNewOwnerId().toString());
     final int oldOwnerId = getStoreId(routingUpdateMsg.getOldOwnerId().toString());
 
-    LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
+    LOG.log(Level.FINE.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
         new Object[]{newOwnerId, oldOwnerId, blockIds});
 
     for (final int blockId : blockIds) {

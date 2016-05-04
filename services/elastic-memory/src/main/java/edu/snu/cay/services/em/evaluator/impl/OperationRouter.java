@@ -28,7 +28,6 @@ import org.apache.reef.util.Optional;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,13 +40,14 @@ import java.util.logging.Logger;
 @Private
 @NotThreadSafe
 public final class OperationRouter<K> {
-
   private static final Logger LOG = Logger.getLogger(OperationRouter.class.getName());
 
+  private static final long INITIALIZATION_TIMEOUT_MS = 3000;
+
   /**
-   * AtomicBoolean for checking the initialization of router.
+   * A volatile type of boolean for checking the initialization of router.
    */
-  private AtomicBoolean initialized = new AtomicBoolean(false);
+  private volatile boolean initialized = false;
 
   private String evalPrefix;
 
@@ -69,7 +69,7 @@ public final class OperationRouter<K> {
    * Array representing block locations.
    * Its index is the blockId and value is the storeId.
    */
-  private final AtomicIntegerArray blockIdToStoreId;
+  private final AtomicIntegerArray blockLocations;
   private final List<Integer> initialLocalBlocks;
 
   // TODO #380: we have to improve router to provide different routing tables for each dataType.
@@ -85,7 +85,7 @@ public final class OperationRouter<K> {
     this.numInitialEvals = numInitialEvals;
     final int numInitialLocalBlocks = addedEval ? 0 : (numTotalBlocks / numInitialEvals + 1); // +1 for remainders
     this.initialLocalBlocks = new ArrayList<>(numInitialLocalBlocks);
-    this.blockIdToStoreId = new AtomicIntegerArray(numTotalBlocks);
+    this.blockLocations = new AtomicIntegerArray(numTotalBlocks);
     if (!addedEval) {
       initRouter();
     }
@@ -98,13 +98,13 @@ public final class OperationRouter<K> {
   private void initRouter() {
     // initial evaluators can initialize the routing table by itself
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
-      this.initialLocalBlocks.add(blockId);
+      initialLocalBlocks.add(blockId);
     }
 
     // blocks are initially distributed across Evaluators in round-robin.
     for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
       final int storeId = blockId % numInitialEvals;
-      blockIdToStoreId.set(blockId, storeId);
+      blockLocations.set(blockId, storeId);
     }
   }
 
@@ -117,7 +117,7 @@ public final class OperationRouter<K> {
     this.evalPrefix = endPointId.split("-")[0];
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endPointId);
 
-    initialized.set(true);
+    initialized = true;
   }
 
   /**
@@ -138,11 +138,11 @@ public final class OperationRouter<K> {
       if (storeId == localStoreId) {
         initialLocalBlocks.add(blockId);
       }
-      blockIdToStoreId.set(blockId, storeId);
+      blockLocations.set(blockId, storeId);
       blockId++;
     }
 
-    initialized.set(true);
+    initialized = true;
   }
 
   /**
@@ -200,7 +200,7 @@ public final class OperationRouter<K> {
   public Optional<String> resolveEval(final int blockId) {
     assertInitialization();
 
-    final int memoryStoreId = blockIdToStoreId.get(blockId);
+    final int memoryStoreId = blockLocations.get(blockId);
     if (memoryStoreId == localStoreId) {
       return Optional.empty();
     } else {
@@ -226,7 +226,7 @@ public final class OperationRouter<K> {
    * @return id of the MemoryStore who was the owner before update.
    */
   public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
-    final int localOldOwnerId = blockIdToStoreId.getAndSet(blockId, newOwnerId);
+    final int localOldOwnerId = blockLocations.getAndSet(blockId, newOwnerId);
     if (localOldOwnerId != oldOwnerId) {
       LOG.log(Level.WARNING, "Local routing table thought block {0} was in store {1}, but it was actually in {2}",
           new Object[]{blockId, oldOwnerId, newOwnerId});
@@ -245,18 +245,18 @@ public final class OperationRouter<K> {
   }
 
   private void assertInitialization() {
-    if (initialized.get()) {
+    if (initialized) {
       return;
     }
 
-    LOG.log(Level.INFO, "Waiting for router initialization");
+    LOG.log(Level.INFO, "Waiting for router to be initialized");
     try {
-      Thread.sleep(2000);
-      if (!initialized.get()) {
+      Thread.sleep(INITIALIZATION_TIMEOUT_MS);
+      if (!initialized) {
         throw new RuntimeException("Fail to initialize the router");
       }
     } catch (final InterruptedException e) {
-      LOG.log(Level.WARNING, "Interrupted while waiting for router initialization", e);
+      LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
     }
   }
 }

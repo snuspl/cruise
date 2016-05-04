@@ -64,7 +64,7 @@ public final class NetworkContextRegister {
       final Identifier identifier = identifierFactory.getNewInstance(contextStart.getId());
       emNetworkSetup.registerConnectionFactory(identifier);
 
-      // request the info of router initialization to driver, when the evaluator is dynamically added by EM.add()
+      // request driver to send the info for initializing router, when the evaluator is dynamically added by EM.add()
       if (addedEval) {
         try (final TraceScope traceScope = Trace.startSpan("ROUTING_INIT_REQUEST")) {
           final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());

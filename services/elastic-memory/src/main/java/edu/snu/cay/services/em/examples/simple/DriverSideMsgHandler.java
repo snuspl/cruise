@@ -38,10 +38,10 @@ import java.util.logging.Logger;
 
 /**
  * Driver-side message handler that receives aggregation messages as an aggregation master.
- * It runs Move between two evaluators randomly chosen when all evaluators are ready
+ * In default, it synchronizes all tasks by checking all evaluators have sent the messages.
+ * To make this happen, it sends response messages to all evaluators when messages from all evaluatorss arrive.
+ * Also it runs Move between two evaluators randomly chosen when all evaluators say they are READY
  * and sends the result to all evaluators.
- * It also provides a way to synchronize all worker tasks by checking all workers have sent the messages.
- * It sends response messages to all tasks when all messages from the tasks arrive.
  */
 public final class DriverSideMsgHandler implements EventHandler<AggregationMessage> {
   private static final Logger LOG = Logger.getLogger(DriverSideMsgHandler.class.getName());
@@ -70,7 +70,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
     this.partitionManager = partitionManager;
     this.codec = codec;
     this.numMoves = numMoves;
-    syncEvals();
+    syncWorkers();
   }
 
   /**
@@ -96,8 +96,8 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
   /**
    * Start synchronizing workers by executing a thread controlling workers.
    */
-  private void syncEvals() {
-    LOG.log(Level.INFO, "Start synchronization of workers...");
+  private void syncWorkers() {
+    LOG.log(Level.INFO, "Start synchronization of evaluators...");
     final Thread syncThread = new Thread(new SyncThread());
     syncThread.start();
   }

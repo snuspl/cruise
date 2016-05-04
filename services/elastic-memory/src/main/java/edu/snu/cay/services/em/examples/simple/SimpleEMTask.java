@@ -93,7 +93,7 @@ final class SimpleEMTask implements Task {
 
       // data is moving.
 
-      // wait move completes by driver
+      // wait until move is completed by driver
       final long numChangedBlocks = msgHandler.waitForMessage();
 
       // check that the local block is matched with the result of move
@@ -103,7 +103,7 @@ final class SimpleEMTask implements Task {
           new Object[]{prevNumBlocks, numChangedBlocks, curNumBlocks});
       prevNumBlocks = curNumBlocks;
 
-      // Move is finished, but let's waiting for the local routing table is correctly updated
+      // Move is finished, but let's wait for the local routing table is correctly updated
       // It's an ad-hoc way, because the touting table is not guaranteed to be updated even after sleep
       Thread.sleep(1000);
 
@@ -111,11 +111,11 @@ final class SimpleEMTask implements Task {
       checkAllDataAccessible();
     }
 
-    // need to sync here in order to guarantee that all evaluators are alive until all tasks are finished
+    // need to sync here in order to guarantee that all evaluators are alive until all remote operations are finished
     aggregationSlave.send(SimpleEMDriver.AGGREGATION_CLIENT_ID, codec.encode(DriverSideMsgHandler.READY));
     msgHandler.waitForMessage();
 
-    LOG.info("SimpleEMTask finishing...");
+    LOG.info("Finishing SimpleEMTask...");
     return null;
   }
 

@@ -383,7 +383,7 @@ final class MigrationManager {
 
   /**
    * Broadcast the result of the migration to all active evaluators,
-   * so as to ensure them to update their own routing tables.
+   * so as to ensure them to work with an up-to-date routing table.
    */
   private void broadcastSuccess(final Migration migration) {
     final Set<String> activeEvaluatorIds = partitionManager.getActiveEvaluators();

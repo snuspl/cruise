@@ -44,15 +44,15 @@ import java.util.logging.Logger;
 
 /**
  * Driver code for EMExample.
- * Two evaluators take turns moving half of their movable data to the other.
- * The number of numMoves, and the period to wait between moves are configurable.
+ * Driver runs a move between two randomly chosen evaluators.
+ * The number of moves is configurable.
  */
 @Unit
 final class SimpleEMDriver {
   private static final Logger LOG = Logger.getLogger(SimpleEMDriver.class.getName());
-  static final int NUM_EVAL = 3;
+  static final int NUM_EVAL = 3; // 3 is enough to cover all test cases
   private static final String CONTEXT_ID_PREFIX = "Context-";
-  public static final String TASK_ID_PREFIX = "Task-";
+  private static final String TASK_ID_PREFIX = "Task-";
   static final String AGGREGATION_CLIENT_ID = "AGGREGATION_CLIENT_ID";
 
   private final EvaluatorRequestor requestor;
@@ -143,7 +143,7 @@ final class SimpleEMDriver {
       final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class).build();
 
-      // configuration for testing range and single key implementation of MemoryStore.
+      // configuration for choosing range or single key implementation of MemoryStore.
       final Configuration rangeTestConf =
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindNamedParameter(RangeSupport.class, String.valueOf(rangeSupport))

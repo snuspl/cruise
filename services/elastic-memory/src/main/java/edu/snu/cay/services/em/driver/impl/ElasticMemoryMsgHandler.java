@@ -31,9 +31,7 @@ import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**

@@ -76,7 +76,7 @@ public final class PartitionManager {
   /**
    * A mapping that maintains which block is owned by which MemoryStore.
    */
-  private final NavigableMap<Integer, Integer> blockIdToStoreId;
+  private final Map<Integer, Integer> blockIdToStoreId;
 
   /**
    * Holds the block ids which are being moved.
@@ -93,7 +93,7 @@ public final class PartitionManager {
     this.storeIdToBlockIds = new HashMap<>();
     this.evalPartitions = new HashMap<>();
     this.globalPartitions = new HashMap<>();
-    this.blockIdToStoreId = new TreeMap<>();
+    this.blockIdToStoreId = new HashMap<>();
     this.movingBlocks = new HashSet<>(numTotalBlocks);
     this.numTotalBlocks = numTotalBlocks;
   }
@@ -136,8 +136,6 @@ public final class PartitionManager {
         blockIdToStoreId.put(blockId, memoryStoreId);
       }
     }
-    LOG.log(Level.INFO, "registerEvaluator. MemoryStore({0}) is registered to {1}",
-        new Object[]{memoryStoreId, contextId});
     return memoryStoreId;
   }
 
@@ -145,8 +143,9 @@ public final class PartitionManager {
    * Return the current locations of blocks.
    * @return a list of store ids, whose index is an block id.
    */
-  public synchronized List<Integer> getBlockLocations() {
-    return new ArrayList<>(blockIdToStoreId.values());
+  synchronized List<Integer> getBlockLocations() {
+    // sort the map with key and get its values
+    return new ArrayList<>(new TreeMap<>(blockIdToStoreId).values());
   }
 
   /**
@@ -169,7 +168,7 @@ public final class PartitionManager {
    * @param newOwnerId id of the MemoryStore who will own the block
    */
   synchronized void updateOwner(final int blockId, final int oldOwnerId, final int newOwnerId) {
-    LOG.log(Level.INFO, "Update owner of block {0} from store {1} to store {2}",
+    LOG.log(Level.FINER, "Update owner of block {0} from store {1} to store {2}",
         new Object[]{blockId, oldOwnerId, newOwnerId});
 
     if (!storeIdToBlockIds.containsKey(oldOwnerId)) {
@@ -558,10 +557,10 @@ public final class PartitionManager {
       }
     }
 
-    LOG.log(Level.INFO, "Choose {0} blocks from store {1} in evaluator {2} . Blocks: {3}",
+    LOG.log(Level.FINEST, "{0} blocks are chosen from store {1} in evaluator {2}. Blocks: {3}",
         new Object[] {numBlocks, storeId, evalId, blockIdList});
     if (blockIdList.size() < numBlocks) {
-      LOG.log(Level.WARNING, "{0} blocks are chosen from store {1} in evaluator {2}, while {3} blocks are requested",
+      LOG.log(Level.WARNING, "{0} blocks are chosen from store {1} in evaluator {2}, while {1} blocks are requested",
           new Object[] {blockIdList.size(), storeId, evalId, numBlocks});
     }
 
@@ -574,6 +573,7 @@ public final class PartitionManager {
    */
   public synchronized int getNumBlocks(final String evalId) {
     final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
+    // the given eval id is not registered
     if (blockIds == null) {
       return 0;
     }
