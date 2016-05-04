@@ -33,16 +33,18 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * A Partitioned Parameter Server, where partitions are dynamically moving in and out.
+ * An implementation of Partitioned Parameter Server, where partitions are dynamically moving in and out.
+ * The parameters are stored in MemoryStore, in most cases the local MemoryStore in the same Evaluator.
+ * If {@link edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver} has not reflected the
+ * up-to-date result of data migration, then PS will receive the requests for the block which has moved out to
+ * another MemoryStore. Even in such case, the EM guarantees to redirect the request to the MemoryStore that
+ * currently has the data block.
+ *
+ * Other parts in this implementation workS almost same as {@code StaticPartitionedParameterServer}.
  */
 public final class DynamicPartitionedParameterServer<K, P, V> implements PartitionedParameterServer<K, P, V> {
   private static final Logger LOG = Logger.getLogger(DynamicPartitionedParameterServer.class.getName());
   private static final String DATA_TYPE = "SERVER_DATA";
-
-  /**
-   * The number of threads to run operations.
-   */
-  private final int numThreads;
 
   /**
    * Max size of each thread's queue.
@@ -93,10 +95,9 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
                                             final PartitionedServerSideReplySender<K, V> sender) {
     this.memoryStore = memoryStore;
     this.blockResolver = blockResolver;
-    this.numThreads = numThreads;
     this.queueSize = queueSize;
     this.threadPool = Executors.newFixedThreadPool(numThreads);
-    this.threads = initThreads();
+    this.threads = initThreads(numThreads);
     this.parameterUpdater = parameterUpdater;
     this.sender = sender;
     this.threadResolver = new ThreadResolver(numThreads);
@@ -104,8 +105,9 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
 
   /**
    * Call after initializing threadPool.
+   * @param numThreads The number of threads to run operations.
    */
-  private Map<Integer, ServerThread<K, V>> initThreads() {
+  private Map<Integer, ServerThread<K, V>> initThreads(final int numThreads) {
     final Map<Integer, ServerThread<K, V>> initialized = new HashMap<>();
 
     LOG.log(Level.INFO, "Initializing {0} threads", numThreads);
@@ -136,14 +138,25 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
   }
 
   /**
+   * @return number of operations pending, on all queues
+   */
+  @Override
+  public int opsPending() {
+    int sum = 0;
+    for (final ServerThread<K, V> partition : threads.values()) {
+      sum += partition.opsPending();
+    }
+    return sum;
+  }
+
+  /**
    * A generic operation; operations are queued at each Partition.
    */
   private interface Op<K, V> {
     /**
      * Method to apply when dequeued by the Partition.
-     * @param memoryStore MemoryStore to store the data
      */
-    void apply(MemoryStore<K> memoryStore);
+    void apply();
   }
 
   /**
@@ -159,12 +172,12 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
     }
 
     /**
-     * Read from kvStore, modify (update), and write to kvStore.
+     * Read from MemoryStore, modify (update), and write to kvStore.
      */
     @Override
-    public void apply(final MemoryStore<K> pMemoryStore) {
+    public void apply() {
       try {
-        final Pair<K, V> oldKVPair = pMemoryStore.get(DATA_TYPE, key);
+        final Pair<K, V> oldKVPair = memoryStore.get(DATA_TYPE, key);
 
         final V oldValue;
         if (null == oldKVPair) {
@@ -180,7 +193,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
         }
 
         final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
-        pMemoryStore.put(DATA_TYPE, key, updatedValue);
+        memoryStore.put(DATA_TYPE, key, updatedValue);
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
@@ -200,21 +213,21 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
     }
 
     /**
-     * Read from kvStore and send the key-value pair to srcId.
+     * Read from MemoryStore and send the key-value pair to srcId.
      * To ensure atomicity, the key-value pair should be serialized immediately in sender.
      */
     @Override
-    public void apply(final MemoryStore<K> pMemoryStore) {
+    public void apply() {
       try {
-        final Pair<K, V> kvPair = pMemoryStore.get(DATA_TYPE, key);
+        final Pair<K, V> kvPair = memoryStore.get(DATA_TYPE, key);
         final V value;
         if (null == kvPair) {
-          final Pair<K, Boolean> result = pMemoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
+          final Pair<K, Boolean> result = memoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
           final boolean isSuccess = result.getSecond();
           if (!isSuccess) {
             throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");
           }
-          final Pair<K, V> initializedPair = pMemoryStore.get(DATA_TYPE, key);
+          final Pair<K, V> initializedPair = memoryStore.get(DATA_TYPE, key);
           value = initializedPair.getSecond();
         } else {
           value = kvPair.getSecond();
@@ -292,7 +305,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
           if (op == null) {
             continue;
           }
-          op.apply(memoryStore);
+          op.apply();
         } catch (final InterruptedException e) {
           LOG.log(Level.FINEST, "Poll failed with InterruptedException", e);
           continue;
@@ -303,7 +316,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
         // This should be faster than polling each op, because the blocking queue's lock is only acquired once.
         queue.drainTo(localOps, drainSize);
         for (final Op<K, V> op : localOps) {
-          op.apply(memoryStore);
+          op.apply();
         }
         localOps.clear();
       }
@@ -318,8 +331,9 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
   }
 
   /**
-   * Assigns one thread per block.
-   * The first implementation allocates unseen block to threads in a round-robin fashion.
+   * Dedicates one thread to a block, to distribute load across threads while guaranteeing operations on one block
+   * to be processed by only one thread.
+   * The current implementation allocates unseen block to threads in a round-robin fashion.
    * Note that the load is not perfectly distributed evenly, because the blocks that have moved out are not considered.
    */
   private static class ThreadResolver {

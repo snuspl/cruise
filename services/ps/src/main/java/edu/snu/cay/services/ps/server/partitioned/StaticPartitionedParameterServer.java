@@ -138,6 +138,7 @@ public final class StaticPartitionedParameterServer<K, P, V> implements Partitio
   /**
    * @return number of operations pending, on all queues
    */
+  @Override
   public int opsPending() {
     int sum = 0;
     for (final ServerThread<K, V> partition : threads.values()) {

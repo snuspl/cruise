@@ -50,4 +50,11 @@ public interface PartitionedParameterServer<K, P, V> {
    * @param keyHash hash of the key, a positive integer used to map to the correct partition
    */
   void pull(final K key, final String srcId, final int keyHash);
+
+  /**
+   * Counts the number of pending operations.
+   * Note that this method is only for testing purpose.
+   * @return number of operations pending, on all queues
+   */
+  int opsPending();
 }

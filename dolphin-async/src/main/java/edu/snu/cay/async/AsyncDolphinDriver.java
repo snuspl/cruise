@@ -52,6 +52,7 @@ import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.ConfigurationSerializer;
 import org.apache.reef.wake.EventHandler;
+import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.time.event.StartTime;
 
@@ -160,9 +161,9 @@ final class AsyncDolphinDriver {
   private final IdentifierFactory identifierFactory;
 
   /**
-   * The Driver's identifier.
+   * The Driver's identifier in String.
    */
-  private final String driverId;
+  private final String driverIdStr;
 
   /**
    * A Wrapper object of ElasticMemory for Workers.
@@ -189,7 +190,7 @@ final class AsyncDolphinDriver {
                              final DataLoadingService dataLoadingService,
                              final Injector injector,
                              final IdentifierFactory identifierFactory,
-                             @Parameter(DriverIdentifier.class) final String driverId,
+                             @Parameter(DriverIdentifier.class) final String driverIdStr,
                              final AggregationManager aggregationManager,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
@@ -204,7 +205,7 @@ final class AsyncDolphinDriver {
     this.initWorkerCount = dataLoadingService.getNumberOfPartitions();
     this.initServerCount = numServers;
     this.identifierFactory = identifierFactory;
-    this.driverId = driverId;
+    this.driverIdStr = driverIdStr;
     this.aggregationManager = aggregationManager;
     this.runningWorkerContextCount = new AtomicInteger(0);
     this.runningServerContextCount = new AtomicInteger(0);
@@ -254,9 +255,11 @@ final class AsyncDolphinDriver {
       evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
           evalAllocHandlerForWorker, contextActiveHandlersForWorker);
 
-      workerEM.getNetworkSetup().registerConnectionFactory(identifierFactory.getNewInstance(driverId));
-      serverEM.getNetworkSetup().registerConnectionFactory(identifierFactory.getNewInstance(driverId));
-      psNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(driverId));
+      // Register the driver to the Network.
+      final Identifier driverId = identifierFactory.getNewInstance(driverIdStr);
+      workerEM.getNetworkSetup().registerConnectionFactory(driverId);
+      serverEM.getNetworkSetup().registerConnectionFactory(driverId);
+      psNetworkSetup.registerConnectionFactory(driverId);
     }
 
     /**

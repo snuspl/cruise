@@ -44,6 +44,7 @@ import java.io.IOException;
  * Should be injected into the user's Driver class.
  * Provides methods for getting context and service configurations.
  */
+// TODO #478: Change the confusing name of ParameterServerDriver
 @DriverSide
 public final class ParameterServerDriver {
 
@@ -88,14 +89,17 @@ public final class ParameterServerDriver {
 
   /**
    * Configuration for REEF driver when using Parameter Server.
-   * The {@link edu.snu.cay.services.ps.ns.PSNetworkSetup#registerConnectionFactory(org.apache.reef.wake.Identifier)}
-   * should be called explicitly in {@link org.apache.reef.runtime.common.driver.DriverStartHandler}.
    *
-   * Note that this is a workaround to create two instances in dolphin async version for both Workers and Servers.
+   * A message handler in the Driver is created, which is used to send EM's routing table information to Workers.
+   * The driver is required to register to the NCS service, by calling
+   * {@link edu.snu.cay.services.ps.ns.PSNetworkSetup#registerConnectionFactory(org.apache.reef.wake.Identifier)}
+   * explicitly in the Driver's {@code EventHandler<StartTime>}. Note that this registration must be handled seamless
+   * to users, but for dolphin async to create separate EM instances for Workers and Servers,
+   * this class must be injected by the one who creates the server-side EM instance.
    *
    * @return configuration that should be submitted with a DriverConfiguration
    */
-  public static Configuration getDriverConfigurationWithoutRegisterDriver() {
+  public static Configuration getDriverConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(PSMessageHandler.class, edu.snu.cay.services.ps.driver.impl.PSMessageHandler.class)
         .build();

@@ -23,7 +23,6 @@ import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * Resolves the server based on Elastic Memory's ownership table. This implementation assumes that Elastic Memory
@@ -31,7 +30,6 @@ import java.util.logging.Logger;
  *    If h is the hashed value of the key, h is stored at block b where b's id = h / BLOCK_SIZE.
  */
 public final class DynamicServerResolver implements ServerResolver {
-  private static final Logger LOG = Logger.getLogger(DynamicServerResolver.class.getName());
   private static final long INITIALIZATION_TIMEOUT_MS = 3000;
 
   private final InjectionFuture<PartitionedWorkerMsgSender> sender;

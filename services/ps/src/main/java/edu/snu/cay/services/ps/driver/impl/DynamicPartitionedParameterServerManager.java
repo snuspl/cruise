@@ -46,11 +46,11 @@ import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
 import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
 
 /**
- * Manager class for a Partitioned Parameter Server, that supports atomic,
+ * Manager class for a Dynamic Partitioned Parameter Server, that supports atomic,
  * in-order processing of push and pull operations, running on a single Evaluator.
- * Partitions are based on the hash of the key.
- * Several servers threads are spawned (for each server) to handle disjoint sets of partitions.
- * Each server thread has its own queue and kvStore.
+ * Partitions are logically determined by the Elastic Memory, where each partition consists of
+ * disjoint sets of blocks.
+ * Each server spawns multiple threads each of which has its individual queue to handle operations.
  *
  * This manager does NOT handle server or worker faults.
  */

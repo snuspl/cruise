@@ -40,7 +40,8 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * Called when a Server instance is created, which uses EM.
+   * Called when a Server instance based on EM is created. This method adds a relationship between
+   * EM's MemoryStore ID and PS's NCS endpoint ID.
    * @param storeId The MemoryStore id in EM.
    * @param endpointId The Endpoint id in PS.
    */

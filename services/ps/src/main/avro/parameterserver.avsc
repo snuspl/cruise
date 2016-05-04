@@ -47,6 +47,11 @@
   ]
 },
 
+/**
+ * This message is sent from PS Worker to the PS Driver to access the
+ * routing table in EM. Only Dynamic Partitioned PS uses this message
+ * where the routing table is determined by the EM.
+ */
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
@@ -54,7 +59,10 @@
   "fields":[]
 },
 
-{
+/**
+ * This record encapsulates the id mapping in the Elastic Memory.
+ */
+ {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
   "name": "IdMapping",
@@ -65,6 +73,10 @@
   ]
 },
 
+/**
+ * This message is sent from the PS Driver to answer requests
+ * from PS Workers for the routing table.
+ */
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",

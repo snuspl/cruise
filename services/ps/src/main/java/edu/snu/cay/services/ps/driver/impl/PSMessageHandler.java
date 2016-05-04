@@ -29,8 +29,6 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Receives the messages from ParameterServers and ParameterWorkers.
@@ -40,7 +38,6 @@ import java.util.logging.Logger;
  */
 @DriverSide
 public final class PSMessageHandler implements EventHandler<Message<AvroParameterServerMsg>> {
-  private static final Logger LOG = Logger.getLogger(PSMessageHandler.class.getName());
   private final EMRoutingTableManager routingTableManager;
   private final InjectionFuture<PSMessageSender> sender;
 
@@ -56,35 +53,41 @@ public final class PSMessageHandler implements EventHandler<Message<AvroParamete
     final String srcId = avroParameterServerMsgMessage.getSrcId().toString();
 
     final AvroParameterServerMsg msg = SingleMessageExtractor.extract(avroParameterServerMsgMessage);
-    if (msg.getType() == Type.RoutingTableReqMsg) {
-      final EMRoutingTable routingTable = routingTableManager.getEMRoutingTable();
-      final int numTotalBlocks = routingTable.getNumTotalBlocks();
-      final List<IdMapping> idMappings = new ArrayList<>(routingTable.getStoreIdToEndpointId().size());
-      final Map<Integer, String> storeIdToEndpointId = routingTable.getStoreIdToEndpointId();
-      for (final Map.Entry<Integer, List<Integer>> entry : routingTable.getStoreIdToBlockIds().entrySet()) {
-        final int storeId = entry.getKey();
-        final List<Integer> blockIds = entry.getValue();
-        final IdMapping idMapping = IdMapping.newBuilder()
-            .setMemoryStoreId(storeId)
-            .setBlockIds(blockIds)
-            .setEndpointId(storeIdToEndpointId.get(storeId))
-            .build();
-        idMappings.add(idMapping);
-      }
-
-      final RoutingTableReplyMsg routingTableReplyMsg = RoutingTableReplyMsg.newBuilder()
-          .setIdMappings(idMappings)
-          .setNumTotalBlocks(numTotalBlocks)
-          .build();
-
-      final AvroParameterServerMsg responseMsg =
-          AvroParameterServerMsg.newBuilder()
-              .setType(Type.RoutingTableReplyMsg)
-              .setRoutingTableReplyMsg(routingTableReplyMsg).build();
-
-      sender.get().send(srcId, responseMsg);
-    } else {
-      LOG.log(Level.SEVERE, "Received {0}. Ignore it.", msg);
+    switch (msg.getType()) {
+    case RoutingTableReqMsg:
+      onRoutingTableReqMsg(srcId);
+      break;
+    default:
+      throw new RuntimeException("Unexpected message type: " + msg.getType().toString());
     }
+  }
+
+  private void onRoutingTableReqMsg(final String srcId) {
+    final EMRoutingTable routingTable = routingTableManager.getEMRoutingTable();
+    final int numTotalBlocks = routingTable.getNumTotalBlocks();
+    final List<IdMapping> idMappings = new ArrayList<>(routingTable.getStoreIdToEndpointId().size());
+    final Map<Integer, String> storeIdToEndpointId = routingTable.getStoreIdToEndpointId();
+    for (final Map.Entry<Integer, List<Integer>> entry : routingTable.getStoreIdToBlockIds().entrySet()) {
+      final int storeId = entry.getKey();
+      final List<Integer> blockIds = entry.getValue();
+      final IdMapping idMapping = IdMapping.newBuilder()
+          .setMemoryStoreId(storeId)
+          .setBlockIds(blockIds)
+          .setEndpointId(storeIdToEndpointId.get(storeId))
+          .build();
+      idMappings.add(idMapping);
+    }
+
+    final RoutingTableReplyMsg routingTableReplyMsg = RoutingTableReplyMsg.newBuilder()
+        .setIdMappings(idMappings)
+        .setNumTotalBlocks(numTotalBlocks)
+        .build();
+
+    final AvroParameterServerMsg responseMsg =
+        AvroParameterServerMsg.newBuilder()
+            .setType(Type.RoutingTableReplyMsg)
+            .setRoutingTableReplyMsg(routingTableReplyMsg).build();
+
+    sender.get().send(srcId, responseMsg);
   }
 }
