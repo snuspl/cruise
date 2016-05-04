@@ -16,12 +16,13 @@
 
 package edu.snu.cay.services.em.examples.simple;
 
+import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
-import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
-import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
+import edu.snu.cay.services.em.examples.simple.parameters.NumMoves;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -50,10 +51,10 @@ public final class SimpleEMREEF {
   private static final Logger LOG = Logger.getLogger(SimpleEMREEF.class.getName());
   private static final int TIMEOUT = 100000;
   private static final Tang TANG = Tang.Factory.getTang();
-  private static final int NUM_BLOCKS = 20; // Initially each MemoryStore owns 10 blocks
+  private static final int NUM_BLOCKS = 30;
 
   @NamedParameter(doc = "Whether or not to run on the local runtime", short_name = "local", default_value = "true")
-  public static final class OnLocal implements Name<Boolean> {
+  private static final class OnLocal implements Name<Boolean> {
   }
 
   /**
@@ -71,8 +72,7 @@ public final class SimpleEMREEF {
 
     cl.registerShortNameOfClass(OnLocal.class);
     HTraceParameters.registerShortNames(cl);
-    cl.registerShortNameOfClass(Iterations.class);
-    cl.registerShortNameOfClass(PeriodMillis.class);
+    cl.registerShortNameOfClass(NumMoves.class);
 
     cl.processCommandLine(args);
     return TANG.newInjector(cb.build());
@@ -93,32 +93,32 @@ public final class SimpleEMREEF {
   }
 
   /**
-   * Get iterations from the parsed command line Injector.
+   * Get NumMoves parameter from the parsed command line Injector.
    */
-  private static int getIterations(final Injector injector) throws InjectionException {
-    return injector.getNamedInstance(Iterations.class);
+  private static int getNumMoves(final Injector injector) throws InjectionException {
+    return injector.getNamedInstance(NumMoves.class);
   }
 
-  /**
-   * Get periodMillis from the parsed command line Injector.
-   */
-  private static long getPeriodMillis(final Injector injector) throws InjectionException {
-    return injector.getNamedInstance(PeriodMillis.class);
-  }
-
-  public static Configuration getDriverConfiguration() {
+  private static Configuration getDriverConfiguration() {
     final Configuration driverConfiguration = DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(SimpleEMDriver.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, "SimpleEMDriver")
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, SimpleEMDriver.EvaluatorAllocatedHandler.class)
         .set(DriverConfiguration.ON_DRIVER_STARTED, SimpleEMDriver.DriverStartHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, SimpleEMDriver.ActiveContextHandler.class)
-        .set(DriverConfiguration.ON_TASK_MESSAGE, SimpleEMDriver.TaskMessageHandler.class)
         .build();
+
+    final Configuration aggregationConf = AggregationConfiguration.newBuilder()
+        .addAggregationClient(SimpleEMDriver.AGGREGATION_CLIENT_ID,
+            DriverSideMsgHandler.class,
+            EvalSideMsgHandler.class)
+        .build()
+        .getDriverConfiguration();
 
     // spawn the name server at the driver
     return Configurations.merge(driverConfiguration,
         ElasticMemoryConfiguration.getDriverConfiguration(),
+        aggregationConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         Tang.Factory.getTang().newConfigurationBuilder()
@@ -145,13 +145,13 @@ public final class SimpleEMREEF {
     final Configuration traceConf = traceParameters.getConfiguration();
 
     final Configuration emConf = TANG.newConfigurationBuilder()
+        .bindNamedParameter(RangeSupport.class, Boolean.toString(false)) // use single-key memory store
         .bindNamedParameter(NumTotalBlocks.class, Integer.toString(NUM_BLOCKS))
         .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class)
         .build();
 
     final Configuration exampleConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(Iterations.class, Integer.toString(getIterations(injector)))
-        .bindNamedParameter(PeriodMillis.class, Long.toString(getPeriodMillis(injector)))
+        .bindNamedParameter(NumMoves.class, Integer.toString(getNumMoves(injector)))
         .build();
 
     final LauncherStatus status = runSimpleEM(runtimeConf,

@@ -15,30 +15,21 @@
  */
 package edu.snu.cay.services.em.examples.simple;
 
-import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
-import edu.snu.cay.services.em.avro.Result;
-import edu.snu.cay.services.em.driver.impl.PartitionManager;
-import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.common.aggregation.driver.AggregationManager;
+import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
-import edu.snu.cay.services.em.examples.simple.parameters.Iterations;
-import edu.snu.cay.services.em.examples.simple.parameters.PeriodMillis;
-import edu.snu.cay.utils.LongRangeUtils;
+import edu.snu.cay.services.em.examples.simple.parameters.NumMoves;
 import edu.snu.cay.utils.trace.HTraceParameters;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.wake.IdentifierFactory;
-import org.htrace.Sampler;
-import org.htrace.Trace;
-import org.htrace.TraceScope;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.task.TaskConfiguration;
-import org.apache.reef.driver.task.TaskMessage;
 import org.apache.reef.tang.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.annotations.Unit;
@@ -47,54 +38,48 @@ import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.time.event.StartTime;
 
 import javax.inject.Inject;
-import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Driver code for EMExample.
  * Two evaluators take turns moving half of their movable data to the other.
- * The number of iterations, and the period to wait between moves are configurable.
+ * The number of numMoves, and the period to wait between moves are configurable.
  */
 @Unit
 final class SimpleEMDriver {
   private static final Logger LOG = Logger.getLogger(SimpleEMDriver.class.getName());
-  private static final Random RANDOM = new Random();
-  private static final int NUM_EVAL = 2;
+  static final int NUM_EVAL = 3;
   private static final String CONTEXT_ID_PREFIX = "Context-";
   public static final String TASK_ID_PREFIX = "Task-";
+  static final String AGGREGATION_CLIENT_ID = "AGGREGATION_CLIENT_ID";
 
   private final EvaluatorRequestor requestor;
+  private final AggregationManager aggregationManager;
   private final ElasticMemoryConfiguration emConf;
-  private final ElasticMemory emService;
-  private final PartitionManager partitionManager;
   private final HTraceParameters traceParameters;
-  private final int iterations;
-  private final long periodMillis;
+
+  private final boolean rangeSupport;
+  private final int numMoves;
 
   @Inject
   private SimpleEMDriver(final EvaluatorRequestor requestor,
+                         final AggregationManager aggregationManager,
                          final ElasticMemoryConfiguration emConf,
-                         final ElasticMemory emService,
-                         final PartitionManager partitionManager,
                          final HTraceParameters traceParameters,
-                         @Parameter(Iterations.class) final int iterations,
-                         @Parameter(PeriodMillis.class) final long periodMillis) throws InjectionException {
+                         @Parameter(RangeSupport.class) final boolean rangeSupport,
+                         @Parameter(NumMoves.class) final int numMoves) throws InjectionException {
     this.requestor = requestor;
+    this.aggregationManager = aggregationManager;
     this.emConf = emConf;
-    this.emService = emService;
-    this.partitionManager = partitionManager;
     this.traceParameters = traceParameters;
-    this.iterations = iterations;
-    this.periodMillis = periodMillis;
+    this.rangeSupport = rangeSupport;
+    this.numMoves = numMoves;
   }
 
   /**
-   * Spawn two small containers.
+   * Spawn small containers.
    */
   final class DriverStartHandler implements EventHandler<StartTime> {
     @Override
@@ -124,27 +109,29 @@ final class SimpleEMDriver {
           .build();
 
       final Configuration contextConf = Configurations.merge(
-          partialContextConf, emConf.getContextConfiguration());
+          partialContextConf, emConf.getContextConfiguration(), aggregationManager.getContextConfiguration());
 
-      final Configuration serviceConf = Configurations.merge(emConf.getServiceConfiguration(contextId, NUM_EVAL),
+      final Configuration serviceConf = Configurations.merge(
+          emConf.getServiceConfiguration(contextId, NUM_EVAL),
+          aggregationManager.getServiceConfigurationWithoutNameResolver(),
           Tang.Factory.getTang().newConfigurationBuilder()
               .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
               .build());
+
       final Configuration traceConf = traceParameters.getConfiguration();
 
       final Configuration exampleConf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bindNamedParameter(Iterations.class, Integer.toString(iterations))
-          .bindNamedParameter(PeriodMillis.class, Long.toString(periodMillis))
+          .bindNamedParameter(NumMoves.class, Integer.toString(numMoves))
           .build();
 
       allocatedEvaluator.submitContextAndService(contextConf,
           Configurations.merge(serviceConf, traceConf, exampleConf));
-      LOG.info((evalCount + 1) + " evaluators active!");
+      LOG.log(Level.INFO, "{0} evaluators active!", evalCount + 1);
     }
   }
 
   /**
-   * Task-0 goes on Context-0, and Task-1 goes on CmpContext-1.
+   * Task-0 goes on Context-0, and Task-1 goes on Context-1.
    */
   final class ActiveContextHandler implements EventHandler<ActiveContext> {
 
@@ -156,126 +143,21 @@ final class SimpleEMDriver {
       final Configuration idFactoryConf = Tang.Factory.getTang().newConfigurationBuilder()
           .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class).build();
 
+      // configuration for testing range and single key implementation of MemoryStore.
+      final Configuration rangeTestConf =
+          Tang.Factory.getTang().newConfigurationBuilder()
+              .bindNamedParameter(RangeSupport.class, String.valueOf(rangeSupport))
+              .build();
+
       final Configuration taskConf = Configurations.merge(
           TaskConfiguration.CONF
               .set(TaskConfiguration.IDENTIFIER, taskId)
               .set(TaskConfiguration.TASK, SimpleEMTask.class)
-              .set(TaskConfiguration.ON_SEND_MESSAGE, SimpleEMTaskReady.class)
               .build(),
+          rangeTestConf,
           idFactoryConf);
 
       activeContext.submitTask(taskConf);
     }
-  }
-
-  /**
-   * When both tasks are ready, make the faster one send all of its data to the slower one.
-   */
-  final class TaskMessageHandler implements EventHandler<TaskMessage> {
-    private static final String DEFAULT_STRING = "DEFAULT";
-    private AtomicReference<String> prevContextId = new AtomicReference<>(DEFAULT_STRING);
-
-    @Override
-    public void onNext(final TaskMessage taskMessage) {
-      LOG.info("Received task message from " + taskMessage.getContextId());
-
-      if (!prevContextId.compareAndSet(DEFAULT_STRING, taskMessage.getContextId())) {
-        // slow evaluator goes through here
-        final String slowId = taskMessage.getContextId();
-        final String fastId = prevContextId.get();
-        runMoves(slowId, fastId);
-      } else {
-        // fast evaluator goes this way
-      }
-    }
-
-    private void runMoves(final String firstContextId, final String secondContextId) {
-
-      String srcId = firstContextId;
-      String destId = secondContextId;
-
-      for (int i = 0; i < iterations; i++) {
-        final CountDownLatch finishedLatch = new CountDownLatch(1);
-
-        final int initialSrcNumBlocks = getNumBlocks(srcId);
-        final int initialDestNumBlocks = getNumBlocks(destId);
-        final int numToMove = Math.max(1, RANDOM.nextInt(initialSrcNumBlocks)); // Move at least one block
-        LOG.log(Level.INFO, "Move {0} blocks from {1} to {2} (Initial number of blocks: {3} / {4} respectively)",
-            new Object[]{numToMove, srcId, destId, initialSrcNumBlocks, initialDestNumBlocks});
-
-        final boolean[] moveSucceeded = {false};
-
-        try (final TraceScope moveTraceScope = Trace.startSpan("simpleMove", Sampler.ALWAYS)) {
-          emService.move(SimpleEMTask.DATATYPE, numToMove, srcId, destId,
-              new EventHandler<AvroElasticMemoryMessage>() {
-                @Override
-                public void onNext(final AvroElasticMemoryMessage emMsg) {
-                  moveSucceeded[0] = emMsg.getResultMsg().getResult().equals(Result.SUCCESS);
-                  LOG.log(Level.INFO, "Was Move {0} successful? {1}. The result: {2}",
-                      new Object[]{emMsg.getOperationId(), moveSucceeded[0],
-                          emMsg.getResultMsg() == null ? "" : emMsg.getResultMsg().getResult()});
-                  finishedLatch.countDown();
-                }
-              }
-          );
-        }
-
-        // Wait for move to succeed
-        try {
-          LOG.log(Level.INFO, "Waiting for move to finish on iteration {0}", i);
-          finishedLatch.await();
-
-          // After moved, number of blocks should be updated accordingly.
-          checkNumBlocks(srcId, initialSrcNumBlocks - numToMove);
-          checkNumBlocks(destId, initialDestNumBlocks + numToMove);
-
-          if (moveSucceeded[0]) {
-            LOG.log(Level.INFO, "Move finished on iteration {0}", i);
-          } else {
-            throw new RuntimeException("Move failed on iteration " + i);
-          }
-        } catch (final InterruptedException e) {
-          throw new RuntimeException("Move wait interrupted on iteration " + i, e);
-        }
-
-        // Swap
-        final String tmpContextId = srcId;
-        srcId = destId;
-        destId = tmpContextId;
-      }
-    }
-  }
-
-  private void checkNumUnits(final String evalId, final int expected) {
-    final int actual = getNumUnits(evalId);
-    if (actual != expected) {
-      final String msg = new StringBuilder().append(evalId).append("should have ").append(expected)
-          .append(", but has ").append(actual).append(" units").toString();
-      throw new RuntimeException(msg);
-    }
-  }
-
-  /**
-   * Checks the expected number of blocks are in the Evaluator.
-   */
-  private void checkNumBlocks(final String evalId, final int expected) {
-    final int actual = getNumBlocks(evalId);
-    if (actual != expected) {
-      final String msg = evalId + "should have " + expected + ", but has " + actual + " blocks";
-      throw new RuntimeException(msg);
-    }
-  }
-
-  private int getNumUnits(final String evalId) {
-    final Set<LongRange> rangeSet = partitionManager.getRangeSet(evalId, SimpleEMTask.DATATYPE);
-    final int numUnits = (int) LongRangeUtils.getNumUnits(rangeSet);
-    return numUnits;
-  }
-
-  /**
-   * Gets the number of blocks in the Evaluator.
-   */
-  private int getNumBlocks(final String evalId) {
-    return partitionManager.getNumBlocks(evalId);
   }
 }
