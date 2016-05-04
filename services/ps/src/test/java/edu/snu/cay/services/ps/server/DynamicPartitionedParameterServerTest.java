@@ -66,7 +66,7 @@ public final class DynamicPartitionedParameterServerTest {
   private static final Integer KEY = 0;
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RESULT_ASSERTION = "final result of concurrent pushes and pulls";
-  private DynamicPartitionedParameterServer server;
+  private DynamicPartitionedParameterServer<Integer, Integer, Integer> server;
   private MockPartitionedServerSideReplySender mockSender;
 
   @Before
