@@ -168,12 +168,12 @@ final class AsyncDolphinDriver {
   /**
    * A Wrapper object of ElasticMemory for Workers.
    */
-  private final EMWrapper workerEM;
+  private final EMWrapper workerEMWrapper;
 
   /**
    * A Wrapper object of ElasticMemory for Servers.
    */
-  private final EMWrapper serverEM;
+  private final EMWrapper serverEMWrapper;
 
   /**
    * To establish connections between the Driver and PS Workers.
@@ -223,11 +223,11 @@ final class AsyncDolphinDriver {
     try {
       workerInjector.bindVolatileParameter(EMIdentifier.class, WORKER_EM_IDENTIFIER);
       workerInjector.bindVolatileParameter(RangeSupport.class, Boolean.TRUE);
-      this.workerEM = workerInjector.getInstance(EMWrapper.class);
+      this.workerEMWrapper = workerInjector.getInstance(EMWrapper.class);
 
       serverInjector.bindVolatileParameter(EMIdentifier.class, SERVER_EM_IDENTIFIER);
       serverInjector.bindVolatileParameter(RangeSupport.class, Boolean.FALSE);
-      this.serverEM = serverInjector.getInstance(EMWrapper.class);
+      this.serverEMWrapper = serverInjector.getInstance(EMWrapper.class);
       this.emRoutingTableManager = serverInjector.getInstance(EMRoutingTableManager.class);
       this.psDriver = serverInjector.getInstance(ParameterServerDriver.class);
       this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
@@ -257,8 +257,8 @@ final class AsyncDolphinDriver {
 
       // Register the driver to the Network.
       final Identifier driverId = identifierFactory.getNewInstance(driverIdStr);
-      workerEM.getNetworkSetup().registerConnectionFactory(driverId);
-      serverEM.getNetworkSetup().registerConnectionFactory(driverId);
+      workerEMWrapper.getNetworkSetup().registerConnectionFactory(driverId);
+      serverEMWrapper.getNetworkSetup().registerConnectionFactory(driverId);
       psNetworkSetup.registerConnectionFactory(driverId);
     }
 
@@ -309,10 +309,10 @@ final class AsyncDolphinDriver {
                   .set(ContextConfiguration.IDENTIFIER, contextId)
                   .build(),
               psDriver.getContextConfiguration(),
-              serverEM.getConf().getContextConfiguration());
+              serverEMWrapper.getConf().getContextConfiguration());
           final Configuration serviceConf = Configurations.merge(
               psDriver.getServerServiceConfiguration(),
-              serverEM.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
+              serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
 
           final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
           try {
@@ -363,11 +363,11 @@ final class AsyncDolphinDriver {
                   .set(ContextConfiguration.IDENTIFIER, contextId)
                   .build(),
               psDriver.getContextConfiguration(),
-              workerEM.getConf().getContextConfiguration(),
+              workerEMWrapper.getConf().getContextConfiguration(),
               aggregationManager.getContextConfiguration());
           final Configuration serviceConf = Configurations.merge(
               psDriver.getWorkerServiceConfiguration(),
-              workerEM.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
+              workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
               aggregationManager.getServiceConfigurationWithoutNameResolver());
           final Configuration traceConf = traceParameters.getConfiguration();
           final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
