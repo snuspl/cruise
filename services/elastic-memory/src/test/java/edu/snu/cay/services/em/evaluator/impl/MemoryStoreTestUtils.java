@@ -260,11 +260,6 @@ public final class MemoryStoreTestUtils {
     }
 
     @Override
-    public void sendRoutingUpdateAckMsg(@Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
     public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
                             final Set<LongRange> idRangeSet, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {

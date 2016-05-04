@@ -49,7 +49,6 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   private static final String SEND_ROUTING_INIT_REQUEST_MSG = "sendRoutingInitRequestMsg";
   private static final String SEND_ROUTING_INIT_MSG = "sendRoutingInitMsg";
   private static final String SEND_ROUTING_UPDATE_MSG = "sendRoutingUpdateMsg";
-  private static final String SEND_ROUTING_UPDATE_ACK_MSG = "sendRoutingUpdateAckMsg";
   private static final String SEND_CTRL_MSG = "sendCtrlMsg";
   private static final String SEND_DATA_MSG = "sendDataMsg";
   private static final String SEND_DATA_ACK_MSG = "sendDataAckMsg";
@@ -253,7 +252,7 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
               .setRoutingInitMsg(routingInitMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingInitRequestMsg");
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingInitMsg");
     }
   }
 
@@ -261,12 +260,27 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   public void sendRoutingUpdateMsg(final String destId, final List<Integer> blocks,
                                    final String oldOwnerId, final String newOwnerId,
                                    @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendRoutingUpdateMsgScope = Trace.startSpan(SEND_ROUTING_UPDATE_MSG, parentTraceInfo)) {
 
-  }
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingUpdateMsg");
 
-  @Override
-  public void sendRoutingUpdateAckMsg(@Nullable final TraceInfo parentTraceInfo) {
+      final RoutingUpdateMsg routingUpdateMsg = RoutingUpdateMsg.newBuilder()
+          .setOldOwnerId(oldOwnerId)
+          .setNewOwnerId(newOwnerId)
+          .setBlockIds(blocks)
+          .build();
 
+      send(destId,
+          AvroElasticMemoryMessage.newBuilder()
+              .setType(Type.RoutingUpdateMsg)
+              .setSrcId(emNetworkSetup.getMyId().toString())
+              .setDestId(destId)
+              .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
+              .setRoutingUpdateMsg(routingUpdateMsg)
+              .build());
+
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingUpdateMsg");
+    }
   }
 
   @Override

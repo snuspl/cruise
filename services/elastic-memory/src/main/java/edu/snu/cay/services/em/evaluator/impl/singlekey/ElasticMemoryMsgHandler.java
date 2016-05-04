@@ -127,15 +127,14 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     final RoutingUpdateMsg routingUpdateMsg = msg.getRoutingUpdateMsg();
 
     final List<Integer> blockIds = routingUpdateMsg.getBlockIds();
-    final int newOwnerId = routingUpdateMsg.getNewOwnerId();
-    final int oldOwnerId = routingUpdateMsg.getOldOwnerId();
+    final int newOwnerId = getStoreId(routingUpdateMsg.getNewOwnerId().toString());
+    final int oldOwnerId = getStoreId(routingUpdateMsg.getOldOwnerId().toString());
+
+    LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
+        new Object[]{newOwnerId, oldOwnerId, blockIds});
 
     for (final int blockId : blockIds) {
-      final int actualOldOwnerId = router.updateOwnership(blockId, newOwnerId);
-      if (actualOldOwnerId != oldOwnerId) {
-        LOG.log(Level.WARNING, "The expected old owner of {0} is {1}, but the actual one is {2}.",
-            new Object[]{blockId, oldOwnerId, actualOldOwnerId});
-      }
+      router.updateOwnership(blockId, oldOwnerId, newOwnerId);
     }
   }
 
@@ -147,11 +146,12 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
       final String dataType = ownershipMsg.getDataType().toString();
       final int blockId = ownershipMsg.getBlockId();
+      final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
       final int newOwnerId = ownershipMsg.getNewOwnerId();
 
       // Update the owner of the block to the new one.
       // Operations being executed keep a read lock on router while being executed.
-      memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+      memoryStore.updateOwnership(dataType, blockId, oldOwnerId, newOwnerId);
 
       // After the ownership is updated, the data is never accessed locally,
       // so it is safe to remove the local data block.
@@ -217,13 +217,21 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
       // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
       // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
-      final int newOwnerId = Integer.valueOf(msg.getDestId().toString().split("-")[1]);
-      final int oldOwnerId = memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+      final int newOwnerId = getStoreId(msg.getDestId().toString());
+      final int oldOwnerId = getStoreId(msg.getSrcId().toString());
+      memoryStore.updateOwnership(dataType, blockId, oldOwnerId, newOwnerId);
 
       // Notify the driver that the ownership has been updated by setting empty destination id.
       sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, dataType, blockId, oldOwnerId, newOwnerId,
           TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
+  }
+
+  /**
+   * Converts evaluator id to store id.
+   */
+  private int getStoreId(final String evalId) {
+    return Integer.valueOf(evalId.split("-")[1]);
   }
 
   /**

@@ -221,12 +221,16 @@ public final class OperationRouter<K> {
    * Updates the owner of the block. Note that this method must be synchronized
    * to prevent other threads from reading the routing information while updating it.
    * @param blockId id of the block to update its ownership.
-   * @param storeId id of the MemoryStore that will be new owner.
+   * @param oldOwnerId id of the MemoryStore that was owner.
+   * @param newOwnerId id of the MemoryStore that will be new owner.
    * @return id of the MemoryStore who was the owner before update.
    */
-  public int updateOwnership(final int blockId, final int storeId) {
-    final int oldOwner = blockIdToStoreId.getAndSet(blockId, storeId);
-    return oldOwner;
+  public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
+    final int localOldOwnerId = blockIdToStoreId.getAndSet(blockId, newOwnerId);
+    if (localOldOwnerId != oldOwnerId) {
+      LOG.log(Level.WARNING, "Local routing table thought block {0} was in store {1}, but it was actually in {2}",
+          new Object[]{blockId, oldOwnerId, newOwnerId});
+    }
   }
 
   /**

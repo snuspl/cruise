@@ -152,9 +152,9 @@ public final class PartitionManager {
   /**
    * @return a list of active evaluators that own each MemoryStore.
    */
-  public synchronized List<String> getActiveEvaluators() {
-    final Set<Integer> activeStores = blockIdToStoreId.keySet();
-    final List<String> activeEvaluators = new ArrayList<>(activeStores.size());
+  public synchronized Set<String> getActiveEvaluators() {
+    final Set<Integer> activeStores = storeIdToBlockIds.keySet();
+    final Set<String> activeEvaluators = new HashSet<>(activeStores.size());
 
     for (final int storeId : activeStores) {
       activeEvaluators.add(getEvaluatorId(storeId));
@@ -169,16 +169,24 @@ public final class PartitionManager {
    * @param newOwnerId id of the MemoryStore who will own the block
    */
   synchronized void updateOwner(final int blockId, final int oldOwnerId, final int newOwnerId) {
+    LOG.log(Level.INFO, "Update owner of block {0} from store {1} to store {2}",
+        new Object[]{blockId, oldOwnerId, newOwnerId});
+
     if (!storeIdToBlockIds.containsKey(oldOwnerId)) {
-      throw new RuntimeException("MemoryStore that was in " + oldOwnerId + "has been lost.");
+      throw new RuntimeException("MemoryStore " + oldOwnerId + " has been lost.");
     }
 
     if (!storeIdToBlockIds.containsKey(newOwnerId)) {
-      throw new RuntimeException("MemoryStore that was in " + newOwnerId + "has been lost.");
+      throw new RuntimeException("MemoryStore " + newOwnerId + " has been lost.");
     }
 
-    storeIdToBlockIds.get(oldOwnerId).remove(blockId);
-    storeIdToBlockIds.get(newOwnerId).add(blockId);
+    if (!storeIdToBlockIds.get(oldOwnerId).remove(blockId)) {
+      throw new RuntimeException("Store " + oldOwnerId + " does not own block " + blockId);
+    }
+    if (!storeIdToBlockIds.get(newOwnerId).add(blockId)) {
+      throw new RuntimeException("Store " + newOwnerId + " already owns block " + blockId);
+    }
+
     blockIdToStoreId.put(blockId, newOwnerId);
   }
 
@@ -528,9 +536,10 @@ public final class PartitionManager {
    * @return list of block ids that have been chosen.
    */
   synchronized List<Integer> chooseBlocksToMove(final String evalId, final int numBlocks) {
-    final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
+    final int storeId = getMemoryStoreId(evalId);
+    final Set<Integer> blockIds = storeIdToBlockIds.get(storeId);
     if (blockIds == null) {
-      throw new RuntimeException("The data does not exist in " + evalId);
+      throw new RuntimeException("Evaluator" + evalId + "is not registered");
     }
 
     final List<Integer> blockIdList = new ArrayList<>(Math.min(blockIds.size(), numBlocks));
@@ -549,9 +558,11 @@ public final class PartitionManager {
       }
     }
 
+    LOG.log(Level.INFO, "Choose {0} blocks from store {1} in evaluator {2} . Blocks: {3}",
+        new Object[] {numBlocks, storeId, evalId, blockIdList});
     if (blockIdList.size() < numBlocks) {
-      LOG.log(Level.WARNING, "{0} Blocks are chosen from {1}, while {2} blocks are requested",
-          new Object[] {blockIdList.size(), evalId, numBlocks});
+      LOG.log(Level.WARNING, "{0} blocks are chosen from store {1} in evaluator {2}, while {3} blocks are requested",
+          new Object[] {blockIdList.size(), storeId, evalId, numBlocks});
     }
 
     return blockIdList;
@@ -563,6 +574,9 @@ public final class PartitionManager {
    */
   public synchronized int getNumBlocks(final String evalId) {
     final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
+    if (blockIds == null) {
+      return 0;
+    }
     return blockIds.size();
   }
 

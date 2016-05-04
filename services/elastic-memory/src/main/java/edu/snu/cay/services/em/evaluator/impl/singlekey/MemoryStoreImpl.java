@@ -115,11 +115,10 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public int updateOwnership(final String dataType, final int blockId, final int storeId) {
+  public void updateOwnership(final String dataType, final int blockId, final int oldOwnerId, final int newOwnerId) {
     routerLock.writeLock().lock();
     try {
-      final int oldOwnerId = router.updateOwnership(blockId, storeId);
-      return oldOwnerId;
+      router.updateOwnership(blockId, oldOwnerId, newOwnerId);
     } finally {
       routerLock.writeLock().unlock();
     }
@@ -211,8 +210,9 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
           submitLocalResult(operation, Optional.ofNullable(result), true);
         } else {
           LOG.log(Level.WARNING,
-              "This MemoryStore was considered the Block {0}'s owner, but the local router assumes {1} as the owner",
-              new Object[]{blockId, remoteEvalId.get()});
+              "This store was considered as the owner of block {0} by store {1}," +
+                  " but the local router assumes store {1} as the owner",
+              new Object[]{blockId, operation.getOrigEvalId().get(), remoteEvalId.get()});
 
           // submit it as a local result, because we do not even start the remote operation
           submitLocalResult(operation, Optional.<V>empty(), false);
@@ -498,5 +498,14 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       numUnits += block.getNumUnits();
     }
     return numUnits;
+  }
+
+  public int getNumBlocks(final String dataType) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (blocks == null) {
+      return 0;
+    } else {
+      return blocks.size();
+    }
   }
 }

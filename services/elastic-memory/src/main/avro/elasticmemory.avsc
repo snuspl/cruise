@@ -157,8 +157,8 @@
   "fields":
   [
       {"name": "blockIds", "type": {"type": "array", "items": "int"}},
-      {"name": "oldOwnerId", "type": "int"},
-      {"name": "newOwnerId", "type": "int"}
+      {"name": "oldOwnerId", "type": "string"},
+      {"name": "newOwnerId", "type": "string"}
   ]
 },
 

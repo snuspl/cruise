@@ -386,7 +386,7 @@ final class MigrationManager {
    * so as to ensure them to update their own routing tables.
    */
   private void broadcastSuccess(final Migration migration) {
-    final List<String> activeEvaluatorIds = partitionManager.getActiveEvaluators();
+    final Set<String> activeEvaluatorIds = partitionManager.getActiveEvaluators();
     final String senderId = migration.getSenderId();
     final String receiverId = migration.getReceiverId();
     activeEvaluatorIds.remove(senderId);
@@ -394,6 +394,7 @@ final class MigrationManager {
 
     final List<Integer> blockIds = migration.getBlockIds();
 
+    LOG.log(Level.INFO, "Broadcast the result of migration to other active evaluators: {0}", activeEvaluatorIds);
     try (final TraceScope traceScope = Trace.startSpan("ROUTING_UPDATE")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       for (final String evalId : activeEvaluatorIds) {

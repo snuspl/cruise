@@ -283,11 +283,6 @@ public class MigrationManagerTest {
 
     }
 
-    @Override
-    public void sendRoutingUpdateAckMsg(@Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
     /**
      * Check the operation id and range matches.
      */
