@@ -75,7 +75,7 @@ import java.util.logging.Logger;
  */
 @DriverSide
 @Unit
-final class AsyncDolphinDriver {
+public final class AsyncDolphinDriver {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinDriver.class.getName());
   private static final String WORKER_CONTEXT = "WorkerContext";
   private static final String SERVER_CONTEXT = "ServerContext";
@@ -275,145 +275,6 @@ final class AsyncDolphinDriver {
       serverEMWrapper.getNetworkSetup().registerConnectionFactory(driverId);
       psNetworkSetup.registerConnectionFactory(driverId);
     }
-
-    /**
-     * Returns an EventHandler which submits the first context(DataLoading compute context) to server-side evaluator.
-     */
-    private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForServer() {
-      return new EventHandler<AllocatedEvaluator>() {
-        @Override
-        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-          LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
-          final int serverIndex = runningServerContextCount.getAndIncrement();
-          final Configuration idConfiguration = ContextConfiguration.CONF
-              .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + serverIndex)
-              .build();
-          allocatedEvaluator.submitContext(idConfiguration);
-        }
-      };
-    }
-
-    /**
-     * Returns an EventHandler which submits the first context(DataLoading context) to worker-side evaluator.
-     */
-    private EventHandler<AllocatedEvaluator> getEvalAllocHandlerForWorker() {
-      return new EventHandler<AllocatedEvaluator>() {
-        @Override
-        public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-          LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
-          allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
-              dataLoadingService.getServiceConfiguration(allocatedEvaluator));
-        }
-      };
-    }
-
-    /**
-     * Returns an EventHandler which submits the second context(parameter server context) to server-side evaluator.
-     */
-    private EventHandler<ActiveContext> getFirstContextActiveHandlerForServer() {
-      return new EventHandler<ActiveContext>() {
-        @Override
-        public void onNext(final ActiveContext activeContext) {
-          LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);
-          final int serverIndex = Integer.parseInt(
-              activeContext.getId().substring(dataLoadingService.getComputeContextIdPrefix().length()));
-          final String contextId = SERVER_CONTEXT + "-" + serverIndex;
-          final Configuration contextConf = Configurations.merge(
-              ContextConfiguration.CONF
-                  .set(ContextConfiguration.IDENTIFIER, contextId)
-                  .build(),
-              psDriver.getContextConfiguration(),
-              serverEMWrapper.getConf().getContextConfiguration());
-          final Configuration serviceConf = Configurations.merge(
-              psDriver.getServerServiceConfiguration(),
-              serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
-
-          final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
-          try {
-            // to synchronize EM's MemoryStore id and PS's Network endpoint.
-            final int memoryStoreId = serviceInjector.getNamedInstance(MemoryStoreId.class);
-            final String endpointId = serviceInjector.getNamedInstance(EndpointId.class);
-            emRoutingTableManager.register(memoryStoreId, endpointId);
-          } catch (final InjectionException e) {
-            throw new RuntimeException(e);
-          }
-
-          final Configuration traceConf = traceParameters.getConfiguration();
-
-          activeContext.submitContextAndService(contextConf,
-              Configurations.merge(serviceConf, traceConf, paramConf));
-        }
-      };
-    }
-
-    /**
-     * Returns an EventHandler which finishes server-side evaluator setup.
-     */
-    private EventHandler<ActiveContext> getSecondContextActiveHandlerForServer() {
-      return new EventHandler<ActiveContext>() {
-        @Override
-        public void onNext(final ActiveContext activeContext) {
-          LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
-          completedOrFailedEvalCount.incrementAndGet();
-          // although this evaluator is not 'completed' yet,
-          // we add it beforehand so that it closes if all workers finish
-          serverContexts.add(activeContext);
-        }
-      };
-    }
-
-    /**
-     * Returns an EventHandler which submits the second context(worker context) to worker-side evaluator.
-     */
-    private EventHandler<ActiveContext> getFirstContextActiveHandlerForWorker() {
-      return new EventHandler<ActiveContext>() {
-        @Override
-        public void onNext(final ActiveContext activeContext) {
-          LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
-          final int workerIndex = runningWorkerContextCount.getAndIncrement();
-          final String contextId = WORKER_CONTEXT + "-" + workerIndex;
-          final Configuration contextConf = Configurations.merge(
-              ContextConfiguration.CONF
-                  .set(ContextConfiguration.IDENTIFIER, contextId)
-                  .build(),
-              psDriver.getContextConfiguration(),
-              workerEMWrapper.getConf().getContextConfiguration(),
-              aggregationManager.getContextConfiguration());
-          final Configuration serviceConf = Configurations.merge(
-              psDriver.getWorkerServiceConfiguration(),
-              workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
-              aggregationManager.getServiceConfigurationWithoutNameResolver());
-          final Configuration traceConf = traceParameters.getConfiguration();
-          final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
-              .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
-              .build();
-
-          activeContext.submitContextAndService(contextConf,
-              Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf));
-        }
-      };
-    }
-
-    /**
-     * Returns an EventHandler which submits worker task to worker-side evaluator.
-     */
-    private EventHandler<ActiveContext> getSecondContextActiveHandlerForWorker() {
-      return new EventHandler<ActiveContext>() {
-        @Override
-        public void onNext(final ActiveContext activeContext) {
-          LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
-          final int workerIndex = Integer.parseInt(activeContext.getId().substring(WORKER_CONTEXT.length() + 1));
-          final Configuration taskConf = TaskConfiguration.CONF
-              .set(TaskConfiguration.IDENTIFIER, AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex)
-              .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
-              .build();
-          final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
-              .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class).build();
-
-          activeContext.submitTask(Configurations.merge(taskConf, workerConf, emDataIdConf));
-        }
-      };
-    }
   }
 
   final class AllocatedEvaluatorHandler implements EventHandler<AllocatedEvaluator> {
@@ -466,6 +327,147 @@ final class AsyncDolphinDriver {
       workerContextsToClose.add(completedTask.getActiveContext());
       checkShutdown();
     }
+  }
+
+
+  /**
+   * Returns an EventHandler which submits the first context(DataLoading compute context) to server-side evaluator.
+   */
+  public EventHandler<AllocatedEvaluator> getEvalAllocHandlerForServer() {
+    return new EventHandler<AllocatedEvaluator>() {
+      @Override
+      public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+        LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
+        final int serverIndex = runningServerContextCount.getAndIncrement();
+        final Configuration idConfiguration = ContextConfiguration.CONF
+            .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + serverIndex)
+            .build();
+        allocatedEvaluator.submitContext(idConfiguration);
+      }
+    };
+  }
+
+
+  /**
+   * Returns an EventHandler which submits the first context(DataLoading context) to worker-side evaluator.
+   */
+  public EventHandler<AllocatedEvaluator> getEvalAllocHandlerForWorker() {
+    return new EventHandler<AllocatedEvaluator>() {
+      @Override
+      public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+        LOG.log(Level.FINE, "Submitting data loading context to {0}", allocatedEvaluator.getId());
+        allocatedEvaluator.submitContextAndService(dataLoadingService.getContextConfiguration(allocatedEvaluator),
+            dataLoadingService.getServiceConfiguration(allocatedEvaluator));
+      }
+    };
+  }
+
+  /**
+   * Returns an EventHandler which submits the second context(parameter server context) to server-side evaluator.
+   */
+  public EventHandler<ActiveContext> getFirstContextActiveHandlerForServer() {
+    return new EventHandler<ActiveContext>() {
+      @Override
+      public void onNext(final ActiveContext activeContext) {
+        LOG.log(Level.INFO, "Server-side Compute context - {0}", activeContext);
+        final int serverIndex = Integer.parseInt(
+            activeContext.getId().substring(dataLoadingService.getComputeContextIdPrefix().length()));
+        final String contextId = SERVER_CONTEXT + "-" + serverIndex;
+        final Configuration contextConf = Configurations.merge(
+            ContextConfiguration.CONF
+                .set(ContextConfiguration.IDENTIFIER, contextId)
+                .build(),
+            psDriver.getContextConfiguration(),
+            serverEMWrapper.getConf().getContextConfiguration());
+        final Configuration serviceConf = Configurations.merge(
+            psDriver.getServerServiceConfiguration(),
+            serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
+
+        final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
+        try {
+          // to synchronize EM's MemoryStore id and PS's Network endpoint.
+          final int memoryStoreId = serviceInjector.getNamedInstance(MemoryStoreId.class);
+          final String endpointId = serviceInjector.getNamedInstance(EndpointId.class);
+          emRoutingTableManager.register(memoryStoreId, endpointId);
+        } catch (final InjectionException e) {
+          throw new RuntimeException(e);
+        }
+
+        final Configuration traceConf = traceParameters.getConfiguration();
+
+        activeContext.submitContextAndService(contextConf,
+            Configurations.merge(serviceConf, traceConf, paramConf));
+      }
+    };
+  }
+
+  /**
+   * Returns an EventHandler which finishes server-side evaluator setup.
+   */
+  public EventHandler<ActiveContext> getSecondContextActiveHandlerForServer() {
+    return new EventHandler<ActiveContext>() {
+      @Override
+      public void onNext(final ActiveContext activeContext) {
+        LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
+        completedOrFailedEvalCount.incrementAndGet();
+        // although this evaluator is not 'completed' yet,
+        // we add it beforehand so that it closes if all workers finish
+        serverContexts.add(activeContext);
+      }
+    };
+  }
+
+  /**
+   * Returns an EventHandler which submits the second context(worker context) to worker-side evaluator.
+   */
+  public EventHandler<ActiveContext> getFirstContextActiveHandlerForWorker() {
+    return new EventHandler<ActiveContext>() {
+      @Override
+      public void onNext(final ActiveContext activeContext) {
+        LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
+        final int workerIndex = runningWorkerContextCount.getAndIncrement();
+        final String contextId = WORKER_CONTEXT + "-" + workerIndex;
+        final Configuration contextConf = Configurations.merge(
+            ContextConfiguration.CONF
+                .set(ContextConfiguration.IDENTIFIER, contextId)
+                .build(),
+            psDriver.getContextConfiguration(),
+            workerEMWrapper.getConf().getContextConfiguration(),
+            aggregationManager.getContextConfiguration());
+        final Configuration serviceConf = Configurations.merge(
+            psDriver.getWorkerServiceConfiguration(),
+            workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
+            aggregationManager.getServiceConfigurationWithoutNameResolver());
+        final Configuration traceConf = traceParameters.getConfiguration();
+        final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
+            .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
+            .build();
+
+        activeContext.submitContextAndService(contextConf,
+            Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf));
+      }
+    };
+  }
+
+  /**
+   * Returns an EventHandler which submits worker task to worker-side evaluator.
+   */
+  public EventHandler<ActiveContext> getSecondContextActiveHandlerForWorker() {
+    return new EventHandler<ActiveContext>() {
+      @Override
+      public void onNext(final ActiveContext activeContext) {
+        LOG.log(Level.INFO, "Worker-side ParameterWorker context - {0}", activeContext);
+        final int workerIndex = Integer.parseInt(activeContext.getId().substring(WORKER_CONTEXT.length() + 1));
+        final Configuration taskConf = TaskConfiguration.CONF
+            .set(TaskConfiguration.IDENTIFIER, AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex)
+            .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
+            .build();
+        final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class).build();
+
+        activeContext.submitTask(Configurations.merge(taskConf, workerConf, emDataIdConf));
+      }
+    };
   }
 
   private void checkShutdown() {
