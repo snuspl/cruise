@@ -29,7 +29,7 @@ import java.util.logging.Logger;
  * of the routing table.
  */
 public final class TaskStartHandler implements EventHandler<TaskStart> {
-  private Logger LOG = Logger.getLogger(TaskStartHandler.class.getName());
+  private static final Logger LOG = Logger.getLogger(TaskStartHandler.class.getName());
   private PartitionedWorkerMsgSender sender;
 
   @Inject
