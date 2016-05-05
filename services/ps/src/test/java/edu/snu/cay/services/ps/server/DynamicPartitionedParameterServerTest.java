@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
+import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.ps.ParameterServerParameters;
@@ -108,6 +109,11 @@ public final class DynamicPartitionedParameterServerTest {
         return 0;
       }
     });
+
+    // EM's router should be initialized explicitly
+    final OperationRouter router = injector.getInstance(OperationRouter.class);
+    router.initialize("DUMMY");
+
     mockSender = injector.getInstance(MockPartitionedServerSideReplySender.class);
     server = injector.getInstance(DynamicPartitionedParameterServer.class);
   }
