@@ -16,8 +16,6 @@
 package edu.snu.cay.services.ps.common.partitioned.resolver;
 
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
-import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerMsgSender;
-import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -31,8 +29,6 @@ import java.util.Map;
  */
 public final class DynamicServerResolver implements ServerResolver {
   private static final long INITIALIZATION_TIMEOUT_MS = 3000;
-
-  private final InjectionFuture<PartitionedWorkerMsgSender> sender;
 
   /**
    * Mapping from Block ID to the MemoryStore ID, which is used to resolve the block to MemoryStores.
@@ -50,8 +46,7 @@ public final class DynamicServerResolver implements ServerResolver {
   private volatile boolean initialized = false;
 
   @Inject
-  private DynamicServerResolver(final InjectionFuture<PartitionedWorkerMsgSender> sender) {
-    this.sender = sender;
+  private DynamicServerResolver() {
   }
 
   @Override
@@ -59,7 +54,6 @@ public final class DynamicServerResolver implements ServerResolver {
     try {
       if (!initialized) {
         synchronized (this) {
-          sender.get().sendRoutingTableRequestMsg();
           this.wait(INITIALIZATION_TIMEOUT_MS);
         }
       }
