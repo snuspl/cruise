@@ -18,6 +18,7 @@ package edu.snu.cay.services.ps.driver;
 import edu.snu.cay.services.ps.ParameterServerParameters.SerializedCodecConfiguration;
 import edu.snu.cay.services.ps.ParameterServerParameters.SerializedUpdaterConfiguration;
 import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.DriverSideMsgHandler;
 import edu.snu.cay.services.ps.ns.NetworkContextRegister;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.worker.WorkerSideMsgHandler;
@@ -101,7 +102,7 @@ public final class ParameterServerDriver {
    */
   public static Configuration getDriverConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(PSMessageHandler.class, edu.snu.cay.services.ps.driver.impl.PSMessageHandler.class)
+        .bindNamedParameter(PSMessageHandler.class, DriverSideMsgHandler.class)
         .build();
   }
 

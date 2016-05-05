@@ -100,7 +100,7 @@ public final class DynamicServerResolver implements ServerResolver {
 
     initialized = true;
     synchronized (this) {
-      notify();
+      this.notify();
     }
   }
 }

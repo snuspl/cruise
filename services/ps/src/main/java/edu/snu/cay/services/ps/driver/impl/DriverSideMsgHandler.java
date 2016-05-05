@@ -37,13 +37,13 @@ import java.util.Map;
  * {@link edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver}.
  */
 @DriverSide
-public final class PSMessageHandler implements EventHandler<Message<AvroParameterServerMsg>> {
+public final class DriverSideMsgHandler implements EventHandler<Message<AvroParameterServerMsg>> {
   private final EMRoutingTableManager routingTableManager;
   private final InjectionFuture<PSMessageSender> sender;
 
   @Inject
-  private PSMessageHandler(final EMRoutingTableManager routingTableManager,
-                           final InjectionFuture<PSMessageSender> sender) {
+  private DriverSideMsgHandler(final EMRoutingTableManager routingTableManager,
+                               final InjectionFuture<PSMessageSender> sender) {
     this.routingTableManager = routingTableManager;
     this.sender = sender;
   }

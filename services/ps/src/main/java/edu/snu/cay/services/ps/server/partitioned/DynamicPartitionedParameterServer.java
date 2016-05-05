@@ -331,7 +331,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
   }
 
   /**
-   * Dedicates one thread to a block, to distribute load across threads while guaranteeing operations on one block
+   * Associates blocks with threads, to distribute load across threads while guaranteeing operations on one block
    * to be processed by only one thread.
    * The current implementation allocates unseen block to threads in a round-robin fashion.
    * Note that the load is not perfectly distributed evenly, because the blocks that have moved out are not considered.
