@@ -19,9 +19,7 @@ import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
-import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
-import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.conf.PlanExecutorClass;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.common.partitioned.parameters.Dynamic;
@@ -290,26 +288,11 @@ public final class AsyncDolphinLauncher {
             WorkerSynchronizer.MessageHandler.class)
         .build();
 
-    // set up an optimizer configuration
-    final Class<? extends Optimizer> optimizerClass;
-    final Class<? extends PlanExecutor> executorClass;
-    try {
-      optimizerClass = (Class<? extends Optimizer>) Class.forName(injector.getNamedInstance(OptimizerClass.class));
-      executorClass = (Class<? extends PlanExecutor>) Class.forName(injector.getNamedInstance(PlanExecutorClass.class));
-    } catch (final ClassNotFoundException e) {
-      throw new RuntimeException("Reflection failed", e);
-    }
-    final Configuration optimizerConf = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(Optimizer.class, optimizerClass)
-        .bindImplementation(PlanExecutor.class, executorClass)
-        .build();
-
     return Configurations.merge(driverConfWithDataLoad,
         ElasticMemoryConfiguration.getDriverConfigurationWithoutRegisterDriver(),
         ParameterServerDriver.getDriverConfiguration(),
         aggregationServiceConf.getDriverConfiguration(),
         HTraceParameters.getStaticConfiguration(),
-        optimizerConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         Tang.Factory.getTang().newConfigurationBuilder()

@@ -33,7 +33,7 @@ import java.util.logging.Logger;
  * Orchestrates the Optimization in Dolphin Async.
  */
 public final class OptimizationOrchestrator {
-  private final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
+  private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
@@ -59,7 +59,7 @@ public final class OptimizationOrchestrator {
     this.planExecutor = planExecutor;
   }
 
-  // TODO #00 When to trigger the optimization?
+  // TODO #00: When to trigger the optimization?
   public void run() {
     if (isPlanExecuting()) {
       LOG.log(Level.INFO, "Skipping Optimization, because some other thread is currently doing it");
@@ -77,7 +77,7 @@ public final class OptimizationOrchestrator {
         LOG.log(Level.INFO, "Optimization start.");
         logPreviousResult();
 
-        // TODO #00 Get the current available evaluators.
+        // TODO #00: Get the current available evaluators.
         final Plan plan = optimizer.optimize(null, 0);
 
         LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);

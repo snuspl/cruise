@@ -25,8 +25,10 @@ import edu.snu.cay.services.em.plan.api.PlanResult;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanResultImpl;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.task.RunningTask;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
@@ -36,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -57,9 +60,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   private ExecutingPlan executingPlan;
 
+  private AtomicInteger addedEvalCounter = new AtomicInteger(0);
+
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
-                                   @Parameter(ServerEM.class)final ElasticMemory serverEM,
+                                   @Parameter(ServerEM.class) final ElasticMemory serverEM,
                                    @Parameter(WorkerEM.class) final ElasticMemory workerEM) {
     this.asyncDolphinDriver = asyncDolphinDriver;
     this.serverEM = serverEM;
@@ -107,7 +112,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
               getActiveContextHandler(NAMESPACE_SERVER));
         }
 
-        for (final String workerEval: workerEvalsToAdd) {
+        for (final String workerEval : workerEvalsToAdd) {
           // TODO #00: Make the evaluator size configurable in EM.add().
           workerEM.add(1, 1024, 1,
               getAllocatedEvalHandler(NAMESPACE_WORKER),
@@ -165,12 +170,12 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private EventHandler<AllocatedEvaluator> getAllocatedEvalHandler(final String namespace) {
     final EventHandler<AllocatedEvaluator> eventHandler;
     switch (namespace) {
-    case NAMESPACE_WORKER:
-      eventHandler = asyncDolphinDriver.get().getEvalAllocHandlerForWorker();
-    break;
     case NAMESPACE_SERVER:
       eventHandler = asyncDolphinDriver.get().getEvalAllocHandlerForServer();
-    break;
+      break;
+    case NAMESPACE_WORKER:
+      eventHandler = new WorkerEvaluatorAllocatedHandler();
+      break;
     default:
       throw new RuntimeException("Unsupported namespace");
     }
@@ -178,20 +183,35 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
+   * This handler is registered as a callback to ElasticMemory.add() for Workers.
+   */
+  private final class WorkerEvaluatorAllocatedHandler implements EventHandler<AllocatedEvaluator> {
+    @Override
+    public void onNext(final AllocatedEvaluator allocatedEvaluator) {
+      LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
+      final int workerIndex = addedEvalCounter.getAndIncrement();
+      final Configuration idConfiguration = ContextConfiguration.CONF
+          .set(ContextConfiguration.IDENTIFIER, "WORKER_ADDED_EVAL" + workerIndex)
+          .build();
+      allocatedEvaluator.submitContext(idConfiguration);
+    }
+  }
+
+    /**
    * This handler is registered as the active context callback of ElasticMemory.add().
    */
   private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace) {
     final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(2);
-         switch (namespace) {
+    switch (namespace) {
+    case NAMESPACE_SERVER:
+      activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer());
+      activeContextHandlers.add(asyncDolphinDriver.get().getSecondContextActiveHandlerForServer());
+      break;
     case NAMESPACE_WORKER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForWorker());
       activeContextHandlers.add(asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker());
       activeContextHandlers.add(new ContextActiveHandler());
-    break;
-    case NAMESPACE_SERVER:
-      activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer());
-      activeContextHandlers.add(asyncDolphinDriver.get().getSecondContextActiveHandlerForServer());
-    break;
+      break;
     default:
       throw new RuntimeException("Unsupported namespace");
     }

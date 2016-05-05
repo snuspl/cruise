@@ -16,19 +16,26 @@
 package edu.snu.cay.async;
 
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
-import edu.snu.cay.async.optimizer.AsyncDolphinPlanExecutor;
 import edu.snu.cay.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.async.optimizer.ServerEM;
 import edu.snu.cay.async.optimizer.WorkerEM;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
+import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
+import edu.snu.cay.services.em.avro.Result;
+import edu.snu.cay.services.em.avro.ResultMsg;
+import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.EMWrapper;
+import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
+import edu.snu.cay.services.em.optimizer.api.Optimizer;
+import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
+import edu.snu.cay.services.em.plan.conf.PlanExecutorClass;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
@@ -65,7 +72,9 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -133,6 +142,8 @@ public final class AsyncDolphinDriver {
    * Number of server-side evaluators that have successfully passed {@link ActiveContextHandler}.
    */
   private final AtomicInteger runningServerContextCount;
+
+  private final ConcurrentMap<String, ActiveContext> activeContexs = new ConcurrentHashMap<>();
 
   /**
    * Number of evaluators that have completed or failed.
@@ -207,6 +218,8 @@ public final class AsyncDolphinDriver {
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
+                             @Parameter(PlanExecutorClass.class) final String planExecutorClass,
+                             @Parameter(OptimizerClass.class) final String optimizerClass,
                              final HTraceParameters traceParameters,
                              final HTrace hTrace) throws IOException {
     hTrace.initialize();
@@ -241,12 +254,15 @@ public final class AsyncDolphinDriver {
       this.psDriver = serverInjector.getInstance(ParameterServerDriver.class);
       this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
 
-      final Injector optimizerInjector = Tang.Factory.getTang().newInjector();
+      final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bind(PlanExecutor.class, Class.forName(planExecutorClass))
+          .bind(Optimizer.class, Class.forName(optimizerClass)).build();
+      final Injector optimizerInjector = Tang.Factory.getTang().newInjector(conf);
       optimizerInjector.bindVolatileParameter(ServerEM.class, serverEMWrapper.getInstance());
       optimizerInjector.bindVolatileParameter(WorkerEM.class, workerEMWrapper.getInstance());
       this.optimizationOrchestrator = optimizerInjector.getInstance(OptimizationOrchestrator.class);
 
-    } catch (final InjectionException e) {
+    } catch (final InjectionException | ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
   }
@@ -291,6 +307,7 @@ public final class AsyncDolphinDriver {
       LOG.log(Level.INFO, "ActiveContext: {0}", activeContext);
 
       evaluatorManager.onContextActive(activeContext);
+      activeContexs.putIfAbsent(activeContext.getId(), activeContext);
     }
   }
 
@@ -479,6 +496,31 @@ public final class AsyncDolphinDriver {
       }
       for (final ActiveContext workerContext : workerContextsToClose) {
         workerContext.close();
+      }
+    }
+  }
+
+  /**
+   * EMDeleteExecutor implementation for Dolphin async.
+   */
+  final class TaskRemover implements EMDeleteExecutor {
+    @Override
+    public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
+      final ActiveContext activeContext = activeContexs.get(activeContextId);
+      if (activeContext == null) {
+        // Given active context should have a runningTask in a normal case, because our job is paused.
+        // Evaluator without corresponding runningTask implies error.
+        LOG.log(Level.WARNING,
+            "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
+      } else {
+        // TODO #205: Reconsider using of Avro message in EM's callback
+        activeContext.close();
+        callback.onNext(AvroElasticMemoryMessage.newBuilder()
+            .setType(Type.ResultMsg)
+            .setResultMsg(ResultMsg.newBuilder().setResult(Result.SUCCESS).build())
+            .setSrcId(activeContextId)
+            .setDestId("")
+            .build());
       }
     }
   }
