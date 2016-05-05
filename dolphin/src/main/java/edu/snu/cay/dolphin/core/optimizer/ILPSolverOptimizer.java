@@ -58,6 +58,7 @@ public final class ILPSolverOptimizer implements Optimizer {
   private static final Logger LOG = Logger.getLogger(ILPSolverOptimizer.class.getName());
   private static final String NEW_COMPUTE_TASK_ID_PREFIX = "newComputeTask-";
   private static final String TEMP_COMPUTE_TASK_ID_PREFIX = "tempComputeTask-";
+  private static final String NAMESPACE = "DOLPHIN_BSP";
   private final AtomicInteger newComputeTaskSequence = new AtomicInteger(0);
   private final DataUnitsToMoveComparator ascendingComparator;
   private final DataUnitsToMoveComparator descendingComparator;
@@ -299,9 +300,9 @@ public final class ILPSolverOptimizer implements Optimizer {
 
       if (cmpTask.getParticipateValue() && cmpTask.isNewComputeTask()) {
         cmpTask.setId(getNewComputeTaskId()); // replace temporary id with new permanent one.
-        builder.addEvaluatorToAdd(cmpTask.getId());
+        builder.addEvaluatorToAdd(NAMESPACE, cmpTask.getId());
       } else if (!cmpTask.getParticipateValue() && !cmpTask.isNewComputeTask()) {
-        builder.addEvaluatorToDelete(cmpTask.getId());
+        builder.addEvaluatorToDelete(NAMESPACE, cmpTask.getId());
       }
     }
 
@@ -311,7 +312,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       while (getDataUnitsToMove(sender) < 0) {
         // pick receiver as a compute task that has the biggest amount of data unit to receive.
         final OptimizedComputeTask receiver = receiverPriorityQueue.poll();
-        builder.addTransferSteps(generateTransferStep(sender, receiver));
+        builder.addTransferSteps(NAMESPACE, generateTransferStep(sender, receiver));
         if (getDataUnitsToMove(receiver) > 0) {
           receiverPriorityQueue.add(receiver);
           break;

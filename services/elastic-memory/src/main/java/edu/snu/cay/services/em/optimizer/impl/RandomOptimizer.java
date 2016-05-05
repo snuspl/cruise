@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
+import edu.snu.cay.services.em.common.parameters.Namespace;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.plan.api.Plan;
@@ -66,9 +67,12 @@ public final class RandomOptimizer implements Optimizer {
   private final double minEvaluatorsFraction;
   private final double maxEvaluatorsFraction;
 
+  private final String namespace;
+
   @Inject
   private RandomOptimizer(@Parameter(MinEvaluatorsFraction.class) final double minEvaluatorsFraction,
-                          @Parameter(MaxEvaluatorsFraction.class) final double maxEvaluatorsFraction) {
+                          @Parameter(MaxEvaluatorsFraction.class) final double maxEvaluatorsFraction,
+                          @Parameter(Namespace.class) final String namespace) {
     if (minEvaluatorsFraction < 0.0 || minEvaluatorsFraction > 1.0
         || maxEvaluatorsFraction < 0.0 || maxEvaluatorsFraction > 1.0) {
       throw new IllegalArgumentException(
@@ -79,6 +83,7 @@ public final class RandomOptimizer implements Optimizer {
 
     this.minEvaluatorsFraction = minEvaluatorsFraction;
     this.maxEvaluatorsFraction = maxEvaluatorsFraction;
+    this.namespace = namespace;
   }
 
   @Override
@@ -106,8 +111,8 @@ public final class RandomOptimizer implements Optimizer {
     }
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder()
-        .addEvaluatorsToAdd(getIds(evaluatorsToAdd))
-        .addEvaluatorsToDelete(getIds(evaluatorsToDelete));
+        .addEvaluatorsToAdd(namespace, getIds(evaluatorsToAdd))
+        .addEvaluatorsToDelete(namespace, getIds(evaluatorsToDelete));
 
     /*
      * For each dataType:
@@ -133,7 +138,7 @@ public final class RandomOptimizer implements Optimizer {
       }
 
       final List<TransferStep> transferSteps = getTransferSteps(evaluators);
-      planBuilder.addTransferSteps(transferSteps);
+      planBuilder.addTransferSteps(namespace, transferSteps);
     }
 
     final Plan plan = planBuilder.build();

@@ -28,17 +28,17 @@ public interface Plan {
    * @return IDs of evaluators to add. These IDs are referenced by the transfer steps in this plan.
    *     Different evaluator IDs will likely be assigned during plan execution.
    */
-  Collection<String> getEvaluatorsToAdd();
+  Collection<String> getEvaluatorsToAdd(String namespace);
 
   /**
    * Evaluators to be deleted after transfer steps.
    * @return IDs of evaluators to delete
    */
-  Collection<String> getEvaluatorsToDelete();
+  Collection<String> getEvaluatorsToDelete(String namespace);
 
   /**
    * Transfer steps to be applied.
    * @return src, dst, and information about data to be transferred
    */
-  Collection<TransferStep> getTransferSteps();
+  Collection<TransferStep> getTransferSteps(String namespace);
 }

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
+import edu.snu.cay.services.em.common.parameters.Namespace;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.plan.api.TransferStep;
@@ -36,6 +37,7 @@ import static org.junit.Assert.assertNotNull;
  * Test that the Random Optimizer behaves correctly.
  */
 public final class RandomOptimizerTest {
+  private static final String NAMESPACE = "OPTIMIZER";
 
   /**
    * Test that no evaluators are added or deleted when
@@ -51,8 +53,8 @@ public final class RandomOptimizerTest {
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators);
 
-    assertEquals(0, plan.getEvaluatorsToAdd().size());
-    assertEquals(0, plan.getEvaluatorsToDelete().size());
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
   }
 
   /**
@@ -69,8 +71,8 @@ public final class RandomOptimizerTest {
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators / 2);
 
-    assertEquals(0, plan.getEvaluatorsToAdd().size());
-    assertEquals(numEvaluators / 2, plan.getEvaluatorsToDelete().size());
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(numEvaluators / 2, plan.getEvaluatorsToDelete(NAMESPACE).size());
   }
 
   /**
@@ -87,8 +89,8 @@ public final class RandomOptimizerTest {
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 2);
 
-    assertEquals(numEvaluators, plan.getEvaluatorsToAdd().size());
-    assertEquals(0, plan.getEvaluatorsToDelete().size());
+    assertEquals(numEvaluators, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
   }
 
   /**
@@ -105,9 +107,9 @@ public final class RandomOptimizerTest {
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 3 / 2);
 
-    assertNotNull(plan.getEvaluatorsToAdd());
-    assertNotNull(plan.getEvaluatorsToDelete());
-    assertNotNull(plan.getTransferSteps());
+    assertNotNull(plan.getEvaluatorsToAdd(NAMESPACE));
+    assertNotNull(plan.getEvaluatorsToDelete(NAMESPACE));
+    assertNotNull(plan.getTransferSteps(NAMESPACE));
   }
 
   /**
@@ -136,20 +138,20 @@ public final class RandomOptimizerTest {
 
     final Plan sameNumEvaluatorsPlan = randomOptimizer.optimize(evaluators, evaluators.size());
 
-    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToAdd().size());
-    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToDelete().size());
+    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToDelete(NAMESPACE).size());
 
     final Plan singleEvaluatorPlan = randomOptimizer.optimize(evaluators, 1);
 
-    assertEquals(0, singleEvaluatorPlan.getEvaluatorsToAdd().size());
-    assertEquals(1, singleEvaluatorPlan.getEvaluatorsToDelete().size());
+    assertEquals(0, singleEvaluatorPlan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(1, singleEvaluatorPlan.getEvaluatorsToDelete(NAMESPACE).size());
 
-    final String evaluatorToDelete = singleEvaluatorPlan.getEvaluatorsToDelete().iterator().next();
+    final String evaluatorToDelete = singleEvaluatorPlan.getEvaluatorsToDelete(NAMESPACE).iterator().next();
     assertEquals("2", evaluatorToDelete);
-    assertEquals(2, singleEvaluatorPlan.getTransferSteps().size());
+    assertEquals(2, singleEvaluatorPlan.getTransferSteps(NAMESPACE).size());
 
     long sum = 0;
-    for (final TransferStep transferStep : singleEvaluatorPlan.getTransferSteps()) {
+    for (final TransferStep transferStep : singleEvaluatorPlan.getTransferSteps(NAMESPACE)) {
       assertEquals("2", transferStep.getSrcId());
       assertEquals("1", transferStep.getDstId());
       sum += transferStep.getDataInfo().getNumUnits();
@@ -172,6 +174,7 @@ public final class RandomOptimizerTest {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(RandomOptimizer.MinEvaluatorsFraction.class, Double.toString(minEvaluatorsFraction))
         .bindNamedParameter(RandomOptimizer.MaxEvaluatorsFraction.class, Double.toString(maxEvaluatorsFraction))
+        .bindNamedParameter(Namespace.class, NAMESPACE)
         .build();
     try {
       return Tang.Factory.getTang().newInjector(configuration).getInstance(RandomOptimizer.class);

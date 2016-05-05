@@ -65,6 +65,7 @@ import java.util.logging.Logger;
  */
 public final class DefaultPlanExecutor implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(DefaultPlanExecutor.class.getName());
+  private static final String NAMESPACE = "DOLPHIN_BSP";
   private final ElasticMemory elasticMemory;
   private final DriverSync driverSync;
   private final InjectionFuture<DolphinDriver> dolphinDriver;
@@ -108,9 +109,9 @@ public final class DefaultPlanExecutor implements PlanExecutor {
        */
       @Override
       public PlanResult call() throws Exception {
-        if (plan.getEvaluatorsToAdd().isEmpty() &&
-            plan.getTransferSteps().isEmpty() &&
-            plan.getEvaluatorsToDelete().isEmpty()) {
+        if (plan.getEvaluatorsToAdd(NAMESPACE).isEmpty() &&
+            plan.getTransferSteps(NAMESPACE).isEmpty() &&
+            plan.getEvaluatorsToDelete(NAMESPACE).isEmpty()) {
           return new PlanResultImpl();
         }
         executingPlan = new ExecutingPlan(plan);
@@ -118,7 +119,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler = new EvaluatorAllocatedHandler();
         final List<EventHandler<ActiveContext>> contextActiveHandlers = new ArrayList<>();
         contextActiveHandlers.add(new ContextActiveHandler());
-        for (final String evaluatorToAdd : plan.getEvaluatorsToAdd()) {
+        for (final String evaluatorToAdd : plan.getEvaluatorsToAdd(NAMESPACE)) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
           elasticMemory.add(1, evalSize, 1, evaluatorAllocatedHandler, contextActiveHandlers);
         }
@@ -129,7 +130,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         // TODO #90: Need to revisit whether EM.move should throw a RuntimeException on network failure.
         // TODO #90: Perhaps the handlers should receive this failure information instead.
         try {
-          for (final TransferStep transferStep : plan.getTransferSteps()) {
+          for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE)) {
             elasticMemory.move(
                 transferStep.getDataInfo().getDataType(),
                 transferStep.getDataInfo().getNumUnits(),
@@ -355,16 +356,16 @@ public final class DefaultPlanExecutor implements PlanExecutor {
 
     private ExecutingPlan(final Plan plan) {
       this.pendingTaskSubmissions = new ConcurrentHashMap<>();
-      this.addEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd());
-      this.activeContexts = new ArrayList<>(plan.getEvaluatorsToAdd().size());
+      this.addEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE));
+      this.activeContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE).size());
       this.addEvaluatorIdsToContexts = new ConcurrentHashMap<>();
       this.runningTasks = new ConcurrentHashMap<>();
-      this.deleteEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete());
-      this.activeContextLatch = new CountDownLatch(plan.getEvaluatorsToAdd().size());
-      this.dataTransferLatch = new CountDownLatch(plan.getTransferSteps().size());
-      this.moveLatch = new CountDownLatch(plan.getTransferSteps().size());
-      this.runningTaskLatch = new CountDownLatch(plan.getEvaluatorsToAdd().size());
-      this.deleteLatch = new CountDownLatch(plan.getEvaluatorsToDelete().size());
+      this.deleteEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE));
+      this.activeContextLatch = new CountDownLatch(plan.getEvaluatorsToAdd(NAMESPACE).size());
+      this.dataTransferLatch = new CountDownLatch(plan.getTransferSteps(NAMESPACE).size());
+      this.moveLatch = new CountDownLatch(plan.getTransferSteps(NAMESPACE).size());
+      this.runningTaskLatch = new CountDownLatch(plan.getEvaluatorsToAdd(NAMESPACE).size());
+      this.deleteLatch = new CountDownLatch(plan.getEvaluatorsToDelete(NAMESPACE).size());
       this.synchronizedExecutionLatch = new CountDownLatch(1);
     }
 

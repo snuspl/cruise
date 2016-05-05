@@ -75,6 +75,8 @@ import java.util.logging.Logger;
  * </p>
  */
 public final class ILPQuickOptimizer implements Optimizer {
+  private static final String NAMESPACE = "DOLPHIN_BSP";
+
   private static final Logger LOG = Logger.getLogger(ILPQuickOptimizer.class.getName());
   private static final String NEW_COMPUTE_TASK_ID_PREFIX = "newComputeTask-";
 
@@ -168,7 +170,7 @@ public final class ILPQuickOptimizer implements Optimizer {
         optimizedEvalQueue, expectedCompUnitCostInv, compUnitCostInvSum, numUnitsTotal, numOptimalEvals, planBuilder);
 
     // Step 5: Generate transfer steps according to the optimal plan.
-    generateTransferSteps(evalSet, planBuilder);
+    generateTransferSteps(NAMESPACE, evalSet, planBuilder);
 
     return planBuilder.build();
   }
@@ -273,14 +275,14 @@ public final class ILPQuickOptimizer implements Optimizer {
       final int newWorkload = (int)Math.round(totalWorkload * expectedCompUnitCostInv / compUnitCostInvSum);
       retSet.add(new OptimizedEvaluator(newEvalId, new ArrayList<DataInfo>(0),
           expectedCompUnitCostInv, newWorkload));
-      planBuilder.addEvaluatorToAdd(newEvalId);
+      planBuilder.addEvaluatorToAdd(NAMESPACE, newEvalId);
       remainingWorkload -= newWorkload;
     }
 
     for (final OptimizedEvaluator eval : optimizedEvaluatorQueue) {
       if (retSet.size() >= numOptimalEvals) {
         // the optimal number of evaluators has been reached; delete the remaining ones
-        planBuilder.addEvaluatorToDelete(eval.id);
+        planBuilder.addEvaluatorToDelete(NAMESPACE, eval.id);
         eval.numOptimalUnits = 0;
 
       } else if (retSet.size() == numOptimalEvals - 1) {
@@ -306,7 +308,8 @@ public final class ILPQuickOptimizer implements Optimizer {
    * Very similar to {@link ILPSolverOptimizer}, except that
    * code was modified to match the {@link OptimizedEvaluator} methods and types.
    */
-  private static void generateTransferSteps(final Set<OptimizedEvaluator> optimizedEvalSet,
+  private static void generateTransferSteps(final String namespace,
+                                            final Set<OptimizedEvaluator> optimizedEvalSet,
                                             final PlanImpl.Builder builder) {
     final PriorityQueue<OptimizedEvaluator> senderPriorityQueue =
         new PriorityQueue<>(optimizedEvalSet.size(), NUM_UNITS_TO_MOVE_COMPARATOR);
@@ -328,7 +331,7 @@ public final class ILPQuickOptimizer implements Optimizer {
       while (sender.getNumUnits() > sender.numOptimalUnits) {
         // pick the compute task that has the biggest amount of data units to receive to be the receiver
         final OptimizedEvaluator receiver = receiverPriorityQueue.poll();
-        builder.addTransferSteps(generateTransferStep(sender, receiver));
+        builder.addTransferSteps(namespace, generateTransferStep(sender, receiver));
         if (receiver.getNumUnits() < receiver.numOptimalUnits) {
           receiverPriorityQueue.add(receiver);
           break;

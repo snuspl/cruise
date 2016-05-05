@@ -34,6 +34,7 @@ import java.util.logging.Logger;
  * A real single-threaded executor implementation could follow a similar pattern.
  */
 public final class LoggingPlanExecutor implements PlanExecutor {
+  private static final String NAMESPACE = "DOLPHIN_BSP";
   private static final Logger LOG = Logger.getLogger(LoggingPlanExecutor.class.getName());
 
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -47,15 +48,15 @@ public final class LoggingPlanExecutor implements PlanExecutor {
     return executor.submit(new Callable<PlanResult>() {
       @Override
       public PlanResult call() throws Exception {
-        for (final String evaluatorToAdd : plan.getEvaluatorsToAdd()) {
+        for (final String evaluatorToAdd : plan.getEvaluatorsToAdd(NAMESPACE)) {
           LOG.log(Level.INFO, "Add evaluator: " + evaluatorToAdd);
         }
 
-        for (final TransferStep transferStep : plan.getTransferSteps()) {
+        for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE)) {
           LOG.log(Level.INFO, "Apply transfer step: " + transferStep);
         }
 
-        for (final String evaluatorToDelete : plan.getEvaluatorsToDelete()) {
+        for (final String evaluatorToDelete : plan.getEvaluatorsToDelete(NAMESPACE)) {
           LOG.log(Level.INFO, "Delete evaluator: " + evaluatorToDelete);
         }
 

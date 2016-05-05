@@ -18,50 +18,61 @@ package edu.snu.cay.services.em.plan.impl;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.api.Plan;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A plan implementation with builder.
  * The builder checks for duplicate evaluators.
  */
 public final class PlanImpl implements Plan {
-  private final Collection<String> evaluatorsToAdd;
-  private final Collection<String> evaluatorsToDelete;
-  private final Collection<TransferStep> transferSteps;
+  private final Map<String, Set<String>> evaluatorsToAdd;
+  private final Map<String, Set<String>> evaluatorsToDelete;
+  private final Map<String, List<TransferStep>> transferSteps;
 
-  private PlanImpl(final Collection<String> evaluatorsToAdd,
-                   final Collection<String> evaluatorsToDelete,
-                   final Collection<TransferStep> transferSteps) {
+  private PlanImpl(final Map<String, Set<String>> evaluatorsToAdd,
+                   final Map<String, Set<String>> evaluatorsToDelete,
+                   final Map<String, List<TransferStep>> transferSteps) {
     this.evaluatorsToAdd = evaluatorsToAdd;
     this.evaluatorsToDelete = evaluatorsToDelete;
     this.transferSteps = transferSteps;
   }
 
   @Override
-  public Collection<String> getEvaluatorsToAdd() {
-    return evaluatorsToAdd;
+  public Collection<String> getEvaluatorsToAdd(final String namespace) {
+    if (!evaluatorsToAdd.containsKey(namespace)) {
+      return Collections.emptyList();
+    }
+    return evaluatorsToAdd.get(namespace);
   }
 
   @Override
-  public Collection<String> getEvaluatorsToDelete() {
-    return evaluatorsToDelete;
+  public Collection<String> getEvaluatorsToDelete(final String namespace) {
+    if (!evaluatorsToDelete.containsKey(namespace)) {
+      return Collections.emptyList();
+    }
+    return evaluatorsToDelete.get(namespace);
   }
 
   @Override
-  public Collection<TransferStep> getTransferSteps() {
-    return transferSteps;
+  public Collection<TransferStep> getTransferSteps(final String namespace) {
+    if (!transferSteps.containsKey(namespace)) {
+      return Collections.emptyList();
+    }
+    return transferSteps.get(namespace);
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder("PlanImpl{");
-    sb.append("evaluatorsToAdd=").append(evaluatorsToAdd);
-    sb.append(", evaluatorsToDelete=").append(evaluatorsToDelete);
-    sb.append(", transferSteps=").append(transferSteps);
+    for (final String key : evaluatorsToAdd.keySet()) {
+      sb.append("evaluatorsToAdd=(").append(key).append(',').append(evaluatorsToAdd.get(key)).append(')');
+    }
+    for (final String key : evaluatorsToDelete.keySet()) {
+      sb.append("evaluatorsToDelete=(").append(key).append(',').append(evaluatorsToDelete.get(key)).append(')');
+    }
+    for (final String key : transferSteps.keySet()) {
+      sb.append("TransferSteps=(").append(key).append(',').append(transferSteps.get(key)).append(')');
+    }
     sb.append('}');
     return sb.toString();
   }
@@ -71,62 +82,86 @@ public final class PlanImpl implements Plan {
   }
 
   public static final class Builder implements org.apache.reef.util.Builder<PlanImpl> {
-    private final Set<String> evaluatorsToAdd = new HashSet<>();
-    private final Set<String> evaluatorsToDelete = new HashSet<>();
-    private final List<TransferStep> transferSteps = new ArrayList<>();
+    private final Map<String, Set<String>> evaluatorsToAdd = new HashMap<>();
+    private final Map<String, Set<String>> evaluatorsToDelete = new HashMap<>();
+    private final Map<String, List<TransferStep>> allTransferSteps = new HashMap<>();
 
     private Builder() {
     }
 
-    public Builder addEvaluatorToAdd(final String evaluatorId) {
-      evaluatorsToAdd.add(evaluatorId);
+    public Builder addEvaluatorToAdd(final String namespace, final String evaluatorId) {
+      if (!evaluatorsToAdd.containsKey(namespace)) {
+        evaluatorsToAdd.put(namespace, new HashSet<String>());
+      }
+      final Set<String> evaluatorIds = evaluatorsToAdd.get(namespace);
+      evaluatorIds.add(evaluatorId);
       return this;
     }
 
-    public Builder addEvaluatorsToAdd(final Collection<String> evaluatorIds) {
-      evaluatorsToAdd.addAll(evaluatorIds);
+    public Builder addEvaluatorsToAdd(final String namespace, final Collection<String> evaluatorIdsToAdd) {
+      if (!evaluatorsToAdd.containsKey(namespace)) {
+        evaluatorsToAdd.put(namespace, new HashSet<String>());
+      }
+      final Set<String> evaluatorIds = evaluatorsToAdd.get(namespace);
+      evaluatorIds.addAll(evaluatorIdsToAdd);
       return this;
     }
 
-    public Builder addEvaluatorToDelete(final String evaluatorId) {
-      evaluatorsToDelete.add(evaluatorId);
+    public Builder addEvaluatorToDelete(final String namespace, final String evaluatorId) {
+      if (!evaluatorsToDelete.containsKey(namespace)) {
+        evaluatorsToDelete.put(namespace, new HashSet<String>());
+      }
+      final Set<String> evaluatorIds = evaluatorsToDelete.get(namespace);
+      evaluatorIds.add(evaluatorId);
       return this;
     }
 
-    public Builder addEvaluatorsToDelete(final Collection<String> evaluatorIds) {
-      evaluatorsToDelete.addAll(evaluatorIds);
+    public Builder addEvaluatorsToDelete(final String namespace, final Collection<String> evaluatorIdsToDelete) {
+      if (!evaluatorsToDelete.containsKey(namespace)) {
+        evaluatorsToDelete.put(namespace, new HashSet<String>());
+      }
+      final Set<String> evaluatorIds = evaluatorsToDelete.get(namespace);
+      evaluatorIds.addAll(evaluatorIdsToDelete);
       return this;
     }
 
-    public Builder addTransferStep(final TransferStep transferStep) {
+    public Builder addTransferStep(final String namespace, final TransferStep transferStep) {
+      if (!allTransferSteps.containsKey(namespace)) {
+        allTransferSteps.put(namespace, new ArrayList<TransferStep>());
+      }
+      final List<TransferStep> transferSteps = allTransferSteps.get(namespace);
       transferSteps.add(transferStep);
       return this;
     }
 
-    public Builder addTransferSteps(final Collection<TransferStep> newTransferSteps) {
+    public Builder addTransferSteps(final String namespace, final Collection<TransferStep> newTransferSteps) {
       for (final TransferStep transferStep : newTransferSteps) {
-        addTransferStep(transferStep);
+        addTransferStep(namespace, transferStep);
       }
       return this;
     }
 
     @Override
     public PlanImpl build() {
-      for (final String evaluator : evaluatorsToAdd) {
-        if (evaluatorsToDelete.contains(evaluator)) {
-          throw new RuntimeException(evaluator + " is planned for addition and deletion.");
+      for (final String namespace : evaluatorsToAdd.keySet()) {
+        for (final String evaluator : evaluatorsToAdd.get(namespace)) {
+          if (evaluatorsToDelete.containsKey(namespace) &&
+              evaluatorsToDelete.get(namespace).contains(evaluator)) {
+            throw new RuntimeException(evaluator + " is planned for addition and deletion.");
+          }
+        }
+
+        for (final TransferStep transferStep : allTransferSteps.get(namespace)) {
+          if (evaluatorsToDelete.containsKey(namespace) &&
+              evaluatorsToDelete.get(namespace).contains(transferStep.getDstId())) {
+            throw new RuntimeException(transferStep.getDstId() + " is planned for deletion.");
+          } else if (evaluatorsToAdd.containsKey(namespace) &&
+              evaluatorsToAdd.get(namespace).contains(transferStep.getSrcId())) {
+            throw new RuntimeException(transferStep.getSrcId() + " is planned for addition.");
+          }
         }
       }
-
-      for (final TransferStep transferStep : transferSteps) {
-        if (evaluatorsToDelete.contains(transferStep.getDstId())) {
-          throw new RuntimeException(transferStep.getDstId() + " is planned for deletion.");
-        } else if (evaluatorsToAdd.contains(transferStep.getSrcId())) {
-          throw new RuntimeException(transferStep.getSrcId() + " is planned for addition.");
-        }
-      }
-
-      return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, transferSteps);
+      return new PlanImpl(evaluatorsToAdd, evaluatorsToDelete, allTransferSteps);
     }
   }
 }

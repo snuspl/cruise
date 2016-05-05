@@ -16,6 +16,10 @@
 package edu.snu.cay.async;
 
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
+import edu.snu.cay.async.optimizer.AsyncDolphinPlanExecutor;
+import edu.snu.cay.async.optimizer.OptimizationOrchestrator;
+import edu.snu.cay.async.optimizer.ServerEM;
+import edu.snu.cay.async.optimizer.WorkerEM;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
@@ -24,6 +28,7 @@ import edu.snu.cay.services.em.driver.EMWrapper;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
+import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
@@ -185,6 +190,11 @@ final class AsyncDolphinDriver {
    */
   private final EMRoutingTableManager emRoutingTableManager;
 
+  /**
+   * Optimization Orchestrator for Dolphin Async.
+   */
+  private final OptimizationOrchestrator optimizationOrchestrator;
+
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
@@ -230,6 +240,11 @@ final class AsyncDolphinDriver {
       this.emRoutingTableManager = serverInjector.getInstance(EMRoutingTableManager.class);
       this.psDriver = serverInjector.getInstance(ParameterServerDriver.class);
       this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
+
+      final Injector optimizerInjector = Tang.Factory.getTang().newInjector();
+      optimizerInjector.bindVolatileParameter(ServerEM.class, serverEMWrapper.getInstance());
+      optimizerInjector.bindVolatileParameter(WorkerEM.class, workerEMWrapper.getInstance());
+      this.optimizationOrchestrator = optimizerInjector.getInstance(OptimizationOrchestrator.class);
 
     } catch (final InjectionException e) {
       throw new RuntimeException(e);

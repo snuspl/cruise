@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
+import edu.snu.cay.services.em.common.parameters.Namespace;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -22,6 +23,7 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Collection;
@@ -34,6 +36,8 @@ import java.util.Collection;
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
 public final class AddOneOptimizer implements Optimizer {
+  private final String namespace;
+
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -41,7 +45,8 @@ public final class AddOneOptimizer implements Optimizer {
   private int callsSkipped = 0;
 
   @Inject
-  private AddOneOptimizer() {
+  private AddOneOptimizer(@Parameter(Namespace.class) final String namespace) {
+    this.namespace = namespace;
   }
 
   @Override
@@ -69,7 +74,7 @@ public final class AddOneOptimizer implements Optimizer {
     // no evaluator has data; simply add a new evaluator with no new data to work on
     if (srcEvaluator == null) {
       return PlanImpl.newBuilder()
-          .addEvaluatorToAdd(evaluatorToAdd)
+          .addEvaluatorToAdd(namespace, evaluatorToAdd)
           .build();
     }
 
@@ -80,8 +85,8 @@ public final class AddOneOptimizer implements Optimizer {
         srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
 
     return PlanImpl.newBuilder()
-        .addEvaluatorToAdd(evaluatorToAdd)
-        .addTransferStep(transferStep)
+        .addEvaluatorToAdd(namespace, evaluatorToAdd)
+        .addTransferStep(namespace, transferStep)
         .build();
   }
 }

@@ -41,7 +41,7 @@ import static org.mockito.Mockito.*;
  * Class for testing {@link ILPSolverOptimizer}'s behavior.
  */
 public final class ILPSolverOptimizerTest {
-
+  private static final String NAMESPACE = "DOLPHIN_BSP";
   private final String ctrlTaskId = ControllerTask.TASK_ID_PREFIX + 2;
   private ILPSolverOptimizer ilpSolverOptimizer;
   private Random random;
@@ -70,9 +70,9 @@ public final class ILPSolverOptimizerTest {
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd().size() > 0);
-    assertEquals(0, plan.getEvaluatorsToDelete().size());
+    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
+    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE).size() > 0);
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
   }
 
   /**
@@ -89,10 +89,10 @@ public final class ILPSolverOptimizerTest {
     final Plan plan =
         ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals(0, plan.getEvaluatorsToAdd().size());
+    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
     assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
-        plan.getEvaluatorsToDelete().size() >= lowerBoundToDelete);
+        plan.getEvaluatorsToDelete(NAMESPACE).size() >= lowerBoundToDelete);
   }
 
   /**
@@ -107,9 +107,9 @@ public final class ILPSolverOptimizerTest {
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd().size() > 0);
-    assertEquals(0, plan.getEvaluatorsToDelete().size());
+    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
+    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE).size() > 0);
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
   }
 
   /**
@@ -125,10 +125,10 @@ public final class ILPSolverOptimizerTest {
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals(0, plan.getEvaluatorsToAdd().size());
+    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
     assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
-        plan.getEvaluatorsToDelete().size() >= lowerBoundToDelete);
+        plan.getEvaluatorsToDelete(NAMESPACE).size() >= lowerBoundToDelete);
   }
 
   /**
@@ -143,9 +143,9 @@ public final class ILPSolverOptimizerTest {
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals(1, plan.getEvaluatorsToAdd().size());
-    assertEquals(0, plan.getEvaluatorsToDelete().size());
+    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
+    assertEquals(1, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
   }
 
   /**
@@ -167,10 +167,10 @@ public final class ILPSolverOptimizerTest {
 
     final Plan plan = wrongCtrlIlpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd().size());
-    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToDelete().size());
-    assertEquals("The plan should be empty", 0, plan.getTransferSteps().size());
+    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
+    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToDelete(NAMESPACE).size());
+    assertEquals("The plan should be empty", 0, plan.getTransferSteps(NAMESPACE).size());
   }
 
   /**

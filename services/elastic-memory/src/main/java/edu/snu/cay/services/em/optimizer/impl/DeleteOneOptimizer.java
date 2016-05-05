@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
+import edu.snu.cay.services.em.common.parameters.Namespace;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -22,6 +23,7 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -39,6 +41,8 @@ import java.util.List;
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
 public final class DeleteOneOptimizer implements Optimizer {
+  private final String namespace;
+
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -46,7 +50,8 @@ public final class DeleteOneOptimizer implements Optimizer {
   private int callsSkipped = 0;
 
   @Inject
-  private DeleteOneOptimizer() {
+  private DeleteOneOptimizer(@Parameter(Namespace.class) final String namespace) {
+    this.namespace = namespace;
   }
 
   @Override
@@ -93,8 +98,8 @@ public final class DeleteOneOptimizer implements Optimizer {
     callsMade++;
 
     return PlanImpl.newBuilder()
-        .addEvaluatorToDelete(evaluatorToDelete.getId())
-        .addTransferSteps(transferSteps)
+        .addEvaluatorToDelete(namespace, evaluatorToDelete.getId())
+        .addTransferSteps(namespace, transferSteps)
         .build();
   }
 }
