@@ -214,7 +214,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
                   " of block {1} by store {2}, but the local router assumes store {3} is the owner",
               new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalId.get()});
 
-          // submit the fail result
+          // submit the failed result
           submitLocalResult(operation, Optional.<V>empty(), false);
         }
       } finally {
@@ -350,19 +350,18 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
       final Block<V> block = blocks.get(blockId);
       final V localOutput = block.executeOperation(operation);
-      operation.commitResult(Optional.ofNullable(localOutput), true);
+      submitLocalResult(operation, Optional.ofNullable(localOutput), true);
     }
   }
 
   /**
    * Handles the result of data operation processed by local memory store.
-   * It waits until all remote sub operations are finished and their outputs are fully aggregated.
    */
   private <V> void submitLocalResult(final SingleKeyOperation<K, V> operation, final Optional<V> localOutput,
                              final boolean isSuccess) {
     operation.commitResult(localOutput, isSuccess);
 
-    LOG.log(Level.FINEST, "Local operation succeed. OpId: {0}", operation.getOpId());
+    LOG.log(Level.FINEST, "Local operation is finished. OpId: {0}", operation.getOpId());
 
     if (!operation.isFromLocalClient()) {
       remoteOpHandler.sendResultToOrigin(operation);

@@ -84,12 +84,12 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-    case RoutingInitMsg:
-      onRoutingInitMsg(innerMsg);
+    case RoutingTableInitMsg:
+      onRoutingTableInitMsg(innerMsg);
       break;
 
-    case RoutingUpdateMsg:
-      onRoutingUpdateMsg(innerMsg);
+    case RoutingTableUpdateMsg:
+      onRoutingTableUpdateMsg(innerMsg);
       break;
 
     case RemoteOpMsg:
@@ -119,18 +119,18 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
-  private void onRoutingInitMsg(final AvroElasticMemoryMessage msg) {
-    router.initialize(msg.getDestId().toString(), msg.getRoutingInitMsg().getBlockLocations());
+  private void onRoutingTableInitMsg(final AvroElasticMemoryMessage msg) {
+    router.initialize(msg.getDestId().toString(), msg.getRoutingTableInitMsg().getBlockLocations());
   }
 
-  private void onRoutingUpdateMsg(final AvroElasticMemoryMessage msg) {
-    final RoutingUpdateMsg routingUpdateMsg = msg.getRoutingUpdateMsg();
+  private void onRoutingTableUpdateMsg(final AvroElasticMemoryMessage msg) {
+    final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
 
-    final List<Integer> blockIds = routingUpdateMsg.getBlockIds();
-    final int newOwnerId = getStoreId(routingUpdateMsg.getNewOwnerId().toString());
-    final int oldOwnerId = getStoreId(routingUpdateMsg.getOldOwnerId().toString());
+    final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
+    final int newOwnerId = getStoreId(routingTableUpdateMsg.getNewEvalId().toString());
+    final int oldOwnerId = getStoreId(routingTableUpdateMsg.getOldEvalId().toString());
 
-    LOG.log(Level.FINE.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
+    LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
         new Object[]{newOwnerId, oldOwnerId, blockIds});
 
     for (final int blockId : blockIds) {

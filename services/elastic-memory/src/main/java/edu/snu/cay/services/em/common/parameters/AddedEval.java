@@ -18,6 +18,6 @@ package edu.snu.cay.services.em.common.parameters;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Whether or not an added evaluator by EM.move()", default_value = "false")
+@NamedParameter(doc = "Whether or not an evaluator added by EM.add()", default_value = "false")
 public final class AddedEval implements Name<Boolean> {
 }

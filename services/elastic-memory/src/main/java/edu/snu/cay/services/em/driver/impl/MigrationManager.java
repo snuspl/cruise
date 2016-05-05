@@ -384,6 +384,8 @@ final class MigrationManager {
   /**
    * Broadcast the result of the migration to all active evaluators,
    * so as to ensure them to work with an up-to-date routing table.
+   * It only sends messages to evaluators except the source and destination of the migration,
+   * because their routing tables are already updated during the migration.
    */
   private void broadcastSuccess(final Migration migration) {
     final Set<String> activeEvaluatorIds = partitionManager.getActiveEvaluators();
@@ -398,7 +400,7 @@ final class MigrationManager {
     try (final TraceScope traceScope = Trace.startSpan("ROUTING_UPDATE")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       for (final String evalId : activeEvaluatorIds) {
-        sender.get().sendRoutingUpdateMsg(evalId, blockIds, senderId, receiverId, traceInfo);
+        sender.get().sendRoutingTableUpdateMsg(evalId, blockIds, senderId, receiverId, traceInfo);
       }
     }
   }

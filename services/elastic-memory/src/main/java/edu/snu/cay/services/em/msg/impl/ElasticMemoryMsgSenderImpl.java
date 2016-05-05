@@ -46,9 +46,9 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
 
   private static final String SEND_REMOTE_OP_MSG = "sendRemoteOpMsg";
   private static final String SEND_REMOTE_OP_RESULT_MSG = "sendRemoteOpResultMsg";
-  private static final String SEND_ROUTING_INIT_REQUEST_MSG = "sendRoutingInitRequestMsg";
-  private static final String SEND_ROUTING_INIT_MSG = "sendRoutingInitMsg";
-  private static final String SEND_ROUTING_UPDATE_MSG = "sendRoutingUpdateMsg";
+  private static final String SEND_ROUTING_TABLE_INIT_REQ_MSG = "sendRoutingTableInitReqMsg";
+  private static final String SEND_ROUTING_TABLE_INIT_MSG = "sendRoutingTableInitMsg";
+  private static final String SEND_ROUTING_TABLE_UPDATE_MSG = "sendRoutingTableUpdateMsg";
   private static final String SEND_CTRL_MSG = "sendCtrlMsg";
   private static final String SEND_DATA_MSG = "sendDataMsg";
   private static final String SEND_DATA_ACK_MSG = "sendDataAckMsg";
@@ -210,76 +210,78 @@ public final class ElasticMemoryMsgSenderImpl implements ElasticMemoryMsgSender 
   }
 
   @Override
-  public void sendRoutingInitRequestMsg(@Nullable final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendRoutingInitRequestMsgScope =
-             Trace.startSpan(SEND_ROUTING_INIT_REQUEST_MSG, parentTraceInfo)) {
+  public void sendRoutingTableInitReqMsg(@Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendRoutingInitReqMsgScope =
+             Trace.startSpan(SEND_ROUTING_TABLE_INIT_REQ_MSG, parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingInitRequestMsg");
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
 
-      final RoutingInitRequestMsg routingInitRequestMsg = RoutingInitRequestMsg.newBuilder()
+      final RoutingTableInitReqMsg routingTableInitReqMsg = RoutingTableInitReqMsg.newBuilder()
           .build();
 
       send(driverId,
           AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.RoutingInitRequestMsg)
+              .setType(Type.RoutingTableInitReqMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(driverId)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-              .setRoutingInitRequestMsg(routingInitRequestMsg)
+              .setRoutingTableInitReqMsg(routingTableInitReqMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingInitRequestMsg");
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitReqMsg");
     }
   }
 
   @Override
-  public void sendRoutingInitMsg(final String destId, final List<Integer> blockLocations,
-                                 @Nullable final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendRoutingInitMsgScope = Trace.startSpan(SEND_ROUTING_INIT_MSG, parentTraceInfo)) {
+  public void sendRoutingTableInitMsg(final String destId, final List<Integer> blockLocations,
+                                      @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendRoutingTableInitMsgScope =
+             Trace.startSpan(SEND_ROUTING_TABLE_INIT_MSG, parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingInitMsg");
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
 
-      final RoutingInitMsg routingInitMsg = RoutingInitMsg.newBuilder()
+      final RoutingTableInitMsg routingTableInitMsg = RoutingTableInitMsg.newBuilder()
           .setBlockLocations(blockLocations)
           .build();
 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.RoutingInitMsg)
+              .setType(Type.RoutingTableInitMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(destId)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-              .setRoutingInitMsg(routingInitMsg)
+              .setRoutingTableInitMsg(routingTableInitMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingInitMsg");
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableInitMsg");
     }
   }
 
   @Override
-  public void sendRoutingUpdateMsg(final String destId, final List<Integer> blocks,
-                                   final String oldOwnerId, final String newOwnerId,
-                                   @Nullable final TraceInfo parentTraceInfo) {
-    try (final TraceScope sendRoutingUpdateMsgScope = Trace.startSpan(SEND_ROUTING_UPDATE_MSG, parentTraceInfo)) {
+  public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
+                                        final String oldEvalId, final String newEvalId,
+                                        @Nullable final TraceInfo parentTraceInfo) {
+    try (final TraceScope sendRoutingTableUpdateMsgScope =
+             Trace.startSpan(SEND_ROUTING_TABLE_UPDATE_MSG, parentTraceInfo)) {
 
-      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingUpdateMsg");
+      LOG.entering(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
 
-      final RoutingUpdateMsg routingUpdateMsg = RoutingUpdateMsg.newBuilder()
-          .setOldOwnerId(oldOwnerId)
-          .setNewOwnerId(newOwnerId)
+      final RoutingTableUpdateMsg routingTableUpdateMsg = RoutingTableUpdateMsg.newBuilder()
+          .setOldEvalId(oldEvalId)
+          .setNewEvalId(newEvalId)
           .setBlockIds(blocks)
           .build();
 
       send(destId,
           AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.RoutingUpdateMsg)
+              .setType(Type.RoutingTableUpdateMsg)
               .setSrcId(emNetworkSetup.getMyId().toString())
               .setDestId(destId)
               .setTraceInfo(HTraceUtils.toAvro(parentTraceInfo))
-              .setRoutingUpdateMsg(routingUpdateMsg)
+              .setRoutingTableUpdateMsg(routingTableUpdateMsg)
               .build());
 
-      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingUpdateMsg");
+      LOG.exiting(ElasticMemoryMsgSenderImpl.class.getSimpleName(), "sendRoutingTableUpdateMsg");
     }
   }
 

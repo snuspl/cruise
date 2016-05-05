@@ -538,7 +538,7 @@ public final class PartitionManager {
     final int storeId = getMemoryStoreId(evalId);
     final Set<Integer> blockIds = storeIdToBlockIds.get(storeId);
     if (blockIds == null) {
-      throw new RuntimeException("Evaluator" + evalId + "is not registered");
+      throw new RuntimeException("Evaluator " + evalId + " is not registered");
     }
 
     final List<Integer> blockIdList = new ArrayList<>(Math.min(blockIds.size(), numBlocks));
