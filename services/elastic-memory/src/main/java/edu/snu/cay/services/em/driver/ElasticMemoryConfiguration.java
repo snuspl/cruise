@@ -23,6 +23,7 @@ import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
 import edu.snu.cay.services.em.ns.NetworkContextRegister;
 import edu.snu.cay.services.em.ns.NetworkDriverRegister;
 import edu.snu.cay.services.em.ns.parameters.EMCodec;
+import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
 import edu.snu.cay.services.em.ns.parameters.EMMessageHandler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
@@ -56,6 +57,7 @@ public final class ElasticMemoryConfiguration {
   private final int numStoreThreads;
   private final boolean rangeSupport;
   private final PartitionManager partitionManager;
+  private final String identifier;
 
   @Inject
   private ElasticMemoryConfiguration(final NameServer nameServer,
@@ -64,6 +66,7 @@ public final class ElasticMemoryConfiguration {
                                      @Parameter(NumTotalBlocks.class) final int numTotalBlocks,
                                      @Parameter(NumStoreThreads.class) final int numStoreThreads,
                                      @Parameter(RangeSupport.class) final boolean rangeSupport,
+                                     @Parameter(EMIdentifier.class) final String identifier,
                                      final PartitionManager partitionManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
@@ -72,6 +75,7 @@ public final class ElasticMemoryConfiguration {
     this.numStoreThreads = numStoreThreads;
     this.rangeSupport = rangeSupport;
     this.partitionManager = partitionManager;
+    this.identifier = identifier;
   }
 
   /**
@@ -83,6 +87,23 @@ public final class ElasticMemoryConfiguration {
   public static Configuration getDriverConfiguration() {
     return getNetworkConfigurationBuilder()
         .bindSetEntry(DriverStartHandler.class, NetworkDriverRegister.RegisterDriverHandler.class)
+        .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler.class)
+        .build();
+  }
+
+  /**
+   * Configuration for REEF driver when using Elastic Memory.
+   * Different from {@link ElasticMemoryConfiguration#getDriverConfiguration()},
+   * this version does not bind the RegisterDriverHandler.
+   * The {@link edu.snu.cay.services.em.ns.EMNetworkSetup#registerConnectionFactory(org.apache.reef.wake.Identifier)}
+   * should be called explicitly in {@link DriverStartHandler}.
+   *
+   * Note that this is a workaround to create two instances in dolphin async version for both Workers and Servers.
+   *
+   * @return configuration that should be submitted with a DriverConfiguration
+   */
+  public static Configuration getDriverConfigurationWithoutRegisterDriver() {
+    return getNetworkConfigurationBuilder()
         .bindNamedParameter(EMMessageHandler.class, edu.snu.cay.services.em.driver.impl.ElasticMemoryMsgHandler.class)
         .build();
   }
@@ -153,6 +174,7 @@ public final class ElasticMemoryConfiguration {
         .bindNamedParameter(NumStoreThreads.class, Integer.toString(numStoreThreads))
         .bindNamedParameter(NumInitialEvals.class, Integer.toString(numInitialEvals))
         .bindNamedParameter(KeyCodecName.class, SerializableCodec.class) // TODO #441: Make it configurable later.
+        .bindNamedParameter(EMIdentifier.class, identifier)
         .build();
 
     return Configurations.merge(networkConf, serviceConf, otherConf);

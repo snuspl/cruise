@@ -16,7 +16,7 @@
 package edu.snu.cay.services.ps.examples.add;
 
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
-import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.StaticPartitionedParameterServerManager;
 import edu.snu.cay.services.ps.examples.add.parameters.*;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
@@ -126,7 +126,7 @@ public final class PartitionedPSExampleREEF {
         .build();
 
     final Configuration psConf = new ParameterServerConfigurationBuilder()
-        .setManagerClass(PartitionedParameterServerManager.class)
+        .setManagerClass(StaticPartitionedParameterServerManager.class)
         .setUpdaterClass(AddUpdater.class)
         .setKeyCodecClass(IntegerCodec.class)
         .setPreValueCodecClass(IntegerCodec.class)

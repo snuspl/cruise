@@ -18,10 +18,7 @@ package edu.snu.cay.services.ps.driver.impl;
 import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
 import edu.snu.cay.services.ps.ns.EndpointId;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
-import edu.snu.cay.services.ps.server.partitioned.PartitionedParameterServer;
-import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideMsgHandler;
-import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySender;
-import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySenderImpl;
+import edu.snu.cay.services.ps.server.partitioned.*;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
@@ -55,7 +52,7 @@ import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
  * This manager does NOT handle server or worker faults.
  */
 @DriverSide
-public final class PartitionedParameterServerManager implements ParameterServerManager {
+public final class StaticPartitionedParameterServerManager implements ParameterServerManager {
   private final int numServers;
   private final int numPartitions;
   private final int serverNumThreads;
@@ -64,10 +61,10 @@ public final class PartitionedParameterServerManager implements ParameterServerM
   private final AtomicInteger serverCount;
 
   @Inject
-  private PartitionedParameterServerManager(@Parameter(NumServers.class) final int numServers,
-                                            @Parameter(NumPartitions.class) final int numPartitions,
-                                            @Parameter(ServerNumThreads.class) final int serverNumThreads,
-                                            @Parameter(ServerQueueSize.class) final int queueSize) {
+  private StaticPartitionedParameterServerManager(@Parameter(NumServers.class) final int numServers,
+                                                  @Parameter(NumPartitions.class) final int numPartitions,
+                                                  @Parameter(ServerNumThreads.class) final int serverNumThreads,
+                                                  @Parameter(ServerQueueSize.class) final int queueSize) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
     this.serverNumThreads = serverNumThreads;
@@ -107,8 +104,9 @@ public final class PartitionedParameterServerManager implements ParameterServerM
 
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
-            .set(ServiceConfiguration.SERVICES, PartitionedParameterServer.class)
+            .set(ServiceConfiguration.SERVICES, StaticPartitionedParameterServer.class)
             .build())
+        .bindImplementation(PartitionedParameterServer.class, StaticPartitionedParameterServer.class)
         .bindImplementation(PartitionedServerSideReplySender.class, PartitionedServerSideReplySenderImpl.class)
         .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + serverIndex)
         .bindNamedParameter(PSMessageHandler.class, PartitionedServerSideMsgHandler.class)

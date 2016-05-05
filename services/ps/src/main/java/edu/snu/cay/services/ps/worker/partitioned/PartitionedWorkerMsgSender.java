@@ -16,12 +16,10 @@
 package edu.snu.cay.services.ps.worker.partitioned;
 
 import edu.snu.cay.services.ps.ParameterServerParameters.PreValueCodecName;
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
-import edu.snu.cay.services.ps.avro.PullMsg;
-import edu.snu.cay.services.ps.avro.PushMsg;
-import edu.snu.cay.services.ps.avro.Type;
+import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.ns.PSNetworkSetup;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.serialization.Codec;
@@ -52,13 +50,17 @@ public final class PartitionedWorkerMsgSender<K, P> {
    */
   private final Codec<P> preValueCodec;
 
+  private final String driverIdentifier;
+
   @Inject
   private PartitionedWorkerMsgSender(final PSNetworkSetup psNetworkSetup,
                                      final IdentifierFactory identifierFactory,
-                                     @Parameter(PreValueCodecName.class) final Codec<P> preValueCodec) {
+                                     @Parameter(PreValueCodecName.class) final Codec<P> preValueCodec,
+                                     @Parameter(DriverIdentifier.class) final String driverIdentifier) {
     this.psNetworkSetup = psNetworkSetup;
     this.identifierFactory = identifierFactory;
     this.preValueCodec = preValueCodec;
+    this.driverIdentifier = driverIdentifier;
   }
 
   private void send(final String destId, final AvroParameterServerMsg msg) {
@@ -95,6 +97,16 @@ public final class PartitionedWorkerMsgSender<K, P> {
         AvroParameterServerMsg.newBuilder()
             .setType(Type.PullMsg)
             .setPullMsg(pullMsg)
+            .build());
+  }
+
+  public void sendRoutingTableRequestMsg() {
+    final RoutingTableReqMsg routingTableReqMsg = RoutingTableReqMsg.newBuilder()
+        .build();
+    send(driverIdentifier,
+        AvroParameterServerMsg.newBuilder()
+            .setType(Type.RoutingTableReqMsg)
+            .setRoutingTableReqMsg(routingTableReqMsg)
             .build());
   }
 }

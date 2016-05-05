@@ -26,6 +26,7 @@ import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -119,4 +120,14 @@ public interface ElasticMemory {
    * @param evalId identifier of the evaluator whose state should be persisted
    */
   void checkpoint(String evalId);
+
+  /**
+   * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
+   */
+  Map<Integer, List<Integer>> getStoreIdToBlockIds();
+
+  /**
+   * @return the number of total blocks that exist in this Elastic Memory instance.
+   */
+  int getNumTotalBlocks();
 }
