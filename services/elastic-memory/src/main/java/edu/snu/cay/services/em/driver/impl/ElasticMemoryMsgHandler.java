@@ -44,7 +44,7 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
-  private static final String ON_ROUTING_INIT_REQUEST_MSG = "onRoutingTableInitReqMsg";
+  private static final String ON_ROUTING_INIT_REQ_MSG = "onRoutingTableInitReqMsg";
   private static final String ON_REGIS_MSG = "onRegisMsg";
   private static final String ON_DATA_ACK_MSG = "onDataAckMsg";
   private static final String ON_UPDATE_ACK_MSG = "onUpdateAckMsg";
@@ -108,7 +108,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   }
 
   private void onRoutingTableInitReqMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan(ON_ROUTING_INIT_REQUEST_MSG,
+    try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan(ON_ROUTING_INIT_REQ_MSG,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final List<Integer> blockLocations = partitionManager.getBlockLocations();
