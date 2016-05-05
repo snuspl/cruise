@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
@@ -196,5 +197,10 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public int getNumTotalBlocks() {
     return partitionManager.getNumTotalBlocks();
+  }
+
+  @Override
+  public Map<String, EvaluatorParameters> generateEvalParams() {
+    return partitionManager.generateEvalParams();
   }
 }

@@ -16,6 +16,10 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.optimizer.api.DataInfo;
+import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
+import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 import edu.snu.cay.utils.LongRangeUtils;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.math.LongRange;
@@ -505,6 +509,13 @@ public final class PartitionManager {
   }
 
   /**
+   * Converts the MemoryStore id to Evaluator id.
+   */
+  private String getEvaluatorId(final int memoryStoreId) {
+    return evalIdPrefix + "-" + memoryStoreId;
+  }
+
+  /**
    * Choose the blocks in the Evaluator to move to another Evaluator.
    * @param evalId id of Evaluator to choose the blocks
    * @param numBlocks the maximum number of blocks to choose
@@ -558,5 +569,30 @@ public final class PartitionManager {
     if (!removed) {
       LOG.log(Level.WARNING, "The block {0} has already been marked as finished", blockId);
     }
+  }
+
+  private Map<String, Integer> getEvalIdToNumBlocks() {
+    final Map<String, Integer> evalIdToNumBlocks = new HashMap<>();
+    for (final Map.Entry<Integer, List<Integer>> storeIdToblockId : storeIdToBlockIds.entrySet()) {
+      final String evalId = getEvaluatorId(storeIdToblockId.getKey());
+      evalIdToNumBlocks.put(evalId, storeIdToblockId.getValue().size());
+    }
+    return evalIdToNumBlocks;
+  }
+
+  public Map<String, EvaluatorParameters> generateEvalParams() {
+    final Map<String, Integer> evalIdToNumBlocks = getEvalIdToNumBlocks();
+    final int numEvaluators = evalIdToNumBlocks.size();
+
+    final Map<String, EvaluatorParameters> evaluatorsMap = new HashMap<>(numEvaluators);
+    for (final Map.Entry<String, Integer> evalIdToNumBlock : evalIdToNumBlocks.entrySet()) {
+      final String evalId = evalIdToNumBlock.getKey();
+      final int numBlocks = evalIdToNumBlock.getValue();
+
+      final List<DataInfo> dataInfos = new ArrayList<>(1);
+      dataInfos.add(new DataInfoImpl("TEST", numBlocks));
+      evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, dataInfos, new HashMap<String, Double>(0)));
+    }
+    return evaluatorsMap;
   }
 }

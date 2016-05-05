@@ -15,10 +15,12 @@
  */
 package edu.snu.cay.async.optimizer;
 
+import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.concurrent.ExecutionException;
@@ -52,11 +54,18 @@ public final class OptimizationOrchestrator {
   private Future<PlanResult> planExecutionResult;
   private boolean planExecuting;
 
+  private ElasticMemory serverEM;
+  private ElasticMemory workerEM;
+
   @Inject
   OptimizationOrchestrator(final Optimizer optimizer,
-                           final PlanExecutor planExecutor) {
+                           final PlanExecutor planExecutor,
+                           @Parameter(ServerEM.class) final ElasticMemory serverEM,
+                           @Parameter(WorkerEM.class) final ElasticMemory workerEM) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
+    this.serverEM = serverEM;
+    this.workerEM = workerEM;
   }
 
   // TODO #00: When to trigger the optimization?
@@ -76,8 +85,9 @@ public final class OptimizationOrchestrator {
       public void run() {
         LOG.log(Level.INFO, "Optimization start.");
         logPreviousResult();
+        serverEM.generateEvalParams();
+        workerEM.generateEvalParams();
 
-        // TODO #00: Get the current available evaluators.
         final Plan plan = optimizer.optimize(null, 0);
 
         LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
@@ -106,4 +116,5 @@ public final class OptimizationOrchestrator {
       }
     }
   }
+
 }
