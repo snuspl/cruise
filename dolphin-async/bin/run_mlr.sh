@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_mlr.sh -split 4 -numServers 2 -numPartitions 4 -numWorkerThreads 1 -local true -input sample_mlr -maxNumEvalLocal 7 -maxIter 20 -stepSize 0.1 -classes 10 -features 784 -featuresPerPartition 392 -batch 50 -lambda 0.005 -timeout 200000 -lossLogPeriod 5
+# ./run_mlr.sh -split 4 -numServers 2 -numPartitions 4 -numWorkerThreads 1 -local true -input sample_mlr -maxNumEvalLocal 7 -maxIter 20 -stepSize 0.1 -classes 10 -features 784 -featuresPerPartition 392 -batch 50 -lambda 0.005 -timeout 200000 -lossLogPeriod 5 -dynamic false
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'

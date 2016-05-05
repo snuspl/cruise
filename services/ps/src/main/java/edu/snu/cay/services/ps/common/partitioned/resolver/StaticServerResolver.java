@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.common.partitioned.resolver;
 
+import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import org.apache.reef.tang.annotations.Parameter;
@@ -88,5 +89,10 @@ public final class StaticServerResolver implements ServerResolver {
   @Override
   public List<Integer> getPartitions(final String server) {
     return serverToPartitions.get(server);
+  }
+
+  @Override
+  public void updateRoutingTable(final EMRoutingTable routingTable) {
+    throw new UnsupportedOperationException("This method is used only in the dynamic partitioned PS");
   }
 }

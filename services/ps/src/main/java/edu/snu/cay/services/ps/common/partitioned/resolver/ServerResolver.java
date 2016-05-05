@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.services.ps.common.partitioned.resolver;
 
+import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
+
 import java.util.List;
 
 /**
@@ -44,4 +46,10 @@ public interface ServerResolver {
    * @return List of global partition indices that are mapped to the server.
    */
   List<Integer> getPartitions(String server);
+
+  /**
+   * Update its local routing table.
+   * Note that this method is used only in the dynamic partitioned ParameterServer.
+   */
+  void updateRoutingTable(EMRoutingTable routingTable);
 }
