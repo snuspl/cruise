@@ -21,9 +21,15 @@ import com.google.common.collect.Sets;
 import edu.snu.cay.async.Worker;
 import edu.snu.cay.async.WorkerSynchronizer;
 import edu.snu.cay.async.examples.nmf.NMFParameters.*;
+import edu.snu.cay.async.metric.MetricsMessageSender;
+import edu.snu.cay.async.metric.avro.WorkerMsg;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.common.metric.InsertableMetricTracker;
+import edu.snu.cay.common.metric.MetricException;
+import edu.snu.cay.common.metric.MetricTracker;
+import edu.snu.cay.common.metric.MetricsCollector;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
@@ -37,6 +43,8 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.async.metric.MetricKeys.WORKER_COMPUTE_TIME;
 
 /**
  * Worker for non-negative matrix factorization via SGD.
@@ -74,6 +82,9 @@ final class NMFWorker implements Worker {
   // data key ranges assigned to this worker
   private Set<LongRange> dataKeyRanges;
 
+  private final MetricsCollector metricsCollector;
+  private final InsertableMetricTracker insertableMetricTracker;
+  private final MetricsMessageSender metricsMessageSender;
   private final Tracer pushTracer;
   private final Tracer pullTracer;
   private final Tracer computeTracer;
@@ -96,7 +107,10 @@ final class NMFWorker implements Worker {
                     @Parameter(LogPeriod.class) final int logPeriod,
                     final NMFModelGenerator modelGenerator,
                     final DataIdFactory<Long> idFactory,
-                    final MemoryStore<Long> memoryStore) {
+                    final MemoryStore<Long> memoryStore,
+                    final MetricsCollector metricsCollector,
+                    final InsertableMetricTracker insertableMetricTracker,
+                    final MetricsMessageSender metricsMessageSender) {
     this.parameterWorker = parameterWorker;
     this.workerSynchronizer = workerSynchronizer;
     this.vectorFactory = vectorFactory;
@@ -110,6 +124,9 @@ final class NMFWorker implements Worker {
     this.modelGenerator = modelGenerator;
     this.idFactory = idFactory;
     this.memoryStore = memoryStore;
+    this.metricsCollector = metricsCollector;
+    this.insertableMetricTracker = insertableMetricTracker;
+    this.metricsMessageSender = metricsMessageSender;
 
     this.keys = Lists.newArrayList();
     this.lMatrix = Maps.newHashMap();
@@ -123,6 +140,10 @@ final class NMFWorker implements Worker {
 
   @Override
   public void initialize() {
+    final Set<MetricTracker> metricTrackerSet = new HashSet<>(1);
+    metricTrackerSet.add(insertableMetricTracker);
+    metricsCollector.registerTrackers(metricTrackerSet);
+
     final List<NMFData> dataValues = dataParser.parse();
     final List<Long> dataKeys;
 
@@ -200,8 +221,32 @@ final class NMFWorker implements Worker {
     computeTracer.reset();
   }
 
+  private void sendMetrics(final int numDataUnits) {
+    try {
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.sum());
+      metricsCollector.stop();
+    } catch (final MetricException e) {
+      throw new RuntimeException(e);
+    }
+    metricsMessageSender.setWorkerMsg(getWorkerMsg(numDataUnits)).send();
+  }
+
+  private WorkerMsg getWorkerMsg(final int numDataUnits) {
+    final WorkerMsg workerMsg = WorkerMsg.newBuilder()
+        .setIteration(iteration)
+        .setNumDataUnits(numDataUnits)
+        .build();
+    return workerMsg;
+  }
+
   @Override
   public void run() {
+    try {
+      metricsCollector.start();
+    } catch (final MetricException e) {
+      throw new RuntimeException(e);
+    }
+
     ++iteration;
     final long iterationBegin = System.currentTimeMillis();
     double lossSum = 0.0;
@@ -291,10 +336,18 @@ final class NMFWorker implements Worker {
         new Object[]{iteration, rowCount, String.format("%g", lossSum / elemCount), String.format("%g", lossSum),
             computeTracer.avg(), computeTracer.sum(), pullTracer.avg(), pullTracer.sum(), pushTracer.avg(),
             pushTracer.sum(), elemCount / elapsedTime, rowCount / elapsedTime, elapsedTime});
+
+    sendMetrics(workload.size());
   }
 
   @Override
   public void cleanup() {
+    try {
+      metricsCollector.close();
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+
     // print generated matrices
     if (!printMatrices) {
       return;
