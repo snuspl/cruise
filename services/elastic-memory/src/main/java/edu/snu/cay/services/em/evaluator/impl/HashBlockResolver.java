@@ -15,12 +15,9 @@
  */
 package edu.snu.cay.services.em.evaluator.impl;
 
-import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
-import org.apache.hadoop.util.hash.MurmurHash;
 import org.apache.reef.io.network.util.Pair;
-import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -30,19 +27,16 @@ import java.util.Map;
  * Resolves the block using the hashed value of the key.
  */
 public final class HashBlockResolver<K> implements BlockResolver<K> {
-  private Codec keyCodec;
   private final int numTotalBlocks;
 
   @Inject
-  HashBlockResolver(@Parameter(KeyCodecName.class) final Codec keyCodec,
-                    @Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
+  HashBlockResolver(@Parameter(NumTotalBlocks.class) final int numTotalBlocks) {
     this.numTotalBlocks = numTotalBlocks;
-    this.keyCodec = keyCodec;
   }
 
   @Override
   public int resolveBlock(final K dataKey) {
-    final int hashed = Math.abs(MurmurHash.getInstance().hash(keyCodec.encode(dataKey)));
+    final int hashed = Math.abs(dataKey.hashCode());
     return hashed % numTotalBlocks;
   }
 

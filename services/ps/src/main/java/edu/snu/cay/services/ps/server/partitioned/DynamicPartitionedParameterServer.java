@@ -74,12 +74,12 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
   /**
    * MemoryStore instance to access the data.
    */
-  private final MemoryStore<K> memoryStore;
+  private final MemoryStore<HashedKey<K>> memoryStore;
 
   /**
    * Object for resolving the block id assigned to given data.
    */
-  private final BlockResolver<K> blockResolver;
+  private final BlockResolver<HashedKey<K>> blockResolver;
 
   /**
    * Object for assigning a thread per block.
@@ -87,9 +87,9 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
   private final ThreadResolver threadResolver;
 
   @Inject
-  private DynamicPartitionedParameterServer(final MemoryStore<K> memoryStore,
-                                            final BlockResolver<K> blockResolver,
-                                            @Parameter(ServerNumThreads.class)final int numThreads,
+  private DynamicPartitionedParameterServer(final MemoryStore<HashedKey<K>> memoryStore,
+                                            final BlockResolver<HashedKey<K>> blockResolver,
+                                            @Parameter(ServerNumThreads.class) final int numThreads,
                                             @Parameter(ServerQueueSize.class) final int queueSize,
                                             final ParameterUpdater<K, P, V> parameterUpdater,
                                             final PartitionedServerSideReplySender<K, V> sender) {
@@ -121,20 +121,22 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
 
   @Override
   public void push(final K key, final P preValue, final int keyHash) {
-    final int blockId = blockResolver.resolveBlock(key);
+    final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
+    final int blockId = blockResolver.resolveBlock(hashedKey);
     final int threadId = threadResolver.resolveThread(blockId);
     LOG.log(Level.FINEST, "Enqueue push request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
         new Object[] {key, blockId, threadId, keyHash});
-    threads.get(threadId).enqueue(new PushOp(key, preValue));
+    threads.get(threadId).enqueue(new PushOp(hashedKey, preValue));
   }
 
   @Override
   public void pull(final K key, final String srcId, final int keyHash) {
-    final int blockId = blockResolver.resolveBlock(key);
+    final HashedKey<K> hashedKey = new HashedKey<>(key, keyHash);
+    final int blockId = blockResolver.resolveBlock(hashedKey);
     final int threadId = threadResolver.resolveThread(blockId);
     LOG.log(Level.FINEST, "Enqueue pull request. Key: {0} BlockId: {1}, ThreadId: {2}, Hash: {3}",
         new Object[] {key, blockId, threadId, keyHash});
-    threads.get(threadId).enqueue(new PullOp(key, srcId));
+    threads.get(threadId).enqueue(new PullOp(hashedKey, srcId));
   }
 
   /**
@@ -163,11 +165,11 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
    * A push operation.
    */
   private class PushOp implements Op<K, V> {
-    private final K key;
+    private final HashedKey<K> hashedKey;
     private final P preValue;
 
-    PushOp(final K key, final P preValue) {
-      this.key = key;
+    PushOp(final HashedKey<K> hashedKey, final P preValue) {
+      this.hashedKey = hashedKey;
       this.preValue = preValue;
     }
 
@@ -177,23 +179,23 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
     @Override
     public void apply() {
       try {
-        final Pair<K, V> oldKVPair = memoryStore.get(DATA_TYPE, key);
+        final Pair<HashedKey<K>, V> oldKVPair = memoryStore.get(DATA_TYPE, hashedKey);
 
         final V oldValue;
         if (null == oldKVPair) {
           LOG.log(Level.FINE, "The value did not exist. Will use the initial value specified in ParameterUpdater.");
-          oldValue = parameterUpdater.initValue(key);
+          oldValue = parameterUpdater.initValue(hashedKey.getKey());
         } else {
           oldValue = oldKVPair.getSecond();
         }
 
-        final V deltaValue = parameterUpdater.process(key, preValue);
+        final V deltaValue = parameterUpdater.process(hashedKey.getKey(), preValue);
         if (deltaValue == null) {
           return;
         }
 
         final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
-        memoryStore.put(DATA_TYPE, key, updatedValue);
+        memoryStore.put(DATA_TYPE, hashedKey, updatedValue);
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
@@ -204,35 +206,36 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
    * A pull operation.
    */
   private class PullOp implements Op<K, V> {
-    private final K key;
+    private final HashedKey<K> hashedKey;
     private final String srcId;
 
-    PullOp(final K key, final String srcId) {
-      this.key = key;
+    PullOp(final HashedKey<K> hashedKey, final String srcId) {
+      this.hashedKey = hashedKey;
       this.srcId = srcId;
     }
 
     /**
-     * Read from MemoryStore and send the key-value pair to srcId.
-     * To ensure atomicity, the key-value pair should be serialized immediately in sender.
+     * Read from MemoryStore and send the hashedKey-value pair to srcId.
+     * To ensure atomicity, the hashedKey-value pair should be serialized immediately in sender.
      */
     @Override
     public void apply() {
       try {
-        final Pair<K, V> kvPair = memoryStore.get(DATA_TYPE, key);
+        final Pair<HashedKey<K>, V> kvPair = memoryStore.get(DATA_TYPE, hashedKey);
         final V value;
-        if (null == kvPair) {
-          final Pair<K, Boolean> result = memoryStore.put(DATA_TYPE, key, parameterUpdater.initValue(key));
+        if (kvPair == null) {
+          final V initValue = parameterUpdater.initValue(hashedKey.getKey());
+          final Pair<HashedKey<K>, Boolean> result =
+              memoryStore.put(DATA_TYPE, hashedKey, initValue);
           final boolean isSuccess = result.getSecond();
           if (!isSuccess) {
             throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");
           }
-          final Pair<K, V> initializedPair = memoryStore.get(DATA_TYPE, key);
-          value = initializedPair.getSecond();
+          value = initValue;
         } else {
           value = kvPair.getSecond();
         }
-        sender.sendReplyMsg(srcId, key, value);
+        sender.sendReplyMsg(srcId, hashedKey.getKey(), value);
 
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
@@ -243,7 +246,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
   /**
    * All push and pull operations should be sent to the appropriate partition.
    * Each partition is assigned to a thread, whose processing loop dequeues and applies operations to its local kvStore.
-   * A partition is queued and handled by single thread, which ensures that all operations on a key
+   * A partition is queued and handled by single thread, which ensures that all operations on a hashedKey
    * are performed atomically, in order (no updates can be lost).
    *
    * The single queue-and-thread design provides a simple guarantee of atomicity for applying operations.
@@ -259,11 +262,11 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
     private final BlockingQueue<Op<K, V>> queue;
     private final ArrayList<Op<K, V>> localOps; // Operations drained from the queue, and processed locally.
     private final int drainSize; // Max number of operations to drain per iteration.
-    private final MemoryStore<K> memoryStore;
+    private final MemoryStore<HashedKey<K>> memoryStore;
 
     private volatile boolean shutdown = false;
 
-    ServerThread(final int queueSize, final MemoryStore<K> memoryStore) {
+    ServerThread(final int queueSize, final MemoryStore<HashedKey<K>> memoryStore) {
       this.queue = new ArrayBlockingQueue<>(queueSize);
       this.drainSize = queueSize / 10;
       this.localOps = new ArrayList<>(drainSize);
