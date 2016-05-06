@@ -142,7 +142,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
 
     operation.commitResult(decodedValue, isSuccess);
 
-    LOG.log(Level.FINEST, "Remote operation succeed. OpId: {0}", operationId);
+    LOG.log(Level.FINEST, "Remote operation is finished. OpId: {0}", operationId);
   }
 
   /**
@@ -166,7 +166,8 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
   /**
    * Sends the result to the original store.
    */
-  <V> void sendResultToOrigin(final SingleKeyOperation<K, V> operation) {
+  <V> void sendResultToOrigin(final SingleKeyOperation<K, V> operation, final Optional<V> localOutput,
+                              final boolean isSuccess) {
 
     LOG.log(Level.FINEST, "Send result to origin. OpId: {0}, OrigId: {1}",
         new Object[]{operation.getOpId(), operation.getOrigEvalId()});
@@ -179,14 +180,14 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
       final Optional<String> origEvalId = operation.getOrigEvalId();
 
       final DataValue dataValue;
-      if (operation.getOutputData().isPresent()) {
-        final V outputData = operation.getOutputData().get();
+      if (localOutput.isPresent()) {
+        final V outputData = localOutput.get();
         dataValue = new DataValue(ByteBuffer.wrap(dataCodec.encode(outputData)));
       } else {
         dataValue = null;
       }
 
-      msgSender.get().sendRemoteOpResultMsg(origEvalId.get(), dataValue, true,
+      msgSender.get().sendRemoteOpResultMsg(origEvalId.get(), dataValue, isSuccess,
           operation.getOpId(), TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }
