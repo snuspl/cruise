@@ -82,6 +82,7 @@ final class NMFWorker implements Worker {
   // data key ranges assigned to this worker
   private Set<LongRange> dataKeyRanges;
 
+  // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsCollector metricsCollector;
   private final InsertableMetricTracker insertableMetricTracker;
   private final MetricsMessageSender metricsMessageSender;
