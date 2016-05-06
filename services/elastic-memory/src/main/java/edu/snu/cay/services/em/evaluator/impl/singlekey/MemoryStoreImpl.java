@@ -29,7 +29,6 @@ import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
@@ -203,6 +202,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
           final Block<V> block = blocks.get(blockId);
 
           final V output;
+          boolean isSuccess = true;
           final DataOpType opType = operation.getOpType();
           switch (opType) {
           case PUT:
@@ -216,10 +216,12 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
             output = block.remove(operation.getKey());
             break;
           default:
-            throw new RuntimeException("Undefined operation");
+            LOG.log(Level.WARNING, "Undefined type of operation.");
+            output = null;
+            isSuccess = false;
           }
 
-          remoteOpHandler.sendResultToOrigin(operation, Optional.ofNullable(output), true);
+          remoteOpHandler.sendResultToOrigin(operation, Optional.ofNullable(output), isSuccess);
         } else {
           LOG.log(Level.WARNING,
               "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
