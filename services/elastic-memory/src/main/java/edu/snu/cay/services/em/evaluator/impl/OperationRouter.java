@@ -115,7 +115,7 @@ public final class OperationRouter<K> {
    */
   public void initialize(final String endPointId) {
     this.evalPrefix = endPointId.split("-")[0];
-    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endPointId);
+    LOG.log(Level.FINE, "Initialize router with localEndPointId: {0}", endPointId);
 
     initialized = true;
   }
