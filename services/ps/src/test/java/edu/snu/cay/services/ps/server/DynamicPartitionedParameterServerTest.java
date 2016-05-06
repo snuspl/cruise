@@ -122,7 +122,7 @@ public final class DynamicPartitionedParameterServerTest {
    * Test the performance of {@link DynamicPartitionedParameterServer} by
    * running threads that push values to and pull values from the server, concurrently.
    */
-  @Test
+  @Test(timeout = 200000)
   public void testMultiThreadPushPull() throws InterruptedException {
     final int numPushThreads = 8;
     final int numPushes = 1000000;
