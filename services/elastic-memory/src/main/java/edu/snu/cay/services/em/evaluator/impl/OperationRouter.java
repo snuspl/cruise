@@ -125,21 +125,22 @@ public final class OperationRouter<K> {
    * This method is for evaluators added by EM.add(), whose routing table should be updated dynamically.
    * It is invoked by the response of init request done when the context is started.
    */
-  public void initialize(final String endPointId, final List<Integer> blockIdToStoreIdList) {
+  public void initialize(final String endPointId, final List<Integer> initBlockLocations) {
     this.evalPrefix = endPointId.split("-")[0];
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endPointId);
 
-    if (blockIdToStoreIdList.size() != numTotalBlocks) {
+    if (initBlockLocations.size() != numTotalBlocks) {
       throw new RuntimeException("Imperfect routing table");
     }
 
-    int blockId = 0;
-    for (final int storeId : blockIdToStoreIdList) {
+    for (int blockId = 0; blockId < numTotalBlocks; blockId++) {
+      final int storeId = initBlockLocations.get(blockId);
+
+      // the evaluators initiated though this evaluators should not have any stores at the beginning
       if (storeId == localStoreId) {
-        initialLocalBlocks.add(blockId);
+        throw new RuntimeException("Wrong initial routing table");
       }
-      blockLocations.set(blockId, storeId);
-      blockId++;
+      this.blockLocations.set(blockId, storeId);
     }
 
     initialized = true;
@@ -253,7 +254,7 @@ public final class OperationRouter<K> {
       return;
     }
 
-    LOG.log(Level.INFO, "Waiting for router to be initialized");
+    LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INITIALIZATION_TIMEOUT_MS);
     try {
       Thread.sleep(INITIALIZATION_TIMEOUT_MS);
       if (!initialized) {

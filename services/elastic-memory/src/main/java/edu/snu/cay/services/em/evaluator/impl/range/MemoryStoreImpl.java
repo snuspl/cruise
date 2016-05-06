@@ -521,13 +521,13 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   /**
    * Handles the result of data operation processed by local memory store.
-   * It waits until all remote sub operations are finished and their outputs are fully aggregated.
+   * It waits until all sub operations are finished and their outputs are fully aggregated.
    */
   private <V> void submitLocalResult(final RangeOperation<Long, V> operation, final Map<Long, V> localOutput,
                                      final List<Pair<Long, Long>> failedRanges) {
     final int numRemainingSubOps = operation.commitResult(localOutput, failedRanges);
 
-    LOG.log(Level.FINEST, "Local sub operation succeed. OpId: {0}, numRemainingSubOps: {1}",
+    LOG.log(Level.FINEST, "Local sub operation is finished. OpId: {0}, numRemainingSubOps: {1}",
         new Object[]{operation.getOpId(), numRemainingSubOps});
 
     if (!operation.isFromLocalClient() && numRemainingSubOps == 0) {

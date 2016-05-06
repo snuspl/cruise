@@ -44,7 +44,7 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
-  private static final String ON_ROUTING_INIT_REQUEST_MSG = "onRoutingInitRequestMsg";
+  private static final String ON_ROUTING_INIT_REQ_MSG = "onRoutingTableInitReqMsg";
   private static final String ON_REGIS_MSG = "onRegisMsg";
   private static final String ON_DATA_ACK_MSG = "onDataAckMsg";
   private static final String ON_UPDATE_ACK_MSG = "onUpdateAckMsg";
@@ -72,8 +72,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
-    case RoutingInitRequestMsg:
-      onRoutingInitRequestMsg(innerMsg);
+    case RoutingTableInitReqMsg:
+      onRoutingTableInitReqMsg(innerMsg);
       break;
 
     case RegisMsg:
@@ -107,14 +107,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
-  private void onRoutingInitRequestMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onRoutingInitRequestMsgScope = Trace.startSpan(ON_ROUTING_INIT_REQUEST_MSG,
+  private void onRoutingTableInitReqMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan(ON_ROUTING_INIT_REQ_MSG,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
       final List<Integer> blockLocations = partitionManager.getBlockLocations();
 
-      final TraceInfo traceInfo = TraceInfo.fromSpan(onRoutingInitRequestMsgScope.getSpan());
-      msgSender.get().sendRoutingInitMsg(msg.getSrcId().toString(), blockLocations, traceInfo);
+      final TraceInfo traceInfo = TraceInfo.fromSpan(onRoutingTableInitReqMsgScope.getSpan());
+      msgSender.get().sendRoutingTableInitMsg(msg.getSrcId().toString(), blockLocations, traceInfo);
     }
   }
 

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_lasso.sh -split 4 -maxIter 100 -features 10 -maxNumEvalLocal 5 -input sample_lasso -local true -lambda 0.0132 -evalSize 1024 -timeout 200000
+# ./run_lasso.sh -split 4 -maxIter 100 -features 10 -maxNumEvalLocal 5 -input sample_lasso -local true -lambda 0.0132 -evalSize 1024 -timeout 200000 -dynamic false
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

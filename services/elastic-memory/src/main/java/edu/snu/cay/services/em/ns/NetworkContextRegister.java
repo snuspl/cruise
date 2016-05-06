@@ -68,7 +68,7 @@ public final class NetworkContextRegister {
       if (addedEval) {
         try (final TraceScope traceScope = Trace.startSpan("ROUTING_INIT_REQUEST")) {
           final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-          msgSender.sendRoutingInitRequestMsg(traceInfo);
+          msgSender.sendRoutingTableInitReqMsg(traceInfo);
         }
       } else {
         final String localId = emNetworkSetup.getMyId().toString();

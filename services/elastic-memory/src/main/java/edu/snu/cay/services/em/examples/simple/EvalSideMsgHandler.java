@@ -59,7 +59,7 @@ final class EvalSideMsgHandler implements EventHandler<AggregationMessage> {
   /**
    * Wait until driver sends a response message.
    * It returns the aggregated count, which is contained in the message.
-   * @return an aggregated count
+   * @return the number of changed blocks
    */
   synchronized long waitForMessage() {
     try {

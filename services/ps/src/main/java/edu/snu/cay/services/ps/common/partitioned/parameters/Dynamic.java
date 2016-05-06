@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.common.parameters;
+package edu.snu.cay.services.ps.common.partitioned.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Whether or not an evaluator added by EM.add()", default_value = "false")
-public final class AddedEval implements Name<Boolean> {
+@NamedParameter(doc = "Whether to use dynamic partitioned PS", short_name = "dynamic", default_value = "false")
+public final class Dynamic implements Name<Boolean> {
 }

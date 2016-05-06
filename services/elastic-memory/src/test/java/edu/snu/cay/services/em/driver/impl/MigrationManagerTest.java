@@ -266,20 +266,20 @@ public class MigrationManagerTest {
     }
 
     @Override
-    public void sendRoutingInitRequestMsg(@Nullable final TraceInfo parentTraceInfo) {
+    public void sendRoutingTableInitReqMsg(@Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendRoutingInitMsg(final String destId, final List<Integer> blockLocations,
-                                   @Nullable final TraceInfo parentTraceInfo) {
+    public void sendRoutingTableInitMsg(final String destId, final List<Integer> blockLocations,
+                                        @Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendRoutingUpdateMsg(final String destId, final List<Integer> blocks,
-                                     final String oldOwnerId, final String newOwnerId,
-                                     @Nullable final TraceInfo parentTraceInfo) {
+    public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
+                                          final String oldOwnerId, final String newOwnerId,
+                                          @Nullable final TraceInfo parentTraceInfo) {
 
     }
 

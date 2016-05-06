@@ -444,6 +444,20 @@ public final class PartitionManager {
   }
 
   /**
+   * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
+   */
+  Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
+    return storeIdToBlockIds;
+  }
+
+  /**
+   * @return the number of total blocks that exist in this Elastic Memory instance.
+   */
+  int getNumTotalBlocks() {
+    return numTotalBlocks;
+  }
+
+  /**
    * Remove ranges which target range contains whole range.
    * (e.g., [3, 4] [5, 6] when [1, 10] is requested to remove).
    * @return Ranges that are removed. An empty list is returned if there was no range to remove.
@@ -537,8 +551,9 @@ public final class PartitionManager {
   synchronized List<Integer> chooseBlocksToMove(final String evalId, final int numBlocks) {
     final int storeId = getMemoryStoreId(evalId);
     final Set<Integer> blockIds = storeIdToBlockIds.get(storeId);
+
     if (blockIds == null) {
-      throw new RuntimeException("Evaluator" + evalId + "is not registered");
+      throw new RuntimeException("Evaluator " + evalId + " is not registered");
     }
 
     final List<Integer> blockIdList = new ArrayList<>(Math.min(blockIds.size(), numBlocks));

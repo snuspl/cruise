@@ -39,7 +39,7 @@ import java.util.logging.Logger;
 /**
  * Driver-side message handler that receives aggregation messages as an aggregation master.
  * In default, it synchronizes all tasks by checking all evaluators have sent the messages.
- * To make this happen, it sends response messages to all evaluators when messages from all evaluatorss arrive.
+ * To make this happen, it sends response messages to all evaluators when messages from all evaluators arrive.
  * Also it runs Move between two evaluators randomly chosen when all evaluators say they are READY
  * and sends the result to all evaluators.
  */

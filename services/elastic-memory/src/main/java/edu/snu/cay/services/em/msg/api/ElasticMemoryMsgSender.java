@@ -83,28 +83,28 @@ public interface ElasticMemoryMsgSender {
                              @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a RoutingInitRequestMsg that tells the driver to reply with the up-to-date global routing table.
+   * Sends a RoutingTableInitReqMsg that tells the driver to reply with the up-to-date global routing table.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRoutingInitRequestMsg(@Nullable final TraceInfo parentTraceInfo);
+  void sendRoutingTableInitReqMsg(@Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a RoutingInitMsg that contains the up-to-date global routing table {@code blockLocations}.
-   * It is always sent by Driver to the evaluator {@coded destId} as a response for RoutingInitRequestMsg.
+   * Sends a RoutingTableInitMsg that contains the up-to-date global routing table {@code blockLocations}.
+   * It is always sent by Driver to the evaluator {@code destId} as a response for RoutingTableInitReqMsg.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
-  void sendRoutingInitMsg(final String destId,
-                          final List<Integer> blockLocations,
-                          @Nullable final TraceInfo parentTraceInfo);
+  void sendRoutingTableInitMsg(final String destId,
+                               final List<Integer> blockLocations,
+                               @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a RoutingUpdateMsg that contains recently updated block information by EM.move().
+   * Sends a RoutingTableUpdateMsg that contains recently updated block information by EM.move().
    * It is for Driver to tell evaluator {@code destId} that
-   * {@code blocks} are moved from {@code oldOwnerId} to {@code newOwnerId}.
+   * {@code blocks} are moved from {@code oldEvalId} to {@code newEvalId}.
    */
-  void sendRoutingUpdateMsg(final String destId, final List<Integer> blocks,
-                            final String oldOwnerId, final String newOwnerId,
-                            @Nullable final TraceInfo parentTraceInfo);
+  void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
+                                 final String oldEvalId, final String newEvalId,
+                                 @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Sends a CtrlMsg that tells the Evaluator specified with {@code destId} to

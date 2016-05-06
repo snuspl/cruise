@@ -35,7 +35,6 @@ interface MoveHandler<K> {
    * @param blockId id of the block to update its owner
    * @param oldOwnerId id of the MemoryStore who was the owner
    * @param newOwnerId id of the MemoryStore who will be the owner
-   * @return the id of the MemoryStore who was the owner of the block.
    */
   void updateOwnership(String dataType, int blockId, int oldOwnerId, int newOwnerId);
 

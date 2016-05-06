@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_addinteger.sh -split 3 -maxIter 10 -param 4 -maxNumEvalLocal 4 -input run_addinteger.sh
+# ./run_addinteger.sh -split 3 -maxIter 10 -param 4 -maxNumEvalLocal 4 -input run_addinteger.sh -dynamic false
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

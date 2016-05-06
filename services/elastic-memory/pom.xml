@@ -65,6 +65,10 @@
       <artifactId>wake</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.htrace</groupId>
       <artifactId>htrace-core</artifactId>
     </dependency>
