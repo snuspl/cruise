@@ -62,11 +62,6 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
 
   /**
-   * A counter for issuing ids for operations requested from local clients.
-   */
-  private final AtomicLong operationIdCounter = new AtomicLong(0);
-
-  /**
    * A queue for operations requested from remote clients.
    */
   private final BlockingQueue<SingleKeyOperation<K, Object>> operationQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
@@ -329,12 +324,10 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
     // execute operation in local or send it to remote
     if (remoteEvalId.isPresent()) {
-      final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-      final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
-          DataOpType.PUT, dataType, id, Optional.of(value));
-
       // send operation to remote and wait until operation is finished
-      remoteOpHandler.sendOpToRemoteStore(operation, remoteEvalId.get());
+      final SingleKeyOperation<K, V> operation =
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.PUT, dataType, id, Optional.of(value), remoteEvalId.get());
+
       return new Pair<>(id, operation.isSuccess());
     } else {
       // initialize blocks and continue the operation
@@ -367,12 +360,10 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
     // execute operation in local or send it to remote
     if (remoteEvalId.isPresent()) {
-      final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-      final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
-          DataOpType.GET, dataType, id, Optional.<V>empty());
-
       // send operation to remote and wait until operation is finished
-      remoteOpHandler.sendOpToRemoteStore(operation, remoteEvalId.get());
+      final SingleKeyOperation<K, V> operation =
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.GET, dataType, id, Optional.<V>empty(), remoteEvalId.get());
+
       final V outputData = operation.getOutputData().get();
       return outputData == null ? null : new Pair<>(id, outputData);
     } else {
@@ -430,12 +421,10 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
     // execute operation in local or send it to remote
     if (remoteEvalId.isPresent()) {
-      final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-      final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
-          DataOpType.REMOVE, dataType, id, Optional.<V>empty());
-
       // send operation to remote and wait until operation is finished
-      remoteOpHandler.sendOpToRemoteStore(operation, remoteEvalId.get());
+      final SingleKeyOperation<K, V> operation =
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.REMOVE, dataType, id, Optional.<V>empty(), remoteEvalId.get());
+
       final V outputData = operation.getOutputData().get();
       return outputData == null ? null : new Pair<>(id, outputData);
     } else {
