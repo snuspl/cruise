@@ -210,7 +210,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
           submitLocalResult(operation, Optional.ofNullable(result), true);
         } else {
           LOG.log(Level.WARNING,
-              "Fail to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
+              "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
                   " of block {1} by store {2}, but the local router assumes store {3} is the owner",
               new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalId.get()});
 

@@ -57,6 +57,12 @@ public final class SimpleEMREEF {
   private static final class OnLocal implements Name<Boolean> {
   }
 
+  @NamedParameter(doc = "Whether or not to support range in MemoryStore",
+                  short_name = "rangeSupport",
+                  default_value = "false")
+  private static final class RangeSupportName implements Name<Boolean> {
+  }
+
   /**
    * Should not be instantiated.
    */
@@ -71,6 +77,7 @@ public final class SimpleEMREEF {
     final CommandLine cl = new CommandLine(cb);
 
     cl.registerShortNameOfClass(OnLocal.class);
+    cl.registerShortNameOfClass(RangeSupportName.class);
     HTraceParameters.registerShortNames(cl);
     cl.registerShortNameOfClass(NumMoves.class);
 
@@ -83,6 +90,13 @@ public final class SimpleEMREEF {
    */
   private static boolean getOnLocal(final Injector injector) throws InjectionException {
     return injector.getNamedInstance(OnLocal.class);
+  }
+
+  /**
+   * Get RangeSupoprt from the parsed command line injector.
+   */
+  private static boolean getRangeSupport(final Injector injector) throws InjectionException {
+    return injector.getNamedInstance(RangeSupportName.class);
   }
 
   /**
@@ -126,7 +140,7 @@ public final class SimpleEMREEF {
             .build());
   }
 
-  public static LauncherStatus runSimpleEM(final Configuration runtimeConf, final Configuration jobConf,
+  static LauncherStatus runSimpleEM(final Configuration runtimeConf, final Configuration jobConf,
                                            final int timeOut)
       throws InjectionException {
     final Configuration driverConf = getDriverConfiguration();
@@ -137,14 +151,13 @@ public final class SimpleEMREEF {
   public static void main(final String[] args) throws InjectionException, IOException {
     final Injector injector = parseCommandLine(args);
     final boolean onLocal = getOnLocal(injector);
+    final boolean rangeSupport = getRangeSupport(injector);
     final Configuration runtimeConf = onLocal ?
         LocalRuntimeConfiguration.CONF.build() :
         YarnClientConfiguration.CONF.build();
 
     final HTraceParameters traceParameters = getTraceParameters(injector);
     final Configuration traceConf = traceParameters.getConfiguration();
-
-    final boolean rangeSupport = false; // use single-key memory store. change it to true to use range-based one
 
     final Configuration emConf = TANG.newConfigurationBuilder()
         .bindNamedParameter(RangeSupport.class, Boolean.toString(rangeSupport))

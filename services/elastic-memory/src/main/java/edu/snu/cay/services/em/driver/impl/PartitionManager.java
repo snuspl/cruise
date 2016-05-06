@@ -151,7 +151,7 @@ public final class PartitionManager {
   /**
    * @return a list of active evaluators that own each MemoryStore.
    */
-  public synchronized Set<String> getActiveEvaluators() {
+  synchronized Set<String> getActiveEvaluators() {
     final Set<Integer> activeStores = storeIdToBlockIds.keySet();
     final Set<String> activeEvaluators = new HashSet<>(activeStores.size());
 

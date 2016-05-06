@@ -244,6 +244,10 @@ public final class OperationRouter<K> {
     return evalPrefix + '-' + memoryStoreId;
   }
 
+  /**
+   * Asserts the initialization of the routing table. If the routing table has not been initialized,
+   * it waits for 3 seconds (INITIALIZATION_TIMEOUT_MS) and throws RuntimeException.
+   */
   private void assertInitialization() {
     if (initialized) {
       return;

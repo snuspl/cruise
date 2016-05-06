@@ -50,7 +50,7 @@ import java.util.logging.Logger;
 @Unit
 final class SimpleEMDriver {
   private static final Logger LOG = Logger.getLogger(SimpleEMDriver.class.getName());
-  static final int NUM_EVAL = 3; // 3 is enough to cover all test cases
+  static final int NUM_EVAL = 3; // 3 is enough to cover all test cases (sender, receiver, other)
   private static final String CONTEXT_ID_PREFIX = "Context-";
   private static final String TASK_ID_PREFIX = "Task-";
   static final String AGGREGATION_CLIENT_ID = "AGGREGATION_CLIENT_ID";

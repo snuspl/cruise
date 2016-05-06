@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_simple.sh -numMoves 5
+# ./run_simple.sh -numMoves 5 -rangeSupport false
 
 # RUNTIME
 SELF_JAR=`echo ../target/elastic-memory-*-SNAPSHOT-shaded.jar`
