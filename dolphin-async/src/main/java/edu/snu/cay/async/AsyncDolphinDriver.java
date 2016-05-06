@@ -72,9 +72,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -90,6 +88,10 @@ public final class AsyncDolphinDriver {
   private static final String SERVER_CONTEXT = "ServerContext";
   private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
   private static final String SERVER_EM_IDENTIFIER = "ServerEM";
+  private static final long OPTIMIZATION_INTERVAL_MS = 1000;
+  private static final long OPTIMIZATION_INITIAL_DELAY_MS = 5000;
+
+  private volatile boolean isComplete = false;
 
   /**
    * Evaluator Manager, a unified path for requesting evaluators.
@@ -206,6 +208,8 @@ public final class AsyncDolphinDriver {
    */
   private final OptimizationOrchestrator optimizationOrchestrator;
 
+  private final ExecutorService optimizerExecutor = Executors.newSingleThreadExecutor();
+
   @Inject
   private AsyncDolphinDriver(final EvaluatorManager evaluatorManager,
                              final DataLoadingService dataLoadingService,
@@ -263,7 +267,6 @@ public final class AsyncDolphinDriver {
       optimizerInjector.bindVolatileParameter(WorkerEM.class, workerEMWrapper.getInstance());
       optimizerInjector.bindVolatileInstance(AsyncDolphinDriver.class, this);
       this.optimizationOrchestrator = optimizerInjector.getInstance(OptimizationOrchestrator.class);
-
     } catch (final InjectionException | ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
@@ -292,6 +295,18 @@ public final class AsyncDolphinDriver {
       workerEMWrapper.getNetworkSetup().registerConnectionFactory(driverId);
       serverEMWrapper.getNetworkSetup().registerConnectionFactory(driverId);
       psNetworkSetup.registerConnectionFactory(driverId);
+
+      optimizerExecutor.submit(new Callable<Object>() {
+        @Override
+        public Object call() throws Exception {
+          Thread.sleep(OPTIMIZATION_INITIAL_DELAY_MS);
+          while (!isComplete) {
+            Thread.sleep(OPTIMIZATION_INTERVAL_MS);
+            optimizationOrchestrator.run();
+          }
+          return null;
+        }
+      });
     }
   }
 
@@ -499,6 +514,7 @@ public final class AsyncDolphinDriver {
       for (final ActiveContext workerContext : workerContextsToClose) {
         workerContext.close();
       }
+      isComplete = true;
     }
   }
 
