@@ -31,9 +31,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -100,14 +98,14 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     final List<IdMapping> idMappings = routingTableReplyMsg.getIdMappings();
     final int numTotalBlocks = routingTableReplyMsg.getNumTotalBlocks();
 
-    final Map<Integer, List<Integer>> storeIdToBlockIds  = new HashMap<>(idMappings.size());
+    final Map<Integer, Set<Integer>> storeIdToBlockIds  = new HashMap<>(idMappings.size());
     final Map<Integer, String> storeIdToEndpointId = new HashMap<>(idMappings.size());
 
     for (final IdMapping idMapping : idMappings) {
       final int memoryStoreId = idMapping.getMemoryStoreId();
       final List<Integer> blockIds = idMapping.getBlockIds();
       final String endpointId = idMapping.getEndpointId().toString();
-      storeIdToBlockIds.put(memoryStoreId, blockIds);
+      storeIdToBlockIds.put(memoryStoreId, new HashSet<>(blockIds));
       storeIdToEndpointId.put(memoryStoreId, endpointId);
     }
 

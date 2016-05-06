@@ -132,6 +132,47 @@
 },
 
 /**
+ * An avro message format for evaluators to request a initial routing table to driver.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RoutingTableInitReqMsg",
+  "fields":
+  [
+  ]
+},
+
+/**
+ * An avro message format for driver to send a initial routing table to evaluators.
+ * {@code blockLocations} is a list whose index is the block id and value is the store id.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RoutingTableInitMsg",
+  "fields":
+  [
+    {"name": "blockLocations", "type": {"type": "array", "items": "int"}}
+  ]
+},
+
+/**
+ * An avro message format for driver to broadcast the result of migration to evaluators.
+ */
+{
+  "namespace": "edu.snu.cay.services.em.avro",
+  "type": "record",
+  "name": "RoutingTableUpdateMsg",
+  "fields":
+  [
+      {"name": "blockIds", "type": {"type": "array", "items": "int"}},
+      {"name": "oldEvalId", "type": "string"},
+      {"name": "newEvalId", "type": "string"}
+  ]
+},
+
+/**
  * A record type for evaluators to report a partition addition to the driver.
  * The data type of the partition and its identifier range must be encoded in the message.
  */
@@ -294,7 +335,8 @@
   "fields":
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
-        "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
+        "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RoutingTableInitReqMsg", "RoutingTableInitMsg",
+         "RoutingTableUpdateMsg", "RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
         "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg", "OwnershipMsg", "OwnershipAckMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
@@ -302,6 +344,9 @@
     {"name": "traceInfo", "type": ["null", "edu.snu.cay.utils.trace.AvroTraceInfo"], "default": null},
     {"name": "remoteOpMsg", "type": ["null", "RemoteOpMsg"], "default": null},
     {"name": "remoteOpResultMsg", "type": ["null", "RemoteOpResultMsg"], "default": null},
+    {"name": "routingTableInitReqMsg", "type": ["null", "RoutingTableInitReqMsg"], "default": null},
+    {"name": "routingTableInitMsg", "type": ["null", "RoutingTableInitMsg"], "default": null},
+    {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},
     {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},

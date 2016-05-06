@@ -21,6 +21,7 @@ import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Resolves the server based on Elastic Memory's ownership table. This implementation assumes that Elastic Memory
@@ -80,12 +81,12 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   @Override
   public void updateRoutingTable(final EMRoutingTable routingTable) {
-    final Map<Integer, List<Integer>> storeIdToBlockIds = routingTable.getStoreIdToBlockIds();
+    final Map<Integer, Set<Integer>> storeIdToBlockIds = routingTable.getStoreIdToBlockIds();
 
     numTotalBlocks = routingTable.getNumTotalBlocks();
     storeIdToEndpointId.putAll(routingTable.getStoreIdToEndpointId());
 
-    for (final Map.Entry<Integer, List<Integer>> entry : storeIdToBlockIds.entrySet()) {
+    for (final Map.Entry<Integer, Set<Integer>> entry : storeIdToBlockIds.entrySet()) {
       final int storeId = entry.getKey();
       for (final int blockId : entry.getValue()) {
         blockIdToStoreId.put(blockId, storeId);

@@ -49,6 +49,14 @@ public interface ElasticMemoryMsgSender {
                        final String operationId,
                        @Nullable final TraceInfo parentTraceInfo);
 
+  /**
+   * Sends a RemoteOpMsg that requests the Evaluator specified with {@code destId} to
+   * process a data operation, parceling operation metadata into the message.
+   * Since the operation can be transmitted multiple times across the multiple evaluators,
+   * the message retains {@code origId}, an id of the Evaluator where the operation is generated at the beginning.
+   * The operation should be given a unique {@code operationId}.
+   * Include {@code parentTraceInfo} to continue tracing this message.
+   */
   void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
                        final String dataType, final DataKey dataKey,
                        final DataValue dataValue, final String operationId,
@@ -73,6 +81,30 @@ public interface ElasticMemoryMsgSender {
                              final boolean isSuccess,
                              final String operationId,
                              @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Sends a RoutingTableInitReqMsg that tells the driver to reply with the up-to-date global routing table.
+   * Include {@code parentTraceInfo} to continue tracing this message.
+   */
+  void sendRoutingTableInitReqMsg(@Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Sends a RoutingTableInitMsg that contains the up-to-date global routing table {@code blockLocations}.
+   * It is always sent by Driver to the evaluator {@code destId} as a response for RoutingTableInitReqMsg.
+   * Include {@code parentTraceInfo} to continue tracing this message.
+   */
+  void sendRoutingTableInitMsg(final String destId,
+                               final List<Integer> blockLocations,
+                               @Nullable final TraceInfo parentTraceInfo);
+
+  /**
+   * Sends a RoutingTableUpdateMsg that contains recently updated block information by EM.move().
+   * It is for Driver to tell evaluator {@code destId} that
+   * {@code blocks} are moved from {@code oldEvalId} to {@code newEvalId}.
+   */
+  void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks,
+                                 final String oldEvalId, final String newEvalId,
+                                 @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Sends a CtrlMsg that tells the Evaluator specified with {@code destId} to

@@ -21,6 +21,7 @@ import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.MemoryStoreTestUtils;
+import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.utils.ThreadUtils;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -65,7 +66,11 @@ public final class MemoryStoreTest {
         .build();
 
     final Injector injector = Tang.Factory.getTang().newInjector(conf);
-    memoryStore = (MemoryStore<Long>) injector.getInstance(MemoryStore.class);
+    memoryStore = injector.getInstance(MemoryStore.class);
+
+    // router should be initialized explicitly
+    final OperationRouter<Long> router = injector.getInstance(OperationRouter.class);
+    router.initialize("DUMMY");
   }
 
   /**

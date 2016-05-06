@@ -124,7 +124,7 @@ public interface ElasticMemory {
   /**
    * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
    */
-  Map<Integer, List<Integer>> getStoreIdToBlockIds();
+  Map<Integer, Set<Integer>> getStoreIdToBlockIds();
 
   /**
    * @return the number of total blocks that exist in this Elastic Memory instance.
