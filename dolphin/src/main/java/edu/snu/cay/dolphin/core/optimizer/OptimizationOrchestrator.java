@@ -29,10 +29,7 @@ import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.RunningTask;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,6 +47,7 @@ import java.util.logging.Logger;
  * called, and the resulting Plan is executed.
  */
 public final class OptimizationOrchestrator {
+  public static final String NAMESPACE_DOLPHIN_BSP = "DOLPHIN_BSP";
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
 
   private final Optimizer optimizer;
@@ -67,7 +65,7 @@ public final class OptimizationOrchestrator {
   /**
    * The {@link Future} returned from the most recent {@code optimizationThreadPool.submit(Runnable)} call.
    * Note that this does not necessarily refer to a thread that is doing actual optimization
-   * ({@link Optimizer#optimize(Collection, int)}).
+   * ({@link Optimizer#optimize(Map, int)}).
    * This field is currently being used only for testing purposes.
    */
   private Future optimizationAttemptResult;
@@ -219,10 +217,10 @@ public final class OptimizationOrchestrator {
   }
 
   // TODO #55: Information needed for the mathematical optimization formulation should be added to EvaluatorParameters
-  private Collection<EvaluatorParameters> getEvaluatorParameters(final Map<String, List<DataInfo>> dataInfos,
-                                                                 final Map<String, Map<String, Double>> metrics,
-                                                                 final String controllerId,
-                                                                 final Map<String, Double> controllerMetrics) {
+  private Map<String, List<EvaluatorParameters>> getEvaluatorParameters(final Map<String, List<DataInfo>> dataInfos,
+                                                                        final Map<String, Map<String, Double>> metrics,
+                                                                        final String controllerId,
+                                                                        final Map<String, Double> controllerMetrics) {
     final List<EvaluatorParameters> evaluatorParametersList = new ArrayList<>(dataInfos.size());
     for (final String computeId : dataInfos.keySet()) {
       evaluatorParametersList.add(
@@ -230,7 +228,9 @@ public final class OptimizationOrchestrator {
     }
     evaluatorParametersList.add(
         new EvaluatorParametersImpl(controllerId, new ArrayList<DataInfo>(0), controllerMetrics));
-    return evaluatorParametersList;
+    final Map<String, List<EvaluatorParameters>> evaluatorParametersMap = new HashMap();
+    evaluatorParametersMap.put(NAMESPACE_DOLPHIN_BSP, evaluatorParametersList);
+    return evaluatorParametersMap;
   }
 
   /**

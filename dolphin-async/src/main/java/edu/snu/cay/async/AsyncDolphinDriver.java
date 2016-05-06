@@ -32,9 +32,7 @@ import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
-import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
-import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.conf.PlanExecutorClass;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
@@ -258,16 +256,12 @@ public final class AsyncDolphinDriver {
       this.psDriver = serverInjector.getInstance(ParameterServerDriver.class);
       this.psNetworkSetup = serverInjector.getInstance(PSNetworkSetup.class);
 
-      final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
-          .bind(PlanExecutor.class, Class.forName(planExecutorClass))
-          .bind(Optimizer.class, Class.forName(optimizerClass))
-          .build();
-      final Injector optimizerInjector = Tang.Factory.getTang().newInjector(conf);
+      final Injector optimizerInjector = injector.forkInjector();
       optimizerInjector.bindVolatileParameter(ServerEM.class, serverEMWrapper.getInstance());
       optimizerInjector.bindVolatileParameter(WorkerEM.class, workerEMWrapper.getInstance());
       optimizerInjector.bindVolatileInstance(AsyncDolphinDriver.class, this);
       this.optimizationOrchestrator = optimizerInjector.getInstance(OptimizationOrchestrator.class);
-    } catch (final InjectionException | ClassNotFoundException e) {
+    } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
   }

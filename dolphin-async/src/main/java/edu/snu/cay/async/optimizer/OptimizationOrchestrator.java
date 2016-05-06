@@ -25,12 +25,8 @@ import org.apache.reef.runtime.local.client.parameters.MaxNumberOfEvaluators;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,6 +36,8 @@ import java.util.logging.Logger;
  */
 public final class OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
+  public static final String NAMESPACE_SERVER = "SERVER";
+  public static final String NAMESPACE_WORKER = "WORKER";
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
@@ -50,14 +48,13 @@ public final class OptimizationOrchestrator {
   /**
    * The {@link Future} returned from the most recent {@code optimizationThreadPool.submit(Runnable)} call.
    * Note that this does not necessarily refer to a thread that is doing actual optimization
-   * ({@link Optimizer#optimize(java.util.Collection, int)}).
+   * ({@link Optimizer#optimize(Map, int)} , int)}).
    * This field is currently being used only for testing purposes.
    */
   private Future optimizationAttemptResult;
 
   private Future<PlanResult> planExecutionResult;
   private boolean planExecuting;
-
   private ElasticMemory serverEM;
   private ElasticMemory workerEM;
 
@@ -93,10 +90,14 @@ public final class OptimizationOrchestrator {
       public void run() {
         LOG.log(Level.INFO, "Optimization start.");
         logPreviousResult();
-        Map<String, EvaluatorParameters> evaluatorParameters = serverEM.generateEvalParams();
-//        workerEM.generateEvalParams();
+        final Collection<EvaluatorParameters> serverEvalParams = serverEM.generateEvalParams().values();
+        final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams().values();
 
-        final Plan plan = optimizer.optimize(evaluatorParameters.values(), maxNumEvals);
+        final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
+        evaluatorParameters.put(NAMESPACE_SERVER, new ArrayList<>(serverEvalParams));
+        evaluatorParameters.put(NAMESPACE_WORKER, new ArrayList<>(workerEvalParams));
+
+        final Plan plan = optimizer.optimize(evaluatorParameters, maxNumEvals);
         LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
 
         planExecutionResult = planExecutor.execute(plan);

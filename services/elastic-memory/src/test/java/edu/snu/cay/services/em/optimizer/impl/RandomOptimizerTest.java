@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
-import edu.snu.cay.services.em.common.parameters.Namespace;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.plan.api.TransferStep;
@@ -25,10 +24,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -49,7 +45,8 @@ public final class RandomOptimizerTest {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(1.0, 1.0);
     final long dataPerEvaluator = 5000;
     final int numEvaluators = 10;
-    final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
+    final Map<String, List<EvaluatorParameters>> evaluators =
+        getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators);
 
@@ -67,7 +64,8 @@ public final class RandomOptimizerTest {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(1.0, 1.0);
     final long dataPerEvaluator = 5000;
     final int numEvaluators = 10;
-    final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
+    final Map<String, List<EvaluatorParameters>> evaluators =
+        getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators / 2);
 
@@ -85,7 +83,8 @@ public final class RandomOptimizerTest {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(1.0, 1.0);
     final long dataPerEvaluator = 5000;
     final int numEvaluators = 10;
-    final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
+    final Map<String, List<EvaluatorParameters>> evaluators =
+        getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 2);
 
@@ -103,7 +102,8 @@ public final class RandomOptimizerTest {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(0.5, 1.0);
     final long dataPerEvaluator = 5000;
     final int numEvaluators = 10;
-    final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
+    final Map<String, List<EvaluatorParameters>> evaluators =
+        getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 3 / 2);
 
@@ -125,23 +125,25 @@ public final class RandomOptimizerTest {
   @Test
   public void testMultipleDataTypes() {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(1.0, 1.0);
-    final List<EvaluatorParameters> evaluators = new ArrayList<>();
+    final List<EvaluatorParameters> evalParamsList = new ArrayList<>();
 
     final List<DataInfo> dataInfo1 = new ArrayList<>();
     dataInfo1.add(new DataInfoImpl("dataTypeB", 300));
-    evaluators.add(new EvaluatorParametersImpl("1", dataInfo1, new HashMap<String, Double>(0)));
+    evalParamsList.add(new EvaluatorParametersImpl("1", dataInfo1, new HashMap<String, Double>(0)));
 
     final List<DataInfo> dataInfo2 = new ArrayList<>();
     dataInfo2.add(new DataInfoImpl("dataTypeA", 1000));
     dataInfo2.add(new DataInfoImpl("dataTypeB", 500));
-    evaluators.add(new EvaluatorParametersImpl("2", dataInfo2, new HashMap<String, Double>(0)));
+    evalParamsList.add(new EvaluatorParametersImpl("2", dataInfo2, new HashMap<String, Double>(0)));
 
-    final Plan sameNumEvaluatorsPlan = randomOptimizer.optimize(evaluators, evaluators.size());
+    final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);
+    evalParamsMap.put(NAMESPACE, evalParamsList);
+    final Plan sameNumEvaluatorsPlan = randomOptimizer.optimize(evalParamsMap, evalParamsList.size());
 
     assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToAdd(NAMESPACE).size());
     assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToDelete(NAMESPACE).size());
 
-    final Plan singleEvaluatorPlan = randomOptimizer.optimize(evaluators, 1);
+    final Plan singleEvaluatorPlan = randomOptimizer.optimize(evalParamsMap, 1);
 
     assertEquals(0, singleEvaluatorPlan.getEvaluatorsToAdd(NAMESPACE).size());
     assertEquals(1, singleEvaluatorPlan.getEvaluatorsToDelete(NAMESPACE).size());
@@ -159,14 +161,19 @@ public final class RandomOptimizerTest {
     assertEquals(1000 + 500, sum);
   }
 
-  private Collection<EvaluatorParameters> getUniformEvaluators(final long dataPerEvaluator, final int numEvaluators) {
-    final List<EvaluatorParameters> evaluators = new ArrayList<>(numEvaluators);
+  private Map<String, List<EvaluatorParameters>> getUniformEvaluators(final String namespace,
+                                                                      final long dataPerEvaluator,
+                                                                      final int numEvaluators) {
+    final List<EvaluatorParameters> evalParamsList = new ArrayList<>(numEvaluators);
     for (int i = 0; i < numEvaluators; i++) {
       final List<DataInfo> dataInfos = new ArrayList<>(1);
       dataInfos.add(new DataInfoImpl("testType", (int) dataPerEvaluator));
-      evaluators.add(new EvaluatorParametersImpl("test-" + i, dataInfos, new HashMap<String, Double>(0)));
+      evalParamsList.add(new EvaluatorParametersImpl("test-" + i, dataInfos, new HashMap<String, Double>(0)));
     }
-    return evaluators;
+
+    final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);
+    evalParamsMap.put(namespace, evalParamsList);
+    return evalParamsMap;
   }
 
   private static RandomOptimizer getRandomOptimizer(final double minEvaluatorsFraction,
@@ -174,7 +181,6 @@ public final class RandomOptimizerTest {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(RandomOptimizer.MinEvaluatorsFraction.class, Double.toString(minEvaluatorsFraction))
         .bindNamedParameter(RandomOptimizer.MaxEvaluatorsFraction.class, Double.toString(maxEvaluatorsFraction))
-        .bindNamedParameter(Namespace.class, NAMESPACE)
         .build();
     try {
       return Tang.Factory.getTang().newInjector(configuration).getInstance(RandomOptimizer.class);

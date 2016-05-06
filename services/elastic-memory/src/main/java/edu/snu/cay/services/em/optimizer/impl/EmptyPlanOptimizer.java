@@ -21,7 +21,8 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 
 import javax.inject.Inject;
-import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 /**
  * An Optimizer implementation that creates a plan with no operations.
@@ -34,7 +35,7 @@ public final class EmptyPlanOptimizer implements Optimizer {
   }
 
   @Override
-  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
     return PlanImpl.newBuilder().build();
   }
 }

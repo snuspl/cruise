@@ -33,6 +33,7 @@ import org.junit.Test;
 
 import java.util.*;
 
+import static edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP;
 import static edu.snu.cay.dolphin.core.optimizer.PlanValidationUtils.checkPlan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -40,9 +41,9 @@ import static org.mockito.Mockito.*;
 
 /**
  * Class for testing {@link ILPQuickOptimizer}'s behavior.
+ * For namespace, {@link OptimizationOrchestrator#NAMESPACE_DOLPHIN_BSP} is used.
  */
 public final class ILPQuickOptimizerTest {
-  private static final String NAMESPACE = "DOLPHIN_BSP";
   private final String ctrlTaskId = ControllerTask.TASK_ID_PREFIX;
   private ILPQuickOptimizer ilpQuickOptimizer;
 
@@ -63,14 +64,14 @@ public final class ILPQuickOptimizerTest {
   @Test
   public void testLowCommCost() {
     final int availableEvaluators = 6 + 1; // 1 for the ctrl task
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
-        new int[][]{{100, 100, 100}, {100, 100, 100}}, 5D);
+    final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
+        NAMESPACE_DOLPHIN_BSP, new int[][]{{100, 100, 100}, {100, 100, 100}}, 5D);
 
     final Plan plan = ilpQuickOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
-    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE).size() > 0);
-    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
+    checkPlan(activeEvaluators, plan, availableEvaluators);
+    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size() > 0);
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
   }
 
   /**
@@ -81,14 +82,15 @@ public final class ILPQuickOptimizerTest {
   @Test
   public void testHighCommCost() {
     final int availableEvaluators = 6 + 1; // 1 for the ctrl task
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
-        new int[][]{{100, 100, 100}, {100, 100, 100}, {100, 100, 100}, {100, 100, 100}}, 5000D);
+    final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
+        NAMESPACE_DOLPHIN_BSP, new int[][]{{100, 100, 100}, {100, 100, 100}, {100, 100, 100}, {100, 100, 100}}, 5000D);
 
     final Plan plan = ilpQuickOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
-    assertTrue("At least one evaluator should be deleted", plan.getEvaluatorsToDelete(NAMESPACE).size() > 0);
-    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    checkPlan(activeEvaluators, plan, availableEvaluators);
+    assertTrue("At least one evaluator should be deleted",
+        plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size() > 0);
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
   }
 
   /**
@@ -98,14 +100,15 @@ public final class ILPQuickOptimizerTest {
   @Test
   public void testAvailableEvalsReduced() {
     final int availableEvaluators = 2 + 1; // 1 for the ctrl task
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
-        new int[][]{{100, 100, 100}, {100, 100, 100}, {100, 100, 100}, {100, 100, 100}}, 100D);
+    final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
+        NAMESPACE_DOLPHIN_BSP, new int[][]{{100, 100, 100}, {100, 100, 100}, {100, 100, 100}, {100, 100, 100}}, 100D);
 
     final Plan plan = ilpQuickOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
-    assertTrue("At least two evaluators should be deleted", plan.getEvaluatorsToDelete(NAMESPACE).size() >= 2);
-    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    checkPlan(activeEvaluators, plan, availableEvaluators);
+    assertTrue("At least two evaluators should be deleted",
+        plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size() >= 2);
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
   }
 
   /**
@@ -121,19 +124,19 @@ public final class ILPQuickOptimizerTest {
 
     final ILPQuickOptimizer wrongCtrlIlpQuickerOptimizer = injector.getInstance(ILPQuickOptimizer.class);
     final int availableEvaluators = 4;
-    final Collection<EvaluatorParameters> activeEvaluators = generateEvaluatorParameters(
-        new int[][]{{100, 50}, {100, 100}}, 50D);
+    final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
+        NAMESPACE_DOLPHIN_BSP, new int[][]{{100, 50}, {100, 100}}, 50D);
 
     final Plan plan = wrongCtrlIlpQuickerOptimizer.optimize(activeEvaluators, availableEvaluators);
 
-    checkPlan(NAMESPACE, activeEvaluators, plan, availableEvaluators);
-    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd(NAMESPACE).size());
-    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToDelete(NAMESPACE).size());
-    assertEquals("The plan should be empty", 0, plan.getTransferSteps(NAMESPACE).size());
+    checkPlan(activeEvaluators, plan, availableEvaluators);
+    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
+    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
+    assertEquals("The plan should be empty", 0, plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).size());
   }
 
   /**
-   * Generate a collection of {@link EvaluatorParameters}'s using the given {@code dataArray} and {@code commCost}.
+   * Generate a map of {@link EvaluatorParameters}'s using the given {@code dataArray} and {@code commCost}.
    *
    * The parameter {@code dataArray} is assumed to have {@code n} inner arrays, where {@code n} equals the number of
    * compute tasks.
@@ -142,9 +145,10 @@ public final class ILPQuickOptimizerTest {
    * that compute task.
    * The parameter {@code commCost} is simply the total communication cost.
    */
-  private Collection<EvaluatorParameters> generateEvaluatorParameters(final int[][] dataArray,
-                                                                      final double commCost) {
-    final List<EvaluatorParameters> retList = new ArrayList<>(dataArray.length + 1);
+  private Map<String, List<EvaluatorParameters>> generateEvaluatorParameters(final String namespace,
+                                                                             final int[][] dataArray,
+                                                                             final double commCost) {
+    final List<EvaluatorParameters> evalParamList = new ArrayList<>(dataArray.length + 1);
     double maxCompCost = 0D;
 
     for (int index = 0; index < dataArray.length; ++index) {
@@ -158,7 +162,7 @@ public final class ILPQuickOptimizerTest {
       final Map<String, Double> cmpTaskMetrics = new HashMap<>();
       cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_START, 0D);
       cmpTaskMetrics.put(DolphinMetricKeys.COMPUTE_TASK_USER_COMPUTE_TASK_END, compCost);
-      retList.add(new EvaluatorParametersImpl(ComputeTask.TASK_ID_PREFIX + index, dataInfoList, cmpTaskMetrics));
+      evalParamList.add(new EvaluatorParametersImpl(ComputeTask.TASK_ID_PREFIX + index, dataInfoList, cmpTaskMetrics));
 
       maxCompCost = maxCompCost < compCost ? compCost : maxCompCost;
     }
@@ -166,8 +170,10 @@ public final class ILPQuickOptimizerTest {
     final Map<String, Double> ctrlTaskMetrics = new HashMap<>();
     ctrlTaskMetrics.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START, 0D);
     ctrlTaskMetrics.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END, commCost + maxCompCost);
-    retList.add(new EvaluatorParametersImpl(ctrlTaskId, new ArrayList<DataInfo>(0), ctrlTaskMetrics));
+    evalParamList.add(new EvaluatorParametersImpl(ctrlTaskId, new ArrayList<DataInfo>(0), ctrlTaskMetrics));
 
-    return retList;
+    final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);
+    evalParamsMap.put(namespace, evalParamList);
+    return evalParamsMap;
   }
 }

@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
-import edu.snu.cay.services.em.common.parameters.Namespace;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.plan.api.Plan;
@@ -59,6 +58,7 @@ public final class RandomOptimizer implements Optimizer {
   public static final class MaxEvaluatorsFraction implements Name<Double> {
   }
 
+  private static final Random RANDOM = new Random();
   private static final Logger LOG = Logger.getLogger(RandomOptimizer.class.getName());
 
   private final Random random = new Random();
@@ -67,12 +67,9 @@ public final class RandomOptimizer implements Optimizer {
   private final double minEvaluatorsFraction;
   private final double maxEvaluatorsFraction;
 
-  private final String namespace;
-
   @Inject
   private RandomOptimizer(@Parameter(MinEvaluatorsFraction.class) final double minEvaluatorsFraction,
-                          @Parameter(MaxEvaluatorsFraction.class) final double maxEvaluatorsFraction,
-                          @Parameter(Namespace.class) final String namespace) {
+                          @Parameter(MaxEvaluatorsFraction.class) final double maxEvaluatorsFraction) {
     if (minEvaluatorsFraction < 0.0 || minEvaluatorsFraction > 1.0
         || maxEvaluatorsFraction < 0.0 || maxEvaluatorsFraction > 1.0) {
       throw new IllegalArgumentException(
@@ -83,11 +80,10 @@ public final class RandomOptimizer implements Optimizer {
 
     this.minEvaluatorsFraction = minEvaluatorsFraction;
     this.maxEvaluatorsFraction = maxEvaluatorsFraction;
-    this.namespace = namespace;
   }
 
   @Override
-  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluatorsCollection,
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap,
                        final int availableEvaluators) {
     if (availableEvaluators <= 0) {
       throw new IllegalArgumentException("availableEvaluators " + availableEvaluators + " must be > 0");
@@ -95,9 +91,13 @@ public final class RandomOptimizer implements Optimizer {
 
     final int numEvaluators = getEvaluatorsToUse(availableEvaluators);
 
+    // Randomly pick a namespace from the activeEvaluators.
+    final int namespaceIndex = RANDOM.nextInt(evalParamsMap.size());
+    final String namespace = new ArrayList<>(evalParamsMap.keySet()).get(namespaceIndex);
+
     final List<EvaluatorParameters> evaluatorsToAdd;
     final List<EvaluatorParameters> evaluatorsToDelete;
-    final List<EvaluatorParameters> activeEvaluators = new ArrayList<>(activeEvaluatorsCollection);
+    final List<EvaluatorParameters> activeEvaluators = new ArrayList<>(evalParamsMap.get(namespace));
     if (numEvaluators > activeEvaluators.size()) {
       evaluatorsToDelete = new ArrayList<>(0);
       evaluatorsToAdd = getNewEvaluators(numEvaluators - activeEvaluators.size()); // Add to the tail

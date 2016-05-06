@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.services.em.optimizer.impl;
 
-import edu.snu.cay.services.em.common.parameters.Namespace;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
@@ -23,10 +22,9 @@ import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.TransferStep;
 import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Collection;
+import java.util.*;
 
 /**
  * An Optimizer that simply adds one new Evaluator for each optimize call.
@@ -36,8 +34,7 @@ import java.util.Collection;
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
 public final class AddOneOptimizer implements Optimizer {
-  private final String namespace;
-
+  private static final Random RANDOM = new Random();
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -45,26 +42,29 @@ public final class AddOneOptimizer implements Optimizer {
   private int callsSkipped = 0;
 
   @Inject
-  private AddOneOptimizer(@Parameter(Namespace.class) final String namespace) {
-    this.namespace = namespace;
+  private AddOneOptimizer() {
   }
 
   @Override
-  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
     if (callsSkipped < callsToSkip) {
       callsSkipped++;
       return PlanImpl.newBuilder().build();
     }
 
-    if (callsMade == maxCallsToMake) {
+    if (callsMade == maxCallsToMake || evalParamsMap.isEmpty()) {
       return PlanImpl.newBuilder().build();
     }
 
     final String evaluatorToAdd = "new-" + callsMade;
     callsMade++;
 
+    // Randomly pick a namespace from the activeEvaluators.
+    final int namespaceIndex = RANDOM.nextInt(evalParamsMap.size());
+    final String namespace = new ArrayList<>(evalParamsMap.keySet()).get(namespaceIndex);
+
     EvaluatorParameters srcEvaluator = null;
-    for (final EvaluatorParameters evaluator : activeEvaluators) {
+    for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
       if (!evaluator.getDataInfos().isEmpty()) {
         srcEvaluator = evaluator;
         break;

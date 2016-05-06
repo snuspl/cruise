@@ -290,11 +290,26 @@ public final class AsyncDolphinLauncher {
             WorkerSynchronizer.MessageHandler.class)
         .build();
 
+    // set up an optimizer configuration
+    final Class<? extends Optimizer> optimizerClass;
+    final Class<? extends PlanExecutor> executorClass;
+    try {
+      optimizerClass = (Class<? extends Optimizer>) Class.forName(injector.getNamedInstance(OptimizerClass.class));
+      executorClass = (Class<? extends PlanExecutor>) Class.forName(injector.getNamedInstance(PlanExecutorClass.class));
+    } catch (final ClassNotFoundException e) {
+      throw new RuntimeException("Reflection failed", e);
+    }
+    final Configuration optimizerConf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(Optimizer.class, optimizerClass)
+        .bindImplementation(PlanExecutor.class, executorClass)
+        .build();
+
     return Configurations.merge(driverConfWithDataLoad,
         ElasticMemoryConfiguration.getDriverConfigurationWithoutRegisterDriver(),
         ParameterServerDriver.getDriverConfiguration(),
         aggregationServiceConf.getDriverConfiguration(),
         HTraceParameters.getStaticConfiguration(),
+        optimizerConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
         Tang.Factory.getTang().newConfigurationBuilder()

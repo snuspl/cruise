@@ -33,6 +33,8 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP;
+
 /**
  * Optimizer class based on the optimization formula used by {@link ILPSolverOptimizer},
  * solved by hand instead of using an ILP solver library, with an additional constraint applied.
@@ -75,7 +77,6 @@ import java.util.logging.Logger;
  * </p>
  */
 public final class ILPQuickOptimizer implements Optimizer {
-  private static final String NAMESPACE = "DOLPHIN_BSP";
 
   private static final Logger LOG = Logger.getLogger(ILPQuickOptimizer.class.getName());
   private static final String NEW_COMPUTE_TASK_ID_PREFIX = "newComputeTask-";
@@ -129,15 +130,19 @@ public final class ILPQuickOptimizer implements Optimizer {
   }
 
   @Override
-  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
     final Optional<String> ctrlTaskContextId = ctrlTaskContextIdFetcher.getCtrlTaskContextId();
     if (!ctrlTaskContextId.isPresent()) {
       LOG.log(Level.WARNING, "Controller task is unidentifiable at the moment. Returning empty plan.");
       return PlanImpl.newBuilder().build();
     }
 
+    final List<EvaluatorParameters> activeEvaluators = evalParamsMap.get(NAMESPACE_DOLPHIN_BSP);
+
     // Step 1: Process metrics into meaningful values
-    final Optional<Cost> cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId.get());
+    final Optional<Cost> cost = CostCalculator.calculate(
+        activeEvaluators,
+        ctrlTaskContextId.get());
     if (!cost.isPresent()) {
       LOG.log(Level.WARNING, "No controller task present at the moment. Returning empty plan.");
       return PlanImpl.newBuilder().build();
@@ -170,7 +175,7 @@ public final class ILPQuickOptimizer implements Optimizer {
         optimizedEvalQueue, expectedCompUnitCostInv, compUnitCostInvSum, numUnitsTotal, numOptimalEvals, planBuilder);
 
     // Step 5: Generate transfer steps according to the optimal plan.
-    generateTransferSteps(NAMESPACE, evalSet, planBuilder);
+    generateTransferSteps(NAMESPACE_DOLPHIN_BSP, evalSet, planBuilder);
 
     return planBuilder.build();
   }
@@ -275,14 +280,14 @@ public final class ILPQuickOptimizer implements Optimizer {
       final int newWorkload = (int)Math.round(totalWorkload * expectedCompUnitCostInv / compUnitCostInvSum);
       retSet.add(new OptimizedEvaluator(newEvalId, new ArrayList<DataInfo>(0),
           expectedCompUnitCostInv, newWorkload));
-      planBuilder.addEvaluatorToAdd(NAMESPACE, newEvalId);
+      planBuilder.addEvaluatorToAdd(NAMESPACE_DOLPHIN_BSP, newEvalId);
       remainingWorkload -= newWorkload;
     }
 
     for (final OptimizedEvaluator eval : optimizedEvaluatorQueue) {
       if (retSet.size() >= numOptimalEvals) {
         // the optimal number of evaluators has been reached; delete the remaining ones
-        planBuilder.addEvaluatorToDelete(NAMESPACE, eval.id);
+        planBuilder.addEvaluatorToDelete(NAMESPACE_DOLPHIN_BSP, eval.id);
         eval.numOptimalUnits = 0;
 
       } else if (retSet.size() == numOptimalEvals - 1) {

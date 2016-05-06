@@ -42,6 +42,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.async.optimizer.OptimizationOrchestrator.NAMESPACE_SERVER;
+import static edu.snu.cay.async.optimizer.OptimizationOrchestrator.NAMESPACE_WORKER;
+
 /**
  * Implementation of Plan Executor for AsyncDolphin.
  */
@@ -50,9 +53,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   private final ElasticMemory serverEM;
   private final ElasticMemory workerEM;
-
-  private static final String NAMESPACE_SERVER = "SERVER";
-  private static final String NAMESPACE_WORKER = "WORKER";
 
   private final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver;
 
