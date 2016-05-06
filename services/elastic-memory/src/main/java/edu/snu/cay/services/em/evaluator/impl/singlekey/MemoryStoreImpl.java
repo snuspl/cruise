@@ -206,9 +206,25 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
           final String dataType = operation.getDataType();
           final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
           final Block<V> block = blocks.get(blockId);
-          final V result = block.executeOperation(operation);
 
-          remoteOpHandler.sendResultToOrigin(operation, Optional.ofNullable(result), true);
+          final V output;
+          final DataOpType opType = operation.getOpType();
+          switch (opType) {
+          case PUT:
+            block.put(operation.getKey(), operation.getValue().get());
+            output = null;
+            break;
+          case GET:
+            output = block.get(operation.getKey());
+            break;
+          case REMOVE:
+            output = block.remove(operation.getKey());
+            break;
+          default:
+            throw new RuntimeException("Undefined operation");
+          }
+
+          remoteOpHandler.sendResultToOrigin(operation, Optional.ofNullable(output), true);
         } else {
           LOG.log(Level.WARNING,
               "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
@@ -234,33 +250,6 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
      * maximize the performance of concurrent single-key operations.
      */
     private final ConcurrentMap<K, V> subDataMap = new ConcurrentHashMap<>();
-
-    /**
-     * Executes an operation on a data key assigned to this block.
-     * All operations both from remote and local clients are executed via this method.
-     */
-    private V executeOperation(final SingleKeyOperation<K, V> operation) {
-      final DataOpType opType = operation.getOpType();
-
-      final V output;
-
-      switch (opType) {
-      case PUT:
-        subDataMap.put(operation.getKey(), operation.getValue().get());
-        output = null;
-        break;
-      case GET:
-        output = subDataMap.get(operation.getKey());
-        break;
-      case REMOVE:
-        output = subDataMap.remove(operation.getKey());
-        break;
-      default:
-        throw new RuntimeException("Undefined operation");
-      }
-
-      return output;
-    }
 
     private void put(final K key, final V value) {
       subDataMap.put(key, value);
