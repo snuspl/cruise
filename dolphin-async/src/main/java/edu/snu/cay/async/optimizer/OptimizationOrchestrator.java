@@ -16,13 +16,17 @@
 package edu.snu.cay.async.optimizer;
 
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
+import org.apache.reef.runtime.local.client.parameters.MaxNumberOfEvaluators;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,15 +61,19 @@ public final class OptimizationOrchestrator {
   private ElasticMemory serverEM;
   private ElasticMemory workerEM;
 
+  private final int maxNumEvals;
+
   @Inject
   OptimizationOrchestrator(final Optimizer optimizer,
                            final PlanExecutor planExecutor,
                            @Parameter(ServerEM.class) final ElasticMemory serverEM,
-                           @Parameter(WorkerEM.class) final ElasticMemory workerEM) {
+                           @Parameter(WorkerEM.class) final ElasticMemory workerEM,
+                           @Parameter(MaxNumberOfEvaluators.class) final int maxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.serverEM = serverEM;
     this.workerEM = workerEM;
+    this.maxNumEvals = maxNumEvals;
   }
 
   // TODO #00: When to trigger the optimization?
@@ -85,11 +93,10 @@ public final class OptimizationOrchestrator {
       public void run() {
         LOG.log(Level.INFO, "Optimization start.");
         logPreviousResult();
-        serverEM.generateEvalParams();
-        workerEM.generateEvalParams();
+        Map<String, EvaluatorParameters> evaluatorParameters = serverEM.generateEvalParams();
+//        workerEM.generateEvalParams();
 
-        final Plan plan = optimizer.optimize(null, 0);
-
+        final Plan plan = optimizer.optimize(evaluatorParameters.values(), maxNumEvals);
         LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
 
         planExecutionResult = planExecutor.execute(plan);

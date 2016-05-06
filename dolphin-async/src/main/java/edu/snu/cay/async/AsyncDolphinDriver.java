@@ -256,10 +256,12 @@ public final class AsyncDolphinDriver {
 
       final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
           .bind(PlanExecutor.class, Class.forName(planExecutorClass))
-          .bind(Optimizer.class, Class.forName(optimizerClass)).build();
+          .bind(Optimizer.class, Class.forName(optimizerClass))
+          .build();
       final Injector optimizerInjector = Tang.Factory.getTang().newInjector(conf);
       optimizerInjector.bindVolatileParameter(ServerEM.class, serverEMWrapper.getInstance());
       optimizerInjector.bindVolatileParameter(WorkerEM.class, workerEMWrapper.getInstance());
+      optimizerInjector.bindVolatileInstance(AsyncDolphinDriver.class, this);
       this.optimizationOrchestrator = optimizerInjector.getInstance(OptimizationOrchestrator.class);
 
     } catch (final InjectionException | ClassNotFoundException e) {
