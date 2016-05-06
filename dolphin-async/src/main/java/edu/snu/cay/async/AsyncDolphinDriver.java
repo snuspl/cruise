@@ -16,6 +16,7 @@
 package edu.snu.cay.async;
 
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
+import edu.snu.cay.async.metric.MetricsCollectionService;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
@@ -367,7 +368,8 @@ final class AsyncDolphinDriver {
           final Configuration serviceConf = Configurations.merge(
               psDriver.getWorkerServiceConfiguration(),
               workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
-              aggregationManager.getServiceConfigurationWithoutNameResolver());
+              aggregationManager.getServiceConfigurationWithoutNameResolver(),
+              MetricsCollectionService.getServiceConfiguration());
           final Configuration traceConf = traceParameters.getConfiguration();
           final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
               .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
