@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.common.parameters.*;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.impl.HashBlockResolver;
+import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.ps.ParameterServerParameters;
@@ -108,6 +109,11 @@ public final class DynamicPartitionedParameterServerTest {
         return 0;
       }
     });
+
+    // EM's router should be initialized explicitly
+    final OperationRouter router = injector.getInstance(OperationRouter.class);
+    router.initialize("DUMMY");
+
     mockSender = injector.getInstance(MockPartitionedServerSideReplySender.class);
     server = injector.getInstance(DynamicPartitionedParameterServer.class);
   }
@@ -116,7 +122,7 @@ public final class DynamicPartitionedParameterServerTest {
    * Test the performance of {@link DynamicPartitionedParameterServer} by
    * running threads that push values to and pull values from the server, concurrently.
    */
-  @Test
+  @Test(timeout = 200000)
   public void testMultiThreadPushPull() throws InterruptedException {
     final int numPushThreads = 8;
     final int numPushes = 1000000;
@@ -253,6 +259,23 @@ public final class DynamicPartitionedParameterServerTest {
     @Override
     public void sendRemoteOpResultMsg(final String destId, final DataValue dataValue, final boolean isSuccess,
                                       final String operationId, @Nullable final TraceInfo parentTraceInfo) {
+    }
+
+    @Override
+    public void sendRoutingTableInitReqMsg(@Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendRoutingTableInitMsg(final String destId, final List<Integer> blockLocations,
+                                        @Nullable final TraceInfo parentTraceInfo) {
+
+    }
+
+    @Override
+    public void sendRoutingTableUpdateMsg(final String destId, final List<Integer> blocks, final String oldEvalId,
+                                          final String newEvalId, @Nullable final TraceInfo parentTraceInfo) {
+
     }
 
     @Override

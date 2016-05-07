@@ -29,6 +29,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Receives the messages from ParameterServers and ParameterWorkers.
@@ -67,9 +68,9 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPara
     final int numTotalBlocks = routingTable.getNumTotalBlocks();
     final List<IdMapping> idMappings = new ArrayList<>(routingTable.getStoreIdToEndpointId().size());
     final Map<Integer, String> storeIdToEndpointId = routingTable.getStoreIdToEndpointId();
-    for (final Map.Entry<Integer, List<Integer>> entry : routingTable.getStoreIdToBlockIds().entrySet()) {
+    for (final Map.Entry<Integer, Set<Integer>> entry : routingTable.getStoreIdToBlockIds().entrySet()) {
       final int storeId = entry.getKey();
-      final List<Integer> blockIds = entry.getValue();
+      final List<Integer> blockIds = new ArrayList<>(entry.getValue());
       final IdMapping idMapping = IdMapping.newBuilder()
           .setMemoryStoreId(storeId)
           .setBlockIds(blockIds)

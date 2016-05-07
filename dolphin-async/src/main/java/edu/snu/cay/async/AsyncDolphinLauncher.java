@@ -15,6 +15,9 @@
  */
 package edu.snu.cay.async;
 
+import edu.snu.cay.async.metric.DriverSideMetricsMsgHandler;
+import edu.snu.cay.async.metric.EvalSideMetricsMsgHandler;
+import edu.snu.cay.async.metric.MetricsCollectionService;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
@@ -288,6 +291,9 @@ public final class AsyncDolphinLauncher {
         .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
             SynchronizationManager.MessageHandler.class,
             WorkerSynchronizer.MessageHandler.class)
+        .addAggregationClient(MetricsCollectionService.AGGREGATION_CLIENT_NAME,
+            DriverSideMetricsMsgHandler.class,
+            EvalSideMetricsMsgHandler.class)
         .build();
 
     // set up an optimizer configuration
