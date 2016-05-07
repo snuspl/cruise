@@ -35,7 +35,6 @@ import java.util.*;
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
 public final class DeleteOneOptimizer implements Optimizer {
-  private static final Random RANDOM = new Random();
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -57,45 +56,46 @@ public final class DeleteOneOptimizer implements Optimizer {
       return PlanImpl.newBuilder().build();
     }
 
-    // Randomly pick a namespace from the activeEvaluators.
-    final int namespaceIndex = RANDOM.nextInt(evalParamsMap.size());
-    final String namespace = new ArrayList<>(evalParamsMap.keySet()).get(namespaceIndex);
+    final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    // Sort evaluators by ID, to select evaluators in a consistent order across job executions
-    final List<EvaluatorParameters> evaluators = new ArrayList<>(evalParamsMap.size());
-    for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
-      // only add evaluators that have data to move
-      if (!evaluator.getDataInfos().isEmpty()) {
-        evaluators.add(evaluator);
+    for (final String namespace : evalParamsMap.keySet()) {
+
+      // Sort evaluators by ID, to select evaluators in a consistent order across job executions
+      final List<EvaluatorParameters> evaluators = new ArrayList<>(evalParamsMap.size());
+      for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
+        // only add evaluators that have data to move
+        if (!evaluator.getDataInfos().isEmpty()) {
+          evaluators.add(evaluator);
+        }
       }
-    }
-    Collections.sort(evaluators, new Comparator<EvaluatorParameters>() {
-      @Override
-      public int compare(final EvaluatorParameters o1, final EvaluatorParameters o2) {
-        return o1.getId().compareTo(o2.getId());
+      Collections.sort(evaluators, new Comparator<EvaluatorParameters>() {
+        @Override
+        public int compare(final EvaluatorParameters o1, final EvaluatorParameters o2) {
+          return o1.getId().compareTo(o2.getId());
+        }
+      });
+
+      if (evaluators.size() < 2) {
+        throw new RuntimeException("Cannot delete, because not enough evaluators " + evaluators.size());
       }
-    });
 
-    if (evaluators.size() < 2) {
-      throw new RuntimeException("Cannot delete, because not enough evaluators " + evaluators.size());
+      final EvaluatorParameters evaluatorToDelete = evaluators.get(0);
+      final EvaluatorParameters dstEvaluator = evaluators.get(1);
+
+      final List<TransferStep> transferSteps = new ArrayList<>();
+      for (final DataInfo dataInfo : evaluatorToDelete.getDataInfos()) {
+        transferSteps.add(new TransferStepImpl(
+            evaluatorToDelete.getId(),
+            dstEvaluator.getId(),
+            new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits())));
+      }
+
+      callsMade++;
+
+
+      planBuilder.addEvaluatorToDelete(namespace, evaluatorToDelete.getId());
+      planBuilder.addTransferSteps(namespace, transferSteps);
     }
-
-    final EvaluatorParameters evaluatorToDelete = evaluators.get(0);
-    final EvaluatorParameters dstEvaluator = evaluators.get(1);
-
-    final List<TransferStep> transferSteps = new ArrayList<>();
-    for (final DataInfo dataInfo : evaluatorToDelete.getDataInfos()) {
-      transferSteps.add(new TransferStepImpl(
-          evaluatorToDelete.getId(),
-          dstEvaluator.getId(),
-          new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits())));
-    }
-
-    callsMade++;
-
-    return PlanImpl.newBuilder()
-        .addEvaluatorToDelete(namespace, evaluatorToDelete.getId())
-        .addTransferSteps(namespace, transferSteps)
-        .build();
+    return planBuilder.build();
   }
 }

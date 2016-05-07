@@ -58,7 +58,6 @@ public final class RandomOptimizer implements Optimizer {
   public static final class MaxEvaluatorsFraction implements Name<Double> {
   }
 
-  private static final Random RANDOM = new Random();
   private static final Logger LOG = Logger.getLogger(RandomOptimizer.class.getName());
 
   private final Random random = new Random();
@@ -91,28 +90,27 @@ public final class RandomOptimizer implements Optimizer {
 
     final int numEvaluators = getEvaluatorsToUse(availableEvaluators);
 
-    // Randomly pick a namespace from the activeEvaluators.
-    final int namespaceIndex = RANDOM.nextInt(evalParamsMap.size());
-    final String namespace = new ArrayList<>(evalParamsMap.keySet()).get(namespaceIndex);
+    final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    final List<EvaluatorParameters> evaluatorsToAdd;
-    final List<EvaluatorParameters> evaluatorsToDelete;
-    final List<EvaluatorParameters> activeEvaluators = new ArrayList<>(evalParamsMap.get(namespace));
-    if (numEvaluators > activeEvaluators.size()) {
-      evaluatorsToDelete = new ArrayList<>(0);
-      evaluatorsToAdd = getNewEvaluators(numEvaluators - activeEvaluators.size()); // Add to the tail
-    } else if (numEvaluators < activeEvaluators.size()) {
-      evaluatorsToAdd = new ArrayList<>(0);
-      evaluatorsToDelete = new ArrayList<>(
-          activeEvaluators.subList(numEvaluators, activeEvaluators.size())); // Delete from the tail
-    } else {
-      evaluatorsToAdd = new ArrayList<>(0);
-      evaluatorsToDelete = new ArrayList<>(0);
-    }
+    for (final String namespace : evalParamsMap.keySet()) {
 
-    final PlanImpl.Builder planBuilder = PlanImpl.newBuilder()
-        .addEvaluatorsToAdd(namespace, getIds(evaluatorsToAdd))
-        .addEvaluatorsToDelete(namespace, getIds(evaluatorsToDelete));
+      final List<EvaluatorParameters> evaluatorsToAdd;
+      final List<EvaluatorParameters> evaluatorsToDelete;
+      final List<EvaluatorParameters> activeEvaluators = new ArrayList<>(evalParamsMap.get(namespace));
+      if (numEvaluators > activeEvaluators.size()) {
+        evaluatorsToDelete = new ArrayList<>(0);
+        evaluatorsToAdd = getNewEvaluators(numEvaluators - activeEvaluators.size()); // Add to the tail
+      } else if (numEvaluators < activeEvaluators.size()) {
+        evaluatorsToAdd = new ArrayList<>(0);
+        evaluatorsToDelete = new ArrayList<>(
+            activeEvaluators.subList(numEvaluators, activeEvaluators.size())); // Delete from the tail
+      } else {
+        evaluatorsToAdd = new ArrayList<>(0);
+        evaluatorsToDelete = new ArrayList<>(0);
+      }
+
+      planBuilder.addEvaluatorsToAdd(namespace, getIds(evaluatorsToAdd));
+      planBuilder.addEvaluatorsToDelete(namespace, getIds(evaluatorsToDelete));
 
     /*
      * For each dataType:
@@ -123,24 +121,24 @@ public final class RandomOptimizer implements Optimizer {
      * 4. Create transfer steps to satisfy the distribution of units. (getTransferSteps)
       *   Add these transfer steps to the plan.
      */
-    activeEvaluators.addAll(evaluatorsToAdd);
-    final Collection<String> dataTypes = getDataTypes(activeEvaluators);
-    for (final String dataType : dataTypes) {
-      final long sumData = getSumData(dataType, activeEvaluators);
-      final List<OptimizedEvaluator> evaluators = initOptimizedEvaluators(dataType, activeEvaluators);
-      distributeDataAcrossEvaluators(evaluators.subList(0, numEvaluators), sumData);
+      activeEvaluators.addAll(evaluatorsToAdd);
+      final Collection<String> dataTypes = getDataTypes(activeEvaluators);
+      for (final String dataType : dataTypes) {
+        final long sumData = getSumData(dataType, activeEvaluators);
+        final List<OptimizedEvaluator> evaluators = initOptimizedEvaluators(dataType, activeEvaluators);
+        distributeDataAcrossEvaluators(evaluators.subList(0, numEvaluators), sumData);
 
-      if (LOG.isLoggable(Level.FINE)) {
-        for (final OptimizedEvaluator evaluator : evaluators) {
-          LOG.log(Level.FINE, "RandomOptimizer data distribution: {0} {1}",
-              new Object[]{evaluator.id, evaluator.dataRequested});
+        if (LOG.isLoggable(Level.FINE)) {
+          for (final OptimizedEvaluator evaluator : evaluators) {
+            LOG.log(Level.FINE, "RandomOptimizer data distribution: {0} {1}",
+                new Object[]{evaluator.id, evaluator.dataRequested});
+          }
         }
+
+        final List<TransferStep> transferSteps = getTransferSteps(evaluators);
+        planBuilder.addTransferSteps(namespace, transferSteps);
       }
-
-      final List<TransferStep> transferSteps = getTransferSteps(evaluators);
-      planBuilder.addTransferSteps(namespace, transferSteps);
     }
-
     final Plan plan = planBuilder.build();
     LOG.log(Level.FINE, "RandomOptimizer Plan: {0}", plan);
     return plan;

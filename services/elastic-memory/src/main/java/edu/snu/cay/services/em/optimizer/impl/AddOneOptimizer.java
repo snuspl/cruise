@@ -34,7 +34,6 @@ import java.util.*;
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
 public final class AddOneOptimizer implements Optimizer {
-  private static final Random RANDOM = new Random();
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -59,34 +58,33 @@ public final class AddOneOptimizer implements Optimizer {
     final String evaluatorToAdd = "new-" + callsMade;
     callsMade++;
 
-    // Randomly pick a namespace from the activeEvaluators.
-    final int namespaceIndex = RANDOM.nextInt(evalParamsMap.size());
-    final String namespace = new ArrayList<>(evalParamsMap.keySet()).get(namespaceIndex);
+    final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
-    EvaluatorParameters srcEvaluator = null;
-    for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
-      if (!evaluator.getDataInfos().isEmpty()) {
-        srcEvaluator = evaluator;
-        break;
+    for (final String namespace : evalParamsMap.keySet()) {
+      EvaluatorParameters srcEvaluator = null;
+      for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
+        if (!evaluator.getDataInfos().isEmpty()) {
+          srcEvaluator = evaluator;
+          break;
+        }
       }
+
+      // no evaluator has data; simply add a new evaluator with no new data to work on
+      if (srcEvaluator == null) {
+        return PlanImpl.newBuilder()
+            .addEvaluatorToAdd(namespace, evaluatorToAdd)
+            .build();
+      }
+
+      final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
+      final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
+
+      final TransferStep transferStep = new TransferStepImpl(
+          srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
+
+      planBuilder.addEvaluatorToAdd(namespace, evaluatorToAdd);
+      planBuilder.addTransferStep(namespace, transferStep);
     }
-
-    // no evaluator has data; simply add a new evaluator with no new data to work on
-    if (srcEvaluator == null) {
-      return PlanImpl.newBuilder()
-          .addEvaluatorToAdd(namespace, evaluatorToAdd)
-          .build();
-    }
-
-    final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
-    final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
-
-    final TransferStep transferStep = new TransferStepImpl(
-        srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
-
-    return PlanImpl.newBuilder()
-        .addEvaluatorToAdd(namespace, evaluatorToAdd)
-        .addTransferStep(namespace, transferStep)
-        .build();
+    return planBuilder.build();
   }
 }
