@@ -332,8 +332,8 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
       return new Pair<>(id, operation.isSuccess());
     } else {
-      // initialize blocks and continue the operation
-      // if there's no initialized block for a data type of the operation,
+      // initialize blocks and continue the operation,
+      // if there's no initialized block for a data type of the operation.
       final Map<Integer, Block> blocks;
       final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
       if (blockMap == null) {
