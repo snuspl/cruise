@@ -105,19 +105,17 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
         executingPlan = new ExecutingPlan(plan);
 
-        for (final String serverEval : serverEvalsToAdd) {
-          // TODO #00: Make the evaluator size configurable in EM.add().
-          serverEM.add(1, 1024, 1,
-              getAllocatedEvalHandler(NAMESPACE_SERVER),
-              getActiveContextHandler(NAMESPACE_SERVER));
-        }
+        LOG.log(Level.FINE, "Add {0} servers", serverEvalsToAdd.size());
+        // TODO #00: Make the evaluator size configurable in EM.add().
+        serverEM.add(serverEvalsToAdd.size(), 1024, 1,
+            getAllocatedEvalHandler(NAMESPACE_SERVER),
+            getActiveContextHandler(NAMESPACE_SERVER));
 
-        for (final String workerEval : workerEvalsToAdd) {
-          // TODO #00: Make the evaluator size configurable in EM.add().
-          workerEM.add(1, 1024, 1,
-              getAllocatedEvalHandler(NAMESPACE_WORKER),
-              getActiveContextHandler(NAMESPACE_WORKER));
-        }
+        LOG.log(Level.FINE, "Add {0} workers", workerEvalsToAdd.size());
+        // TODO #00: Make the evaluator size configurable in EM.add().
+        workerEM.add(workerEvalsToAdd.size(), 1024, 1,
+            getAllocatedEvalHandler(NAMESPACE_WORKER),
+            getActiveContextHandler(NAMESPACE_WORKER));
 
         executingPlan.awaitActiveContexts();
 
@@ -197,15 +195,16 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     }
   }
 
-    /**
+  /**
    * This handler is registered as the active context callback of ElasticMemory.add().
    */
   private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace) {
-    final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(2);
+    final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(3);
     switch (namespace) {
     case NAMESPACE_SERVER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer());
       activeContextHandlers.add(asyncDolphinDriver.get().getSecondContextActiveHandlerForServer());
+      activeContextHandlers.add(new ContextActiveHandler());
       break;
     case NAMESPACE_WORKER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForWorker());
@@ -330,15 +329,33 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       }
       LOG.info("All ActiveContexts are arrived!");
 
-      for (int i = 0; i < workerActiveContexts.size(); i++) {
-        addWorkerEvaluatorIdsToContexts.put(addWorkerEvaluatorIds.get(i), workerActiveContexts.get(i));
-      }
       for (int i = 0; i < serverActiveContexts.size(); i++) {
         addServerEvaluatorIdsToContexts.put(addServerEvaluatorIds.get(i), serverActiveContexts.get(i));
       }
+
+      for (int j = 0; j < workerActiveContexts.size(); j++) {
+        addWorkerEvaluatorIdsToContexts.put(addWorkerEvaluatorIds.get(j), workerActiveContexts.get(j));
+      }
     }
 
+    /**
+     * Registers active context to Servers first, and then registers contexts to Workers,
+     * based on the assumption in {@link AsyncDolphinPlanExecutor#execute(Plan)}
+     * (Servers are added first, followed by workers).
+     */
     void onActiveContext(final ActiveContext context) {
+      if (serverActiveContexts.size() < addServerEvaluatorIds.size()) {
+        serverActiveContexts.add(context);
+        LOG.log(Level.FINE, "Add active context {0} to servers. {1} more contexts should be added",
+            new Object[] { context.getId(), addServerEvaluatorIds.size() - serverActiveContexts.size()});
+      } else if (workerActiveContexts.size() < addWorkerEvaluatorIds.size()) {
+        workerActiveContexts.add(context);
+        LOG.log(Level.FINE, "Add active context {0} to workers. {1} more contexts should be added",
+            new Object[] { context.getId(), addWorkerEvaluatorIds.size() - workerActiveContexts.size()});
+      } else {
+        LOG.log(Level.WARNING, "{0} is active, but there is no outstanding server or worker",
+            context.getId());
+      }
       activeContextLatch.countDown();
     }
 
