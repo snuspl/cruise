@@ -36,6 +36,7 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -94,9 +95,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         final Collection<String> serverEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_SERVER);
         final Collection<TransferStep> serverTransferSteps = plan.getTransferSteps(NAMESPACE_SERVER);
 
-        final Collection<String> workerEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_WORKER);
-        final Collection<String> workerEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_WORKER);
-        final Collection<TransferStep> workerTransferSteps = plan.getTransferSteps(NAMESPACE_WORKER);
+//        final Collection<String> workerEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_WORKER);
+//        final Collection<String> workerEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_WORKER);
+//        final Collection<TransferStep> workerTransferSteps = plan.getTransferSteps(NAMESPACE_WORKER);
+
+        final Collection<String> workerEvalsToAdd = Collections.emptyList();
+        final Collection<String> workerEvalsToDel = Collections.emptyList();
+        final Collection<TransferStep> workerTransferSteps = Collections.emptyList();
 
         if (serverEvalsToAdd.isEmpty() && serverEvalsToDel.isEmpty() && serverTransferSteps.isEmpty() &&
             workerEvalsToAdd.isEmpty() && workerEvalsToDel.isEmpty() && workerTransferSteps.isEmpty()) {
@@ -306,10 +311,15 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       this.addServerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
       this.deleteServerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_SERVER));
 
-      this.addWorkerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER));
-      this.workerActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER).size());
+//      this.addWorkerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER));
+//      this.workerActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER).size());
+//      this.addWorkerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
+//      this.deleteWorkerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_WORKER));
+
+      this.addWorkerEvaluatorIds = Collections.emptyList();
+      this.workerActiveContexts = Collections.emptyList();
       this.addWorkerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
-      this.deleteWorkerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_WORKER));
+      this.deleteWorkerEvaluatorsIds = Collections.emptyList();
 
       this.activeContextLatch = new CountDownLatch(addServerEvaluatorIds.size() + addWorkerEvaluatorIds.size());
       this.moveLatch = new CountDownLatch(
