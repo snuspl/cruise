@@ -208,7 +208,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     switch (namespace) {
     case NAMESPACE_SERVER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer());
-      activeContextHandlers.add(asyncDolphinDriver.get().getSecondContextActiveHandlerForServer());
       activeContextHandlers.add(new ContextActiveHandler());
       break;
     case NAMESPACE_WORKER:
@@ -240,7 +239,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
-
+      asyncDolphinDriver.get().registerActiveContextForServer(context);
       executingPlan.onActiveContext(context);
     }
   }

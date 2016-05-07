@@ -436,13 +436,21 @@ public final class AsyncDolphinDriver {
     return new EventHandler<ActiveContext>() {
       @Override
       public void onNext(final ActiveContext activeContext) {
-        LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
-        completedOrFailedEvalCount.incrementAndGet();
-        // although this evaluator is not 'completed' yet,
-        // we add it beforehand so that it closes if all workers finish
-        serverContexts.add(activeContext);
+        registerActiveContextForServer(activeContext);
       }
     };
+  }
+
+  /**
+   * Registers the Active contexts. Should be called when Evaluators are added by ElasticMemory.
+   * (See {@link edu.snu.cay.async.optimizer.AsyncDolphinPlanExecutor})
+   */
+  public void registerActiveContextForServer(final ActiveContext activeContext) {
+    LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
+    completedOrFailedEvalCount.incrementAndGet();
+    // although this evaluator is not 'completed' yet,
+    // we add it beforehand so that it closes if all workers finish
+    serverContexts.add(activeContext);
   }
 
   /**
