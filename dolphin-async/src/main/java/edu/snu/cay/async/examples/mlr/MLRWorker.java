@@ -70,10 +70,7 @@ final class MLRWorker implements Worker {
    */
   private final int numPartitionsPerClass;
 
-  /**
-   * Number of data instances to process before pushing gradients to the server.
-   */
-  private final int batchSize;
+  private final int numBatchPerIter;
 
   /**
    * Size of each step taken during gradient descent.
@@ -147,7 +144,6 @@ final class MLRWorker implements Worker {
                     @Parameter(NumClasses.class) final int numClasses,
                     @Parameter(NumFeatures.class) final int numFeatures,
                     @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                    @Parameter(BatchSize.class) final int batchSize,
                     @Parameter(StepSize.class) final double stepSize,
                     @Parameter(Lambda.class) final double lambda,
                     @Parameter(StatusLogPeriod.class) final int statusLogPeriod,
@@ -155,6 +151,7 @@ final class MLRWorker implements Worker {
                     @Parameter(DecayPeriod.class) final int decayPeriod,
                     @Parameter(TrainErrorDatasetSize.class) final int trainErrorDatasetSize,
                     @Parameter(NumBatchPerLossLog.class) final int numBatchPerLossLog,
+                    @Parameter(NumBatchPerIter.class) final int numBatchPerIter,
                     final VectorFactory vectorFactory) {
     this.mlrParser = mlrParser;
     this.synchronizer = synchronizer;
@@ -165,7 +162,7 @@ final class MLRWorker implements Worker {
       throw new RuntimeException("Uneven model partitions");
     }
     this.numPartitionsPerClass = numFeatures / numFeaturesPerPartition;
-    this.batchSize = batchSize;
+    this.numBatchPerIter = numBatchPerIter;
     this.stepSize = stepSize;
     this.lambda = lambda;
     this.statusLogPeriod = statusLogPeriod;
@@ -201,7 +198,7 @@ final class MLRWorker implements Worker {
     }
 
     LOG.log(Level.INFO, "Step size = {0}", stepSize);
-    LOG.log(Level.INFO, "Batch size = {0}", batchSize);
+    LOG.log(Level.INFO, "Number of batches per iteration = {0}", numBatchPerIter);
     LOG.log(Level.INFO, "Total number of samples = {0}", data.size());
     if (data.size() < trainErrorDatasetSize) {
       LOG.log(Level.WARNING, "Number of samples is less than trainErrorDatasetSize = {0}", trainErrorDatasetSize);
@@ -223,15 +220,17 @@ final class MLRWorker implements Worker {
     final long iterationBegin = System.currentTimeMillis();
     pullModels();
 
-    if (iteration == 0) {
-      final Tuple3<Double, Double, Float> pair = computeLoss(trainErrorDatasetSize);
-      LOG.log(Level.INFO, "Printing loss at start. NumInstances: {1}, Sample Loss Avg: {2}, Reg Loss Avg: {3}, " +
+//    if (iteration == 0) {
+      final Tuple3<Double, Double, Float> tuple3 = computeLoss(trainErrorDatasetSize);
+      LOG.log(Level.INFO, "Iteration For Loss: {0}, NumInstances: {1}, Sample Loss Avg: {2}, Reg Loss Avg: {3}, " +
           "Accuracy: {4}",
-          new Object[]{iteration, trainErrorDatasetSize, pair.getFirst(), pair.getSecond(), pair.getThird()});
-    }
+          new Object[]{iteration, trainErrorDatasetSize, tuple3.getFirst(), tuple3.getSecond(), tuple3.getThird()});
+//    }
 
     int numInstances = 0;
     int numBatch = 0;
+    int batchSize = data.size() / numBatchPerIter;
+    batchSize += data.size() % numBatchPerIter == 0 ? 0 : 1;
     computeTracer.start();
     for (final Pair<Vector, Integer> entry : data) {
       if (numInstances >= batchSize) {
@@ -249,6 +248,8 @@ final class MLRWorker implements Worker {
         }
 
         numInstances = 0;
+        batchSize = data.size() / numBatchPerIter;
+        batchSize += data.size() % numBatchPerIter <= numBatch ? 0 : 1;
       }
 
       final Vector features = entry.getFirst();

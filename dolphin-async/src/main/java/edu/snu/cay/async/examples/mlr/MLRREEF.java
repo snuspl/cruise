@@ -40,7 +40,6 @@ public final class MLRREEF {
         .setValueCodecClass(DenseVectorCodec.class)
         .addParameterClass(NumClasses.class)
         .addParameterClass(NumFeatures.class)
-        .addParameterClass(BatchSize.class)
         .addParameterClass(StepSize.class)
         .addParameterClass(Lambda.class)
         .addParameterClass(StatusLogPeriod.class)
@@ -50,6 +49,7 @@ public final class MLRREEF {
         .addParameterClass(DecayRate.class)
         .addParameterClass(TrainErrorDatasetSize.class)
         .addParameterClass(NumBatchPerLossLog.class)
+        .addParameterClass(NumBatchPerIter.class)
         .build());
   }
 
@@ -101,5 +101,9 @@ public final class MLRREEF {
 
   @NamedParameter(short_name = "numBatchPerLossLog")
   final class NumBatchPerLossLog implements Name<Integer> {
+  }
+
+  @NamedParameter(short_name = "numBatchPerIter")
+  final class NumBatchPerIter implements Name<Integer> {
   }
 }

@@ -16,6 +16,7 @@
 package edu.snu.cay.async;
 
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
+import edu.snu.cay.common.latency.LatencyConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
@@ -256,6 +257,8 @@ public final class AsyncDolphinLauncher {
   private static Configuration getDriverConfiguration(
       final String jobName, final Injector injector) throws InjectionException {
     final ConfigurationModule driverConf = DriverConfiguration.CONF
+         .set(DriverConfiguration.DRIVER_MEMORY, "12288")
+//        .set(DriverConfiguration.DRIVER_MEMORY, "256")
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
@@ -298,6 +301,7 @@ public final class AsyncDolphinLauncher {
         ElasticMemoryConfiguration.getDriverConfiguration(),
         aggregationServiceConf.getDriverConfiguration(),
         HTraceParameters.getStaticConfiguration(),
+        LatencyConfiguration.getDriverConfiguration(),
         optimizerConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
