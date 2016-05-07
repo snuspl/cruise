@@ -311,7 +311,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       final Map<K, Object> blockData = memoryStore.getBlock(dataType, blockId);
       final List<UnitIdPair> unitIdPairList = toUnitIdPairs((Map<Long, Object>) blockData, codec);
       sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
-          blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
+          null, blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
     }
   }
 
@@ -373,7 +373,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     movingRanges.addAll(ranges);
 
     // Block id is undefined, so mark as -1; we will not use this type of message afterward.
-    sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
+    sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList, null,
         -1, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
 
@@ -436,7 +436,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     movingRanges.addAll(ranges);
 
     // Block id is undefined, so mark as -1; we will not use this type of message afterward.
-    sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
+    sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList, null,
         -1, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
   }
 
