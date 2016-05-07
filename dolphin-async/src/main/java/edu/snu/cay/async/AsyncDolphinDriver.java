@@ -413,9 +413,9 @@ public final class AsyncDolphinDriver {
             psDriver.getServerServiceConfiguration(),
             Tang.Factory.getTang().newConfigurationBuilder(
                 serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
+                .bindImplementation(EMDeleteExecutor.class, ServerTaskRemover.class)
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
-                .build()
-            );
+                .build());
 
         final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
         try {
@@ -478,7 +478,10 @@ public final class AsyncDolphinDriver {
             aggregationManager.getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getWorkerServiceConfiguration(),
-            workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
+            Tang.Factory.getTang().newConfigurationBuilder(
+                workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount))
+                .bindImplementation(EMDeleteExecutor.class, WorkerTaskRemover.class)
+                .build(),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
             MetricsCollectionService.getServiceConfiguration());
         final Configuration traceConf = traceParameters.getConfiguration();
@@ -531,25 +534,61 @@ public final class AsyncDolphinDriver {
   /**
    * EMDeleteExecutor implementation for Dolphin async.
    */
-  final class TaskRemover implements EMDeleteExecutor {
+  final class ServerTaskRemover implements EMDeleteExecutor {
     @Override
     public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
       final ActiveContext activeContext = activeContexs.get(activeContextId);
+      final boolean isSuccess;
       if (activeContext == null) {
         // Given active context should have a runningTask in a normal case, because our job is paused.
         // Evaluator without corresponding runningTask implies error.
         LOG.log(Level.WARNING,
             "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
+        isSuccess = true;
       } else {
         // TODO #205: Reconsider using of Avro message in EM's callback
         activeContext.close();
-        callback.onNext(AvroElasticMemoryMessage.newBuilder()
-            .setType(Type.ResultMsg)
-            .setResultMsg(ResultMsg.newBuilder().setResult(Result.SUCCESS).build())
-            .setSrcId(activeContextId)
-            .setDestId("")
-            .build());
+        final int remainingNumServers = runningServerContextCount.decrementAndGet();
+        LOG.log(Level.FINE, "Server has been deleted successfully. Remaining workers: {0}", remainingNumServers);
+        isSuccess = false;
       }
+      sendCallback(activeContextId, callback, isSuccess);
     }
+  }
+
+  /**
+   * EMDeleteExecutor implementation for Dolphin async.
+   */
+  final class WorkerTaskRemover implements EMDeleteExecutor {
+    @Override
+    public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
+      final ActiveContext activeContext = activeContexs.get(activeContextId);
+      final boolean isSuccess;
+      if (activeContext == null) {
+        // Given active context should have a runningTask in a normal case, because our job is paused.
+        // Evaluator without corresponding runningTask implies error.
+        LOG.log(Level.WARNING,
+            "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
+        isSuccess = true;
+      } else {
+        // TODO #205: Reconsider using of Avro message in EM's callback
+        activeContext.close();
+        final int remainingNumWorkers = runningWorkerContextCount.decrementAndGet();
+        LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}", remainingNumWorkers);
+        isSuccess = false;
+      }
+      sendCallback(activeContextId, callback, isSuccess);
+    }
+  }
+
+  private void sendCallback(final String contextId,
+                            final EventHandler<AvroElasticMemoryMessage> callback,
+                            final boolean isSuccess) {
+   callback.onNext(AvroElasticMemoryMessage.newBuilder()
+          .setType(Type.ResultMsg)
+          .setResultMsg(ResultMsg.newBuilder().setResult(isSuccess ? Result.SUCCESS : Result.FAILURE).build())
+          .setSrcId(contextId)
+          .setDestId("")
+          .build());
   }
 }
