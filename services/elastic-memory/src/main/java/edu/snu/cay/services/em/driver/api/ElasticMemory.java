@@ -132,5 +132,5 @@ public interface ElasticMemory {
    */
   int getNumTotalBlocks();
 
-  Map<String, EvaluatorParameters> generateEvalParams();
+  Map<String, EvaluatorParameters> generateEvalParams(String dataType);
 }

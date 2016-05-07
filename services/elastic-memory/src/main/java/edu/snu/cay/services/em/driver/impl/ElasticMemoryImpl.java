@@ -207,7 +207,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public Map<String, EvaluatorParameters> generateEvalParams() {
-    return partitionManager.generateEvalParams();
+  public Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
+    return partitionManager.generateEvalParams(dataType);
   }
 }

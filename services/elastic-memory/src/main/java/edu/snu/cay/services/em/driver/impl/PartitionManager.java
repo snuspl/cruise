@@ -619,7 +619,7 @@ public final class PartitionManager {
     return evalIdToNumBlocks;
   }
 
-  public Map<String, EvaluatorParameters> generateEvalParams() {
+  public Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
     final Map<String, Integer> evalIdToNumBlocks = getEvalIdToNumBlocks();
     final int numEvaluators = evalIdToNumBlocks.size();
 
@@ -629,7 +629,7 @@ public final class PartitionManager {
       final int numBlocks = evalIdToNumBlock.getValue();
 
       final List<DataInfo> dataInfos = new ArrayList<>(1);
-      dataInfos.add(new DataInfoImpl("TEST", numBlocks));
+      dataInfos.add(new DataInfoImpl(dataType, numBlocks));
       evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, dataInfos, new HashMap<String, Double>(0)));
     }
     return evaluatorsMap;

@@ -90,8 +90,8 @@ public final class OptimizationOrchestrator {
       public void run() {
         LOG.log(Level.INFO, "Optimization start.");
         logPreviousResult();
-        final Collection<EvaluatorParameters> serverEvalParams = serverEM.generateEvalParams().values();
-        final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams().values();
+        final Collection<EvaluatorParameters> serverEvalParams = serverEM.generateEvalParams("SERVER_DATA").values();
+        final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams("WORKER_DATA").values();
 
         final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
         evaluatorParameters.put(NAMESPACE_SERVER, new ArrayList<>(serverEvalParams));
