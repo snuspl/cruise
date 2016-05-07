@@ -514,7 +514,8 @@ public final class AsyncDolphinDriver {
   }
 
   private void checkShutdown() {
-    if (completedOrFailedEvalCount.incrementAndGet() == initWorkerCount + initServerCount) {
+    if (completedOrFailedEvalCount.incrementAndGet() ==
+        runningServerContextCount.get() + runningWorkerContextCount.get()) {
       // Since it is not guaranteed that the messages from workers are completely received and processed,
       // the servers may lose some updates.
       for (final ActiveContext serverContext : serverContexts) {
