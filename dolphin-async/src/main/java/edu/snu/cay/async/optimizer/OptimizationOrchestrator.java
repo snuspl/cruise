@@ -94,7 +94,7 @@ public final class OptimizationOrchestrator {
         final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams().values();
 
         final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
-        evaluatorParameters.put(NAMESPACE_SERVER, new ArrayList<>(serverEvalParams));
+//        evaluatorParameters.put(NAMESPACE_SERVER, new ArrayList<>(serverEvalParams));
         evaluatorParameters.put(NAMESPACE_WORKER, new ArrayList<>(workerEvalParams));
 
         final Plan plan = optimizer.optimize(evaluatorParameters, maxNumEvals);
