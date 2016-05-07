@@ -141,9 +141,19 @@ public final class AsyncDolphinDriver {
   private final AtomicInteger runningWorkerContextCount;
 
   /**
+   * Number of worker-side evaluators that have deleted by EM.delete().
+   */
+  private final AtomicInteger deletedWorkerContextCount;
+
+  /**
    * Number of server-side evaluators that have successfully passed {@link ActiveContextHandler}.
    */
   private final AtomicInteger runningServerContextCount;
+
+  /**
+   * Number of server-side evaluators that have deleted by EM.delete().
+   */
+  private final AtomicInteger deletedServerContextCount;
 
   private final ConcurrentMap<String, ActiveContext> activeContexs = new ConcurrentHashMap<>();
 
@@ -235,7 +245,9 @@ public final class AsyncDolphinDriver {
     this.driverIdStr = driverIdStr;
     this.aggregationManager = aggregationManager;
     this.runningWorkerContextCount = new AtomicInteger(0);
+    this.deletedWorkerContextCount = new AtomicInteger(0);
     this.runningServerContextCount = new AtomicInteger(0);
+    this.deletedServerContextCount = new AtomicInteger(0);
     this.completedOrFailedEvalCount = new AtomicInteger(0);
     this.serverContexts = new ConcurrentLinkedQueue<>();
     this.workerContextsToClose = new ConcurrentLinkedQueue<>();
@@ -246,13 +258,13 @@ public final class AsyncDolphinDriver {
 
     try {
       final Injector workerInjector = injector.forkInjector();
-      workerInjector.bindVolatileInstance(EMDeleteExecutor.class, new WorkerTaskRemover());
+      workerInjector.bindVolatileInstance(EMDeleteExecutor.class, new WorkerDeleter());
       workerInjector.bindVolatileParameter(EMIdentifier.class, WORKER_EM_IDENTIFIER);
       workerInjector.bindVolatileParameter(RangeSupport.class, Boolean.TRUE);
       this.workerEMWrapper = workerInjector.getInstance(EMWrapper.class);
 
       final Injector serverInjector = injector.forkInjector();
-      serverInjector.bindVolatileInstance(EMDeleteExecutor.class, new ServerTaskRemover());
+      serverInjector.bindVolatileInstance(EMDeleteExecutor.class, new ServerDeleter());
       serverInjector.bindVolatileParameter(EMIdentifier.class, SERVER_EM_IDENTIFIER);
       serverInjector.bindVolatileParameter(RangeSupport.class, Boolean.FALSE);
       this.serverEMWrapper = serverInjector.getInstance(EMWrapper.class);
@@ -516,7 +528,8 @@ public final class AsyncDolphinDriver {
 
   private void checkShutdown() {
     if (completedOrFailedEvalCount.incrementAndGet() ==
-        runningServerContextCount.get() + runningWorkerContextCount.get()) {
+        runningServerContextCount.get() + runningWorkerContextCount.get() +
+            deletedServerContextCount.get() + deletedWorkerContextCount.get()) {
       // Since it is not guaranteed that the messages from workers are completely received and processed,
       // the servers may lose some updates.
       for (final ActiveContext serverContext : serverContexts) {
@@ -532,23 +545,24 @@ public final class AsyncDolphinDriver {
   /**
    * EMDeleteExecutor implementation for Dolphin async.
    */
-  final class ServerTaskRemover implements EMDeleteExecutor {
+  private final class ServerDeleter implements EMDeleteExecutor {
     @Override
     public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
-      final ActiveContext activeContext = activeContexs.get(activeContextId);
+      final ActiveContext activeContext = activeContexs.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
         // Given active context should have a runningTask in a normal case, because our job is paused.
         // Evaluator without corresponding runningTask implies error.
         LOG.log(Level.WARNING,
             "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
-        isSuccess = true;
+        isSuccess = false;
       } else {
         // TODO #205: Reconsider using of Avro message in EM's callback
         activeContext.close();
+        deletedServerContextCount.incrementAndGet();
         final int remainingNumServers = runningServerContextCount.decrementAndGet();
         LOG.log(Level.FINE, "Server has been deleted successfully. Remaining workers: {0}", remainingNumServers);
-        isSuccess = false;
+        isSuccess = true;
       }
       sendCallback(activeContextId, callback, isSuccess);
     }
@@ -557,23 +571,24 @@ public final class AsyncDolphinDriver {
   /**
    * EMDeleteExecutor implementation for Dolphin async.
    */
-  final class WorkerTaskRemover implements EMDeleteExecutor {
+  private final class WorkerDeleter implements EMDeleteExecutor {
     @Override
     public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
-      final ActiveContext activeContext = activeContexs.get(activeContextId);
+      final ActiveContext activeContext = activeContexs.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
         // Given active context should have a runningTask in a normal case, because our job is paused.
         // Evaluator without corresponding runningTask implies error.
         LOG.log(Level.WARNING,
             "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
-        isSuccess = true;
+        isSuccess = false;
       } else {
         // TODO #205: Reconsider using of Avro message in EM's callback
         activeContext.close();
+        deletedWorkerContextCount.incrementAndGet();
         final int remainingNumWorkers = runningWorkerContextCount.decrementAndGet();
         LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}", remainingNumWorkers);
-        isSuccess = false;
+        isSuccess = true;
       }
       sendCallback(activeContextId, callback, isSuccess);
     }
