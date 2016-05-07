@@ -221,7 +221,8 @@
   [
     {"name": "dataType", "type": "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null},
-    {"name": "units", "type": {"type": "array", "items": "UnitIdPair"}}
+    {"name": "units", "type": ["null", {"type": "array", "items": "UnitIdPair"}], "default": null},
+    {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
   ]
 },
 
