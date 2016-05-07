@@ -129,6 +129,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         // TODO #90: Need to revisit whether EM.move should throw a RuntimeException on network failure.
         // TODO #90: Perhaps the handlers should receive this failure information instead.
         try {
+          Thread.sleep(1000); // Wait for the MemoryStores to be set up.
           for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_SERVER)) {
             serverEM.move(
                 transferStep.getDataInfo().getDataType(),
@@ -207,13 +208,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(3);
     switch (namespace) {
     case NAMESPACE_SERVER:
-      activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer());
-      activeContextHandlers.add(new ContextActiveHandler());
+      activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer(true));
+      activeContextHandlers.add(new ServerContextActiveHandler());
       break;
     case NAMESPACE_WORKER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForWorker());
       activeContextHandlers.add(asyncDolphinDriver.get().getSecondContextActiveHandlerForWorker());
-      activeContextHandlers.add(new ContextActiveHandler());
+      activeContextHandlers.add(new WorkerContextActiveHandler());
       break;
     default:
       throw new RuntimeException("Unsupported namespace");
@@ -233,7 +234,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   /**
    * This handler is registered as a callback to ElasticMemory.add().
    */
-  private final class ContextActiveHandler implements EventHandler<ActiveContext> {
+  private final class ServerContextActiveHandler implements EventHandler<ActiveContext> {
     @Override
     public void onNext(final ActiveContext context) {
       if (executingPlan == null) {
@@ -243,6 +244,20 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       executingPlan.onActiveContext(context);
     }
   }
+
+   /**
+   * This handler is registered as a callback to ElasticMemory.add().
+   */
+  private final class WorkerContextActiveHandler implements EventHandler<ActiveContext> {
+    @Override
+    public void onNext(final ActiveContext context) {
+      if (executingPlan == null) {
+        throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
+      }
+      executingPlan.onActiveContext(context);
+    }
+  }
+
 
   /**
    * This handler is registered as the second callback to ElasticMemory.move().

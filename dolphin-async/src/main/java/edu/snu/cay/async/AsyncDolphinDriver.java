@@ -26,6 +26,7 @@ import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
+import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.RangeSupport;
 import edu.snu.cay.services.em.driver.EMWrapper;
@@ -274,7 +275,7 @@ public final class AsyncDolphinDriver {
 
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForServer = getEvalAllocHandlerForServer();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForServer = new ArrayList<>(2);
-      contextActiveHandlersForServer.add(getFirstContextActiveHandlerForServer());
+      contextActiveHandlersForServer.add(getFirstContextActiveHandlerForServer(false));
       contextActiveHandlersForServer.add(getSecondContextActiveHandlerForServer());
       evaluatorManager.allocateEvaluators(initServerCount, evalAllocHandlerForServer, contextActiveHandlersForServer);
 
@@ -394,7 +395,7 @@ public final class AsyncDolphinDriver {
   /**
    * Returns an EventHandler which submits the second context(parameter server context) to server-side evaluator.
    */
-  public EventHandler<ActiveContext> getFirstContextActiveHandlerForServer() {
+  public EventHandler<ActiveContext> getFirstContextActiveHandlerForServer(final boolean addedEval) {
     return new EventHandler<ActiveContext>() {
       @Override
       public void onNext(final ActiveContext activeContext) {
@@ -410,7 +411,11 @@ public final class AsyncDolphinDriver {
             serverEMWrapper.getConf().getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getServerServiceConfiguration(),
-            serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount));
+            Tang.Factory.getTang().newConfigurationBuilder(
+                serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
+                .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
+                .build()
+            );
 
         final Injector serviceInjector = Tang.Factory.getTang().newInjector(serviceConf);
         try {
