@@ -246,11 +246,13 @@ public final class AsyncDolphinDriver {
 
     try {
       final Injector workerInjector = injector.forkInjector();
+      workerInjector.bindVolatileInstance(EMDeleteExecutor.class, new WorkerTaskRemover());
       workerInjector.bindVolatileParameter(EMIdentifier.class, WORKER_EM_IDENTIFIER);
       workerInjector.bindVolatileParameter(RangeSupport.class, Boolean.TRUE);
       this.workerEMWrapper = workerInjector.getInstance(EMWrapper.class);
 
       final Injector serverInjector = injector.forkInjector();
+      serverInjector.bindVolatileInstance(EMDeleteExecutor.class, new ServerTaskRemover());
       serverInjector.bindVolatileParameter(EMIdentifier.class, SERVER_EM_IDENTIFIER);
       serverInjector.bindVolatileParameter(RangeSupport.class, Boolean.FALSE);
       this.serverEMWrapper = serverInjector.getInstance(EMWrapper.class);
@@ -413,7 +415,6 @@ public final class AsyncDolphinDriver {
             psDriver.getServerServiceConfiguration(),
             Tang.Factory.getTang().newConfigurationBuilder(
                 serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
-                .bindImplementation(EMDeleteExecutor.class, ServerTaskRemover.class)
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
                 .build());
 
@@ -478,10 +479,7 @@ public final class AsyncDolphinDriver {
             aggregationManager.getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getWorkerServiceConfiguration(),
-            Tang.Factory.getTang().newConfigurationBuilder(
-                workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount))
-                .bindImplementation(EMDeleteExecutor.class, WorkerTaskRemover.class)
-                .build(),
+            workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
             MetricsCollectionService.getServiceConfiguration());
         final Configuration traceConf = traceParameters.getConfiguration();
