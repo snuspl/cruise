@@ -33,6 +33,7 @@ import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -44,6 +45,11 @@ import java.util.logging.Logger;
 final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage> {
   private static final Logger LOG = Logger.getLogger(RemoteOpHandler.class.getName());
   private static final long TIMEOUT_MS = 40000;
+
+  /**
+   * A counter for issuing ids for operations sent to remote stores.
+   */
+  private final AtomicLong remoteOpIdCounter = new AtomicLong(0);
 
   /**
    * A map holding ongoing operations until they finish.
@@ -69,7 +75,23 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
    * @param operation an operation
    * @param <V> a type of data
    */
-  <V> void sendOpToRemoteStore(final SingleKeyOperation<K, V> operation, final String targetEvalId) {
+  /**
+   * Send operation to remote evaluators.
+   * @param opType a type of operation
+   * @param dataType a type of data
+   * @param key a data key
+   * @param value an Optional with a data value
+   * @param targetEvalId a target evaluator
+   * @param <V> a type of data
+   * @return an operation holding the result
+   */
+  <V> SingleKeyOperation<K, V> sendOpToRemoteStore(final DataOpType opType, final String dataType,
+                               final K key, final Optional<V> value,
+                               final String targetEvalId) {
+
+    final String operationId = Long.toString(remoteOpIdCounter.getAndIncrement());
+    final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
+          opType, dataType, key, value);
 
     LOG.log(Level.FINEST, "Send op to remote. OpId: {0}, OpType: {1}",
         new Object[]{operation.getOpId(), operation.getOpType()});
@@ -111,6 +133,8 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
       deregisterOp(operation.getOpId());
     }
     // TODO #421: handle failures of operation (timeout, failed to locate).
+
+    return operation;
   }
 
   /**
@@ -142,7 +166,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
 
     operation.commitResult(decodedValue, isSuccess);
 
-    LOG.log(Level.FINEST, "Remote operation succeed. OpId: {0}", operationId);
+    LOG.log(Level.FINEST, "Remote operation is finished. OpId: {0}", operationId);
   }
 
   /**
@@ -166,7 +190,8 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
   /**
    * Sends the result to the original store.
    */
-  <V> void sendResultToOrigin(final SingleKeyOperation<K, V> operation) {
+  <V> void sendResultToOrigin(final SingleKeyOperation<K, V> operation, final Optional<V> localOutput,
+                              final boolean isSuccess) {
 
     LOG.log(Level.FINEST, "Send result to origin. OpId: {0}, OrigId: {1}",
         new Object[]{operation.getOpId(), operation.getOrigEvalId()});
@@ -179,14 +204,14 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
       final Optional<String> origEvalId = operation.getOrigEvalId();
 
       final DataValue dataValue;
-      if (operation.getOutputData().isPresent()) {
-        final V outputData = operation.getOutputData().get();
+      if (localOutput.isPresent()) {
+        final V outputData = localOutput.get();
         dataValue = new DataValue(ByteBuffer.wrap(dataCodec.encode(outputData)));
       } else {
         dataValue = null;
       }
 
-      msgSender.get().sendRemoteOpResultMsg(origEvalId.get(), dataValue, true,
+      msgSender.get().sendRemoteOpResultMsg(origEvalId.get(), dataValue, isSuccess,
           operation.getOpId(), TraceInfo.fromSpan(traceScope.getSpan()));
     }
   }
