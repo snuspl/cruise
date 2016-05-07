@@ -19,6 +19,7 @@ import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.common.parameters.KeyCodecName;
 import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.utils.SingleMessageExtractor;
@@ -38,6 +39,7 @@ import org.htrace.TraceScope;
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -55,6 +57,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
   private static final String ON_OWNERSHIP_MSG = "onOwnershipMsg";
 
   private final RemoteAccessibleMemoryStore<K> memoryStore;
+  private final OperationRouter<K> router;
   private final RemoteOpHandler<K> remoteOpHandler;
   private final Codec<K> keyCodec;
   private final Serializer serializer;
@@ -62,11 +65,13 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
   @Inject
   private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore<K> memoryStore,
+                                  final OperationRouter<K> router,
                                   final RemoteOpHandler<K> remoteOpHandler,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
                                   @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                   final Serializer serializer) {
     this.memoryStore = memoryStore;
+    this.router = router;
     this.remoteOpHandler = remoteOpHandler;
     this.keyCodec = keyCodec;
     this.serializer = serializer;
@@ -79,6 +84,14 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
+    case RoutingTableInitMsg:
+      onRoutingTableInitMsg(innerMsg);
+      break;
+
+    case RoutingTableUpdateMsg:
+      onRoutingTableUpdateMsg(innerMsg);
+      break;
+
     case RemoteOpMsg:
       onRemoteOpMsg(innerMsg);
       break;
@@ -106,6 +119,25 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
+  private void onRoutingTableInitMsg(final AvroElasticMemoryMessage msg) {
+    router.initialize(msg.getDestId().toString(), msg.getRoutingTableInitMsg().getBlockLocations());
+  }
+
+  private void onRoutingTableUpdateMsg(final AvroElasticMemoryMessage msg) {
+    final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
+
+    final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
+    final int newOwnerId = getStoreId(routingTableUpdateMsg.getNewEvalId().toString());
+    final int oldOwnerId = getStoreId(routingTableUpdateMsg.getOldEvalId().toString());
+
+    LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
+        new Object[]{newOwnerId, oldOwnerId, blockIds});
+
+    for (final int blockId : blockIds) {
+      router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+    }
+  }
+
   private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(ON_OWNERSHIP_MSG,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
@@ -114,11 +146,12 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
       final String dataType = ownershipMsg.getDataType().toString();
       final int blockId = ownershipMsg.getBlockId();
+      final int oldOwnerId = msg.getOwnershipMsg().getOldOwnerId();
       final int newOwnerId = ownershipMsg.getNewOwnerId();
 
       // Update the owner of the block to the new one.
       // Operations being executed keep a read lock on router while being executed.
-      memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+      memoryStore.updateOwnership(dataType, blockId, oldOwnerId, newOwnerId);
 
       // After the ownership is updated, the data is never accessed locally,
       // so it is safe to remove the local data block.
@@ -184,13 +217,21 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
 
       // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
       // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
-      final int newOwnerId = Integer.valueOf(msg.getDestId().toString().split("-")[1]);
-      final int oldOwnerId = memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+      final int newOwnerId = getStoreId(msg.getDestId().toString());
+      final int oldOwnerId = getStoreId(msg.getSrcId().toString());
+      memoryStore.updateOwnership(dataType, blockId, oldOwnerId, newOwnerId);
 
       // Notify the driver that the ownership has been updated by setting empty destination id.
       sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, dataType, blockId, oldOwnerId, newOwnerId,
           TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
+  }
+
+  /**
+   * Converts evaluator id to store id.
+   */
+  private int getStoreId(final String evalId) {
+    return Integer.valueOf(evalId.split("-")[1]);
   }
 
   /**

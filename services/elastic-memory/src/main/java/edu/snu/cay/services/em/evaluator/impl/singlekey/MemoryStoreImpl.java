@@ -29,7 +29,6 @@ import javax.annotation.concurrent.GuardedBy;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
@@ -60,11 +59,6 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   private final RemoteOpHandler<K> remoteOpHandler;
 
   private final ReadWriteLock routerLock = new ReentrantReadWriteLock(true);
-
-  /**
-   * A counter for issuing ids for operations requested from local clients.
-   */
-  private final AtomicLong operationIdCounter = new AtomicLong(0);
 
   /**
    * A queue for operations requested from remote clients.
@@ -115,11 +109,10 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   }
 
   @Override
-  public int updateOwnership(final String dataType, final int blockId, final int storeId) {
+  public void updateOwnership(final String dataType, final int blockId, final int oldOwnerId, final int newOwnerId) {
     routerLock.writeLock().lock();
     try {
-      final int oldOwnerId = router.updateOwnership(blockId, storeId);
-      return oldOwnerId;
+      router.updateOwnership(blockId, oldOwnerId, newOwnerId);
     } finally {
       routerLock.writeLock().unlock();
     }
@@ -207,15 +200,36 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
           final String dataType = operation.getDataType();
           final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
           final Block<V> block = blocks.get(blockId);
-          final V result = block.executeOperation(operation);
-          submitLocalResult(operation, Optional.ofNullable(result), true);
+
+          final V output;
+          boolean isSuccess = true;
+          final DataOpType opType = operation.getOpType();
+          switch (opType) {
+          case PUT:
+            block.put(operation.getKey(), operation.getValue().get());
+            output = null;
+            break;
+          case GET:
+            output = block.get(operation.getKey());
+            break;
+          case REMOVE:
+            output = block.remove(operation.getKey());
+            break;
+          default:
+            LOG.log(Level.WARNING, "Undefined type of operation.");
+            output = null;
+            isSuccess = false;
+          }
+
+          remoteOpHandler.sendResultToOrigin(operation, Optional.ofNullable(output), isSuccess);
         } else {
           LOG.log(Level.WARNING,
-              "This MemoryStore was considered the Block {0}'s owner, but the local router assumes {1} as the owner",
-              new Object[]{blockId, remoteEvalId.get()});
+              "Failed to execute operation {0} requested by remote store {2}. This store was considered as the owner" +
+                  " of block {1} by store {2}, but the local router assumes store {3} is the owner",
+              new Object[]{operation.getOpId(), blockId, operation.getOrigEvalId().get(), remoteEvalId.get()});
 
-          // submit it as a local result, because we do not even start the remote operation
-          submitLocalResult(operation, Optional.<V>empty(), false);
+          // send the failed result
+          remoteOpHandler.sendResultToOrigin(operation, Optional.<V>empty(), false);
         }
       } finally {
         routerLock.readLock().unlock();
@@ -234,31 +248,16 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
      */
     private final ConcurrentMap<K, V> subDataMap = new ConcurrentHashMap<>();
 
-    /**
-     * Executes an operation on a data key assigned to this block.
-     * All operations both from remote and local clients are executed via this method.
-     */
-    private V executeOperation(final SingleKeyOperation<K, V> operation) {
-      final DataOpType opType = operation.getOpType();
+    private void put(final K key, final V value) {
+      subDataMap.put(key, value);
+    }
 
-      final V output;
+    private V get(final K key) {
+      return subDataMap.get(key);
+    }
 
-      switch (opType) {
-      case PUT:
-        subDataMap.put(operation.getKey(), operation.getValue().get());
-        output = null;
-        break;
-      case GET:
-        output = subDataMap.get(operation.getKey());
-        break;
-      case REMOVE:
-        output = subDataMap.remove(operation.getKey());
-        break;
-      default:
-        throw new RuntimeException("Undefined operation");
-      }
-
-      return output;
+    private V remove(final K key) {
+      return subDataMap.remove(key);
     }
 
     /**
@@ -302,8 +301,8 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       if (operation.getOpType() == DataOpType.PUT) {
         initBlocks(dataType);
       } else {
-        // submit empty result for other types of operations
-        submitLocalResult(operation, Optional.empty(), false);
+        // send empty result for other types of operations
+        remoteOpHandler.sendResultToOrigin(operation, Optional.empty(), false);
 
         LOG.log(Level.FINEST, "Blocks for the {0}. Send empty result for operation {1} from {2}",
             new Object[]{operation.getDataType(), operation.getOpId(), operation.getOrigEvalId().get()});
@@ -319,66 +318,35 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
     }
   }
 
-  /**
-   * Executes an operation requested from a local client.
-   */
-  private <V> void executeOperation(final SingleKeyOperation<K, V> operation) {
-
-    final K dataKey = operation.getKey();
-    final int blockId = blockResolver.resolveBlock(dataKey);
-    final Optional<String> remoteEvalId = router.resolveEval(blockId);
-
-    if (remoteEvalId.isPresent()) {
-      // send operation to remote
-      remoteOpHandler.sendOpToRemoteStore(operation, remoteEvalId.get());
-    } else {
-      // execute operation in local
-      final String dataType = operation.getDataType();
-
-      // if there's no initialized block for a data type of the operation,
-      // initialize blocks and continue the operation only when it's operation type is PUT.
-      // for other types of operation do not execute the operation.
-      if (!typeToBlocks.containsKey(dataType)) {
-        if (operation.getOpType() == DataOpType.PUT) {
-          initBlocks(dataType);
-        } else {
-          operation.commitResult(Optional.<V>empty(), false);
-          return;
-        }
-      }
-
-      final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-      final Block<V> block = blocks.get(blockId);
-      final V localOutput = block.executeOperation(operation);
-      operation.commitResult(Optional.ofNullable(localOutput), true);
-    }
-  }
-
-  /**
-   * Handles the result of data operation processed by local memory store.
-   * It waits until all remote sub operations are finished and their outputs are fully aggregated.
-   */
-  private <V> void submitLocalResult(final SingleKeyOperation<K, V> operation, final Optional<V> localOutput,
-                             final boolean isSuccess) {
-    operation.commitResult(localOutput, isSuccess);
-
-    LOG.log(Level.FINEST, "Local operation succeed. OpId: {0}", operation.getOpId());
-
-    if (!operation.isFromLocalClient()) {
-      remoteOpHandler.sendResultToOrigin(operation);
-    }
-  }
-
   @Override
   public <V> Pair<K, Boolean> put(final String dataType, final K id, @Nonnull final V value) {
-    final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.PUT, dataType, id, Optional.of(value));
+    final int blockId = blockResolver.resolveBlock(id);
+    final Optional<String> remoteEvalId = router.resolveEval(blockId);
 
-    executeOperation(operation);
+    // execute operation in local or send it to remote
+    if (remoteEvalId.isPresent()) {
+      // send operation to remote and wait until operation is finished
+      final SingleKeyOperation<K, V> operation =
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.PUT, dataType, id, Optional.of(value), remoteEvalId.get());
 
-    return new Pair<>(id, operation.isSuccess());
+      return new Pair<>(id, operation.isSuccess());
+    } else {
+      // initialize blocks and continue the operation,
+      // if there's no initialized block for a data type of the operation.
+      final Map<Integer, Block> blocks;
+      final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
+      if (blockMap == null) {
+        initBlocks(dataType);
+        blocks = typeToBlocks.get(dataType);
+      } else {
+        blocks = blockMap;
+      }
+
+      final Block<V> block = blocks.get(blockId);
+      block.put(id, value);
+      return new Pair<>(id, true);
+    }
   }
 
   @Override
@@ -388,28 +356,41 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
   @Override
   public <V> Pair<K, V> get(final String dataType, final K id) {
-    final String operationId = Long.toString(operationIdCounter.getAndIncrement());
 
-    final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.GET, dataType, id, Optional.<V>empty());
+    final int blockId = blockResolver.resolveBlock(id);
+    final Optional<String> remoteEvalId = router.resolveEval(blockId);
 
-    executeOperation(operation);
+    // execute operation in local or send it to remote
+    if (remoteEvalId.isPresent()) {
+      // send operation to remote and wait until operation is finished
+      final SingleKeyOperation<K, V> operation =
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.GET, dataType, id, Optional.<V>empty(), remoteEvalId.get());
 
-    final V outputData = operation.getOutputData().get();
+      final V outputData = operation.getOutputData().get();
+      return outputData == null ? null : new Pair<>(id, outputData);
+    } else {
+      // return if there's no initialized block for a data type of the operation
+      final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
+      if (blockMap == null) {
+        return null;
+      }
 
-    return outputData == null ? null : new Pair<>(id, outputData);
+      final Block<V> block = blockMap.get(blockId);
+      final V output = block.get(id);
+      return output == null ? null : new Pair<>(id, output);
+    }
   }
 
   @Override
   public <V> Map<K, V> getAll(final String dataType) {
-    if (!typeToBlocks.containsKey(dataType)) {
+    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
+    if (blockMap == null) {
       return Collections.EMPTY_MAP;
     }
 
     final Map<K, V> result;
-    final Collection<Block> blocks = typeToBlocks.get(dataType).values();
 
-    final Iterator<Block> blockIterator = blocks.iterator();
+    final Iterator<Block> blockIterator = blockMap.values().iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIterator.hasNext()) {
@@ -436,27 +417,41 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
   @Override
   public <V> Pair<K, V> remove(final String dataType, final K id) {
-    final String operationId = Long.toString(operationIdCounter.getAndIncrement());
-    final SingleKeyOperation<K, V> operation = new SingleKeyOperationImpl<>(Optional.<String>empty(), operationId,
-        DataOpType.REMOVE, dataType, id, Optional.<V>empty());
 
-    executeOperation(operation);
+    final int blockId = blockResolver.resolveBlock(id);
+    final Optional<String> remoteEvalId = router.resolveEval(blockId);
 
-    final V outputData = operation.getOutputData().get();
+    // execute operation in local or send it to remote
+    if (remoteEvalId.isPresent()) {
+      // send operation to remote and wait until operation is finished
+      final SingleKeyOperation<K, V> operation =
+          remoteOpHandler.sendOpToRemoteStore(DataOpType.REMOVE, dataType, id, Optional.<V>empty(), remoteEvalId.get());
 
-    return outputData == null ? null : new Pair<>(id, outputData);
+      final V outputData = operation.getOutputData().get();
+      return outputData == null ? null : new Pair<>(id, outputData);
+    } else {
+      // return if there's no initialized block for a data type of the operation
+      final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
+      if (blockMap == null) {
+        return null;
+      }
+
+      final Block<V> block = blockMap.get(blockId);
+      final V output = block.remove(id);
+      return output == null ? null : new Pair<>(id, output);
+    }
   }
 
   @Override
   public <V> Map<K, V> removeAll(final String dataType) {
-    if (!typeToBlocks.containsKey(dataType)) {
+    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
+    if (blockMap == null) {
       return Collections.EMPTY_MAP;
     }
 
     final Map<K, V> result;
-    final Collection<Block> blocks = typeToBlocks.get(dataType).values();
 
-    final Iterator<Block> blockIterator = blocks.iterator();
+    final Iterator<Block> blockIterator = blockMap.values().iterator();
 
     // first execute on a head block to reuse the returned map object for a return map
     if (blockIterator.hasNext()) {
@@ -488,15 +483,29 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
   @Override
   public int getNumUnits(final String dataType) {
-    if (!typeToBlocks.containsKey(dataType)) {
+    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
+    if (blockMap == null) {
       return 0;
     }
 
     int numUnits = 0;
-    final Collection<Block> blocks = typeToBlocks.get(dataType).values();
-    for (final Block block : blocks) {
+    for (final Block block : blockMap.values()) {
       numUnits += block.getNumUnits();
     }
     return numUnits;
+  }
+
+  /**
+   * Returns the number of local blocks whose type is {@code dataType}.
+   * @param dataType a type of data
+   * @return the number of blocks of specific type
+   */
+  public int getNumBlocks(final String dataType) {
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (blocks == null) {
+      return 0;
+    } else {
+      return blocks.size();
+    }
   }
 }

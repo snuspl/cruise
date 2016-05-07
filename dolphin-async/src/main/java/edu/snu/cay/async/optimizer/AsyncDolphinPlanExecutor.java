@@ -356,11 +356,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       if (serverActiveContexts.size() < addServerEvaluatorIds.size()) {
         serverActiveContexts.add(context);
         LOG.log(Level.FINE, "Add active context {0} to servers. {1} more contexts should be added",
-            new Object[] { context.getId(), addServerEvaluatorIds.size() - serverActiveContexts.size()});
+            new Object[] {context.getId(), addServerEvaluatorIds.size() - serverActiveContexts.size()});
       } else if (workerActiveContexts.size() < addWorkerEvaluatorIds.size()) {
         workerActiveContexts.add(context);
         LOG.log(Level.FINE, "Add active context {0} to workers. {1} more contexts should be added",
-            new Object[] { context.getId(), addWorkerEvaluatorIds.size() - workerActiveContexts.size()});
+            new Object[] {context.getId(), addWorkerEvaluatorIds.size() - workerActiveContexts.size()});
       } else {
         LOG.log(Level.WARNING, "{0} is active, but there is no outstanding server or worker",
             context.getId());

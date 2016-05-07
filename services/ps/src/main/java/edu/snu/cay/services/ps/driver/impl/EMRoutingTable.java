@@ -17,8 +17,8 @@ package edu.snu.cay.services.ps.driver.impl;
 
 import org.apache.reef.annotations.audience.Private;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class maintains the EM's routing table for Dynamic Partitioned Parameter Server.
@@ -26,11 +26,11 @@ import java.util.Map;
  */
 @Private
 public final class EMRoutingTable {
-  private final Map<Integer, List<Integer>> storeIdToBlockIds;
+  private final Map<Integer, Set<Integer>> storeIdToBlockIds;
   private final Map<Integer, String> storeIdToEndpointId;
   private final int numTotalBlocks;
 
-  public EMRoutingTable(final Map<Integer, List<Integer>> storeIdToBlockIds,
+  public EMRoutingTable(final Map<Integer, Set<Integer>> storeIdToBlockIds,
                         final Map<Integer, String> storeIdToEndpointId,
                         final int numTotalBlocks) {
     this.storeIdToBlockIds = storeIdToBlockIds;
@@ -41,7 +41,7 @@ public final class EMRoutingTable {
   /**
    * @return The mapping between block ids and memory store ids.
    */
-  public Map<Integer, List<Integer>> getStoreIdToBlockIds() {
+  public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
     return storeIdToBlockIds;
   }
 

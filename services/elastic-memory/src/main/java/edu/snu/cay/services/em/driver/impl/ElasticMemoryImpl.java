@@ -197,7 +197,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public Map<Integer, List<Integer>> getStoreIdToBlockIds() {
+  public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
     return partitionManager.getStoreIdToBlockIds();
   }
 
