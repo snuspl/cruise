@@ -19,7 +19,6 @@ import edu.snu.cay.async.metric.DriverSideMetricsMsgHandler;
 import edu.snu.cay.async.metric.EvalSideMetricsMsgHandler;
 import edu.snu.cay.async.metric.MetricsCollectionService;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
-import edu.snu.cay.common.latency.LatencyConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
 import edu.snu.cay.services.em.driver.ElasticMemoryConfiguration;
@@ -318,7 +317,6 @@ public final class AsyncDolphinLauncher {
         ParameterServerDriver.getDriverConfiguration(),
         aggregationServiceConf.getDriverConfiguration(),
         HTraceParameters.getStaticConfiguration(),
-        LatencyConfiguration.getDriverConfiguration(),
         optimizerConf,
         NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
