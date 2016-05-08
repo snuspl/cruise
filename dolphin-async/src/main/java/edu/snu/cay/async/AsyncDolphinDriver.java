@@ -544,8 +544,9 @@ public final class AsyncDolphinDriver {
 
   /**
    * EMDeleteExecutor implementation for Dolphin async.
+   * Should be package private (not private), since Tang complains Explicit constructor in @Unit class.
    */
-  private final class ServerDeleter implements EMDeleteExecutor {
+  final class ServerDeleter implements EMDeleteExecutor {
     @Override
     public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
       final ActiveContext activeContext = activeContexs.remove(activeContextId);
@@ -570,8 +571,9 @@ public final class AsyncDolphinDriver {
 
   /**
    * EMDeleteExecutor implementation for Dolphin async.
+   * Should be package private (not private), since Tang complains Explicit constructor in @Unit class.
    */
-  private final class WorkerDeleter implements EMDeleteExecutor {
+  final class WorkerDeleter implements EMDeleteExecutor {
     @Override
     public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
       final ActiveContext activeContext = activeContexs.remove(activeContextId);
