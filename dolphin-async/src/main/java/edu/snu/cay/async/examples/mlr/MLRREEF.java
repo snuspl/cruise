@@ -40,11 +40,16 @@ public final class MLRREEF {
         .setValueCodecClass(DenseVectorCodec.class)
         .addParameterClass(NumClasses.class)
         .addParameterClass(NumFeatures.class)
-        .addParameterClass(BatchSize.class)
-        .addParameterClass(StepSize.class)
+        .addParameterClass(InitialStepSize.class)
         .addParameterClass(Lambda.class)
-        .addParameterClass(LossLogPeriod.class)
+        .addParameterClass(StatusLogPeriod.class)
         .addParameterClass(NumFeaturesPerPartition.class)
+        .addParameterClass(ModelGaussian.class)
+        .addParameterClass(DecayPeriod.class)
+        .addParameterClass(DecayRate.class)
+        .addParameterClass(TrainErrorDatasetSize.class)
+        .addParameterClass(NumBatchPerLossLog.class)
+        .addParameterClass(NumBatchPerIter.class)
         .build());
   }
 
@@ -56,26 +61,53 @@ public final class MLRREEF {
   final class NumFeatures implements Name<Integer> {
   }
 
-  @NamedParameter(doc = "number of instances for each mini-batch", short_name = "batch")
-  final class BatchSize implements Name<Integer> {
-  }
-
-  @NamedParameter(doc = "initial value of the step size", short_name = "stepSize")
-  final class StepSize implements Name<Double> {
+  @NamedParameter(doc = "initial value of the step size", short_name = "initStepSize")
+  final class InitialStepSize implements Name<Double> {
   }
 
   @NamedParameter(doc = "regularization constant", short_name = "lambda")
   final class Lambda implements Name<Double> {
   }
 
-  @NamedParameter(doc = "number of iterations to wait until logging the loss value",
-                  short_name = "lossLogPeriod",
+  @NamedParameter(doc = "number of iterations to wait until logging the current status",
+                  short_name = "statusLogPeriod",
                   default_value = "0")
-  final class LossLogPeriod implements Name<Integer> {
+  final class StatusLogPeriod implements Name<Integer> {
   }
 
   @NamedParameter(doc = "number of features for each model partition",
                   short_name = "featuresPerPartition")
   final class NumFeaturesPerPartition implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "standard deviation of the gaussian distribution used for initializing model parameters",
+                  short_name = "modelGaussian",
+                  default_value = "0.001")
+  final class ModelGaussian implements Name<Double> {
+  }
+
+  @NamedParameter(doc = "number of iterations to wait until learning wait decreases (periodic)",
+                  short_name = "decayPeriod")
+  final class DecayPeriod implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "ratio which learning rate decreases by (multiplicative)",
+                  short_name = "decayRate")
+  final class DecayRate implements Name<Double> {
+  }
+
+  @NamedParameter(doc = "size of the dataset used for measuring training loss",
+                  short_name = "trainErrorDatasetSize")
+  final class TrainErrorDatasetSize implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "log the current loss after this many mini-batches",
+                  short_name = "numBatchPerLossLog")
+  final class NumBatchPerLossLog implements Name<Integer> {
+  }
+
+  @NamedParameter(doc = "number of mini-batches per iteration",
+                  short_name = "numBatchPerIter")
+  final class NumBatchPerIter implements Name<Integer> {
   }
 }
