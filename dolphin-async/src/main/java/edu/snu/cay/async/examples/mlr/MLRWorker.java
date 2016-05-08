@@ -147,7 +147,7 @@ final class MLRWorker implements Worker {
                     @Parameter(NumClasses.class) final int numClasses,
                     @Parameter(NumFeatures.class) final int numFeatures,
                     @Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                    @Parameter(StepSize.class) final double stepSize,
+                    @Parameter(InitialStepSize.class) final double initStepSize,
                     @Parameter(Lambda.class) final double lambda,
                     @Parameter(StatusLogPeriod.class) final int statusLogPeriod,
                     @Parameter(DecayRate.class) final double decayRate,
@@ -166,7 +166,7 @@ final class MLRWorker implements Worker {
     }
     this.numPartitionsPerClass = numFeatures / numFeaturesPerPartition;
     this.numBatchPerIter = numBatchPerIter;
-    this.stepSize = stepSize;
+    this.stepSize = initStepSize;
     this.lambda = lambda;
     this.statusLogPeriod = statusLogPeriod;
     this.vectorFactory = vectorFactory;
