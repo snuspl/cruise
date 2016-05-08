@@ -62,10 +62,12 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * @return The EM's routing table to pass to PSWorkers.
+   * Returns the PS server-side EM's routing table to pass it to an initiating PS worker {@code workerId}.
+   * @param workerId an worker id
+   * @return The server-side EM's routing table
    */
-  EMRoutingTable getEMRoutingTable(final String srcId) {
-    activeWorkerIds.add(srcId);
+  EMRoutingTable getEMRoutingTable(final String workerId) {
+    activeWorkerIds.add(workerId);
     elasticMemory.registerRoutingTableUpdateCallback(CLIENT_ID, new EMRoutingTableUpdateHandler());
     return new EMRoutingTable(
         elasticMemory.getStoreIdToBlockIds(),
