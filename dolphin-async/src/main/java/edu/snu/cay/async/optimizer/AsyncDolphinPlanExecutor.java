@@ -91,17 +91,17 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     return mainExecutor.submit(new Callable<PlanResult>() {
       @Override
       public PlanResult call() throws Exception {
-        final Collection<String> serverEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_SERVER);
-        final Collection<String> serverEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_SERVER);
-        final Collection<TransferStep> serverTransferSteps = plan.getTransferSteps(NAMESPACE_SERVER);
+//        final Collection<String> serverEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_SERVER);
+//        final Collection<String> serverEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_SERVER);
+//        final Collection<TransferStep> serverTransferSteps = plan.getTransferSteps(NAMESPACE_SERVER);
 
-//        final Collection<String> workerEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_WORKER);
-//        final Collection<String> workerEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_WORKER);
-//        final Collection<TransferStep> workerTransferSteps = plan.getTransferSteps(NAMESPACE_WORKER);
+        final Collection<String> workerEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_WORKER);
+        final Collection<String> workerEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_WORKER);
+        final Collection<TransferStep> workerTransferSteps = plan.getTransferSteps(NAMESPACE_WORKER);
 
-        final Collection<String> workerEvalsToAdd = Collections.emptyList();
-        final Collection<String> workerEvalsToDel = Collections.emptyList();
-        final Collection<TransferStep> workerTransferSteps = Collections.emptyList();
+        final Collection<String> serverEvalsToAdd = Collections.emptyList();
+        final Collection<String> serverEvalsToDel = Collections.emptyList();
+        final Collection<TransferStep> serverTransferSteps = Collections.emptyList();
 
         if (serverEvalsToAdd.isEmpty() && serverEvalsToDel.isEmpty() && serverTransferSteps.isEmpty() &&
             workerEvalsToAdd.isEmpty() && workerEvalsToDel.isEmpty() && workerTransferSteps.isEmpty()) {
@@ -320,20 +320,20 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     private final CountDownLatch deleteLatch;
 
     private ExecutingPlan(final Plan plan) {
-      this.addServerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_SERVER));
-      this.serverActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_SERVER).size());
-      this.addServerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
-      this.deleteServerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_SERVER));
+//      this.addServerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_SERVER));
+//      this.serverActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_SERVER).size());
+//      this.addServerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
+//      this.deleteServerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_SERVER));
 
-//      this.addWorkerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER));
-//      this.workerActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER).size());
-//      this.addWorkerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
-//      this.deleteWorkerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_WORKER));
-
-      this.addWorkerEvaluatorIds = Collections.emptyList();
-      this.workerActiveContexts = Collections.emptyList();
+      this.addWorkerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER));
+      this.workerActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER).size());
       this.addWorkerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
-      this.deleteWorkerEvaluatorsIds = Collections.emptyList();
+      this.deleteWorkerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_WORKER));
+
+      this.addServerEvaluatorIds = Collections.emptyList();
+      this.serverActiveContexts = Collections.emptyList();
+      this.addServerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
+      this.deleteServerEvaluatorsIds = Collections.emptyList();
 
       this.activeContextLatch = new CountDownLatch(addServerEvaluatorIds.size() + addWorkerEvaluatorIds.size());
       this.moveLatch = new CountDownLatch(
