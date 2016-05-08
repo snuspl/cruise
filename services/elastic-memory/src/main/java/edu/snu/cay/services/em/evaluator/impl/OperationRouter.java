@@ -219,7 +219,7 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * @return a list of block ids which are initially assigned to the local MemoryStore.
+   * @return a list of block ids which are currently assigned to the local MemoryStore.
    */
   public List<Integer> getCurrentLocalBlockIds() {
     final List<Integer> localBlockIds = new ArrayList<>();
