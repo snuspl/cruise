@@ -16,6 +16,7 @@
 package edu.snu.cay.async;
 
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
+import edu.snu.cay.async.optimizer.EmptyDataSet;
 import edu.snu.cay.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.async.optimizer.ServerEM;
 import edu.snu.cay.async.optimizer.WorkerEM;
@@ -55,6 +56,7 @@ import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.FailedTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
+import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Injector;
@@ -71,6 +73,8 @@ import org.apache.reef.wake.time.event.StartTime;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -295,7 +299,7 @@ public final class AsyncDolphinDriver {
 
       final EventHandler<AllocatedEvaluator> evalAllocHandlerForWorker = getEvalAllocHandlerForWorker();
       final List<EventHandler<ActiveContext>> contextActiveHandlersForWorker = new ArrayList<>(2);
-      contextActiveHandlersForWorker.add(getFirstContextActiveHandlerForWorker());
+      contextActiveHandlersForWorker.add(getFirstContextActiveHandlerForWorker(false));
       contextActiveHandlersForWorker.add(getSecondContextActiveHandlerForWorker());
       evaluatorManager.allocateEvaluators(dataLoadingService.getNumberOfPartitions(),
           evalAllocHandlerForWorker, contextActiveHandlersForWorker);
@@ -475,7 +479,7 @@ public final class AsyncDolphinDriver {
   /**
    * Returns an EventHandler which submits the second context(worker context) to worker-side evaluator.
    */
-  public EventHandler<ActiveContext> getFirstContextActiveHandlerForWorker() {
+  public EventHandler<ActiveContext> getFirstContextActiveHandlerForWorker(final boolean addedEval) {
     return new EventHandler<ActiveContext>() {
       @Override
       public void onNext(final ActiveContext activeContext) {
@@ -491,13 +495,25 @@ public final class AsyncDolphinDriver {
             aggregationManager.getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
             psDriver.getWorkerServiceConfiguration(),
-            workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount),
+            Tang.Factory.getTang().newConfigurationBuilder(
+                workerEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initWorkerCount))
+            .bindNamedParameter(AddedEval.class, Boolean.toString(addedEval))
+            .build(),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
             MetricsCollectionService.getServiceConfiguration());
         final Configuration traceConf = traceParameters.getConfiguration();
-        final Configuration otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
-            .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
-            .build();
+
+        final Configuration otherParamConf;
+        if (addedEval) {
+          otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
+              .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
+              .bindImplementation(DataSet.class, EmptyDataSet.class) // If not set, Tang cannot inject Task.
+              .build();
+        } else {
+           otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
+              .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
+              .build();
+        }
 
         activeContext.submitContextAndService(contextConf,
             Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf));
