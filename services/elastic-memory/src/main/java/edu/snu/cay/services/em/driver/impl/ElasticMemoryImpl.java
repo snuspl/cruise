@@ -20,6 +20,7 @@ import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.avro.ResultMsg;
 import edu.snu.cay.services.em.avro.Type;
 import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
+import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.utils.trace.HTrace;
@@ -186,6 +187,17 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   @Override
   public void checkpoint(final String evalId) {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public void registerRoutingTableUpdateCallback(final String clientId,
+                                                 final EventHandler<EMRoutingTableUpdate> updateCallback) {
+    migrationManager.registerRoutingTableUpdateCallback(clientId, updateCallback);
+  }
+
+  @Override
+  public void deregisterRoutingTableUpdateCallback(final String clientId) {
+    migrationManager.deregisterRoutingTableUpdateCallback(clientId);
   }
 
   @Override

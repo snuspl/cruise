@@ -16,6 +16,7 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.parameters.UpdateTimeoutMillis;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryCallbackRouter;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
@@ -87,6 +88,8 @@ final class MigrationManager {
    * This latch is used for waiting until all the updates are complete.
    */
   private CountDownLatch updateCounter = new CountDownLatch(0);
+
+  private Map<String, EventHandler<EMRoutingTableUpdate>> updateCallbacks;
 
   @Inject
   private MigrationManager(final InjectionFuture<ElasticMemoryMsgSender> sender,
@@ -378,6 +381,7 @@ final class MigrationManager {
       ongoingMigrations.remove(operationId);
       notifySuccess(operationId, migration.getBlockIds());
       broadcastSuccess(migration);
+      notifyUpdate(migration);
     }
   }
 
@@ -403,6 +407,30 @@ final class MigrationManager {
         sender.get().sendRoutingTableUpdateMsg(evalId, blockIds, senderId, receiverId, traceInfo);
       }
     }
+  }
+
+  /**
+   * Notify the update in the routing table to listening clients.
+   */
+  private void notifyUpdate(final Migration migration) {
+    final int oldOwnerId = partitionManager.getMemoryStoreId(migration.getSenderId());
+    final int newOwnerId = partitionManager.getMemoryStoreId(migration.getReceiverId());
+    final List<Integer> blockIds = migration.getBlockIds();
+
+    final EMRoutingTableUpdate update = new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, blockIds);
+
+    for (final EventHandler<EMRoutingTableUpdate> callBack : updateCallbacks.values()) {
+      callBack.onNext(update);
+    }
+  }
+
+  void registerRoutingTableUpdateCallback(final String clientId,
+                                                 final EventHandler<EMRoutingTableUpdate> updateCallback) {
+    updateCallbacks.put(clientId, updateCallback);
+  }
+
+  void deregisterRoutingTableUpdateCallback(final String clientId) {
+    updateCallbacks.remove(clientId);
   }
 
   /**

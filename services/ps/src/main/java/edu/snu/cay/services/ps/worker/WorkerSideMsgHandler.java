@@ -15,13 +15,10 @@
  */
 package edu.snu.cay.services.ps.worker;
 
-import edu.snu.cay.services.ps.avro.IdMapping;
-import edu.snu.cay.services.ps.avro.RoutingTableReplyMsg;
+import edu.snu.cay.services.ps.avro.*;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.ParameterServerParameters.KeyCodecName;
 import edu.snu.cay.services.ps.ParameterServerParameters.ValueCodecName;
-import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
-import edu.snu.cay.services.ps.avro.ReplyMsg;
 import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
@@ -87,6 +84,9 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
       onRoutingTableReplyMsg(innerMsg.getRoutingTableReplyMsg());
       break;
 
+    case RoutingTableUpdateMsg:
+      onRoutingTableUpdateMsg(innerMsg.getRoutingTableUpdateMsg());
+      break;
     default:
       throw new RuntimeException("Unexpected message type: " + innerMsg.getType().toString());
     }
@@ -109,7 +109,15 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
       storeIdToEndpointId.put(memoryStoreId, endpointId);
     }
 
-    serverResolver.updateRoutingTable(new EMRoutingTable(storeIdToBlockIds, storeIdToEndpointId, numTotalBlocks));
+    serverResolver.initRoutingTable(new EMRoutingTable(storeIdToBlockIds, storeIdToEndpointId, numTotalBlocks));
+  }
+
+  private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg) {
+    final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();
+    final int newOwnerId = routingTableUpdateMsg.getNewOwnerId();
+    final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
+
+    serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, blockIds));
   }
 
   private void onReplyMsg(final ReplyMsg replyMsg) {

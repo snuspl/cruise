@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.common.partitioned.resolver;
 
+import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 import edu.snu.cay.services.ps.driver.impl.ServerId;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
@@ -71,7 +72,12 @@ public final class SingleNodeServerResolver implements ServerResolver {
   }
 
   @Override
-  public void updateRoutingTable(final EMRoutingTable routingTable) {
+  public void initRoutingTable(final EMRoutingTable routingTable) {
+    throw new UnsupportedOperationException("This method is used only in the dynamic partitioned PS");
+  }
+
+  @Override
+  public void updateRoutingTable(final EMRoutingTableUpdate routingTableUpdate) {
     throw new UnsupportedOperationException("This method is used only in the dynamic partitioned PS");
   }
 }
