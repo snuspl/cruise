@@ -122,20 +122,23 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public void putBlock(final String dataType, final int blockId, final Map<K, Object> data) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      // If the blocks of the type have not been initialized, then create the block.
+      // If this MemoryStore has never stored the data in this type.
+      // Then just create a block with the received data, and put it in the Map associating with the data type.
       final Block block = new Block();
-      block.subDataMap.putAll(data);
+      block.putAll(data);
       final Map<Integer, Block> newBlocks = new HashMap<>();
       newBlocks.put(blockId, block);
-      typeToBlocks.put(dataType, blocks);
-      LOG.log(Level.INFO, "Put the block {0} with type {1}, as the MemoryStore seems to be added",
-          new Object[]{blockId, dataType});
-    } else if (blocks.containsKey(blockId)) {
-      throw new RuntimeException("Block with id " + blockId + " already exists.");
-    } else {
+
+      typeToBlocks.put(dataType, newBlocks);
+      LOG.log(Level.INFO, "The block {0} in type {1} has moved in.", new Object[]{blockId, dataType});
+    } else if (!blocks.containsKey(blockId)) {
+      // If the MemoryStore has the data in this type, but the block is not the exact same with the received one.
+      // Then just put the block.
       final Block block = new Block();
-      block.subDataMap.putAll(data);
+      block.putAll(data);
       blocks.put(blockId, block);
+    } else {
+      throw new RuntimeException("Block " + blockId + " already exists.");
     }
   }
 
@@ -143,13 +146,13 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public Map<K, Object> getBlock(final String dataType, final int blockId) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      LOG.log(Level.INFO, "The data type {0} does not exist. Maybe this is an added store", dataType);
-      initBlocks(dataType);
+      LOG.log(Level.WARNING, "Data in type {0} has never been stored. The result is empty", dataType);
+      return Collections.emptyMap();
     }
 
     final Block block = typeToBlocks.get(dataType).get(blockId);
     if (null == block) {
-      LOG.log(Level.WARNING, "Block with id {0} does not exist. Maybe this is an added store", blockId);
+      LOG.log(Level.WARNING, "Block with id {0} does not exist.", blockId);
       return Collections.emptyMap();
     }
 
@@ -274,6 +277,13 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
      */
     private Map<K, V> getAll() {
       return new HashMap<>(subDataMap);
+    }
+
+    /**
+     * Puts all data from the given Map to the block.
+     */
+    private void putAll(final Map<K, V> toPut) {
+      subDataMap.putAll(toPut);
     }
 
     /**
