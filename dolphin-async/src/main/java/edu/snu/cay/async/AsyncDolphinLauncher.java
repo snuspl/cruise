@@ -269,7 +269,6 @@ public final class AsyncDolphinLauncher {
   private static Configuration getDriverConfiguration(
       final String jobName, final Injector injector) throws InjectionException {
     final ConfigurationModule driverConf = DriverConfiguration.CONF
-        .set(DriverConfiguration.DRIVER_MEMORY, "256")
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(AsyncDolphinDriver.class))
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(TextInputFormat.class))
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobName)
