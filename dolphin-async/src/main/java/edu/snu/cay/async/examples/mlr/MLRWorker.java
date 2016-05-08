@@ -70,6 +70,9 @@ final class MLRWorker implements Worker {
    */
   private final int numPartitionsPerClass;
 
+  /**
+   * Number of batches per iteration.
+   */
   private final int numBatchPerIter;
 
   /**
@@ -220,12 +223,11 @@ final class MLRWorker implements Worker {
     final long iterationBegin = System.currentTimeMillis();
     pullModels();
 
-//    if (iteration == 0) {
-      final Tuple3<Double, Double, Float> tuple3 = computeLoss(trainErrorDatasetSize);
-      LOG.log(Level.INFO, "Iteration For Loss: {0}, NumInstances: {1}, Sample Loss Avg: {2}, Reg Loss Avg: {3}, " +
-          "Accuracy: {4}",
-          new Object[]{iteration, trainErrorDatasetSize, tuple3.getFirst(), tuple3.getSecond(), tuple3.getThird()});
-//    }
+    final Tuple3<Double, Double, Float> tuple3 = computeLoss(trainErrorDatasetSize);
+    LOG.log(Level.INFO, "Iteration For Loss: {0}, NumInstances: {1}, Sample Loss Avg: {2}, Reg Loss Avg: {3}, " +
+        "Accuracy: {4}",
+        new Object[]{iteration, trainErrorDatasetSize, tuple3.getFirst(), tuple3.getSecond(), tuple3.getThird()});
+
 
     int numInstances = 0;
     int numBatch = 0;
