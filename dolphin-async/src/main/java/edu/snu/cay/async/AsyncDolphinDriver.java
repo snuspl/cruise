@@ -73,8 +73,6 @@ import org.apache.reef.wake.time.event.StartTime;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -510,7 +508,7 @@ public final class AsyncDolphinDriver {
               .bindImplementation(DataSet.class, EmptyDataSet.class) // If not set, Tang cannot inject Task.
               .build();
         } else {
-           otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
+          otherParamConf = Tang.Factory.getTang().newConfigurationBuilder()
               .bindNamedParameter(NumWorkerThreads.class, Integer.toString(numWorkerThreads))
               .build();
         }
@@ -615,11 +613,11 @@ public final class AsyncDolphinDriver {
   private void sendCallback(final String contextId,
                             final EventHandler<AvroElasticMemoryMessage> callback,
                             final boolean isSuccess) {
-   callback.onNext(AvroElasticMemoryMessage.newBuilder()
-          .setType(Type.ResultMsg)
-          .setResultMsg(ResultMsg.newBuilder().setResult(isSuccess ? Result.SUCCESS : Result.FAILURE).build())
-          .setSrcId(contextId)
-          .setDestId("")
-          .build());
+    callback.onNext(AvroElasticMemoryMessage.newBuilder()
+        .setType(Type.ResultMsg)
+        .setResultMsg(ResultMsg.newBuilder().setResult(isSuccess ? Result.SUCCESS : Result.FAILURE).build())
+        .setSrcId(contextId)
+        .setDestId("")
+        .build());
   }
 }
