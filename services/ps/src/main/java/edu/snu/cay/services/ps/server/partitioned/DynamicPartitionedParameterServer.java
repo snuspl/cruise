@@ -348,16 +348,24 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
       this.numThreads = numThreads;
     }
 
-    synchronized int resolveThread(final int blockId) {
+    int resolveThread(final int blockId) {
       final Integer threadId = blockToThread.get(blockId);
       if (null == threadId) {
-        final int index = nextIndex.getAndIncrement() % numThreads;
-        blockToThread.put(blockId, index);
-        LOG.log(Level.FINEST, "BlockId {0} / ThreadId {1}", new Object[] {blockId, index});
-        return index;
+        return assignThread(blockId);
       } else {
         return threadId;
       }
+    }
+
+    private synchronized int assignThread(final int blockId) {
+      final Integer threadId = blockToThread.get(blockId);
+      if (threadId != null) {
+        return threadId;
+      }
+      final int newThreadId = nextIndex.getAndIncrement() % numThreads;
+      blockToThread.put(blockId, newThreadId);
+      LOG.log(Level.FINEST, "BlockId {0} / ThreadId {1}", new Object[] {blockId, newThreadId});
+      return newThreadId;
     }
   }
 }
