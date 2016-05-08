@@ -17,12 +17,13 @@ package edu.snu.cay.async.examples.nmf;
 
 import org.apache.reef.io.network.util.Pair;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * Data object for non-negative matrix factorization.
  */
-final class NMFData {
+final class NMFData implements Serializable {
 
   private final int rowIndex;
   private final List<Pair<Integer, Double>> columns;
