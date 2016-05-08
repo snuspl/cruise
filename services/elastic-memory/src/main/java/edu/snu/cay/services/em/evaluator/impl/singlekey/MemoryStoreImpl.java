@@ -304,7 +304,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
         // send empty result for other types of operations
         remoteOpHandler.sendResultToOrigin(operation, Optional.empty(), false);
 
-        LOG.log(Level.FINEST, "Blocks for the type {0} do not exist. Send empty result for operation {1} from {2}",
+        LOG.log(Level.FINE, "Blocks for the type {0} do not exist. Send empty result for operation {1} from {2}",
             new Object[]{operation.getDataType(), operation.getOpId(), operation.getOrigEvalId().get()});
         return;
       }
@@ -372,7 +372,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       // return if there's no initialized block for a data type of the operation
       final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
       if (blockMap == null) {
-        LOG.log(Level.FINEST, "Blocks for the type {0} do not exist", dataType);
+        LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
         return null;
       }
 
@@ -386,7 +386,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public <V> Map<K, V> getAll(final String dataType) {
     final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
     if (blockMap == null) {
-      LOG.log(Level.FINEST, "Blocks for the type {0} do not exist", dataType);
+      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
       return Collections.EMPTY_MAP;
     }
 
@@ -435,7 +435,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
       // return if there's no initialized block for a data type of the operation
       final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
       if (blockMap == null) {
-        LOG.log(Level.FINEST, "Blocks for the type {0} do not exist", dataType);
+        LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
         return null;
       }
 
@@ -449,7 +449,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public <V> Map<K, V> removeAll(final String dataType) {
     final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
     if (blockMap == null) {
-      LOG.log(Level.FINEST, "Blocks for the type {0} do not exist", dataType);
+      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
       return Collections.EMPTY_MAP;
     }
 
@@ -489,7 +489,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public int getNumUnits(final String dataType) {
     final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
     if (blockMap == null) {
-      LOG.log(Level.FINEST, "Blocks for the type {0} do not exist", dataType);
+      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
       return 0;
     }
 
@@ -508,7 +508,7 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public int getNumBlocks(final String dataType) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (blocks == null) {
-      LOG.log(Level.FINEST, "Blocks for the type {0} do not exist", dataType);
+      LOG.log(Level.FINE, "Blocks for the type {0} do not exist", dataType);
       return 0;
     } else {
       return blocks.size();
