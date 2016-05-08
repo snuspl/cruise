@@ -18,7 +18,7 @@ package edu.snu.cay.services.em.driver.api;
 import java.util.List;
 
 /**
- * A class representing the update in EM's routing table.
+ * An interface representing the update in EM's routing table.
  */
 public interface EMRoutingTableUpdate {
 

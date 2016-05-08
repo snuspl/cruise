@@ -89,7 +89,11 @@ final class MigrationManager {
    */
   private CountDownLatch updateCounter = new CountDownLatch(0);
 
-  private Map<String, EventHandler<EMRoutingTableUpdate>> updateCallbacks;
+  /**
+   * This map is for notifying changes in EM routing tables to clients.
+   * It maintains a mapping from a client id to a corresponding callback.
+   */
+  private Map<String, EventHandler<EMRoutingTableUpdate>> updateCallbacks = new HashMap<>();
 
   @Inject
   private MigrationManager(final InjectionFuture<ElasticMemoryMsgSender> sender,
@@ -424,11 +428,20 @@ final class MigrationManager {
     }
   }
 
+  /**
+   * Register a callback for listening updates in EM routing table.
+   * @param clientId a client id
+   * @param updateCallback a callback
+   */
   void registerRoutingTableUpdateCallback(final String clientId,
                                                  final EventHandler<EMRoutingTableUpdate> updateCallback) {
     updateCallbacks.put(clientId, updateCallback);
   }
 
+  /**
+   * Deregister a callback for listening updates in EM routing table.
+   * @param clientId a client id
+   */
   void deregisterRoutingTableUpdateCallback(final String clientId) {
     updateCallbacks.remove(clientId);
   }

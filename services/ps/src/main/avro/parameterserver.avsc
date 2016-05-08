@@ -88,6 +88,10 @@
   ]
 },
 
+/**
+ * This message is sent from the PS driver to PS workers
+ * to update their own routing tables for resolving PS servers.
+ */
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",

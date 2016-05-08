@@ -70,8 +70,11 @@ public final class EMRoutingTableManager {
         elasticMemory.getNumTotalBlocks());
   }
 
+  /**
+   * A handler of EMRoutingTableUpdate.
+   * It broadcasts the update info to all active PS workers
+   */
   private final class EMRoutingTableUpdateHandler implements EventHandler<EMRoutingTableUpdate> {
-
     @Override
     public void onNext(final EMRoutingTableUpdate emRoutingTableUpdate) {
       final int oldOwnerId = emRoutingTableUpdate.getOldOwnerId();
