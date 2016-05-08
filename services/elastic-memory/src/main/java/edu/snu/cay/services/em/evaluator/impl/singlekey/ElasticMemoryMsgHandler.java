@@ -294,21 +294,4 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     }
     return dataMap;
   }
-
-  /**
-   * Converts the data map into unit id pairs, which can be transferred via Avro.
-   */
-  private List<UnitIdPair> toUnitIdPairs(final Map<Long, Object> dataMap, final Codec codec) {
-    final List<UnitIdPair> unitIdPairs = new ArrayList<>(dataMap.size());
-    for (final Map.Entry<Long, Object> idObject : dataMap.entrySet()) {
-      final long id = idObject.getKey();
-      // Include the units only if they are not moving already.
-      final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-          .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
-          .setId(id)
-          .build();
-      unitIdPairs.add(unitIdPair);
-    }
-    return unitIdPairs;
-  }
 }
