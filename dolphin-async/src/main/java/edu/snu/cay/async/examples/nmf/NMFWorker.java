@@ -79,9 +79,6 @@ final class NMFWorker implements Worker {
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
-  // data key ranges assigned to this worker
-  private Set<LongRange> dataKeyRanges;
-
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsCollector metricsCollector;
   private final InsertableMetricTracker insertableMetricTracker;
@@ -155,12 +152,6 @@ final class NMFWorker implements Worker {
     }
 
     memoryStore.putList(DATA_TYPE, dataKeys, dataValues);
-
-
-    // TODO #302: initialize WorkloadPartition here
-
-    // We should convert the ids into ranges, because the current MemoryStore API takes ranges not a list
-    dataKeyRanges = LongRangeUtils.generateDenseLongRanges(new TreeSet<>(dataKeys));
 
     final Set<Integer> keySet = Sets.newTreeSet();
     // initialize L Matrix and aggregate column indices;
@@ -255,13 +246,8 @@ final class NMFWorker implements Worker {
     int rowCount = 0;
     resetTracers();
 
-    // TODO #302: update dataKeyRanges when there's an update in assigned workload
-
-    final List<NMFData> workload = new LinkedList<>();
-    for (final LongRange range : dataKeyRanges) {
-      final Map<Long, NMFData> subMap = memoryStore.getRange(DATA_TYPE, range.getMinimumLong(), range.getMaximumLong());
-      workload.addAll(subMap.values());
-    }
+    final Map<Long, NMFData> workloadMap = memoryStore.getAll(DATA_TYPE);
+    final Collection<NMFData> workload = workloadMap.values();
 
     pullRMatrix();
 
