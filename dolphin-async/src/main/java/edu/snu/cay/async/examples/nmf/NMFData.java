@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.async.examples.nmf;
 
+import edu.snu.cay.common.math.linalg.Vector;
 import org.apache.reef.io.network.util.Pair;
 
 import java.io.Serializable;
@@ -27,11 +28,14 @@ final class NMFData implements Serializable {
 
   private final int rowIndex;
   private final List<Pair<Integer, Double>> columns;
+  private final Vector vector;
 
   NMFData(final int rowIndex,
-          final List<Pair<Integer, Double>> columns) {
+          final List<Pair<Integer, Double>> columns,
+          final Vector vector) {
     this.rowIndex = rowIndex;
     this.columns = columns;
+    this.vector = vector;
   }
 
   int getRowIndex() {
@@ -41,4 +45,8 @@ final class NMFData implements Serializable {
   List<Pair<Integer, Double>> getColumns() {
     return columns;
   };
+
+  Vector getVector() {
+    return vector;
+  }
 }

@@ -69,7 +69,6 @@ final class NMFWorker implements Worker {
   private final int logPeriod;
   private final NMFModelGenerator modelGenerator;
   private final ArrayList<Integer> keys;
-  private final Map<Integer, Vector> lMatrix;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
 
@@ -125,7 +124,6 @@ final class NMFWorker implements Worker {
     this.metricsMessageSender = metricsMessageSender;
 
     this.keys = Lists.newArrayList();
-    this.lMatrix = Maps.newHashMap();
     this.rMatrix = Maps.newHashMap();
     this.gradients = Maps.newHashMap();
 
@@ -152,11 +150,8 @@ final class NMFWorker implements Worker {
     memoryStore.putList(DATA_TYPE, dataKeys, dataValues);
 
     final Set<Integer> keySet = Sets.newTreeSet();
-    // initialize L Matrix and aggregate column indices;
+    // aggregate column indices
     for (final NMFData datum : dataValues) {
-      final int rowIdx = datum.getRowIndex();
-      lMatrix.put(rowIdx, modelGenerator.createRandomVector());
-
       for (final Pair<Integer, Double> column : datum.getColumns()) {
         keySet.add(column.getFirst());
       }
@@ -251,8 +246,7 @@ final class NMFWorker implements Worker {
 
     for (final NMFData datum : workload) {
       computeTracer.start();
-      final int rowIdx = datum.getRowIndex();
-      final Vector lVec = lMatrix.get(rowIdx); // L_{i, *} : i-th row of L
+      final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
       final Vector lGradSum;
       if (lambda != 0.0D) {
         // l2 regularization term. 2 * lambda * L_{i, *}
@@ -338,10 +332,13 @@ final class NMFWorker implements Worker {
       return;
     }
     // print L matrix
+    final Map<Long, NMFData> workloadMap = memoryStore.getAll(DATA_TYPE);
+    final Collection<NMFData> workload = workloadMap.values();
+
     final StringBuilder lsb = new StringBuilder();
-    for (final Map.Entry<Integer, Vector> entry : lMatrix.entrySet()) {
-      lsb.append(String.format("L(%d, *):", entry.getKey()));
-      for (final VectorEntry valueEntry : entry.getValue()) {
+    for (final NMFData datum : workload) {
+      lsb.append(String.format("L(%d, *):", datum.getRowIndex()));
+      for (final VectorEntry valueEntry : datum.getVector()) {
         lsb.append(' ');
         lsb.append(valueEntry.value());
       }
