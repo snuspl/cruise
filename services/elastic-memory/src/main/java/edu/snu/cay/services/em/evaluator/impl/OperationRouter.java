@@ -219,6 +219,20 @@ public final class OperationRouter<K> {
   }
 
   /**
+   * @return a list of block ids which are initially assigned to the local MemoryStore.
+   */
+  public List<Integer> getCurrentLocalBlockIds() {
+    final List<Integer> localBlockIds = new ArrayList<>();
+    for (int blockId = 0; blockId < blockLocations.length(); blockId++) {
+      final int storeId = blockLocations.get(blockId);
+      if (storeId == localStoreId) {
+        localBlockIds.add(blockId);
+      }
+    }
+    return localBlockIds;
+  }
+
+  /**
    * Updates the owner of the block. Note that this method must be synchronized
    * to prevent other threads from reading the routing information while updating it.
    * @param blockId id of the block to update its ownership.

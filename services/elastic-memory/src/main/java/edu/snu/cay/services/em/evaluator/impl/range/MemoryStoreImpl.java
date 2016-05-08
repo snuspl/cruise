@@ -651,31 +651,38 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
   @Override
   public <V> Map<Long, V> getAll(final String dataType) {
-    if (!typeToBlocks.containsKey(dataType)) {
+    final Map<Integer, Block> blockMap = typeToBlocks.get(dataType);
+    if (blockMap == null) {
       return Collections.EMPTY_MAP;
     }
 
-    final Map<Long, V> result;
-    final Collection<Block> blocks = typeToBlocks.get(dataType).values();
+    routerLock.readLock().lock();
+    try {
+      final Map<Long, V> result;
 
-    final Iterator<Block> blockIterator = blocks.iterator();
+      final List<Integer> localBlockIds = router.getCurrentLocalBlockIds();
 
-    // first execute on a head block to reuse the returned map object for a return map
-    if (blockIterator.hasNext()) {
-      final Block<V> block = blockIterator.next();
-      result = block.getAll();
-    } else {
-      return Collections.EMPTY_MAP;
+      final Iterator<Integer> blockIdIterator = localBlockIds.iterator();
+
+      // first execute on a head block to reuse the returned map object for a return map
+      if (blockIdIterator.hasNext()) {
+        final Block<V> block = blockMap.get(blockIdIterator.next());
+        result = block.getAll();
+      } else {
+        return Collections.EMPTY_MAP;
+      }
+
+      // execute on remaining blocks if exist
+      while (blockIdIterator.hasNext()) {
+        final Block<V> block = blockMap.get(blockIdIterator.next());
+        // huge memory pressure may happen here
+        result.putAll(block.getAll());
+      }
+
+      return result;
+    } finally {
+      routerLock.readLock().unlock();
     }
-
-    // execute on remaining blocks if exist
-    while (blockIterator.hasNext()) {
-      final Block<V> block = blockIterator.next();
-      // huge memory pressure may happen here
-      result.putAll(block.getAll());
-    }
-
-    return result;
   }
 
   @Override
