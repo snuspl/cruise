@@ -41,10 +41,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @DriverSide
 @Private
 public final class ElasticMemoryImpl implements ElasticMemory {
+  private static final Logger LOG = Logger.getLogger(ElasticMemoryImpl.class.getName());
   private static final String MOVE = "move";
   private static final String APPLY_UPDATES = "apply_updates";
 
@@ -77,13 +80,24 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   /**
    * Request for evaluators and remember passed callback.
    * Currently assumes that every request has same memory size and cores.
+   * Note that the requests are handled only when the arguments are positive.
    * TODO #188: Support heterogeneous evaluator requests
    */
   @Override
   public void add(final int number, final int megaBytes, final int cores,
                   final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                   final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
-    evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlerList);
+    if (number == 0) {
+      LOG.log(Level.WARNING, "Ignore the request for zero evaluator");
+    } else if (number < 0) {
+      throw new RuntimeException("The number of evaluators must be positive, but requested: " + number);
+    } else if (megaBytes <= 0) {
+      throw new RuntimeException("The capacity of evaluators must be positive, but requested: " + megaBytes);
+    } else if (cores <= 0) {
+      throw new RuntimeException("The CPU cores of evaluators must be positive, but requested: " + cores);
+    } else {
+      evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlerList);
+    }
   }
 
   /**
