@@ -212,8 +212,8 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       final String operationId = msg.getOperationId().toString();
       final int blockId = dataMsg.getBlockId();
 
-      final Map<Long, Object> dataMap = toDataMap(dataMsg.getUnits(), codec);
-      memoryStore.putBlock(dataType, blockId, (Map<K, Object>) dataMap);
+      final Map<K, Object> dataMap = toDataMap(dataMsg.getKeyValuePairs(), codec);
+      memoryStore.putBlock(dataType, blockId, dataMap);
 
       // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
       // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
@@ -265,37 +265,32 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
     // Send the data as unit of block
     for (final int blockId : blockIds) {
       final Map<K, Object> blockData = memoryStore.getBlock(dataType, blockId);
-      final List<UnitIdPair> unitIdPairList = toUnitIdPairs((Map<Long, Object>) blockData, codec);
-      sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
+      final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, codec);
+      sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), null, keyValuePairs,
           blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
     }
   }
 
-  /**
-   * Converts the Avro unit id pairs, to a data map.
-   */
-  private Map<Long, Object> toDataMap(final List<UnitIdPair> unitIdPairs, final Codec codec) {
-    final Map<Long, Object> dataMap = new HashMap<>(unitIdPairs.size());
-    for (final UnitIdPair unitIdPair : unitIdPairs) {
-      dataMap.put(unitIdPair.getId(), codec.decode(unitIdPair.getUnit().array()));
+  private <V> List<KeyValuePair> toKeyValuePairs(final Map<K, V> blockData,
+                                                 final Codec<V> valueCodec) {
+    final List<KeyValuePair> kvPairs = new ArrayList<>(blockData.size());
+    for (final Map.Entry<K, V> entry : blockData.entrySet()) {
+      kvPairs.add(KeyValuePair.newBuilder()
+          .setKey(ByteBuffer.wrap(keyCodec.encode(entry.getKey())))
+          .setValue(ByteBuffer.wrap(valueCodec.encode(entry.getValue())))
+          .build());
     }
-    return dataMap;
+    return kvPairs;
   }
 
-  /**
-   * Converts the data map into unit id pairs, which can be transferred via Avro.
-   */
-  private List<UnitIdPair> toUnitIdPairs(final Map<Long, Object> dataMap, final Codec codec) {
-    final List<UnitIdPair> unitIdPairs = new ArrayList<>(dataMap.size());
-    for (final Map.Entry<Long, Object> idObject : dataMap.entrySet()) {
-      final long id = idObject.getKey();
-      // Include the units only if they are not moving already.
-      final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
-          .setUnit(ByteBuffer.wrap(codec.encode(idObject.getValue())))
-          .setId(id)
-          .build();
-      unitIdPairs.add(unitIdPair);
+  private <V> Map<K, V> toDataMap(final List<KeyValuePair> keyValuePairs,
+                                  final Codec<V> valueCodec) {
+    final Map<K, V> dataMap = new HashMap<>(keyValuePairs.size());
+    for (final KeyValuePair kvPair : keyValuePairs) {
+      dataMap.put(
+          keyCodec.decode(kvPair.getKey().array()),
+          valueCodec.decode(kvPair.getValue().array()));
     }
-    return unitIdPairs;
+    return dataMap;
   }
 }
