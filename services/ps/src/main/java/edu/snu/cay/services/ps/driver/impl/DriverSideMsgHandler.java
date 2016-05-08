@@ -64,7 +64,7 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPara
   }
 
   private void onRoutingTableReqMsg(final String srcId) {
-    final EMRoutingTable routingTable = routingTableManager.getEMRoutingTable();
+    final EMRoutingTable routingTable = routingTableManager.getEMRoutingTable(srcId);
     final int numTotalBlocks = routingTable.getNumTotalBlocks();
     final List<IdMapping> idMappings = new ArrayList<>(routingTable.getStoreIdToEndpointId().size());
     final Map<Integer, String> storeIdToEndpointId = routingTable.getStoreIdToEndpointId();

@@ -38,9 +38,11 @@ import java.util.*;
 public final class EMRoutingTableManager {
   private static final String CLIENT_ID = "PS_CLIENT";
 
-  private final Map<Integer, String> storeIdToEndpointId = new HashMap<>();
+  private final Map<Integer, String> storeIdToEndpointId = new HashMap<>(); // server-side id mapping
   private final ElasticMemory elasticMemory;
   private final InjectionFuture<PSMessageSender> sender;
+
+  private final Set<String> activeWorkerIds = new HashSet<>();
 
   @Inject
   EMRoutingTableManager(final ElasticMemory elasticMemory,
@@ -62,7 +64,8 @@ public final class EMRoutingTableManager {
   /**
    * @return The EM's routing table to pass to PSWorkers.
    */
-  EMRoutingTable getEMRoutingTable() {
+  EMRoutingTable getEMRoutingTable(final String srcId) {
+    activeWorkerIds.add(srcId);
     elasticMemory.registerRoutingTableUpdateCallback(CLIENT_ID, new EMRoutingTableUpdateHandler());
     return new EMRoutingTable(
         elasticMemory.getStoreIdToBlockIds(),
@@ -94,7 +97,7 @@ public final class EMRoutingTableManager {
               .build();
 
       // broadcast update in routing tables of EM in PS servers to all active PS workers
-      for (final String workerId : storeIdToEndpointId.values()) {
+      for (final String workerId : activeWorkerIds) {
         sender.get().send(workerId, updateMsg);
       }
     }
