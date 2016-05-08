@@ -86,17 +86,11 @@ final class AsyncWorkerTask implements Task {
       futures[index] = executorService.submit(new Runnable() {
         @Override
         public void run() {
-          LOG.log(Level.INFO, "Worker Initialization");
           worker.initialize();
-          LOG.log(Level.INFO, "Worker Done");
           for (int iteration = 0; iteration < maxIterations; ++iteration) {
-            LOG.log(Level.INFO, "Iteration Start: {0}", iteration);
             worker.run();
-            LOG.log(Level.INFO, "Iteration Done: {0}", iteration);
           }
-          LOG.log(Level.INFO, "Cleanup Start");
           worker.cleanup();
-          LOG.log(Level.INFO, "Cleanup End");
         }
       });
     }

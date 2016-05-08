@@ -437,7 +437,7 @@ final class MLRWorker implements Worker {
       }
     }
     regLoss /= numClasses;
-    return new Tuple3<>(loss, regLoss, (float) correctPredictions / numInstances) ;
+    return new Tuple3<>(loss, regLoss, (float) correctPredictions / numInstances);
   }
 
   /**

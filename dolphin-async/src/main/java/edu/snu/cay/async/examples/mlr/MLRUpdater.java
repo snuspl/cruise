@@ -24,8 +24,6 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * {@link ParameterUpdater} for the MLRREEF application.
@@ -56,8 +54,7 @@ final class MLRUpdater implements ParameterUpdater<Integer, Vector, Vector> {
 
   @Override
   public Vector update(final Vector oldValue, final Vector deltaValue) {
-    oldValue.addi(deltaValue);
-    return oldValue;
+    return oldValue.addi(deltaValue);
   }
 
   @Override
