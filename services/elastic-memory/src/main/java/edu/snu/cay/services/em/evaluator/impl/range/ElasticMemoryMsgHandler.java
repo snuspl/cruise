@@ -13,18 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.evaluator.impl;
+package edu.snu.cay.services.em.evaluator.impl.range;
 
 import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.common.parameters.KeyCodecName;
+import edu.snu.cay.services.em.evaluator.api.DataOperation;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
+import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
+import edu.snu.cay.services.em.evaluator.impl.Remove;
+import edu.snu.cay.services.em.evaluator.impl.Update;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.serialize.Serializer;
-import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.LongRangeUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.io.network.util.Pair;
+import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.util.Optional;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
@@ -48,9 +54,10 @@ import java.util.logging.Logger;
  * Processes control message from the driver and data message from
  * other evaluators.
  */
+// TODO #451: Support range operation other than long type
 @EvaluatorSide
 @Private
-public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
+public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
   private static final String ON_DATA_MSG = "onDataMsg";
@@ -58,8 +65,10 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_UPDATE_MSG = "onUpdateMsg";
   private static final String ON_OWNERSHIP_MSG = "onOwnershipMsg";
 
-  private final RemoteAccessibleMemoryStore<Long> memoryStore;
-  private final OperationResultAggregator resultAggregator;
+  private final RemoteAccessibleMemoryStore<K> memoryStore;
+  private final OperationRouter<K> router;
+  private final RemoteOpHandler<K> remoteOpHandler;
+  private final Codec<K> keyCodec;
   private final Serializer serializer;
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
 
@@ -75,12 +84,16 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private final Set<LongRange> movingRanges = Collections.synchronizedSet(new HashSet<LongRange>());
 
   @Inject
-  private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore<Long> memoryStore,
-                                  final OperationResultAggregator resultAggregator,
+  private ElasticMemoryMsgHandler(final RemoteAccessibleMemoryStore<K> memoryStore,
+                                  final OperationRouter<K> router,
+                                  final RemoteOpHandler<K> remoteOpHandler,
                                   final InjectionFuture<ElasticMemoryMsgSender> sender,
+                                  @Parameter(KeyCodecName.class) final Codec<K> keyCodec,
                                   final Serializer serializer) {
     this.memoryStore = memoryStore;
-    this.resultAggregator = resultAggregator;
+    this.router = router;
+    this.remoteOpHandler = remoteOpHandler;
+    this.keyCodec = keyCodec;
     this.serializer = serializer;
     this.sender = sender;
   }
@@ -91,6 +104,14 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
+    case RoutingTableInitMsg:
+      onRoutingTableInitMsg(innerMsg);
+      break;
+
+    case RoutingTableUpdateMsg:
+      onRoutingTableUpdateMsg(innerMsg);
+      break;
+
     case RemoteOpMsg:
       onRemoteOpMsg(innerMsg);
       break;
@@ -122,6 +143,25 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
   }
 
+  private void onRoutingTableInitMsg(final AvroElasticMemoryMessage msg) {
+    router.initialize(msg.getDestId().toString(), msg.getRoutingTableInitMsg().getBlockLocations());
+  }
+
+  private void onRoutingTableUpdateMsg(final AvroElasticMemoryMessage msg) {
+    final RoutingTableUpdateMsg routingTableUpdateMsg = msg.getRoutingTableUpdateMsg();
+
+    final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
+    final int newOwnerId = getStoreId(routingTableUpdateMsg.getNewEvalId().toString());
+    final int oldOwnerId = getStoreId(routingTableUpdateMsg.getOldEvalId().toString());
+
+    LOG.log(Level.INFO, "Update routing table. [newOwner: {0}, oldOwner: {1}, blocks: {2}]",
+        new Object[]{newOwnerId, oldOwnerId, blockIds});
+
+    for (final int blockId : blockIds) {
+      router.updateOwnership(blockId, oldOwnerId, newOwnerId);
+    }
+  }
+
   private void onOwnershipMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onOwnershipMsgScope = Trace.startSpan(ON_OWNERSHIP_MSG,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
@@ -130,11 +170,12 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final OwnershipMsg ownershipMsg = msg.getOwnershipMsg();
       final String dataType = ownershipMsg.getDataType().toString();
       final int blockId = ownershipMsg.getBlockId();
+      final int oldOwnerId = ownershipMsg.getOldOwnerId();
       final int newOwnerId = ownershipMsg.getNewOwnerId();
 
       // Update the owner of the block to the new one.
       // Operations being executed keep a read lock on router while being executed.
-      memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+      memoryStore.updateOwnership(dataType, blockId, oldOwnerId, newOwnerId);
 
       // After the ownership is updated, the data is never accessed locally,
       // so it is safe to remove the local data block.
@@ -148,36 +189,40 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   /**
    * Handles the data operation sent from the remote memory store.
    */
-  private <T> void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
+  private void onRemoteOpMsg(final AvroElasticMemoryMessage msg) {
     final RemoteOpMsg remoteOpMsg = msg.getRemoteOpMsg();
     final String origEvalId = remoteOpMsg.getOrigEvalId().toString();
     final DataOpType operationType = remoteOpMsg.getOpType();
     final String dataType = remoteOpMsg.getDataType().toString();
-    final List<AvroLongRange> avroLongRangeList = remoteOpMsg.getDataKeyRanges();
-    final List<UnitIdPair> dataKVPairList = remoteOpMsg.getDataKVPairList();
+    final List<KeyRange> avroKeyRangeList = (List<KeyRange>) remoteOpMsg.getDataKeys();
+    final List<KeyValuePair> dataKVPairList = (List<KeyValuePair>) remoteOpMsg.getDataValues();
     final String operationId = msg.getOperationId().toString();
 
-    final List<LongRange> dataKeyRanges = new ArrayList<>(avroLongRangeList.size());
-    for (final AvroLongRange avroRange : avroLongRangeList) {
-      dataKeyRanges.add(AvroUtils.fromAvroLongRange(avroRange));
+    // decode data keys
+    final List<Pair<K, K>> dataKeyRanges = new ArrayList<>(avroKeyRangeList.size());
+    for (final KeyRange keyRange : avroKeyRangeList) {
+      final K minKey = keyCodec.decode(keyRange.getMin().array());
+      final K maxKey = keyCodec.decode(keyRange.getMax().array());
+      dataKeyRanges.add(new Pair<>(minKey, maxKey));
     }
 
-    final Optional<NavigableMap<Long, T>> dataKeyValueMap;
+    // decode data values
+    final Optional<NavigableMap<K, Object>> dataKeyValueMap;
     if (operationType.equals(DataOpType.PUT)) {
-      final NavigableMap<Long, T> dataMap = new TreeMap<>();
+      final NavigableMap<K, Object> dataMap = new TreeMap<>();
       dataKeyValueMap = Optional.of(dataMap);
 
-      // decode data values
-      final Codec codec = serializer.getCodec(dataType);
-      for (final UnitIdPair dataKVPair : dataKVPairList) {
-        final T dataValue = (T) codec.decode(dataKVPair.getUnit().array());
-        dataMap.put(dataKVPair.getId(), dataValue);
+      final Codec dataCodec = serializer.getCodec(dataType);
+      for (final KeyValuePair dataKVPair : dataKVPairList) {
+        final K dataKey = keyCodec.decode(dataKVPair.getKey().array());
+        final Object dataValue = dataCodec.decode(dataKVPair.getValue().array());
+        dataMap.put(dataKey, dataValue);
       }
     } else {
       dataKeyValueMap = Optional.empty();
     }
 
-    final LongKeyOperation<T> operation = new LongKeyOperation<>(Optional.of(origEvalId),
+    final DataOperation operation = new RangeOperationImpl<>(Optional.of(origEvalId),
         operationId, operationType, dataType, dataKeyRanges, dataKeyValueMap);
 
     // enqueue operation into memory store
@@ -188,12 +233,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
    * Handles the result of data operation sent from the remote memory store.
    */
   private void onRemoteOpResultMsg(final AvroElasticMemoryMessage msg) {
-    final RemoteOpResultMsg remoteOpResultMsg = msg.getRemoteOpResultMsg();
-    final String operationId = msg.getOperationId().toString();
-    final List<UnitIdPair> dataKVPairList = remoteOpResultMsg.getDataKVPairList();
-    final List<AvroLongRange> failedAvroRanges = remoteOpResultMsg.getFailedKeyRanges();
-
-    resultAggregator.submitRemoteResult(operationId, dataKVPairList, failedAvroRanges);
+    remoteOpHandler.onNext(msg);
   }
 
   /**
@@ -209,17 +249,25 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final int blockId = dataMsg.getBlockId();
 
       final Map<Long, Object> dataMap = toDataMap(dataMsg.getUnits(), codec);
-      memoryStore.putBlock(dataType, blockId, dataMap);
+      memoryStore.putBlock(dataType, blockId, (Map<K, Object>) dataMap);
 
       // MemoryStoreId is the suffix of context id (Please refer to PartitionManager.registerEvaluator()
       // and ElasticMemoryConfiguration.getServiceConfigurationWithoutNameResolver).
-      final int newOwnerId = Integer.valueOf(msg.getDestId().toString().split("-")[1]);
-      final int oldOwnerId = memoryStore.updateOwnership(dataType, blockId, newOwnerId);
+      final int newOwnerId = getStoreId(msg.getDestId().toString());
+      final int oldOwnerId = getStoreId(msg.getSrcId().toString());
+      memoryStore.updateOwnership(dataType, blockId, oldOwnerId, newOwnerId);
 
       // Notify the driver that the ownership has been updated by setting empty destination id.
       sender.get().sendOwnershipMsg(Optional.<String>empty(), operationId, dataType, blockId, oldOwnerId, newOwnerId,
           TraceInfo.fromSpan(onDataMsgScope.getSpan()));
     }
+  }
+
+  /**
+   * Converts evaluator id to store id.
+   */
+  private int getStoreId(final String evalId) {
+    return Integer.valueOf(evalId.split("-")[1]);
   }
 
   /**
@@ -260,8 +308,8 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     // Send the data as unit of block
     for (final int blockId : blockIds) {
-      final Map<Long, Object> blockData = memoryStore.getBlock(dataType, blockId);
-      final List<UnitIdPair> unitIdPairList = toUnitIdPairs(blockData, codec);
+      final Map<K, Object> blockData = memoryStore.getBlock(dataType, blockId);
+      final List<UnitIdPair> unitIdPairList = toUnitIdPairs((Map<Long, Object>) blockData, codec);
       sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), unitIdPairList,
           blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
     }
@@ -288,10 +336,10 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     // the control message's id specification
     // TODO #15: this loop may be creating a gigantic message, and may cause memory problems
     for (final AvroLongRange avroLongRange : ctrlMsg.getIdRange()) {
-      final Map<Long, Object> idObjectMap =
-          memoryStore.getRange(dataType, avroLongRange.getMin(), avroLongRange.getMax());
-      for (final Map.Entry<Long, Object> idObject : idObjectMap.entrySet()) {
-        final long id = idObject.getKey();
+      final Map<K, Object> idObjectMap =
+          memoryStore.getRange(dataType, (K) avroLongRange.getMin(), (K) avroLongRange.getMax());
+      for (final Map.Entry<K, Object> idObject : idObjectMap.entrySet()) {
+        final long id = (Long) idObject.getKey();
         if (!isMoving(id)) {
           // Include the units only if they are not moving already.
           final UnitIdPair unitIdPair = UnitIdPair.newBuilder()
@@ -343,19 +391,19 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     // fetch all items of the given data type from my memory store
     // TODO #15: this clones the entire map of the given data type, and may cause memory problems
-    final Map<Long, Object> dataMap = memoryStore.getAll(dataType);
+    final Map<K, Object> dataMap = memoryStore.getAll(dataType);
     final List<UnitIdPair> unitIdPairList = new ArrayList<>(Math.min(numUnits, dataMap.size()));
 
     // keep the ids of the items to be deleted later
     final SortedSet<Long> ids = new TreeSet<>();
 
     // TODO #15: this loop may be creating a gigantic message, and may cause memory problems
-    for (final Map.Entry<Long, Object> entry : dataMap.entrySet()) {
+    for (final Map.Entry<K, Object> entry : dataMap.entrySet()) {
       if (unitIdPairList.size() >= numUnits) {
         break;
       }
 
-      final Long id = entry.getKey();
+      final Long id = (Long) entry.getKey();
       if (!isMoving(id)) {
         // Include the units only if they are not moving already.
         final UnitIdPair unitIdPair = UnitIdPair.newBuilder()

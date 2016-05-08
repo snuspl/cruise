@@ -16,11 +16,13 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.*;
+import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.tang.InjectionFuture;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
 import org.htrace.TraceScope;
@@ -29,8 +31,7 @@ import org.apache.reef.io.network.Message;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -43,6 +44,7 @@ import java.util.logging.Logger;
 public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroElasticMemoryMessage>> {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
+  private static final String ON_ROUTING_INIT_REQ_MSG = "onRoutingTableInitReqMsg";
   private static final String ON_REGIS_MSG = "onRegisMsg";
   private static final String ON_DATA_ACK_MSG = "onDataAckMsg";
   private static final String ON_UPDATE_ACK_MSG = "onUpdateAckMsg";
@@ -53,11 +55,15 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private final PartitionManager partitionManager;
   private final MigrationManager migrationManager;
 
+  private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
+
   @Inject
   private ElasticMemoryMsgHandler(final PartitionManager partitionManager,
-                                  final MigrationManager migrationManager) {
+                                  final MigrationManager migrationManager,
+                                  final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
     this.partitionManager = partitionManager;
     this.migrationManager = migrationManager;
+    this.msgSender = msgSender;
   }
 
   @Override
@@ -66,6 +72,10 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
 
     final AvroElasticMemoryMessage innerMsg = SingleMessageExtractor.extract(msg);
     switch (innerMsg.getType()) {
+    case RoutingTableInitReqMsg:
+      onRoutingTableInitReqMsg(innerMsg);
+      break;
+
     case RegisMsg:
       onRegisMsg(innerMsg);
       break;
@@ -95,6 +105,17 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     }
 
     LOG.exiting(ElasticMemoryMsgHandler.class.getSimpleName(), "onNext", msg);
+  }
+
+  private void onRoutingTableInitReqMsg(final AvroElasticMemoryMessage msg) {
+    try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan(ON_ROUTING_INIT_REQ_MSG,
+        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
+
+      final List<Integer> blockLocations = partitionManager.getBlockLocations();
+
+      final TraceInfo traceInfo = TraceInfo.fromSpan(onRoutingTableInitReqMsgScope.getSpan());
+      msgSender.get().sendRoutingTableInitMsg(msg.getSrcId().toString(), blockLocations, traceInfo);
+    }
   }
 
   private void onOwnershipAckMsg(final AvroElasticMemoryMessage msg) {

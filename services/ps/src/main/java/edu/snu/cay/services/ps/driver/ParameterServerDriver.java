@@ -18,6 +18,7 @@ package edu.snu.cay.services.ps.driver;
 import edu.snu.cay.services.ps.ParameterServerParameters.SerializedCodecConfiguration;
 import edu.snu.cay.services.ps.ParameterServerParameters.SerializedUpdaterConfiguration;
 import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.DriverSideMsgHandler;
 import edu.snu.cay.services.ps.ns.NetworkContextRegister;
 import edu.snu.cay.services.ps.ns.PSMessageHandler;
 import edu.snu.cay.services.ps.worker.WorkerSideMsgHandler;
@@ -44,6 +45,7 @@ import java.io.IOException;
  * Should be injected into the user's Driver class.
  * Provides methods for getting context and service configurations.
  */
+// TODO #478: Change the confusing name of ParameterServerDriver
 @DriverSide
 public final class ParameterServerDriver {
 
@@ -84,6 +86,24 @@ public final class ParameterServerDriver {
     this.updaterConfiguration = configurationSerializer.fromString(serializedUpdaterConf);
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
+  }
+
+  /**
+   * Configuration for REEF driver when using Parameter Server.
+   *
+   * A message handler in the Driver is created, which is used to send EM's routing table information to Workers.
+   * The driver is required to register to the NCS service, by calling
+   * {@link edu.snu.cay.services.ps.ns.PSNetworkSetup#registerConnectionFactory(org.apache.reef.wake.Identifier)}
+   * explicitly in the Driver's {@code EventHandler<StartTime>}. Note that this registration must be handled seamless
+   * to users, but for dolphin async to create separate EM instances for Workers and Servers,
+   * this class must be injected by the one who creates the server-side EM instance.
+   *
+   * @return configuration that should be submitted with a DriverConfiguration
+   */
+  public static Configuration getDriverConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(PSMessageHandler.class, DriverSideMsgHandler.class)
+        .build();
   }
 
   /**

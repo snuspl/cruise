@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.em.examples.simple.parameters;
+package edu.snu.cay.services.em.common.parameters;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
-@NamedParameter(doc = "Number of iterations to run move back and forth",
-    default_value = "1", short_name = "example_iterations")
-public final class Iterations implements Name<Integer> {
+@NamedParameter(doc = "Whether or not to support range operations", default_value = "true")
+public final class RangeSupport implements Name<Boolean> {
 }

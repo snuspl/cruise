@@ -15,6 +15,9 @@
  */
 package edu.snu.cay.async;
 
+import edu.snu.cay.async.metric.DriverSideMetricsMsgHandler;
+import edu.snu.cay.async.metric.EvalSideMetricsMsgHandler;
+import edu.snu.cay.async.metric.MetricsCollectionService;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.latency.LatencyConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
@@ -25,9 +28,13 @@ import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.conf.PlanExecutorClass;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
+import edu.snu.cay.services.ps.common.partitioned.parameters.Dynamic;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
-import edu.snu.cay.services.ps.driver.impl.PartitionedParameterServerManager;
+import edu.snu.cay.services.ps.driver.ParameterServerDriver;
+import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.DynamicPartitionedParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.StaticPartitionedParameterServerManager;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
@@ -118,8 +125,13 @@ public final class AsyncDolphinLauncher {
           getYarnRuntimeConfiguration(basicParameterInjector.getNamedInstance(JVMHeapSlack.class));
 
       // configuration for the parameter server
+      final boolean dynamic = basicParameterInjector.getNamedInstance(Dynamic.class);
+      final Class<? extends ParameterServerManager> managerClass = dynamic ?
+          DynamicPartitionedParameterServerManager.class :
+          StaticPartitionedParameterServerManager.class;
+
       final Configuration parameterServerConf = ParameterServerConfigurationBuilder.newBuilder()
-          .setManagerClass(PartitionedParameterServerManager.class)
+          .setManagerClass(managerClass)
           .setUpdaterClass(asyncDolphinConfiguration.getUpdaterClass())
           .setKeyCodecClass(asyncDolphinConfiguration.getKeyCodecClass())
           .setPreValueCodecClass(asyncDolphinConfiguration.getPreValueCodecClass())
@@ -176,7 +188,7 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(22);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(23);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -196,6 +208,7 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(WorkerQueueSize.class);
     basicParameterClassList.add(WorkerExpireTimeout.class);
     basicParameterClassList.add(WorkerKeyCacheSize.class);
+    basicParameterClassList.add(Dynamic.class);
 
     // add em parameters
     basicParameterClassList.add(OptimizerClass.class);
@@ -281,6 +294,9 @@ public final class AsyncDolphinLauncher {
         .addAggregationClient(SynchronizationManager.AGGREGATION_CLIENT_NAME,
             SynchronizationManager.MessageHandler.class,
             WorkerSynchronizer.MessageHandler.class)
+        .addAggregationClient(MetricsCollectionService.AGGREGATION_CLIENT_NAME,
+            DriverSideMetricsMsgHandler.class,
+            EvalSideMetricsMsgHandler.class)
         .build();
 
     // set up an optimizer configuration
@@ -298,7 +314,8 @@ public final class AsyncDolphinLauncher {
         .build();
 
     return Configurations.merge(driverConfWithDataLoad,
-        ElasticMemoryConfiguration.getDriverConfiguration(),
+        ElasticMemoryConfiguration.getDriverConfigurationWithoutRegisterDriver(),
+        ParameterServerDriver.getDriverConfiguration(),
         aggregationServiceConf.getDriverConfiguration(),
         HTraceParameters.getStaticConfiguration(),
         LatencyConfiguration.getDriverConfiguration(),
