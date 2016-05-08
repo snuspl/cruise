@@ -63,6 +63,7 @@ public final class EMRoutingTableManager {
 
   /**
    * Returns the PS server-side EM's routing table to pass it to an initiating PS worker {@code workerId}.
+   * It also registers {@code workerId} to notify further updates in the routing table.
    * @param workerId an worker id
    * @return The server-side EM's routing table
    */
@@ -77,7 +78,7 @@ public final class EMRoutingTableManager {
 
   /**
    * A handler of EMRoutingTableUpdate.
-   * It broadcasts the update info to all active PS workers
+   * It broadcasts the update info to all active PS workers.
    */
   private final class EMRoutingTableUpdateHandler implements EventHandler<EMRoutingTableUpdate> {
     @Override
