@@ -23,6 +23,7 @@ import edu.snu.cay.async.WorkerSynchronizer;
 import edu.snu.cay.async.examples.nmf.NMFParameters.*;
 import edu.snu.cay.async.metric.MetricsMessageSender;
 import edu.snu.cay.async.metric.avro.WorkerMsg;
+import edu.snu.cay.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorEntry;
 import edu.snu.cay.common.math.linalg.VectorFactory;
@@ -75,7 +76,7 @@ final class NMFWorker implements Worker {
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
 
-  private static final String DATA_TYPE = "NMF";
+  private static final String DATA_TYPE = "WORKER_DATA";
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
