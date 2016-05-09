@@ -147,10 +147,10 @@ public final class PartitionManager {
   public synchronized void deregisterEvaluator(final String contextId) {
     final int memoryStoreId = getMemoryStoreId(contextId);
 
-    final Set<Integer> remainedBlocks = storeIdToBlockIds.remove(memoryStoreId);
-    if (remainedBlocks == null) {
+    final Set<Integer> remainingBlocks = storeIdToBlockIds.remove(memoryStoreId);
+    if (remainingBlocks == null) {
       throw new RuntimeException("The store" + memoryStoreId + "does not exist");
-    } else if (!remainedBlocks.isEmpty()) {
+    } else if (!remainingBlocks.isEmpty()) {
       throw new RuntimeException("This attempt tries to remove a non-empty store, resulting missing blocks.");
     }
   }

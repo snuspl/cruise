@@ -24,7 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Sends a msg to deregister the worker itself to stop subscribing updates of EM routing table in PS servers.
+ * Sends a msg to deregister the worker itself to stop subscribing the updates of EM routing table in PS servers.
  */
 public final class TaskStopHandler implements EventHandler<TaskStop> {
   private static final Logger LOG = Logger.getLogger(TaskStopHandler.class.getName());

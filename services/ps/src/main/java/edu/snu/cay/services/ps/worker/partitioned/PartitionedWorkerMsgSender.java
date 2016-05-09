@@ -75,7 +75,7 @@ public final class PartitionedWorkerMsgSender<K, P> {
   }
 
   /**
-   * Sends a push msg of {@code key} to a corresponding server.
+   * Sends a push msg for {@code key} to a corresponding server.
    * @param destId an id of destination server
    * @param key a key to push
    * @param preValue a previous value to push
@@ -94,7 +94,7 @@ public final class PartitionedWorkerMsgSender<K, P> {
   }
 
   /**
-   * Sends a pull msg of {@code key} to a corresponding server.
+   * Sends a pull msg for {@code key} to a corresponding server.
    * @param destId an id of destination server
    * @param key a key to pull
    */
@@ -115,7 +115,7 @@ public final class PartitionedWorkerMsgSender<K, P> {
    * Sends a msg to register itself to driver for subscribing the up-to-date routing table
    * to resolve PS server when performing push/pull operations.
    * At first, the worker will receive the whole routing table and
-   * will be kept being notified with the further updates in the routing table by driver.
+   * will be kept being updated with the further changes in the routing table by driver.
    * This method is valid only for Dynamic PS.
    */
   public void sendWorkerRegisterMsg() {

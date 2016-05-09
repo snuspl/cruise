@@ -24,7 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Sends a msg to register itself to start subscribing updates of EM's routing table in PS servers.
+ * Sends a msg to register itself to start subscribing updates of the EM's routing table in PS servers.
  * {@link edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver} will receive the response
  * of the whole routing table and keep being updated when there's any change.
  */
