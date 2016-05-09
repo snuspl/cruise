@@ -120,15 +120,17 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
   @Override
   public void putBlock(final String dataType, final int blockId, final Map<K, Object> data) {
-    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
-    if (null == blocks) {
-      // If the blocks of the type have not been initialized, then create the blocks.
+    // If this MemoryStore has never stored the data in this type, initialize the blocks.
+    if (!typeToBlocks.containsKey(dataType)) {
       initBlocks(dataType);
-    } else if (blocks.containsKey(blockId)) {
-      throw new RuntimeException("Block with id " + blockId + " already exists.");
+    }
+
+    final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
+    if (blocks.containsKey(blockId)) {
+      throw new RuntimeException("Block " + blockId + " already exists.");
     } else {
       final Block block = new Block();
-      block.subDataMap.putAll(data);
+      block.putAll(data);
       blocks.put(blockId, block);
     }
   }
@@ -137,12 +139,14 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public Map<K, Object> getBlock(final String dataType, final int blockId) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      throw new RuntimeException("Data type " + dataType + " does not exist.");
+      LOG.log(Level.WARNING, "Data in type {0} has never been stored. The result is empty", dataType);
+      return Collections.emptyMap();
     }
 
     final Block block = blocks.get(blockId);
     if (null == block) {
-      throw new RuntimeException("Block with id " + blockId + " does not exist.");
+      LOG.log(Level.WARNING, "Block with id {0} does not exist.", blockId);
+      return Collections.emptyMap();
     }
 
     return block.getAll();
@@ -266,6 +270,13 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
      */
     private Map<K, V> getAll() {
       return new HashMap<>(subDataMap);
+    }
+
+    /**
+     * Puts all data from the given Map to the block.
+     */
+    private void putAll(final Map<K, V> toPut) {
+      subDataMap.putAll(toPut);
     }
 
     /**
