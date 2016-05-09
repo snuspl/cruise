@@ -99,7 +99,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   private final Statistics[] pullStats;
   private final Statistics[] requestStats;
   private final Statistics[] waitStats;
-  private long startTimes[];
+  private long[] startTimes;
 
   private void printStats(final int threadId, final long elapsedTime) {
     final Statistics pullStat = pullStats[threadId];

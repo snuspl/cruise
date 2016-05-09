@@ -16,9 +16,9 @@
 package edu.snu.cay.services.ps.common;
 
 /**
- * Statistics
+ * Class calculating statistics such as average and sum.
  */
-public class Statistics {
+public final class Statistics {
   private long sum = 0;
   private int count = 0;
 

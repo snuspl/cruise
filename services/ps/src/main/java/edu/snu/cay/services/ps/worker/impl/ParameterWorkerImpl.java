@@ -108,7 +108,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
   private final int logPeriod;
   private final Statistics[] pushStats;
   private final Statistics[] encodeStats;
-  private final long startTimes[];
+  private final long[] startTimes;
 
   @Inject
   private ParameterWorkerImpl(@Parameter(ParameterWorkerNumThreads.class) final int numThreads,
