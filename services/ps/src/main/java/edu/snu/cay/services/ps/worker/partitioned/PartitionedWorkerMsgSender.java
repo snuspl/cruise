@@ -74,7 +74,13 @@ public final class PartitionedWorkerMsgSender<K, P> {
     }
   }
 
-  public void sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) {
+  /**
+   * Sends a push msg of {@code key} to a corresponding server.
+   * @param destId an id of destination server
+   * @param key a key to push
+   * @param preValue a previous value to push
+   */
+  void sendPushMsg(final String destId, final EncodedKey<K> key, final P preValue) {
     final PushMsg pushMsg = PushMsg.newBuilder()
         .setKey(ByteBuffer.wrap(key.getEncoded()))
         .setPreValue(ByteBuffer.wrap(preValueCodec.encode(preValue)))
@@ -87,7 +93,12 @@ public final class PartitionedWorkerMsgSender<K, P> {
             .build());
   }
 
-  public void sendPullMsg(final String destId, final EncodedKey<K> key) {
+  /**
+   * Sends a pull msg of {@code key} to a corresponding server.
+   * @param destId an id of destination server
+   * @param key a key to pull
+   */
+  void sendPullMsg(final String destId, final EncodedKey<K> key) {
     final PullMsg pullMsg = PullMsg.newBuilder()
         .setKey(ByteBuffer.wrap(key.getEncoded()))
         .setSrcId(psNetworkSetup.getMyId().toString())
@@ -100,13 +111,34 @@ public final class PartitionedWorkerMsgSender<K, P> {
             .build());
   }
 
-  public void sendRoutingTableRequestMsg() {
-    final RoutingTableReqMsg routingTableReqMsg = RoutingTableReqMsg.newBuilder()
+  /**
+   * Sends a msg to register itself to driver for subscribing the up-to-date routing table
+   * to resolve PS server when performing push/pull operations.
+   * At first, the worker will receive the whole routing table and
+   * will be kept being notified with the further updates in the routing table by driver.
+   * This method is valid only for Dynamic PS.
+   */
+  public void sendWorkerRegisterMsg() {
+    final WorkerRegisterMsg workerRegisterMsg = WorkerRegisterMsg.newBuilder()
         .build();
     send(driverIdentifier,
         AvroParameterServerMsg.newBuilder()
-            .setType(Type.RoutingTableReqMsg)
-            .setRoutingTableReqMsg(routingTableReqMsg)
+            .setType(Type.WorkerRegisterMsg)
+            .setWorkerRegisterMsg(workerRegisterMsg)
+            .build());
+  }
+
+  /**
+   * Sends a msg to deregister itself, then driver stops feeding updates in the routing table.
+   * This method is valid only for Dynamic PS.
+   */
+  public void sendWorkerDeregisterMsg() {
+    final WorkerDeregisterMsg workerDeregisterMsg = WorkerDeregisterMsg.newBuilder()
+        .build();
+    send(driverIdentifier,
+        AvroParameterServerMsg.newBuilder()
+            .setType(Type.WorkerDeregisterMsg)
+            .setWorkerDeregisterMsg(workerDeregisterMsg)
             .build());
   }
 }

@@ -319,7 +319,7 @@ final class AsyncDolphinDriver {
             // to synchronize EM's MemoryStore id and PS's Network endpoint.
             final int memoryStoreId = serviceInjector.getNamedInstance(MemoryStoreId.class);
             final String endpointId = serviceInjector.getNamedInstance(EndpointId.class);
-            emRoutingTableManager.register(memoryStoreId, endpointId);
+            emRoutingTableManager.registerServer(memoryStoreId, endpointId);
           } catch (final InjectionException e) {
             throw new RuntimeException(e);
           }

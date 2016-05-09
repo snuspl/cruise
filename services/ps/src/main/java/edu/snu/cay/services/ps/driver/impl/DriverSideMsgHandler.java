@@ -17,8 +17,8 @@ package edu.snu.cay.services.ps.driver.impl;
 
 import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
 import edu.snu.cay.services.ps.avro.IdMapping;
-import edu.snu.cay.services.ps.avro.RoutingTableReplyMsg;
 import edu.snu.cay.services.ps.avro.Type;
+import edu.snu.cay.services.ps.avro.WorkerRegisterReplyMsg;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.io.network.Message;
@@ -55,16 +55,21 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPara
 
     final AvroParameterServerMsg msg = SingleMessageExtractor.extract(avroParameterServerMsgMessage);
     switch (msg.getType()) {
-    case RoutingTableReqMsg:
-      onRoutingTableReqMsg(srcId);
+    case WorkerRegisterMsg:
+      onWorkerRegisterMsg(srcId);
       break;
+
+    case WorkerDeregisterMsg:
+      onWorkerDeregisterMsg(srcId);
+      break;
+
     default:
       throw new RuntimeException("Unexpected message type: " + msg.getType().toString());
     }
   }
 
-  private void onRoutingTableReqMsg(final String srcId) {
-    final EMRoutingTable routingTable = routingTableManager.getEMRoutingTable(srcId);
+  private void onWorkerRegisterMsg(final String srcId) {
+    final EMRoutingTable routingTable = routingTableManager.registerWorker(srcId);
     final int numTotalBlocks = routingTable.getNumTotalBlocks();
     final List<IdMapping> idMappings = new ArrayList<>(routingTable.getStoreIdToEndpointId().size());
     final Map<Integer, String> storeIdToEndpointId = routingTable.getStoreIdToEndpointId();
@@ -79,16 +84,21 @@ public final class DriverSideMsgHandler implements EventHandler<Message<AvroPara
       idMappings.add(idMapping);
     }
 
-    final RoutingTableReplyMsg routingTableReplyMsg = RoutingTableReplyMsg.newBuilder()
+    final WorkerRegisterReplyMsg workerRegisterReplyMsg = WorkerRegisterReplyMsg.newBuilder()
         .setIdMappings(idMappings)
         .setNumTotalBlocks(numTotalBlocks)
         .build();
 
     final AvroParameterServerMsg responseMsg =
         AvroParameterServerMsg.newBuilder()
-            .setType(Type.RoutingTableReplyMsg)
-            .setRoutingTableReplyMsg(routingTableReplyMsg).build();
+            .setType(Type.WorkerRegisterReplyMsg)
+            .setWorkerRegisterReplyMsg(workerRegisterReplyMsg)
+            .build();
 
     sender.get().send(srcId, responseMsg);
+  }
+
+  private void onWorkerDeregisterMsg(final String srcId) {
+    routingTableManager.deregisterWorker(srcId);
   }
 }
