@@ -142,14 +142,8 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public void putBlock(final String dataType, final int blockId, final Map<Long, Object> data) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      // If the blocks of the type have not been initialized, then create the block.
-      final Block block = new Block();
-      block.subDataMap.putAll(data);
-      final Map<Integer, Block> newBlocks = new HashMap<>();
-      newBlocks.put(blockId, block);
-      typeToBlocks.put(dataType, blocks);
-      LOG.log(Level.INFO, "Put the block {0} with type {1}, as the MemoryStore seems to be added",
-          new Object[]{blockId, dataType});
+      // If the blocks of the type have not been initialized, then create the blocks.
+      initBlocks(dataType);
     } else if (blocks.containsKey(blockId)) {
       throw new RuntimeException("Block with id " + blockId + " already exists.");
     } else {
@@ -163,14 +157,12 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public Map<Long, Object> getBlock(final String dataType, final int blockId) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      LOG.log(Level.INFO, "The data type {0} does not exist. Maybe this is an added store", dataType);
-      initBlocks(dataType);
+      throw new RuntimeException("Data type " + dataType + " does not exist.");
     }
 
-    final Block block = typeToBlocks.get(dataType).get(blockId);
+    final Block block = blocks.get(blockId);
     if (null == block) {
-      LOG.log(Level.WARNING, "Block with id {0} does not exist. Maybe this is an added store", blockId);
-      return Collections.emptyMap();
+      throw new RuntimeException("Block with id " + blockId + " does not exist.");
     }
 
     return block.getAll();
