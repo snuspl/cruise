@@ -25,6 +25,8 @@ import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * An Optimizer that simply adds one new Evaluator for each optimize call.
@@ -34,6 +36,7 @@ import java.util.*;
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
 public final class AddOneOptimizer implements Optimizer {
+  private static final Logger LOG = Logger.getLogger(AddOneOptimizer.class.getName());
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -61,6 +64,7 @@ public final class AddOneOptimizer implements Optimizer {
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
     for (final String namespace : evalParamsMap.keySet()) {
+      LOG.log(Level.INFO, "Optimizer: {0}", namespace);
       EvaluatorParameters srcEvaluator = null;
       for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
         if (!evaluator.getDataInfos().isEmpty()) {

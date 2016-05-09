@@ -38,6 +38,8 @@ public final class OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
   public static final String NAMESPACE_SERVER = "SERVER";
   public static final String NAMESPACE_WORKER = "WORKER";
+  public static final String DATA_TYPE_SERVER = "SERVER_DATA"; // DynamicPS should use this type.
+  public static final String DATA_TYPE_WORKER = "WORKER_DATA"; // All Workers should use this type.
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
@@ -45,27 +47,18 @@ public final class OptimizationOrchestrator {
 
   private final ExecutorService optimizationThreadPool = Executors.newSingleThreadExecutor();
 
-  /**
-   * The {@link Future} returned from the most recent {@code optimizationThreadPool.submit(Runnable)} call.
-   * Note that this does not necessarily refer to a thread that is doing actual optimization
-   * ({@link Optimizer#optimize(Map, int)} , int)}).
-   * This field is currently being used only for testing purposes.
-   */
-  private Future optimizationAttemptResult;
-
   private Future<PlanResult> planExecutionResult;
-  private boolean planExecuting;
   private ElasticMemory serverEM;
   private ElasticMemory workerEM;
 
   private final int maxNumEvals;
 
   @Inject
-  OptimizationOrchestrator(final Optimizer optimizer,
-                           final PlanExecutor planExecutor,
-                           @Parameter(ServerEM.class) final ElasticMemory serverEM,
-                           @Parameter(WorkerEM.class) final ElasticMemory workerEM,
-                           @Parameter(MaxNumberOfEvaluators.class) final int maxNumEvals) {
+  private OptimizationOrchestrator(final Optimizer optimizer,
+                                   final PlanExecutor planExecutor,
+                                   @Parameter(ServerEM.class) final ElasticMemory serverEM,
+                                   @Parameter(WorkerEM.class) final ElasticMemory workerEM,
+                                   @Parameter(MaxNumberOfEvaluators.class) final int maxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.serverEM = serverEM;
@@ -73,7 +66,6 @@ public final class OptimizationOrchestrator {
     this.maxNumEvals = maxNumEvals;
   }
 
-  // TODO #00: When to trigger the optimization?
   public void run() {
     if (isPlanExecuting()) {
       LOG.log(Level.INFO, "Skipping Optimization, because some other thread is currently doing it");
@@ -85,13 +77,13 @@ public final class OptimizationOrchestrator {
       return;
     }
 
-    optimizationAttemptResult = optimizationThreadPool.submit(new Runnable() {
+    optimizationThreadPool.submit(new Runnable() {
       @Override
       public void run() {
         LOG.log(Level.INFO, "Optimization start.");
         logPreviousResult();
-        final Collection<EvaluatorParameters> serverEvalParams = serverEM.generateEvalParams("SERVER_DATA").values();
-        final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams("WORKER_DATA").values();
+        final Collection<EvaluatorParameters> serverEvalParams = serverEM.generateEvalParams(DATA_TYPE_SERVER).values();
+        final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams(DATA_TYPE_WORKER).values();
 
         final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
         evaluatorParameters.put(NAMESPACE_SERVER, new ArrayList<>(serverEvalParams));
@@ -110,16 +102,13 @@ public final class OptimizationOrchestrator {
     return planExecutionResult != null && !planExecutionResult.isDone();
   }
 
-
   private void logPreviousResult() {
     if (planExecutionResult == null) {
       LOG.log(Level.INFO, "Initial optimization run.");
     } else {
       try {
         LOG.log(Level.INFO, "Previous result: {0}", planExecutionResult.get());
-      } catch (final InterruptedException e) {
-        throw new RuntimeException(e);
-      } catch (final ExecutionException e) {
+      } catch (final InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
     }

@@ -22,7 +22,10 @@ import java.util.Collections;
 import java.util.Iterator;
 
 /**
- * Created by yunseong on 5/8/16.
+ * An implementation of DataSet (in REEF DataLoading API), which does not contain any data. When the App uses
+ * DataLoading Service, then Tasks can be initiated only when the data block to load is configured. However,
+ * Tasks that are added by EM.add() do not have to load the data. This class allows Task initialization by injecting
+ * DataSet without loading actual data.
  */
 public final class EmptyDataSet implements DataSet {
   @Inject

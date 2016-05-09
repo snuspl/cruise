@@ -36,7 +36,6 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -49,6 +48,7 @@ import static edu.snu.cay.async.optimizer.OptimizationOrchestrator.NAMESPACE_WOR
 /**
  * Implementation of Plan Executor for AsyncDolphin.
  */
+// TODO #505: Improve scheduling in plan execution of Async Dolphin's Optimizer
 public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private static final Logger LOG = Logger.getLogger(AsyncDolphinPlanExecutor.class.getName());
 
@@ -232,7 +232,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("ActiveContext " + context + " received, but no executingPlan available.");
       }
-      asyncDolphinDriver.get().registerActiveContextForServer(context);
+      asyncDolphinDriver.get().getSecondContextActiveHandlerForServer().onNext(context);
       executingPlan.onActiveContext(context);
     }
   }
