@@ -318,8 +318,7 @@ public class MigrationManagerTest {
      */
     @Override
     public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
-                            final List<KeyValuePair> keyValuePairs, final int blockId, final String operationId,
-                            @Nullable final TraceInfo parentTraceInfo) {
+                            final int blockId, final String operationId, @Nullable final TraceInfo parentTraceInfo) {
     }
 
     /**

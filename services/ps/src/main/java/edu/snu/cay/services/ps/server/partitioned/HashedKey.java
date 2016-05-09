@@ -15,13 +15,11 @@
  */
 package edu.snu.cay.services.ps.server.partitioned;
 
-import java.io.Serializable;
-
 /**
  * A class containing key with its hash value.
  * @param <K> a type of key
  */
-public class HashedKey<K> implements Serializable {
+public class HashedKey<K> {
   private K key;
   private final int hash;
 
