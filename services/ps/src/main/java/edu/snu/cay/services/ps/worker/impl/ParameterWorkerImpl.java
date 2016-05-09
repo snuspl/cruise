@@ -320,7 +320,7 @@ public final class ParameterWorkerImpl<K, P, V> implements ParameterWorker<K, P,
     LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Worker Thread Id: {1}, PS Worker Push Avg: {2}, " +
         "PS Worker Push Sum: {3}, PS Worker Push Count:{4}, PS Worker Encode Avg: {5}, " +
         "PS Worker Encode Sum: {6}",
-        new Object[]{elapsedTime, threadId, String.format("%g", pushStat.avg()),
+        new Object[]{elapsedTime / 1e9D, threadId, String.format("%g", pushStat.avg()),
             String.format("%g", pushStat.sum()), pushStat.count(), String.format("%g", encodeStat.avg()),
             String.format("%g", encodeStat.sum())});
     startTimes[threadId] = ticker.read();
