@@ -42,13 +42,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 @DriverSide
 @Private
 public final class ElasticMemoryImpl implements ElasticMemory {
-  private static final Logger LOG = Logger.getLogger(ElasticMemoryImpl.class.getName());
   private static final String MOVE = "move";
   private static final String APPLY_UPDATES = "apply_updates";
 
@@ -87,10 +84,6 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   public void add(final int number, final int megaBytes, final int cores,
                   final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler,
                   final List<EventHandler<ActiveContext>> contextActiveHandlerList) {
-    if (number <= 0) {
-      LOG.log(Level.WARNING, "Ignore an invalid request for {0} evaluators", number);
-      return;
-    }
     evaluatorManager.allocateEvaluators(number, evaluatorAllocatedHandler, contextActiveHandlerList);
   }
 
