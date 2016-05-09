@@ -35,8 +35,6 @@ import edu.snu.cay.services.em.driver.api.EMDeleteExecutor;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.impl.RoundRobinDataIdFactory;
 import edu.snu.cay.services.em.ns.parameters.EMIdentifier;
-import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
-import edu.snu.cay.services.em.plan.conf.PlanExecutorClass;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
 import edu.snu.cay.services.ps.driver.ParameterServerDriver;
@@ -234,8 +232,6 @@ public final class AsyncDolphinDriver {
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
-                             @Parameter(PlanExecutorClass.class) final String planExecutorClass,
-                             @Parameter(OptimizerClass.class) final String optimizerClass,
                              final HTraceParameters traceParameters,
                              final HTrace hTrace) throws IOException {
     hTrace.initialize();
