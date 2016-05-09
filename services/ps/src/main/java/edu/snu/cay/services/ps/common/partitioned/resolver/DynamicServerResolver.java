@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.services.ps.common.partitioned.resolver;
 
+import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.ps.driver.impl.EMRoutingTable;
 
 import javax.inject.Inject;
@@ -22,6 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Resolves the server based on Elastic Memory's ownership table. This implementation assumes that Elastic Memory
@@ -29,6 +32,7 @@ import java.util.Set;
  *    If h is the hashed value of the key, h is stored at block b where b's id = h / BLOCK_SIZE.
  */
 public final class DynamicServerResolver implements ServerResolver {
+  private static final Logger LOG = Logger.getLogger(DynamicServerResolver.class.getName());
   private static final long INITIALIZATION_TIMEOUT_MS = 3000;
 
   /**
@@ -80,7 +84,7 @@ public final class DynamicServerResolver implements ServerResolver {
    * Initialize the router to lookup.
    */
   @Override
-  public void updateRoutingTable(final EMRoutingTable routingTable) {
+  public void initRoutingTable(final EMRoutingTable routingTable) {
     final Map<Integer, Set<Integer>> storeIdToBlockIds = routingTable.getStoreIdToBlockIds();
 
     numTotalBlocks = routingTable.getNumTotalBlocks();
@@ -94,8 +98,22 @@ public final class DynamicServerResolver implements ServerResolver {
     }
 
     initialized = true;
+    LOG.log(Level.FINE, "Server resolver is initialized");
     synchronized (this) {
       this.notify();
     }
+  }
+
+  @Override
+  public void updateRoutingTable(final EMRoutingTableUpdate routingTableUpdate) {
+    final int oldOwnerId = routingTableUpdate.getOldOwnerId();
+    final int newOwnerId = routingTableUpdate.getNewOwnerId();
+    for (final int blockId : routingTableUpdate.getBlockIds()) {
+      final int actualOldOwnerId = blockIdToStoreId.put(blockId, newOwnerId);
+      if (oldOwnerId != actualOldOwnerId) {
+        LOG.log(Level.FINER, "Mapping was stale about block {0}", blockId);
+      }
+    }
+    LOG.log(Level.FINE, "Mapping table in server resolver is updated");
   }
 }
