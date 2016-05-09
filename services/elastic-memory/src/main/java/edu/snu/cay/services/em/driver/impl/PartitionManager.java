@@ -535,7 +535,7 @@ public final class PartitionManager {
   /**
    * Converts the Evaluator id to the MemoryStore id.
    */
-  private int getMemoryStoreId(final String evalId) {
+  int getMemoryStoreId(final String evalId) {
     return Integer.valueOf(evalId.split("-")[1]);
   }
 

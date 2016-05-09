@@ -39,10 +39,13 @@ import java.util.List;
  */
 final class NMFDataParser {
   private final DataSet<LongWritable, Text> dataSet;
+  private final NMFModelGenerator modelGenerator;
 
   @Inject
-  private NMFDataParser(final DataSet<LongWritable, Text> dataSet) {
+  private NMFDataParser(final DataSet<LongWritable, Text> dataSet,
+                        final NMFModelGenerator modelGenerator) {
     this.dataSet = dataSet;
+    this.modelGenerator = modelGenerator;
   }
 
   private List<Pair<Integer, Double>> parseColumns(final String columnsString) {
@@ -101,7 +104,7 @@ final class NMFDataParser {
         throw new RuntimeException("Failed to parse: invalid indices. It should be greater than zero");
       }
 
-      result.add(new NMFData(rowIndex, parseColumns(split[1].trim())));
+      result.add(new NMFData(rowIndex, parseColumns(split[1].trim()), modelGenerator.createRandomVector()));
     }
     return result;
   }

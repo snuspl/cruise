@@ -34,8 +34,6 @@ import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.utils.LongRangeUtils;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -71,16 +69,12 @@ final class NMFWorker implements Worker {
   private final int logPeriod;
   private final NMFModelGenerator modelGenerator;
   private final ArrayList<Integer> keys;
-  private final Map<Integer, Vector> lMatrix;
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
 
   private static final String DATA_TYPE = "WORKER_DATA";
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
-
-  // data key ranges assigned to this worker
-  private Set<LongRange> dataKeyRanges;
 
   // TODO #487: Metric collecting should be done by the system, not manually by the user code.
   private final MetricsCollector metricsCollector;
@@ -130,7 +124,6 @@ final class NMFWorker implements Worker {
     this.metricsMessageSender = metricsMessageSender;
 
     this.keys = Lists.newArrayList();
-    this.lMatrix = Maps.newHashMap();
     this.rMatrix = Maps.newHashMap();
     this.gradients = Maps.newHashMap();
 
@@ -156,18 +149,9 @@ final class NMFWorker implements Worker {
 
     memoryStore.putList(DATA_TYPE, dataKeys, dataValues);
 
-
-    // TODO #302: initialize WorkloadPartition here
-
-    // We should convert the ids into ranges, because the current MemoryStore API takes ranges not a list
-    dataKeyRanges = LongRangeUtils.generateDenseLongRanges(new TreeSet<>(dataKeys));
-
     final Set<Integer> keySet = Sets.newTreeSet();
-    // initialize L Matrix and aggregate column indices;
+    // aggregate column indices
     for (final NMFData datum : dataValues) {
-      final int rowIdx = datum.getRowIndex();
-      lMatrix.put(rowIdx, modelGenerator.createRandomVector());
-
       for (final Pair<Integer, Double> column : datum.getColumns()) {
         keySet.add(column.getFirst());
       }
@@ -255,20 +239,14 @@ final class NMFWorker implements Worker {
     int rowCount = 0;
     resetTracers();
 
-    // TODO #302: update dataKeyRanges when there's an update in assigned workload
-
-    final List<NMFData> workload = new LinkedList<>();
-    for (final LongRange range : dataKeyRanges) {
-      final Map<Long, NMFData> subMap = memoryStore.getRange(DATA_TYPE, range.getMinimumLong(), range.getMaximumLong());
-      workload.addAll(subMap.values());
-    }
+    final Map<Long, NMFData> workloadMap = memoryStore.getAll(DATA_TYPE);
+    final Collection<NMFData> workload = workloadMap.values();
 
     pullRMatrix();
 
     for (final NMFData datum : workload) {
       computeTracer.start();
-      final int rowIdx = datum.getRowIndex();
-      final Vector lVec = lMatrix.get(rowIdx); // L_{i, *} : i-th row of L
+      final Vector lVec = datum.getVector(); // L_{i, *} : i-th row of L
       final Vector lGradSum;
       if (lambda != 0.0D) {
         // l2 regularization term. 2 * lambda * L_{i, *}
@@ -354,10 +332,13 @@ final class NMFWorker implements Worker {
       return;
     }
     // print L matrix
+    final Map<Long, NMFData> workloadMap = memoryStore.getAll(DATA_TYPE);
+    final Collection<NMFData> workload = workloadMap.values();
+
     final StringBuilder lsb = new StringBuilder();
-    for (final Map.Entry<Integer, Vector> entry : lMatrix.entrySet()) {
-      lsb.append(String.format("L(%d, *):", entry.getKey()));
-      for (final VectorEntry valueEntry : entry.getValue()) {
+    for (final NMFData datum : workload) {
+      lsb.append(String.format("L(%d, *):", datum.getRowIndex()));
+      for (final VectorEntry valueEntry : datum.getVector()) {
         lsb.append(' ');
         lsb.append(valueEntry.value());
       }

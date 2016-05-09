@@ -88,6 +88,22 @@
   ]
 },
 
+/**
+ * This message is sent from the PS driver to PS workers
+ * to update their own routing tables for resolving PS servers.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "RoutingTableUpdateMsg",
+  "fields":
+  [
+    {"name": "oldOwnerId", "type": "int"},
+    {"name": "newOwnerId", "type": "int"},
+    {"name": "blockIds", "type": {"type": "array", "items": "int"}}
+  ]
+},
+
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
@@ -98,12 +114,14 @@
      "type":
        {"type": "enum",
         "name": "Type",
-        "symbols": ["PushMsg", "PullMsg", "ReplyMsg", "RoutingTableReqMsg", "RoutingTableReplyMsg"]}},
+        "symbols": ["PushMsg", "PullMsg", "ReplyMsg",
+         "RoutingTableReqMsg", "RoutingTableReplyMsg", "RoutingTableUpdateMsg"]}},
     {"name": "pushMsg", "type": ["null", "PushMsg"], "default": null},
     {"name": "pullMsg", "type": ["null", "PullMsg"], "default": null},
     {"name": "replyMsg", "type": ["null", "ReplyMsg"], "default": null},
     {"name": "routingTableReqMsg", "type": ["null", "RoutingTableReqMsg"], "default": null},
-    {"name": "routingTableReplyMsg", "type": ["null", "RoutingTableReplyMsg"], "default": null}
+    {"name": "routingTableReplyMsg", "type": ["null", "RoutingTableReplyMsg"], "default": null},
+    {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null}
   ]
 }
 ]

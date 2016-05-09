@@ -15,13 +15,18 @@
  */
 package edu.snu.cay.services.ps.driver.impl;
 
+import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import edu.snu.cay.services.ps.avro.AvroParameterServerMsg;
+import edu.snu.cay.services.ps.avro.RoutingTableUpdateMsg;
+import edu.snu.cay.services.ps.avro.Type;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.annotations.audience.Private;
+import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Provides the routing table information used in Dynamic Partitioned ParameterServer.
@@ -31,12 +36,19 @@ import java.util.Map;
 @Private
 @DriverSide
 public final class EMRoutingTableManager {
-  private final Map<Integer, String> storeIdToEndpointId = new HashMap<>();
+  private static final String CLIENT_ID = "PS_CLIENT";
+
+  private final Map<Integer, String> storeIdToEndpointId = new HashMap<>(); // server-side id mapping
   private final ElasticMemory elasticMemory;
+  private final InjectionFuture<PSMessageSender> sender;
+
+  private final Set<String> activeWorkerIds = new HashSet<>();
 
   @Inject
-  EMRoutingTableManager(final ElasticMemory elasticMemory) {
+  EMRoutingTableManager(final ElasticMemory elasticMemory,
+                        final InjectionFuture<PSMessageSender> sender) {
     this.elasticMemory = elasticMemory;
+    this.sender = sender;
   }
 
   /**
@@ -50,12 +62,47 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * @return The EM's routing table to pass to PSWorkers.
+   * Returns the PS server-side EM's routing table to pass it to an initiating PS worker {@code workerId}.
+   * It also registers {@code workerId} to notify further updates in the routing table.
+   * @param workerId an worker id
+   * @return The server-side EM's routing table
    */
-  EMRoutingTable getEMRoutingTable() {
+  EMRoutingTable getEMRoutingTable(final String workerId) {
+    activeWorkerIds.add(workerId);
+    elasticMemory.registerRoutingTableUpdateCallback(CLIENT_ID, new EMRoutingTableUpdateHandler());
     return new EMRoutingTable(
         elasticMemory.getStoreIdToBlockIds(),
         storeIdToEndpointId,
         elasticMemory.getNumTotalBlocks());
+  }
+
+  /**
+   * A handler of EMRoutingTableUpdate.
+   * It broadcasts the update info to all active PS workers.
+   */
+  private final class EMRoutingTableUpdateHandler implements EventHandler<EMRoutingTableUpdate> {
+    @Override
+    public void onNext(final EMRoutingTableUpdate emRoutingTableUpdate) {
+      final int oldOwnerId = emRoutingTableUpdate.getOldOwnerId();
+      final int newOwnerId = emRoutingTableUpdate.getNewOwnerId();
+      final List<Integer> blockIds = emRoutingTableUpdate.getBlockIds();
+
+      final RoutingTableUpdateMsg routingTableUpdateMsg = RoutingTableUpdateMsg.newBuilder()
+          .setOldOwnerId(oldOwnerId)
+          .setNewOwnerId(newOwnerId)
+          .setBlockIds(blockIds)
+          .build();
+
+      final AvroParameterServerMsg updateMsg =
+          AvroParameterServerMsg.newBuilder()
+              .setType(Type.RoutingTableUpdateMsg)
+              .setRoutingTableUpdateMsg(routingTableUpdateMsg)
+              .build();
+
+      // broadcast update in routing tables of EM in PS servers to all active PS workers
+      for (final String workerId : activeWorkerIds) {
+        sender.get().send(workerId, updateMsg);
+      }
+    }
   }
 }

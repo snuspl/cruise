@@ -123,6 +123,19 @@ public interface ElasticMemory {
   void checkpoint(String evalId);
 
   /**
+   * Register a callback for listening updates in EM routing table.
+   * @param clientId a client id
+   * @param updateCallback a callback
+   */
+  void registerRoutingTableUpdateCallback(String clientId, EventHandler<EMRoutingTableUpdate> updateCallback);
+
+  /**
+   * Deregister a callback for listening updates in EM routing table.
+   * @param clientId a client id
+   */
+  void deregisterRoutingTableUpdateCallback(String clientId);
+
+  /**
    * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
    */
   Map<Integer, Set<Integer>> getStoreIdToBlockIds();
