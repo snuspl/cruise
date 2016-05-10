@@ -99,7 +99,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
   private final Statistics[] pushStats;
   private final Statistics[] pullStats;
   private final Statistics[] requestStats;
-  private final Statistics[] waitStats;
+  private final Statistics[] pushWaitStats;
+  private final Statistics[] pullWaitStats;
   private long[] startTimes;
   private final Ticker ticker = Ticker.systemTicker();
 
@@ -107,20 +108,24 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     final Statistics pullStat = pullStats[threadId];
     final Statistics pushStat = pushStats[threadId];
     final Statistics requestStat = requestStats[threadId];
-    final Statistics waitStat = waitStats[threadId];
+    final Statistics pushWaitStat = pushWaitStats[threadId];
+    final Statistics pullWaitStat = pullWaitStats[threadId];
 
     LOG.log(Level.INFO, "PS Elapsed Time: {0}, PS Sum Pull: {1}, PS Avg Pull: {2}, PS Pull Count: {3}, " +
             "PS Sum Push: {4}, PS Avg Push: {5}, PS Push Count: {6}, " +
             "PS Avg Request: {7}, PS Sum Request: {8}, PS Request Count: {9}, " +
-            "PS Avg Wait: {10}, PS Sum Wait: {11}",
+            "PS Avg Push Wait: {10}, PS Sum Push Wait: {11}, " +
+            "PS Avg Pull Wait: {12}, PS Sum Pull Wait: {13}",
         new Object[]{elapsedTime / 1e9D, Double.toString(pullStat.sum()), Double.toString(pullStat.avg()),
             pullStat.count(), Double.toString(pushStat.sum()), Double.toString(pushStat.avg()), pushStat.count(),
             Double.toString(requestStat.avg()), Double.toString(requestStat.sum()), requestStat.count(),
-            Double.toString(waitStat.avg()), Double.toString(waitStat.sum())});
+            Double.toString(pushWaitStat.avg()), Double.toString(pushWaitStat.sum()),
+            Double.toString(pullWaitStat.avg()), Double.toString(pullWaitStat.sum())});
     pushStat.reset();
     pullStat.reset();
     requestStat.reset();
-    waitStat.reset();
+    pushWaitStat.reset();
+    pullWaitStat.reset();
     startTimes[threadId] = ticker.read();
   }
 
@@ -145,7 +150,8 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     pushStats = Statistics.newInstances(numThreads);
     pullStats = Statistics.newInstances(numThreads);
     requestStats = Statistics.newInstances(numThreads);
-    waitStats = Statistics.newInstances(numThreads);
+    pushWaitStats = Statistics.newInstances(numThreads);
+    pullWaitStats = Statistics.newInstances(numThreads);
     startTimes = new long[numThreads];
     final long currentTime = ticker.read();
     for (int i = 0; i < numThreads; ++i) {
@@ -227,7 +233,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     @Override
     public void apply(final Map<K, V> kvStore) {
       final long waitEndTime = ticker.read();
-      waitStats[threadId].put(waitEndTime - timestamp);
+      pushWaitStats[threadId].put(waitEndTime - timestamp);
       if (!kvStore.containsKey(key)) {
         kvStore.put(key, parameterUpdater.initValue(key));
       }
@@ -275,7 +281,7 @@ public final class StaticParameterServer<K, P, V> implements ParameterServer<K, 
     @Override
     public void apply(final Map<K, V> kvStore) {
       final long waitEndTime = ticker.read();
-      waitStats[threadId].put(waitEndTime - timestamp);
+      pullWaitStats[threadId].put(waitEndTime - timestamp);
 
       if (!kvStore.containsKey(key)) {
         kvStore.put(key, parameterUpdater.initValue(key));
