@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_mlr.sh -split 4 -numServers 2 -numPartitions 4 -numWorkerThreads 1 -local true -input sample_mlr -maxNumEvalLocal 7 -maxIter 20 -initStepSize 0.1 -classes 10 -features 784 -featuresPerPartition 392 -modelGaussian 0.001 -numBatchPerIter 3 -lambda 0.005 -timeout 200000 -statusLogPeriod 5 -decayPeriod 5 -decayRate 0.9 -numBatchPerLossLog 1 -trainErrorDatasetSize 30 -dynamic false
+# ./run_mlr.sh -split 4 -numServers 2 -numPartitions 4 -numWorkerThreads 1 -local true -input sample_mlr -maxNumEvalLocal 7 -maxIter 20 -initStepSize 0.1 -classes 10 -features 784 -featuresPerPartition 392 -modelGaussian 0.001 -numBatchPerIter 3 -lambda 0.005 -timeout 200000 -statusLogPeriod 5 -decayPeriod 5 -decayRate 0.9 -numBatchPerLossLog 1 -trainErrorDatasetSize 30 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.async.optimizer.AsyncDolphinPlanExecutor -optimizationIntervalMs 3000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 

@@ -86,6 +86,9 @@ public final class AsyncDolphinDriver {
   private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
   private static final String SERVER_EM_IDENTIFIER = "ServerEM";
 
+  /**
+   * Checks whether the Application is complete. Optimizer thread runs until this variable is set to true.
+   */
   private volatile boolean isComplete = false;
 
   /**
@@ -151,7 +154,7 @@ public final class AsyncDolphinDriver {
   private final AtomicInteger addedServerContextCount;
 
   /**
-   * Bookkeeping the active contexts.
+   * Bookkeeping the active contexts, including both Servers and Workers.
    */
   private final ConcurrentMap<String, ActiveContext> activeContexts = new ConcurrentHashMap<>();
 
@@ -462,7 +465,7 @@ public final class AsyncDolphinDriver {
   }
 
   /**
-   * Binds Worker-side configuration for EM Service.
+   * Returns Worker-side configuration for EM Service.
    */
   private Configuration getEMServiceConfForWorker(final String contextId, final boolean addedEval) {
     if (addedEval) {
@@ -578,10 +581,8 @@ public final class AsyncDolphinDriver {
       final ActiveContext activeContext = activeContexts.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
-        // Given active context should have a runningTask in a normal case, because our job is paused.
-        // Evaluator without corresponding runningTask implies error.
         LOG.log(Level.WARNING,
-            "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
+            "Trying to remove active context {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
         serverContexts.remove(activeContext);
@@ -605,10 +606,8 @@ public final class AsyncDolphinDriver {
       final ActiveContext activeContext = activeContexts.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
-        // Given active context should have a runningTask in a normal case, because our job is paused.
-        // Evaluator without corresponding runningTask implies error.
         LOG.log(Level.WARNING,
-            "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
+            "Trying to remove active context {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
         workerContextsToClose.remove(activeContext);
@@ -623,7 +622,7 @@ public final class AsyncDolphinDriver {
   }
 
   /**
-   * Sends callback message to notify the result of EM operations.
+   * Invokes callback message to notify the result of EM operations.
    */
   private void sendCallback(final String contextId,
                             final EventHandler<AvroElasticMemoryMessage> callback,

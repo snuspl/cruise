@@ -73,7 +73,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * Executes a plan using ElasticMemory and DriverSync.
+   * Executes a plan using ElasticMemory.
    *
    * The main steps are as follows. Intermediate steps take place within respective handlers,
    * as summarized in {@link ExecutingPlan}.
@@ -199,7 +199,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
    * This handler is registered as the active context callback of ElasticMemory.add().
    */
   private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace) {
-    final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(3);
+    final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(2);
     switch (namespace) {
     case NAMESPACE_SERVER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer(true));
