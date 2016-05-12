@@ -147,26 +147,27 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
 
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (blocks.containsKey(blockId)) {
-      throw new RuntimeException("Block " + blockId + " already exists.");
-    } else {
-      final Block block = new Block();
-      block.putAll(data);
-      blocks.put(blockId, block);
+      LOG.log(Level.SEVERE, "Block with id {0} already exists.", blockId);
+      throw new RuntimeException();
     }
+
+    final Block block = new Block();
+    block.putAll(data);
+    blocks.put(blockId, block);
   }
 
   @Override
   public Map<Long, Object> getBlock(final String dataType, final int blockId) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      LOG.log(Level.WARNING, "Data in type {0} has never been stored. The result is empty", dataType);
+      LOG.log(Level.FINE, "Data in type {0} has never been stored. The result is empty", dataType);
       return Collections.emptyMap();
     }
 
     final Block block = blocks.get(blockId);
     if (null == block) {
-      LOG.log(Level.WARNING, "Block with id {0} does not exist.", blockId);
-      return Collections.emptyMap();
+      LOG.log(Level.SEVERE, "Block with id {0} does not exist.", blockId);
+      throw new RuntimeException();
     }
 
     return block.getAll();
@@ -176,12 +177,14 @@ public final class MemoryStoreImpl implements RemoteAccessibleMemoryStore<Long> 
   public void removeBlock(final String dataType, final int blockId) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      throw new RuntimeException("Data type " + dataType + " does not exist.");
+      LOG.log(Level.FINE, "Blocks are not initialized for type {0}", dataType);
+      return;
     }
 
     final Block block = blocks.remove(blockId);
     if (null == block) {
-      throw new RuntimeException("Block with id " + blockId + " does not exist.");
+      LOG.log(Level.SEVERE, "Block with id {0} does not exist.", blockId);
+      throw new RuntimeException();
     }
   }
 
