@@ -419,9 +419,10 @@ final class MigrationManager {
   private void notifyUpdate(final Migration migration) {
     final int oldOwnerId = partitionManager.getMemoryStoreId(migration.getSenderId());
     final int newOwnerId = partitionManager.getMemoryStoreId(migration.getReceiverId());
+    final String newEvalId = migration.getReceiverId();
     final List<Integer> blockIds = migration.getBlockIds();
 
-    final EMRoutingTableUpdate update = new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, blockIds);
+    final EMRoutingTableUpdate update = new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockIds);
 
     for (final EventHandler<EMRoutingTableUpdate> callBack : updateCallbacks.values()) {
       callBack.onNext(update);
