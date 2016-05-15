@@ -62,6 +62,16 @@ public final class EMRoutingTableManager {
   }
 
   /**
+   * TODO #473: invoke this method when deleting memory store
+   * Called when a Server instance based on EM is deleted.
+   * This method cleans up existing metadata for the deleted server.
+   * @param storeId The MemoryStore id in EM.
+   */
+  public void deregisterServer(final int storeId) {
+    storeIdToEndpointId.remove(storeId);
+  }
+
+  /**
    * Registers an worker, {@code workerId} to be notified about updates in the routing table.
    * It also returns the PS server-side EM's routing table to pass it to an initiating PS worker.
    * @param workerId an worker id
