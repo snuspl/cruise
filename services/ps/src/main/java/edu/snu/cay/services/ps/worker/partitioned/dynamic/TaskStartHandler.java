@@ -39,7 +39,8 @@ public final class TaskStartHandler implements EventHandler<TaskStart> {
 
   @Override
   public void onNext(final TaskStart taskStart) {
-    LOG.log(Level.FINE, "Sends a msg to register itself to start subscribing updates in routing table");
+    LOG.log(Level.FINE, "Task {0} sends a msg to register itself to start subscribing updates in routing table",
+        taskStart.getId());
     sender.sendWorkerRegisterMsg();
   }
 }

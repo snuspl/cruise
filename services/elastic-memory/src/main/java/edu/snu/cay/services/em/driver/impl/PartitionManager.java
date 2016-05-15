@@ -149,7 +149,7 @@ public final class PartitionManager {
 
     final Set<Integer> remainingBlocks = storeIdToBlockIds.remove(memoryStoreId);
     if (remainingBlocks == null) {
-      throw new RuntimeException("The store" + memoryStoreId + "does not exist");
+      throw new RuntimeException("The store " + memoryStoreId + " does not exist");
     } else if (!remainingBlocks.isEmpty()) {
       throw new RuntimeException("This attempt tries to remove a non-empty store, resulting missing blocks.");
     }

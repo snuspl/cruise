@@ -37,7 +37,8 @@ public final class TaskStopHandler implements EventHandler<TaskStop> {
 
   @Override
   public void onNext(final TaskStop taskStop) {
-    LOG.log(Level.FINE, "Sends a msg to deregister itself to stop subscribing updates in routing table");
+    LOG.log(Level.FINE, "Task {0} sends a msg to deregister itself to stop subscribing updates in routing table",
+        taskStop.getId());
     sender.sendWorkerDeregisterMsg();
   }
 }
