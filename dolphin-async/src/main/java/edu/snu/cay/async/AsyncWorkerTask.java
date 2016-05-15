@@ -18,6 +18,7 @@ package edu.snu.cay.async;
 import  edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.impl.OperationRouter;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.reef.driver.task.TaskConfigurationOptions.Identifier;
@@ -58,8 +59,9 @@ final class AsyncWorkerTask implements Task {
                           @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
                           final Injector injector,
                           final DataIdFactory<Long> idFactory,
+                          final OperationRouter<Long> router,
                           final DataSet<LongWritable, Text> dataSet) {
-    // inject DataIdFactory here to make spawning threads share the same instance
+    // inject DataIdFactory and OperationRouter here to make spawning threads share the same instances
     this.taskId = taskId;
     this.maxIterations = maxIterations;
     this.numWorkerThreads = numWorkerThreads;
