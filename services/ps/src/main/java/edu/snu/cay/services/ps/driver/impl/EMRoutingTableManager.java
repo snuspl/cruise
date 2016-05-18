@@ -57,7 +57,7 @@ public final class EMRoutingTableManager {
    * @param storeId The MemoryStore id in EM.
    * @param endpointId The Endpoint id in PS.
    */
-  public void registerServer(final int storeId, final String endpointId) {
+  public synchronized void registerServer(final int storeId, final String endpointId) {
     storeIdToEndpointId.put(storeId, endpointId);
   }
 
@@ -101,6 +101,15 @@ public final class EMRoutingTableManager {
   }
 
   /**
+   * Broadcasts update in routing tables of EM in PS servers to all active PS workers
+   */
+  private synchronized void broadcastMsg(final AvroParameterServerMsg updateMsg) {
+    for (final String workerId : activeWorkerIds) {
+      sender.get().send(workerId, updateMsg);
+    }
+  }
+
+  /**
    * A handler of EMRoutingTableUpdate.
    * It broadcasts the update info to all active PS workers.
    */
@@ -123,10 +132,7 @@ public final class EMRoutingTableManager {
               .setRoutingTableUpdateMsg(routingTableUpdateMsg)
               .build();
 
-      // broadcast update in routing tables of EM in PS servers to all active PS workers
-      for (final String workerId : activeWorkerIds) {
-        sender.get().send(workerId, updateMsg);
-      }
+      broadcastMsg(updateMsg);
     }
   }
 }
