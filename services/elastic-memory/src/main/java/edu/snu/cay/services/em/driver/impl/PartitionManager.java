@@ -122,11 +122,10 @@ public final class PartitionManager {
     if (storeIdToBlockIds.containsKey(memoryStoreId)) {
       throw new RuntimeException("This evaluator is already registered. Its context Id is " + contextId);
     }
+    storeIdToBlockIds.put(memoryStoreId, new HashSet<Integer>());
 
     final int numActiveEvals = numEvalCounter.incrementAndGet();
-    LOG.log(Level.FINE, "MemoryStore({0}) is registered to {1}", new Object[]{memoryStoreId, contextId});
-
-    storeIdToBlockIds.put(memoryStoreId, new HashSet<Integer>());
+    LOG.log(Level.FINE, "MemoryStore {0} is assigned to eval {1}", new Object[]{memoryStoreId, contextId});
 
     // Fixed number of Blocks are assigned to the initial MemoryStores. When MemoryStores are created
     // by EM.add(), they are empty at first; existing blocks are moved to the new MemoryStores by EM.move(),
