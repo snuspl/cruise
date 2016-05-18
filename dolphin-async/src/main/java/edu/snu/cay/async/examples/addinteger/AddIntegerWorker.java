@@ -16,12 +16,18 @@
 package edu.snu.cay.async.examples.addinteger;
 
 import edu.snu.cay.async.Worker;
+import edu.snu.cay.services.em.common.parameters.AddedEval;
+import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
+import edu.snu.cay.services.em.evaluator.api.MemoryStore;
+import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.async.optimizer.OptimizationOrchestrator.DATA_TYPE_WORKER;
 
 /**
  * {@link Worker} class for the AddIntegerREEF application.
@@ -36,9 +42,19 @@ final class AddIntegerWorker implements Worker {
 
   @Inject
   private AddIntegerWorker(final ParameterWorker<Integer, Integer, Integer> parameterWorker,
-                           @Parameter(AddIntegerREEF.AddIntegerParameter.class) final int parameter) {
+                           final MemoryStore<Long> memoryStore,
+                           final DataIdFactory<Long> dataIdFactory,
+                           @Parameter(AddedEval.class) final boolean addedEval,
+                           @Parameter(AddIntegerREEF.AddIntegerParameter.class) final int parameter)
+      throws IdGenerationException {
     this.parameterWorker = parameterWorker;
     this.parameter = parameter;
+
+    // put at least one data entry to initialize blocks
+    if (!addedEval) {
+      final long dataKey = dataIdFactory.getId();
+      memoryStore.put(DATA_TYPE_WORKER, dataKey, dataKey); // hard-coded data type
+    }
   }
 
   @Override
@@ -47,8 +63,17 @@ final class AddIntegerWorker implements Worker {
 
   @Override
   public void run() {
+
+    // sleep 300 ms to simulate computation
+    // also it prevents the saturation of NCS in PS
+    try {
+      Thread.sleep(300);
+    } catch (final InterruptedException e) {
+      LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation");
+    }
     parameterWorker.push(KEY, parameter);
-    LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{KEY, parameterWorker.pull(KEY)});
+    final Integer value = parameterWorker.pull(KEY);
+    LOG.log(Level.INFO, "Current value associated with key {0} is {1}", new Object[]{KEY, value});
   }
 
   @Override
