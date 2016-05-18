@@ -90,8 +90,8 @@ public final class RandomOptimizer implements Optimizer {
       throw new IllegalArgumentException("availableEvaluators " + availableEvaluators + " must be > 0");
     }
 
-    // divide available evaluators by two for server and worker
-    final int numEvaluators = getEvaluatorsToUse(availableEvaluators) / 2;
+    final int numNamespace = evalParamsMap.size();
+    final int numEvaluators = getEvaluatorsToUse(availableEvaluators) / numNamespace;
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
