@@ -25,6 +25,6 @@ public final class Constants {
   private Constants() {
   }
 
-  public static final String SERVER_ID_PREFIX = "SERVER_ID_";
-  public static final String WORKER_ID_PREFIX = "WORKER_ID_";
+  public static final String SERVER_ID_PREFIX = "ServerContext-";
+  public static final String WORKER_ID_PREFIX = "WorkerContext-";
 }
