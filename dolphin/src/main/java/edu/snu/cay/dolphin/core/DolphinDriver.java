@@ -731,13 +731,14 @@ public final class DolphinDriver {
   final class TaskRemover implements EMDeleteExecutor {
 
     @Override
-    public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
+    public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
       final RunningTask runningTask = taskTracker.getRunningTask(activeContextId);
       if (runningTask == null) {
         // Given active context should have a runningTask in a normal case, because our job is paused.
         // Evaluator without corresponding runningTask implies error.
         LOG.log(Level.WARNING,
             "Trying to remove running task on active context {0}. Cannot find running task on it", activeContextId);
+        return false;
       } else {
         final int currentSequence = contextToStageSequence.get(runningTask.getActiveContext().getId());
         final CommunicationGroupDriverImpl commGroup
@@ -754,6 +755,7 @@ public final class DolphinDriver {
             .setSrcId(activeContextId)
             .setDestId("")
             .build());
+        return true;
       }
     }
   }

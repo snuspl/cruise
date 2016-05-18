@@ -33,6 +33,7 @@ import edu.snu.cay.services.ps.worker.partitioned.ContextStopHandler;
 import edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerHandler;
+import edu.snu.cay.services.ps.worker.partitioned.dynamic.TaskStopHandler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -90,6 +91,7 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, PartitionedParameterWorker.class)
             .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
+            .set(ServiceConfiguration.ON_TASK_STOP, TaskStopHandler.class)
             .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
             .build())
         .bindImplementation(ParameterWorker.class, PartitionedParameterWorker.class)

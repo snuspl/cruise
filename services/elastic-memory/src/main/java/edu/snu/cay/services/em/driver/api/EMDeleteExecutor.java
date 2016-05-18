@@ -34,6 +34,7 @@ public interface EMDeleteExecutor {
    * Execute EM delete operation.
    * @param evalId identifier of the evaluator to release
    * @param callback an application-level callback to be called
+   * @return true if succeeds to delete
    */
-  void execute(String evalId, EventHandler<AvroElasticMemoryMessage> callback);
+  boolean execute(String evalId, EventHandler<AvroElasticMemoryMessage> callback);
 }

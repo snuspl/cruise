@@ -126,15 +126,21 @@ public final class ElasticMemoryImpl implements ElasticMemory {
       }
     }
 
+    final boolean isSuccess;
+
     if (callback == null) {
-      deleteExecutor.get().execute(evalId, new EventHandler<AvroElasticMemoryMessage>() {
+      isSuccess = deleteExecutor.get().execute(evalId, new EventHandler<AvroElasticMemoryMessage>() {
         @Override
         public void onNext(final AvroElasticMemoryMessage msg) {
 
         }
       });
     } else {
-      deleteExecutor.get().execute(evalId, callback);
+      isSuccess = deleteExecutor.get().execute(evalId, callback);
+    }
+
+    if (isSuccess) {
+      partitionManager.deregisterEvaluator(evalId);
     }
   }
 
