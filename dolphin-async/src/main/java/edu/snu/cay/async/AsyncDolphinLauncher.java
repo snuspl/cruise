@@ -27,6 +27,7 @@ import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.optimizer.conf.OptimizerClass;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.conf.PlanExecutorClass;
+import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
 import edu.snu.cay.services.ps.common.partitioned.parameters.Dynamic;
 import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
@@ -91,6 +92,14 @@ public final class AsyncDolphinLauncher {
   final class SerializedWorkerConfiguration implements Name<String> {
   }
 
+  @NamedParameter(doc = "configuration for the EM worker-side client, specifically the Serializer class")
+  final class SerializedEMWorkerClientConfiguration implements Name<String> {
+  }
+
+  @NamedParameter(doc = "configuration for the EM server-side client, specifically the Serializer class")
+  final class SerializedEMServerClientConfiguration implements Name<String> {
+  }
+
   /**
    * Should not be instantiated.
    */
@@ -151,13 +160,26 @@ public final class AsyncDolphinLauncher {
           .bindNamedParameter(SerializedParameterConfiguration.class, confSerializer.toString(userParameterConf))
           .build();
 
+      final Configuration emWorkerClientConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindImplementation(Serializer.class, asyncDolphinConfiguration.getWorkerSerializerClass())
+          .build();
+      final Configuration emServerClientConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindImplementation(Serializer.class, asyncDolphinConfiguration.getServerSerializerClass())
+          .build();
+
+      final Configuration serializedEMClientConf = Tang.Factory.getTang().newConfigurationBuilder()
+          .bindNamedParameter(SerializedEMWorkerClientConfiguration.class, confSerializer.toString(emWorkerClientConf))
+          .bindNamedParameter(SerializedEMServerClientConfiguration.class, confSerializer.toString(emServerClientConf))
+          .build();
+
+
       // driver-side configurations
       final Configuration driverConf = getDriverConfiguration(jobName, basicParameterInjector);
       final int timeout = basicParameterInjector.getNamedInstance(Timeout.class);
 
       final LauncherStatus status = DriverLauncher.getLauncher(runTimeConf).run(
           Configurations.merge(basicParameterConf, parameterServerConf,
-              serializedWorkerConf, driverConf, customDriverConfiguration),
+              serializedWorkerConf, driverConf, customDriverConfiguration, serializedEMClientConf),
           timeout);
       LOG.log(Level.INFO, "REEF job completed: {0}", status);
       return status;

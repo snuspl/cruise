@@ -16,7 +16,7 @@
 package edu.snu.cay.services.ps.worker.partitioned.dynamic;
 
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerMsgSender;
-import org.apache.reef.task.events.TaskStart;
+import org.apache.reef.task.events.TaskStop;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
@@ -24,23 +24,21 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Sends a msg to register itself to start subscribing updates of the EM's routing table in PS servers.
- * {@link edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver} will receive the response
- * of the whole routing table and keep being updated when there's any change.
+ * Sends a msg to deregister the worker itself to stop subscribing the updates of EM routing table in PS servers.
  */
-public final class TaskStartHandler implements EventHandler<TaskStart> {
-  private static final Logger LOG = Logger.getLogger(TaskStartHandler.class.getName());
+public final class TaskStopHandler implements EventHandler<TaskStop> {
+  private static final Logger LOG = Logger.getLogger(TaskStopHandler.class.getName());
   private PartitionedWorkerMsgSender sender;
 
   @Inject
-  private TaskStartHandler(final PartitionedWorkerMsgSender sender) {
+  private TaskStopHandler(final PartitionedWorkerMsgSender sender) {
     this.sender = sender;
   }
 
   @Override
-  public void onNext(final TaskStart taskStart) {
-    LOG.log(Level.FINE, "Task {0} sends a msg to register itself to start subscribing updates in routing table",
-        taskStart.getId());
-    sender.sendWorkerRegisterMsg();
+  public void onNext(final TaskStop taskStop) {
+    LOG.log(Level.FINE, "Task {0} sends a msg to deregister itself to stop subscribing updates in routing table",
+        taskStop.getId());
+    sender.sendWorkerDeregisterMsg();
   }
 }

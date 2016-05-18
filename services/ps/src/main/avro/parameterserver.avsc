@@ -48,14 +48,13 @@
 },
 
 /**
- * This message is sent from PS Worker to the PS Driver to access the
- * routing table in EM. Only Dynamic Partitioned PS uses this message
- * where the routing table is determined by the EM.
+ * This message is sent from PS Worker to the PS Driver to register itself.
+ * Only Dynamic Partitioned PS uses this message to retrieve the routing table determined by the EM.
  */
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
-  "name": "RoutingTableReqMsg",
+  "name": "WorkerRegisterMsg",
   "fields":[]
 },
 
@@ -80,7 +79,7 @@
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
-  "name": "RoutingTableReplyMsg",
+  "name": "WorkerRegisterReplyMsg",
   "fields":
   [
     {"name": "idMappings", "type": {"type": "array", "items": "IdMapping"}},
@@ -104,6 +103,17 @@
   ]
 },
 
+/**
+ * This message is sent from PS Worker to the PS Driver to deregister itself.
+ * Only Dynamic Partitioned PS uses this message.
+ */
+{
+  "namespace": "edu.snu.cay.services.ps.avro",
+  "type": "record",
+  "name": "WorkerDeregisterMsg",
+  "fields":[]
+},
+
 {
   "namespace": "edu.snu.cay.services.ps.avro",
   "type": "record",
@@ -115,13 +125,14 @@
        {"type": "enum",
         "name": "Type",
         "symbols": ["PushMsg", "PullMsg", "ReplyMsg",
-         "RoutingTableReqMsg", "RoutingTableReplyMsg", "RoutingTableUpdateMsg"]}},
+         "WorkerRegisterMsg", "WorkerRegisterReplyMsg", "RoutingTableUpdateMsg", "WorkerDeregisterMsg"]}},
     {"name": "pushMsg", "type": ["null", "PushMsg"], "default": null},
     {"name": "pullMsg", "type": ["null", "PullMsg"], "default": null},
     {"name": "replyMsg", "type": ["null", "ReplyMsg"], "default": null},
-    {"name": "routingTableReqMsg", "type": ["null", "RoutingTableReqMsg"], "default": null},
-    {"name": "routingTableReplyMsg", "type": ["null", "RoutingTableReplyMsg"], "default": null},
-    {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null}
+    {"name": "workerRegisterMsg", "type": ["null", "WorkerRegisterMsg"], "default": null},
+    {"name": "workerRegisterReplyMsg", "type": ["null", "WorkerRegisterReplyMsg"], "default": null},
+    {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},
+    {"name": "workerDeregisterMsg", "type": ["null", "WorkerDeregisterMsg"], "default": null}
   ]
 }
 ]

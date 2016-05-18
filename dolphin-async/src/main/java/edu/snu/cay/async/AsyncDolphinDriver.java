@@ -170,6 +170,16 @@ public final class AsyncDolphinDriver {
   private final Configuration paramConf;
 
   /**
+   * Worker-side EM client configuration, that should be passed to worker EM contexts.
+   */
+  private final Configuration emWorkerClientConf;
+
+  /**
+   * Server-side EM client configuration, that should be passed to server EM contexts.
+   */
+  private final Configuration emServerClientConf;
+
+  /**
    * Queue of activeContext objects of the evaluators housing the parameter server.
    */
   private ConcurrentLinkedQueue<ActiveContext> serverContexts;
@@ -238,6 +248,10 @@ public final class AsyncDolphinDriver {
                              final AggregationManager aggregationManager,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
+                             @Parameter(SerializedEMWorkerClientConfiguration.class)
+                                 final String serializedEMWorkerClientConf,
+                             @Parameter(SerializedEMServerClientConfiguration.class)
+                                 final String serializedEMServerClientConf,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
@@ -261,6 +275,9 @@ public final class AsyncDolphinDriver {
     this.workerContextsToClose = new ConcurrentLinkedQueue<>();
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
+    this.emWorkerClientConf = configurationSerializer.fromString(serializedEMWorkerClientConf);
+    this.emServerClientConf = configurationSerializer.fromString(serializedEMServerClientConf);
+
     this.numWorkerThreads = numWorkerThreads;
     this.traceParameters = traceParameters;
     this.optimizationIntervalMs = optimizationIntervalMs;
@@ -394,7 +411,7 @@ public final class AsyncDolphinDriver {
           // to synchronize EM's MemoryStore id and PS's Network endpoint.
           final int memoryStoreId = serviceInjector.getNamedInstance(MemoryStoreId.class);
           final String endpointId = serviceInjector.getNamedInstance(EndpointId.class);
-          emRoutingTableManager.register(memoryStoreId, endpointId);
+          emRoutingTableManager.registerServer(memoryStoreId, endpointId);
         } catch (final InjectionException e) {
           throw new RuntimeException(e);
         }
@@ -577,7 +594,7 @@ public final class AsyncDolphinDriver {
    */
   final class ServerRemover implements EMDeleteExecutor {
     @Override
-    public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
+    public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
       final ActiveContext activeContext = activeContexts.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
@@ -593,6 +610,7 @@ public final class AsyncDolphinDriver {
         isSuccess = true;
       }
       sendCallback(activeContextId, callback, isSuccess);
+      return isSuccess;
     }
   }
 
@@ -602,7 +620,7 @@ public final class AsyncDolphinDriver {
    */
   final class WorkerRemover implements EMDeleteExecutor {
     @Override
-    public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
+    public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
       final ActiveContext activeContext = activeContexts.remove(activeContextId);
       final boolean isSuccess;
       if (activeContext == null) {
@@ -618,6 +636,7 @@ public final class AsyncDolphinDriver {
         isSuccess = true;
       }
       sendCallback(activeContextId, callback, isSuccess);
+      return isSuccess;
     }
   }
 
