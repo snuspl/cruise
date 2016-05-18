@@ -101,7 +101,7 @@ public final class EMRoutingTableManager {
   }
 
   /**
-   * Broadcasts update in routing tables of EM in PS servers to all active PS workers
+   * Broadcasts update in routing tables of EM in PS servers to all active PS workers.
    */
   private synchronized void broadcastMsg(final AvroParameterServerMsg updateMsg) {
     for (final String workerId : activeWorkerIds) {
