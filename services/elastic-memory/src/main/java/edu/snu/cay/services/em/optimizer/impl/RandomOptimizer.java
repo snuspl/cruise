@@ -84,11 +84,14 @@ public final class RandomOptimizer implements Optimizer {
   @Override
   public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap,
                        final int availableEvaluators) {
+    LOG.log(Level.INFO, "Optimization info: {0}, {1}", new Object[]{evalParamsMap, availableEvaluators});
+
     if (availableEvaluators <= 0) {
       throw new IllegalArgumentException("availableEvaluators " + availableEvaluators + " must be > 0");
     }
 
-    final int numEvaluators = getEvaluatorsToUse(availableEvaluators);
+    // divide available evaluators by two for server and worker
+    final int numEvaluators = getEvaluatorsToUse(availableEvaluators) / 2;
 
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
