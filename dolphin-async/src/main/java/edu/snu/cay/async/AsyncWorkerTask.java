@@ -26,7 +26,10 @@ import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.task.Task;
+import org.apache.reef.task.events.CloseEvent;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.Iterator;
@@ -35,6 +38,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,6 +47,7 @@ import java.util.logging.Logger;
  * Spawns several computation threads and runs them using
  * a fixed thread pool ({@link Executors#newFixedThreadPool(int)}.
  */
+@Unit
 final class AsyncWorkerTask implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
@@ -52,6 +57,8 @@ final class AsyncWorkerTask implements Task {
   private final int numWorkerThreads;
   private final Injector injector;
   private final DataSet<LongWritable, Text> dataSet;
+
+  private final AtomicBoolean abort = new AtomicBoolean(false);
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
@@ -90,6 +97,10 @@ final class AsyncWorkerTask implements Task {
         public void run() {
           worker.initialize();
           for (int iteration = 0; iteration < maxIterations; ++iteration) {
+            if (abort.get()) {
+              LOG.log(Level.INFO, "Abort task");
+              return;
+            }
             worker.run();
           }
           worker.cleanup();
@@ -142,6 +153,14 @@ final class AsyncWorkerTask implements Task {
     @Override
     public Iterator<Pair<LongWritable, Text>> iterator() {
       return dataSet.iterator();
+    }
+  }
+
+  final class CloseEventHandler implements EventHandler<CloseEvent> {
+
+    @Override
+    public void onNext(final CloseEvent closeEvent) {
+      abort.set(true);
     }
   }
 }
