@@ -49,6 +49,7 @@ import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.FailedTask;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.data.loading.api.DataSet;
@@ -68,7 +69,9 @@ import org.apache.reef.wake.time.event.StartTime;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -125,8 +128,10 @@ public final class AsyncDolphinDriver {
   private final ParameterServerDriver psDriver;
 
   /**
-   * Accessor for configurations of elastic memory service.
+   * Counters for incrementally indexing contexts of worker and server respectively.
    */
+  private final AtomicInteger workerContextIndexCounter = new AtomicInteger(0);
+  private final AtomicInteger serverContextIndexCounter = new AtomicInteger(0);
 
   /**
    * Class providing a configuration for HTrace.
@@ -157,6 +162,11 @@ public final class AsyncDolphinDriver {
    * Bookkeeping the active contexts, including both Servers and Workers.
    */
   private final ConcurrentMap<String, ActiveContext> activeContexts = new ConcurrentHashMap<>();
+
+  /**
+   * Bookkeeping the running task of workers.
+   */
+  private final ConcurrentMap<String, RunningTask> contextIdToRunningTasks = new ConcurrentHashMap<>();
 
   /**
    * Number of evaluators that have completed or failed.
@@ -353,7 +363,8 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
         LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
-        final int serverIndex = runningServerContextCount.getAndIncrement();
+        final int serverIndex = serverContextIndexCounter.getAndIncrement();
+        runningServerContextCount.getAndIncrement();
         final Configuration idConfiguration = ContextConfiguration.CONF
             .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + serverIndex)
             .build();
@@ -448,7 +459,8 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
-        final int workerIndex = runningWorkerContextCount.getAndIncrement();
+        final int workerIndex = workerContextIndexCounter.getAndIncrement();
+        runningWorkerContextCount.getAndIncrement();
 
         if (addedEval) {
           final int numAdded = addedWorkerContextCount.incrementAndGet();
@@ -538,6 +550,13 @@ public final class AsyncDolphinDriver {
     }
   }
 
+  final class RunningTaskHandler implements EventHandler<RunningTask> {
+    @Override
+    public void onNext(final RunningTask runningTask) {
+      contextIdToRunningTasks.putIfAbsent(runningTask.getActiveContext().getId(), runningTask);
+    }
+  }
+
   final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
@@ -555,6 +574,7 @@ public final class AsyncDolphinDriver {
   final class FailedTaskHandler implements EventHandler<FailedTask> {
     @Override
     public void onNext(final FailedTask failedTask) {
+      // TODO #00: relaunch the task
       if (failedTask.getActiveContext().isPresent()) {
         workerContextsToClose.add(failedTask.getActiveContext().get());
       } else {
@@ -565,10 +585,20 @@ public final class AsyncDolphinDriver {
     }
   }
 
+  /**
+   * Bookkeeping of context id of workers deleted by EM's Delete.
+   */
+  private final Set<String> deletedWorkerSet = new HashSet<>();
+
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(final CompletedTask completedTask) {
-      workerContextsToClose.add(completedTask.getActiveContext());
+      if (deletedWorkerSet.remove(completedTask.getActiveContext().getId())) {
+        // reclaim resource promptly when the task is complete by EM's Delete
+        completedTask.getActiveContext().close();
+      } else {
+        workerContextsToClose.add(completedTask.getActiveContext());
+      }
       checkShutdown();
     }
   }
@@ -576,6 +606,17 @@ public final class AsyncDolphinDriver {
   private void checkShutdown() {
     if (completedOrFailedEvalCount.incrementAndGet() ==
         initServerCount + addedServerContextCount.get() + initWorkerCount + addedWorkerContextCount.get()) {
+
+      // TODO #00: make it handled by dedicated thread
+      while (optimizationOrchestrator.isPlanExecuting()) {
+        try {
+          LOG.log(Level.INFO, "It's time to shutdown active contexts, but wait for completion of plan execution");
+          Thread.sleep(3000);
+        } catch (final InterruptedException e) {
+          LOG.log(Level.FINEST, "Interrupted while waiting for plan finish", e);
+        }
+      }
+
       // Since it is not guaranteed that the messages from workers are completely received and processed,
       // the servers may lose some updates.
       for (final ActiveContext serverContext : serverContexts) {
@@ -628,7 +669,11 @@ public final class AsyncDolphinDriver {
             "Trying to remove active context {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
-        workerContextsToClose.remove(activeContext);
+        deletedWorkerSet.add(activeContextId);
+
+        final RunningTask runningTask = contextIdToRunningTasks.get(activeContextId);
+        runningTask.close();
+
         // TODO #205: Reconsider using of Avro message in EM's callback
         activeContext.close();
         final int remainingNumWorkers = runningWorkerContextCount.decrementAndGet();

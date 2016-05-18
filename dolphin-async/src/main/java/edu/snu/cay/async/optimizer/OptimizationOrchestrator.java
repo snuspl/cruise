@@ -98,7 +98,7 @@ public final class OptimizationOrchestrator {
     });
   }
 
-  private boolean isPlanExecuting() {
+  public boolean isPlanExecuting() {
     return planExecutionResult != null && !planExecutionResult.isDone();
   }
 
