@@ -36,22 +36,19 @@ public final class NetworkContextRegister {
 
   private final PSNetworkSetup psNetworkSetup;
   private final IdentifierFactory identifierFactory;
-  private final String endpointId;
 
   @Inject
   private NetworkContextRegister(final PSNetworkSetup psNetworkSetup,
-                                 final IdentifierFactory identifierFactory,
-                                 @Parameter(EndpointId.class) final String endpointId) {
+                                 final IdentifierFactory identifierFactory) {
     this.psNetworkSetup = psNetworkSetup;
     this.identifierFactory = identifierFactory;
-    this.endpointId = endpointId;
   }
 
   public final class RegisterContextHandler implements EventHandler<ContextStart> {
     @Override
     public void onNext(final ContextStart contextStart) {
-      psNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(endpointId));
-      LOG.log(Level.INFO, "My NCS id is " + endpointId);
+      psNetworkSetup.registerConnectionFactory(identifierFactory.getNewInstance(contextStart.getId()));
+      LOG.log(Level.INFO, "My NCS id is " + psNetworkSetup.getMyId());
     }
   }
 
