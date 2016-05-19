@@ -411,7 +411,7 @@ public final class AsyncDolphinDriver {
             psDriver.getContextConfiguration(),
             serverEMWrapper.getConf().getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
-            psDriver.getServerServiceConfiguration(),
+            psDriver.getServerServiceConfiguration(contextId),
             Tang.Factory.getTang().newConfigurationBuilder(
                 serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
@@ -477,7 +477,7 @@ public final class AsyncDolphinDriver {
             aggregationManager.getContextConfiguration());
 
         final Configuration serviceConf = Configurations.merge(
-            psDriver.getWorkerServiceConfiguration(),
+            psDriver.getWorkerServiceConfiguration(contextId),
             getEMServiceConfForWorker(contextId, addedEval),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
             MetricsCollectionService.getServiceConfiguration());
