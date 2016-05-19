@@ -109,11 +109,13 @@ public final class EMRoutingTableManager {
     public void onNext(final EMRoutingTableUpdate emRoutingTableUpdate) {
       final int oldOwnerId = emRoutingTableUpdate.getOldOwnerId();
       final int newOwnerId = emRoutingTableUpdate.getNewOwnerId();
+      final String newEvalID = emRoutingTableUpdate.getNewEvalId();
       final List<Integer> blockIds = emRoutingTableUpdate.getBlockIds();
 
       final RoutingTableUpdateMsg routingTableUpdateMsg = RoutingTableUpdateMsg.newBuilder()
           .setOldOwnerId(oldOwnerId)
           .setNewOwnerId(newOwnerId)
+          .setNewEvalId(newEvalID)
           .setBlockIds(blockIds)
           .build();
 

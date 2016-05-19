@@ -108,6 +108,11 @@ public final class DynamicServerResolver implements ServerResolver {
   public void updateRoutingTable(final EMRoutingTableUpdate routingTableUpdate) {
     final int oldOwnerId = routingTableUpdate.getOldOwnerId();
     final int newOwnerId = routingTableUpdate.getNewOwnerId();
+    final String newEvalId = routingTableUpdate.getNewEvalId();
+
+    // add or replace an eval id of a store
+    storeIdToEndpointId.put(newOwnerId, newEvalId);
+
     for (final int blockId : routingTableUpdate.getBlockIds()) {
       final int actualOldOwnerId = blockIdToStoreId.put(blockId, newOwnerId);
       if (oldOwnerId != actualOldOwnerId) {

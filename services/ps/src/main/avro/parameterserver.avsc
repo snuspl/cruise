@@ -99,6 +99,7 @@
   [
     {"name": "oldOwnerId", "type": "int"},
     {"name": "newOwnerId", "type": "int"},
+    {"name": "newEvalId", "type": "string"},
     {"name": "blockIds", "type": {"type": "array", "items": "int"}}
   ]
 },
