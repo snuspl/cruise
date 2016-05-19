@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.async;
 
+import edu.snu.cay.services.em.serialize.JavaSerializer;
+import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.io.serialization.Codec;
@@ -39,19 +41,26 @@ public final class AsyncDolphinConfiguration {
   private final Class<? extends Codec> preValueCodecClass;
   private final Class<? extends Codec> valueCodecClass;
   private final List<Class<? extends Name<?>>> parameterClassList;
+  private final Class<? extends Serializer> workerSerializerClass;
+  private final Class<? extends Serializer> serverSerializerClass;
+
 
   private AsyncDolphinConfiguration(final Class<? extends Worker> workerClass,
                                     final Class<? extends ParameterUpdater> updaterClass,
                                     final Class<? extends Codec> keyCodecClass,
                                     final Class<? extends Codec> preValueCodecClass,
                                     final Class<? extends Codec> valueCodecClass,
-                                    final List<Class<? extends Name<?>>> parameterClassList) {
+                                    final List<Class<? extends Name<?>>> parameterClassList,
+                                    final Class<? extends Serializer> workerSerializerClass,
+                                    final Class<? extends Serializer> serverSerializerClass) {
     this.workerClass = workerClass;
     this.updaterClass = updaterClass;
     this.keyCodecClass = keyCodecClass;
     this.preValueCodecClass = preValueCodecClass;
     this.valueCodecClass = valueCodecClass;
     this.parameterClassList = parameterClassList;
+    this.workerSerializerClass = workerSerializerClass;
+    this.serverSerializerClass = serverSerializerClass;
   }
 
   public Class<? extends Worker> getWorkerClass() {
@@ -78,6 +87,15 @@ public final class AsyncDolphinConfiguration {
     return parameterClassList;
   }
 
+  public Class<? extends Serializer> getWorkerSerializerClass() {
+    return workerSerializerClass;
+  }
+
+  public Class<? extends Serializer> getServerSerializerClass() {
+    return serverSerializerClass;
+  }
+
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -89,6 +107,9 @@ public final class AsyncDolphinConfiguration {
     private Class<? extends Codec> preValueCodecClass = SerializableCodec.class;
     private Class<? extends Codec> valueCodecClass = SerializableCodec.class;
     private List<Class<? extends Name<?>>> parameterClassList = new LinkedList<>();
+    private Class<? extends Serializer> workerSerializerClass = JavaSerializer.class;
+    private Class<? extends Serializer> serverSerializerClass = JavaSerializer.class;
+
 
     public Builder setWorkerClass(final Class<? extends Worker> workerClass) {
       this.workerClass = workerClass;
@@ -120,6 +141,16 @@ public final class AsyncDolphinConfiguration {
       return this;
     }
 
+    public Builder setWorkerSerializerClass(final Class<? extends Serializer> workerSerializerClass) {
+      this.workerSerializerClass = workerSerializerClass;
+      return this;
+    }
+
+    public Builder setServerSerializerClass(final Class<? extends Serializer> serverSerializerClass) {
+      this.serverSerializerClass = serverSerializerClass;
+      return this;
+    }
+
     @Override
     public AsyncDolphinConfiguration build() {
       if (workerClass == null) {
@@ -131,7 +162,8 @@ public final class AsyncDolphinConfiguration {
       }
 
       return new AsyncDolphinConfiguration(workerClass, updaterClass,
-          keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList);
+          keyCodecClass, preValueCodecClass, valueCodecClass, parameterClassList,
+          workerSerializerClass, serverSerializerClass);
     }
   }
 }

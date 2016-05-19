@@ -32,7 +32,7 @@ public final class EMDeleteExecutorImpl implements EMDeleteExecutor {
   }
 
   @Override
-  public void execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
+  public boolean execute(final String activeContextId, final EventHandler<AvroElasticMemoryMessage> callback) {
     throw new UnsupportedOperationException();
   }
 }

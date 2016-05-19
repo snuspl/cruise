@@ -140,6 +140,22 @@ public final class PartitionManager {
   }
 
   /**
+   * Deregister an evaluator.
+   * It should be called after all blocks in the store of the evaluator are completely moved out.
+   * @param contextId an id of context
+   */
+  public synchronized void deregisterEvaluator(final String contextId) {
+    final int memoryStoreId = getMemoryStoreId(contextId);
+
+    final Set<Integer> remainingBlocks = storeIdToBlockIds.remove(memoryStoreId);
+    if (remainingBlocks == null) {
+      throw new RuntimeException("The store " + memoryStoreId + " does not exist");
+    } else if (!remainingBlocks.isEmpty()) {
+      throw new RuntimeException("This attempt tries to remove a non-empty store, resulting missing blocks.");
+    }
+  }
+
+  /**
    * Return the current locations of blocks.
    * @return a list of store ids, whose index is an block id.
    */

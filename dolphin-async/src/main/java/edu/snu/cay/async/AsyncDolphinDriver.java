@@ -142,6 +142,16 @@ final class AsyncDolphinDriver {
   private final Configuration paramConf;
 
   /**
+   * Worker-side EM client configuration, that should be passed to worker EM contexts.
+   */
+  private final Configuration emWorkerClientConf;
+
+  /**
+   * Server-side EM client configuration, that should be passed to server EM contexts.
+   */
+  private final Configuration emServerClientConf;
+
+  /**
    * Queue of activeContext objects of the evaluators housing the parameter server.
    */
   private ConcurrentLinkedQueue<ActiveContext> serverContexts;
@@ -195,6 +205,10 @@ final class AsyncDolphinDriver {
                              final AggregationManager aggregationManager,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
+                             @Parameter(SerializedEMWorkerClientConfiguration.class)
+                                 final String serializedEMWorkerClientConf,
+                             @Parameter(SerializedEMServerClientConfiguration.class)
+                                 final String serializedEMServerClientConf,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
@@ -215,6 +229,9 @@ final class AsyncDolphinDriver {
     this.workerContextsToClose = new ConcurrentLinkedQueue<>();
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
+    this.emWorkerClientConf = configurationSerializer.fromString(serializedEMWorkerClientConf);
+    this.emServerClientConf = configurationSerializer.fromString(serializedEMServerClientConf);
+
     this.numWorkerThreads = numWorkerThreads;
     this.traceParameters = traceParameters;
 
@@ -319,7 +336,7 @@ final class AsyncDolphinDriver {
             // to synchronize EM's MemoryStore id and PS's Network endpoint.
             final int memoryStoreId = serviceInjector.getNamedInstance(MemoryStoreId.class);
             final String endpointId = serviceInjector.getNamedInstance(EndpointId.class);
-            emRoutingTableManager.register(memoryStoreId, endpointId);
+            emRoutingTableManager.registerServer(memoryStoreId, endpointId);
           } catch (final InjectionException e) {
             throw new RuntimeException(e);
           }
@@ -327,7 +344,7 @@ final class AsyncDolphinDriver {
           final Configuration traceConf = traceParameters.getConfiguration();
 
           activeContext.submitContextAndService(contextConf,
-              Configurations.merge(serviceConf, traceConf, paramConf));
+              Configurations.merge(serviceConf, traceConf, paramConf, emServerClientConf));
         }
       };
     }
@@ -376,7 +393,7 @@ final class AsyncDolphinDriver {
               .build();
 
           activeContext.submitContextAndService(contextConf,
-              Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf));
+              Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, emWorkerClientConf));
         }
       };
     }

@@ -80,8 +80,8 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
       onReplyMsg(innerMsg.getReplyMsg());
       break;
 
-    case RoutingTableReplyMsg:
-      onRoutingTableReplyMsg(innerMsg.getRoutingTableReplyMsg());
+    case WorkerRegisterReplyMsg:
+      onRoutingTableReplyMsg(innerMsg.getWorkerRegisterReplyMsg());
       break;
 
     case RoutingTableUpdateMsg:
@@ -95,9 +95,9 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
     LOG.exiting(WorkerSideMsgHandler.class.getSimpleName(), "onNext");
   }
 
-  private void onRoutingTableReplyMsg(final RoutingTableReplyMsg routingTableReplyMsg) {
-    final List<IdMapping> idMappings = routingTableReplyMsg.getIdMappings();
-    final int numTotalBlocks = routingTableReplyMsg.getNumTotalBlocks();
+  private void onRoutingTableReplyMsg(final WorkerRegisterReplyMsg workerRegisterReplyMsg) {
+    final List<IdMapping> idMappings = workerRegisterReplyMsg.getIdMappings();
+    final int numTotalBlocks = workerRegisterReplyMsg.getNumTotalBlocks();
 
     final Map<Integer, Set<Integer>> storeIdToBlockIds  = new HashMap<>(idMappings.size());
     final Map<Integer, String> storeIdToEndpointId = new HashMap<>(idMappings.size());

@@ -114,7 +114,7 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   public void requestInitialization() {
     LOG.log(Level.FINE, "Sends an init request for the routing table");
-    msgSender.get() .sendRoutingTableRequestMsg();
+    msgSender.get().sendWorkerRegisterMsg();
   }
 
   @Override

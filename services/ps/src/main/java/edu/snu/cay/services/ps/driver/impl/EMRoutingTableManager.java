@@ -57,23 +57,47 @@ public final class EMRoutingTableManager {
    * @param storeId The MemoryStore id in EM.
    * @param endpointId The Endpoint id in PS.
    */
-  public void register(final int storeId, final String endpointId) {
+  public void registerServer(final int storeId, final String endpointId) {
     storeIdToEndpointId.put(storeId, endpointId);
   }
 
   /**
-   * Returns the PS server-side EM's routing table to pass it to an initiating PS worker {@code workerId}.
-   * It also registers {@code workerId} to notify further updates in the routing table.
+   * TODO #473: invoke this method when deleting memory store
+   * Called when a Server instance based on EM is deleted.
+   * This method cleans up existing metadata for the deleted server.
+   * @param storeId The MemoryStore id in EM.
+   */
+  public void deregisterServer(final int storeId) {
+    storeIdToEndpointId.remove(storeId);
+  }
+
+  /**
+   * Registers an worker, {@code workerId} to be notified about updates in the routing table.
+   * It also returns the PS server-side EM's routing table to pass it to an initiating PS worker.
    * @param workerId an worker id
    * @return The server-side EM's routing table
    */
-  EMRoutingTable getEMRoutingTable(final String workerId) {
+  synchronized EMRoutingTable registerWorker(final String workerId) {
+    if (activeWorkerIds.isEmpty()) {
+      elasticMemory.registerRoutingTableUpdateCallback(CLIENT_ID, new EMRoutingTableUpdateHandler());
+    }
     activeWorkerIds.add(workerId);
-    elasticMemory.registerRoutingTableUpdateCallback(CLIENT_ID, new EMRoutingTableUpdateHandler());
     return new EMRoutingTable(
         elasticMemory.getStoreIdToBlockIds(),
         storeIdToEndpointId,
         elasticMemory.getNumTotalBlocks());
+  }
+
+  /**
+   * Deregisters an worker, {@code workerId} when the worker stops working.
+   * After invoking this method, the worker will not be notified with the further update of the routing table.
+   * @param workerId an worker id
+   */
+  synchronized void deregisterWorker(final String workerId) {
+    activeWorkerIds.remove(workerId);
+    if (activeWorkerIds.isEmpty()) {
+      elasticMemory.deregisterRoutingTableUpdateCallback(CLIENT_ID);
+    }
   }
 
   /**

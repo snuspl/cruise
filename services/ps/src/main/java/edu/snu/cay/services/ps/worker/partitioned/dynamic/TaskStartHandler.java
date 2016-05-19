@@ -22,9 +22,9 @@ import org.apache.reef.wake.EventHandler;
 import javax.inject.Inject;
 
 /**
- * Sends a request for EM's routing table to the Driver from Dynamic Partitioned PS Worker, when Task starts.
- * {@link edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver} receives the response
- * of the routing table.
+ * Sends a msg to register itself to start subscribing updates of the EM's routing table in PS servers.
+ * {@link edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver} will receive the response
+ * of the whole routing table and keep being updated when there's any change.
  */
 public final class TaskStartHandler implements EventHandler<TaskStart> {
   private final DynamicServerResolver serverResolver;

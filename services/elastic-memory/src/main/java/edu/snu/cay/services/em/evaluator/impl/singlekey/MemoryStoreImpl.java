@@ -127,26 +127,25 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
 
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (blocks.containsKey(blockId)) {
-      throw new RuntimeException("Block " + blockId + " already exists.");
-    } else {
-      final Block block = new Block();
-      block.putAll(data);
-      blocks.put(blockId, block);
+      throw new RuntimeException("Block with id " + blockId + " already exists.");
     }
+
+    final Block block = new Block();
+    block.putAll(data);
+    blocks.put(blockId, block);
   }
 
   @Override
   public Map<K, Object> getBlock(final String dataType, final int blockId) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      LOG.log(Level.WARNING, "Data in type {0} has never been stored. The result is empty", dataType);
+      LOG.log(Level.FINE, "Blocks are not initialized for type {0}", dataType);
       return Collections.emptyMap();
     }
 
     final Block block = blocks.get(blockId);
     if (null == block) {
-      LOG.log(Level.WARNING, "Block with id {0} does not exist.", blockId);
-      return Collections.emptyMap();
+      throw new RuntimeException("Block with id " + blockId + "does not exist.");
     }
 
     return block.getAll();
@@ -156,12 +155,13 @@ public final class MemoryStoreImpl<K> implements RemoteAccessibleMemoryStore<K> 
   public void removeBlock(final String dataType, final int blockId) {
     final Map<Integer, Block> blocks = typeToBlocks.get(dataType);
     if (null == blocks) {
-      throw new RuntimeException("Data type " + dataType + " does not exist.");
+      LOG.log(Level.FINE, "Blocks are not initialized for type {0}", dataType);
+      return;
     }
 
     final Block block = blocks.remove(blockId);
     if (null == block) {
-      throw new RuntimeException("Block with id " + blockId + " does not exist.");
+      throw new RuntimeException("Block with id " + blockId + "does not exist.");
     }
   }
 
