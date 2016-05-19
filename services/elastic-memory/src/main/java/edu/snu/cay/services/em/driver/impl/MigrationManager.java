@@ -416,7 +416,7 @@ final class MigrationManager {
   /**
    * Notify the update in the routing table to listening clients.
    */
-  private void notifyUpdate(final Migration migration) {
+  private synchronized void notifyUpdate(final Migration migration) {
     final int oldOwnerId = partitionManager.getMemoryStoreId(migration.getSenderId());
     final int newOwnerId = partitionManager.getMemoryStoreId(migration.getReceiverId());
     final String newEvalId = migration.getReceiverId();
@@ -434,7 +434,7 @@ final class MigrationManager {
    * @param clientId a client id
    * @param updateCallback a callback
    */
-  void registerRoutingTableUpdateCallback(final String clientId,
+  synchronized void registerRoutingTableUpdateCallback(final String clientId,
                                           final EventHandler<EMRoutingTableUpdate> updateCallback) {
     updateCallbacks.put(clientId, updateCallback);
   }
@@ -443,7 +443,7 @@ final class MigrationManager {
    * Deregister a callback for listening updates in EM routing table.
    * @param clientId a client id
    */
-  void deregisterRoutingTableUpdateCallback(final String clientId) {
+  synchronized void deregisterRoutingTableUpdateCallback(final String clientId) {
     updateCallbacks.remove(clientId);
   }
 
