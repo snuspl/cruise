@@ -49,7 +49,7 @@ public final class DynamicServerResolver implements ServerResolver {
    * Mapping from EM's MemoryStore ID to the PS's NCS endpoint ID.
    * This mapping rarely changes compared to the blockIdToStoreId.
    */
-  private final Map<Integer, String> storeIdToEndpointId = new HashMap<>();
+  private final Map<Integer, String> storeIdToEndpointId = new ConcurrentHashMap<>();
 
   private int numTotalBlocks = 0;
 
