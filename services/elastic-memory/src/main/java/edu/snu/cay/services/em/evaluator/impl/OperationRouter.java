@@ -61,7 +61,7 @@ public final class OperationRouter<K> {
   private final boolean addedEval;
 
   /**
-   * A prefix of evaluator id will be set by {@link #initialize(String)} or {@link #initialize(String, List)} once,
+   * A prefix of evaluator id will be set by {@link #initialize(String)} or {@link #initialize(List)} once,
    * and used by {@link #getEvalId(int)} to make the complete evaluator id.
    */
   private String evalPrefix;
@@ -111,17 +111,17 @@ public final class OperationRouter<K> {
 
   /**
    * Initializes the router by providing a prefix of evaluator to locate remote evaluators.
-   * For the evaluator added by EM.add, it sends init request to driver and
+   * For initial evaluators, it initializes the routing table by itself with a statically fixed scheme.
+   * But, for evaluators added by EM.add, it sends a request to driver and
    * postpones the initialization until the response.
    * This method is invoked when the context is started.
    */
   public void initialize(final String endpointId) {
+    // TODO #509: Remove assumption on the format of context id
+    this.evalPrefix = endpointId.split("-")[0];
+    LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
 
     if (!addedEval) {
-      // TODO #509: Remove assumption on the format of context id
-      this.evalPrefix = endpointId.split("-")[0];
-      LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
-
       initRoutingTable();
       initialized = true;
     } else {
@@ -129,10 +129,6 @@ public final class OperationRouter<K> {
     }
   }
 
-  /**
-   * Initializes the routing table by itself for initial evaluators.
-   * The initialization finishes completely when {@link #initialize(String)} is done.
-   */
   private void initRoutingTable() {
     // initial evaluators can initialize the routing table by itself
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
@@ -163,8 +159,7 @@ public final class OperationRouter<K> {
    * This method is for evaluators added by EM.add(), whose routing table should be updated dynamically.
    * It'd be invoked by the network response of {@link #requestRoutingTable()}.
    */
-  public synchronized void initialize(final String endpointId, final List<Integer> initBlockLocations) {
-    this.evalPrefix = endpointId.split("-")[0];
+  public synchronized void initialize(final List<Integer> initBlockLocations) {
     if (initBlockLocations.size() != numTotalBlocks) {
       throw new RuntimeException("Imperfect routing table");
     }
