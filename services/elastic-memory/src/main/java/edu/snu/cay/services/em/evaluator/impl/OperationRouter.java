@@ -118,18 +118,11 @@ public final class OperationRouter<K> {
    * This method is invoked when the context is started.
    */
   public void initialize(final String endpointId) {
-    if (initialized.get()) {
-      return;
-    }
-
     // TODO #509: Remove assumption on the format of context id
     this.evalPrefix = endpointId.split("-")[0];
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
 
     if (!addedEval) {
-      if (!initialized.compareAndSet(false, true)) {
-        return;
-      }
       initRoutingTable();
     } else {
       requestRoutingTable();
@@ -137,6 +130,10 @@ public final class OperationRouter<K> {
   }
 
   private void initRoutingTable() {
+    if (!initialized.compareAndSet(false, true)) {
+      return;
+    }
+
     // initial evaluators can initialize the routing table by itself
     for (int blockId = localStoreId; blockId < numTotalBlocks; blockId += numInitialEvals) {
       initialLocalBlocks.add(blockId);
@@ -154,7 +151,7 @@ public final class OperationRouter<K> {
    */
   private void requestRoutingTable() {
     LOG.log(Level.FINE, "Sends a request for the routing table");
-    try (final TraceScope traceScope = Trace.startSpan("ROUTING_INIT_REQUEST")) {
+    try (final TraceScope traceScope = Trace.startSpan("ROUTING_TABLE_REQUEST")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       msgSender.get().sendRoutingTableInitReqMsg(traceInfo);
     }
