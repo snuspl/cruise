@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -53,9 +54,9 @@ public final class DynamicServerResolver implements ServerResolver {
   private int numTotalBlocks = 0;
 
   /**
-   * Boolean representing whether it receives the initial routing table from driver or not.
+   * Atomic boolean representing whether it receives the initial routing table from driver or not.
    */
-  private volatile boolean initialized = false;
+  private AtomicBoolean initialized = new AtomicBoolean(false);
 
   private final InjectionFuture<PartitionedWorkerMsgSender> msgSender;
 
@@ -80,7 +81,7 @@ public final class DynamicServerResolver implements ServerResolver {
    * It throws RuntimeException, if the table is not initialized til the end.
    */
   private void checkInitialization() {
-    if (initialized) {
+    if (initialized.get()) {
       return;
     }
 
@@ -97,7 +98,7 @@ public final class DynamicServerResolver implements ServerResolver {
         LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
       }
 
-      if (initialized) {
+      if (initialized.get()) {
         return;
       }
     }
@@ -108,7 +109,7 @@ public final class DynamicServerResolver implements ServerResolver {
    * Requests a routing table to driver.
    */
   public void requestRoutingTable() {
-    if (initialized) {
+    if (initialized.get()) {
       return;
     }
 
@@ -131,6 +132,10 @@ public final class DynamicServerResolver implements ServerResolver {
    */
   @Override
   public void initRoutingTable(final EMRoutingTable routingTable) {
+    if (!initialized.compareAndSet(false, true)) {
+      return;
+    }
+
     final Map<Integer, Set<Integer>> storeIdToBlockIds = routingTable.getStoreIdToBlockIds();
 
     numTotalBlocks = routingTable.getNumTotalBlocks();
@@ -143,7 +148,6 @@ public final class DynamicServerResolver implements ServerResolver {
       }
     }
 
-    initialized = true;
     LOG.log(Level.FINE, "Server resolver is initialized");
     synchronized (this) {
       // wake up all waiting threads

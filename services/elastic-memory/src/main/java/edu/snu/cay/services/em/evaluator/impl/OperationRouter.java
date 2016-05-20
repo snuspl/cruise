@@ -33,6 +33,7 @@ import org.htrace.TraceScope;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -51,9 +52,9 @@ public final class OperationRouter<K> {
   private static final int MAX_NUM_INIT_REQUESTS = 3;
 
   /**
-   * A volatile type of boolean for checking the initialization of router.
+   * An atomic boolean for checking the initialization of router.
    */
-  private volatile boolean initialized = false;
+  private AtomicBoolean initialized = new AtomicBoolean(false);
 
   /**
    * A boolean representing whether the evaluator is added by EM.add().
@@ -111,19 +112,25 @@ public final class OperationRouter<K> {
 
   /**
    * Initializes the router by providing a prefix of evaluator to locate remote evaluators.
-   * For initial evaluators, it initializes the routing table by itself with a statically fixed scheme.
-   * But, for evaluators added by EM.add, it sends a request to driver and
+   * In addition, for initial evaluators, it initializes the routing table by itself with a statically fixed scheme
+   * and for evaluators added by EM.add, it sends a request the up-to-date routing table to driver and
    * postpones the initialization until the response.
    * This method is invoked when the context is started.
    */
   public void initialize(final String endpointId) {
+    if (initialized.get()) {
+      return;
+    }
+
     // TODO #509: Remove assumption on the format of context id
     this.evalPrefix = endpointId.split("-")[0];
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
 
     if (!addedEval) {
+      if (!initialized.compareAndSet(false, true)) {
+        return;
+      }
       initRoutingTable();
-      initialized = true;
     } else {
       requestRoutingTable();
     }
@@ -159,7 +166,11 @@ public final class OperationRouter<K> {
    * This method is for evaluators added by EM.add(), whose routing table should be updated dynamically.
    * It'd be invoked by the network response of {@link #requestRoutingTable()}.
    */
-  public synchronized void initialize(final List<Integer> initBlockLocations) {
+  public void initialize(final List<Integer> initBlockLocations) {
+    if (!initialized.compareAndSet(false, true)) {
+      return;
+    }
+
     if (initBlockLocations.size() != numTotalBlocks) {
       throw new RuntimeException("Imperfect routing table");
     }
@@ -174,7 +185,6 @@ public final class OperationRouter<K> {
       this.blockLocations.set(blockId, storeId);
     }
 
-    initialized = true;
     LOG.log(Level.FINE, "Operation router is initialized");
     synchronized (this) {
       // wake up all waiting threads
@@ -189,7 +199,7 @@ public final class OperationRouter<K> {
    * It throws RuntimeException, if the table is not initialized til the end.
    */
   private void checkInitialization() {
-    if (initialized) {
+    if (initialized.get()) {
       return;
     }
 
@@ -206,7 +216,7 @@ public final class OperationRouter<K> {
         LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
       }
 
-      if (initialized) {
+      if (initialized.get()) {
         return;
       }
     }
