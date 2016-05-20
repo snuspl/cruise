@@ -125,7 +125,7 @@ public final class OperationRouter<K> {
       initRoutingTable();
       initialized = true;
     } else {
-      requestInitialization();
+      requestRoutingTable();
     }
   }
 
@@ -147,10 +147,10 @@ public final class OperationRouter<K> {
   }
 
   /**
-   * Requests an initialization to driver.
+   * Requests a routing table to driver.
    */
-  private void requestInitialization() {
-    LOG.log(Level.FINE, "Sends an init request for the routing table");
+  private void requestRoutingTable() {
+    LOG.log(Level.FINE, "Sends a request for the routing table");
     try (final TraceScope traceScope = Trace.startSpan("ROUTING_INIT_REQUEST")) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       msgSender.get().sendRoutingTableInitReqMsg(traceInfo);
@@ -161,9 +161,9 @@ public final class OperationRouter<K> {
    * Initializes the routing table with the info received from the driver,
    * providing a prefix of evaluator to locate remote evaluators.
    * This method is for evaluators added by EM.add(), whose routing table should be updated dynamically.
-   * It'd be invoked by the network response of {@link #requestInitialization()}.
+   * It'd be invoked by the network response of {@link #requestRoutingTable()}.
    */
-  public void initialize(final String endpointId, final List<Integer> initBlockLocations) {
+  public synchronized void initialize(final String endpointId, final List<Integer> initBlockLocations) {
     this.evalPrefix = endpointId.split("-")[0];
     if (initBlockLocations.size() != numTotalBlocks) {
       throw new RuntimeException("Imperfect routing table");
@@ -200,7 +200,7 @@ public final class OperationRouter<K> {
 
     // sends init request and waits for several times
     for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
-      requestInitialization();
+      requestRoutingTable();
 
       LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
       try {
@@ -294,6 +294,8 @@ public final class OperationRouter<K> {
    * @return a list of block ids which are currently assigned to the local MemoryStore.
    */
   public List<Integer> getCurrentLocalBlockIds() {
+    checkInitialization();
+
     final List<Integer> localBlockIds = new ArrayList<>();
     for (int blockId = 0; blockId < blockLocations.length(); blockId++) {
       final int storeId = blockLocations.get(blockId);
@@ -312,6 +314,8 @@ public final class OperationRouter<K> {
    * @param newOwnerId id of the MemoryStore that will be new owner.
    */
   public void updateOwnership(final int blockId, final int oldOwnerId, final int newOwnerId) {
+    checkInitialization();
+
     final int localOldOwnerId = blockLocations.getAndSet(blockId, newOwnerId);
     if (localOldOwnerId != oldOwnerId) {
       LOG.log(Level.WARNING, "Local routing table thought block {0} was in store {1}, but it was actually in {2}",

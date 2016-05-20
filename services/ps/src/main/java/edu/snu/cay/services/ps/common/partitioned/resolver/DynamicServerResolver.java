@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,7 +43,7 @@ public final class DynamicServerResolver implements ServerResolver {
   /**
    * Mapping from Block ID to the MemoryStore ID, which is used to resolve the block to MemoryStores.
    */
-  private final Map<Integer, Integer> blockIdToStoreId = new HashMap<>();
+  private final Map<Integer, Integer> blockIdToStoreId = new ConcurrentHashMap<>();
 
   /**
    * Mapping from EM's MemoryStore ID to the PS's NCS endpoint ID.
@@ -58,7 +59,6 @@ public final class DynamicServerResolver implements ServerResolver {
   private volatile boolean initialized = false;
 
   private final InjectionFuture<PartitionedWorkerMsgSender> msgSender;
-
 
   @Inject
   private DynamicServerResolver(final InjectionFuture<PartitionedWorkerMsgSender> msgSender) {
@@ -87,7 +87,7 @@ public final class DynamicServerResolver implements ServerResolver {
 
     // sends init request and waits for several times
     for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
-      requestInitialization();
+      requestRoutingTable();
 
       LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
       try {
@@ -106,10 +106,14 @@ public final class DynamicServerResolver implements ServerResolver {
   }
 
   /**
-   * Requests an initialization to driver.
+   * Requests a routing table to driver.
    */
-  public void requestInitialization() {
-    LOG.log(Level.FINE, "Sends an init request for the routing table");
+  public void requestRoutingTable() {
+    if (initialized) {
+      return;
+    }
+
+    LOG.log(Level.FINE, "Sends a request for the routing table");
     msgSender.get().sendWorkerRegisterMsg();
   }
 
@@ -127,7 +131,7 @@ public final class DynamicServerResolver implements ServerResolver {
    * Initialize the router to lookup.
    */
   @Override
-  public synchronized void initRoutingTable(final EMRoutingTable routingTable) {
+  public void initRoutingTable(final EMRoutingTable routingTable) {
     final Map<Integer, Set<Integer>> storeIdToBlockIds = routingTable.getStoreIdToBlockIds();
 
     numTotalBlocks = routingTable.getNumTotalBlocks();
@@ -149,7 +153,9 @@ public final class DynamicServerResolver implements ServerResolver {
   }
 
   @Override
-  public synchronized void updateRoutingTable(final EMRoutingTableUpdate routingTableUpdate) {
+  public void updateRoutingTable(final EMRoutingTableUpdate routingTableUpdate) {
+    checkInitialization();
+
     final int oldOwnerId = routingTableUpdate.getOldOwnerId();
     final int newOwnerId = routingTableUpdate.getNewOwnerId();
     for (final int blockId : routingTableUpdate.getBlockIds()) {

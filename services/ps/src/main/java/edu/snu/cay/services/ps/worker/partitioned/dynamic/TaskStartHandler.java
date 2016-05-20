@@ -35,7 +35,7 @@ public final class TaskStartHandler implements EventHandler<TaskStart> {
   }
 
   @Override
-  public void onNext(final TaskStart contextStart) {
-    serverResolver.requestInitialization();
+  public void onNext(final TaskStart taskStart) {
+    serverResolver.requestRoutingTable();
   }
 }
