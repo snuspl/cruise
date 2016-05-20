@@ -36,8 +36,7 @@ import java.util.logging.Logger;
 public final class DynamicServerResolver implements ServerResolver {
   private static final Logger LOG = Logger.getLogger(DynamicServerResolver.class.getName());
 
-  private static final long INIT_WAIT_TIMEOUT_MS = 1000;
-  private static final int MAX_NUM_INIT_WAITS = 3;
+  private static final long INIT_WAIT_TIMEOUT_MS = 2000;
   private static final int MAX_NUM_INIT_REQUESTS = 3;
 
   /**
@@ -90,23 +89,20 @@ public final class DynamicServerResolver implements ServerResolver {
     for (int reqCount = 0; reqCount < MAX_NUM_INIT_REQUESTS; reqCount++) {
       requestInitialization();
 
-      for (int waitCount = 0; waitCount < MAX_NUM_INIT_WAITS; waitCount++) {
-        LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
-        try {
-          synchronized (this) {
-            this.wait(INIT_WAIT_TIMEOUT_MS);
-          }
-        } catch (final InterruptedException e) {
-          LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+      LOG.log(Level.INFO, "Waiting {0} ms for router to be initialized", INIT_WAIT_TIMEOUT_MS);
+      try {
+        synchronized (this) {
+          this.wait(INIT_WAIT_TIMEOUT_MS);
         }
+      } catch (final InterruptedException e) {
+        LOG.log(Level.WARNING, "Interrupted while waiting for router to be initialized", e);
+      }
 
-        if (initialized) {
-          return;
-        }
+      if (initialized) {
+        return;
       }
     }
-
-    throw new RuntimeException("Fail to initialize the router");
+    throw new RuntimeException("Fail to initialize the resolver");
   }
 
   /**
