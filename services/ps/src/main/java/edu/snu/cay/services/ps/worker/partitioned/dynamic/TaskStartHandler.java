@@ -15,13 +15,11 @@
  */
 package edu.snu.cay.services.ps.worker.partitioned.dynamic;
 
-import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerMsgSender;
+import edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver;
 import org.apache.reef.task.events.TaskStart;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Sends a msg to register itself to start subscribing updates of the EM's routing table in PS servers.
@@ -29,18 +27,15 @@ import java.util.logging.Logger;
  * of the whole routing table and keep being updated when there's any change.
  */
 public final class TaskStartHandler implements EventHandler<TaskStart> {
-  private static final Logger LOG = Logger.getLogger(TaskStartHandler.class.getName());
-  private PartitionedWorkerMsgSender sender;
+  private final DynamicServerResolver serverResolver;
 
   @Inject
-  private TaskStartHandler(final PartitionedWorkerMsgSender sender) {
-    this.sender = sender;
+  private TaskStartHandler(final DynamicServerResolver serverResolver) {
+    this.serverResolver = serverResolver;
   }
 
   @Override
   public void onNext(final TaskStart taskStart) {
-    LOG.log(Level.FINE, "Task {0} sends a msg to register itself to start subscribing updates in routing table",
-        taskStart.getId());
-    sender.sendWorkerRegisterMsg();
+    serverResolver.requestRoutingTable();
   }
 }
