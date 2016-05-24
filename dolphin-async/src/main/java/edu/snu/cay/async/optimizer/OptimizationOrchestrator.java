@@ -36,6 +36,12 @@ import java.util.logging.Logger;
  */
 public final class OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
+
+  /**
+   * A margin time after finishing each optimization for system to be stable.
+   */
+  private static final long MARGIN_TIME_MS = 10000;
+
   public static final String NAMESPACE_SERVER = "SERVER";
   public static final String NAMESPACE_WORKER = "WORKER";
   public static final String DATA_TYPE_SERVER = "SERVER_DATA"; // DynamicPS should use this type.
@@ -90,7 +96,7 @@ public final class OptimizationOrchestrator {
           final PlanResult planResult = planExecutionResultFuture.get();
           LOG.log(Level.INFO, "Result of plan execution: {0}", planResult);
 
-          Thread.sleep(10000); // sleep for the system to be stable
+          Thread.sleep(MARGIN_TIME_MS); // sleep for the system to be stable
         } catch (final InterruptedException | ExecutionException e) {
           LOG.log(Level.WARNING, "Exception while waiting for the plan execution to be completed");
         }

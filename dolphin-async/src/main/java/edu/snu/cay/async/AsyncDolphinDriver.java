@@ -73,6 +73,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -88,6 +89,14 @@ public final class AsyncDolphinDriver {
   private static final String SERVER_CONTEXT = "ServerContext";
   private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
   private static final String SERVER_EM_IDENTIFIER = "ServerEM";
+
+  private static final long SHUTDOWN_TRY_INTERVAL_MS = 3000;
+
+  /**
+   * Flag indicating whether all workers have finished their work or not.
+   * When it becomes true, a thread starts to close all active contexts.
+   */
+  private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
   /**
    * Checks whether the Application is complete. Optimizer thread runs until this variable is set to true.
@@ -128,9 +137,13 @@ public final class AsyncDolphinDriver {
   private final ParameterServerDriver psDriver;
 
   /**
-   * Counters for incrementally indexing contexts of worker and server respectively.
+   * Counter for incrementally indexing contexts of workers.
    */
   private final AtomicInteger workerContextIndexCounter = new AtomicInteger(0);
+
+  /**
+   * Counter for incrementally indexing contexts of servers.
+   */
   private final AtomicInteger serverContextIndexCounter = new AtomicInteger(0);
 
   /**
@@ -157,6 +170,11 @@ public final class AsyncDolphinDriver {
    * Number of server-side evaluators that have added by EM.add().
    */
   private final AtomicInteger addedServerContextCount;
+
+  /**
+   * Bookkeeping of context id of workers deleted by EM's Delete.
+   */
+  private final Set<String> deletedWorkerSet = new HashSet<>();
 
   /**
    * Bookkeeping the active contexts, including both Servers and Workers.
@@ -575,7 +593,6 @@ public final class AsyncDolphinDriver {
   final class FailedTaskHandler implements EventHandler<FailedTask> {
     @Override
     public void onNext(final FailedTask failedTask) {
-      // TODO #00: relaunch the task
       if (failedTask.getActiveContext().isPresent()) {
         workerContextsToClose.add(failedTask.getActiveContext().get());
       } else {
@@ -586,18 +603,15 @@ public final class AsyncDolphinDriver {
     }
   }
 
-  /**
-   * Bookkeeping of context id of workers deleted by EM's Delete.
-   */
-  private final Set<String> deletedWorkerSet = new HashSet<>();
-
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(final CompletedTask completedTask) {
       if (deletedWorkerSet.remove(completedTask.getActiveContext().getId())) {
-        // reclaim resource promptly when the task is complete by EM's Delete
+        // Close the resource promptly when the task is complete by EM's Delete to make it reusable for EM's Add
         completedTask.getActiveContext().close();
       } else {
+        // Currently we do not reuse evaluators that completely finish their work for EM's Add
+        // It is because these evaluators still have valid data, which can be accessed by other running evaluators
         workerContextsToClose.add(completedTask.getActiveContext());
       }
       checkShutdown();
@@ -608,25 +622,31 @@ public final class AsyncDolphinDriver {
     if (completedOrFailedEvalCount.incrementAndGet() ==
         initServerCount + addedServerContextCount.get() + initWorkerCount + addedWorkerContextCount.get()) {
 
-      // TODO #00: make it handled by dedicated thread
-      while (optimizationOrchestrator.isPlanExecuting()) {
-        try {
-          LOG.log(Level.INFO, "It's time to shutdown active contexts, but wait for completion of plan execution");
-          Thread.sleep(3000);
-        } catch (final InterruptedException e) {
-          LOG.log(Level.FINEST, "Interrupted while waiting for plan finish", e);
-        }
-      }
+      if (shutdown.compareAndSet(false, true)) {
+        Executors.newSingleThreadExecutor().submit(new Runnable() {
+          @Override
+          public void run() {
+            while (optimizationOrchestrator.isPlanExecuting()) {
+              try {
+                LOG.log(Level.INFO, "It's time to shutdown active contexts, but wait for completion of plan execution");
+                Thread.sleep(SHUTDOWN_TRY_INTERVAL_MS);
+              } catch (final InterruptedException e) {
+                LOG.log(Level.FINEST, "Interrupted while waiting for plan finish", e);
+              }
+            }
 
-      // Since it is not guaranteed that the messages from workers are completely received and processed,
-      // the servers may lose some updates.
-      for (final ActiveContext serverContext : serverContexts) {
-        serverContext.close();
+            // Since it is not guaranteed that the messages from workers are completely received and processed,
+            // the servers may lose some updates.
+            for (final ActiveContext serverContext : serverContexts) {
+              serverContext.close();
+            }
+            for (final ActiveContext workerContext : workerContextsToClose) {
+              workerContext.close();
+            }
+            isComplete = true;
+          }
+        });
       }
-      for (final ActiveContext workerContext : workerContextsToClose) {
-        workerContext.close();
-      }
-      isComplete = true;
     }
   }
 
@@ -672,7 +692,7 @@ public final class AsyncDolphinDriver {
       } else {
         deletedWorkerSet.add(activeContextId);
 
-        final RunningTask runningTask = contextIdToRunningTasks.get(activeContextId);
+        final RunningTask runningTask = contextIdToRunningTasks.remove(activeContextId);
         runningTask.close();
 
         // TODO #205: Reconsider using of Avro message in EM's callback

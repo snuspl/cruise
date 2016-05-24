@@ -36,6 +36,7 @@ import static edu.snu.cay.async.optimizer.OptimizationOrchestrator.DATA_TYPE_WOR
 final class AddIntegerWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(AddIntegerWorker.class.getName());
   private static final int KEY = 0;
+  private static final long DELAY_MS = 300;
 
   private final ParameterWorker<Integer, Integer, Integer> parameterWorker;
   private final int parameter;
@@ -67,7 +68,7 @@ final class AddIntegerWorker implements Worker {
     // sleep 300 ms to simulate computation
     // also it prevents the saturation of NCS in PS
     try {
-      Thread.sleep(300);
+      Thread.sleep(DELAY_MS);
     } catch (final InterruptedException e) {
       LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation");
     }

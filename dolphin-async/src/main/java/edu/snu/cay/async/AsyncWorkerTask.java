@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -58,7 +57,11 @@ final class AsyncWorkerTask implements Task {
   private final Injector injector;
   private final DataSet<LongWritable, Text> dataSet;
 
-  private final AtomicBoolean abort = new AtomicBoolean(false);
+  /**
+   * A boolean flag shared among all worker threads.
+   * Worker threads end when this flag becomes true by {@link CloseEventHandler#onNext(CloseEvent)}.
+   */
+  private volatile boolean abort = false;
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
@@ -97,8 +100,8 @@ final class AsyncWorkerTask implements Task {
         public void run() {
           worker.initialize();
           for (int iteration = 0; iteration < maxIterations; ++iteration) {
-            if (abort.get()) {
-              LOG.log(Level.INFO, "Abort task");
+            if (abort) {
+              LOG.log(Level.INFO, "Abort a thread to completely close the task");
               return;
             }
             worker.run();
@@ -160,7 +163,7 @@ final class AsyncWorkerTask implements Task {
 
     @Override
     public void onNext(final CloseEvent closeEvent) {
-      abort.set(true);
+      abort = true;
     }
   }
 }
