@@ -90,18 +90,14 @@ public final class AsyncDolphinDriver {
   private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
   private static final String SERVER_EM_IDENTIFIER = "ServerEM";
 
-  private static final long SHUTDOWN_TRY_INTERVAL_MS = 3000;
+  private static final long SHUTDOWN_TRIAL_INTERVAL_MS = 3000;
 
   /**
    * Flag indicating whether all workers have finished their work or not.
-   * When it becomes true, a thread starts to close all active contexts.
+   * When it becomes true, a thread starts to close all active contexts and
+   * the optimizer thread stops running.
    */
-  private final AtomicBoolean shutdown = new AtomicBoolean(false);
-
-  /**
-   * Checks whether the Application is complete. Optimizer thread runs until this variable is set to true.
-   */
-  private volatile boolean isComplete = false;
+  private final AtomicBoolean isFinished = new AtomicBoolean(false);
 
   /**
    * Evaluator Manager, a unified path for requesting evaluators.
@@ -363,7 +359,7 @@ public final class AsyncDolphinDriver {
       optimizerExecutor.submit(new Callable<Void>() {
         @Override
         public Void call() throws Exception {
-          while (!isComplete) {
+          while (!isFinished.get()) {
             Thread.sleep(optimizationIntervalMs);
             optimizationOrchestrator.run();
           }
@@ -622,14 +618,14 @@ public final class AsyncDolphinDriver {
     if (completedOrFailedEvalCount.incrementAndGet() ==
         initServerCount + addedServerContextCount.get() + initWorkerCount + addedWorkerContextCount.get()) {
 
-      if (shutdown.compareAndSet(false, true)) {
+      if (isFinished.compareAndSet(false, true)) {
         Executors.newSingleThreadExecutor().submit(new Runnable() {
           @Override
           public void run() {
             while (optimizationOrchestrator.isPlanExecuting()) {
               try {
                 LOG.log(Level.INFO, "It's time to shutdown active contexts, but wait for completion of plan execution");
-                Thread.sleep(SHUTDOWN_TRY_INTERVAL_MS);
+                Thread.sleep(SHUTDOWN_TRIAL_INTERVAL_MS);
               } catch (final InterruptedException e) {
                 LOG.log(Level.FINEST, "Interrupted while waiting for plan finish", e);
               }
@@ -643,7 +639,6 @@ public final class AsyncDolphinDriver {
             for (final ActiveContext workerContext : workerContextsToClose) {
               workerContext.close();
             }
-            isComplete = true;
           }
         });
       }

@@ -32,10 +32,15 @@ import static edu.snu.cay.async.optimizer.OptimizationOrchestrator.DATA_TYPE_WOR
 /**
  * {@link Worker} class for the AddIntegerREEF application.
  * Pushes a value to the server and checks the current value at the server via pull, once per iteration.
+ * It sleeps {@link #DELAY_MS} for each iteration to simulate computation, preventing the saturation of NCS of PS.
  */
 final class AddIntegerWorker implements Worker {
   private static final Logger LOG = Logger.getLogger(AddIntegerWorker.class.getName());
   private static final int KEY = 0;
+
+  /**
+   * Sleep 300 ms to simulate computation.
+   */
   private static final long DELAY_MS = 300;
 
   private final ParameterWorker<Integer, Integer, Integer> parameterWorker;
@@ -52,6 +57,7 @@ final class AddIntegerWorker implements Worker {
     this.parameter = parameter;
 
     // put at least one data entry to initialize blocks
+    // TODO #530: we'll not require this initialization after removing data type from MemoryStore
     if (!addedEval) {
       final long dataKey = dataIdFactory.getId();
       memoryStore.put(DATA_TYPE_WORKER, dataKey, dataKey); // hard-coded data type
@@ -65,12 +71,12 @@ final class AddIntegerWorker implements Worker {
   @Override
   public void run() {
 
-    // sleep 300 ms to simulate computation
+    // sleep to simulate computation
     // also it prevents the saturation of NCS in PS
     try {
       Thread.sleep(DELAY_MS);
     } catch (final InterruptedException e) {
-      LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation");
+      LOG.log(Level.WARNING, "Interrupted while sleeping to simulate computation", e);
     }
     parameterWorker.push(KEY, parameter);
     final Integer value = parameterWorker.pull(KEY);
