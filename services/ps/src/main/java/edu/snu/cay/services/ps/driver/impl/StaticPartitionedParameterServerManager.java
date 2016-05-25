@@ -30,6 +30,10 @@ import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerHandler;
 import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.partitioned.resolver.StaticServerResolver;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.ParameterWorkerNumThreads;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
+import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerQueueSize;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ServiceConfiguration;
 import org.apache.reef.tang.Configuration;
@@ -55,20 +59,32 @@ import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
 public final class StaticPartitionedParameterServerManager implements ParameterServerManager {
   private final int numServers;
   private final int numPartitions;
+  private final int workerNumThreads;
   private final int serverNumThreads;
-  private final int queueSize;
+  private final int workerQueueSize;
+  private final int serverQueueSize;
+  private final long workerExpireTimeout;
+  private final int workerKeyCacheSize;
   private final AtomicInteger workerCount;
   private final AtomicInteger serverCount;
 
   @Inject
   private StaticPartitionedParameterServerManager(@Parameter(NumServers.class) final int numServers,
                                                   @Parameter(NumPartitions.class) final int numPartitions,
-                                                  @Parameter(ServerNumThreads.class) final int serverNumThreads,
-                                                  @Parameter(ServerQueueSize.class) final int queueSize) {
+                                                  @Parameter(ParameterWorkerNumThreads.class) final int workerNumThrs,
+                                                  @Parameter(ServerNumThreads.class) final int serverNumThrs,
+                                                  @Parameter(WorkerQueueSize.class) final int workerQueueSize,
+                                                  @Parameter(ServerQueueSize.class) final int serverQueueSize,
+                                                  @Parameter(WorkerExpireTimeout.class) final long workerExpireTimeout,
+                                                  @Parameter(WorkerKeyCacheSize.class) final int workerKeyCacheSize) {
     this.numServers = numServers;
     this.numPartitions = numPartitions;
-    this.serverNumThreads = serverNumThreads;
-    this.queueSize = queueSize;
+    this.workerNumThreads = workerNumThrs;
+    this.serverNumThreads = serverNumThrs;
+    this.workerQueueSize = workerQueueSize;
+    this.serverQueueSize = serverQueueSize;
+    this.workerExpireTimeout = workerExpireTimeout;
+    this.workerKeyCacheSize = workerKeyCacheSize;
     this.workerCount = new AtomicInteger(0);
     this.serverCount = new AtomicInteger(0);
   }
@@ -92,6 +108,10 @@ public final class StaticPartitionedParameterServerManager implements ParameterS
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
         .bindNamedParameter(EndpointId.class, WORKER_ID_PREFIX + workerIndex)
+        .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(workerNumThreads))
+        .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
+        .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
+        .bindNamedParameter(WorkerKeyCacheSize.class, Integer.toString(workerKeyCacheSize))
         .build();
   }
 
@@ -114,7 +134,7 @@ public final class StaticPartitionedParameterServerManager implements ParameterS
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
         .bindNamedParameter(ServerNumThreads.class, Integer.toString(serverNumThreads))
-        .bindNamedParameter(ServerQueueSize.class, Integer.toString(queueSize))
+        .bindNamedParameter(ServerQueueSize.class, Integer.toString(serverQueueSize))
         .build();
   }
 }
