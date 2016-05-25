@@ -35,6 +35,12 @@ public interface EMRoutingTableUpdate {
   int getNewOwnerId();
 
   /**
+   * Returns the eval id where the new store is placed in.
+   * @return an eval id of new store
+   */
+  String getNewEvalId();
+
+  /**
    * Returns the ids of blocks that their locations are updated.
    * @return a list of block id
    */

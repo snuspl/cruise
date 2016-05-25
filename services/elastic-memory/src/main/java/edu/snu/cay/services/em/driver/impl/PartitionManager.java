@@ -466,7 +466,7 @@ public final class PartitionManager {
    * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
    */
   Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
-    return storeIdToBlockIds;
+    return Collections.unmodifiableMap(storeIdToBlockIds);
   }
 
   /**

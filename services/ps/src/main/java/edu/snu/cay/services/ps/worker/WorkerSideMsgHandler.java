@@ -116,9 +116,10 @@ public final class WorkerSideMsgHandler<K, P, V> implements EventHandler<Message
   private void onRoutingTableUpdateMsg(final RoutingTableUpdateMsg routingTableUpdateMsg) {
     final int oldOwnerId = routingTableUpdateMsg.getOldOwnerId();
     final int newOwnerId = routingTableUpdateMsg.getNewOwnerId();
+    final String newEvalId = routingTableUpdateMsg.getNewEvalId().toString();
     final List<Integer> blockIds = routingTableUpdateMsg.getBlockIds();
 
-    serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, blockIds));
+    serverResolver.updateRoutingTable(new EMRoutingTableUpdateImpl(oldOwnerId, newOwnerId, newEvalId, blockIds));
   }
 
   private void onReplyMsg(final ReplyMsg replyMsg) {
