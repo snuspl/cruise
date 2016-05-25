@@ -30,10 +30,10 @@ public interface ParameterServerManager {
   /**
    * @return service configuration for an Evaluator that uses a {@code ParameterWorker}
    */
-  Configuration getWorkerServiceConfiguration();
+  Configuration getWorkerServiceConfiguration(String contextId);
 
   /**
    * @return service configuration for an Evaluator that uses a {@code ParameterServer}
    */
-  Configuration getServerServiceConfiguration();
+  Configuration getServerServiceConfiguration(String contextId);
 }

@@ -141,15 +141,16 @@ public final class PSExampleDriver {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
         final int serverIndex = runningServerContextCount.getAndIncrement();
+        final String contextId = PS_CONTEXT_PREFIX + serverIndex;
 
         final Configuration contextConf = Configurations.merge(
             ContextConfiguration.CONF
                 .set(ContextConfiguration.IDENTIFIER,
-                    PS_CONTEXT_PREFIX + serverIndex)
+                    contextId)
                 .build(),
             psDriver.getContextConfiguration());
 
-        final Configuration serviceConf = psDriver.getServerServiceConfiguration();
+        final Configuration serviceConf = psDriver.getServerServiceConfiguration(contextId);
 
         allocatedEvaluator.submitContextAndService(contextConf, serviceConf);
       }
@@ -176,16 +177,17 @@ public final class PSExampleDriver {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
         final int workerIndex = runningWorkerContextCount.getAndIncrement();
+        final String contextId = WORKER_CONTEXT_PREFIX + workerIndex;
 
         final Configuration contextConf = Configurations.merge(
             ContextConfiguration.CONF
                 .set(ContextConfiguration.IDENTIFIER,
-                    WORKER_CONTEXT_PREFIX + workerIndex)
+                    contextId)
                 .build(),
             psDriver.getContextConfiguration()
         );
 
-        final Configuration serviceConf = psDriver.getWorkerServiceConfiguration();
+        final Configuration serviceConf = psDriver.getWorkerServiceConfiguration(contextId);
 
         final Configuration taskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, UPDATER_TASK_PREFIX + workerIndex)

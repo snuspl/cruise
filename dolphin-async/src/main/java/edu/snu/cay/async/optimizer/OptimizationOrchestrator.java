@@ -15,13 +15,13 @@
  */
 package edu.snu.cay.async.optimizer;
 
+import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.em.optimizer.api.Optimizer;
 import edu.snu.cay.services.em.plan.api.Plan;
 import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.api.PlanResult;
-import org.apache.reef.runtime.local.client.parameters.MaxNumberOfEvaluators;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -36,6 +36,12 @@ import java.util.logging.Logger;
  */
 public final class OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
+
+  /**
+   * A margin time after finishing each optimization for system to be stable.
+   */
+  private static final long MARGIN_TIME_MS = 10000;
+
   public static final String NAMESPACE_SERVER = "SERVER";
   public static final String NAMESPACE_WORKER = "WORKER";
   public static final String DATA_TYPE_SERVER = "SERVER_DATA"; // DynamicPS should use this type.
@@ -43,11 +49,10 @@ public final class OptimizationOrchestrator {
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
-  private final AtomicBoolean generatingOptimizationPlan = new AtomicBoolean(false);
+  private final AtomicBoolean isPlanExecuting = new AtomicBoolean(false);
 
   private final ExecutorService optimizationThreadPool = Executors.newSingleThreadExecutor();
 
-  private Future<PlanResult> planExecutionResult;
   private ElasticMemory serverEM;
   private ElasticMemory workerEM;
 
@@ -58,7 +63,7 @@ public final class OptimizationOrchestrator {
                                    final PlanExecutor planExecutor,
                                    @Parameter(ServerEM.class) final ElasticMemory serverEM,
                                    @Parameter(WorkerEM.class) final ElasticMemory workerEM,
-                                   @Parameter(MaxNumberOfEvaluators.class) final int maxNumEvals) {
+                                   @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.serverEM = serverEM;
@@ -67,21 +72,15 @@ public final class OptimizationOrchestrator {
   }
 
   public void run() {
-    if (isPlanExecuting()) {
-      LOG.log(Level.INFO, "Skipping Optimization, because some other thread is currently doing it");
-      return;
-    }
-
-    if (!generatingOptimizationPlan.compareAndSet(false, true)) {
-      LOG.log(Level.INFO, "Skipping Optimization, because some other thread is currently doing it");
+    if (!isPlanExecuting.compareAndSet(false, true)) {
+      LOG.log(Level.INFO, "Skipping Optimization, because it is already under optimization process");
       return;
     }
 
     optimizationThreadPool.submit(new Runnable() {
       @Override
       public void run() {
-        LOG.log(Level.INFO, "Optimization start.");
-        logPreviousResult();
+        LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan");
         final Collection<EvaluatorParameters> serverEvalParams = serverEM.generateEvalParams(DATA_TYPE_SERVER).values();
         final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams(DATA_TYPE_WORKER).values();
 
@@ -90,27 +89,25 @@ public final class OptimizationOrchestrator {
         evaluatorParameters.put(NAMESPACE_WORKER, new ArrayList<>(workerEvalParams));
 
         final Plan plan = optimizer.optimize(evaluatorParameters, maxNumEvals);
-        LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
+        LOG.log(Level.INFO, "Calculating the optimal plan is finished. Start executing plan: {0}", plan);
 
-        planExecutionResult = planExecutor.execute(plan);
-        generatingOptimizationPlan.set(false);
+        final Future<PlanResult> planExecutionResultFuture = planExecutor.execute(plan);
+        try {
+          final PlanResult planResult = planExecutionResultFuture.get();
+          LOG.log(Level.INFO, "Result of plan execution: {0}", planResult);
+
+          Thread.sleep(MARGIN_TIME_MS); // sleep for the system to be stable
+        } catch (final InterruptedException | ExecutionException e) {
+          LOG.log(Level.WARNING, "Exception while waiting for the plan execution to be completed");
+        }
+
+        // make another optimization can go after the optimization is completely finished
+        isPlanExecuting.set(false);
       }
     });
   }
 
-  private boolean isPlanExecuting() {
-    return planExecutionResult != null && !planExecutionResult.isDone();
-  }
-
-  private void logPreviousResult() {
-    if (planExecutionResult == null) {
-      LOG.log(Level.INFO, "Initial optimization run.");
-    } else {
-      try {
-        LOG.log(Level.INFO, "Previous result: {0}", planExecutionResult.get());
-      } catch (final InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    }
+  public boolean isPlanExecuting() {
+    return isPlanExecuting.get();
   }
 }

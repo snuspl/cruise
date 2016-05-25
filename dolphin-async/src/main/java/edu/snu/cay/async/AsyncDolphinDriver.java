@@ -49,6 +49,7 @@ import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.driver.parameters.DriverIdentifier;
 import org.apache.reef.driver.task.CompletedTask;
 import org.apache.reef.driver.task.FailedTask;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.driver.task.TaskConfiguration;
 import org.apache.reef.io.data.loading.api.DataLoadingService;
 import org.apache.reef.io.data.loading.api.DataSet;
@@ -68,8 +69,11 @@ import org.apache.reef.wake.time.event.StartTime;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -86,10 +90,14 @@ public final class AsyncDolphinDriver {
   private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
   private static final String SERVER_EM_IDENTIFIER = "ServerEM";
 
+  private static final long SHUTDOWN_TRIAL_INTERVAL_MS = 3000;
+
   /**
-   * Checks whether the Application is complete. Optimizer thread runs until this variable is set to true.
+   * Flag indicating whether all workers have finished their work or not.
+   * When it becomes true, a thread starts to close all active contexts and
+   * the optimizer thread stops running.
    */
-  private volatile boolean isComplete = false;
+  private final AtomicBoolean isFinished = new AtomicBoolean(false);
 
   /**
    * Evaluator Manager, a unified path for requesting evaluators.
@@ -125,8 +133,14 @@ public final class AsyncDolphinDriver {
   private final ParameterServerDriver psDriver;
 
   /**
-   * Accessor for configurations of elastic memory service.
+   * Counter for incrementally indexing contexts of workers.
    */
+  private final AtomicInteger workerContextIndexCounter = new AtomicInteger(0);
+
+  /**
+   * Counter for incrementally indexing contexts of servers.
+   */
+  private final AtomicInteger serverContextIndexCounter = new AtomicInteger(0);
 
   /**
    * Class providing a configuration for HTrace.
@@ -154,9 +168,19 @@ public final class AsyncDolphinDriver {
   private final AtomicInteger addedServerContextCount;
 
   /**
+   * Bookkeeping of context id of workers deleted by EM's Delete.
+   */
+  private final Set<String> deletedWorkerSet = new HashSet<>();
+
+  /**
    * Bookkeeping the active contexts, including both Servers and Workers.
    */
   private final ConcurrentMap<String, ActiveContext> activeContexts = new ConcurrentHashMap<>();
+
+  /**
+   * Bookkeeping the running task of workers.
+   */
+  private final ConcurrentMap<String, RunningTask> contextIdToRunningTasks = new ConcurrentHashMap<>();
 
   /**
    * Number of evaluators that have completed or failed.
@@ -335,7 +359,7 @@ public final class AsyncDolphinDriver {
       optimizerExecutor.submit(new Callable<Void>() {
         @Override
         public Void call() throws Exception {
-          while (!isComplete) {
+          while (!isFinished.get()) {
             Thread.sleep(optimizationIntervalMs);
             optimizationOrchestrator.run();
           }
@@ -353,7 +377,8 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final AllocatedEvaluator allocatedEvaluator) {
         LOG.log(Level.FINE, "Submitting Compute Context to {0}", allocatedEvaluator.getId());
-        final int serverIndex = runningServerContextCount.getAndIncrement();
+        final int serverIndex = serverContextIndexCounter.getAndIncrement();
+        runningServerContextCount.getAndIncrement();
         final Configuration idConfiguration = ContextConfiguration.CONF
             .set(ContextConfiguration.IDENTIFIER, dataLoadingService.getComputeContextIdPrefix() + serverIndex)
             .build();
@@ -400,7 +425,7 @@ public final class AsyncDolphinDriver {
             psDriver.getContextConfiguration(),
             serverEMWrapper.getConf().getContextConfiguration());
         final Configuration serviceConf = Configurations.merge(
-            psDriver.getServerServiceConfiguration(),
+            psDriver.getServerServiceConfiguration(contextId),
             Tang.Factory.getTang().newConfigurationBuilder(
                 serverEMWrapper.getConf().getServiceConfigurationWithoutNameResolver(contextId, initServerCount))
                 .bindNamedParameter(AddedEval.class, String.valueOf(addedEval))
@@ -448,7 +473,8 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Worker-side DataLoad context - {0}", activeContext);
-        final int workerIndex = runningWorkerContextCount.getAndIncrement();
+        final int workerIndex = workerContextIndexCounter.getAndIncrement();
+        runningWorkerContextCount.getAndIncrement();
 
         if (addedEval) {
           final int numAdded = addedWorkerContextCount.incrementAndGet();
@@ -465,7 +491,7 @@ public final class AsyncDolphinDriver {
             aggregationManager.getContextConfiguration());
 
         final Configuration serviceConf = Configurations.merge(
-            psDriver.getWorkerServiceConfiguration(),
+            psDriver.getWorkerServiceConfiguration(contextId),
             getEMServiceConfForWorker(contextId, addedEval),
             aggregationManager.getServiceConfigurationWithoutNameResolver(),
             MetricsCollectionService.getServiceConfiguration());
@@ -511,6 +537,7 @@ public final class AsyncDolphinDriver {
         final Configuration taskConf = TaskConfiguration.CONF
             .set(TaskConfiguration.IDENTIFIER, AsyncWorkerTask.TASK_ID_PREFIX + "-" + workerIndex)
             .set(TaskConfiguration.TASK, AsyncWorkerTask.class)
+            .set(TaskConfiguration.ON_CLOSE, AsyncWorkerTask.CloseEventHandler.class)
             .build();
         final Configuration emDataIdConf = Tang.Factory.getTang().newConfigurationBuilder()
             .bindImplementation(DataIdFactory.class, RoundRobinDataIdFactory.class).build();
@@ -535,6 +562,13 @@ public final class AsyncDolphinDriver {
 
       evaluatorManager.onContextActive(activeContext);
       activeContexts.putIfAbsent(activeContext.getId(), activeContext);
+    }
+  }
+
+  final class RunningTaskHandler implements EventHandler<RunningTask> {
+    @Override
+    public void onNext(final RunningTask runningTask) {
+      contextIdToRunningTasks.putIfAbsent(runningTask.getActiveContext().getId(), runningTask);
     }
   }
 
@@ -568,7 +602,14 @@ public final class AsyncDolphinDriver {
   final class CompletedTaskHandler implements EventHandler<CompletedTask> {
     @Override
     public void onNext(final CompletedTask completedTask) {
-      workerContextsToClose.add(completedTask.getActiveContext());
+      if (deletedWorkerSet.remove(completedTask.getActiveContext().getId())) {
+        // Close the resource promptly when the task is complete by EM's Delete to make it reusable for EM's Add
+        completedTask.getActiveContext().close();
+      } else {
+        // Currently we do not reuse evaluators that completely finish their work for EM's Add
+        // It is because these evaluators still have valid data, which can be accessed by other running evaluators
+        workerContextsToClose.add(completedTask.getActiveContext());
+      }
       checkShutdown();
     }
   }
@@ -576,15 +617,31 @@ public final class AsyncDolphinDriver {
   private void checkShutdown() {
     if (completedOrFailedEvalCount.incrementAndGet() ==
         initServerCount + addedServerContextCount.get() + initWorkerCount + addedWorkerContextCount.get()) {
-      // Since it is not guaranteed that the messages from workers are completely received and processed,
-      // the servers may lose some updates.
-      for (final ActiveContext serverContext : serverContexts) {
-        serverContext.close();
+
+      if (isFinished.compareAndSet(false, true)) {
+        Executors.newSingleThreadExecutor().submit(new Runnable() {
+          @Override
+          public void run() {
+            while (optimizationOrchestrator.isPlanExecuting()) {
+              try {
+                LOG.log(Level.INFO, "It's time to shutdown active contexts, but wait for completion of plan execution");
+                Thread.sleep(SHUTDOWN_TRIAL_INTERVAL_MS);
+              } catch (final InterruptedException e) {
+                LOG.log(Level.FINEST, "Interrupted while waiting for plan finish", e);
+              }
+            }
+
+            // Since it is not guaranteed that the messages from workers are completely received and processed,
+            // the servers may lose some updates.
+            for (final ActiveContext serverContext : serverContexts) {
+              serverContext.close();
+            }
+            for (final ActiveContext workerContext : workerContextsToClose) {
+              workerContext.close();
+            }
+          }
+        });
       }
-      for (final ActiveContext workerContext : workerContextsToClose) {
-        workerContext.close();
-      }
-      isComplete = true;
     }
   }
 
@@ -628,7 +685,11 @@ public final class AsyncDolphinDriver {
             "Trying to remove active context {0}, which is not found", activeContextId);
         isSuccess = false;
       } else {
-        workerContextsToClose.remove(activeContext);
+        deletedWorkerSet.add(activeContextId);
+
+        final RunningTask runningTask = contextIdToRunningTasks.remove(activeContextId);
+        runningTask.close();
+
         // TODO #205: Reconsider using of Avro message in EM's callback
         activeContext.close();
         final int remainingNumWorkers = runningWorkerContextCount.decrementAndGet();

@@ -129,11 +129,11 @@ public final class ParameterServerDriver {
   /**
    * @return service configuration for an Evaluator that uses a {@code ParameterWorker}
    */
-  public Configuration getWorkerServiceConfiguration() {
+  public Configuration getWorkerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(
             codecConfiguration,
-            psManager.getWorkerServiceConfiguration(),
+            psManager.getWorkerServiceConfiguration(contextId),
             updaterConfiguration,
             getNameResolverServiceConfiguration())
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
@@ -144,11 +144,11 @@ public final class ParameterServerDriver {
   /**
    * @return service configuration for an Evaluator that uses a {@code ParameterServer}
    */
-  public Configuration getServerServiceConfiguration() {
+  public Configuration getServerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(
             codecConfiguration,
-            psManager.getServerServiceConfiguration(),
+            psManager.getServerServiceConfiguration(contextId),
             updaterConfiguration,
             getNameResolverServiceConfiguration())
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)

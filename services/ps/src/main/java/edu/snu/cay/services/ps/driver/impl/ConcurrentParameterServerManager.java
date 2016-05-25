@@ -31,10 +31,8 @@ import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Tang;
 
 import javax.inject.Inject;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
-import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
 
 /**
  * Manager class for a Parameter Server that uses only one node for a server.
@@ -42,11 +40,9 @@ import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
  */
 @DriverSide
 public final class ConcurrentParameterServerManager implements ParameterServerManager {
-  private final AtomicInteger numWorkers;
 
   @Inject
   private ConcurrentParameterServerManager() {
-    this.numWorkers = new AtomicInteger(0);
   }
 
   /**
@@ -54,9 +50,7 @@ public final class ConcurrentParameterServerManager implements ParameterServerMa
    * Sets {@link ConcurrentParameterWorker} as the {@link ParameterWorker} class.
    */
   @Override
-  public Configuration getWorkerServiceConfiguration() {
-    final int workerIndex = numWorkers.getAndIncrement();
-
+  public Configuration getWorkerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, ConcurrentParameterWorker.class)
@@ -64,7 +58,7 @@ public final class ConcurrentParameterServerManager implements ParameterServerMa
         .bindImplementation(ParameterWorker.class, ConcurrentParameterWorker.class)
         .bindImplementation(AsyncWorkerHandler.class, ConcurrentWorkerHandler.class)
         .bindNamedParameter(ServerId.class, SERVER_ID_PREFIX + 0)
-        .bindNamedParameter(EndpointId.class, WORKER_ID_PREFIX + workerIndex)
+        .bindNamedParameter(EndpointId.class, contextId)
         .build();
   }
 
@@ -73,7 +67,7 @@ public final class ConcurrentParameterServerManager implements ParameterServerMa
    * Sets {@link ConcurrentParameterServer} as the {@link ParameterServer} class.
    */
   @Override
-  public Configuration getServerServiceConfiguration() {
+  public Configuration getServerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, ConcurrentParameterServer.class)

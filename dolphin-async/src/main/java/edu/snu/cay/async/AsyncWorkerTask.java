@@ -26,7 +26,10 @@ import org.apache.reef.io.data.loading.api.DataSet;
 import org.apache.reef.io.network.util.Pair;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.task.Task;
+import org.apache.reef.task.events.CloseEvent;
+import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
 import java.util.Iterator;
@@ -43,6 +46,7 @@ import java.util.logging.Logger;
  * Spawns several computation threads and runs them using
  * a fixed thread pool ({@link Executors#newFixedThreadPool(int)}.
  */
+@Unit
 final class AsyncWorkerTask implements Task {
   private static final Logger LOG = Logger.getLogger(AsyncWorkerTask.class.getName());
   static final String TASK_ID_PREFIX = "AsyncWorkerTask";
@@ -52,6 +56,12 @@ final class AsyncWorkerTask implements Task {
   private final int numWorkerThreads;
   private final Injector injector;
   private final DataSet<LongWritable, Text> dataSet;
+
+  /**
+   * A boolean flag shared among all worker threads.
+   * Worker threads end when this flag becomes true by {@link CloseEventHandler#onNext(CloseEvent)}.
+   */
+  private volatile boolean aborted = false;
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
@@ -90,6 +100,10 @@ final class AsyncWorkerTask implements Task {
         public void run() {
           worker.initialize();
           for (int iteration = 0; iteration < maxIterations; ++iteration) {
+            if (aborted) {
+              LOG.log(Level.INFO, "Abort a thread to completely close the task");
+              return;
+            }
             worker.run();
           }
           worker.cleanup();
@@ -142,6 +156,14 @@ final class AsyncWorkerTask implements Task {
     @Override
     public Iterator<Pair<LongWritable, Text>> iterator() {
       return dataSet.iterator();
+    }
+  }
+
+  final class CloseEventHandler implements EventHandler<CloseEvent> {
+
+    @Override
+    public void onNext(final CloseEvent closeEvent) {
+      aborted = true;
     }
   }
 }

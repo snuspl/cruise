@@ -64,7 +64,8 @@ public final class AddOneOptimizer implements Optimizer {
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
     for (final String namespace : evalParamsMap.keySet()) {
-      LOG.log(Level.INFO, "Optimizer: {0}", namespace);
+      planBuilder.addEvaluatorToAdd(namespace, evaluatorToAdd);
+
       EvaluatorParameters srcEvaluator = null;
       for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
         if (!evaluator.getDataInfos().isEmpty()) {
@@ -73,11 +74,10 @@ public final class AddOneOptimizer implements Optimizer {
         }
       }
 
-      // no evaluator has data; simply add a new evaluator with no new data to work on
+      // no evaluator has data; a new evaluator will also have no data to work on
       if (srcEvaluator == null) {
-        return PlanImpl.newBuilder()
-            .addEvaluatorToAdd(namespace, evaluatorToAdd)
-            .build();
+        LOG.log(Level.WARNING, "Cannot choose source evaluator to move its data to new evaluator in {0}", namespace);
+        continue;
       }
 
       final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
@@ -86,7 +86,6 @@ public final class AddOneOptimizer implements Optimizer {
       final TransferStep transferStep = new TransferStepImpl(
           srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
 
-      planBuilder.addEvaluatorToAdd(namespace, evaluatorToAdd);
       planBuilder.addTransferStep(namespace, transferStep);
     }
     return planBuilder.build();

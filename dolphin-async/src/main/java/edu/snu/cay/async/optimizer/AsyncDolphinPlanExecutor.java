@@ -101,6 +101,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
         if (serverEvalsToAdd.isEmpty() && serverEvalsToDel.isEmpty() && serverTransferSteps.isEmpty() &&
             workerEvalsToAdd.isEmpty() && workerEvalsToDel.isEmpty() && workerTransferSteps.isEmpty()) {
+          LOG.log(Level.FINE, "Plan is empty");
           return new PlanResultImpl();
         }
 
@@ -155,7 +156,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
           workerEM.delete(evaluatorId, new DeletedHandler());
         }
         executingPlan.awaitDeletes();
-
 
         return new PlanResultImpl();
       }

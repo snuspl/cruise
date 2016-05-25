@@ -25,6 +25,8 @@ import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * An Optimizer that simply deletes one new Evaluator for each optimize call.
@@ -35,6 +37,8 @@ import java.util.*;
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
 public final class DeleteOneOptimizer implements Optimizer {
+  private static final Logger LOG = Logger.getLogger(DeleteOneOptimizer.class.getName());
+
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -56,6 +60,8 @@ public final class DeleteOneOptimizer implements Optimizer {
       return PlanImpl.newBuilder().build();
     }
 
+    callsMade++;
+
     final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
 
     for (final String namespace : evalParamsMap.keySet()) {
@@ -76,7 +82,8 @@ public final class DeleteOneOptimizer implements Optimizer {
       });
 
       if (evaluators.size() < 2) {
-        throw new RuntimeException("Cannot delete, because not enough evaluators " + evaluators.size());
+        LOG.log(Level.WARNING, "Cannot delete, because not enough evaluators in {0}", namespace);
+        continue;
       }
 
       final EvaluatorParameters evaluatorToDelete = evaluators.get(0);
@@ -90,12 +97,10 @@ public final class DeleteOneOptimizer implements Optimizer {
             new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits())));
       }
 
-      callsMade++;
-
-
       planBuilder.addEvaluatorToDelete(namespace, evaluatorToDelete.getId());
       planBuilder.addTransferSteps(namespace, transferSteps);
     }
+
     return planBuilder.build();
   }
 }
