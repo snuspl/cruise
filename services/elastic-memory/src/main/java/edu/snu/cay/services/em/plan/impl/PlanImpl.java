@@ -147,7 +147,7 @@ public final class PlanImpl implements Plan {
         for (final String evaluator : evaluatorsToAdd.get(namespace)) {
           if (evaluatorsToDelete.containsKey(namespace) &&
               evaluatorsToDelete.get(namespace).contains(evaluator)) {
-            throw new RuntimeException(evaluator + " is planned both for addition and deletion.");
+            throw new RuntimeException(evaluator + " is planned for both addition and deletion.");
           }
         }
 

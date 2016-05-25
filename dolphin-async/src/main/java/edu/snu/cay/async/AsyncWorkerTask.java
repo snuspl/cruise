@@ -61,7 +61,7 @@ final class AsyncWorkerTask implements Task {
    * A boolean flag shared among all worker threads.
    * Worker threads end when this flag becomes true by {@link CloseEventHandler#onNext(CloseEvent)}.
    */
-  private volatile boolean abort = false;
+  private volatile boolean aborted = false;
 
   @Inject
   private AsyncWorkerTask(@Parameter(Identifier.class) final String taskId,
@@ -100,7 +100,7 @@ final class AsyncWorkerTask implements Task {
         public void run() {
           worker.initialize();
           for (int iteration = 0; iteration < maxIterations; ++iteration) {
-            if (abort) {
+            if (aborted) {
               LOG.log(Level.INFO, "Abort a thread to completely close the task");
               return;
             }
@@ -163,7 +163,7 @@ final class AsyncWorkerTask implements Task {
 
     @Override
     public void onNext(final CloseEvent closeEvent) {
-      abort = true;
+      aborted = true;
     }
   }
 }
