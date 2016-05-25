@@ -98,7 +98,7 @@ public final class OptimizationOrchestrator {
 
           Thread.sleep(MARGIN_TIME_MS); // sleep for the system to be stable
         } catch (final InterruptedException | ExecutionException e) {
-          LOG.log(Level.WARNING, "Exception while waiting for the plan execution to be completed");
+          LOG.log(Level.WARNING, "Exception while waiting for the plan execution to be completed", e);
         }
 
         // make another optimization can go after the optimization is completely finished
@@ -107,6 +107,11 @@ public final class OptimizationOrchestrator {
     });
   }
 
+  /**
+   * Checks whether the optimization is being performed, specifically whether the
+   * plan is being executed.
+   * @return True if the generated plan is on execution.
+   */
   public boolean isPlanExecuting() {
     return isPlanExecuting.get();
   }
