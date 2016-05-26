@@ -51,11 +51,11 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
     final SrcType srcType = metricsMessage.getSrcType();
 
     if (SrcType.Worker.equals(srcType)) {
-      LOG.log(Level.INFO, "Metric from worker: {0}, iteration: {1}, metrics: {2}", new Object[]{msg.getSourceId(),
+      LOG.log(Level.FINE, "Metric from worker: {0}, iteration: {1}, metrics: {2}", new Object[]{msg.getSourceId(),
           metricsMessage.getWorkerMsg().getIteration(), getMetricsFromAvro(metricsMessage.getMetrics())});
       // do something
     } else if (SrcType.Server.equals(srcType)) {
-      LOG.log(Level.INFO, "Metric from server: {0}, window: {1}, metrics: {2}", new Object[]{msg.getSourceId(),
+      LOG.log(Level.FINE, "Metric from server: {0}, window: {1}, metrics: {2}", new Object[]{msg.getSourceId(),
           metricsMessage.getServerMsg().getWindow(), getMetricsFromAvro(metricsMessage.getMetrics())});
       // do something
     } else {
