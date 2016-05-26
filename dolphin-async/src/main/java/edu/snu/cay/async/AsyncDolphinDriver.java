@@ -194,16 +194,6 @@ public final class AsyncDolphinDriver {
   private final Configuration paramConf;
 
   /**
-   * Worker-side EM client configuration, that should be passed to worker EM contexts.
-   */
-  private final Configuration emWorkerClientConf;
-
-  /**
-   * Server-side EM client configuration, that should be passed to server EM contexts.
-   */
-  private final Configuration emServerClientConf;
-
-  /**
    * Queue of activeContext objects of the evaluators housing the parameter server.
    */
   private ConcurrentLinkedQueue<ActiveContext> serverContexts;
@@ -272,10 +262,6 @@ public final class AsyncDolphinDriver {
                              final AggregationManager aggregationManager,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
-                             @Parameter(SerializedEMWorkerClientConfiguration.class)
-                                 final String serializedEMWorkerClientConf,
-                             @Parameter(SerializedEMServerClientConfiguration.class)
-                                 final String serializedEMServerClientConf,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
@@ -299,8 +285,6 @@ public final class AsyncDolphinDriver {
     this.workerContextsToClose = new ConcurrentLinkedQueue<>();
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
-    this.emWorkerClientConf = configurationSerializer.fromString(serializedEMWorkerClientConf);
-    this.emServerClientConf = configurationSerializer.fromString(serializedEMServerClientConf);
 
     this.numWorkerThreads = numWorkerThreads;
     this.traceParameters = traceParameters;
@@ -360,8 +344,8 @@ public final class AsyncDolphinDriver {
         @Override
         public Void call() throws Exception {
           while (!isFinished.get()) {
-            Thread.sleep(optimizationIntervalMs);
             optimizationOrchestrator.run();
+            Thread.sleep(optimizationIntervalMs);
           }
           return null;
         }
@@ -457,9 +441,10 @@ public final class AsyncDolphinDriver {
       @Override
       public void onNext(final ActiveContext activeContext) {
         LOG.log(Level.INFO, "Server-side ParameterServer context - {0}", activeContext);
-        completedOrFailedEvalCount.incrementAndGet();
+
         // although this evaluator is not 'completed' yet,
         // we add it beforehand so that it closes if all workers finish
+        completedOrFailedEvalCount.incrementAndGet();
         serverContexts.add(activeContext);
       }
     };
