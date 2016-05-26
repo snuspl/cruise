@@ -341,8 +341,11 @@ public final class AsyncDolphinDriver {
       psNetworkSetup.registerConnectionFactory(driverId);
 
       optimizerExecutor.submit(new Callable<Void>() {
+        private static final long INIT_DELAY = 10000;
+
         @Override
         public Void call() throws Exception {
+          Thread.sleep(INIT_DELAY);
           while (!isFinished.get()) {
             optimizationOrchestrator.run();
             Thread.sleep(optimizationIntervalMs);
