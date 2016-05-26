@@ -345,6 +345,7 @@ public final class AsyncDolphinDriver {
 
         @Override
         public Void call() throws Exception {
+          // TODO #538: check actual timing of system init
           Thread.sleep(INIT_DELAY);
           while (!isFinished.get()) {
             optimizationOrchestrator.run();
