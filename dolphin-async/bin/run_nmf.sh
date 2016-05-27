@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # EXAMPLE USAGE
-# ./run_nmf.sh -maxIter 500 -local true -split 4 -maxNumEvalLocal 5 -numWorkerThreads 1 -input sample_nmf -batchSize 5 -rank 30 -stepSize 0.01 -printMat true -timeout 300000 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.async.optimizer.AsyncDolphinPlanExecutor -optimizationIntervalMs 3000
+# ./run_nmf.sh -maxIter 500 -local true -split 4 -maxNumEvalLocal 5 -numWorkerThreads 1 -input sample_nmf -batchSize 5 -rank 30 -stepSize 0.01 -printMat true -timeout 300000 -dynamic false -optimizer edu.snu.cay.services.em.optimizer.impl.EmptyPlanOptimizer -plan_executor edu.snu.cay.async.optimizer.AsyncDolphinPlanExecutor -optimizationIntervalMs 3000 -memoryStoreInitDelayMs 1000 -delayAfterOptimizationMs 10000
 
 SELF_JAR=`echo ../target/dolphin-async-*-shaded.jar`
 
