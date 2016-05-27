@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.bsp.core.optimizer;
 
-import edu.snu.cay.dolphin.bsp.core.ComputeTask;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 
 import java.util.Collection;
@@ -34,7 +33,7 @@ final class Cost {
   }
 
   /**
-   * Class for storing costs for {@link ComputeTask}s and their meta-information.
+   * Class for storing costs for {@link edu.snu.cay.dolphin.bsp.core.ComputeTask}s and their meta-information.
    */
   public static class ComputeTaskCost {
 

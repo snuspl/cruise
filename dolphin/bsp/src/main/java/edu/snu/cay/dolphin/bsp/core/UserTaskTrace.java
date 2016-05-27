@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.bsp.core;
 
-import edu.snu.cay.dolphin.bsp.parameters.StartTrace;
 import edu.snu.cay.utils.trace.HTrace;
 import org.htrace.Trace;
 import org.htrace.TraceInfo;
@@ -25,7 +24,7 @@ import javax.inject.Inject;
 
 /**
  * Provide tracing within classes that extend UserControllerTask/UserComputeTask.
- * To trace, turn on tracing via {@link StartTrace}.
+ * To trace, turn on tracing via {@link edu.snu.cay.dolphin.bsp.parameters.StartTrace}.
  * The traces will be grouped by Iteration and Task.
  */
 public final class UserTaskTrace {

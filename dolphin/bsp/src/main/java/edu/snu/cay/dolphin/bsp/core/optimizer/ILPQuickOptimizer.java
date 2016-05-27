@@ -33,6 +33,8 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator.*;
+
 /**
  * Optimizer class based on the optimization formula used by {@link ILPSolverOptimizer},
  * solved by hand instead of using an ILP solver library, with an additional constraint applied.
@@ -135,7 +137,7 @@ public final class ILPQuickOptimizer implements Optimizer {
       return PlanImpl.newBuilder().build();
     }
 
-    final List<EvaluatorParameters> activeEvaluators = evalParamsMap.get(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP);
+    final List<EvaluatorParameters> activeEvaluators = evalParamsMap.get(NAMESPACE_DOLPHIN_BSP);
 
     // Step 1: Process metrics into meaningful values
     final Optional<Cost> cost = CostCalculator.calculate(
@@ -173,7 +175,7 @@ public final class ILPQuickOptimizer implements Optimizer {
         optimizedEvalQueue, expectedCompUnitCostInv, compUnitCostInvSum, numUnitsTotal, numOptimalEvals, planBuilder);
 
     // Step 5: Generate transfer steps according to the optimal plan.
-    generateTransferSteps(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP, evalSet, planBuilder);
+    generateTransferSteps(NAMESPACE_DOLPHIN_BSP, evalSet, planBuilder);
 
     return planBuilder.build();
   }
@@ -278,14 +280,14 @@ public final class ILPQuickOptimizer implements Optimizer {
       final int newWorkload = (int)Math.round(totalWorkload * expectedCompUnitCostInv / compUnitCostInvSum);
       retSet.add(new OptimizedEvaluator(newEvalId, new ArrayList<DataInfo>(0),
           expectedCompUnitCostInv, newWorkload));
-      planBuilder.addEvaluatorToAdd(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP, newEvalId);
+      planBuilder.addEvaluatorToAdd(NAMESPACE_DOLPHIN_BSP, newEvalId);
       remainingWorkload -= newWorkload;
     }
 
     for (final OptimizedEvaluator eval : optimizedEvaluatorQueue) {
       if (retSet.size() >= numOptimalEvals) {
         // the optimal number of evaluators has been reached; delete the remaining ones
-        planBuilder.addEvaluatorToDelete(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP, eval.id);
+        planBuilder.addEvaluatorToDelete(NAMESPACE_DOLPHIN_BSP, eval.id);
         eval.numOptimalUnits = 0;
 
       } else if (retSet.size() == numOptimalEvals - 1) {

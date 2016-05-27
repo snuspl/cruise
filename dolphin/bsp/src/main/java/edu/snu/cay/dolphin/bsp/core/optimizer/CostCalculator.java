@@ -15,7 +15,6 @@
  */
 package edu.snu.cay.dolphin.bsp.core.optimizer;
 
-import edu.snu.cay.dolphin.bsp.core.ComputeTask;
 import edu.snu.cay.dolphin.bsp.core.DolphinMetricKeys;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import org.apache.reef.util.Optional;
@@ -80,7 +79,7 @@ final class CostCalculator {
 
   /**
    * @param computeTasksParameters a collection of evaluator parameters for compute tasks
-   * @return a collection of costs for {@link ComputeTask}s
+   * @return a collection of costs for {@link edu.snu.cay.dolphin.bsp.core.ComputeTask}s
    */
   private static Collection<Cost.ComputeTaskCost> getComputeTaskCosts(
       final Collection<EvaluatorParameters> computeTasksParameters) {

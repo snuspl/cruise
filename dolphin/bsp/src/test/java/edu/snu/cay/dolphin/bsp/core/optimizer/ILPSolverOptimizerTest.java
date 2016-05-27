@@ -33,9 +33,11 @@ import org.junit.Test;
 
 import java.util.*;
 
+import static edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
+
 /**
  * Class for testing {@link ILPSolverOptimizer}'s behavior.
  */
@@ -64,13 +66,13 @@ public final class ILPSolverOptimizerTest {
     final int numComputeTasks = 1;
     final int availableEvaluators = 4;
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{10000}});
+        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{10000}});
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
     PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size() > 0);
-    assertEquals(0, plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size());
+    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size() > 0);
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
   }
 
   /**
@@ -81,16 +83,16 @@ public final class ILPSolverOptimizerTest {
     final int numComputeTasks = 4;
     final int availableEvaluators = numComputeTasks / 2 + 1; // +1 for including the controller task
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{2500}, {2500}, {2500}, {2500}});
+        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{2500}, {2500}, {2500}, {2500}});
     final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan =
         ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
     PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals(0, plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size());
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
     assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
-        plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size() >= lowerBoundToDelete);
+        plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size() >= lowerBoundToDelete);
   }
 
   /**
@@ -101,13 +103,13 @@ public final class ILPSolverOptimizerTest {
     final int numComputeTasks = 3;
     final int availableEvaluators = numComputeTasks * 2 + 1;
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{4000, 1000}, {2000, 2000}, {5000, 2000}});
+        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{4000, 1000}, {2000, 2000}, {5000, 2000}});
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
     PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size() > 0);
-    assertEquals(0, plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size());
+    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size() > 0);
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
   }
 
   /**
@@ -118,16 +120,16 @@ public final class ILPSolverOptimizerTest {
     final int numComputeTasks = 5;
     final int availableEvaluators = numComputeTasks / 2 + 1;
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP, numComputeTasks,
+        NAMESPACE_DOLPHIN_BSP, numComputeTasks,
         new int[][]{{2000, 500}, {3000, 1000}, {3000, 1000}, {2500, 2000}, {2500, 2000}});
     final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
     PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals(0, plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size());
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
     assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
-        plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size() >= lowerBoundToDelete);
+        plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size() >= lowerBoundToDelete);
   }
 
   /**
@@ -138,13 +140,13 @@ public final class ILPSolverOptimizerTest {
     final int numComputeTasks = 2;
     final int availableEvaluators = 4; // +1 for adding one more compute task and +1 for including the controller task
     final Map<String, List<EvaluatorParameters>> activeEvaluators =
-        generateEvaluatorParameters(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{1300}, {900}});
+        generateEvaluatorParameters(NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{1300}, {900}});
 
     final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
     PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals(1, plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size());
-    assertEquals(0, plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size());
+    assertEquals(1, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
   }
 
   /**
@@ -162,14 +164,14 @@ public final class ILPSolverOptimizerTest {
     final int numComputeTasks = 1;
     final int availableEvaluators = 4;
     final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{10000}});
+        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{10000}});
 
     final Plan plan = wrongCtrlIlpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
 
     PlanValidationUtils.checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size());
-    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size());
-    assertEquals("The plan should be empty", 0, plan.getTransferSteps(OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP).size());
+    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
+    assertEquals("The plan should be empty", 0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
+    assertEquals("The plan should be empty", 0, plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).size());
   }
 
   /**

@@ -22,7 +22,6 @@ import org.apache.mahout.common.RandomUtils;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -62,6 +61,6 @@ public final class DenseRowCodecTest {
   @Test
   public void testDenseRowCodec() {
     final Row row = generateDenseRow(50);
-    Assert.assertEquals(row, denseRowCodec.decode(denseRowCodec.encode(row)));
+    assertEquals(row, denseRowCodec.decode(denseRowCodec.encode(row)));
   }
 }

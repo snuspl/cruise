@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.bsp.examples.ml.algorithms.clustering.em;
 import edu.snu.cay.common.param.Parameters.Iterations;
 import edu.snu.cay.dolphin.bsp.core.KeyValueStore;
 import edu.snu.cay.dolphin.bsp.core.UserControllerTask;
-import edu.snu.cay.dolphin.bsp.examples.ml.algorithms.clustering.ClusteringPreCtrlTask;
 import edu.snu.cay.dolphin.bsp.examples.ml.converge.ClusteringConvCond;
 import edu.snu.cay.dolphin.bsp.examples.ml.data.ClusterStats;
 import edu.snu.cay.dolphin.bsp.examples.ml.data.ClusterSummary;
@@ -114,7 +113,7 @@ public final class EMMainCtrlTask extends UserControllerTask
 
   /**
    * Receive the initial centroids from the preprocess task.
-   * {@link ClusteringPreCtrlTask}
+   * {@link edu.snu.cay.dolphin.bsp.examples.ml.algorithms.clustering.ClusteringPreCtrlTask}
    */
   @Override
   public void initialize() {

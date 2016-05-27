@@ -45,6 +45,8 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.bsp.core.DolphinMetricKeys.*;
+
 public final class ControllerTask implements Task {
   public static final String TASK_ID_PREFIX = "CtrlTask";
   private static final Logger LOG = Logger.getLogger(ControllerTask.class.getName());
@@ -150,13 +152,13 @@ public final class ControllerTask implements Task {
   }
 
   private void runUserControllerTask() throws MetricException {
-    insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_USER_CONTROLLER_TASK_START, System.currentTimeMillis());
+    insertableMetricTracker.put(CONTROLLER_TASK_USER_CONTROLLER_TASK_START, System.currentTimeMillis());
     userControllerTask.run(iteration);
-    insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_USER_CONTROLLER_TASK_END, System.currentTimeMillis());
+    insertableMetricTracker.put(CONTROLLER_TASK_USER_CONTROLLER_TASK_END, System.currentTimeMillis());
   }
 
   private void sendData() throws NetworkException, InterruptedException, MetricException {
-    insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START, System.currentTimeMillis());
+    insertableMetricTracker.put(CONTROLLER_TASK_SEND_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isBroadcastUsed()) {
       commGroup.getBroadcastSender(DataBroadcast.class).send(
           ((DataBroadcastSender)userControllerTask).sendBroadcastData(iteration));
@@ -165,11 +167,11 @@ public final class ControllerTask implements Task {
       commGroup.getScatterSender(DataScatter.class).send(
           ((DataScatterSender)userControllerTask).sendScatterData(iteration));
     }
-    insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_END, System.currentTimeMillis());
+    insertableMetricTracker.put(CONTROLLER_TASK_SEND_DATA_END, System.currentTimeMillis());
   }
 
   private void receiveData() throws NetworkException, InterruptedException, MetricException {
-    insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_START, System.currentTimeMillis());
+    insertableMetricTracker.put(CONTROLLER_TASK_RECEIVE_DATA_START, System.currentTimeMillis());
     if (userControllerTask.isGatherUsed()) {
       ((DataGatherReceiver)userControllerTask).receiveGatherData(iteration,
           commGroup.getGatherReceiver(DataGather.class).receive());
@@ -178,7 +180,7 @@ public final class ControllerTask implements Task {
       ((DataReduceReceiver)userControllerTask).receiveReduceData(iteration,
           commGroup.getReduceReceiver(DataReduce.class).reduce());
     }
-    insertableMetricTracker.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END, System.currentTimeMillis());
+    insertableMetricTracker.put(CONTROLLER_TASK_RECEIVE_DATA_END, System.currentTimeMillis());
   }
 
   private void sendMetrics() {

@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.async;
 
+import edu.snu.cay.dolphin.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.dolphin.async.optimizer.EmptyDataSet;
 import edu.snu.cay.dolphin.async.optimizer.ServerEM;
 import edu.snu.cay.dolphin.async.optimizer.parameters.OptimizationIntervalMs;
@@ -278,11 +279,11 @@ public final class AsyncDolphinDriver {
                              final IdentifierFactory identifierFactory,
                              @Parameter(DriverIdentifier.class) final String driverIdStr,
                              final AggregationManager aggregationManager,
-                             @Parameter(AsyncDolphinLauncher.SerializedWorkerConfiguration.class) final String serializedWorkerConf,
-                             @Parameter(AsyncDolphinLauncher.SerializedParameterConfiguration.class) final String serializedParamConf,
-                             @Parameter(AsyncDolphinLauncher.SerializedEMWorkerClientConfiguration.class)
+                             @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
+                             @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
+                             @Parameter(SerializedEMWorkerClientConfiguration.class)
                                  final String serializedEMWorkerClientConf,
-                             @Parameter(AsyncDolphinLauncher.SerializedEMServerClientConfiguration.class)
+                             @Parameter(SerializedEMServerClientConfiguration.class)
                                  final String serializedEMServerClientConf,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,

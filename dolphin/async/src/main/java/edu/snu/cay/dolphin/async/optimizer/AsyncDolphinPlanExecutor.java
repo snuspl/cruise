@@ -43,6 +43,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.*;
+
 /**
  * Implementation of Plan Executor for AsyncDolphin.
  */
@@ -96,13 +98,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     return mainExecutor.submit(new Callable<PlanResult>() {
       @Override
       public PlanResult call() throws Exception {
-        final Collection<String> serverEvalsToAdd = plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_SERVER);
-        final Collection<String> serverEvalsToDel = plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_SERVER);
-        final Collection<TransferStep> serverTransferSteps = plan.getTransferSteps(OptimizationOrchestrator.NAMESPACE_SERVER);
+        final Collection<String> serverEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_SERVER);
+        final Collection<String> serverEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_SERVER);
+        final Collection<TransferStep> serverTransferSteps = plan.getTransferSteps(NAMESPACE_SERVER);
 
-        final Collection<String> workerEvalsToAdd = plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_WORKER);
-        final Collection<String> workerEvalsToDel = plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_WORKER);
-        final Collection<TransferStep> workerTransferSteps = plan.getTransferSteps(OptimizationOrchestrator.NAMESPACE_WORKER);
+        final Collection<String> workerEvalsToAdd = plan.getEvaluatorsToAdd(NAMESPACE_WORKER);
+        final Collection<String> workerEvalsToDel = plan.getEvaluatorsToDelete(NAMESPACE_WORKER);
+        final Collection<TransferStep> workerTransferSteps = plan.getTransferSteps(NAMESPACE_WORKER);
 
         if (serverEvalsToAdd.isEmpty() && serverEvalsToDel.isEmpty() && serverTransferSteps.isEmpty() &&
             workerEvalsToAdd.isEmpty() && workerEvalsToDel.isEmpty() && workerTransferSteps.isEmpty()) {
@@ -114,13 +116,13 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
         LOG.log(Level.FINE, "Add {0} servers", serverEvalsToAdd.size());
         serverEM.add(serverEvalsToAdd.size(), 1024, 1,
-            getAllocatedEvalHandler(OptimizationOrchestrator.NAMESPACE_SERVER),
-            getActiveContextHandler(OptimizationOrchestrator.NAMESPACE_SERVER));
+            getAllocatedEvalHandler(NAMESPACE_SERVER),
+            getActiveContextHandler(NAMESPACE_SERVER));
 
         LOG.log(Level.FINE, "Add {0} workers", workerEvalsToAdd.size());
         workerEM.add(workerEvalsToAdd.size(), 1024, 1,
-            getAllocatedEvalHandler(OptimizationOrchestrator.NAMESPACE_WORKER),
-            getActiveContextHandler(OptimizationOrchestrator.NAMESPACE_WORKER));
+            getAllocatedEvalHandler(NAMESPACE_WORKER),
+            getActiveContextHandler(NAMESPACE_WORKER));
 
         executingPlan.awaitActiveContexts();
 
@@ -131,7 +133,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         try {
           // TODO #505: The delay must be applied only for the destination MemoryStores that are added by EM.add().
           Thread.sleep(memoryStoreInitDelayMs);
-          for (final TransferStep transferStep : plan.getTransferSteps(OptimizationOrchestrator.NAMESPACE_SERVER)) {
+          for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_SERVER)) {
             serverEM.move(
                 transferStep.getDataInfo().getDataType(),
                 transferStep.getDataInfo().getNumUnits(), // NumUnits is treated as block number.
@@ -139,7 +141,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
                 executingPlan.getServerActualContextId(transferStep.getDstId()),
                 new MovedHandler());
           }
-          for (final TransferStep transferStep : plan.getTransferSteps(OptimizationOrchestrator.NAMESPACE_WORKER)) {
+          for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_WORKER)) {
             workerEM.move(
                 transferStep.getDataInfo().getDataType(),
                 transferStep.getDataInfo().getNumUnits(),
@@ -174,10 +176,10 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private EventHandler<AllocatedEvaluator> getAllocatedEvalHandler(final String namespace) {
     final EventHandler<AllocatedEvaluator> eventHandler;
     switch (namespace) {
-    case OptimizationOrchestrator.NAMESPACE_SERVER:
+    case NAMESPACE_SERVER:
       eventHandler = asyncDolphinDriver.get().getEvalAllocHandlerForServer();
       break;
-    case OptimizationOrchestrator.NAMESPACE_WORKER:
+    case NAMESPACE_WORKER:
       eventHandler = new WorkerEvaluatorAllocatedHandler();
       break;
     default:
@@ -207,11 +209,11 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private List<EventHandler<ActiveContext>> getActiveContextHandler(final String namespace) {
     final List<EventHandler<ActiveContext>> activeContextHandlers = new ArrayList<>(2);
     switch (namespace) {
-    case OptimizationOrchestrator.NAMESPACE_SERVER:
+    case NAMESPACE_SERVER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForServer(true));
       activeContextHandlers.add(new ServerContextActiveHandler());
       break;
-    case OptimizationOrchestrator.NAMESPACE_WORKER:
+    case NAMESPACE_WORKER:
       activeContextHandlers.add(asyncDolphinDriver.get().getFirstContextActiveHandlerForWorker(true));
       activeContextHandlers.add(new WorkerContextActiveHandler());
       break;
@@ -315,24 +317,24 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     private final CountDownLatch deleteLatch;
 
     private ExecutingPlan(final Plan plan) {
-      this.addServerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_SERVER));
-      this.serverActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_SERVER).size());
+      this.addServerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_SERVER));
+      this.serverActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_SERVER).size());
       this.addServerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
-      this.deleteServerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_SERVER));
+      this.deleteServerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_SERVER));
 
-      this.addWorkerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_WORKER));
-      this.workerActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(OptimizationOrchestrator.NAMESPACE_WORKER).size());
+      this.addWorkerEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER));
+      this.workerActiveContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_WORKER).size());
       this.addWorkerEvaluatorIdsToContexts = new ConcurrentHashMap<>();
-      this.deleteWorkerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_WORKER));
+      this.deleteWorkerEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_WORKER));
 
       this.activeContextLatch = new CountDownLatch(addServerEvaluatorIds.size() + addWorkerEvaluatorIds.size());
       this.moveLatch = new CountDownLatch(
-          plan.getTransferSteps(OptimizationOrchestrator.NAMESPACE_SERVER).size() +
-          plan.getTransferSteps(OptimizationOrchestrator.NAMESPACE_WORKER).size());
+          plan.getTransferSteps(NAMESPACE_SERVER).size() +
+          plan.getTransferSteps(NAMESPACE_WORKER).size());
 
       this.deleteLatch = new CountDownLatch(
-          plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_SERVER).size() +
-          plan.getEvaluatorsToDelete(OptimizationOrchestrator.NAMESPACE_WORKER).size());
+          plan.getEvaluatorsToDelete(NAMESPACE_SERVER).size() +
+          plan.getEvaluatorsToDelete(NAMESPACE_WORKER).size());
     }
 
     void awaitActiveContexts() {
