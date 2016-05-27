@@ -15,6 +15,8 @@
  */
 package edu.snu.cay.dolphin.async.mlapps.mlr;
 
+import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.ModelGaussian;
+import edu.snu.cay.dolphin.async.mlapps.mlr.MLRREEF.NumFeaturesPerPartition;
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
 import edu.snu.cay.services.ps.server.api.ParameterUpdater;
@@ -36,8 +38,8 @@ final class MLRUpdater implements ParameterUpdater<Integer, Vector, Vector> {
   private final Random random;
 
   @Inject
-  private MLRUpdater(@Parameter(MLRREEF.NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
-                     @Parameter(MLRREEF.ModelGaussian.class) final double modelGaussian,
+  private MLRUpdater(@Parameter(NumFeaturesPerPartition.class) final int numFeaturesPerPartition,
+                     @Parameter(ModelGaussian.class) final double modelGaussian,
                      final VectorFactory vectorFactory) {
     this.numFeaturesPerPartition = numFeaturesPerPartition;
     this.modelGaussian = modelGaussian;

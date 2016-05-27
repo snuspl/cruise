@@ -18,6 +18,8 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 import edu.snu.cay.dolphin.async.AsyncDolphinLauncher;
 import edu.snu.cay.dolphin.async.AsyncDolphinConfiguration;
 
+import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
+
 /**
  * Client for non-negative matrix factorization via SGD.
  */
@@ -35,12 +37,12 @@ public final class NMFREEF {
         .setUpdaterClass(NMFUpdater.class)
         .setPreValueCodecClass(DenseVectorCodec.class)
         .setValueCodecClass(DenseVectorCodec.class)
-        .addParameterClass(NMFParameters.Rank.class)
-        .addParameterClass(NMFParameters.StepSize.class)
-        .addParameterClass(NMFParameters.Lambda.class)
-        .addParameterClass(NMFParameters.BatchSize.class)
-        .addParameterClass(NMFParameters.PrintMatrices.class)
-        .addParameterClass(NMFParameters.LogPeriod.class)
+        .addParameterClass(Rank.class)
+        .addParameterClass(StepSize.class)
+        .addParameterClass(Lambda.class)
+        .addParameterClass(BatchSize.class)
+        .addParameterClass(PrintMatrices.class)
+        .addParameterClass(LogPeriod.class)
         .build());
   }
 }

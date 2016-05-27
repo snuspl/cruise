@@ -42,6 +42,8 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
+
 /**
  * Worker for non-negative matrix factorization via SGD.
  *
@@ -93,12 +95,12 @@ final class NMFWorker implements Worker {
                     final ParameterWorker<Integer, Vector, Vector> parameterWorker,
                     final WorkerSynchronizer workerSynchronizer,
                     final VectorFactory vectorFactory,
-                    @Parameter(NMFParameters.Rank.class) final int rank,
-                    @Parameter(NMFParameters.StepSize.class) final double stepSize,
-                    @Parameter(NMFParameters.Lambda.class) final double lambda,
-                    @Parameter(NMFParameters.BatchSize.class) final int batchSize,
-                    @Parameter(NMFParameters.PrintMatrices.class) final boolean printMatrices,
-                    @Parameter(NMFParameters.LogPeriod.class) final int logPeriod,
+                    @Parameter(Rank.class) final int rank,
+                    @Parameter(StepSize.class) final double stepSize,
+                    @Parameter(Lambda.class) final double lambda,
+                    @Parameter(BatchSize.class) final int batchSize,
+                    @Parameter(PrintMatrices.class) final boolean printMatrices,
+                    @Parameter(LogPeriod.class) final int logPeriod,
                     final NMFModelGenerator modelGenerator,
                     final DataIdFactory<Long> idFactory,
                     final MemoryStore<Long> memoryStore,

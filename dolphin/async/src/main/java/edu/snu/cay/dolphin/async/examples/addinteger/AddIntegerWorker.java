@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.async.examples.addinteger;
 
 import edu.snu.cay.dolphin.async.Worker;
-import edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
@@ -27,6 +26,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static edu.snu.cay.dolphin.async.optimizer.OptimizationOrchestrator.DATA_TYPE_WORKER;
 
 /**
  * {@link Worker} class for the AddIntegerREEF application.
@@ -59,7 +60,7 @@ final class AddIntegerWorker implements Worker {
     // TODO #530: we'll not require this initialization after removing data type from MemoryStore
     if (!addedEval) {
       final long dataKey = dataIdFactory.getId();
-      memoryStore.put(OptimizationOrchestrator.DATA_TYPE_WORKER, dataKey, dataKey); // hard-coded data type
+      memoryStore.put(DATA_TYPE_WORKER, dataKey, dataKey); // hard-coded data type
     }
   }
 
