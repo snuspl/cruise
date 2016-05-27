@@ -18,7 +18,6 @@ package edu.snu.cay.services.em.driver.api;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.impl.ElasticMemoryImpl;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -66,36 +65,6 @@ public interface ElasticMemory {
   void resize(String evalId, int megaBytes, int cores);
 
   /**
-   * Move specific partitions of an evaluator's state to another evaluator.
-   *
-   * @param dataType data type to perform this operation
-   * @param rangeSet the range of integer identifiers that specify the state to move
-   * @param srcEvalId identifier of the source evaluator
-   * @param destEvalId identifier of the destination evaluator
-   * @param dataTransferredCallback handler to call when data transfer is completed and the migration is waiting
-   *                                for a call to {@link #applyUpdates}, or null if no callback is needed
-   * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
-   */
-  void move(String dataType, Set<LongRange> rangeSet, String srcEvalId, String destEvalId,
-            @Nullable EventHandler<AvroElasticMemoryMessage> dataTransferredCallback,
-            @Nullable EventHandler<AvroElasticMemoryMessage> finishedCallback);
-
-  /**
-   * Move a certain number of units of an evaluator's state to another evaluator.
-   *
-   * @param dataType data type to perform this operation
-   * @param numUnits the number of units to move
-   * @param srcEvalId identifier of the source evaluator
-   * @param destEvalId identifier of the destination evaluator
-   * @param dataTransferredCallback handler to call when data transfer is completed and the migration is waiting
-   *                                for a call to {@link #applyUpdates}, or null if no callback is needed
-   * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
-   */
-  void move(String dataType, int numUnits, String srcEvalId, String destEvalId,
-            @Nullable EventHandler<AvroElasticMemoryMessage> dataTransferredCallback,
-            @Nullable EventHandler<AvroElasticMemoryMessage> finishedCallback);
-
-  /**
    * Move a certain number of blocks to another Evaluator.
    *
    * @param dataType data type to perform this operation
@@ -106,14 +75,6 @@ public interface ElasticMemory {
    */
   void move(String dataType, int numBlocks, String srcEvalId, String destEvalId,
             @Nullable EventHandler<AvroElasticMemoryMessage> finishedCallback);
-
-  /**
-   * Apply the intermediate changes in EM's states by the migration.
-   * To avoid race condition, EM requests for Users to call this method explicitly.
-   * But once EM allows remote access to the data, we can remove this barrier
-   * letting EM update its state automatically.
-   */
-  void applyUpdates();
 
   /**
    * Persist the state of an evaluator into stable storage.
