@@ -21,11 +21,13 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
+import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
+
 /**
  * Updater for non-negative matrix factorization via SGD.
  *
  * Vectors are initialized with random values
- * between {@link NMFParameters.InitialMin} and {@link NMFParameters.InitialMax} using {@link java.util.Random}.
+ * between {@link InitialMin} and {@link InitialMax} using {@link java.util.Random}.
  */
 final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
 
@@ -34,7 +36,7 @@ final class NMFUpdater implements ParameterUpdater<Integer, Vector, Vector> {
 
   @Inject
   private NMFUpdater(final NMFModelGenerator modelGenerator,
-                     @Parameter(NMFParameters.StepSize.class) final double stepSize) {
+                     @Parameter(StepSize.class) final double stepSize) {
     this.modelGenerator = modelGenerator;
     this.stepSize = stepSize;
   }

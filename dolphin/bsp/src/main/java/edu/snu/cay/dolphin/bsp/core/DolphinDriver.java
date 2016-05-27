@@ -27,7 +27,6 @@ import edu.snu.cay.dolphin.bsp.parameters.StartTrace;
 import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.bsp.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.bsp.groupcomm.conf.GroupCommParameters;
-import edu.snu.cay.dolphin.bsp.groupcomm.names.DataPreRunShuffle;
 import edu.snu.cay.dolphin.bsp.scheduling.SchedulabilityAnalyzer;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;

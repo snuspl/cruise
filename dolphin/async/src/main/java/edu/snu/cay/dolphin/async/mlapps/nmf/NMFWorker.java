@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.async.mlapps.nmf;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import edu.snu.cay.dolphin.async.metric.MetricKeys;
 import edu.snu.cay.dolphin.async.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.async.Worker;
 import edu.snu.cay.dolphin.async.WorkerSynchronizer;
@@ -42,6 +41,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.async.metric.MetricKeys.WORKER_COMPUTE_TIME;
 import static edu.snu.cay.dolphin.async.mlapps.nmf.NMFParameters.*;
 
 /**
@@ -209,7 +209,7 @@ final class NMFWorker implements Worker {
 
   private void sendMetrics(final int numDataUnits) {
     try {
-      insertableMetricTracker.put(MetricKeys.WORKER_COMPUTE_TIME, computeTracer.sum());
+      insertableMetricTracker.put(WORKER_COMPUTE_TIME, computeTracer.sum());
       metricsCollector.stop();
     } catch (final MetricException e) {
       throw new RuntimeException(e);

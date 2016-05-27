@@ -91,10 +91,10 @@ final class CostCalculator {
   }
 
   /**
-   * Generates {@link Cost.ComputeTaskCost} by calculating compute cost and using
+   * Generates {@link edu.snu.cay.dolphin.bsp.core.optimizer.Cost.ComputeTaskCost} by calculating compute cost and using
    * this metadata.
-   * Assumes that the specified evaluator parameters object is for {@link ComputeTask}.
-   * @param evaluatorParameters the evaluator parameters object for {@link ComputeTask}.
+   * Assumes that the specified evaluator parameters object is for {@link edu.snu.cay.dolphin.bsp.core.ComputeTask}.
+   * @param evaluatorParameters the evaluator parameters object for {@link edu.snu.cay.dolphin.bsp.core.ComputeTask}.
    * @return The generated compute task cost.
    */
   private static Cost.ComputeTaskCost getComputeTaskCost(final EvaluatorParameters evaluatorParameters) {
@@ -117,9 +117,9 @@ final class CostCalculator {
   /**
    * Computes a communication cost for the previous execution.
    * The communication cost is calculated by subtracting the maximum compute cost among
-   * {@link ComputeTask}s from the elapsed time between
+   * {@link edu.snu.cay.dolphin.bsp.core.ComputeTask}s from the elapsed time between
    * when the controller task started to broadcast and when it finished reduce operation.
-   * @param cmpTaskCosts a collection of costs for {@link ComputeTask}.
+   * @param cmpTaskCosts a collection of costs for {@link edu.snu.cay.dolphin.bsp.core.ComputeTask}.
    * @return the calculated communication cost.
    */
   private static double getCommunicationCost(final EvaluatorParameters controllerTaskParameters,

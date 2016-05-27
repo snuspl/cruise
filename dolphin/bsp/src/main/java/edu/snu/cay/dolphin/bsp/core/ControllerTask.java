@@ -22,9 +22,6 @@ import edu.snu.cay.dolphin.bsp.groupcomm.names.*;
 import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.bsp.core.metric.avro.ControllerMsg;
 import edu.snu.cay.dolphin.bsp.core.sync.ControllerTaskSync;
-import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataScatterSender;
-import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataBroadcastSender;
-import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.DataReduceReceiver;
 
 import edu.snu.cay.utils.trace.HTraceInfoCodec;
 import edu.snu.cay.utils.trace.HTraceUtils;
