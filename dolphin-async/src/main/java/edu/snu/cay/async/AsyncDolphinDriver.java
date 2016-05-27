@@ -263,7 +263,8 @@ public final class AsyncDolphinDriver {
   private final long optimizationIntervalMs;
 
   /**
-   * Triggers optimization periodically for now (See {@link StartHandler}).
+   * Triggers optimization. After waiting an initial delay,
+   * optimization is performed periodically for now (See {@link StartHandler}).
    */
   private final ExecutorService optimizerExecutor = Executors.newSingleThreadExecutor();
 
@@ -280,7 +281,6 @@ public final class AsyncDolphinDriver {
                                final String serializedEMWorkerClientConf,
                              @Parameter(SerializedEMServerClientConfiguration.class)
                                final String serializedEMServerClientConf,
-
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,

@@ -220,7 +220,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
     if (executingPlan == null) {
       return;
     }
-    LOG.fine("onRunningTask!");
+    LOG.log(Level.FINE, "Received {0}.", task);
   }
 
   /**
@@ -338,7 +338,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
       } catch (final InterruptedException e) {
         throw new RuntimeException(e);
       }
-      LOG.info("All ActiveContexts are arrived!");
+      LOG.info("Received All ActiveContexts!");
 
       for (int i = 0; i < serverActiveContexts.size(); i++) {
         addServerEvaluatorIdsToContexts.put(addServerEvaluatorIds.get(i), serverActiveContexts.get(i));

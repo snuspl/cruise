@@ -72,6 +72,7 @@ final class NMFWorker implements Worker {
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
 
+  // TODO #530: Data type will be removed.
   private static final String DATA_TYPE = "WORKER_DATA";
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
