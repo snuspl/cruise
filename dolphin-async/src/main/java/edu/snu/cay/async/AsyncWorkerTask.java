@@ -160,7 +160,6 @@ final class AsyncWorkerTask implements Task {
   }
 
   final class CloseEventHandler implements EventHandler<CloseEvent> {
-
     @Override
     public void onNext(final CloseEvent closeEvent) {
       aborted = true;

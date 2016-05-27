@@ -102,7 +102,7 @@ public final class AsyncDolphinDriver {
    * When it becomes true, a thread starts to close all active contexts and
    * the optimizer thread stops running.
    */
-  private final AtomicBoolean isFinished = new AtomicBoolean(false);
+  private final AtomicBoolean isJobFinished = new AtomicBoolean(false);
 
   /**
    * Evaluator Manager, a unified path for requesting evaluators.
@@ -369,7 +369,7 @@ public final class AsyncDolphinDriver {
         public Void call() throws Exception {
           // TODO #538: check actual timing of system init
           Thread.sleep(INIT_DELAY);
-          while (!isFinished.get()) {
+          while (!isJobFinished.get()) {
             optimizationOrchestrator.run();
             Thread.sleep(optimizationIntervalMs);
           }
@@ -629,7 +629,7 @@ public final class AsyncDolphinDriver {
     if (completedOrFailedEvalCount.incrementAndGet() ==
         initServerCount + addedServerContextCount.get() + initWorkerCount + addedWorkerContextCount.get()) {
 
-      if (isFinished.compareAndSet(false, true)) {
+      if (isJobFinished.compareAndSet(false, true)) {
         Executors.newSingleThreadExecutor().submit(new Runnable() {
           @Override
           public void run() {
@@ -671,7 +671,6 @@ public final class AsyncDolphinDriver {
         isSuccess = false;
       } else {
         serverContexts.remove(activeContext);
-        // TODO #205: Reconsider using of Avro message in EM's callback
         activeContext.close();
         final int remainingNumServers = runningServerContextCount.decrementAndGet();
         LOG.log(Level.FINE, "Server has been deleted successfully. Remaining Servers: {0}", remainingNumServers);
@@ -701,7 +700,6 @@ public final class AsyncDolphinDriver {
         final RunningTask runningTask = contextIdToRunningTasks.remove(activeContextId);
         runningTask.close();
 
-        // TODO #205: Reconsider using of Avro message in EM's callback
         activeContext.close();
         final int remainingNumWorkers = runningWorkerContextCount.decrementAndGet();
         LOG.log(Level.FINE, "Worker has been deleted successfully. Remaining workers: {0}", remainingNumWorkers);
@@ -715,6 +713,7 @@ public final class AsyncDolphinDriver {
   /**
    * Invokes callback message to notify the result of EM operations.
    */
+  // TODO #205: Reconsider using of Avro message in EM's callback
   private void sendCallback(final String contextId,
                             final EventHandler<AvroElasticMemoryMessage> callback,
                             final boolean isSuccess) {
