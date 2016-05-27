@@ -90,6 +90,10 @@ public final class AsyncDolphinDriver {
   private static final String WORKER_EM_IDENTIFIER = "WorkerEM";
   private static final String SERVER_EM_IDENTIFIER = "ServerEM";
 
+  /**
+   * Interval between trials to shutdown contexts to make sure
+   * no optimization plan is executing.
+   */
   private static final long SHUTDOWN_TRIAL_INTERVAL_MS = 3000;
 
   /**
