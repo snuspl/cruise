@@ -19,7 +19,6 @@ import edu.snu.cay.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.async.optimizer.*;
 import edu.snu.cay.async.metric.MetricsCollectionService;
 import edu.snu.cay.async.optimizer.parameters.OptimizationIntervalMs;
-import edu.snu.cay.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
