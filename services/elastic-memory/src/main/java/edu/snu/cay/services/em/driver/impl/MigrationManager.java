@@ -67,7 +67,7 @@ final class MigrationManager {
   private static final String FINISHED_SUFFIX = "-finished";
 
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
-  private final PartitionManager partitionManager;
+  private final BlockManager blockManager;
   private final ElasticMemoryCallbackRouter callbackRouter;
   private final long updateTimeoutMillis;
 
@@ -97,11 +97,11 @@ final class MigrationManager {
 
   @Inject
   private MigrationManager(final InjectionFuture<ElasticMemoryMsgSender> sender,
-                           final PartitionManager partitionManager,
+                           final BlockManager blockManager,
                            final ElasticMemoryCallbackRouter callbackRouter,
                            @Parameter(UpdateTimeoutMillis.class) final long updateTimeoutMillis) {
     this.sender = sender;
-    this.partitionManager = partitionManager;
+    this.blockManager = blockManager;
     this.callbackRouter = callbackRouter;
     this.updateTimeoutMillis = updateTimeoutMillis;
   }
@@ -136,7 +136,7 @@ final class MigrationManager {
     callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
     ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType));
 
-    if (!partitionManager.checkRanges(senderId, dataType, ranges)) {
+    if (!blockManager.checkRanges(senderId, dataType, ranges)) {
       final String reason = new StringBuilder()
           .append("The requested ranges are not movable from ").append(senderId)
           .append(" of type ").append(dataType)
@@ -179,7 +179,7 @@ final class MigrationManager {
     callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
     ongoingMigrations.put(operationId, new Migration(senderId, receiverId, dataType));
 
-    if (!partitionManager.checkDataType(senderId, dataType)) {
+    if (!blockManager.checkDataType(senderId, dataType)) {
       final String reason = new StringBuilder()
           .append("No data is movable in ").append(senderId)
           .append(" of type ").append(dataType)
@@ -217,7 +217,7 @@ final class MigrationManager {
 
     callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
 
-    final List<Integer> blocks = partitionManager.chooseBlocksToMove(senderId, numBlocks);
+    final List<Integer> blocks = blockManager.chooseBlocksToMove(senderId, numBlocks);
 
     // Check early failure conditions:
     // there is no block to move (maybe all blocks are moving).
@@ -324,7 +324,7 @@ final class MigrationManager {
 
       final Collection<LongRange> ranges = migration.getMovedRanges();
       for (final LongRange range : ranges) {
-        partitionManager.move(senderId, receiverId, dataType, range);
+        blockManager.move(senderId, receiverId, dataType, range);
       }
     }
   }
@@ -379,7 +379,7 @@ final class MigrationManager {
     }
 
     migration.markBlockAsMoved(blockId);
-    partitionManager.markBlockAsMoved(blockId);
+    blockManager.markBlockAsMoved(blockId);
 
     if (migration.isComplete()) {
       ongoingMigrations.remove(operationId);
@@ -396,7 +396,7 @@ final class MigrationManager {
    * because their routing tables are already updated during the migration.
    */
   private void broadcastSuccess(final Migration migration) {
-    final Set<String> activeEvaluatorIds = partitionManager.getActiveEvaluators();
+    final Set<String> activeEvaluatorIds = blockManager.getActiveEvaluators();
     final String senderId = migration.getSenderId();
     final String receiverId = migration.getReceiverId();
     activeEvaluatorIds.remove(senderId);
@@ -417,8 +417,8 @@ final class MigrationManager {
    * Notify the update in the routing table to listening clients.
    */
   private synchronized void notifyUpdate(final Migration migration) {
-    final int oldOwnerId = partitionManager.getMemoryStoreId(migration.getSenderId());
-    final int newOwnerId = partitionManager.getMemoryStoreId(migration.getReceiverId());
+    final int oldOwnerId = blockManager.getMemoryStoreId(migration.getSenderId());
+    final int newOwnerId = blockManager.getMemoryStoreId(migration.getReceiverId());
     final String newEvalId = migration.getReceiverId();
     final List<Integer> blockIds = migration.getBlockIds();
 
@@ -557,7 +557,7 @@ final class MigrationManager {
     final Migration migrationInfo = ongoingMigrations.get(operationId);
     final String dataType = migrationInfo.getDataType();
     final String senderId = migrationInfo.getSenderId();
-    partitionManager.updateOwner(blockId, oldOwnerId, newOwnerId);
+    blockManager.updateOwner(blockId, oldOwnerId, newOwnerId);
 
     // Send the OwnershipMessage to update the owner in the sender memoryStore
     sender.get().sendOwnershipMsg(Optional.of(senderId), operationId, dataType, blockId, oldOwnerId, newOwnerId,

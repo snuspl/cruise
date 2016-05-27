@@ -64,19 +64,19 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final EvaluatorManager evaluatorManager;
 
   private final InjectionFuture<EMDeleteExecutor> deleteExecutor;
-  private final PartitionManager partitionManager;
+  private final BlockManager blockManager;
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorManager evaluatorManager,
                             final MigrationManager migrationManager,
                             final InjectionFuture<EMDeleteExecutor> deleteExecutor,
-                            final PartitionManager partitionManager,
+                            final BlockManager blockManager,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
     this.migrationManager = migrationManager;
     this.deleteExecutor = deleteExecutor;
-    this.partitionManager = partitionManager;
+    this.blockManager = blockManager;
   }
 
   /**
@@ -109,9 +109,9 @@ public final class ElasticMemoryImpl implements ElasticMemory {
    */
   @Override
   public void delete(final String evalId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
-    final Set<String> dataTypeSet = partitionManager.getDataTypes(evalId);
+    final Set<String> dataTypeSet = blockManager.getDataTypes(evalId);
     for (final String dataType : dataTypeSet) {
-      final Set<LongRange> rangeSet = partitionManager.getRangeSet(evalId, dataType);
+      final Set<LongRange> rangeSet = blockManager.getRangeSet(evalId, dataType);
       // Deletion fails when the evaluator has remaining data
       if (!rangeSet.isEmpty()) {
         if (callback != null) {
@@ -141,7 +141,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     }
 
     if (isSuccess) {
-      partitionManager.deregisterEvaluator(evalId);
+      blockManager.deregisterEvaluator(evalId);
     }
   }
 
@@ -223,16 +223,16 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Override
   public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
-    return partitionManager.getStoreIdToBlockIds();
+    return blockManager.getStoreIdToBlockIds();
   }
 
   @Override
   public int getNumTotalBlocks() {
-    return partitionManager.getNumTotalBlocks();
+    return blockManager.getNumTotalBlocks();
   }
 
   @Override
   public Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
-    return partitionManager.generateEvalParams(dataType);
+    return blockManager.generateEvalParams(dataType);
   }
 }

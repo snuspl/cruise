@@ -31,9 +31,9 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.*;
 
 /**
- * Thread safeness checks for PartitionManager.
+ * Thread safeness checks for BlockManager.
  */
-public final class PartitionManagerTest {
+public final class BlockManagerTest {
 
 
   // Put evaluator id or data type index at the end of these prefixes before use.
@@ -45,14 +45,14 @@ public final class PartitionManagerTest {
   private static final String MSG_THREADS_NOT_FINISHED = "threads not finished (possible deadlock or infinite loop)";
   private static final String MSG_RANGE_INCORRECT = "partition manager returns incorrect range";
 
-  private PartitionManager partitionManager;
+  private BlockManager blockManager;
 
   @Before
   public void setUp() {
     try {
-      partitionManager = Tang.Factory.getTang().newInjector().getInstance(PartitionManager.class);
+      blockManager = Tang.Factory.getTang().newInjector().getInstance(BlockManager.class);
     } catch (final InjectionException e) {
-      throw new RuntimeException("InjectionException while injecting PartitionManager", e);
+      throw new RuntimeException("InjectionException while injecting BlockManager", e);
     }
   }
 
@@ -71,26 +71,26 @@ public final class PartitionManagerTest {
     // Check returns false because any range has not been registered yet.
     final Set<LongRange> set = new HashSet<>();
     set.add(range0); // any range will fail.
-    assertFalse(partitionManager.checkRanges(evalId, dataType, set));
+    assertFalse(blockManager.checkRanges(evalId, dataType, set));
     set.clear();
 
     // Evaluator has the range0 and range1.
-    partitionManager.register(evalId, dataType, range0);
-    partitionManager.register(evalId, dataType, range1);
+    blockManager.register(evalId, dataType, range0);
+    blockManager.register(evalId, dataType, range1);
 
     // Check returns true for the existing range.
     set.add(range0);
-    assertTrue(partitionManager.checkRanges(evalId, dataType, set));
+    assertTrue(blockManager.checkRanges(evalId, dataType, set));
     set.clear();
 
     // Check returns true for the range that overlaps the existing range (range0[1, 4]).
     set.add(new LongRange(0, 2));
-    assertTrue(partitionManager.checkRanges(evalId, dataType, set));
+    assertTrue(blockManager.checkRanges(evalId, dataType, set));
     set.clear();
 
     // Check returns false for the range which does not belong to the Evaluator.
     set.add(range2);
-    assertFalse(partitionManager.checkRanges(evalId, dataType, set));
+    assertFalse(blockManager.checkRanges(evalId, dataType, set));
     set.clear();
   }
 
@@ -107,12 +107,12 @@ public final class PartitionManagerTest {
     // Register disjoint ranges: [1, 2] [4, 5] [7, 8] ...
     final int numItems = 10;
     for (int i = 0; i < numItems; i++) {
-      partitionManager.register(evalId, dataType, 3 * i + 1, 3 * i + 2);
+      blockManager.register(evalId, dataType, 3 * i + 1, 3 * i + 2);
     }
 
     // Removing range [0, 30] will remove all partitions.
-    final Set<LongRange> removed = partitionManager.remove(evalId, dataType, new LongRange(0, 30));
-    assertEquals(0, partitionManager.getRangeSet(evalId, dataType).size());
+    final Set<LongRange> removed = blockManager.remove(evalId, dataType, new LongRange(0, 30));
+    assertEquals(0, blockManager.getRangeSet(evalId, dataType).size());
     assertEquals(numItems, removed.size());
   }
 
@@ -126,18 +126,18 @@ public final class PartitionManagerTest {
     final String dataType = DATA_TYPE_PREFIX + 0;
 
     // A partition is split into two sub-partitions.
-    partitionManager.register(evalId, dataType, 0, 10);
+    blockManager.register(evalId, dataType, 0, 10);
     final LongRange toRemove = new LongRange(3, 5);
-    final Set<LongRange> removed = partitionManager.remove(evalId, dataType, toRemove);
+    final Set<LongRange> removed = blockManager.remove(evalId, dataType, toRemove);
 
     // Only this partition is returned
     assertTrue(removed.contains(toRemove));
     assertEquals(1, removed.size());
 
     // Remaining partitions: [0, 2] and [6, 10]
-    assertEquals(2, partitionManager.getRangeSet(evalId, dataType).size());
-    assertTrue(partitionManager.getRangeSet(evalId, dataType).contains(new LongRange(0, 2)));
-    assertTrue(partitionManager.getRangeSet(evalId, dataType).contains(new LongRange(6, 10)));
+    assertEquals(2, blockManager.getRangeSet(evalId, dataType).size());
+    assertTrue(blockManager.getRangeSet(evalId, dataType).contains(new LongRange(0, 2)));
+    assertTrue(blockManager.getRangeSet(evalId, dataType).contains(new LongRange(6, 10)));
   }
 
   /**
@@ -150,15 +150,15 @@ public final class PartitionManagerTest {
     final String dataType = DATA_TYPE_PREFIX + 0;
 
     // Register range [2, 4]
-    partitionManager.register(evalId, dataType, 2, 4);
+    blockManager.register(evalId, dataType, 2, 4);
 
     // Removing [1, 3] will return [2, 3] leaving [4, 4]
     final LongRange toRemove = new LongRange(1, 3);
-    final Set<LongRange> removed = partitionManager.remove(evalId, dataType, toRemove);
+    final Set<LongRange> removed = blockManager.remove(evalId, dataType, toRemove);
 
     assertEquals(1, removed.size());
     assertTrue(removed.contains(new LongRange(2, 3)));
-    final Set<LongRange> left = partitionManager.getRangeSet(evalId, dataType);
+    final Set<LongRange> left = blockManager.getRangeSet(evalId, dataType);
     assertEquals(1, left.size());
     assertTrue(left.contains(new LongRange(4, 4)));
   }
@@ -173,7 +173,7 @@ public final class PartitionManagerTest {
     final String dataType = DATA_TYPE_PREFIX + 0;
 
     // We initially have [1, 10]
-    partitionManager.register(evalId, dataType, 1, 10);
+    blockManager.register(evalId, dataType, 1, 10);
 
     // Three ranges: LEFT | CENTER | RIGHT
     final LongRange left = new LongRange(1, 3);
@@ -181,38 +181,38 @@ public final class PartitionManagerTest {
     final LongRange right = new LongRange(7, 10);
 
     // Remove LEFT ([1, 3]) from [1, 10]
-    final Set<LongRange> removedRanges1 = partitionManager.remove(evalId, dataType, left);
+    final Set<LongRange> removedRanges1 = blockManager.remove(evalId, dataType, left);
 
     // Only this partition is removed
     assertTrue(removedRanges1.contains(left));
     assertEquals(1, removedRanges1.size());
 
     // Remaining partitions: [4, 10]
-    assertEquals(1, partitionManager.getRangeSet(evalId, dataType).size());
-    assertTrue(partitionManager.getRangeSet(evalId, dataType).contains(new LongRange(4, 10)));
+    assertEquals(1, blockManager.getRangeSet(evalId, dataType).size());
+    assertTrue(blockManager.getRangeSet(evalId, dataType).contains(new LongRange(4, 10)));
 
     // Let's remove the other side
 
-    final Set<LongRange> rightRemoved = partitionManager.remove(evalId, dataType, right);
+    final Set<LongRange> rightRemoved = blockManager.remove(evalId, dataType, right);
 
     // Only this partition is removed
     assertTrue(rightRemoved.contains(right));
     assertEquals(1, rightRemoved.size());
 
     // Remaining partitions: [4, 6]
-    assertEquals(1, partitionManager.getRangeSet(evalId, dataType).size());
-    assertTrue(partitionManager.getRangeSet(evalId, dataType).contains(new LongRange(4, 6)));
+    assertEquals(1, blockManager.getRangeSet(evalId, dataType).size());
+    assertTrue(blockManager.getRangeSet(evalId, dataType).contains(new LongRange(4, 6)));
 
     // Let's remove the remaining range with the exact ends.
 
-    final Set<LongRange> centerRemoved = partitionManager.remove(evalId, dataType, center);
+    final Set<LongRange> centerRemoved = blockManager.remove(evalId, dataType, center);
 
     // Only this partition is removed
     assertTrue(centerRemoved.contains(center));
     assertEquals(1, centerRemoved.size());
 
     // Now the partition is empty.
-    assertEquals(0, partitionManager.getRangeSet(evalId, dataType).size());
+    assertEquals(0, blockManager.getRangeSet(evalId, dataType).size());
   }
 
   /**
@@ -235,7 +235,7 @@ public final class PartitionManagerTest {
 
     // register contiguous partitions, which will be merged into single partition
     for (int index = 0; index < numThreads; index++) {
-      threads0[index] = new RegisterThread(countDownLatch, partitionManager,
+      threads0[index] = new RegisterThread(countDownLatch, blockManager,
           index, numThreads, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, 0);
     }
@@ -243,7 +243,7 @@ public final class PartitionManagerTest {
     // register contiguous partitions but has certain distance from the partitions of threads0
     final long secondStartIdx = numThreads * addsPerThread + gap;
     for (int index = 0; index < numThreads; index++) {
-      threads1[index] = new RegisterThread(countDownLatch, partitionManager,
+      threads1[index] = new RegisterThread(countDownLatch, blockManager,
           (int) secondStartIdx + index, numThreads, addsPerThread, IndexParity.ALL_INDEX,
           EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, 0
@@ -258,10 +258,10 @@ public final class PartitionManagerTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
 
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION, 2, partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+    assertEquals(MSG_SIZE_ASSERTION, 2, blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
 
     // check that the merged partitions has correct ranges
-    final Iterator<LongRange> iterator = partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).iterator();
+    final Iterator<LongRange> iterator = blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).iterator();
     final LongRange range0 = iterator.next();
     final LongRange range1 = iterator.next();
     assertEquals(MSG_RANGE_INCORRECT, new LongRange(0, rangeLength * totalNumberOfAdds - 1), range0);
@@ -290,13 +290,13 @@ public final class PartitionManagerTest {
     // but they are 1 to 1 joint for each other.
     // Therefore, only one-side of partitions can be registered.
     for (int index = 0; index < numThreads; index++) {
-      threads0[index] = new RegisterThread(countDownLatch, partitionManager,
+      threads0[index] = new RegisterThread(countDownLatch, blockManager,
           index, numThreads, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, 0);
     }
 
     for (int index = 0; index < numThreads; index++) {
-      threads1[index] = new RegisterThread(countDownLatch, partitionManager,
+      threads1[index] = new RegisterThread(countDownLatch, blockManager,
           index, numThreads, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, 1);
     }
@@ -311,7 +311,7 @@ public final class PartitionManagerTest {
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION,
         totalNumberOfAdds,
-        partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+        blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
   /**
@@ -325,17 +325,17 @@ public final class PartitionManagerTest {
 
     for (int i = 0; i < totalNumberOfAdds; i++) {
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i, 3 * i + 1));
+          blockManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i, 3 * i + 1));
     }
 
     for (int i = 0; i < totalNumberOfAdds; i++) {
       assertFalse(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i + 1, 3 * i + 2));
+          blockManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, 3 * i + 1, 3 * i + 2));
     }
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION,
         totalNumberOfAdds,
-        partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+        blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
   /**
@@ -357,7 +357,7 @@ public final class PartitionManagerTest {
 
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
-      threads[index] = new RegisterThread(countDownLatch, partitionManager,
+      threads[index] = new RegisterThread(countDownLatch, blockManager,
           index / dupFactor, effectiveThreads, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, 0);
     }
@@ -369,7 +369,7 @@ public final class PartitionManagerTest {
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION,
         totalNumberOfAdds,
-        partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+        blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
   /**
@@ -390,7 +390,7 @@ public final class PartitionManagerTest {
     // Register disjoint ranges: [0, 1] [3, 4] [6, 7] ...
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
-      threads[index] = new RegisterThread(countDownLatch, partitionManager,
+      threads[index] = new RegisterThread(countDownLatch, blockManager,
           index, numThreads, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
@@ -401,7 +401,7 @@ public final class PartitionManagerTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfAdds,
-        partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+        blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
   /**
@@ -424,13 +424,13 @@ public final class PartitionManagerTest {
       final int rangeStart = (int) (initialOffset + rangeTerm * i);
       final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
+          blockManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     // Remove disjoint ranges: [0, 1] [3, 4] [6, 7] ...
     final Runnable[] threads = new Runnable[numThreads];
     for (int index = 0; index < numThreads; index++) {
-      threads[index] = new RemoveThread(countDownLatch, partitionManager,
+      threads[index] = new RemoveThread(countDownLatch, blockManager,
           index, numThreads, removesPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
@@ -440,7 +440,7 @@ public final class PartitionManagerTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION, 0, partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+    assertEquals(MSG_SIZE_ASSERTION, 0, blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
   /**
@@ -462,11 +462,11 @@ public final class PartitionManagerTest {
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
       // Register disjoint ranges [0, 1] [3, 4] [6, 7] ...
-      threads[2 * index] = new RegisterThread(countDownLatch, partitionManager,
+      threads[2 * index] = new RegisterThread(countDownLatch, blockManager,
           index, numThreadsPerOperation, addsPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
       threads[2 * index + 1]
-          = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
+          = new GetThread(countDownLatch, blockManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
     }
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -475,7 +475,7 @@ public final class PartitionManagerTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfAdds,
-        partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+        blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
   /**
@@ -499,17 +499,17 @@ public final class PartitionManagerTest {
       final int rangeStart = (int) (initialOffset + rangeTerm * i);
       final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
+          blockManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     // Threads with even index remove disjoint ranges [0, 1] [3, 4] [6, 7] ...
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[2 * index] = new RemoveThread(countDownLatch, partitionManager,
+      threads[2 * index] = new RemoveThread(countDownLatch, blockManager,
           index, numThreadsPerOperation, removesPerThread, IndexParity.ALL_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
       threads[2 * index + 1]
-          = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
+          = new GetThread(countDownLatch, blockManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
     }
     ThreadUtils.runConcurrently(threads);
     final boolean allThreadsFinished = countDownLatch.await(60, TimeUnit.SECONDS);
@@ -517,7 +517,7 @@ public final class PartitionManagerTest {
     // check that all threads have finished without falling into deadlocks or infinite loops
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
-    assertEquals(MSG_SIZE_ASSERTION, 0, partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+    assertEquals(MSG_SIZE_ASSERTION, 0, blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
   /**
@@ -542,7 +542,7 @@ public final class PartitionManagerTest {
       final int rangeStart = (int) (initialOffset + rangeTerm * i);
       final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
+          blockManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     final Runnable[] threads = new Runnable[2 * numThreadsPerOperation];
@@ -552,10 +552,10 @@ public final class PartitionManagerTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[index] = new RegisterThread(countDownLatch, partitionManager,
+      threads[index] = new RegisterThread(countDownLatch, blockManager,
           index, numThreadsPerOperation, addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
-      threads[index + numThreadsPerOperation] = new RemoveThread(countDownLatch, partitionManager,
+      threads[index + numThreadsPerOperation] = new RemoveThread(countDownLatch, blockManager,
           index, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
@@ -566,7 +566,7 @@ public final class PartitionManagerTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+        blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
   /**
@@ -592,7 +592,7 @@ public final class PartitionManagerTest {
       final int rangeStart = (int) (initialOffset + rangeTerm * i);
       final int rangeEnd = (int) (rangeStart + rangeLength - 1);
       assertTrue(MSG_REGISTER_UNEXPECTED_RESULT,
-          partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
+          blockManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX, rangeStart, rangeEnd));
     }
 
     final Runnable[] threads = new Runnable[3 * numThreadsPerOperation];
@@ -602,12 +602,12 @@ public final class PartitionManagerTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[3 * index] = new RegisterThread(countDownLatch, partitionManager,
+      threads[3 * index] = new RegisterThread(countDownLatch, blockManager,
           index, numThreadsPerOperation, addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
       threads[3 * index + 1]
-          = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
-      threads[3 * index + 2] = new RemoveThread(countDownLatch, partitionManager,
+          = new GetThread(countDownLatch, blockManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX);
+      threads[3 * index + 2] = new RemoveThread(countDownLatch, blockManager,
           index, numThreadsPerOperation, removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
@@ -618,7 +618,7 @@ public final class PartitionManagerTest {
     assertTrue(MSG_THREADS_NOT_FINISHED, allThreadsFinished);
     // check that the total number of objects equal the expected number
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2,
-        partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
+        blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX).size());
   }
 
   /**
@@ -647,7 +647,7 @@ public final class PartitionManagerTest {
         final int itemIndex = numThreadsPerOperation * i + j;
         final int rangeStart = (int) (initialOffset + rangeTerm * itemIndex);
         final int rangeEnd = (int) (rangeStart + rangeLength - 1);
-        partitionManager.register(EVAL_ID_PREFIX + j, DATA_TYPE_PREFIX, rangeStart, rangeEnd);
+        blockManager.register(EVAL_ID_PREFIX + j, DATA_TYPE_PREFIX, rangeStart, rangeEnd);
       }
     }
 
@@ -658,12 +658,12 @@ public final class PartitionManagerTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[3 * index] = new RegisterThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+      threads[3 * index] = new RegisterThread(countDownLatch, blockManager, index, numThreadsPerOperation,
           addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
       threads[3 * index + 1]
-          = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX);
-      threads[3 * index + 2] = new RemoveThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+          = new GetThread(countDownLatch, blockManager, getsPerThread, EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX);
+      threads[3 * index + 2] = new RemoveThread(countDownLatch, blockManager, index, numThreadsPerOperation,
           removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX,
           rangeTerm, rangeLength, initialOffset);
     }
@@ -675,7 +675,7 @@ public final class PartitionManagerTest {
     // check that the total number of objects equal the expected number
     int realNumberOfObjects = 0;
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      realNumberOfObjects += partitionManager.getRangeSet(EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX).size();
+      realNumberOfObjects += blockManager.getRangeSet(EVAL_ID_PREFIX + index, DATA_TYPE_PREFIX).size();
     }
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2, realNumberOfObjects);
   }
@@ -705,7 +705,7 @@ public final class PartitionManagerTest {
         final int itemIndex = numThreadsPerOperation * i + j;
         final int rangeStart = (int) (initialOffset + rangeTerm * itemIndex);
         final int rangeEnd = (int) (rangeStart + rangeLength - 1);
-        partitionManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX + j, rangeStart, rangeEnd);
+        blockManager.register(EVAL_ID_PREFIX, DATA_TYPE_PREFIX + j, rangeStart, rangeEnd);
       }
     }
 
@@ -716,12 +716,12 @@ public final class PartitionManagerTest {
     // never access the same object.
     // Hence the IndexParity.EVEN_INDEX and IndexParity.ODD_INDEX.
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      threads[3 * index] = new RegisterThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+      threads[3 * index] = new RegisterThread(countDownLatch, blockManager, index, numThreadsPerOperation,
           addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index,
           rangeTerm, rangeLength, initialOffset);
       threads[3 * index + 1]
-          = new GetThread(countDownLatch, partitionManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index);
-      threads[3 * index + 2] = new RemoveThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+          = new GetThread(countDownLatch, blockManager, getsPerThread, EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index);
+      threads[3 * index + 2] = new RemoveThread(countDownLatch, blockManager, index, numThreadsPerOperation,
           removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index,
           rangeTerm, rangeLength, initialOffset);
     }
@@ -733,7 +733,7 @@ public final class PartitionManagerTest {
     // check that the total number of objects equal the expected number
     int realNumberOfObjects = 0;
     for (int index = 0; index < numThreadsPerOperation; index++) {
-      realNumberOfObjects += partitionManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index).size();
+      realNumberOfObjects += blockManager.getRangeSet(EVAL_ID_PREFIX, DATA_TYPE_PREFIX + index).size();
     }
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2, realNumberOfObjects);
   }
@@ -765,7 +765,7 @@ public final class PartitionManagerTest {
         final int dataTypeIndex = j % 2;
         final int rangeStart = (int) (initialOffset + rangeTerm * itemIndex);
         final int rangeEnd = (int) (rangeStart + rangeLength - 1);
-        partitionManager.register(EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
+        blockManager.register(EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
             rangeStart, rangeEnd);
       }
     }
@@ -779,12 +779,12 @@ public final class PartitionManagerTest {
     for (int index = 0; index < numThreadsPerOperation; index++) {
       final int evalIndex = index / 2 % 4;
       final int dataTypeIndex = index % 2;
-      threads[3 * index] = new RegisterThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+      threads[3 * index] = new RegisterThread(countDownLatch, blockManager, index, numThreadsPerOperation,
           addsPerThread, IndexParity.EVEN_INDEX, EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
           rangeTerm, rangeLength, initialOffset);
-      threads[3 * index + 1] = new GetThread(countDownLatch, partitionManager, getsPerThread,
+      threads[3 * index + 1] = new GetThread(countDownLatch, blockManager, getsPerThread,
           EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex);
-      threads[3 * index + 2] = new RemoveThread(countDownLatch, partitionManager, index, numThreadsPerOperation,
+      threads[3 * index + 2] = new RemoveThread(countDownLatch, blockManager, index, numThreadsPerOperation,
           removesPerThread, IndexParity.ODD_INDEX, EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex,
           rangeTerm, rangeLength, initialOffset);
     }
@@ -799,7 +799,7 @@ public final class PartitionManagerTest {
       final int evalIndex = i / 2 % 4;
       final int dataTypeIndex = i % 2;
       realNumberOfObjects
-          += partitionManager.getRangeSet(EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex).size();
+          += blockManager.getRangeSet(EVAL_ID_PREFIX + evalIndex, DATA_TYPE_PREFIX + dataTypeIndex).size();
     }
     assertEquals(MSG_SIZE_ASSERTION, totalNumberOfObjects / 2, realNumberOfObjects);
   }
@@ -810,7 +810,7 @@ public final class PartitionManagerTest {
 
   final class RegisterThread implements Runnable {
     private final CountDownLatch countDownLatch;
-    private final PartitionManager partitionManager;
+    private final BlockManager blockManager;
     private final int myIndex;
     private final int numThreads;
     private final int addsPerThread;
@@ -821,12 +821,12 @@ public final class PartitionManagerTest {
     private final long rangeLength;
     private int offset;
 
-    RegisterThread(final CountDownLatch countDownLatch, final PartitionManager partitionManager,
+    RegisterThread(final CountDownLatch countDownLatch, final BlockManager blockManager,
                    final int myIndex, final int numThreads, final int addsPerThread, final IndexParity indexParity,
                    final String evalId, final String dataType,
                    final long rangeTerm, final long rangeLength, final int offset) {
       this.countDownLatch = countDownLatch;
-      this.partitionManager = partitionManager;
+      this.blockManager = blockManager;
       this.myIndex = myIndex;
       this.numThreads = numThreads;
       this.addsPerThread = addsPerThread;
@@ -849,7 +849,7 @@ public final class PartitionManagerTest {
         }
 
         final int itemIndex = numThreads * i + myIndex;
-        partitionManager.register(evalId, dataType,
+        blockManager.register(evalId, dataType,
             new LongRange(rangeTerm * itemIndex + offset, rangeTerm * itemIndex + offset + (rangeLength - 1)));
       }
       countDownLatch.countDown();
@@ -858,7 +858,7 @@ public final class PartitionManagerTest {
 
   final class RemoveThread implements Runnable {
     private final CountDownLatch countDownLatch;
-    private final PartitionManager partitionManager;
+    private final BlockManager blockManager;
     private final int myIndex;
     private final long rangeTerm;
     private final long rangeLength;
@@ -869,12 +869,12 @@ public final class PartitionManagerTest {
     private final String evalId;
     private final String dataType;
 
-    RemoveThread(final CountDownLatch countDownLatch, final PartitionManager partitionManager,
+    RemoveThread(final CountDownLatch countDownLatch, final BlockManager blockManager,
                  final int myIndex, final int numThreads, final int removesPerThread,
                  final IndexParity indexParity, final String evalId, final String dataType,
                  final long rangeTerm, final long rangeLength, final int offset) {
       this.countDownLatch = countDownLatch;
-      this.partitionManager = partitionManager;
+      this.blockManager = blockManager;
       this.myIndex = myIndex;
       this.numThreads = numThreads;
       this.removesPerThread = removesPerThread;
@@ -897,7 +897,7 @@ public final class PartitionManagerTest {
         }
 
         final int itemIndex = numThreads * i + myIndex;
-        partitionManager.remove(evalId, dataType,
+        blockManager.remove(evalId, dataType,
             new LongRange(rangeTerm * itemIndex + offset, rangeTerm * itemIndex + offset + (rangeLength - 1)));
       }
       countDownLatch.countDown();
@@ -906,16 +906,16 @@ public final class PartitionManagerTest {
 
   final class GetThread implements Runnable {
     private final CountDownLatch countDownLatch;
-    private final PartitionManager partitionManager;
+    private final BlockManager blockManager;
     private final int getsPerThread;
     private final String evalId;
     private final String dataType;
 
     GetThread(final CountDownLatch countDownLatch,
-              final PartitionManager partitionManager,
+              final BlockManager blockManager,
               final int getsPerThread, final String evalId, final String dataType) {
       this.countDownLatch = countDownLatch;
-      this.partitionManager = partitionManager;
+      this.blockManager = blockManager;
       this.getsPerThread = getsPerThread;
       this.evalId = evalId;
       this.dataType = dataType;
@@ -924,7 +924,7 @@ public final class PartitionManagerTest {
     @Override
     public void run() {
       for (int i = 0; i < getsPerThread; i++) {
-        final Set<LongRange> rangeSet =  partitionManager.getRangeSet(evalId, dataType);
+        final Set<LongRange> rangeSet =  blockManager.getRangeSet(evalId, dataType);
         if (rangeSet == null) {
           continue;
         }

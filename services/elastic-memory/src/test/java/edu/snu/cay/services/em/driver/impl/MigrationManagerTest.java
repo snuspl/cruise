@@ -44,7 +44,7 @@ import static org.mockito.Mockito.*;
  * Test that the MigrationManager handles the states and sends messages correctly.
  */
 public class MigrationManagerTest {
-  private PartitionManager partitionManager;
+  private BlockManager blockManager;
   private MigrationManager migrationManager;
   private ElasticMemoryMsgSender messageSender;
 
@@ -59,9 +59,9 @@ public class MigrationManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    // Instantiate PartitionManager to register partitions manually. That way, we can test
+    // Instantiate BlockManager to register partitions manually. That way, we can test
     // whether the precondition checking works correctly, which is done before starting a migration.
-    partitionManager = Tang.Factory.getTang().newInjector().getInstance(PartitionManager.class);
+    blockManager = Tang.Factory.getTang().newInjector().getInstance(BlockManager.class);
 
     // If the migration fails, throw a RuntimeException
     final ElasticMemoryCallbackRouter mockedCallbackRouter = mock(ElasticMemoryCallbackRouter.class);
@@ -72,7 +72,7 @@ public class MigrationManagerTest {
 
     // Create a Migration Manager instance by binding the instances above.
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(PartitionManager.class, partitionManager);
+    injector.bindVolatileInstance(BlockManager.class, blockManager);
     injector.bindVolatileInstance(ElasticMemoryCallbackRouter.class, mockedCallbackRouter);
     injector.bindVolatileInstance(ElasticMemoryMsgSender.class, messageSender);
     migrationManager = injector.getInstance(MigrationManager.class);
@@ -97,8 +97,8 @@ public class MigrationManagerTest {
     }
 
     // Register the data to the Evaluators. EVAL0 has [0, 9] and EVAL1 has [10, 19].
-    partitionManager.register(EVAL0, DATA_TYPE, INITIAL_RANGE0);
-    partitionManager.register(EVAL1, DATA_TYPE, INITIAL_RANGE1);
+    blockManager.register(EVAL0, DATA_TYPE, INITIAL_RANGE0);
+    blockManager.register(EVAL1, DATA_TYPE, INITIAL_RANGE1);
 
     // Failure case2: When the evaluator does not have the data type (Undefined).
     try {
@@ -132,8 +132,8 @@ public class MigrationManagerTest {
   public void testMigration() {
     try {
       // Register the data to the Evaluators. EVAL0 has [0, 9] and EVAL1 has [10, 19].
-      partitionManager.register(EVAL0, DATA_TYPE, INITIAL_RANGE0);
-      partitionManager.register(EVAL1, DATA_TYPE, INITIAL_RANGE1);
+      blockManager.register(EVAL0, DATA_TYPE, INITIAL_RANGE0);
+      blockManager.register(EVAL1, DATA_TYPE, INITIAL_RANGE1);
 
       // Start migration and wait until all threads call waitUpdate().
       // This is only for testing in order to see multiple threads can update at the same time.
@@ -206,13 +206,13 @@ public class MigrationManagerTest {
       migrationManager.applyUpdates(null);
 
       // Check the ranges are exchanged successfully.
-      assertEquals(1, partitionManager.getRangeSet(EVAL0, DATA_TYPE).size());
-      for (final LongRange range0 : partitionManager.getRangeSet(EVAL0, DATA_TYPE)) {
+      assertEquals(1, blockManager.getRangeSet(EVAL0, DATA_TYPE).size());
+      for (final LongRange range0 : blockManager.getRangeSet(EVAL0, DATA_TYPE)) {
         assertEquals(range0, INITIAL_RANGE1);
       }
 
-      assertEquals(1, partitionManager.getRangeSet(EVAL0, DATA_TYPE).size());
-      for (final LongRange range0 : partitionManager.getRangeSet(EVAL0, DATA_TYPE)) {
+      assertEquals(1, blockManager.getRangeSet(EVAL0, DATA_TYPE).size());
+      for (final LongRange range0 : blockManager.getRangeSet(EVAL0, DATA_TYPE)) {
         assertEquals(range0, INITIAL_RANGE1);
       }
 

@@ -52,16 +52,16 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final String ON_OWNERSHIP_ACK_MSG = "onOwnershipAckMsg";
   private static final String ON_FAILURE_MSG = "onFailureMsg";
 
-  private final PartitionManager partitionManager;
+  private final BlockManager blockManager;
   private final MigrationManager migrationManager;
 
   private final InjectionFuture<ElasticMemoryMsgSender> msgSender;
 
   @Inject
-  private ElasticMemoryMsgHandler(final PartitionManager partitionManager,
+  private ElasticMemoryMsgHandler(final BlockManager blockManager,
                                   final MigrationManager migrationManager,
                                   final InjectionFuture<ElasticMemoryMsgSender> msgSender) {
-    this.partitionManager = partitionManager;
+    this.blockManager = blockManager;
     this.migrationManager = migrationManager;
     this.msgSender = msgSender;
   }
@@ -111,7 +111,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     try (final TraceScope onRoutingTableInitReqMsgScope = Trace.startSpan(ON_ROUTING_INIT_REQ_MSG,
         HTraceUtils.fromAvro(msg.getTraceInfo()))) {
 
-      final List<Integer> blockLocations = partitionManager.getBlockLocations();
+      final List<Integer> blockLocations = blockManager.getBlockLocations();
 
       final TraceInfo traceInfo = TraceInfo.fromSpan(onRoutingTableInitReqMsgScope.getSpan());
       msgSender.get().sendRoutingTableInitMsg(msg.getSrcId().toString(), blockLocations, traceInfo);
@@ -151,7 +151,7 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       final RegisMsg regisMsg = msg.getRegisMsg();
 
       // register a partition for the evaluator as specified in the message
-      partitionManager.register(msg.getSrcId().toString(),
+      blockManager.register(msg.getSrcId().toString(),
           regisMsg.getDataType().toString(), regisMsg.getIdRange().getMin(), regisMsg.getIdRange().getMax());
     }
   }

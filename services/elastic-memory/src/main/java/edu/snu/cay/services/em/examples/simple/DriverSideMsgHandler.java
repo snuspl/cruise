@@ -20,7 +20,7 @@ import edu.snu.cay.common.aggregation.driver.AggregationMaster;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
-import edu.snu.cay.services.em.driver.impl.PartitionManager;
+import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.examples.simple.parameters.NumMoves;
 import org.apache.reef.io.serialization.Codec;
 import org.apache.reef.io.serialization.SerializableCodec;
@@ -50,7 +50,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
   static final String READY = "READY";
 
   private final ElasticMemory elasticMemory;
-  private final PartitionManager partitionManager;
+  private final BlockManager blockManager;
 
   private final AggregationMaster aggregationMaster;
   private final Codec<String> codec;
@@ -62,12 +62,12 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
   @Inject
   private DriverSideMsgHandler(final AggregationMaster aggregationMaster,
                                final ElasticMemory elasticMemory,
-                               final PartitionManager partitionManager,
+                               final BlockManager blockManager,
                                final SerializableCodec<String> codec,
                                @Parameter(NumMoves.class) final int numMoves) {
     this.aggregationMaster = aggregationMaster;
     this.elasticMemory = elasticMemory;
-    this.partitionManager = partitionManager;
+    this.blockManager = blockManager;
     this.codec = codec;
     this.numMoves = numMoves;
     syncWorkers();
@@ -253,7 +253,7 @@ public final class DriverSideMsgHandler implements EventHandler<AggregationMessa
      * Gets the number of blocks in the Evaluator.
      */
     private int getNumBlocks(final String evalId) {
-      return partitionManager.getNumBlocks(evalId);
+      return blockManager.getNumBlocks(evalId);
     }
   }
 }
