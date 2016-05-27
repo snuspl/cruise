@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.core.sync;
 
-import edu.snu.cay.dolphin.core.sync.avro.AvroSyncMessage;
+import edu.snu.cay.dolphin.bsp.core.sync.avro.AvroSyncMessage;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 

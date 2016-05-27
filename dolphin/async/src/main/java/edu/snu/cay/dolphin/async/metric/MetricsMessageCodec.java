@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
-import edu.snu.cay.async.metric.avro.MetricsMessage;
+import edu.snu.cay.dolphin.async.metric.avro.MetricsMessage;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 

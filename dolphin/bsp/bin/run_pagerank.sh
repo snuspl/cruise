@@ -17,7 +17,7 @@
 # ./run_pagerank.sh -convThr 0.01 -maxIter 10 -dampingFactor 0.85 -local true -split 1 -input sample_pagerank -output output_pagerank -maxNumEvalLocal 2
 
 # RUNTIME
-SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
+SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
 
@@ -25,7 +25,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=PageRankREEF
+ALG=edu.snu.cay.dolphin.bsp.mlapps.algorithms.graph.PageRankREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $ALG $*"
 echo $CMD

@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.dolphin.bsp.core.sync;
 
-import edu.snu.cay.dolphin.core.avro.IterationInfo;
-import edu.snu.cay.dolphin.core.sync.avro.AvroSyncMessage;
-import edu.snu.cay.dolphin.core.sync.avro.PauseResult;
-import edu.snu.cay.dolphin.core.sync.avro.Type;
+import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
+import edu.snu.cay.dolphin.bsp.core.sync.avro.AvroSyncMessage;
+import edu.snu.cay.dolphin.bsp.core.sync.avro.PauseResult;
+import edu.snu.cay.dolphin.bsp.core.sync.avro.Type;
 import edu.snu.cay.utils.SingleMessageExtractor;
 import edu.snu.cay.utils.StateMachine;
 import org.apache.reef.driver.parameters.DriverIdentifier;

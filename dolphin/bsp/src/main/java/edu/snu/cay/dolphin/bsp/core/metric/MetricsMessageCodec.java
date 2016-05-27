@@ -15,7 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.core.metric;
 
-import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
+import edu.snu.cay.dolphin.bsp.core.metric.avro.MetricsMessage;
 import edu.snu.cay.utils.AvroUtils;
 import org.apache.reef.wake.remote.Codec;
 

@@ -18,7 +18,7 @@ package edu.snu.cay.dolphin.bsp.core.optimizer;
 import edu.snu.cay.common.param.Parameters.EvaluatorSize;
 import edu.snu.cay.dolphin.bsp.core.sync.DriverSync;
 import edu.snu.cay.dolphin.bsp.core.DolphinDriver;
-import edu.snu.cay.dolphin.core.avro.IterationInfo;
+import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;

@@ -24,7 +24,7 @@ import edu.snu.cay.dolphin.bsp.core.sync.ControllerTaskSyncRegister;
 import edu.snu.cay.dolphin.bsp.core.sync.DriverSync;
 import edu.snu.cay.dolphin.bsp.groupcomm.names.*;
 import edu.snu.cay.dolphin.bsp.parameters.StartTrace;
-import edu.snu.cay.dolphin.core.avro.IterationInfo;
+import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
 import edu.snu.cay.dolphin.bsp.core.sync.SyncNetworkSetup;
 import edu.snu.cay.dolphin.bsp.groupcomm.conf.GroupCommParameters;
 import edu.snu.cay.dolphin.bsp.groupcomm.names.DataPreRunShuffle;

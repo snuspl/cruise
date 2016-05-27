@@ -15,10 +15,10 @@
  */
 package edu.snu.cay.dolphin.async.metric;
 
-import edu.snu.cay.async.metric.avro.MetricsMessage;
-import edu.snu.cay.async.metric.avro.ServerMsg;
-import edu.snu.cay.async.metric.avro.SrcType;
-import edu.snu.cay.async.metric.avro.WorkerMsg;
+import edu.snu.cay.dolphin.async.metric.avro.MetricsMessage;
+import edu.snu.cay.dolphin.async.metric.avro.ServerMsg;
+import edu.snu.cay.dolphin.async.metric.avro.SrcType;
+import edu.snu.cay.dolphin.async.metric.avro.WorkerMsg;
 import edu.snu.cay.common.aggregation.slave.AggregationSlave;
 import edu.snu.cay.common.metric.MetricsHandler;
 import edu.snu.cay.common.metric.avro.Metrics;

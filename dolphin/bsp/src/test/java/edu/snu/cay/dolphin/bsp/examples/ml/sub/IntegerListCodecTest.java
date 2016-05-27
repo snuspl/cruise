@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.dolphin.bsp.examples.ml.sub;
 
+import edu.snu.cay.dolphin.bsp.mlapps.sub.IntegerListCodec;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;

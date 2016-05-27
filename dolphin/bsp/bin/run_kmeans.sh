@@ -17,7 +17,7 @@
 # ./run_kmeans.sh -numCls 3 -convThr 0.01 -maxIter 20 -local true -split 4 -input sample_cluster -output output_kmeans -maxNumEvalLocal 5
 
 # RUNTIME
-SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
+SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
 
@@ -25,7 +25,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=KMeansREEF
+ALG=edu.snu.cay.dolphin.bsp.mlapps.algorithms.clustering.kmeans.KMeansREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $ALG $*"
 echo $CMD

@@ -17,7 +17,7 @@
 # ./run_matmul.sh -local true -split 4 -input sample_matmul_lg -small_matrix sample_matmul_sm -output output_matmul -maxNumEvalLocal 5
 
 # RUNTIME
-SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
+SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
 
@@ -25,7 +25,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-MATMUL=MatrixMulREEF
+MATMUL=edu.snu.cay.dolphin.bsp.examples.matmul.MatrixMulREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $MATMUL $*"
 echo $CMD

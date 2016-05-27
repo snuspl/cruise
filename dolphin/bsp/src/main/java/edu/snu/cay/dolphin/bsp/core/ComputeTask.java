@@ -19,9 +19,9 @@ import edu.snu.cay.common.metric.*;
 import edu.snu.cay.dolphin.bsp.core.metric.MetricsMessageSender;
 import edu.snu.cay.dolphin.bsp.groupcomm.interfaces.*;
 import edu.snu.cay.dolphin.bsp.groupcomm.names.*;
-import edu.snu.cay.dolphin.core.avro.IterationInfo;
-import edu.snu.cay.dolphin.core.metric.avro.ComputeMsg;
-import edu.snu.cay.dolphin.core.metric.avro.DataInfo;
+import edu.snu.cay.dolphin.bsp.core.avro.IterationInfo;
+import edu.snu.cay.dolphin.bsp.core.metric.avro.ComputeMsg;
+import edu.snu.cay.dolphin.bsp.core.metric.avro.DataInfo;
 
 import static edu.snu.cay.dolphin.bsp.core.DolphinMetricKeys.COMPUTE_TASK_EXCHANGE_PRE_RUN_SHUFFLE_DATA_START;
 import static edu.snu.cay.dolphin.bsp.core.DolphinMetricKeys.COMPUTE_TASK_EXCHANGE_PRE_RUN_SHUFFLE_DATA_END;

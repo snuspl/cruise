@@ -19,7 +19,7 @@
  * and the iteration number.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.avro",
+  "namespace": "edu.snu.cay.dolphin.bsp.core.avro",
   "type": "record",
   "name": "IterationInfo",
   "fields":
@@ -34,7 +34,7 @@
  * An Avro implementation of {@link edu.snu.cay.services.em.optimizer.api.DataInfo}.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.metric.avro",
+  "namespace": "edu.snu.cay.dolphin.bsp.core.metric.avro",
   "type": "record",
   "name": "DataInfo",
   "fields":
@@ -48,7 +48,7 @@
  * Controller-task specific information for this iteration.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.metric.avro",
+  "namespace": "edu.snu.cay.dolphin.bsp.core.metric.avro",
   "type": "record",
   "name": "ControllerMsg",
   "fields":
@@ -59,7 +59,7 @@
  * Compute-task specific information for this iteration.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.metric.avro",
+  "namespace": "edu.snu.cay.dolphin.bsp.core.metric.avro",
   "type": "record",
   "name": "ComputeMsg",
   "fields":
@@ -74,14 +74,14 @@
  * while a message with srcType Controller contains a controllerMsg.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.metric.avro",
+  "namespace": "edu.snu.cay.dolphin.bsp.core.metric.avro",
   "type": "record",
   "name": "MetricsMessage",
   "fields":
   [
     {"name": "srcType", "type": {"type": "enum", "name": "SrcType",
         "symbols": ["Compute", "Controller"]}},
-    {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.core.avro.IterationInfo"},
+    {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.bsp.core.avro.IterationInfo"},
     {"name": "metrics", "type": "edu.snu.cay.common.metric.avro.Metrics"},
     {"name": "controllerMsg", "type": ["null", "ControllerMsg"], "default": null},
     {"name": "computeMsg", "type": ["null", "ComputeMsg"], "default": null}
@@ -93,7 +93,7 @@
  * Driver -> Controller Task.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.sync.avro",
+  "namespace": "edu.snu.cay.dolphin.bsp.core.sync.avro",
   "type": "record",
   "name": "PauseRequest",
   "fields":
@@ -105,12 +105,12 @@
  * Controller Task -> Driver.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.sync.avro",
+  "namespace": "edu.snu.cay.dolphin.bsp.core.sync.avro",
   "type": "record",
   "name": "PauseResult",
   "fields":
   [
-    {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.core.avro.IterationInfo"}
+    {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.bsp.core.avro.IterationInfo"}
   ]
 },
 
@@ -119,12 +119,12 @@
  * Driver -> Controller Task.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.sync.avro",
+  "namespace": "edu.snu.cay.dolphin.bsp.core.sync.avro",
   "type": "record",
   "name": "ResumeRequest",
   "fields":
   [
-    {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.core.avro.IterationInfo"}
+    {"name": "iterationInfo", "type": "edu.snu.cay.dolphin.bsp.core.avro.IterationInfo"}
   ]
 },
 
@@ -134,7 +134,7 @@
  * before an iteration.
  */
 {
-  "namespace": "edu.snu.cay.dolphin.core.sync.avro",
+  "namespace": "edu.snu.cay.dolphin.bsp.core.sync.avro",
   "type": "record",
   "name": "AvroSyncMessage",
   "fields":

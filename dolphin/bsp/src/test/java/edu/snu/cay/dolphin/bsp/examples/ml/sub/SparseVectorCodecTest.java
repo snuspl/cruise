@@ -17,6 +17,7 @@ package edu.snu.cay.dolphin.bsp.examples.ml.sub;
 
 import edu.snu.cay.common.math.linalg.Vector;
 import edu.snu.cay.common.math.linalg.VectorFactory;
+import edu.snu.cay.dolphin.bsp.mlapps.sub.SparseVectorCodec;
 import org.apache.mahout.common.RandomUtils;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;

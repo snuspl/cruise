@@ -17,8 +17,8 @@ package edu.snu.cay.dolphin.async.metric;
 
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.metric.avro.Metrics;
-import edu.snu.cay.async.metric.avro.MetricsMessage;
-import edu.snu.cay.async.metric.avro.SrcType;
+import edu.snu.cay.dolphin.async.metric.avro.MetricsMessage;
+import edu.snu.cay.dolphin.async.metric.avro.SrcType;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.wake.EventHandler;
 

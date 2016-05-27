@@ -14,10 +14,10 @@
 # limitations under the License.
 
 # EXAMPLE USAGE 
-# ./run_sleep.sh -local true -split 3 -input sample -conf sample_sleep_conf -output output -gcEncodeTime 200 -gcDecodeTime 200 -emEncodeRate 5 -emDecodeRate 5 -maxIter 10 -timeout 120000 -maxNumEvalLocal 5 -optimizer edu.snu.cay.services.em.optimizer.impl.AddOneOptimizer -plan_executor DefaultPlanExecutor
+# ./run_sleep.sh -local true -split 3 -input sample -conf sample_sleep_conf -output output -gcEncodeTime 200 -gcDecodeTime 200 -emEncodeRate 5 -emDecodeRate 5 -maxIter 10 -timeout 120000 -maxNumEvalLocal 5 -optimizer edu.snu.cay.services.em.optimizer.impl.AddOneOptimizer -plan_executor edu.snu.cay.dolphin.bsp.core.optimizer.DefaultPlanExecutor
 
 # RUNTIME
-SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
+SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
 
@@ -25,7 +25,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=SleepREEF
+ALG=edu.snu.cay.dolphin.bsp.examples.sleep.SleepREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $ALG $*"
 echo $CMD

@@ -18,7 +18,7 @@
  * Worker specific information.
  */
 {
-  "namespace": "edu.snu.cay.async.metric.avro",
+  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
   "name": "WorkerMsg",
   "fields":
@@ -32,7 +32,7 @@
  * Server specific information.
  */
 {
-  "namespace": "edu.snu.cay.async.metric.avro",
+  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
   "name": "ServerMsg",
   "fields":
@@ -48,7 +48,7 @@
  * while a message with srcType Server contains a serverMsg.
  */
 {
-  "namespace": "edu.snu.cay.async.metric.avro",
+  "namespace": "edu.snu.cay.dolphin.async.metric.avro",
   "type": "record",
   "name": "MetricsMessage",
   "fields":

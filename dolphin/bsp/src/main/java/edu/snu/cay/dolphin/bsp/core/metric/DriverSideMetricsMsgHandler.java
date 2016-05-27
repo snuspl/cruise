@@ -18,8 +18,8 @@ package edu.snu.cay.dolphin.bsp.core.metric;
 import edu.snu.cay.common.aggregation.avro.AggregationMessage;
 import edu.snu.cay.common.metric.avro.Metrics;
 import edu.snu.cay.dolphin.bsp.core.optimizer.OptimizationOrchestrator;
-import edu.snu.cay.dolphin.core.metric.avro.MetricsMessage;
-import edu.snu.cay.dolphin.core.metric.avro.SrcType;
+import edu.snu.cay.dolphin.bsp.core.metric.avro.MetricsMessage;
+import edu.snu.cay.dolphin.bsp.core.metric.avro.SrcType;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -79,9 +79,9 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
   }
 
   private List<DataInfo> getDataInfoFromAvro(
-      final List<edu.snu.cay.dolphin.core.metric.avro.DataInfo> avroDataInfos) {
+      final List<edu.snu.cay.dolphin.bsp.core.metric.avro.DataInfo> avroDataInfos) {
     final List<DataInfo> dataInfos = new ArrayList<>(avroDataInfos.size());
-    for (final edu.snu.cay.dolphin.core.metric.avro.DataInfo avroDataInfo : avroDataInfos) {
+    for (final edu.snu.cay.dolphin.bsp.core.metric.avro.DataInfo avroDataInfo : avroDataInfos) {
       dataInfos.add(new DataInfoImpl(avroDataInfo.getDataType().toString(), avroDataInfo.getNumUnits()));
     }
     return dataInfos;

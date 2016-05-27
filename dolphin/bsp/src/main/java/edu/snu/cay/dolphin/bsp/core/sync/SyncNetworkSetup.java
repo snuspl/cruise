@@ -16,7 +16,7 @@
 package edu.snu.cay.dolphin.bsp.core.sync;
 
 import edu.snu.cay.dolphin.bsp.core.sync.parameters.SyncCodec;
-import edu.snu.cay.dolphin.core.sync.avro.AvroSyncMessage;
+import edu.snu.cay.dolphin.bsp.core.sync.avro.AvroSyncMessage;
 import edu.snu.cay.dolphin.bsp.core.sync.parameters.SyncMessageHandler;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.ConnectionFactory;

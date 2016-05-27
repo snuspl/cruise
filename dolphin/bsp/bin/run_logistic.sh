@@ -17,7 +17,7 @@
 # ./run_logistic.sh -dim 3 -maxIter 20 -stepSize 0.00001 -lambda 0.1 -local true -split 4 -input sample_classification -output output_logistic -maxNumEvalLocal 5 -isDense true
 
 # RUNTIME
-SELF_JAR=../target/dolphin-0.1-SNAPSHOT-shaded.jar
+SELF_JAR=../target/dolphin-bsp-0.1-SNAPSHOT-shaded.jar
 
 LOGGING_CONFIG='-Djava.util.logging.config.class=edu.snu.cay.utils.LoggingConfig'
 
@@ -25,7 +25,7 @@ CLASSPATH=$YARN_HOME/share/hadoop/common/*:$YARN_HOME/share/hadoop/common/lib/*:
 
 YARN_CONF_DIR=$YARN_HOME/etc/hadoop
 
-ALG=LogisticRegREEF
+ALG=edu.snu.cay.dolphin.bsp.mlapps.algorithms.classification.LogisticRegREEF
 
 CMD="java -cp $YARN_CONF_DIR:$SELF_JAR:$CLASSPATH $LOCAL_RUNTIME_TMP $LOGGING_CONFIG $ALG $*"
 echo $CMD
