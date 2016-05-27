@@ -15,6 +15,7 @@
  */
 package edu.snu.cay.async.optimizer;
 
+import edu.snu.cay.async.optimizer.parameters.DelayAfterOptimizationMs;
 import edu.snu.cay.common.param.Parameters;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
 import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
@@ -37,11 +38,6 @@ import java.util.logging.Logger;
 public final class OptimizationOrchestrator {
   private static final Logger LOG = Logger.getLogger(OptimizationOrchestrator.class.getName());
 
-  /**
-   * A margin time after finishing each optimization for system to be stable.
-   */
-  private static final long MARGIN_TIME_MS = 10000;
-
   public static final String NAMESPACE_SERVER = "SERVER";
   public static final String NAMESPACE_WORKER = "WORKER";
   public static final String DATA_TYPE_SERVER = "SERVER_DATA"; // DynamicPS should use this type.
@@ -56,6 +52,11 @@ public final class OptimizationOrchestrator {
   private ElasticMemory serverEM;
   private ElasticMemory workerEM;
 
+  /**
+   * A delay after completion of optimization to wait the system to be stable.
+   */
+  private final long delayAfterOptimizationMs;
+
   private final int maxNumEvals;
 
   @Inject
@@ -63,11 +64,13 @@ public final class OptimizationOrchestrator {
                                    final PlanExecutor planExecutor,
                                    @Parameter(ServerEM.class) final ElasticMemory serverEM,
                                    @Parameter(WorkerEM.class) final ElasticMemory workerEM,
+                                   @Parameter(DelayAfterOptimizationMs.class) final long delayAfterOptimizationMs,
                                    @Parameter(Parameters.LocalRuntimeMaxNumEvaluators.class) final int maxNumEvals) {
     this.optimizer = optimizer;
     this.planExecutor = planExecutor;
     this.serverEM = serverEM;
     this.workerEM = workerEM;
+    this.delayAfterOptimizationMs = delayAfterOptimizationMs;
     this.maxNumEvals = maxNumEvals;
   }
 
@@ -96,7 +99,8 @@ public final class OptimizationOrchestrator {
           final PlanResult planResult = planExecutionResultFuture.get();
           LOG.log(Level.INFO, "Result of plan execution: {0}", planResult);
 
-          Thread.sleep(MARGIN_TIME_MS); // sleep for the system to be stable
+          // TODO #343: Optimization trigger component
+          Thread.sleep(delayAfterOptimizationMs); // sleep for the system to be stable
         } catch (final InterruptedException | ExecutionException e) {
           LOG.log(Level.WARNING, "Exception while waiting for the plan execution to be completed", e);
         }

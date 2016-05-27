@@ -18,7 +18,9 @@ package edu.snu.cay.async;
 import edu.snu.cay.async.metric.DriverSideMetricsMsgHandler;
 import edu.snu.cay.async.metric.EvalSideMetricsMsgHandler;
 import edu.snu.cay.async.metric.MetricsCollectionService;
-import edu.snu.cay.async.optimizer.OptimizationIntervalMs;
+import edu.snu.cay.async.optimizer.parameters.DelayAfterOptimizationMs;
+import edu.snu.cay.async.optimizer.parameters.MemoryStoreInitDelayMs;
+import edu.snu.cay.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
@@ -210,7 +212,7 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(24);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(26);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -243,6 +245,8 @@ public final class AsyncDolphinLauncher {
 
     // add optimizer parameters
     basicParameterClassList.add(OptimizationIntervalMs.class);
+    basicParameterClassList.add(MemoryStoreInitDelayMs.class);
+    basicParameterClassList.add(DelayAfterOptimizationMs.class);
 
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {
       cl.registerShortNameOfClass(basicParameterClass);

@@ -18,6 +18,8 @@ package edu.snu.cay.async;
 import edu.snu.cay.async.AsyncDolphinLauncher.*;
 import edu.snu.cay.async.optimizer.*;
 import edu.snu.cay.async.metric.MetricsCollectionService;
+import edu.snu.cay.async.optimizer.parameters.OptimizationIntervalMs;
+import edu.snu.cay.async.optimizer.OptimizationOrchestrator;
 import edu.snu.cay.common.aggregation.driver.AggregationManager;
 import edu.snu.cay.common.param.Parameters.NumWorkerThreads;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
@@ -278,9 +280,9 @@ public final class AsyncDolphinDriver {
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
                              @Parameter(SerializedEMWorkerClientConfiguration.class)
-                               final String serializedEMWorkerClientConf,
+                                 final String serializedEMWorkerClientConf,
                              @Parameter(SerializedEMServerClientConfiguration.class)
-                               final String serializedEMServerClientConf,
+                                 final String serializedEMServerClientConf,
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,

@@ -16,6 +16,7 @@
 package edu.snu.cay.async.optimizer;
 
 import edu.snu.cay.async.AsyncDolphinDriver;
+import edu.snu.cay.async.optimizer.parameters.MemoryStoreInitDelayMs;
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.avro.Result;
 import edu.snu.cay.services.em.driver.api.ElasticMemory;
@@ -63,11 +64,18 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   private AtomicInteger addedEvalCounter = new AtomicInteger(0);
 
+  /**
+   * Delay for waiting until added MemoryStores are initialized.
+   */
+  private long memoryStoreInitDelayMs;
+
   @Inject
   private AsyncDolphinPlanExecutor(final InjectionFuture<AsyncDolphinDriver> asyncDolphinDriver,
+                                   @Parameter(MemoryStoreInitDelayMs.class) final long memoryStoreInitDelayMs,
                                    @Parameter(ServerEM.class) final ElasticMemory serverEM,
                                    @Parameter(WorkerEM.class) final ElasticMemory workerEM) {
     this.asyncDolphinDriver = asyncDolphinDriver;
+    this.memoryStoreInitDelayMs = memoryStoreInitDelayMs;
     this.serverEM = serverEM;
     this.workerEM = workerEM;
   }
@@ -124,7 +132,8 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
         // TODO #90: Need to revisit whether EM.move should throw a RuntimeException on network failure.
         // TODO #90: Perhaps the handlers should receive this failure information instead.
         try {
-          Thread.sleep(1000); // Wait for the MemoryStores to be set up.
+          // TODO #505: The delay must be applied only for the destination MemoryStores that are added by EM.add().
+          Thread.sleep(memoryStoreInitDelayMs);
           for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_SERVER)) {
             serverEM.move(
                 transferStep.getDataInfo().getDataType(),
@@ -217,10 +226,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
 
   @Override
   public void onRunningTask(final RunningTask task) {
-    if (executingPlan == null) {
-      return;
-    }
-    LOG.log(Level.FINE, "Received {0}.", task);
+    LOG.log(Level.FINE, "RunningTask {0}", task);
   }
 
   /**
@@ -258,7 +264,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
     @Override
     public void onNext(final AvroElasticMemoryMessage msg) {
-      LOG.log(Level.INFO, "Received new MoveFinished {0}.", msg);
+      LOG.log(Level.FINER, "Received new MoveFinished {0}.", msg);
       if (msg.getResultMsg().getResult() == Result.FAILURE) {
         LOG.log(Level.WARNING, "Move failed because {0}", msg.getResultMsg().getMsg());
       }
@@ -275,7 +281,7 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
   private final class DeletedHandler implements EventHandler<AvroElasticMemoryMessage> {
     @Override
     public void onNext(final AvroElasticMemoryMessage msg) {
-      LOG.log(Level.INFO, "Received new Evaluators Deleted {0}", msg);
+      LOG.log(Level.FINER, "Received new Evaluators Deleted {0}", msg);
       if (msg.getResultMsg().getResult() == Result.FAILURE) {
         LOG.log(Level.WARNING, "Evaluator delete failed for evaluator {0}", msg.getSrcId());
       }

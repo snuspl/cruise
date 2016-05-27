@@ -13,13 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.async.optimizer;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
-
-@NamedParameter(doc = "The time interval between the moment to trigger optimization in Milliseconds.",
-                short_name = "optimizationIntervalMs",
-                default_value = "10000")
-public final class OptimizationIntervalMs implements Name<Long> {
-}
+/**
+ * Parameters used in Optimizer for Dolphin Async.
+ */
+package edu.snu.cay.async.optimizer.parameters;
