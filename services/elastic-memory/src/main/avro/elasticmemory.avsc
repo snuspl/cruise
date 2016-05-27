@@ -206,20 +206,6 @@
 },
 
 /**
- * Response message that is sent from evaluator to driver.
- * The message contains the ranges moved in this data transfer.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "DataAckMsg",
-  "fields":
-  [
-    {"name": "idRange", "type": {"type": "array", "items": "AvroLongRange"}}
-  ]
-},
-
-/**
  * Request message to update ownership of the block.
  */
 {
@@ -290,7 +276,7 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
         "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RoutingTableInitReqMsg", "RoutingTableInitMsg",
-         "RoutingTableUpdateMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
+         "RoutingTableUpdateMsg", "CtrlMsg", "DataMsg",
          "FailureMsg", "ResultMsg", "OwnershipMsg", "OwnershipAckMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
@@ -303,7 +289,6 @@
     {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
-    {"name": "dataAckMsg", "type": ["null", "DataAckMsg"], "default": null},
     {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
     {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
     {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null},

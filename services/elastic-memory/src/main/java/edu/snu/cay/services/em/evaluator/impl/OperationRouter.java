@@ -19,7 +19,6 @@ import edu.snu.cay.services.em.common.parameters.AddedEval;
 import edu.snu.cay.services.em.common.parameters.MemoryStoreId;
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
 import edu.snu.cay.services.em.common.parameters.NumInitialEvals;
-import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.evaluator.api.BlockResolver;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
 import org.apache.reef.annotations.audience.Private;
@@ -332,8 +331,7 @@ public final class OperationRouter<K> {
 
   /**
    * Converts the MemoryStore id to the corresponding Evaluator's endpoint id.
-   * MemoryStore id is assumed to be assigned by the suffix of context id
-   * (See {@link BlockManager#registerEvaluator(String, int)})
+   * MemoryStore id is assumed to be assigned by the suffix of context id.
    * @param memoryStoreId MemoryStore's identifier
    * @return the endpoint id to access the MemoryStore.
    */
