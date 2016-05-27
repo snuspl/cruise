@@ -13,18 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.common;
+package edu.snu.cay.async.optimizer.parameters;
 
-/**
- * Constants used across Driver/Server/Worker boundaries.
- */
-public final class Constants {
-  /**
-   * Empty private constructor to prohibit instantiation of utility class.
-   */
-  private Constants() {
-  }
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-  public static final String SERVER_ID_PREFIX = "ServerContext-";
-  public static final String WORKER_ID_PREFIX = "WorkerContext-";
+@NamedParameter(doc = "A delay after completion of optimization to wait the system to be stable",
+                short_name = "delayAfterOptimizationMs",
+                default_value = "10000")
+public class DelayAfterOptimizationMs implements Name<Long> {
 }

@@ -13,18 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.common;
+package edu.snu.cay.async.optimizer;
 
-/**
- * Constants used across Driver/Server/Worker boundaries.
- */
-public final class Constants {
-  /**
-   * Empty private constructor to prohibit instantiation of utility class.
-   */
-  private Constants() {
-  }
+import edu.snu.cay.services.em.driver.api.ElasticMemory;
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
 
-  public static final String SERVER_ID_PREFIX = "ServerContext-";
-  public static final String WORKER_ID_PREFIX = "WorkerContext-";
+@NamedParameter(doc = "Worker-side EM instance")
+public final class WorkerEM implements Name<ElasticMemory> {
 }

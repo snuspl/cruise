@@ -53,6 +53,8 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP;
+
 /**
  * A Plan Executor that executes a Plan.
  * It immediately adds Evaluators with the appropriate contexts via ElasticMemory.
@@ -108,9 +110,9 @@ public final class DefaultPlanExecutor implements PlanExecutor {
        */
       @Override
       public PlanResult call() throws Exception {
-        if (plan.getEvaluatorsToAdd().isEmpty() &&
-            plan.getTransferSteps().isEmpty() &&
-            plan.getEvaluatorsToDelete().isEmpty()) {
+        if (plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).isEmpty() &&
+            plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).isEmpty() &&
+            plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).isEmpty()) {
           return new PlanResultImpl();
         }
         executingPlan = new ExecutingPlan(plan);
@@ -118,7 +120,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         final EventHandler<AllocatedEvaluator> evaluatorAllocatedHandler = new EvaluatorAllocatedHandler();
         final List<EventHandler<ActiveContext>> contextActiveHandlers = new ArrayList<>();
         contextActiveHandlers.add(new ContextActiveHandler());
-        for (final String evaluatorToAdd : plan.getEvaluatorsToAdd()) {
+        for (final String evaluatorToAdd : plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP)) {
           LOG.log(Level.INFO, "Add new evaluator {0}", evaluatorToAdd);
           elasticMemory.add(1, evalSize, 1, evaluatorAllocatedHandler, contextActiveHandlers);
         }
@@ -129,7 +131,7 @@ public final class DefaultPlanExecutor implements PlanExecutor {
         // TODO #90: Need to revisit whether EM.move should throw a RuntimeException on network failure.
         // TODO #90: Perhaps the handlers should receive this failure information instead.
         try {
-          for (final TransferStep transferStep : plan.getTransferSteps()) {
+          for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP)) {
             elasticMemory.move(
                 transferStep.getDataInfo().getDataType(),
                 transferStep.getDataInfo().getNumUnits(),
@@ -355,16 +357,16 @@ public final class DefaultPlanExecutor implements PlanExecutor {
 
     private ExecutingPlan(final Plan plan) {
       this.pendingTaskSubmissions = new ConcurrentHashMap<>();
-      this.addEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd());
-      this.activeContexts = new ArrayList<>(plan.getEvaluatorsToAdd().size());
+      this.addEvaluatorIds = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP));
+      this.activeContexts = new ArrayList<>(plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
       this.addEvaluatorIdsToContexts = new ConcurrentHashMap<>();
       this.runningTasks = new ConcurrentHashMap<>();
-      this.deleteEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete());
-      this.activeContextLatch = new CountDownLatch(plan.getEvaluatorsToAdd().size());
-      this.dataTransferLatch = new CountDownLatch(plan.getTransferSteps().size());
-      this.moveLatch = new CountDownLatch(plan.getTransferSteps().size());
-      this.runningTaskLatch = new CountDownLatch(plan.getEvaluatorsToAdd().size());
-      this.deleteLatch = new CountDownLatch(plan.getEvaluatorsToDelete().size());
+      this.deleteEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP));
+      this.activeContextLatch = new CountDownLatch(plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
+      this.dataTransferLatch = new CountDownLatch(plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).size());
+      this.moveLatch = new CountDownLatch(plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).size());
+      this.runningTaskLatch = new CountDownLatch(plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
+      this.deleteLatch = new CountDownLatch(plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
       this.synchronizedExecutionLatch = new CountDownLatch(1);
     }
 

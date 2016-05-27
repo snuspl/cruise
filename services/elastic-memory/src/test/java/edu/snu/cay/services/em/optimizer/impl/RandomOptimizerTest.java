@@ -24,10 +24,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -36,6 +33,7 @@ import static org.junit.Assert.assertNotNull;
  * Test that the Random Optimizer behaves correctly.
  */
 public final class RandomOptimizerTest {
+  private static final String NAMESPACE = "OPTIMIZER";
 
   /**
    * Test that no evaluators are added or deleted when
@@ -47,12 +45,13 @@ public final class RandomOptimizerTest {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(1.0, 1.0);
     final long dataPerEvaluator = 5000;
     final int numEvaluators = 10;
-    final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
+    final Map<String, List<EvaluatorParameters>> evaluators =
+        getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators);
 
-    assertEquals(0, plan.getEvaluatorsToAdd().size());
-    assertEquals(0, plan.getEvaluatorsToDelete().size());
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
   }
 
   /**
@@ -65,12 +64,13 @@ public final class RandomOptimizerTest {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(1.0, 1.0);
     final long dataPerEvaluator = 5000;
     final int numEvaluators = 10;
-    final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
+    final Map<String, List<EvaluatorParameters>> evaluators =
+        getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators / 2);
 
-    assertEquals(0, plan.getEvaluatorsToAdd().size());
-    assertEquals(numEvaluators / 2, plan.getEvaluatorsToDelete().size());
+    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(numEvaluators / 2, plan.getEvaluatorsToDelete(NAMESPACE).size());
   }
 
   /**
@@ -83,12 +83,13 @@ public final class RandomOptimizerTest {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(1.0, 1.0);
     final long dataPerEvaluator = 5000;
     final int numEvaluators = 10;
-    final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
+    final Map<String, List<EvaluatorParameters>> evaluators =
+        getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 2);
 
-    assertEquals(numEvaluators, plan.getEvaluatorsToAdd().size());
-    assertEquals(0, plan.getEvaluatorsToDelete().size());
+    assertEquals(numEvaluators, plan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE).size());
   }
 
   /**
@@ -101,13 +102,14 @@ public final class RandomOptimizerTest {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(0.5, 1.0);
     final long dataPerEvaluator = 5000;
     final int numEvaluators = 10;
-    final Collection<EvaluatorParameters> evaluators = getUniformEvaluators(dataPerEvaluator, numEvaluators);
+    final Map<String, List<EvaluatorParameters>> evaluators =
+        getUniformEvaluators(NAMESPACE, dataPerEvaluator, numEvaluators);
 
     final Plan plan = randomOptimizer.optimize(evaluators, numEvaluators * 3 / 2);
 
-    assertNotNull(plan.getEvaluatorsToAdd());
-    assertNotNull(plan.getEvaluatorsToDelete());
-    assertNotNull(plan.getTransferSteps());
+    assertNotNull(plan.getEvaluatorsToAdd(NAMESPACE));
+    assertNotNull(plan.getEvaluatorsToDelete(NAMESPACE));
+    assertNotNull(plan.getTransferSteps(NAMESPACE));
   }
 
   /**
@@ -123,33 +125,35 @@ public final class RandomOptimizerTest {
   @Test
   public void testMultipleDataTypes() {
     final RandomOptimizer randomOptimizer = getRandomOptimizer(1.0, 1.0);
-    final List<EvaluatorParameters> evaluators = new ArrayList<>();
+    final List<EvaluatorParameters> evalParamsList = new ArrayList<>();
 
     final List<DataInfo> dataInfo1 = new ArrayList<>();
     dataInfo1.add(new DataInfoImpl("dataTypeB", 300));
-    evaluators.add(new EvaluatorParametersImpl("1", dataInfo1, new HashMap<String, Double>(0)));
+    evalParamsList.add(new EvaluatorParametersImpl("1", dataInfo1, new HashMap<String, Double>(0)));
 
     final List<DataInfo> dataInfo2 = new ArrayList<>();
     dataInfo2.add(new DataInfoImpl("dataTypeA", 1000));
     dataInfo2.add(new DataInfoImpl("dataTypeB", 500));
-    evaluators.add(new EvaluatorParametersImpl("2", dataInfo2, new HashMap<String, Double>(0)));
+    evalParamsList.add(new EvaluatorParametersImpl("2", dataInfo2, new HashMap<String, Double>(0)));
 
-    final Plan sameNumEvaluatorsPlan = randomOptimizer.optimize(evaluators, evaluators.size());
+    final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);
+    evalParamsMap.put(NAMESPACE, evalParamsList);
+    final Plan sameNumEvaluatorsPlan = randomOptimizer.optimize(evalParamsMap, evalParamsList.size());
 
-    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToAdd().size());
-    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToDelete().size());
+    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(0, sameNumEvaluatorsPlan.getEvaluatorsToDelete(NAMESPACE).size());
 
-    final Plan singleEvaluatorPlan = randomOptimizer.optimize(evaluators, 1);
+    final Plan singleEvaluatorPlan = randomOptimizer.optimize(evalParamsMap, 1);
 
-    assertEquals(0, singleEvaluatorPlan.getEvaluatorsToAdd().size());
-    assertEquals(1, singleEvaluatorPlan.getEvaluatorsToDelete().size());
+    assertEquals(0, singleEvaluatorPlan.getEvaluatorsToAdd(NAMESPACE).size());
+    assertEquals(1, singleEvaluatorPlan.getEvaluatorsToDelete(NAMESPACE).size());
 
-    final String evaluatorToDelete = singleEvaluatorPlan.getEvaluatorsToDelete().iterator().next();
+    final String evaluatorToDelete = singleEvaluatorPlan.getEvaluatorsToDelete(NAMESPACE).iterator().next();
     assertEquals("2", evaluatorToDelete);
-    assertEquals(2, singleEvaluatorPlan.getTransferSteps().size());
+    assertEquals(2, singleEvaluatorPlan.getTransferSteps(NAMESPACE).size());
 
     long sum = 0;
-    for (final TransferStep transferStep : singleEvaluatorPlan.getTransferSteps()) {
+    for (final TransferStep transferStep : singleEvaluatorPlan.getTransferSteps(NAMESPACE)) {
       assertEquals("2", transferStep.getSrcId());
       assertEquals("1", transferStep.getDstId());
       sum += transferStep.getDataInfo().getNumUnits();
@@ -157,14 +161,19 @@ public final class RandomOptimizerTest {
     assertEquals(1000 + 500, sum);
   }
 
-  private Collection<EvaluatorParameters> getUniformEvaluators(final long dataPerEvaluator, final int numEvaluators) {
-    final List<EvaluatorParameters> evaluators = new ArrayList<>(numEvaluators);
+  private Map<String, List<EvaluatorParameters>> getUniformEvaluators(final String namespace,
+                                                                      final long dataPerEvaluator,
+                                                                      final int numEvaluators) {
+    final List<EvaluatorParameters> evalParamsList = new ArrayList<>(numEvaluators);
     for (int i = 0; i < numEvaluators; i++) {
       final List<DataInfo> dataInfos = new ArrayList<>(1);
       dataInfos.add(new DataInfoImpl("testType", (int) dataPerEvaluator));
-      evaluators.add(new EvaluatorParametersImpl("test-" + i, dataInfos, new HashMap<String, Double>(0)));
+      evalParamsList.add(new EvaluatorParametersImpl("test-" + i, dataInfos, new HashMap<String, Double>(0)));
     }
-    return evaluators;
+
+    final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);
+    evalParamsMap.put(namespace, evalParamsList);
+    return evalParamsMap;
   }
 
   private static RandomOptimizer getRandomOptimizer(final double minEvaluatorsFraction,

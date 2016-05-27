@@ -37,6 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.cay.dolphin.core.optimizer.OptimizationOrchestrator.NAMESPACE_DOLPHIN_BSP;
+
 /**
  * Optimizer class based on ILP (integer linear programming)
  * using <a href="http://ojalgo.org">ojAlgo</a>'s MIP(Mixed Integer Programming) solver.
@@ -72,12 +74,14 @@ public final class ILPSolverOptimizer implements Optimizer {
 
 
   @Override
-  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
     final Optional<String> ctrlTaskContextId = ctrlTaskContextIdFetcher.getCtrlTaskContextId();
     if (!ctrlTaskContextId.isPresent()) {
       LOG.log(Level.WARNING, "Controller task is unidentifiable at the moment. Returning empty plan.");
       return PlanImpl.newBuilder().build();
     }
+
+    final List<EvaluatorParameters> activeEvaluators = evalParamsMap.get(NAMESPACE_DOLPHIN_BSP);
 
     final Optional<Cost> cost = CostCalculator.calculate(activeEvaluators, ctrlTaskContextId.get());
     if (!cost.isPresent()) {
@@ -299,9 +303,9 @@ public final class ILPSolverOptimizer implements Optimizer {
 
       if (cmpTask.getParticipateValue() && cmpTask.isNewComputeTask()) {
         cmpTask.setId(getNewComputeTaskId()); // replace temporary id with new permanent one.
-        builder.addEvaluatorToAdd(cmpTask.getId());
+        builder.addEvaluatorToAdd(NAMESPACE_DOLPHIN_BSP, cmpTask.getId());
       } else if (!cmpTask.getParticipateValue() && !cmpTask.isNewComputeTask()) {
-        builder.addEvaluatorToDelete(cmpTask.getId());
+        builder.addEvaluatorToDelete(NAMESPACE_DOLPHIN_BSP, cmpTask.getId());
       }
     }
 
@@ -311,7 +315,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       while (getDataUnitsToMove(sender) < 0) {
         // pick receiver as a compute task that has the biggest amount of data unit to receive.
         final OptimizedComputeTask receiver = receiverPriorityQueue.poll();
-        builder.addTransferSteps(generateTransferStep(sender, receiver));
+        builder.addTransferSteps(NAMESPACE_DOLPHIN_BSP, generateTransferStep(sender, receiver));
         if (getDataUnitsToMove(receiver) > 0) {
           receiverPriorityQueue.add(receiver);
           break;

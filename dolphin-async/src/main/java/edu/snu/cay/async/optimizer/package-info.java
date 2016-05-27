@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2015 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.common;
-
 /**
- * Constants used across Driver/Server/Worker boundaries.
+ * Apply EM optimization and plan execution to the Dolphin Async runtime.
  */
-public final class Constants {
-  /**
-   * Empty private constructor to prohibit instantiation of utility class.
-   */
-  private Constants() {
-  }
-
-  public static final String SERVER_ID_PREFIX = "ServerContext-";
-  public static final String WORKER_ID_PREFIX = "WorkerContext-";
-}
+package edu.snu.cay.async.optimizer;

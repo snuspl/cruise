@@ -46,10 +46,6 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
-import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
 
 /**
  * Manager class for a Dynamic Partitioned Parameter Server, that supports atomic,
@@ -71,8 +67,6 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
   private final int serverQueueSize;
   private final long workerExpireTimeout;
   private final int workerKeyCacheSize;
-  private final AtomicInteger workerCount;
-  private final AtomicInteger serverCount;
 
   @Inject
   private DynamicPartitionedParameterServerManager(@Parameter(NumServers.class)final int numServers,
@@ -91,8 +85,6 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
     this.serverQueueSize = serverQueueSize;
     this.workerExpireTimeout = workerExpireTimeout;
     this.workerKeyCacheSize = workerKeyCacheSize;
-    this.workerCount = new AtomicInteger(0);
-    this.serverCount = new AtomicInteger(0);
   }
 
   /**
@@ -100,9 +92,7 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
    * Sets {@link PartitionedParameterWorker} as the {@link ParameterWorker} class.
    */
   @Override
-  public Configuration getWorkerServiceConfiguration() {
-    final int workerIndex = workerCount.getAndIncrement();
-
+  public Configuration getWorkerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, PartitionedParameterWorker.class)
@@ -115,7 +105,7 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
         .bindImplementation(ServerResolver.class, DynamicServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
-        .bindNamedParameter(EndpointId.class, WORKER_ID_PREFIX + workerIndex)
+        .bindNamedParameter(EndpointId.class, contextId)
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(workerNumThreads))
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
@@ -127,9 +117,7 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
    * Returns server-side service configuration.
    */
   @Override
-  public Configuration getServerServiceConfiguration() {
-    final int serverIndex = serverCount.getAndIncrement();
-
+  public Configuration getServerServiceConfiguration(final String contextId) {
     return Configurations.merge(
         Tang.Factory.getTang().newConfigurationBuilder(
             ServiceConfiguration.CONF
@@ -137,7 +125,7 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
                 .build())
             .bindImplementation(PartitionedParameterServer.class, DynamicPartitionedParameterServer.class)
             .bindImplementation(PartitionedServerSideReplySender.class, PartitionedServerSideReplySenderImpl.class)
-            .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + serverIndex)
+            .bindNamedParameter(EndpointId.class, contextId)
             .bindNamedParameter(PSMessageHandler.class, PartitionedServerSideMsgHandler.class)
             .bindImplementation(ServerResolver.class, DynamicServerResolver.class)
             .bindNamedParameter(NumServers.class, Integer.toString(numServers))

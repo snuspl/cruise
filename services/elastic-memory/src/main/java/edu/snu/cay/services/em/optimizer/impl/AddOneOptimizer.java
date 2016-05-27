@@ -24,7 +24,9 @@ import edu.snu.cay.services.em.plan.impl.PlanImpl;
 import edu.snu.cay.services.em.plan.impl.TransferStepImpl;
 
 import javax.inject.Inject;
-import java.util.Collection;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * An Optimizer that simply adds one new Evaluator for each optimize call.
@@ -34,6 +36,7 @@ import java.util.Collection;
  * This Optimizer can be used to drive DefaultPlanExecutor for testing purposes.
  */
 public final class AddOneOptimizer implements Optimizer {
+  private static final Logger LOG = Logger.getLogger(AddOneOptimizer.class.getName());
   private final int maxCallsToMake = 1;
   private int callsMade = 0;
 
@@ -45,43 +48,46 @@ public final class AddOneOptimizer implements Optimizer {
   }
 
   @Override
-  public Plan optimize(final Collection<EvaluatorParameters> activeEvaluators, final int availableEvaluators) {
+  public Plan optimize(final Map<String, List<EvaluatorParameters>> evalParamsMap, final int availableEvaluators) {
     if (callsSkipped < callsToSkip) {
       callsSkipped++;
       return PlanImpl.newBuilder().build();
     }
 
-    if (callsMade == maxCallsToMake) {
+    if (callsMade == maxCallsToMake || evalParamsMap.isEmpty()) {
       return PlanImpl.newBuilder().build();
     }
 
     final String evaluatorToAdd = "new-" + callsMade;
     callsMade++;
 
-    EvaluatorParameters srcEvaluator = null;
-    for (final EvaluatorParameters evaluator : activeEvaluators) {
-      if (!evaluator.getDataInfos().isEmpty()) {
-        srcEvaluator = evaluator;
-        break;
+    final PlanImpl.Builder planBuilder = PlanImpl.newBuilder();
+
+    for (final String namespace : evalParamsMap.keySet()) {
+      planBuilder.addEvaluatorToAdd(namespace, evaluatorToAdd);
+
+      EvaluatorParameters srcEvaluator = null;
+      for (final EvaluatorParameters evaluator : evalParamsMap.get(namespace)) {
+        if (!evaluator.getDataInfos().isEmpty()) {
+          srcEvaluator = evaluator;
+          break;
+        }
       }
+
+      // no evaluator has data; a new evaluator will also have no data to work on
+      if (srcEvaluator == null) {
+        LOG.log(Level.WARNING, "Cannot choose source evaluator to move its data to new evaluator in {0}", namespace);
+        continue;
+      }
+
+      final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
+      final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
+
+      final TransferStep transferStep = new TransferStepImpl(
+          srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
+
+      planBuilder.addTransferStep(namespace, transferStep);
     }
-
-    // no evaluator has data; simply add a new evaluator with no new data to work on
-    if (srcEvaluator == null) {
-      return PlanImpl.newBuilder()
-          .addEvaluatorToAdd(evaluatorToAdd)
-          .build();
-    }
-
-    final DataInfo srcDataInfo = srcEvaluator.getDataInfos().iterator().next();
-    final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
-
-    final TransferStep transferStep = new TransferStepImpl(
-        srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
-
-    return PlanImpl.newBuilder()
-        .addEvaluatorToAdd(evaluatorToAdd)
-        .addTransferStep(transferStep)
-        .build();
+    return planBuilder.build();
   }
 }

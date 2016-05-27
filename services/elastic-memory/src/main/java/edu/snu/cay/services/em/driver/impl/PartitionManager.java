@@ -16,6 +16,10 @@
 package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.common.parameters.NumTotalBlocks;
+import edu.snu.cay.services.em.optimizer.api.DataInfo;
+import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
+import edu.snu.cay.services.em.optimizer.impl.DataInfoImpl;
+import edu.snu.cay.services.em.optimizer.impl.EvaluatorParametersImpl;
 import edu.snu.cay.utils.LongRangeUtils;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.math.LongRange;
@@ -118,11 +122,10 @@ public final class PartitionManager {
     if (storeIdToBlockIds.containsKey(memoryStoreId)) {
       throw new RuntimeException("This evaluator is already registered. Its context Id is " + contextId);
     }
+    storeIdToBlockIds.put(memoryStoreId, new HashSet<Integer>());
 
     final int numActiveEvals = numEvalCounter.incrementAndGet();
-    LOG.log(Level.FINE, "MemoryStore({0}) is registered to {1}", new Object[]{memoryStoreId, contextId});
-
-    storeIdToBlockIds.put(memoryStoreId, new HashSet<Integer>());
+    LOG.log(Level.FINE, "MemoryStore {0} is assigned to eval {1}", new Object[]{memoryStoreId, contextId});
 
     // Fixed number of Blocks are assigned to the initial MemoryStores. When MemoryStores are created
     // by EM.add(), they are empty at first; existing blocks are moved to the new MemoryStores by EM.move(),
@@ -620,5 +623,30 @@ public final class PartitionManager {
     if (!removed) {
       LOG.log(Level.WARNING, "The block {0} has already been marked as finished", blockId);
     }
+  }
+
+  private Map<String, Integer> getEvalIdToNumBlocks() {
+    final Map<String, Integer> evalIdToNumBlocks = new HashMap<>();
+    for (final Map.Entry<Integer, Set<Integer>> storeIdToblockId : storeIdToBlockIds.entrySet()) {
+      final String evalId = getEvaluatorId(storeIdToblockId.getKey());
+      evalIdToNumBlocks.put(evalId, storeIdToblockId.getValue().size());
+    }
+    return evalIdToNumBlocks;
+  }
+
+  public Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
+    final Map<String, Integer> evalIdToNumBlocks = getEvalIdToNumBlocks();
+    final int numEvaluators = evalIdToNumBlocks.size();
+
+    final Map<String, EvaluatorParameters> evaluatorsMap = new HashMap<>(numEvaluators);
+    for (final Map.Entry<String, Integer> evalIdToNumBlock : evalIdToNumBlocks.entrySet()) {
+      final String evalId = evalIdToNumBlock.getKey();
+      final int numBlocks = evalIdToNumBlock.getValue();
+
+      final List<DataInfo> dataInfos = new ArrayList<>(1);
+      dataInfos.add(new DataInfoImpl(dataType, numBlocks));
+      evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, dataInfos, new HashMap<String, Double>(0)));
+    }
+    return evaluatorsMap;
   }
 }

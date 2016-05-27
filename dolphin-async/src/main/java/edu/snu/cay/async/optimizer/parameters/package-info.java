@@ -13,18 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.cay.services.ps.common;
-
 /**
- * Constants used across Driver/Server/Worker boundaries.
+ * Parameters used in Optimizer for Dolphin Async.
  */
-public final class Constants {
-  /**
-   * Empty private constructor to prohibit instantiation of utility class.
-   */
-  private Constants() {
-  }
-
-  public static final String SERVER_ID_PREFIX = "ServerContext-";
-  public static final String WORKER_ID_PREFIX = "WorkerContext-";
-}
+package edu.snu.cay.async.optimizer.parameters;

@@ -17,6 +17,7 @@ package edu.snu.cay.services.em.driver.api;
 
 import edu.snu.cay.services.em.avro.AvroElasticMemoryMessage;
 import edu.snu.cay.services.em.driver.impl.ElasticMemoryImpl;
+import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
@@ -143,4 +144,6 @@ public interface ElasticMemory {
    * @return the number of total blocks that exist in this Elastic Memory instance.
    */
   int getNumTotalBlocks();
+
+  Map<String, EvaluatorParameters> generateEvalParams(String dataType);
 }

@@ -18,6 +18,9 @@ package edu.snu.cay.async;
 import edu.snu.cay.async.metric.DriverSideMetricsMsgHandler;
 import edu.snu.cay.async.metric.EvalSideMetricsMsgHandler;
 import edu.snu.cay.async.metric.MetricsCollectionService;
+import edu.snu.cay.async.optimizer.parameters.DelayAfterOptimizationMs;
+import edu.snu.cay.async.optimizer.parameters.MemoryStoreInitDelayMs;
+import edu.snu.cay.async.optimizer.parameters.OptimizationIntervalMs;
 import edu.snu.cay.common.aggregation.AggregationConfiguration;
 import edu.snu.cay.common.param.Parameters.*;
 import edu.snu.cay.common.dataloader.DataLoadingRequestBuilder;
@@ -209,7 +212,7 @@ public final class AsyncDolphinLauncher {
     final CommandLine cl = new CommandLine(cb);
 
     // add all basic parameters
-    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(23);
+    final List<Class<? extends Name<?>>> basicParameterClassList = new ArrayList<>(26);
     basicParameterClassList.add(EvaluatorSize.class);
     basicParameterClassList.add(InputDir.class);
     basicParameterClassList.add(OnLocal.class);
@@ -239,6 +242,11 @@ public final class AsyncDolphinLauncher {
     basicParameterClassList.add(ReceiverType.class);
     basicParameterClassList.add(ReceiverHost.class);
     basicParameterClassList.add(ReceiverPort.class);
+
+    // add optimizer parameters
+    basicParameterClassList.add(OptimizationIntervalMs.class);
+    basicParameterClassList.add(MemoryStoreInitDelayMs.class);
+    basicParameterClassList.add(DelayAfterOptimizationMs.class);
 
     for (final Class<? extends Name<?>> basicParameterClass : basicParameterClassList) {
       cl.registerShortNameOfClass(basicParameterClass);
@@ -299,6 +307,7 @@ public final class AsyncDolphinLauncher {
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, AsyncDolphinDriver.FailedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, AsyncDolphinDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_FAILED, AsyncDolphinDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_TASK_RUNNING, AsyncDolphinDriver.RunningTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, AsyncDolphinDriver.CompletedTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, AsyncDolphinDriver.FailedTaskHandler.class);
 

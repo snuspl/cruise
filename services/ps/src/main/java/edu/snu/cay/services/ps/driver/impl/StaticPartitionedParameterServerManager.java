@@ -41,10 +41,6 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static edu.snu.cay.services.ps.common.Constants.SERVER_ID_PREFIX;
-import static edu.snu.cay.services.ps.common.Constants.WORKER_ID_PREFIX;
 
 /**
  * Manager class for a Partitioned Parameter Server, that supports atomic,
@@ -65,8 +61,6 @@ public final class StaticPartitionedParameterServerManager implements ParameterS
   private final int serverQueueSize;
   private final long workerExpireTimeout;
   private final int workerKeyCacheSize;
-  private final AtomicInteger workerCount;
-  private final AtomicInteger serverCount;
 
   @Inject
   private StaticPartitionedParameterServerManager(@Parameter(NumServers.class) final int numServers,
@@ -85,8 +79,6 @@ public final class StaticPartitionedParameterServerManager implements ParameterS
     this.serverQueueSize = serverQueueSize;
     this.workerExpireTimeout = workerExpireTimeout;
     this.workerKeyCacheSize = workerKeyCacheSize;
-    this.workerCount = new AtomicInteger(0);
-    this.serverCount = new AtomicInteger(0);
   }
 
   /**
@@ -94,9 +86,7 @@ public final class StaticPartitionedParameterServerManager implements ParameterS
    * Sets {@link PartitionedParameterWorker} as the {@link ParameterWorker} class.
    */
   @Override
-  public Configuration getWorkerServiceConfiguration() {
-    final int workerIndex = workerCount.getAndIncrement();
-
+  public Configuration getWorkerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, PartitionedParameterWorker.class)
@@ -107,7 +97,7 @@ public final class StaticPartitionedParameterServerManager implements ParameterS
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
         .bindNamedParameter(NumPartitions.class, Integer.toString(numPartitions))
-        .bindNamedParameter(EndpointId.class, WORKER_ID_PREFIX + workerIndex)
+        .bindNamedParameter(EndpointId.class, contextId)
         .bindNamedParameter(ParameterWorkerNumThreads.class, Integer.toString(workerNumThreads))
         .bindNamedParameter(WorkerQueueSize.class, Integer.toString(workerQueueSize))
         .bindNamedParameter(WorkerExpireTimeout.class, Long.toString(workerExpireTimeout))
@@ -119,16 +109,14 @@ public final class StaticPartitionedParameterServerManager implements ParameterS
    * Returns server-side service configuration.
    */
   @Override
-  public Configuration getServerServiceConfiguration() {
-    final int serverIndex = serverCount.getAndIncrement();
-
+  public Configuration getServerServiceConfiguration(final String contextId) {
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, StaticPartitionedParameterServer.class)
             .build())
         .bindImplementation(PartitionedParameterServer.class, StaticPartitionedParameterServer.class)
         .bindImplementation(PartitionedServerSideReplySender.class, PartitionedServerSideReplySenderImpl.class)
-        .bindNamedParameter(EndpointId.class, SERVER_ID_PREFIX + serverIndex)
+        .bindNamedParameter(EndpointId.class, contextId)
         .bindNamedParameter(PSMessageHandler.class, PartitionedServerSideMsgHandler.class)
         .bindImplementation(ServerResolver.class, StaticServerResolver.class)
         .bindNamedParameter(NumServers.class, Integer.toString(numServers))
