@@ -23,7 +23,6 @@ import edu.snu.cay.dolphin.examples.ml.data.Row;
 import edu.snu.cay.dolphin.examples.ml.data.RowDataType;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.tang.annotations.Parameter;
@@ -37,7 +36,6 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
   private final DataParser<List<Row>> dataParser;
   private final WorkloadPartition workloadPartition;
   private final MemoryStore memoryStore;
-  private final PartitionTracker partitionTracker;
   private final DataIdFactory<Long> dataIdFactory;
 
   @Inject
@@ -45,13 +43,11 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
                                 final DataParser<List<Row>> dataParser,
                                 final WorkloadPartition workloadPartition,
                                 final MemoryStore memoryStore,
-                                final PartitionTracker partitionTracker,
                                 final DataIdFactory<Long> dataIdFactory) {
     this.dataType = dataType;
     this.dataParser = dataParser;
     this.workloadPartition = workloadPartition;
     this.memoryStore = memoryStore;
-    this.partitionTracker = partitionTracker;
     this.dataIdFactory = dataIdFactory;
   }
 
@@ -68,7 +64,6 @@ public final class LogisticRegPreCmpTask extends UserComputeTask {
       workloadMap.put(dataType, rangeSet);
 
       workloadPartition.initialize(workloadMap);
-      partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
       memoryStore.putList(dataType, ids, rows);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);

@@ -23,7 +23,6 @@ import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.mahout.math.Vector;
 import org.apache.reef.tang.annotations.Parameter;
@@ -63,11 +62,6 @@ public final class ClusteringPreCmpTask extends UserComputeTask
   private final MemoryStore memoryStore;
 
   /**
-   * Partition tracker to register partitions to.
-   */
-  private final PartitionTracker partitionTracker;
-
-  /**
    * Data identifier factory to generate id for data.
    */
   private final DataIdFactory<Long> dataIdFactory;
@@ -77,13 +71,11 @@ public final class ClusteringPreCmpTask extends UserComputeTask
       @Parameter(ClusteringDataType.class) final String dataType,
       final DataParser<List<Vector>> dataParser,
       final MemoryStore memoryStore,
-      final PartitionTracker partitionTracker,
       final DataIdFactory<Long> dataIdFactory,
       @Parameter(NumberOfClusters.class) final int numberOfClusters) {
     this.dataType = dataType;
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
-    this.partitionTracker = partitionTracker;
     this.dataIdFactory = dataIdFactory;
     this.numberOfClusters = numberOfClusters;
   }
@@ -93,7 +85,6 @@ public final class ClusteringPreCmpTask extends UserComputeTask
     points = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(points.size());
-      partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
       memoryStore.putList(dataType, ids, points);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);

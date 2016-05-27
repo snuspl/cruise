@@ -20,7 +20,6 @@ import edu.snu.cay.dolphin.groupcomm.interfaces.DataBroadcastReceiver;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataReduceSender;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -43,7 +42,6 @@ public final class SleepCmpTask extends UserComputeTask
   private final int initialWorkload;
   private final long computationRate;
   private final MemoryStore memoryStore;
-  private final PartitionTracker partitionTracker;
   private final DataIdFactory<Long> dataIdFactory;
   private final Object reduceObject;
 
@@ -51,12 +49,10 @@ public final class SleepCmpTask extends UserComputeTask
   private SleepCmpTask(@Parameter(SleepParameters.InitialWorkload.class) final int initialWorkload,
                        @Parameter(SleepParameters.ComputationRate.class) final long computationRate,
                        final MemoryStore memoryStore,
-                       final PartitionTracker partitionTracker,
                        final DataIdFactory<Long> dataIdFactory) {
     this.initialWorkload = initialWorkload;
     this.computationRate = computationRate;
     this.memoryStore = memoryStore;
-    this.partitionTracker = partitionTracker;
     this.dataIdFactory = dataIdFactory;
     this.reduceObject = new Object();
   }
@@ -79,7 +75,6 @@ public final class SleepCmpTask extends UserComputeTask
         objects.add(object);
       }
 
-      partitionTracker.registerPartition(SleepParameters.KEY, ids.get(0), ids.get(ids.size() - 1));
       memoryStore.putList(SleepParameters.KEY, ids, objects);
 
     } catch (final IdGenerationException e) {
