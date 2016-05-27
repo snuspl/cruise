@@ -168,6 +168,12 @@ public final class AsyncDolphinDriver {
   private final AtomicInteger addedServerContextCount;
 
   /**
+   * Configuration that should be passed to each {@link AsyncWorkerTask}.
+   */
+  private final Configuration workerConf;
+  private final Configuration paramConf;
+
+  /**
    * Bookkeeping of context id of workers deleted by EM's Delete.
    */
   private final Set<String> deletedWorkerSet = new HashSet<>();
@@ -183,15 +189,19 @@ public final class AsyncDolphinDriver {
   private final ConcurrentMap<String, RunningTask> contextIdToRunningTasks = new ConcurrentHashMap<>();
 
   /**
+   * Worker-side EM client configuration, that should be passed to worker EM contexts.
+   */
+  private final Configuration emWorkerClientConf;
+
+  /**
+   * Server-side EM client configuration, that should be passed to server EM contexts.
+   */
+  private final Configuration emServerClientConf;
+
+  /**
    * Number of evaluators that have completed or failed.
    */
   private final AtomicInteger completedOrFailedEvalCount;
-
-  /**
-   * Configuration that should be passed to each {@link AsyncWorkerTask}.
-   */
-  private final Configuration workerConf;
-  private final Configuration paramConf;
 
   /**
    * Queue of activeContext objects of the evaluators housing the parameter server.
@@ -262,6 +272,11 @@ public final class AsyncDolphinDriver {
                              final AggregationManager aggregationManager,
                              @Parameter(SerializedWorkerConfiguration.class) final String serializedWorkerConf,
                              @Parameter(SerializedParameterConfiguration.class) final String serializedParamConf,
+                             @Parameter(SerializedEMWorkerClientConfiguration.class)
+                               final String serializedEMWorkerClientConf,
+                             @Parameter(SerializedEMServerClientConfiguration.class)
+                               final String serializedEMServerClientConf,
+
                              @Parameter(NumServers.class) final int numServers,
                              final ConfigurationSerializer configurationSerializer,
                              @Parameter(NumWorkerThreads.class) final int numWorkerThreads,
@@ -285,6 +300,8 @@ public final class AsyncDolphinDriver {
     this.workerContextsToClose = new ConcurrentLinkedQueue<>();
     this.workerConf = configurationSerializer.fromString(serializedWorkerConf);
     this.paramConf = configurationSerializer.fromString(serializedParamConf);
+    this.emWorkerClientConf = configurationSerializer.fromString(serializedEMWorkerClientConf);
+    this.emServerClientConf = configurationSerializer.fromString(serializedEMServerClientConf);
 
     this.numWorkerThreads = numWorkerThreads;
     this.traceParameters = traceParameters;
@@ -432,7 +449,7 @@ public final class AsyncDolphinDriver {
         final Configuration traceConf = traceParameters.getConfiguration();
 
         activeContext.submitContextAndService(contextConf,
-            Configurations.merge(serviceConf, traceConf, paramConf));
+            Configurations.merge(serviceConf, traceConf, paramConf, emServerClientConf));
       }
     };
   }
@@ -491,7 +508,7 @@ public final class AsyncDolphinDriver {
               .build();
 
         activeContext.submitContextAndService(contextConf,
-            Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf));
+            Configurations.merge(serviceConf, traceConf, paramConf, otherParamConf, emWorkerClientConf));
       }
     };
   }
