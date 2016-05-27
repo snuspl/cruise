@@ -34,7 +34,6 @@ import edu.snu.cay.services.ps.server.api.ParameterUpdater;
 import edu.snu.cay.services.ps.server.partitioned.DynamicPartitionedParameterServer;
 import edu.snu.cay.services.ps.server.partitioned.PartitionedServerSideReplySender;
 import edu.snu.cay.utils.ThreadUtils;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -51,7 +50,6 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -280,17 +278,6 @@ public final class DynamicPartitionedParameterServerTest {
 
     @Override
     public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
-                            final Set<LongRange> idRangeSet, final String operationId,
-                            @Nullable final TraceInfo parentTraceInfo) {
-    }
-
-    @Override
-    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId, final int numUnits,
-                            final String operationId, @Nullable final TraceInfo parentTraceInfo) {
-    }
-
-    @Override
-    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
                             final List<Integer> blocks, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
     }
@@ -299,26 +286,6 @@ public final class DynamicPartitionedParameterServerTest {
     public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
                             final List<KeyValuePair> keyValuePairs, final int blockId, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
-    }
-
-    @Override
-    public void sendDataAckMsg(final Set<LongRange> idRangeSet, final String operationId,
-                               @Nullable final TraceInfo parentTraceInfo) {
-    }
-
-    @Override
-    public void sendRegisMsg(final String dataType, final long unitStartId, final long unitEndId,
-                             @Nullable final TraceInfo parentTraceInfo) {
-    }
-
-    @Override
-    public void sendUpdateMsg(final String destId, final String operationId,
-                              @Nullable final TraceInfo parentTraceInfo) {
-    }
-
-    @Override
-    public void sendUpdateAckMsg(final String operationId, final UpdateResult result,
-                                 @Nullable final TraceInfo parentTraceInfo) {
     }
 
     @Override

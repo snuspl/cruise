@@ -17,10 +17,8 @@ package edu.snu.cay.services.em.driver.impl;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import edu.snu.cay.services.em.utils.AvroUtils;
 import edu.snu.cay.utils.trace.HTraceUtils;
 import edu.snu.cay.utils.SingleMessageExtractor;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.tang.InjectionFuture;
 import org.htrace.Trace;
@@ -45,9 +43,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
   private static final Logger LOG = Logger.getLogger(ElasticMemoryMsgHandler.class.getName());
 
   private static final String ON_ROUTING_INIT_REQ_MSG = "onRoutingTableInitReqMsg";
-  private static final String ON_REGIS_MSG = "onRegisMsg";
-  private static final String ON_DATA_ACK_MSG = "onDataAckMsg";
-  private static final String ON_UPDATE_ACK_MSG = "onUpdateAckMsg";
   private static final String ON_OWNERSHIP_MSG = "onOwnershipMsg";
   private static final String ON_OWNERSHIP_ACK_MSG = "onOwnershipAckMsg";
   private static final String ON_FAILURE_MSG = "onFailureMsg";
@@ -74,18 +69,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
     switch (innerMsg.getType()) {
     case RoutingTableInitReqMsg:
       onRoutingTableInitReqMsg(innerMsg);
-      break;
-
-    case RegisMsg:
-      onRegisMsg(innerMsg);
-      break;
-
-    case DataAckMsg:
-      onDataAckMsg(innerMsg);
-      break;
-
-    case UpdateAckMsg:
-      onUpdateAckMsg(innerMsg);
       break;
 
     case OwnershipMsg:
@@ -142,63 +125,6 @@ public final class ElasticMemoryMsgHandler implements EventHandler<Message<AvroE
       // Update the owner and send ownership message to the old Owner.
       final TraceInfo traceInfo = TraceInfo.fromSpan(onOwnershipMsgScope.getSpan());
       migrationManager.updateOwner(operationId, blockId, oldOwnerId, newOwnerId, traceInfo);
-    }
-  }
-
-  private void onRegisMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onRegisMsgScope = Trace.startSpan(ON_REGIS_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-
-      final RegisMsg regisMsg = msg.getRegisMsg();
-
-      // register a partition for the evaluator as specified in the message
-      blockManager.register(msg.getSrcId().toString(),
-          regisMsg.getDataType().toString(), regisMsg.getIdRange().getMin(), regisMsg.getIdRange().getMax());
-    }
-  }
-
-  private void onDataAckMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onDataAckMsgScope = Trace.startSpan(ON_DATA_ACK_MSG,
-        HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-
-      final String operationId = msg.getOperationId().toString();
-
-      // Add the range information to the corresponding Migration.
-      final Set<LongRange> ranges = new HashSet<>();
-      for (final AvroLongRange range : msg.getDataAckMsg().getIdRange()) {
-        ranges.add(AvroUtils.fromAvroLongRange(range));
-      }
-      migrationManager.setMovedRanges(operationId, ranges);
-
-      // Wait for the user's approval to update.
-      // Once EM allows remote access to the data, we can remove this barrier letting EM update its state automatically.
-      migrationManager.waitUpdate(operationId);
-    }
-  }
-
-  private void onUpdateAckMsg(final AvroElasticMemoryMessage msg) {
-    try (final TraceScope onUpdateAckMsgScope =
-             Trace.startSpan(ON_UPDATE_ACK_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final UpdateResult updateResult = msg.getUpdateAckMsg().getResult();
-      final String operationId = msg.getOperationId().toString();
-
-      switch (updateResult) {
-
-      case RECEIVER_UPDATED:
-        // After receiver updates its state, the partition is guaranteed to be accessible in the receiver.
-        // So we can move the partition and update the sender.
-        final TraceInfo traceInfo = TraceInfo.fromSpan(onUpdateAckMsgScope.getSpan());
-        migrationManager.movePartition(operationId, traceInfo);
-        migrationManager.updateSender(operationId, traceInfo);
-        break;
-
-      case SENDER_UPDATED:
-        // Finish the migration notifying the result to the client via callback.
-        migrationManager.finishMigration(operationId);
-        break;
-
-      default:
-        throw new RuntimeException("Undefined result: " + updateResult);
-      }
     }
   }
 

@@ -17,14 +17,12 @@ package edu.snu.cay.services.em.msg.api;
 
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.msg.impl.ElasticMemoryMsgSenderImpl;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.util.Optional;
 import org.htrace.TraceInfo;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Interface for sending AvroElasticMemoryMessages to the driver and evaluators.
@@ -107,34 +105,6 @@ public interface ElasticMemoryMsgSender {
                                  @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a CtrlMsg that tells the Evaluator specified with {@code destId} to
-   * send its {@code dataType} data to the Evaluator specified with
-   * {@code targetEvalId}.
-   * The operation should be given a unique {@code operationId}.
-   * Include {@code parentTraceInfo} to continue tracing this message.
-   */
-  void sendCtrlMsg(final String destId,
-                   final String dataType,
-                   final String targetEvalId,
-                   final Set<LongRange> idRangeSet,
-                   final String operationId,
-                   @Nullable final TraceInfo parentTraceInfo);
-
-  /**
-   * Sends a CtrlMsg that tells the Evaluator specified with {@code destId} to
-   * send {@code numUnits} units of its {@code dataType} data to the Evaluator specified with
-   * {@code targetEvalId}.
-   * The operation should be given a unique {@code operationId}.
-   * Include {@code parentTraceInfo} to continue tracing this message.
-   */
-  void sendCtrlMsg(final String destId,
-                   final String dataType,
-                   final String targetEvalId,
-                   final int numUnits,
-                   final String operationId,
-                   @Nullable final TraceInfo parentTraceInfo);
-
-  /**
    * Sends a CtrlMsg to initiate moving data blocks to the source Evaluator.
    * @param destId id of the Evaluator that receives this message
    *              (i.e., source Evaluator in terms of the data)
@@ -164,40 +134,6 @@ public interface ElasticMemoryMsgSender {
                    final int blockId,
                    final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
-
-  /**
-   * Sends a DataAckMsg to report to the Driver the success of data transfer.
-   * Since the actual range or the number of units might differ from the user's request,
-   * ({@code idRangeSet} is sent for the information.
-   * Include {@code parentTraceInfo} to continue tracing this message.
-   */
-  void sendDataAckMsg(final Set<LongRange> idRangeSet,
-                      final String operationId,
-                      @Nullable final TraceInfo parentTraceInfo);
-
-  /**
-   * Sends a RegisMsg to the Driver to register a partition, starting with
-   * {@code unitStartId} and ending with {@code unitEndId}.
-   * Include {@code parentTraceInfo} to continue tracing this message.
-   */
-  void sendRegisMsg(final String dataType,
-                    final long unitStartId,
-                    final long unitEndId,
-                    @Nullable final TraceInfo parentTraceInfo);
-
-  /**
-   * Sends an UpdateMsg to update the Evaluators' MemoryStore.
-   */
-  void sendUpdateMsg(final String destId,
-                     final String operationId,
-                     @Nullable final TraceInfo parentTraceInfo);
-
-  /**
-   * Sends a UpdateAckMsg to notify the update result.
-   */
-  void sendUpdateAckMsg(final String operationId,
-                        final UpdateResult result,
-                        @Nullable final TraceInfo parentTraceInfo);
 
   /**
    * Sends a request to update ownership for the given block.

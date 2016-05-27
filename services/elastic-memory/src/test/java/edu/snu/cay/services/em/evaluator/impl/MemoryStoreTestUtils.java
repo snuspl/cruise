@@ -18,7 +18,6 @@ package edu.snu.cay.services.em.evaluator.impl;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.util.Optional;
 import org.htrace.HTraceConfiguration;
 import org.htrace.Span;
@@ -261,19 +260,6 @@ public final class MemoryStoreTestUtils {
 
     @Override
     public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
-                            final Set<LongRange> idRangeSet, final String operationId,
-                            @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId, final int numUnits,
-                            final String operationId, @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
                             final List<Integer> blocks, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
 
@@ -283,30 +269,6 @@ public final class MemoryStoreTestUtils {
     public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
                             final List<KeyValuePair> keyValuePairs, final int blockId, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendDataAckMsg(final Set<LongRange> idRangeSet, final String operationId,
-                               @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendRegisMsg(final String dataType, final long unitStartId, final long unitEndId,
-                             @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendUpdateMsg(final String destId, final String operationId,
-                              @Nullable final TraceInfo parentTraceInfo) {
-
-    }
-
-    @Override
-    public void sendUpdateAckMsg(final String operationId, final UpdateResult result,
-                                 @Nullable final TraceInfo parentTraceInfo) {
 
     }
 
