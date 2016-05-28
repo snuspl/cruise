@@ -72,8 +72,6 @@ final class NMFWorker implements Worker {
   private final Map<Integer, Vector> rMatrix; // R matrix cache
   private final Map<Integer, Vector> gradients; // R matrix gradients
 
-  // TODO #530: Data type will be removed.
-  private static final String DATA_TYPE = "WORKER_DATA";
   private final DataIdFactory<Long> idFactory;
   private final MemoryStore<Long> memoryStore;
 
@@ -148,7 +146,7 @@ final class NMFWorker implements Worker {
       throw new RuntimeException(e);
     }
 
-    memoryStore.putList(DATA_TYPE, dataKeys, dataValues);
+    memoryStore.putList(dataKeys, dataValues);
 
     final Set<Integer> keySet = Sets.newTreeSet();
     // aggregate column indices
@@ -240,7 +238,7 @@ final class NMFWorker implements Worker {
     int rowCount = 0;
     resetTracers();
 
-    final Map<Long, NMFData> workloadMap = memoryStore.getAll(DATA_TYPE);
+    final Map<Long, NMFData> workloadMap = memoryStore.getAll();
     final Collection<NMFData> workload = workloadMap.values();
 
     pullRMatrix();
@@ -333,7 +331,7 @@ final class NMFWorker implements Worker {
       return;
     }
     // print L matrix
-    final Map<Long, NMFData> workloadMap = memoryStore.getAll(DATA_TYPE);
+    final Map<Long, NMFData> workloadMap = memoryStore.getAll();
     final Collection<NMFData> workload = workloadMap.values();
 
     final StringBuilder lsb = new StringBuilder();

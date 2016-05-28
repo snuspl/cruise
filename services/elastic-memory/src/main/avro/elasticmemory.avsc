@@ -77,7 +77,6 @@
   [
     {"name": "origEvalId", "type": "string"},
     {"name": "opType", "type": {"type": "enum", "name": "DataOpType", "symbols": ["PUT", "GET", "REMOVE"]}},
-    {"name": "dataType", "type": "string"},
     {"name": "dataKeys", "type": ["DataKey", {"type": "array", "items": "KeyRange"}]},
     {"name": "dataValues", "type": ["null", "DataValue", {"type": "array", "items": "KeyValuePair"}]}
   ]
@@ -153,7 +152,6 @@
   "name": "CtrlMsg",
   "fields":
   [
-    {"name": "dataType", "type": "string"},
     {"name": "blockIds", "type": {"type": "array", "items": "int"}}
   ]
 },
@@ -169,7 +167,6 @@
   "name": "DataMsg",
   "fields":
   [
-    {"name": "dataType", "type": "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null},
     {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
   ]
@@ -183,7 +180,6 @@
   "type": "record",
   "name": "OwnershipMsg",
   "fields": [
-      {"name": "dataType", "type": "string"},
       {"name": "blockId", "type": "int"},
       {"name": "oldOwnerId", "type": "int"},
       {"name": "newOwnerId", "type": "int"}
@@ -198,7 +194,6 @@
   "type": "record",
   "name": "OwnershipAckMsg",
   "fields": [
-      {"name": "dataType", "type": "string"},
       {"name": "blockId", "type": "int"}
   ]
 },

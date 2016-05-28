@@ -67,13 +67,12 @@ public interface ElasticMemory {
   /**
    * Move a certain number of blocks to another Evaluator.
    *
-   * @param dataType data type to perform this operation
    * @param numBlocks the number of blocks to move
    * @param srcEvalId identifier of the source evaluator
    * @param destEvalId identifier of the destination evaluator
    * @param finishedCallback handler to call when move operation is completed, or null if no callback is needed
    */
-  void move(String dataType, int numBlocks, String srcEvalId, String destEvalId,
+  void move(int numBlocks, String srcEvalId, String destEvalId,
             @Nullable EventHandler<AvroElasticMemoryMessage> finishedCallback);
 
   /**
@@ -106,5 +105,5 @@ public interface ElasticMemory {
    */
   int getNumTotalBlocks();
 
-  Map<String, EvaluatorParameters> generateEvalParams(String dataType);
+  Map<String, EvaluatorParameters> generateEvalParams();
 }

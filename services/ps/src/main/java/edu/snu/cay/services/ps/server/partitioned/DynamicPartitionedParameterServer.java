@@ -44,7 +44,6 @@ import java.util.logging.Logger;
  */
 public final class DynamicPartitionedParameterServer<K, P, V> implements PartitionedParameterServer<K, P, V> {
   private static final Logger LOG = Logger.getLogger(DynamicPartitionedParameterServer.class.getName());
-  private static final String DATA_TYPE = "SERVER_DATA";
 
   /**
    * Max size of each thread's queue.
@@ -179,7 +178,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
     @Override
     public void apply() {
       try {
-        final Pair<HashedKey<K>, V> oldKVPair = memoryStore.get(DATA_TYPE, hashedKey);
+        final Pair<HashedKey<K>, V> oldKVPair = memoryStore.get(hashedKey);
 
         final V oldValue;
         if (null == oldKVPair) {
@@ -195,7 +194,7 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
         }
 
         final V updatedValue = parameterUpdater.update(oldValue, deltaValue);
-        memoryStore.put(DATA_TYPE, hashedKey, updatedValue);
+        memoryStore.put(hashedKey, updatedValue);
       } catch (final Exception e) {
         LOG.log(Level.WARNING, "Exception occurred", e);
       }
@@ -221,12 +220,12 @@ public final class DynamicPartitionedParameterServer<K, P, V> implements Partiti
     @Override
     public void apply() {
       try {
-        final Pair<HashedKey<K>, V> kvPair = memoryStore.get(DATA_TYPE, hashedKey);
+        final Pair<HashedKey<K>, V> kvPair = memoryStore.get(hashedKey);
         final V value;
         if (kvPair == null) {
           final V initValue = parameterUpdater.initValue(hashedKey.getKey());
           final Pair<HashedKey<K>, Boolean> result =
-              memoryStore.put(DATA_TYPE, hashedKey, initValue);
+              memoryStore.put(hashedKey, initValue);
           final boolean isSuccess = result.getSecond();
           if (!isSuccess) {
             throw new RuntimeException("The data does not exist. Tried to put the initial value, but has failed");

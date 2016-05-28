@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.examples.ml.data;
 import edu.snu.cay.dolphin.examples.ml.sub.DenseVectorCodec;
 import edu.snu.cay.services.em.serialize.Serializer;
 import org.apache.reef.io.serialization.Codec;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
@@ -28,26 +27,15 @@ import javax.inject.Inject;
  */
 public final class ClusteringSerializer implements Serializer {
 
-  /**
-   * Type used in Elastic Memory to put/get the data.
-   */
-  private final String dataType;
-
   private final DenseVectorCodec denseVectorCodec;
 
   @Inject
-  private ClusteringSerializer(@Parameter(ClusteringDataType.class) final String dataType,
-                               final DenseVectorCodec denseVectorCodec) {
-    this.dataType = dataType;
+  private ClusteringSerializer(final DenseVectorCodec denseVectorCodec) {
     this.denseVectorCodec = denseVectorCodec;
   }
 
   @Override
-  public Codec getCodec(final String name) {
-    if (name.equals(dataType)) {
-      return denseVectorCodec;
-    } else {
-      throw new RuntimeException("Unknown name " + name);
-    }
+  public Codec getCodec() {
+    return denseVectorCodec;
   }
 }

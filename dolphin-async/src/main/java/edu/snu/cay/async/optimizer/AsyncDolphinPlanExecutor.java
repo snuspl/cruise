@@ -136,7 +136,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
           Thread.sleep(memoryStoreInitDelayMs);
           for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_SERVER)) {
             serverEM.move(
-                transferStep.getDataInfo().getDataType(),
                 transferStep.getDataInfo().getNumUnits(), // NumUnits is treated as block number.
                 transferStep.getSrcId(),
                 executingPlan.getServerActualContextId(transferStep.getDstId()),
@@ -144,7 +143,6 @@ public final class AsyncDolphinPlanExecutor implements PlanExecutor {
           }
           for (final TransferStep transferStep : plan.getTransferSteps(NAMESPACE_WORKER)) {
             workerEM.move(
-                transferStep.getDataInfo().getDataType(),
                 transferStep.getDataInfo().getNumUnits(),
                 transferStep.getSrcId(),
                 executingPlan.getWorkerActualContextId(transferStep.getDstId()),

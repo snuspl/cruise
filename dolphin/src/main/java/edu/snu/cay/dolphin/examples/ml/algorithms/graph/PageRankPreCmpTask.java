@@ -18,9 +18,7 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.graph;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.UserComputeTask;
-import edu.snu.cay.dolphin.examples.ml.data.AdjacencyListDataType;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -29,11 +27,6 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 public final class PageRankPreCmpTask extends UserComputeTask {
-
-  /**
-   * Key used in Elastic Memory to put/get the data.
-   */
-  private final String dataType;
 
   /**
    * Adjacency list data parser.
@@ -46,10 +39,8 @@ public final class PageRankPreCmpTask extends UserComputeTask {
   private final MemoryStore memoryStore;
 
   @Inject
-  private PageRankPreCmpTask(@Parameter(AdjacencyListDataType.class) final String dataType,
-                             final DataParser<Map<Integer, List<Integer>>> dataParser,
+  private PageRankPreCmpTask(final DataParser<Map<Integer, List<Integer>>> dataParser,
                              final MemoryStore memoryStore) {
-    this.dataType = dataType;
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
   }
@@ -66,7 +57,7 @@ public final class PageRankPreCmpTask extends UserComputeTask {
     }
 
     for (final Map.Entry<Integer, List<Integer>> entry : subgraphs.entrySet()) {
-      memoryStore.put(dataType, entry.getKey().longValue(), entry.getValue());
+      memoryStore.put(entry.getKey().longValue(), entry.getValue());
     }
   }
 

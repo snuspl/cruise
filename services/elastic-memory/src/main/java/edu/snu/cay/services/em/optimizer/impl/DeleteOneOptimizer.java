@@ -94,7 +94,7 @@ public final class DeleteOneOptimizer implements Optimizer {
         transferSteps.add(new TransferStepImpl(
             evaluatorToDelete.getId(),
             dstEvaluator.getId(),
-            new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits())));
+            new DataInfoImpl(dataInfo.getNumUnits())));
       }
 
       planBuilder.addEvaluatorToDelete(namespace, evaluatorToDelete.getId());

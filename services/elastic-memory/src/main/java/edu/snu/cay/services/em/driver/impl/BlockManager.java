@@ -290,7 +290,7 @@ public final class BlockManager {
     return evalIdToNumBlocks;
   }
 
-  public Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
+  public Map<String, EvaluatorParameters> generateEvalParams() {
     final Map<String, Integer> evalIdToNumBlocks = getEvalIdToNumBlocks();
     final int numEvaluators = evalIdToNumBlocks.size();
 
@@ -300,7 +300,7 @@ public final class BlockManager {
       final int numBlocks = evalIdToNumBlock.getValue();
 
       final List<DataInfo> dataInfos = new ArrayList<>(1);
-      dataInfos.add(new DataInfoImpl(dataType, numBlocks));
+      dataInfos.add(new DataInfoImpl(numBlocks));
       evaluatorsMap.put(evalId, new EvaluatorParametersImpl(evalId, dataInfos, new HashMap<String, Double>(0)));
     }
     return evaluatorsMap;

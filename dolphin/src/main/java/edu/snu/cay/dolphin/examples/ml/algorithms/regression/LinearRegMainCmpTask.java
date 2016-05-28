@@ -16,7 +16,6 @@
 package edu.snu.cay.dolphin.examples.ml.algorithms.regression;
 
 import edu.snu.cay.common.math.linalg.Vector;
-import edu.snu.cay.dolphin.examples.ml.data.RowDataType;
 import edu.snu.cay.dolphin.examples.ml.data.LinearModel;
 import edu.snu.cay.dolphin.core.UserComputeTask;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
@@ -38,7 +37,6 @@ public class LinearRegMainCmpTask extends UserComputeTask
   private double stepSize;
   private final Loss loss;
   private final Regularization regularization;
-  private final String dataType;
   private final MemoryStore memoryStore;
   private LinearModel model;
   private double lossSum = 0;
@@ -47,12 +45,10 @@ public class LinearRegMainCmpTask extends UserComputeTask
   public LinearRegMainCmpTask(@Parameter(StepSize.class) final double stepSize,
                               final Loss loss,
                               final Regularization regularization,
-                              @Parameter(RowDataType.class) final String dataType,
                               final MemoryStore memoryStore) {
     this.stepSize = stepSize;
     this.loss = loss;
     this.regularization = regularization;
-    this.dataType = dataType;
     this.memoryStore = memoryStore;
   }
 
@@ -61,7 +57,7 @@ public class LinearRegMainCmpTask extends UserComputeTask
 
     // measure loss
     lossSum = 0;
-    final Map<?, Row> rows = memoryStore.getAll(dataType);
+    final Map<?, Row> rows = memoryStore.getAll();
     for (final Row row : rows.values()) {
       final double output = row.getOutput();
       final double predict = model.predict(row.getFeature());

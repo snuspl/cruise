@@ -128,22 +128,20 @@ public final class RandomOptimizer implements Optimizer {
       *   Add these transfer steps to the plan.
      */
       activeEvaluators.addAll(evaluatorsToAdd);
-      final Collection<String> dataTypes = getDataTypes(activeEvaluators);
-      for (final String dataType : dataTypes) {
-        final long sumData = getSumData(dataType, activeEvaluators);
-        final List<OptimizedEvaluator> evaluators = initOptimizedEvaluators(dataType, activeEvaluators);
-        distributeDataAcrossEvaluators(evaluators.subList(0, numEvaluators), sumData);
 
-        if (LOG.isLoggable(Level.FINE)) {
-          for (final OptimizedEvaluator evaluator : evaluators) {
-            LOG.log(Level.FINE, "RandomOptimizer data distribution: {0} {1}",
-                new Object[]{evaluator.id, evaluator.dataRequested});
-          }
+      final long sumData = getSumData(activeEvaluators);
+      final List<OptimizedEvaluator> evaluators = initOptimizedEvaluators(activeEvaluators);
+      distributeDataAcrossEvaluators(evaluators.subList(0, numEvaluators), sumData);
+
+      if (LOG.isLoggable(Level.FINE)) {
+        for (final OptimizedEvaluator evaluator : evaluators) {
+          LOG.log(Level.FINE, "RandomOptimizer data distribution: {0} {1}",
+              new Object[]{evaluator.id, evaluator.dataRequested});
         }
-
-        final List<TransferStep> transferSteps = getTransferSteps(evaluators);
-        planBuilder.addTransferSteps(namespace, transferSteps);
       }
+
+      final List<TransferStep> transferSteps = getTransferSteps(evaluators);
+      planBuilder.addTransferSteps(namespace, transferSteps);
     }
     final Plan plan = planBuilder.build();
     LOG.log(Level.FINE, "RandomOptimizer Plan: {0}", plan);
@@ -174,24 +172,11 @@ public final class RandomOptimizer implements Optimizer {
         new ArrayList<DataInfo>(0), new HashMap<String, Double>(0));
   }
 
-  private static Collection<String> getDataTypes(final Collection<EvaluatorParameters> evaluators) {
-    final Set<String> dataTypes = new HashSet<>();
-    for (final EvaluatorParameters evaluator : evaluators) {
-      for (final DataInfo dataInfo : evaluator.getDataInfos()) {
-        dataTypes.add(dataInfo.getDataType());
-      }
-    }
-    return dataTypes;
-  }
-
-  private static long getSumData(final String dataType,
-                                 final Collection<EvaluatorParameters> evaluators) {
+  private static long getSumData(final Collection<EvaluatorParameters> evaluators) {
     long sumData = 0;
     for (final EvaluatorParameters evaluator : evaluators) {
       for (final DataInfo dataInfo : evaluator.getDataInfos()) {
-        if (dataType.equals(dataInfo.getDataType())) {
-          sumData += dataInfo.getNumUnits();
-        }
+        sumData += dataInfo.getNumUnits();
       }
     }
     return sumData;
@@ -201,27 +186,16 @@ public final class RandomOptimizer implements Optimizer {
    * Initialize an OptimizedEvaluator per Evaluator from the dataType's DataInfo.
    * An OptimizedEvaluator keeps track of data at an Evaluator while distributing data and scheduling transfers.
    * Checks for duplicate dataTypes.
-   * @param dataType
    * @param evaluators EvaluatorParameters to create OptimizedEvaluators for
    * @return list of OptimizedEvaluator's, one per EvaluatorParameter passed in
    */
-  private static List<OptimizedEvaluator> initOptimizedEvaluators(final String dataType,
-                                                                  final Collection<EvaluatorParameters> evaluators) {
+  private static List<OptimizedEvaluator> initOptimizedEvaluators(final Collection<EvaluatorParameters> evaluators) {
     final List<OptimizedEvaluator> optimizedEvaluators = new ArrayList<>(evaluators.size());
     for (final EvaluatorParameters parameters : evaluators) {
-      boolean dataTypeAdded = false;
       for (final DataInfo dataInfo : parameters.getDataInfos()) {
-        if (dataType.equals(dataInfo.getDataType())) {
-          if (dataTypeAdded) {
-            throw new IllegalArgumentException("Cannot have multiple infos for " + dataType);
-          }
-          optimizedEvaluators.add(new OptimizedEvaluator(parameters.getId(), dataInfo));
-          dataTypeAdded = true;
-        }
+        optimizedEvaluators.add(new OptimizedEvaluator(parameters.getId(), dataInfo));
       }
-      if (!dataTypeAdded) {
-        optimizedEvaluators.add(new OptimizedEvaluator(parameters.getId(), dataType));
-      }
+      optimizedEvaluators.add(new OptimizedEvaluator(parameters.getId()));
     }
     return optimizedEvaluators;
   }
@@ -304,21 +278,18 @@ public final class RandomOptimizer implements Optimizer {
 
   private static class OptimizedEvaluator {
     private final String id;
-    private final String dataType;
     private final List<TransferStep> dstTransferSteps = new ArrayList<>();
     private int dataAllocated;
     private int dataRequested;
 
     public OptimizedEvaluator(final String id, final DataInfo dataInfo) {
       this.id = id;
-      this.dataType = dataInfo.getDataType();
       this.dataAllocated = dataInfo.getNumUnits();
       this.dataRequested = 0;
     }
 
-    public OptimizedEvaluator(final String id, final String dataType) {
+    public OptimizedEvaluator(final String id) {
       this.id = id;
-      this.dataType = dataType;
       this.dataAllocated = 0;
       this.dataRequested = 0;
     }
@@ -349,7 +320,7 @@ public final class RandomOptimizer implements Optimizer {
 
     public void receiveData(final String src, final int data) {
       dataAllocated += data;
-      dstTransferSteps.add(new TransferStepImpl(src, id, new DataInfoImpl(dataType, data)));
+      dstTransferSteps.add(new TransferStepImpl(src, id, new DataInfoImpl(data)));
     }
 
     public List<TransferStep> getDstTransferSteps() {
@@ -360,7 +331,6 @@ public final class RandomOptimizer implements Optimizer {
     public String toString() {
       final StringBuilder sb = new StringBuilder("OptimizedEvaluator{");
       sb.append("id='").append(id).append('\'');
-      sb.append(", dataType='").append(dataType).append('\'');
       sb.append(", dstTransferSteps=").append(dstTransferSteps);
       sb.append(", dataAllocated=").append(dataAllocated);
       sb.append(", dataRequested=").append(dataRequested);

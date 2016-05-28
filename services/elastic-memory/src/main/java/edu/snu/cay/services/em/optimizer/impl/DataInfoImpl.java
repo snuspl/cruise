@@ -21,17 +21,10 @@ import edu.snu.cay.services.em.optimizer.api.DataInfo;
  * A plain-old-data implementation of DataInfo.
  */
 public final class DataInfoImpl implements DataInfo {
-  private final String dataType;
   private final int numUnits;
 
-  public DataInfoImpl(final String dataType, final int numUnits) {
-    this.dataType = dataType;
+  public DataInfoImpl(final int numUnits) {
     this.numUnits = numUnits;
-  }
-
-  @Override
-  public String getDataType() {
-    return dataType;
   }
 
   @Override
@@ -42,8 +35,7 @@ public final class DataInfoImpl implements DataInfo {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder("DataInfoImpl{");
-    sb.append("dataType='").append(dataType).append('\'');
-    sb.append(", numUnits=").append(numUnits);
+    sb.append("numUnits=").append(numUnits);
     sb.append('}');
     return sb.toString();
   }

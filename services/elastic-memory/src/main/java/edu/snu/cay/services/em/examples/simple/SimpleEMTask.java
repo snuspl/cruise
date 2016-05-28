@@ -34,7 +34,6 @@ import java.util.logging.Logger;
 
 final class SimpleEMTask implements Task {
   private static final Logger LOG = Logger.getLogger(SimpleEMTask.class.getName());
-  static final String DATATYPE = "INTEGER";
 
   // As each MemoryStore has 10 blocks, each block will have 2 items with use of RoundRobinDataIdFactory
   private static final int NUM_DATA = 20;
@@ -71,7 +70,7 @@ final class SimpleEMTask implements Task {
     // Just use ids as data (data do not matter)
 
     for (final long id : ids) {
-      final Pair<Long, Boolean> data = memoryStore.put(DATATYPE, id, id);
+      final Pair<Long, Boolean> data = memoryStore.put(id, id);
       if (!data.getSecond()) {
         throw new RuntimeException("Fail to put initial data");
       }
@@ -80,7 +79,7 @@ final class SimpleEMTask implements Task {
 
   public byte[] call(final byte[] memento) throws InterruptedException {
     // the initial number of local blocks
-    int prevNumBlocks = getNumLocalBlocks(DATATYPE);
+    int prevNumBlocks = getNumLocalBlocks();
 
     LOG.info("SimpleEMTask commencing...");
 
@@ -97,7 +96,7 @@ final class SimpleEMTask implements Task {
       final long numChangedBlocks = msgHandler.waitForMessage();
 
       // check that the local block is matched with the result of move
-      final int curNumBlocks = getNumLocalBlocks(DATATYPE);
+      final int curNumBlocks = getNumLocalBlocks();
       assert prevNumBlocks + numChangedBlocks == curNumBlocks;
       LOG.log(Level.INFO, "Move result: [prevBlocks: {0}, changedBlocks: {1}, currentBlocks: {2}]",
           new Object[]{prevNumBlocks, numChangedBlocks, curNumBlocks});
@@ -124,7 +123,7 @@ final class SimpleEMTask implements Task {
    */
   private void checkAllDataAccessible() {
     for (final long id : ids) {
-      final Pair<Long, Long> data = memoryStore.get(DATATYPE, id);
+      final Pair<Long, Long> data = memoryStore.get(id);
       if (data == null) {
         throw new RuntimeException("Data entry is lost");
       }
@@ -138,11 +137,11 @@ final class SimpleEMTask implements Task {
    * Get the number of blocks in local MemoryStore.
    * To figure out the number of blocks, we need to access the implementation of MemoryStore.
    */
-  private int getNumLocalBlocks(final String dataType) {
+  private int getNumLocalBlocks() {
     if (rangeSupport) {
-      return ((edu.snu.cay.services.em.evaluator.impl.range.MemoryStoreImpl) memoryStore).getNumBlocks(dataType);
+      return ((edu.snu.cay.services.em.evaluator.impl.range.MemoryStoreImpl) memoryStore).getNumBlocks();
     } else {
-      return ((edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl) memoryStore).getNumBlocks(dataType);
+      return ((edu.snu.cay.services.em.evaluator.impl.singlekey.MemoryStoreImpl) memoryStore).getNumBlocks();
     }
   }
 }

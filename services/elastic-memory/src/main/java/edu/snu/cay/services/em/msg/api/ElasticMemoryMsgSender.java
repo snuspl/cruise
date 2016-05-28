@@ -41,7 +41,6 @@ public interface ElasticMemoryMsgSender {
   void sendRemoteOpMsg(final String origId,
                        final String destId,
                        final DataOpType operationType,
-                       final String dataType,
                        final List<KeyRange> dataKeyRanges,
                        final List<KeyValuePair> dataKVPairList,
                        final String operationId,
@@ -56,8 +55,7 @@ public interface ElasticMemoryMsgSender {
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
   void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                       final String dataType, final DataKey dataKey,
-                       final DataValue dataValue, final String operationId,
+                       final DataKey dataKey, final DataValue dataValue, final String operationId,
                        @Nullable final TraceInfo parentTraceInfo);
 
   /**
@@ -108,27 +106,23 @@ public interface ElasticMemoryMsgSender {
    * Sends a CtrlMsg to initiate moving data blocks to the source Evaluator.
    * @param destId id of the Evaluator that receives this message
    *              (i.e., source Evaluator in terms of the data)
-   * @param dataType type of the data to move
    * @param targetEvalId id of the Evaluator that receives the data
    * @param blocks block ids to move
    * @param operationId id associated with this operation
    * @param parentTraceInfo Trace information for HTrace
    */
   void sendCtrlMsg(final String destId,
-                   final String dataType,
                    final String targetEvalId,
                    final List<Integer> blocks,
                    final String operationId,
                    @Nullable final TraceInfo parentTraceInfo);
 
   /**
-   * Sends a DataMsg containing {@code unitIdPairList} to the Evaluator
-   * named {@code destId}, specified by the type {@code dataType}.
+   * Sends a DataMsg containing {@code unitIdPairList} to the Evaluator named {@code destId}.
    * The operation should be given a unique {@code operationId}.
    * Include {@code parentTraceInfo} to continue tracing this message.
    */
   void sendDataMsg(final String destId,
-                   final String dataType,
                    final List<KeyValuePair> keyValuePairs,
                    final int blockId,
                    final String operationId,
@@ -140,7 +134,6 @@ public interface ElasticMemoryMsgSender {
    */
   void sendOwnershipMsg(final Optional<String> destId,
                         final String operationId,
-                        final String dataType,
                         final int blockId,
                         final int oldOwnerId,
                         final int newOwnerId,
@@ -150,7 +143,6 @@ public interface ElasticMemoryMsgSender {
    * Sends an ACK message to Driver for notifying that the ownership has been updated successful.
    */
   void sendOwnershipAckMsg(final String operationId,
-                           final String dataType,
                            final int blockId,
                            @Nullable final TraceInfo parentTraceInfo);
 

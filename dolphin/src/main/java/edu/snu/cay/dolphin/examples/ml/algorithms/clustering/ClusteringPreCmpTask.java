@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.examples.ml.algorithms.clustering;
 import edu.snu.cay.dolphin.core.ParseException;
 import edu.snu.cay.dolphin.core.DataParser;
 import edu.snu.cay.dolphin.core.UserComputeTask;
-import edu.snu.cay.dolphin.examples.ml.data.ClusteringDataType;
 import edu.snu.cay.dolphin.examples.ml.parameters.NumberOfClusters;
 import edu.snu.cay.dolphin.groupcomm.interfaces.DataGatherSender;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
@@ -39,11 +38,6 @@ public final class ClusteringPreCmpTask extends UserComputeTask
    * Number of clusters.
    */
   private final int numberOfClusters;
-
-  /**
-   * Type used in Elastic Memory to put/get the data.
-   */
-  private final String dataType;
 
   /**
    * Points read from input data to work on.
@@ -68,12 +62,10 @@ public final class ClusteringPreCmpTask extends UserComputeTask
 
   @Inject
   public ClusteringPreCmpTask(
-      @Parameter(ClusteringDataType.class) final String dataType,
       final DataParser<List<Vector>> dataParser,
       final MemoryStore memoryStore,
       final DataIdFactory<Long> dataIdFactory,
       @Parameter(NumberOfClusters.class) final int numberOfClusters) {
-    this.dataType = dataType;
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
     this.dataIdFactory = dataIdFactory;
@@ -85,7 +77,7 @@ public final class ClusteringPreCmpTask extends UserComputeTask
     points = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(points.size());
-      memoryStore.putList(dataType, ids, points);
+      memoryStore.putList(ids, points);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);
     }

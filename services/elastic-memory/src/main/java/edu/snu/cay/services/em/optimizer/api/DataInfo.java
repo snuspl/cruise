@@ -16,14 +16,9 @@
 package edu.snu.cay.services.em.optimizer.api;
 
 /**
- * Information about a dataType stored at an Evaluator.
+ * Information about a data stored at an Evaluator.
  */
 public interface DataInfo {
-
-  /**
-   * @return the dataType
-   */
-  String getDataType();
 
   /**
    * @return number of units stored with the dataType

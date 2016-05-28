@@ -21,14 +21,13 @@ import java.util.logging.Logger;
 
 /**
  * Encapsulates the status of a migration.
- * It consists of the sender, receiver, data type, and blocks to move.
+ * It consists of the sender, receiver, and blocks to move.
  */
 final class Migration {
   private static final Logger LOG = Logger.getLogger(Migration.class.getName());
 
   private final String senderId;
   private final String receiverId;
-  private final String dataType;
 
   /**
    * Ids of blocks to move.
@@ -44,16 +43,13 @@ final class Migration {
    * Creates a new Migration when move() is requested.
    * @param senderId Identifier of the sender.
    * @param receiverId Identifier of the receiver.
-   * @param dataType Type of data.
    * @param blockIds Identifiers of the blocks to move.
    */
   public Migration(final String senderId,
                    final String receiverId,
-                   final String dataType,
                    final List<Integer> blockIds) {
     this.senderId = senderId;
     this.receiverId = receiverId;
-    this.dataType = dataType;
     this.blockIds = blockIds;
     this.movedBlockIds = new HashSet<>(blockIds.size());
   }
@@ -70,13 +66,6 @@ final class Migration {
    */
   public String getReceiverId() {
     return receiverId;
-  }
-
-  /**
-   * @return Data type of the migration.
-   */
-  public String getDataType() {
-    return dataType;
   }
 
   /**

@@ -128,12 +128,12 @@ public final class RandomOptimizerTest {
     final List<EvaluatorParameters> evalParamsList = new ArrayList<>();
 
     final List<DataInfo> dataInfo1 = new ArrayList<>();
-    dataInfo1.add(new DataInfoImpl("dataTypeB", 300));
+    dataInfo1.add(new DataInfoImpl(300));
     evalParamsList.add(new EvaluatorParametersImpl("1", dataInfo1, new HashMap<String, Double>(0)));
 
     final List<DataInfo> dataInfo2 = new ArrayList<>();
-    dataInfo2.add(new DataInfoImpl("dataTypeA", 1000));
-    dataInfo2.add(new DataInfoImpl("dataTypeB", 500));
+    dataInfo2.add(new DataInfoImpl(1000));
+    dataInfo2.add(new DataInfoImpl(500));
     evalParamsList.add(new EvaluatorParametersImpl("2", dataInfo2, new HashMap<String, Double>(0)));
 
     final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);
@@ -167,7 +167,7 @@ public final class RandomOptimizerTest {
     final List<EvaluatorParameters> evalParamsList = new ArrayList<>(numEvaluators);
     for (int i = 0; i < numEvaluators; i++) {
       final List<DataInfo> dataInfos = new ArrayList<>(1);
-      dataInfos.add(new DataInfoImpl("testType", (int) dataPerEvaluator));
+      dataInfos.add(new DataInfoImpl((int) dataPerEvaluator));
       evalParamsList.add(new EvaluatorParametersImpl("test-" + i, dataInfos, new HashMap<String, Double>(0)));
     }
 

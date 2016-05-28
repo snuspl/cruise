@@ -42,20 +42,17 @@ public final class MemoryStoreTestUtils {
   public static final class PutThread implements Runnable {
     private final CountDownLatch countDownLatch;
     private final MemoryStore memoryStore;
-    private final String dataType;
     private final int myIndex;
     private final int numThreads;
     private final int putsPerThread;
     private final int itemsPerPut;
     private final IndexParity indexParity;
 
-    public PutThread(final CountDownLatch countDownLatch,
-                     final MemoryStore memoryStore, final String dataType,
+    public PutThread(final CountDownLatch countDownLatch, final MemoryStore memoryStore,
                      final int myIndex, final int numThreads, final int putsPerThread, final int itemsPerPut,
                      final IndexParity indexParity) {
       this.countDownLatch = countDownLatch;
       this.memoryStore = memoryStore;
-      this.dataType = dataType;
       this.myIndex = myIndex;
       this.numThreads = numThreads;
       this.putsPerThread = putsPerThread;
@@ -75,7 +72,7 @@ public final class MemoryStoreTestUtils {
 
         if (itemsPerPut == 1) {
           final long itemIndex = numThreads * i + myIndex;
-          memoryStore.put(dataType, itemIndex, i);
+          memoryStore.put(itemIndex, i);
         } else {
           final long itemStartIndex = (numThreads * i + myIndex) * itemsPerPut;
           final List<Long> ids = new ArrayList<>(itemsPerPut);
@@ -84,7 +81,7 @@ public final class MemoryStoreTestUtils {
             ids.add(itemIndex);
             values.add(itemIndex);
           }
-          memoryStore.putList(dataType, ids, values);
+          memoryStore.putList(ids, values);
         }
       }
 
@@ -95,20 +92,17 @@ public final class MemoryStoreTestUtils {
   public static final class RemoveThread implements Runnable {
     private final CountDownLatch countDownLatch;
     private final MemoryStore memoryStore;
-    private final String dataType;
     private final int myIndex;
     private final int numThreads;
     private final int removesPerThread;
     private final int itemsPerRemove;
     private final IndexParity indexParity;
 
-    public RemoveThread(final CountDownLatch countDownLatch,
-                        final MemoryStore memoryStore, final String dataType,
+    public RemoveThread(final CountDownLatch countDownLatch, final MemoryStore memoryStore,
                         final int myIndex, final int numThreads, final int removesPerThread, final int itemsPerRemove,
                         final IndexParity indexParity) {
       this.countDownLatch = countDownLatch;
       this.memoryStore = memoryStore;
-      this.dataType = dataType;
       this.myIndex = myIndex;
       this.numThreads = numThreads;
       this.removesPerThread = removesPerThread;
@@ -128,11 +122,11 @@ public final class MemoryStoreTestUtils {
 
         if (itemsPerRemove == 1) {
           final long itemIndex = numThreads * i + myIndex;
-          memoryStore.remove(dataType, itemIndex);
+          memoryStore.remove(itemIndex);
         } else {
           final long itemStartIndex = (numThreads * i + myIndex) * itemsPerRemove;
           final long itemEndIndex = itemStartIndex + itemsPerRemove - 1;
-          memoryStore.removeRange(dataType, itemStartIndex, itemEndIndex);
+          memoryStore.removeRange(itemStartIndex, itemEndIndex);
         }
       }
 
@@ -143,19 +137,16 @@ public final class MemoryStoreTestUtils {
   public static final class GetThread implements Runnable {
     private final CountDownLatch countDownLatch;
     private final MemoryStore memoryStore;
-    private final String dataType;
     private final int getsPerThread;
     private final int totalNumberOfObjects;
     private final boolean testRange;
     private final Random random;
 
-    public GetThread(final CountDownLatch countDownLatch,
-                     final MemoryStore memoryStore, final String dataType,
+    public GetThread(final CountDownLatch countDownLatch, final MemoryStore memoryStore,
                      final int getsPerThread, final boolean testRange,
                      final int totalNumberOfObjects) {
       this.countDownLatch = countDownLatch;
       this.memoryStore = memoryStore;
-      this.dataType = dataType;
       this.getsPerThread = getsPerThread;
       this.testRange = testRange;
       this.totalNumberOfObjects = totalNumberOfObjects;
@@ -167,13 +158,13 @@ public final class MemoryStoreTestUtils {
       for (int i = 0; i < getsPerThread; i++) {
         final int getMethod = testRange ? random.nextInt(3) : 0;
         if (getMethod == 0) {
-          memoryStore.get(dataType, (long) random.nextInt(totalNumberOfObjects));
+          memoryStore.get((long) random.nextInt(totalNumberOfObjects));
 
         } else if (getMethod == 1) {
           final int startId = random.nextInt(totalNumberOfObjects);
           final int endId = random.nextInt(totalNumberOfObjects - startId) + startId;
 
-          final Map<Long, Object> subMap = memoryStore.getRange(dataType, (long) startId, (long) endId);
+          final Map<Long, Object> subMap = memoryStore.getRange((long) startId, (long) endId);
           if (subMap == null) {
             continue;
           }
@@ -185,7 +176,7 @@ public final class MemoryStoreTestUtils {
           }
 
         } else {
-          final Map<Long, Object> allMap = memoryStore.getAll(dataType);
+          final Map<Long, Object> allMap = memoryStore.getAll();
           if (allMap == null) {
             continue;
           }
@@ -214,7 +205,7 @@ public final class MemoryStoreTestUtils {
 
     @Override
     public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final String dataType, final List<KeyRange> dataKeyRanges,
+                                final List<KeyRange> dataKeyRanges,
                                 final List<KeyValuePair> dataKVPairList, final String operationId,
                                 @Nullable final TraceInfo parentTraceInfo) {
 
@@ -222,7 +213,7 @@ public final class MemoryStoreTestUtils {
 
     @Override
     public void sendRemoteOpMsg(final String origId, final String destId, final DataOpType operationType,
-                                final String dataType, final DataKey dataKey, final DataValue dataValue,
+                                final DataKey dataKey, final DataValue dataValue,
                                 final String operationId, @Nullable final TraceInfo parentTraceInfo) {
 
     }
@@ -259,28 +250,28 @@ public final class MemoryStoreTestUtils {
     }
 
     @Override
-    public void sendCtrlMsg(final String destId, final String dataType, final String targetEvalId,
+    public void sendCtrlMsg(final String destId, final String targetEvalId,
                             final List<Integer> blocks, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendDataMsg(final String destId, final String dataType,
-                            final List<KeyValuePair> keyValuePairs, final int blockId, final String operationId,
+    public void sendDataMsg(final String destId, final List<KeyValuePair> keyValuePairs,
+                            final int blockId, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendOwnershipMsg(final Optional<String> destId, final String operationId, final String dataType,
+    public void sendOwnershipMsg(final Optional<String> destId, final String operationId,
                                  final int blockId, final int oldOwnerId, final int newOwnerId,
                                  @Nullable final TraceInfo parentTraceInfo) {
 
     }
 
     @Override
-    public void sendOwnershipAckMsg(final String operationId, final String dataType, final int blockId,
+    public void sendOwnershipAckMsg(final String operationId, final int blockId,
                                     @Nullable final TraceInfo parentTraceInfo) {
 
     }

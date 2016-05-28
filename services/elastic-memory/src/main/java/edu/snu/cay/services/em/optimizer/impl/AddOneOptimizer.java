@@ -84,7 +84,7 @@ public final class AddOneOptimizer implements Optimizer {
       final int numUnitsToMove = srcDataInfo.getNumUnits() / 2;
 
       final TransferStep transferStep = new TransferStepImpl(
-          srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(srcDataInfo.getDataType(), numUnitsToMove));
+          srcEvaluator.getId(), evaluatorToAdd, new DataInfoImpl(numUnitsToMove));
 
       planBuilder.addTransferStep(namespace, transferStep);
     }

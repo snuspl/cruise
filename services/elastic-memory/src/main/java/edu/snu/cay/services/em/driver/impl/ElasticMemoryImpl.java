@@ -146,12 +146,12 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public void move(final String dataType, final int numBlocks, final String srcEvalId, final String destEvalId,
+  public void move(final int numBlocks, final String srcEvalId, final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
       final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
-      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, numBlocks, traceInfo,
+      migrationManager.startMigration(operationId, srcEvalId, destEvalId, numBlocks, traceInfo,
           finishedCallback);
     }
   }
@@ -184,7 +184,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
-    return blockManager.generateEvalParams(dataType);
+  public Map<String, EvaluatorParameters> generateEvalParams() {
+    return blockManager.generateEvalParams();
   }
 }

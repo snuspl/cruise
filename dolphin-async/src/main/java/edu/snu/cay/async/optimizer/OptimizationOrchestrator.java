@@ -40,8 +40,6 @@ public final class OptimizationOrchestrator {
 
   public static final String NAMESPACE_SERVER = "SERVER";
   public static final String NAMESPACE_WORKER = "WORKER";
-  public static final String DATA_TYPE_SERVER = "SERVER_DATA"; // DynamicPS should use this type.
-  public static final String DATA_TYPE_WORKER = "WORKER_DATA"; // All Workers should use this type.
 
   private final Optimizer optimizer;
   private final PlanExecutor planExecutor;
@@ -84,8 +82,8 @@ public final class OptimizationOrchestrator {
       @Override
       public void run() {
         LOG.log(Level.INFO, "Optimization start. Start calculating the optimal plan");
-        final Collection<EvaluatorParameters> serverEvalParams = serverEM.generateEvalParams(DATA_TYPE_SERVER).values();
-        final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams(DATA_TYPE_WORKER).values();
+        final Collection<EvaluatorParameters> serverEvalParams = serverEM.generateEvalParams().values();
+        final Collection<EvaluatorParameters> workerEvalParams = workerEM.generateEvalParams().values();
 
         final Map<String, List<EvaluatorParameters>> evaluatorParameters = new HashMap<>(2);
         evaluatorParameters.put(NAMESPACE_SERVER, new ArrayList<>(serverEvalParams));

@@ -83,7 +83,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
 
     registerOp(operation);
 
-    final Codec<V> dataCodec = serializer.getCodec(operation.getDataType());
+    final Codec<V> dataCodec = serializer.getCodec();
 
     // send sub operations to all remote stores that owns partial range of the main operation (RemoteOpMsg)
     for (final Map.Entry<String, List<Pair<K, K>>> evalToSubKeyRange : evalToSubKeyRangesMap.entrySet()) {
@@ -123,12 +123,11 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
           }
         } else {
           // For GET and REMOVE operations, set dataKVPairList as an empty list
-          dataKVPairList = Collections.EMPTY_LIST;
+          dataKVPairList = Collections.emptyList();
         }
 
         msgSender.get().sendRemoteOpMsg(operation.getOrigEvalId().get(), targetEvalId,
-            operation.getOpType(), operation.getDataType(), avroKeyRangeList,
-            dataKVPairList, operation.getOpId(), traceInfo);
+            operation.getOpType(), avroKeyRangeList, dataKVPairList, operation.getOpId(), traceInfo);
       }
     }
 
@@ -163,7 +162,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
       return;
     }
 
-    final Codec codec = serializer.getCodec(operation.getDataType());
+    final Codec codec = serializer.getCodec();
 
     // decode data
     final Map<K, Object> dataKeyValueMap = new HashMap<>(remoteOutput.size());
@@ -215,8 +214,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
 
     // send the original store the result (RemoteOpResultMsg)
     try (final TraceScope traceScope = Trace.startSpan("SEND_REMOTE_RESULT")) {
-      final String dataType = operation.getDataType();
-      final Codec<V> dataCodec = serializer.getCodec(dataType);
+      final Codec<V> dataCodec = serializer.getCodec();
 
       final Optional<String> origEvalId = operation.getOrigEvalId();
 
@@ -232,7 +230,7 @@ final class RemoteOpHandler<K> implements EventHandler<AvroElasticMemoryMessage>
           dataKVPairList.add(new KeyValuePair(encodedKey, encodedData));
         }
       } else {
-        dataKVPairList = Collections.EMPTY_LIST;
+        dataKVPairList = Collections.emptyList();
       }
 
       // encoded failed key ranges

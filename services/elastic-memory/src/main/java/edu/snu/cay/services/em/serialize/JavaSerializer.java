@@ -30,7 +30,7 @@ public final class JavaSerializer implements Serializer {
   }
 
   @Override
-  public Codec getCodec(final String name) {
+  public Codec getCodec() {
     return defaultCodec;
   }
 }

@@ -36,7 +36,6 @@ final class SingleKeyOperationImpl<K, V> implements SingleKeyOperation<K, V> {
   private final Optional<String> origEvalId;
   private final String operationId;
   private final DataOpType operationType;
-  private final String dataType;
   private final K dataKey;
   private final Optional<V> dataValue;
 
@@ -54,18 +53,16 @@ final class SingleKeyOperationImpl<K, V> implements SingleKeyOperation<K, V> {
    *                   It is empty when the operation is requested from the local client.
    * @param operationId an id of operation
    * @param operationType a type of operation
-   * @param dataType a type of data
    * @param dataKey a key of data
    * @param dataValue an Optional with the value of data.
    *                  It is empty when the operation is one of GET or REMOVE.
    */
   public SingleKeyOperationImpl(final Optional<String> origEvalId, final String operationId,
-                                final DataOpType operationType, final String dataType, final K dataKey,
+                                final DataOpType operationType, final K dataKey,
                                 final Optional<V> dataValue) {
     this.origEvalId = origEvalId;
     this.operationId = operationId;
     this.operationType = operationType;
-    this.dataType = dataType;
     this.dataKey = dataKey;
     this.dataValue = dataValue;
   }
@@ -88,11 +85,6 @@ final class SingleKeyOperationImpl<K, V> implements SingleKeyOperation<K, V> {
   @Override
   public DataOpType getOpType() {
     return operationType;
-  }
-
-  @Override
-  public String getDataType() {
-    return dataType;
   }
 
   @Override

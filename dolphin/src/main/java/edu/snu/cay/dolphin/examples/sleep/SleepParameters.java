@@ -63,8 +63,6 @@ import java.io.*;
  */
 public final class SleepParameters implements UserParameters {
 
-  public static final String KEY = "KEY";
-
   private final File confFile;
   private final int maxIterations;
   private final long gcEncodeTime;
