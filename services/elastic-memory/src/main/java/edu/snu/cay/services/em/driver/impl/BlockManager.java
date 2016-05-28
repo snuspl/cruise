@@ -53,7 +53,7 @@ public final class BlockManager {
   private String evalIdPrefix = null;
 
   /**
-   * A mapping that maintains each MemoryStore have taken which partitions.
+   * A mapping that maintains each MemoryStore have taken which blocks.
    */
   private final Map<Integer, Set<Integer>> storeIdToBlockIds;
 
@@ -92,6 +92,7 @@ public final class BlockManager {
   public synchronized int registerEvaluator(final String contextId,
                                             final int numInitialEvals) {
     if (evalIdPrefix == null) {
+      // TODO #509: remove the assumption on the format of contextId
       // The same prefix is used in ElasticMemoryConfiguration and OperationRouter.
       evalIdPrefix = contextId.split("-")[0];
     }
@@ -244,11 +245,13 @@ public final class BlockManager {
       }
     }
 
-    LOG.log(Level.FINEST, "{0} blocks are chosen from store {1} in evaluator {2}. Blocks: {3}",
-        new Object[] {numBlocks, storeId, evalId, blockIdList});
     if (blockIdList.size() < numBlocks) {
-      LOG.log(Level.WARNING, "{0} blocks are chosen from store {1} in evaluator {2}, while {1} blocks are requested",
-          new Object[] {blockIdList.size(), storeId, evalId, numBlocks});
+      LOG.log(Level.WARNING, "{0} blocks are chosen from store {1} in evaluator {2}," +
+          " while {3} blocks are requested. Blocks: {4}",
+          new Object[] {blockIdList.size(), storeId, evalId, numBlocks, blockIdList});
+    } else {
+      LOG.log(Level.FINEST, "{0} blocks are chosen from store {1} in evaluator {2}. Blocks: {3}",
+          new Object[] {numBlocks, storeId, evalId, blockIdList});
     }
 
     return blockIdList;

@@ -101,8 +101,8 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   /**
-   * Removes partitions registered to deleting evalId.
-   * After that, EMDeleteExecutor handles the actual deleting request.
+   * Deletes an evaluator using EMDeleteExecutor.
+   * The evaluator should have no blocks.
    * TODO #205: Reconsider using of Avro message in EM's callback
    */
   @Override

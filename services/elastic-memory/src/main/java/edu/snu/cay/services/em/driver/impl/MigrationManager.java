@@ -33,27 +33,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Manages the status of Migrations. EM registers a migration when User called ElasticMemory.move().
- * Most state transition is done internally in EM, except applyUpdates(): the result of the migration
- * (e.g., location of partitions, MemoryStore in Evaluators) are updated only when user requests explicitly.
- *
- * The state of a migration changes as following:
- *  When move() is called, the migration starts with sending the data from Sender to Receiver (SENDING_DATA).
- *  If the data transfer finishes successfully, wait until applyUpdates() is called (WAITING_UPDATE).
- *  When user requests applyUpdates() in EM, update the Receiver first (UPDATING_RECEIVER).
- *  Now we can make sure the data is secure in the Receiver, so partition info can be updated (MOVING_PARTITION).
- *  Next the Sender is updated (UPDATING_SENDER), deleting the temporary data from its MemoryStore.
- *  Once the Sender notifies the Driver that the update completes, the migration finishes (FINISHED).
+ * Manages the migrations requested by EM.move(). When user calls EM.move(),
+ * EM registers a migration for tracking the information such as Blocks, and sender/receiver MemoryStores.
+ * The status is updated when the MemoryStores sends messages for updating the owner of blocks, or
+ * notifying the completion of actual data transfer. MigrationManager also handles the notification of data migration,
+ * so MemoryStores can update its routing table immediately after the data migration.
  */
 @DriverSide
 final class MigrationManager {
   private static final Logger LOG = Logger.getLogger(MigrationManager.class.getName());
-  private static final String FINISHED_SUFFIX = "-finished";
 
   private final InjectionFuture<ElasticMemoryMsgSender> sender;
   private final BlockManager blockManager;
@@ -64,12 +56,6 @@ final class MigrationManager {
    * which consists of the current state of each migration.
    */
   private final Map<String, Migration> ongoingMigrations = new HashMap<>();
-
-  /**
-   * The multiple migrations could apply their changes at once.
-   * This latch is used for waiting until all the updates are complete.
-   */
-  private CountDownLatch updateCounter = new CountDownLatch(0);
 
   /**
    * This map is for notifying changes in EM routing tables to clients.
@@ -109,7 +95,7 @@ final class MigrationManager {
       return;
     }
 
-    callbackRouter.register(operationId + FINISHED_SUFFIX, finishedCallback);
+    callbackRouter.register(operationId, finishedCallback);
 
     final List<Integer> blocks = blockManager.chooseBlocksToMove(senderId, numBlocks);
 
@@ -220,7 +206,6 @@ final class MigrationManager {
     }
 
     notifyFailure(operationId, reason);
-    updateCounter.countDown();
   }
 
   /**
@@ -233,7 +218,7 @@ final class MigrationManager {
         .setResult(Result.FAILURE)
         .setMsg(reason)
         .build();
-    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId + FINISHED_SUFFIX, resultMsg);
+    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId, resultMsg);
     callbackRouter.onFailed(msg);
   }
 
@@ -242,7 +227,7 @@ final class MigrationManager {
         .setResult(Result.SUCCESS)
         .setBlockIds(blocks)
         .build();
-    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId + FINISHED_SUFFIX, resultMsg);
+    final AvroElasticMemoryMessage msg = getEMMessage(moveOperationId, resultMsg);
     callbackRouter.onCompleted(msg);
   }
 
