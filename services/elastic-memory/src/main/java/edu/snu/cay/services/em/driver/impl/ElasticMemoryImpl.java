@@ -26,7 +26,6 @@ import edu.snu.cay.services.em.optimizer.api.EvaluatorParameters;
 import edu.snu.cay.services.evalmanager.api.EvaluatorManager;
 import edu.snu.cay.utils.trace.HTrace;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.math.LongRange;
 import org.apache.reef.annotations.audience.Private;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -51,7 +50,6 @@ import java.util.logging.Logger;
 public final class ElasticMemoryImpl implements ElasticMemory {
   private static final Logger LOG = Logger.getLogger(ElasticMemoryImpl.class.getName());
   private static final String MOVE = "move";
-  private static final String APPLY_UPDATES = "apply_updates";
 
   private final MigrationManager migrationManager;
 
@@ -64,19 +62,19 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   private final EvaluatorManager evaluatorManager;
 
   private final InjectionFuture<EMDeleteExecutor> deleteExecutor;
-  private final PartitionManager partitionManager;
+  private final BlockManager blockManager;
 
   @Inject
   private ElasticMemoryImpl(final EvaluatorManager evaluatorManager,
                             final MigrationManager migrationManager,
                             final InjectionFuture<EMDeleteExecutor> deleteExecutor,
-                            final PartitionManager partitionManager,
+                            final BlockManager blockManager,
                             final HTrace hTrace) {
     hTrace.initialize();
     this.evaluatorManager = evaluatorManager;
     this.migrationManager = migrationManager;
     this.deleteExecutor = deleteExecutor;
-    this.partitionManager = partitionManager;
+    this.blockManager = blockManager;
   }
 
   /**
@@ -103,28 +101,24 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   /**
-   * Removes partitions registered to deleting evalId.
-   * After that, EMDeleteExecutor handles the actual deleting request.
+   * Deletes an evaluator using EMDeleteExecutor.
+   * The evaluator should have no blocks.
    * TODO #205: Reconsider using of Avro message in EM's callback
    */
   @Override
   public void delete(final String evalId, @Nullable final EventHandler<AvroElasticMemoryMessage> callback) {
-    final Set<String> dataTypeSet = partitionManager.getDataTypes(evalId);
-    for (final String dataType : dataTypeSet) {
-      final Set<LongRange> rangeSet = partitionManager.getRangeSet(evalId, dataType);
-      // Deletion fails when the evaluator has remaining data
-      if (!rangeSet.isEmpty()) {
-        if (callback != null) {
-          final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
-              .setType(Type.ResultMsg)
-              .setResultMsg(ResultMsg.newBuilder().setResult(Result.FAILURE).build())
-              .setSrcId(evalId)
-              .setDestId("")
-              .build();
-          callback.onNext(msg);
-        }
-        return;
+    // Deletion fails when the evaluator has remaining data
+    if (blockManager.getNumBlocks(evalId) > 0) {
+      if (callback != null) {
+        final AvroElasticMemoryMessage msg = AvroElasticMemoryMessage.newBuilder()
+            .setType(Type.ResultMsg)
+            .setResultMsg(ResultMsg.newBuilder().setResult(Result.FAILURE).build())
+            .setSrcId(evalId)
+            .setDestId("")
+            .build();
+        callback.onNext(msg);
       }
+      return;
     }
 
     final boolean isSuccess;
@@ -141,7 +135,7 @@ public final class ElasticMemoryImpl implements ElasticMemory {
     }
 
     if (isSuccess) {
-      partitionManager.deregisterEvaluator(evalId);
+      blockManager.deregisterEvaluator(evalId);
     }
   }
 
@@ -152,36 +146,6 @@ public final class ElasticMemoryImpl implements ElasticMemory {
   }
 
   @Override
-  public void move(final String dataType,
-                   final Set<LongRange> idRangeSet,
-                   final String srcEvalId,
-                   final String destEvalId,
-                   @Nullable final EventHandler<AvroElasticMemoryMessage> transferredCallback,
-                   @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-    try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
-      final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
-      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, idRangeSet, traceInfo,
-          transferredCallback, finishedCallback);
-    }
-  }
-
-  @Override
-  public void move(final String dataType,
-                   final int numUnits,
-                   final String srcEvalId,
-                   final String destEvalId,
-                   @Nullable final EventHandler<AvroElasticMemoryMessage> transferredCallback,
-                   @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
-    try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
-      final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
-      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, numUnits, traceInfo,
-          transferredCallback, finishedCallback);
-    }
-  }
-
-  @Override
   public void move(final String dataType, final int numBlocks, final String srcEvalId, final String destEvalId,
                    @Nullable final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
     try (final TraceScope traceScope = Trace.startSpan(MOVE)) {
@@ -189,18 +153,6 @@ public final class ElasticMemoryImpl implements ElasticMemory {
       final String operationId = MOVE + "-" + Long.toString(operationIdCounter.getAndIncrement());
       migrationManager.startMigration(operationId, srcEvalId, destEvalId, dataType, numBlocks, traceInfo,
           finishedCallback);
-    }
-  }
-
-  /**
-   * Apply the updates in the Driver and Evaluators' status.
-   * It is synchronized to restrict at most one thread call this method at one time
-   */
-  @Override
-  public synchronized void applyUpdates() {
-    try (final TraceScope traceScope = Trace.startSpan(APPLY_UPDATES)) {
-      final TraceInfo traceInfo = TraceInfo.fromSpan(traceScope.getSpan());
-      migrationManager.applyUpdates(traceInfo);
     }
   }
 
@@ -223,16 +175,16 @@ public final class ElasticMemoryImpl implements ElasticMemory {
 
   @Override
   public Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
-    return partitionManager.getStoreIdToBlockIds();
+    return blockManager.getStoreIdToBlockIds();
   }
 
   @Override
   public int getNumTotalBlocks() {
-    return partitionManager.getNumTotalBlocks();
+    return blockManager.getNumTotalBlocks();
   }
 
   @Override
   public Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
-    return partitionManager.generateEvalParams(dataType);
+    return blockManager.generateEvalParams(dataType);
   }
 }

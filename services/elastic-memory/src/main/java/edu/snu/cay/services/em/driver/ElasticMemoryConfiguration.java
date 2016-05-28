@@ -16,7 +16,7 @@
 package edu.snu.cay.services.em.driver;
 
 import edu.snu.cay.services.em.common.parameters.*;
-import edu.snu.cay.services.em.driver.impl.PartitionManager;
+import edu.snu.cay.services.em.driver.impl.BlockManager;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
 import edu.snu.cay.services.em.evaluator.api.RemoteAccessibleMemoryStore;
 import edu.snu.cay.services.em.msg.ElasticMemoryMsgCodec;
@@ -56,7 +56,7 @@ public final class ElasticMemoryConfiguration {
   private final int numTotalBlocks;
   private final int numStoreThreads;
   private final boolean rangeSupport;
-  private final PartitionManager partitionManager;
+  private final BlockManager blockManager;
   private final String identifier;
 
   @Inject
@@ -67,14 +67,14 @@ public final class ElasticMemoryConfiguration {
                                      @Parameter(NumStoreThreads.class) final int numStoreThreads,
                                      @Parameter(RangeSupport.class) final boolean rangeSupport,
                                      @Parameter(EMIdentifier.class) final String identifier,
-                                     final PartitionManager partitionManager) {
+                                     final BlockManager blockManager) {
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.driverId = driverId;
     this.numTotalBlocks = numTotalBlocks;
     this.numStoreThreads = numStoreThreads;
     this.rangeSupport = rangeSupport;
-    this.partitionManager = partitionManager;
+    this.blockManager = blockManager;
     this.identifier = identifier;
   }
 
@@ -163,7 +163,7 @@ public final class ElasticMemoryConfiguration {
         .set(ServiceConfiguration.SERVICES, memoryStoreClass)
         .build();
 
-    final int memoryStoreId = partitionManager.registerEvaluator(contextId, numInitialEvals);
+    final int memoryStoreId = blockManager.registerEvaluator(contextId, numInitialEvals);
 
     final Configuration otherConf = Tang.Factory.getTang().newConfigurationBuilder()
         .bindImplementation(MemoryStore.class, memoryStoreClass)

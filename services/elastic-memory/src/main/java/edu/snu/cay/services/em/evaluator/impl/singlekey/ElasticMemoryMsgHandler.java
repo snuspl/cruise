@@ -240,34 +240,19 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
    */
   private void onCtrlMsg(final AvroElasticMemoryMessage msg) {
     try (final TraceScope onCtrlMsgScope = Trace.startSpan(ON_CTRL_MSG, HTraceUtils.fromAvro(msg.getTraceInfo()))) {
-      final CtrlMsgType ctrlMsgType = msg.getCtrlMsg().getCtrlMsgType();
-      switch (ctrlMsgType) {
-      case Blocks:
-        onCtrlMsgBlocks(msg, onCtrlMsgScope);
-        break;
+      final String operationId = msg.getOperationId().toString();
+      final CtrlMsg ctrlMsg = msg.getCtrlMsg();
+      final String dataType = ctrlMsg.getDataType().toString();
+      final Codec codec = serializer.getCodec(dataType);
+      final List<Integer> blockIds = ctrlMsg.getBlockIds();
 
-      default:
-        throw new RuntimeException("Unexpected control message type: " + ctrlMsgType);
+      // Send the data as unit of block
+      for (final int blockId : blockIds) {
+        final Map<K, Object> blockData = memoryStore.getBlock(dataType, blockId);
+        final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, codec);
+        sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), keyValuePairs,
+            blockId, operationId, TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
       }
-    }
-  }
-
-  /**
-   * Called when the Driver initiates data migration.
-   */
-  private void onCtrlMsgBlocks(final AvroElasticMemoryMessage msg, final TraceScope parentTraceInfo) {
-    final String operationId = msg.getOperationId().toString();
-    final CtrlMsg ctrlMsg = msg.getCtrlMsg();
-    final String dataType = ctrlMsg.getDataType().toString();
-    final Codec codec = serializer.getCodec(dataType);
-    final List<Integer> blockIds = ctrlMsg.getBlockIds();
-
-    // Send the data as unit of block
-    for (final int blockId : blockIds) {
-      final Map<K, Object> blockData = memoryStore.getBlock(dataType, blockId);
-      final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, codec);
-      sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), null, keyValuePairs,
-          blockId, operationId, TraceInfo.fromSpan(parentTraceInfo.getSpan()));
     }
   }
 

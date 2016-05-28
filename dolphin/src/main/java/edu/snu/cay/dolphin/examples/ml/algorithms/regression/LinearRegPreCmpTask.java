@@ -22,7 +22,6 @@ import edu.snu.cay.dolphin.examples.ml.data.RowDataType;
 import edu.snu.cay.dolphin.examples.ml.data.Row;
 import edu.snu.cay.services.em.evaluator.api.DataIdFactory;
 import edu.snu.cay.services.em.evaluator.api.MemoryStore;
-import edu.snu.cay.services.em.evaluator.api.PartitionTracker;
 import edu.snu.cay.services.em.exceptions.IdGenerationException;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -38,19 +37,16 @@ public final class LinearRegPreCmpTask extends UserComputeTask {
 
   private final DataParser<List<Row>> dataParser;
   private final MemoryStore memoryStore;
-  private final PartitionTracker partitionTracker;
   private final DataIdFactory<Long> dataIdFactory;
 
   @Inject
   private LinearRegPreCmpTask(@Parameter(RowDataType.class) final String dataType,
                               final DataParser<List<Row>> dataParser,
                               final MemoryStore memoryStore,
-                              final PartitionTracker partitionTracker,
                               final DataIdFactory<Long> dataIdFactory) {
     this.dataType = dataType;
     this.dataParser = dataParser;
     this.memoryStore = memoryStore;
-    this.partitionTracker = partitionTracker;
     this.dataIdFactory = dataIdFactory;
   }
 
@@ -59,7 +55,6 @@ public final class LinearRegPreCmpTask extends UserComputeTask {
     final List<Row> rows = dataParser.get();
     try {
       final List<Long> ids = dataIdFactory.getIds(rows.size());
-      partitionTracker.registerPartition(dataType, ids.get(0), ids.get(ids.size() - 1));
       memoryStore.putList(dataType, ids, rows);
     } catch (final IdGenerationException e) {
       throw new RuntimeException(e);

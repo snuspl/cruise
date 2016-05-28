@@ -330,9 +330,8 @@ public final class OperationRouter<K> {
   }
 
   /**
+   * TODO #509: it assumes that MemoryStore id is assigned by the suffix of context id.
    * Converts the MemoryStore id to the corresponding Evaluator's endpoint id.
-   * MemoryStore id is assumed to be assigned by the suffix of context id
-   * (See {@link edu.snu.cay.services.em.driver.impl.PartitionManager#registerEvaluator(String, int)})
    * @param memoryStoreId MemoryStore's identifier
    * @return the endpoint id to access the MemoryStore.
    */

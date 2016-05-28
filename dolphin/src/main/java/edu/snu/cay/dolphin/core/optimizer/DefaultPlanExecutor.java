@@ -137,16 +137,15 @@ public final class DefaultPlanExecutor implements PlanExecutor {
                 transferStep.getDataInfo().getNumUnits(),
                 transferStep.getSrcId(),
                 executingPlan.getActualContextId(transferStep.getDstId()),
-                new DataTransferredHandler(),
                 new MovedHandler());
           }
         } catch (final Exception e) {
           LOG.log(Level.WARNING, "Caught Exception, closing Evaluators.", e);
           executingPlan.onSynchronizedExecutionFailed();
         }
-        executingPlan.awaitDataTransfers();
+        executingPlan.awaitMoves();
 
-        LOG.log(Level.INFO, "All data transfers were completed, will submit evaluators and applyUpdates on pause.");
+        LOG.log(Level.INFO, "All data transfers were completed, will submit tasks and delete evaluators on pause.");
         driverSync.execute(new SynchronizedExecutionHandler(executingPlan),
             new SynchronizedExecutionFailedHandler(executingPlan));
         executingPlan.awaitSynchronizedExecution();
@@ -207,23 +206,6 @@ public final class DefaultPlanExecutor implements PlanExecutor {
   }
 
   /**
-   * This handler is registered as the first callback to ElasticMemory.move().
-   */
-  private final class DataTransferredHandler implements EventHandler<AvroElasticMemoryMessage> {
-    @Override
-    public void onNext(final AvroElasticMemoryMessage msg) {
-      LOG.log(Level.INFO, "Received new DataTransferred {0}.", msg);
-      if (msg.getResultMsg().getResult() == Result.FAILURE) {
-        LOG.log(Level.WARNING, "Data transfer failed because {0}", msg.getResultMsg().getMsg());
-      }
-      if (executingPlan == null) {
-        throw new RuntimeException("DataTransferred " + msg + " received, but no executingPlan available.");
-      }
-      executingPlan.onDataTransferred();
-    }
-  }
-
-  /**
    * This handler is registered as the second callback to ElasticMemory.move().
    */
   private final class MovedHandler implements EventHandler<AvroElasticMemoryMessage> {
@@ -244,12 +226,10 @@ public final class DefaultPlanExecutor implements PlanExecutor {
    * This handler is registered as the first callback to DriverSync.execute().
    *
    * Runs the following steps, before an iteration (while the Tasks are paused):
-   * 1. Call ElasticMemory.applyUpdates()
-   * 2. Wait for moves to complete
-   * 3. Submit tasks
-   * 4. Delete evaluators
-   * 5. Wait for all tasks to start running and all deletions to complete
-   * 6. Notify completed execution
+   * 1. Submit tasks
+   * 2. Delete evaluators
+   * 3. Wait for all tasks to start running and all deletions to complete
+   * 4. Notify completed execution
    *
    */
   private final class SynchronizedExecutionHandler implements EventHandler<IterationInfo> {
@@ -265,10 +245,6 @@ public final class DefaultPlanExecutor implements PlanExecutor {
       if (executingPlan == null) {
         throw new RuntimeException("Synchronized execution on " + iterationInfo + ", but no executingPlan available.");
       }
-
-      elasticMemory.applyUpdates();
-      LOG.log(Level.INFO, "applyUpdates called, waiting for Moves to finish.");
-      executingPlan.awaitMoves();
 
       LOG.log(Level.INFO, "moves finished, submitting tasks.");
       for (final ActiveContext context : executingPlan.getContextsToSubmit()) {
@@ -333,13 +309,12 @@ public final class DefaultPlanExecutor implements PlanExecutor {
    *
    * The executing plan runs through a sequence of barriers implemented as CountDownLatches:
    * 1. Wait until all Contexts have been allocated as ActiveContexts (activeContextLatch)
-   * 2. Wait until all Data Transfers are complete (dataTransferLatch)
+   * 2. Wait until all Moves are complete (moveLatch)
    * [Begin Synchronized Execution]
-   * 3. Wait until all Moves are complete (moveLatch)
-   * 4. Wait until all Task submissions have completed as RunningTasks (runningTaskLatch)
-   * 5. Wait until all Evaluators have been deleted (deleteLatch)
+   * 3. Wait until all Task submissions have completed as RunningTasks (runningTaskLatch)
+   * 4. Wait until all Evaluators have been deleted (deleteLatch)
    * [End Synchronized Execution]
-   * 6. Wait until the Synchronized Execution completes (synchronizedExecutionLatch)
+   * 5. Wait until the Synchronized Execution completes (synchronizedExecutionLatch)
    */
   private static final class ExecutingPlan {
     private final ConcurrentMap<String, ActiveContext> pendingTaskSubmissions;
@@ -349,7 +324,6 @@ public final class DefaultPlanExecutor implements PlanExecutor {
     private final ConcurrentMap<String, RunningTask> runningTasks;
     private final List<String> deleteEvaluatorsIds;
     private final CountDownLatch activeContextLatch;
-    private final CountDownLatch dataTransferLatch;
     private final CountDownLatch moveLatch;
     private final CountDownLatch runningTaskLatch;
     private final CountDownLatch deleteLatch;
@@ -363,7 +337,6 @@ public final class DefaultPlanExecutor implements PlanExecutor {
       this.runningTasks = new ConcurrentHashMap<>();
       this.deleteEvaluatorsIds = new ArrayList<>(plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP));
       this.activeContextLatch = new CountDownLatch(plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
-      this.dataTransferLatch = new CountDownLatch(plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).size());
       this.moveLatch = new CountDownLatch(plan.getTransferSteps(NAMESPACE_DOLPHIN_BSP).size());
       this.runningTaskLatch = new CountDownLatch(plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
       this.deleteLatch = new CountDownLatch(plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
@@ -401,18 +374,6 @@ public final class DefaultPlanExecutor implements PlanExecutor {
     public String getActualContextId(final String planContextId) {
       return addEvaluatorIdsToContexts.containsKey(planContextId) ?
           addEvaluatorIdsToContexts.get(planContextId).getId() : planContextId;
-    }
-
-    public void awaitDataTransfers() {
-      try {
-        dataTransferLatch.await();
-      } catch (final InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    public void onDataTransferred() {
-      dataTransferLatch.countDown();
     }
 
     public void awaitMoves() {

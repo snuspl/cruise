@@ -14,35 +14,6 @@
  * limitations under the License.
  */
 [
-/**
- * A pair of a single data item and its identifier.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "UnitIdPair",
-  "fields":
-  [
-    {"name": "unit", "type": "bytes"},
-    {"name": "id", "type": "long"}
-  ]
-},
-
-/**
- * Avro version of {@link org.apache.commons.lang.math.LongRange}.
- * Represents a range of longs using the min and max values.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "AvroLongRange",
-  "fields":
-  [
-    {"name": "min", "type": "long"},
-    {"name": "max", "type": "long"}
-  ]
-},
-
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
@@ -173,25 +144,8 @@
 },
 
 /**
- * A record type for evaluators to report a partition addition to the driver.
- * The data type of the partition and its identifier range must be encoded in the message.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "RegisMsg",
-  "fields":
-  [
-    {"name": "dataType", "type": "string"},
-    {"name": "idRange", "type": "AvroLongRange"}
-  ]
-},
-
-/**
  * Control message that is sent from the driver to evaluators.
- * The message contains the data type to send, as well as either
- * an array of {@code AvroLongRange}s that show which identifiers to send, or
- * simply the number of units to send.
+ * The message contains the data type and an array of block ids to send.
  */
 {
   "namespace": "edu.snu.cay.services.em.avro",
@@ -200,11 +154,7 @@
   "fields":
   [
     {"name": "dataType", "type": "string"},
-    {"name": "ctrlMsgType",
-     "type": {"type": "enum", "name": "CtrlMsgType", "symbols": ["IdRange", "NumUnits", "Blocks"]}},
-    {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
-    {"name": "numUnits", "type": ["null", "int"], "default": null},
-    {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null}
+    {"name": "blockIds", "type": {"type": "array", "items": "int"}}
   ]
 },
 
@@ -221,33 +171,8 @@
   [
     {"name": "dataType", "type": "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null},
-    {"name": "units", "type": ["null", {"type": "array", "items": "UnitIdPair"}], "default": null},
     {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
   ]
-},
-
-/**
- * Response message that is sent from evaluator to driver.
- * The message contains the ranges moved in this data transfer.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "DataAckMsg",
-  "fields":
-  [
-    {"name": "idRange", "type": {"type": "array", "items": "AvroLongRange"}}
-  ]
-},
-
-/**
- * Request message to update status from driver to evaluators
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "UpdateMsg",
-  "fields": []
 },
 
 /**
@@ -279,22 +204,6 @@
 },
 
 /**
- * Response message from evaluators to the driver notifying the update result.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "UpdateAckMsg",
-  "fields":
-  [
-    {
-    "name": "result",
-    "type": {"type": "enum", "name": "UpdateResult", "symbols": ["RECEIVER_UPDATED", "SENDER_UPDATED"]}
-    }
-  ]
-},
-
-/**
  * Message to notify failures in Evaluators to the Driver.
  */
 {
@@ -318,7 +227,6 @@
   "fields":
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
-    {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
     {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null},
     {"name": "msg", "type": ["null", "string"], "default": null}
   ]
@@ -337,8 +245,8 @@
   [
     {"name": "type", "type": {"type": "enum", "name": "Type",
         "symbols": ["RemoteOpMsg", "RemoteOpResultMsg", "RoutingTableInitReqMsg", "RoutingTableInitMsg",
-         "RoutingTableUpdateMsg", "RegisMsg", "CtrlMsg", "DataMsg", "DataAckMsg",
-        "UpdateMsg", "UpdateAckMsg", "FailureMsg", "ResultMsg", "OwnershipMsg", "OwnershipAckMsg"]}},
+         "RoutingTableUpdateMsg", "CtrlMsg", "DataMsg",
+         "FailureMsg", "ResultMsg", "OwnershipMsg", "OwnershipAckMsg"]}},
     {"name": "srcId", "type" : "string"},
     {"name": "destId", "type" : "string"},
     {"name": "operationId", "type" : ["null", "string"], "default": null},
@@ -348,12 +256,8 @@
     {"name": "routingTableInitReqMsg", "type": ["null", "RoutingTableInitReqMsg"], "default": null},
     {"name": "routingTableInitMsg", "type": ["null", "RoutingTableInitMsg"], "default": null},
     {"name": "routingTableUpdateMsg", "type": ["null", "RoutingTableUpdateMsg"], "default": null},
-    {"name": "regisMsg", "type": ["null", "RegisMsg"], "default": null},
     {"name": "ctrlMsg", "type": ["null", "CtrlMsg"], "default": null},
     {"name": "dataMsg", "type": ["null", "DataMsg"], "default": null},
-    {"name": "dataAckMsg", "type": ["null", "DataAckMsg"], "default": null},
-    {"name": "updateMsg", "type": ["null", "UpdateMsg"], "default": null},
-    {"name": "updateAckMsg", "type": ["null", "UpdateAckMsg"], "default":null},
     {"name": "failureMsg", "type": ["null", "FailureMsg"], "default":null},
     {"name": "resultMsg", "type": ["null", "ResultMsg"], "default": null},
     {"name": "ownershipMsg", "type": ["null", "OwnershipMsg"], "default": null},
