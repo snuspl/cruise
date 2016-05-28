@@ -129,12 +129,21 @@ public final class BlockManager {
   public synchronized void deregisterEvaluator(final String contextId) {
     final int memoryStoreId = getMemoryStoreId(contextId);
 
-    final Set<Integer> remainingBlocks = storeIdToBlockIds.remove(memoryStoreId);
+    final Set<Integer> remainingBlocks = storeIdToBlockIds.get(memoryStoreId);
     if (remainingBlocks == null) {
       throw new RuntimeException("The store " + memoryStoreId + " does not exist");
     } else if (!remainingBlocks.isEmpty()) {
       throw new RuntimeException("This attempt tries to remove a non-empty store, resulting missing blocks.");
     }
+
+    storeIdToBlockIds.remove(memoryStoreId);
+  }
+
+  /**
+   * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
+   */
+  Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
+    return Collections.unmodifiableMap(storeIdToBlockIds);
   }
 
   /**
@@ -161,6 +170,7 @@ public final class BlockManager {
 
   /**
    * Updates the owner of the block to another MemoryStore.
+   * The block should be locked by {@link #chooseBlocksToMove(String, int)} to change its owner.
    * @param blockId id of the block to update its owner
    * @param oldOwnerId id of the MemoryStore who used to own the block
    * @param newOwnerId id of the MemoryStore who will own the block
@@ -168,6 +178,10 @@ public final class BlockManager {
   synchronized void updateOwner(final int blockId, final int oldOwnerId, final int newOwnerId) {
     LOG.log(Level.FINER, "Update owner of block {0} from store {1} to store {2}",
         new Object[]{blockId, oldOwnerId, newOwnerId});
+
+    if (!movingBlocks.contains(blockId)) {
+      throw new RuntimeException("The block " + blockId + " + is not locked for move");
+    }
 
     if (!storeIdToBlockIds.containsKey(oldOwnerId)) {
       throw new RuntimeException("MemoryStore " + oldOwnerId + " has been lost.");
@@ -184,14 +198,12 @@ public final class BlockManager {
       throw new RuntimeException("Store " + newOwnerId + " already owns block " + blockId);
     }
 
-    blockIdToStoreId.put(blockId, newOwnerId);
-  }
+    final Set<Integer> blocksInOldStore = storeIdToBlockIds.get(oldOwnerId);
+    final Set<Integer> blocksInNewStore = storeIdToBlockIds.get(newOwnerId);
+    blocksInOldStore.remove(blockId);
+    blocksInNewStore.add(blockId);
 
-  /**
-   * @return the Driver's view of up-to-date mapping between MemoryStores and blocks.
-   */
-  Map<Integer, Set<Integer>> getStoreIdToBlockIds() {
-    return Collections.unmodifiableMap(storeIdToBlockIds);
+    blockIdToStoreId.put(blockId, newOwnerId);
   }
 
   /**
@@ -199,6 +211,20 @@ public final class BlockManager {
    */
   int getNumTotalBlocks() {
     return numTotalBlocks;
+  }
+
+
+  /**
+   * @param evalId id of the Evaluator
+   * @return the number of blocks owned by the Evaluator.
+   */
+  public synchronized int getNumBlocks(final String evalId) {
+    final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
+    // the given eval id is not registered
+    if (blockIds == null) {
+      return 0;
+    }
+    return blockIds.size();
   }
 
   /**
@@ -217,6 +243,7 @@ public final class BlockManager {
 
   /**
    * Choose the blocks in the Evaluator to move to another Evaluator.
+   * The chosen blocks cannot be chosen for another move until released by {@link #releaseBlockFromMove(int)}.
    * @param evalId id of Evaluator to choose the blocks
    * @param numBlocks the maximum number of blocks to choose
    * @return list of block ids that have been chosen.
@@ -258,23 +285,11 @@ public final class BlockManager {
   }
 
   /**
-   * @param evalId id of the Evaluator
-   * @return the number of blocks owned by the Evaluator.
-   */
-  public synchronized int getNumBlocks(final String evalId) {
-    final Set<Integer> blockIds = storeIdToBlockIds.get(getMemoryStoreId(evalId));
-    // the given eval id is not registered
-    if (blockIds == null) {
-      return 0;
-    }
-    return blockIds.size();
-  }
-
-  /**
-   * Mark the block as moved.
+   * Release the block that was locked by {@link #chooseBlocksToMove(String, int)}.
+   * After then the block can be chosen for move again.
    * @param blockId id of the block
    */
-  synchronized void markBlockAsMoved(final int blockId) {
+  synchronized void releaseBlockFromMove(final int blockId) {
     final boolean removed = movingBlocks.remove(blockId);
     if (!removed) {
       LOG.log(Level.WARNING, "The block {0} has already been marked as finished", blockId);
