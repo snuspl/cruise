@@ -264,7 +264,7 @@ public final class ElasticMemoryMsgHandler<K> implements EventHandler<Message<Av
       for (final int blockId : blockIds) {
         final Map<K, Object> blockData = memoryStore.getBlock(dataType, blockId);
         final List<KeyValuePair> keyValuePairs = toKeyValuePairs(blockData, codec);
-        sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(), null,
+        sender.get().sendDataMsg(msg.getDestId().toString(), ctrlMsg.getDataType().toString(),
             keyValuePairs, blockId, operationId, TraceInfo.fromSpan(onCtrlMsgScope.getSpan()));
       }
     }

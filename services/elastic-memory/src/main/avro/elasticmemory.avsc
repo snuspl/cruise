@@ -14,35 +14,6 @@
  * limitations under the License.
  */
 [
-/**
- * A pair of a single data item and its identifier.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "UnitIdPair",
-  "fields":
-  [
-    {"name": "unit", "type": "bytes"},
-    {"name": "id", "type": "long"}
-  ]
-},
-
-/**
- * Avro version of {@link org.apache.commons.lang.math.LongRange}.
- * Represents a range of longs using the min and max values.
- */
-{
-  "namespace": "edu.snu.cay.services.em.avro",
-  "type": "record",
-  "name": "AvroLongRange",
-  "fields":
-  [
-    {"name": "min", "type": "long"},
-    {"name": "max", "type": "long"}
-  ]
-},
-
 {
   "namespace": "edu.snu.cay.services.em.avro",
   "type": "record",
@@ -200,7 +171,6 @@
   [
     {"name": "dataType", "type": "string"},
     {"name": "blockId", "type": ["null", "int"], "default": null},
-    {"name": "units", "type": ["null", {"type": "array", "items": "UnitIdPair"}], "default": null},
     {"name": "keyValuePairs", "type": ["null", {"type": "array", "items": "KeyValuePair"}], "default": null}
   ]
 },
@@ -257,7 +227,6 @@
   "fields":
   [
     {"name": "result", "type": {"type": "enum", "name": "Result", "symbols": ["SUCCESS", "FAILURE"]}},
-    {"name": "idRange", "type": ["null", {"type": "array", "items": "AvroLongRange"}], "default": null},
     {"name": "blockIds", "type": ["null", {"type": "array", "items": "int"}], "default": null},
     {"name": "msg", "type": ["null", "string"], "default": null}
   ]

@@ -266,7 +266,7 @@ public final class MemoryStoreTestUtils {
     }
 
     @Override
-    public void sendDataMsg(final String destId, final String dataType, final List<UnitIdPair> unitIdPairList,
+    public void sendDataMsg(final String destId, final String dataType,
                             final List<KeyValuePair> keyValuePairs, final int blockId, final String operationId,
                             @Nullable final TraceInfo parentTraceInfo) {
 
