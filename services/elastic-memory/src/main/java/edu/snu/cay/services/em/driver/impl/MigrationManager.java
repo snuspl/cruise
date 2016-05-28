@@ -181,7 +181,7 @@ final class MigrationManager {
    * @param updateCallback a callback
    */
   synchronized void registerRoutingTableUpdateCallback(final String clientId,
-                                          final EventHandler<EMRoutingTableUpdate> updateCallback) {
+                                                       final EventHandler<EMRoutingTableUpdate> updateCallback) {
     updateCallbacks.put(clientId, updateCallback);
   }
 
