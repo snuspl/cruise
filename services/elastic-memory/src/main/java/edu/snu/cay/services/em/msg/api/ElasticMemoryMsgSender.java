@@ -155,6 +155,7 @@ public interface ElasticMemoryMsgSender {
                            @Nullable final TraceInfo parentTraceInfo);
 
   /**
+   * TODO #90: handle failures during move
    * Sends a FailureMsg to notify the failure to the Driver.
    */
   void sendFailureMsg(final String operationId,

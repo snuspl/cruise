@@ -127,7 +127,6 @@ final class MigrationManager {
     blockManager.releaseBlockFromMove(blockId);
 
     if (migration.isComplete()) {
-//      LOG.info("Migration is finished!");
       finishMigration(operationId);
     }
   }
