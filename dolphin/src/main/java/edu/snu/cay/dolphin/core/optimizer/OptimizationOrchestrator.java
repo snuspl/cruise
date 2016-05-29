@@ -91,14 +91,14 @@ public final class OptimizationOrchestrator {
    * @param groupName name of the communication group that the compute task is in
    * @param iteration the iteration the metrics were generated
    * @param metrics the set of metrics to give
-   * @param dataInfos list of {@link DataInfo}s of the compute task
+   * @param dataInfo {@link DataInfo} of the compute task
    */
   public void receiveComputeMetrics(final String contextId,
                                     final String groupName,
                                     final int iteration,
                                     final Map<String, Double> metrics,
-                                    final List<DataInfo> dataInfos) {
-    getIterationMetrics(groupName, iteration).addCompute(contextId, metrics, dataInfos);
+                                    final DataInfo dataInfo) {
+    getIterationMetrics(groupName, iteration).addCompute(contextId, metrics, dataInfo);
   }
 
   /**
@@ -143,7 +143,7 @@ public final class OptimizationOrchestrator {
    * Runs the optimization: get an optimized Plan based on the current Evaluator parameters, then execute the plan.
    * Optimization is skipped if the previous optimization has not finished.
    */
-  public void run(final Map<String, List<DataInfo>> dataInfos,
+  public void run(final Map<String, DataInfo> dataInfo,
                   final Map<String, Map<String, Double>> computeMetrics,
                   final String controllerId,
                   final Map<String, Double> controllerMetrics) {
@@ -164,7 +164,7 @@ public final class OptimizationOrchestrator {
         logPreviousResult();
 
         final Plan plan = optimizer.optimize(
-            getEvaluatorParameters(dataInfos, computeMetrics, controllerId, controllerMetrics),
+            getEvaluatorParameters(dataInfo, computeMetrics, controllerId, controllerMetrics),
             getAvailableEvaluators(computeMetrics.size() + 1));
 
         LOG.log(Level.INFO, "Optimization complete. Executing plan: {0}", plan);
@@ -217,7 +217,7 @@ public final class OptimizationOrchestrator {
   }
 
   // TODO #55: Information needed for the mathematical optimization formulation should be added to EvaluatorParameters
-  private Map<String, List<EvaluatorParameters>> getEvaluatorParameters(final Map<String, List<DataInfo>> dataInfos,
+  private Map<String, List<EvaluatorParameters>> getEvaluatorParameters(final Map<String, DataInfo> dataInfos,
                                                                         final Map<String, Map<String, Double>> metrics,
                                                                         final String controllerId,
                                                                         final Map<String, Double> controllerMetrics) {

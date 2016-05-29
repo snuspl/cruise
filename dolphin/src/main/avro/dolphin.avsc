@@ -39,7 +39,6 @@
   "name": "DataInfo",
   "fields":
   [
-    {"name": "dataType", "type": "string"},
     {"name": "numUnits", "type": "int"}
   ]
 },
@@ -64,7 +63,7 @@
   "name": "ComputeMsg",
   "fields":
   [
-    {"name": "dataInfos", "type": ["null", {"type": "array", "items": "DataInfo"}], "default": null}
+    {"name": "dataInfo", "type": ["null", "DataInfo"], "default": null}
   ]
 },
 

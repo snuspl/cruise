@@ -18,7 +18,6 @@ package edu.snu.cay.dolphin.core.optimizer;
 import edu.snu.cay.services.em.optimizer.api.DataInfo;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,9 +32,9 @@ final class MetricsReceiver {
   private final OptimizationOrchestrator optimizationOrchestrator;
 
   /**
-   * The list of DataInfos for each compute task (keyed by the compute task's contextId).
+   * The DataInfo for each compute task (keyed by the compute task's contextId).
    */
-  private final Map<String, List<DataInfo>> computeIdToDataInfos;
+  private final Map<String, DataInfo> computeIdToDataInfo;
 
   /**
    * A Map of metrics (metricId, metricValue) for each compute task (keyed by the compute task's contextId).
@@ -79,14 +78,14 @@ final class MetricsReceiver {
     this.optimizable = optimizable;
     this.numTasks = numTasks;
     this.computeIdToMetrics = new HashMap<>();
-    this.computeIdToDataInfos = new HashMap<>();
+    this.computeIdToDataInfo = new HashMap<>();
   }
 
   public synchronized void addCompute(final String contextId,
                                       final Map<String, Double> metrics,
-                                      final List<DataInfo> dataInfos) {
+                                      final DataInfo dataInfo) {
     computeIdToMetrics.put(contextId, metrics);
-    computeIdToDataInfos.put(contextId, dataInfos);
+    computeIdToDataInfo.put(contextId, dataInfo);
     numTasksReceived++;
     LOG.log(Level.FINE, "numTasksReceived {0}", numTasksReceived);
 
@@ -106,7 +105,7 @@ final class MetricsReceiver {
   private void checkAndRunOptimization() {
     if (numTasksReceived == numTasks) {
       if (optimizable) {
-        optimizationOrchestrator.run(computeIdToDataInfos, computeIdToMetrics, controllerId, controllerMetrics);
+        optimizationOrchestrator.run(computeIdToDataInfo, computeIdToMetrics, controllerId, controllerMetrics);
       } else {
         LOG.log(Level.INFO, "{0} tasks received, but skipping because not optimizable.", numTasks);
       }

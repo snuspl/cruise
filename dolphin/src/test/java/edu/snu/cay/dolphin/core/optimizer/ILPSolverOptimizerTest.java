@@ -96,43 +96,6 @@ public final class ILPSolverOptimizerTest {
   }
 
   /**
-   * Test that evaluators are added when available evaluators are doubled with multiple types of data.
-   */
-  @Test
-  public void testDoubleComputeTasksWithMultipleDataTypes() {
-    final int numComputeTasks = 3;
-    final int availableEvaluators = numComputeTasks * 2 + 1;
-    final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, numComputeTasks, new int[][]{{4000, 1000}, {2000, 2000}, {5000, 2000}});
-
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
-
-    checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertTrue("At least one evaluator should be added", plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size() > 0);
-    assertEquals(0, plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size());
-  }
-
-  /**
-   * Test that evaluators are deleted when available evaluators are reduce to half with multiple types of data.
-   */
-  @Test
-  public void testHalfComputeTasksWithMultipleDataTypes() {
-    final int numComputeTasks = 5;
-    final int availableEvaluators = numComputeTasks / 2 + 1;
-    final Map<String, List<EvaluatorParameters>> activeEvaluators = generateEvaluatorParameters(
-        NAMESPACE_DOLPHIN_BSP, numComputeTasks,
-        new int[][]{{2000, 500}, {3000, 1000}, {3000, 1000}, {2500, 2000}, {2500, 2000}});
-    final int lowerBoundToDelete = (int) Math.ceil((double) numComputeTasks / 2);
-
-    final Plan plan = ilpSolverOptimizer.optimize(activeEvaluators, availableEvaluators);
-
-    checkPlan(activeEvaluators, plan, availableEvaluators);
-    assertEquals(0, plan.getEvaluatorsToAdd(NAMESPACE_DOLPHIN_BSP).size());
-    assertTrue("The number of evaluators to be deleted should be >= " + lowerBoundToDelete,
-        plan.getEvaluatorsToDelete(NAMESPACE_DOLPHIN_BSP).size() >= lowerBoundToDelete);
-  }
-
-  /**
    * Test that two compute tasks send data to a new generated compute task.
    */
   @Test
@@ -200,7 +163,7 @@ public final class ILPSolverOptimizerTest {
 
       for (int j = 0; j < dataUnitsArray[i].length; ++j) {
         final int dataUnits = dataUnitsArray[i][j];
-        cmpTaskDataInfos.add(new DataInfoImpl(String.format("testType-%d", j), dataUnits));
+        cmpTaskDataInfos.add(new DataInfoImpl(dataUnits));
         sumDataUnits += dataUnits;
       }
 
@@ -220,7 +183,7 @@ public final class ILPSolverOptimizerTest {
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_SEND_DATA_START, 0D);
     metrics.put(DolphinMetricKeys.CONTROLLER_TASK_RECEIVE_DATA_END, maxComputeTaskEndTime + random.nextInt(50));
 
-    evalParamsList.add(new EvaluatorParametersImpl(ctrlTaskId, new ArrayList<DataInfo>(0), metrics));
+    evalParamsList.add(new EvaluatorParametersImpl(ctrlTaskId, new ArrayList<>(0), metrics));
 
     final Map<String, List<EvaluatorParameters>> evalParamsMap = new HashMap<>(1);
     evalParamsMap.put(namespace, evalParamsList);

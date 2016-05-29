@@ -174,7 +174,7 @@ public final class ILPSolverOptimizer implements Optimizer {
       final Variable participateVar = getNewParticipateVariable(cmpTaskCost.getId(), false);
 
       ret.add(new OptimizedComputeTask(
-          cmpTaskCost.getId(), participateVar, dataVar, cmpTaskCost.getDataInfos(), cmpTaskCost.getComputeCost()));
+          cmpTaskCost.getId(), participateVar, dataVar, cmpTaskCost.getDataInfo(), cmpTaskCost.getComputeCost()));
     }
 
     // create variables for unused evaluators
@@ -361,8 +361,8 @@ public final class ILPSolverOptimizer implements Optimizer {
       final DataInfo dataInfoToMove;
 
       if (numToMove < dataInfo.getNumUnits()) {
-        dataInfoToMove = new DataInfoImpl(dataInfo.getDataType(), numToMove);
-        dataInfosToAdd.add(new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits() - numToMove));
+        dataInfoToMove = new DataInfoImpl(numToMove);
+        dataInfosToAdd.add(new DataInfoImpl(dataInfo.getNumUnits() - numToMove));
       } else {
         dataInfoToMove = dataInfo;
       }

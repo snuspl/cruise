@@ -155,7 +155,7 @@ public final class ILPQuickOptimizerTest {
       final int[] dataForOneCompTask = dataArray[index];
       final List<DataInfo> dataInfoList = new ArrayList<>(dataForOneCompTask.length - 1);
       for (int dataType = 0; dataType < dataForOneCompTask.length - 1; ++dataType) {
-        dataInfoList.add(new DataInfoImpl(String.format("testType-%d", dataType), dataForOneCompTask[dataType]));
+        dataInfoList.add(new DataInfoImpl(dataForOneCompTask[dataType]));
       }
 
       final double compCost = (double)dataForOneCompTask[dataForOneCompTask.length - 1];

@@ -296,17 +296,12 @@ public final class ComputeTask implements Task {
   }
 
   private ComputeMsg getComputeMsg() {
-    final List<DataInfo> dataInfos = new ArrayList<>();
-    for (final String dataType : memoryStore.getDataTypes()) {
-      dataInfos.add(
-          DataInfo.newBuilder()
-              .setDataType(dataType)
-              .setNumUnits(memoryStore.getNumUnits(dataType))
-              .build());
-    }
+    final DataInfo dataInfo = DataInfo.newBuilder()
+        .setNumUnits(memoryStore.getNumUnits())
+        .build();
 
     final ComputeMsg computeMsg = ComputeMsg.newBuilder()
-        .setDataInfos(dataInfos)
+        .setDataInfo(dataInfo)
         .build();
     LOG.log(Level.FINE, "computeMsg {0}", computeMsg);
     return computeMsg;

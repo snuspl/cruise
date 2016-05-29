@@ -142,7 +142,7 @@ public final class OptimizationOrchestratorTest {
 
   private List<DataInfo> getSingleDataInfo(final int numUnits) {
     final List<DataInfo> dataInfos = new ArrayList<>(1);
-    dataInfos.add(new DataInfoImpl("testDataType", numUnits));
+    dataInfos.add(new DataInfoImpl(numUnits));
     return dataInfos;
   }
 }

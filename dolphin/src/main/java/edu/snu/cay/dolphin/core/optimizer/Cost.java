@@ -39,12 +39,12 @@ final class Cost {
 
     private final String id;
     private final double cmpCost;
-    private final Collection<DataInfo> dataInfos;
+    private final DataInfo dataInfo;
 
-    public ComputeTaskCost(final String id, final double cmpCost, final Collection<DataInfo> datainfos) {
+    public ComputeTaskCost(final String id, final double cmpCost, final DataInfo datainfo) {
       this.id = id;
       this.cmpCost = cmpCost;
-      this.dataInfos = datainfos;
+      this.dataInfo = datainfo;
     }
 
     public String getId() {
@@ -55,13 +55,13 @@ final class Cost {
       return cmpCost;
     }
 
-    public final Collection<DataInfo> getDataInfos() {
-      return dataInfos;
+    public final DataInfo getDataInfo() {
+      return dataInfo;
     }
 
     @Override
     public String toString() {
-      return String.format("ComputeTaskCost{id=\"%s\", cmpCost=%f, dataInfos=%s}", id, cmpCost, dataInfos);
+      return String.format("ComputeTaskCost{id=\"%s\", cmpCost=%f, dataInfos=%s}", id, cmpCost, dataInfo);
     }
   }
 

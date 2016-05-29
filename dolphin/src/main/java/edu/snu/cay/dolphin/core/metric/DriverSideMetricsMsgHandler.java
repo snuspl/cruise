@@ -82,7 +82,7 @@ public final class DriverSideMetricsMsgHandler implements EventHandler<Aggregati
       final List<edu.snu.cay.dolphin.core.metric.avro.DataInfo> avroDataInfos) {
     final List<DataInfo> dataInfos = new ArrayList<>(avroDataInfos.size());
     for (final edu.snu.cay.dolphin.core.metric.avro.DataInfo avroDataInfo : avroDataInfos) {
-      dataInfos.add(new DataInfoImpl(avroDataInfo.getDataType().toString(), avroDataInfo.getNumUnits()));
+      dataInfos.add(new DataInfoImpl(avroDataInfo.getNumUnits()));
     }
     return dataInfos;
   }

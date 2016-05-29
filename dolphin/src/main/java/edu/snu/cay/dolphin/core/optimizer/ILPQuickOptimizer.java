@@ -196,7 +196,7 @@ public final class ILPQuickOptimizer implements Optimizer {
 
     for (final Cost.ComputeTaskCost computeTaskCost : cost.getComputeTaskCosts()) {
       int numUnits = 0;
-      for (final DataInfo dataInfo : computeTaskCost.getDataInfos()) {
+      for (final DataInfo dataInfo : computeTaskCost.getDataInfo()) {
         numUnits += dataInfo.getNumUnits();
       }
 
@@ -206,7 +206,7 @@ public final class ILPQuickOptimizer implements Optimizer {
       numUnitsTotal += numUnits;
 
       optimizedEvaluatorQueue.add(new OptimizedEvaluator(
-          computeTaskCost.getId(), computeTaskCost.getDataInfos(), compUnitCostInv));
+          computeTaskCost.getId(), computeTaskCost.getDataInfo(), compUnitCostInv));
     }
 
     return new Tuple3<>(optimizedEvaluatorQueue, compUnitCostSum, numUnitsTotal);
@@ -366,8 +366,8 @@ public final class ILPQuickOptimizer implements Optimizer {
       final DataInfo dataInfoToMove;
 
       if (numToMove < dataInfo.getNumUnits()) {
-        dataInfoToMove = new DataInfoImpl(dataInfo.getDataType(), numToMove);
-        dataInfosToAdd.add(new DataInfoImpl(dataInfo.getDataType(), dataInfo.getNumUnits() - numToMove));
+        dataInfoToMove = new DataInfoImpl(numToMove);
+        dataInfosToAdd.add(new DataInfoImpl(dataInfo.getNumUnits() - numToMove));
       } else {
         dataInfoToMove = dataInfo;
       }
