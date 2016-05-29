@@ -290,7 +290,7 @@ public final class DynamicPartitionedParameterServerTest {
 
     @Override
     public void sendOwnershipMsg(final Optional<String> destId, final String operationId,
-                                 int blockId, final int oldOwnerId, final int newOwnerId,
+                                 final int blockId, final int oldOwnerId, final int newOwnerId,
                                  @Nullable final TraceInfo parentTraceInfo) {
     }
 

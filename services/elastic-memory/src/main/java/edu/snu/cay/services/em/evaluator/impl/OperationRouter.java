@@ -107,6 +107,9 @@ public final class OperationRouter<K> {
     final int numInitialLocalBlocks = addedEval ? 0 : (numTotalBlocks / numInitialEvals + 1); // +1 for remainders
     this.initialLocalBlocks = new ArrayList<>(numInitialLocalBlocks);
     this.blockLocations = new AtomicIntegerArray(numTotalBlocks);
+    if (!addedEval) {
+      initRoutingTable();
+    }
   }
 
   /**
@@ -121,9 +124,7 @@ public final class OperationRouter<K> {
     this.evalPrefix = endpointId.split("-")[0];
     LOG.log(Level.INFO, "Initialize router with localEndPointId: {0}", endpointId);
 
-    if (!addedEval) {
-      initRoutingTable();
-    } else {
+    if (addedEval) {
       requestRoutingTable();
     }
   }
