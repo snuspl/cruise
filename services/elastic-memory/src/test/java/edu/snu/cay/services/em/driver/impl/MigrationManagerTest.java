@@ -18,6 +18,7 @@ package edu.snu.cay.services.em.driver.impl;
 import edu.snu.cay.services.em.avro.*;
 import edu.snu.cay.services.em.driver.api.EMRoutingTableUpdate;
 import edu.snu.cay.services.em.msg.api.ElasticMemoryMsgSender;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -28,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import javax.annotation.Nullable;
+import javax.inject.Inject;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
@@ -42,7 +44,9 @@ import static org.junit.Assert.*;
  * Test that the MigrationManager handles the states and sends messages correctly.
  */
 public class MigrationManagerTest {
-  private static final int NUM_INIT_EVALS = 3; // should be larger than 3
+  // the number of intial evals should be larger than 3 for simulating all roles: sender, receiver, and the other
+  // so as to test the broadcast of the result of migration in testBroadcastwithInitialEvals().
+  private static final int NUM_INIT_EVALS = 3;
 
   private BlockManager blockManager;
   private MigrationManager migrationManager;
@@ -56,8 +60,11 @@ public class MigrationManagerTest {
 
   @Before
   public void setUp() throws InjectionException {
+    final Configuration conf = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(ElasticMemoryMsgSender.class, MockedMsgSender.class)
+        .build();
 
-    final Injector injector = Tang.Factory.getTang().newInjector();
+    final Injector injector = Tang.Factory.getTang().newInjector(conf);
 
     // initialize BlockManager with 3 evaluators
     blockManager = injector.getInstance(BlockManager.class);
@@ -65,14 +72,13 @@ public class MigrationManagerTest {
     blockManager.registerEvaluator(EVAL_PREFIX + 1, NUM_INIT_EVALS);
     blockManager.registerEvaluator(EVAL_PREFIX + 2, NUM_INIT_EVALS);
 
-    messageSender = new MockedMsgSender();
-    injector.bindVolatileInstance(ElasticMemoryMsgSender.class, messageSender);
+    messageSender = (MockedMsgSender) injector.getInstance(ElasticMemoryMsgSender.class);
     migrationManager = injector.getInstance(MigrationManager.class);
   }
 
   /**
    * Test concurrent migration by multiple threads.
-   * Test move data blocks from the first evaluators to the second evaluator.
+   * Test move data blocks from the first evaluators to the second evaluator and vice versa.
    */
   @Test
   public void testMigration() throws InterruptedException {
@@ -91,7 +97,7 @@ public class MigrationManagerTest {
       final int numBlocksToMove = numBlocksInSrcEval / NUM_REQUESTS;
 
       executor.execute(new MigrationThread(operationIdCounter.getAndIncrement(),
-          EVAL_PREFIX + 0, EVAL_PREFIX + 1, numBlocksToMove, finishedCallback0));
+          EVAL_PREFIX + 0, EVAL_PREFIX + 1, numBlocksToMove, finishedCallback0, migrationManager));
     }
 
     for (int i = 0; i < NUM_REQUESTS; i++) {
@@ -99,11 +105,11 @@ public class MigrationManagerTest {
       final int numBlocksToMove = numBlocksInSrcEval / NUM_REQUESTS;
 
       executor.execute(new MigrationThread(operationIdCounter.getAndIncrement(),
-          EVAL_PREFIX + 1, EVAL_PREFIX + 0, numBlocksToMove, finishedCallback1));
+          EVAL_PREFIX + 1, EVAL_PREFIX + 0, numBlocksToMove, finishedCallback1, migrationManager));
     }
 
     // wait until all moves are finished
-    assertTrue(movedLatch.await(20000, TimeUnit.MILLISECONDS));
+    assertTrue("Move does not finish within time", movedLatch.await(20000, TimeUnit.MILLISECONDS));
 
     // check that the final number of blocks in both stores are as expected
     final int numMovedBlocksFrom0To1 = finishedCallback0.getNumMovedBlocks();
@@ -112,8 +118,10 @@ public class MigrationManagerTest {
     final int numBlocksIn0 = numInitBlocksIn0 + numMovedBlocksFrom1To0 - numMovedBlocksFrom0To1;
     final int numBlocksIn1 = numInitBlocksIn1 + numMovedBlocksFrom0To1 - numMovedBlocksFrom1To0;
 
-    assertEquals(numBlocksIn0, blockManager.getNumBlocks(EVAL_PREFIX + 0));
-    assertEquals(numBlocksIn1, blockManager.getNumBlocks(EVAL_PREFIX + 1));
+    assertEquals("The number of blocks are different from expectation",
+        numBlocksIn0, blockManager.getNumBlocks(EVAL_PREFIX + 0));
+    assertEquals("The number of blocks are different from expectation",
+        numBlocksIn1, blockManager.getNumBlocks(EVAL_PREFIX + 1));
   }
 
   /**
@@ -132,7 +140,7 @@ public class MigrationManagerTest {
     final FinishedCallback finishedCallback = new FinishedCallback(movedLatch);
 
     runRandomMove(executor, operationIdCounter, numMoves, numActiveEvals, finishedCallback);
-    movedLatch.await(20000, TimeUnit.MILLISECONDS);
+    assertTrue("Move does not finish within time", movedLatch.await(20000, TimeUnit.MILLISECONDS));
 
     final int numBroadcasts = numOtherEvals * (numMoves - finishedCallback.getNumFailedMoves());
     while (messageSender.getBroadcastCount() < numBroadcasts) {
@@ -141,7 +149,7 @@ public class MigrationManagerTest {
 
     // confirm the number of broadcast stops at numBroadcasts
     Thread.sleep(2000);
-    assertEquals(numBroadcasts, messageSender.getBroadcastCount());
+    assertEquals("There're more broadcasts above expectation", numBroadcasts, messageSender.getBroadcastCount());
   }
 
   /**
@@ -167,7 +175,7 @@ public class MigrationManagerTest {
     final FinishedCallback finishedCallback = new FinishedCallback(movedLatch);
 
     runRandomMove(executor, operationIdCounter, numMoves, numActiveEvals, finishedCallback);
-    movedLatch.await(20000, TimeUnit.MILLISECONDS);
+    assertTrue("Move does not finish within time", movedLatch.await(20000, TimeUnit.MILLISECONDS));
 
     final int numBroadcasts = numOtherEvals * (numMoves - finishedCallback.getNumFailedMoves());
     while (messageSender.getBroadcastCount() < numBroadcasts) {
@@ -176,15 +184,13 @@ public class MigrationManagerTest {
 
     // confirm the number of broadcast stops at numBroadcasts
     Thread.sleep(2000);
-    assertEquals(numBroadcasts, messageSender.getBroadcastCount());
+    assertEquals("There're more broadcasts above expectation", numBroadcasts, messageSender.getBroadcastCount());
   }
 
   @Test(timeout = 20000)
   public void testNotifyingUpdate() throws InterruptedException {
     final ExecutorService executor = Executors.newFixedThreadPool(NUM_THREAD);
     final AtomicInteger operationIdCounter = new AtomicInteger(0);
-
-    final int numClients = 1;
 
     final String clientId0 = "TEST0";
     final UpdateCallback updateCallback0 = new UpdateCallback();
@@ -200,9 +206,9 @@ public class MigrationManagerTest {
     FinishedCallback finishedCallback = new FinishedCallback(movedLatch);
 
     runRandomMove(executor, operationIdCounter, numMoves, NUM_INIT_EVALS, finishedCallback);
-    movedLatch.await(10000, TimeUnit.MILLISECONDS);
+    assertTrue("Move does not finish within time", movedLatch.await(10000, TimeUnit.MILLISECONDS));
 
-    final int numUpdatesInFirstMoves = numClients * (numMoves - finishedCallback.getNumFailedMoves());
+    final int numUpdatesInFirstMoves = numMoves - finishedCallback.getNumFailedMoves();
     while (updateCallback0.getUpdateCount() < numUpdatesInFirstMoves ||
         updateCallback1.getUpdateCount() < numUpdatesInFirstMoves) {
       Thread.sleep(1000);
@@ -210,8 +216,10 @@ public class MigrationManagerTest {
 
     // confirm the number of broadcast stops at numUpdatesInFirstMoves
     Thread.sleep(2000);
-    assertEquals(numUpdatesInFirstMoves, updateCallback0.getUpdateCount());
-    assertEquals(numUpdatesInFirstMoves, updateCallback1.getUpdateCount());
+    assertEquals("There're more updates above expectation",
+        numUpdatesInFirstMoves, updateCallback0.getUpdateCount());
+    assertEquals("There're more updates above expectation",
+        numUpdatesInFirstMoves, updateCallback1.getUpdateCount());
 
     // 2. Second moves with only one client, after deregistering the other client
     migrationManager.deregisterRoutingTableUpdateCallback(clientId1);
@@ -221,17 +229,19 @@ public class MigrationManagerTest {
     finishedCallback = new FinishedCallback(movedLatch);
 
     runRandomMove(executor, operationIdCounter, numMoves, NUM_INIT_EVALS, finishedCallback);
-    movedLatch.await(10000, TimeUnit.MILLISECONDS);
+    assertTrue("Move does not finish within time", movedLatch.await(10000, TimeUnit.MILLISECONDS));
 
-    final int numUpdatesInSecondMoves = numClients * (numMoves - finishedCallback.getNumFailedMoves());
+    final int numUpdatesInSecondMoves = numMoves - finishedCallback.getNumFailedMoves();
     while (updateCallback0.getUpdateCount() < numUpdatesInFirstMoves + numUpdatesInSecondMoves) {
       Thread.sleep(1000);
     }
 
     // confirm the number of broadcast stops at numBroadcasts
     Thread.sleep(2000);
-    assertEquals(numUpdatesInFirstMoves + numUpdatesInSecondMoves, updateCallback0.getUpdateCount());
-    assertEquals(numUpdatesInFirstMoves, updateCallback1.getUpdateCount()); // client1 should not receive second updates
+    assertEquals("There're more updates above expectation",
+        numUpdatesInFirstMoves + numUpdatesInSecondMoves, updateCallback0.getUpdateCount());
+    assertEquals("There're more updates above expectation",
+        numUpdatesInFirstMoves, updateCallback1.getUpdateCount()); // client1 should not receive second updates
   }
 
   /**
@@ -331,27 +341,30 @@ public class MigrationManagerTest {
 
       final int numBlocksToMove = blockManager.getNumBlocks(EVAL_PREFIX + srcIdx) / numMoves;
       executor.execute(new MigrationThread(opIdCounter.getAndIncrement(),
-          EVAL_PREFIX + srcIdx, EVAL_PREFIX + destIdx, numBlocksToMove, callback));
+          EVAL_PREFIX + srcIdx, EVAL_PREFIX + destIdx, numBlocksToMove, callback, migrationManager));
     }
   }
 
   /**
    * A thread that performs migration with given parameters.
    */
-  private final class MigrationThread implements Runnable {
+  private static final class MigrationThread implements Runnable {
     private final int opId;
     private final String srcId;
     private final String destId;
     private final int numBlocksToMove;
     private final EventHandler<AvroElasticMemoryMessage> finishedCallback;
+    private final MigrationManager migrationManager;
 
     MigrationThread(final int opId, final String srcId, final String destId, final int numBlocksToMove,
-                    final EventHandler<AvroElasticMemoryMessage> finishedCallback) {
+                    final EventHandler<AvroElasticMemoryMessage> finishedCallback,
+                    final MigrationManager migrationManager) {
       this.opId = opId;
       this.srcId = srcId;
       this.destId = destId;
       this.numBlocksToMove = numBlocksToMove;
       this.finishedCallback = finishedCallback;
+      this.migrationManager = migrationManager;
     }
 
     @Override
@@ -364,18 +377,28 @@ public class MigrationManagerTest {
   /**
    * Mocked message sender simulates migration without actual network communications.
    */
-  private final class MockedMsgSender implements ElasticMemoryMsgSender {
+  private static final class MockedMsgSender implements ElasticMemoryMsgSender {
 
     /**
      * A counter for the number of broadcasts.
      */
     private AtomicInteger broadcastCounter = new AtomicInteger(0);
 
+    private BlockManager blockManager;
+
+    private MigrationManager migrationManager;
+
     /**
      * @return the number of broadcasts
      */
     int getBroadcastCount() throws InterruptedException {
       return broadcastCounter.get();
+    }
+
+    @Inject
+    private MockedMsgSender(final BlockManager blockManager, final MigrationManager migrationManager) {
+      this.blockManager = blockManager;
+      this.migrationManager = migrationManager;
     }
 
     @Override

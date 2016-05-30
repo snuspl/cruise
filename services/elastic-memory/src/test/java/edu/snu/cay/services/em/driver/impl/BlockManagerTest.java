@@ -31,6 +31,7 @@ public final class BlockManagerTest {
 
   private static final String EVAL_ID_PREFIX = "eval-";
   private static final int NUM_INIT_EVALS = 4;
+  private static final int NUM_EVALS_TO_ADD = 5;
 
   private BlockManager blockManager;
 
@@ -53,14 +54,16 @@ public final class BlockManagerTest {
     assertEquals(NUM_INIT_EVALS, blockManager.getActiveEvaluators().size());
 
     // check the number of block are as expected
-    int blockSum = 0;
+    int numTotalBlocks = 0;
     for (int idx = 0; idx < NUM_INIT_EVALS; idx++) {
       final int numBlocks = blockManager.getNumBlocks(EVAL_ID_PREFIX + idx);
-      assertTrue(numBlocks > 0);
-      blockSum += numBlocks;
+      assertTrue("Initial evaluators should have several blocks", numBlocks > 0);
+      numTotalBlocks += numBlocks;
     }
-    assertEquals(blockManager.getNumTotalBlocks(), blockSum);
-    assertEquals(blockManager.getNumTotalBlocks(), blockManager.getBlockLocations().size());
+    assertEquals("The number of existing blocks should always same with the total blocks generated at initial",
+        blockManager.getNumTotalBlocks(), numTotalBlocks);
+    assertEquals("The number of existing blocks should always same with the total blocks generated at initial",
+        blockManager.getNumTotalBlocks(), blockManager.getBlockLocations().size());
 
     // try to register same eval ids again
     for (int idx = 0; idx < NUM_INIT_EVALS; idx++) {
@@ -86,29 +89,32 @@ public final class BlockManagerTest {
 
     // 2. Register an additional evaluator and confirm that the added evaluator has no assigned block
     // and the total number of block never changes
-    final int numAddedEvals = 5;
 
-    for (int idx = NUM_INIT_EVALS; idx < NUM_INIT_EVALS + numAddedEvals; idx++) {
+    for (int idx = NUM_INIT_EVALS; idx < NUM_INIT_EVALS + NUM_EVALS_TO_ADD; idx++) {
       blockManager.registerEvaluator(EVAL_ID_PREFIX + idx, NUM_INIT_EVALS);
     }
-    assertEquals(NUM_INIT_EVALS + numAddedEvals, blockManager.getActiveEvaluators().size());
+    assertEquals("Wrong number of registered evaluators",
+        NUM_INIT_EVALS + NUM_EVALS_TO_ADD, blockManager.getActiveEvaluators().size());
 
     // check the number of blocks are as expected
-    blockSum = 0;
-    for (int idx = 0; idx < NUM_INIT_EVALS + numAddedEvals; idx++) {
+    numTotalBlocks = 0;
+    for (int idx = 0; idx < NUM_INIT_EVALS + NUM_EVALS_TO_ADD; idx++) {
       final int numBlocks = blockManager.getNumBlocks(EVAL_ID_PREFIX + idx);
       assertTrue(idx >= NUM_INIT_EVALS ? numBlocks == 0 : numBlocks > 0);
-      blockSum += numBlocks;
+      numTotalBlocks += numBlocks;
     }
-    assertEquals(blockManager.getNumTotalBlocks(), blockSum);
-    assertEquals(blockManager.getNumTotalBlocks(), blockManager.getBlockLocations().size());
+    assertEquals("The number of existing blocks should always same with the total blocks generated at initial",
+        blockManager.getNumTotalBlocks(), numTotalBlocks);
+    assertEquals("The number of existing blocks should always same with the total blocks generated at initial",
+        blockManager.getNumTotalBlocks(), blockManager.getBlockLocations().size());
 
     // deregister all added evals
-    for (int idx = NUM_INIT_EVALS; idx < NUM_INIT_EVALS + numAddedEvals; idx++) {
+    for (int idx = NUM_INIT_EVALS; idx < NUM_INIT_EVALS + NUM_EVALS_TO_ADD; idx++) {
       blockManager.deregisterEvaluator(EVAL_ID_PREFIX + idx);
     }
-    assertEquals(NUM_INIT_EVALS, blockManager.getActiveEvaluators().size());
-    assertEquals(blockManager.getNumTotalBlocks(), blockManager.getBlockLocations().size());
+    assertEquals("Wrong number of registered evaluators", NUM_INIT_EVALS, blockManager.getActiveEvaluators().size());
+    assertEquals("The number of existing blocks should always same with the total blocks generated at initial",
+        blockManager.getNumTotalBlocks(), blockManager.getBlockLocations().size());
   }
 
   /**
@@ -120,22 +126,24 @@ public final class BlockManagerTest {
     assertTrue(blockManager.getActiveEvaluators().isEmpty());
 
     // 1. Register NUM_INIT_EVALS + 1 evaluators
-    for (int idx = 0; idx < NUM_INIT_EVALS + 1; idx++) {
-      blockManager.registerEvaluator(EVAL_ID_PREFIX + idx, NUM_INIT_EVALS);
-    }
     final int numActiveEvals = NUM_INIT_EVALS + 1;
-    assertEquals(numActiveEvals, blockManager.getActiveEvaluators().size());
-
     final int newEvalIndex = NUM_INIT_EVALS;
 
-    int blockSum = 0;
+    for (int idx = 0; idx < numActiveEvals; idx++) {
+      blockManager.registerEvaluator(EVAL_ID_PREFIX + idx, NUM_INIT_EVALS);
+    }
+    assertEquals("Wrong number of registered evaluators", numActiveEvals, blockManager.getActiveEvaluators().size());
+
+    int numTotalBlocks = 0;
     for (int idx = 0; idx < numActiveEvals; idx++) {
       final int numBlocks = blockManager.getNumBlocks(EVAL_ID_PREFIX + idx);
-      assertTrue(idx == newEvalIndex ? numBlocks == 0 : numBlocks > 0);
-      blockSum += numBlocks;
+      assertTrue("Newly added eval should have 0 block", idx == newEvalIndex ? numBlocks == 0 : numBlocks > 0);
+      numTotalBlocks += numBlocks;
     }
-    assertEquals(blockManager.getNumTotalBlocks(), blockSum);
-    assertEquals(blockManager.getNumTotalBlocks(), blockManager.getBlockLocations().size());
+    assertEquals("The number of existing blocks should always same with the total blocks generated at initial",
+        blockManager.getNumTotalBlocks(), numTotalBlocks);
+    assertEquals("The number of existing blocks should always same with the total blocks generated at initial",
+        blockManager.getNumTotalBlocks(), blockManager.getBlockLocations().size());
 
     // 2. Move half of block from src evaluator to dest evaluator and
     // confirm that the number of blocks in both evaluators are as expected
@@ -158,8 +166,10 @@ public final class BlockManagerTest {
       blockManager.updateOwner(blockId, srcStoreId, destStoreId);
       blockManager.releaseBlockFromMove(blockId);
     }
-    assertEquals(numBlockInSrcEval - blocksToMove.size(), blockManager.getNumBlocks(srcEvalId));
-    assertEquals(numBlockInDestEval + blocksToMove.size(), blockManager.getNumBlocks(destEvalId));
+    assertEquals("The number of blocks in src eval decreases as the number of moved blocks",
+        numBlockInSrcEval - blocksToMove.size(), blockManager.getNumBlocks(srcEvalId));
+    assertEquals("The number of blocks in dest eval increases as the number of moved blocks",
+        numBlockInDestEval + blocksToMove.size(), blockManager.getNumBlocks(destEvalId));
 
     // 3. Move all blocks to the new evaluator and deregister other evaluators,
     // and try to deregister the new evaluator holding all blocks, which should fail
@@ -177,10 +187,11 @@ public final class BlockManagerTest {
         blockManager.releaseBlockFromMove(blockId);
       }
 
-      assertEquals(0, blockManager.getNumBlocks(evalId));
+      assertEquals("The source evals should be empty", 0, blockManager.getNumBlocks(evalId));
       blockManager.deregisterEvaluator(evalId);
     }
-    assertEquals(blockManager.getNumBlocks(newEvalId), blockManager.getNumTotalBlocks());
+    assertEquals("The destination eval should have all blocks",
+        blockManager.getNumBlocks(newEvalId), blockManager.getNumTotalBlocks());
 
     // try to deregister the evaluator holding all blocks
     try {

@@ -99,9 +99,10 @@ public final class BlockManager {
 
     final int memoryStoreId = getMemoryStoreId(contextId);
     if (storeIdToBlockIds.containsKey(memoryStoreId)) {
+      // TODO #545: throw a exception defined for specific purpose
       throw new RuntimeException("This evaluator is already registered. Its context Id is " + contextId);
     }
-    storeIdToBlockIds.put(memoryStoreId, new HashSet<Integer>());
+    storeIdToBlockIds.put(memoryStoreId, new HashSet<>());
 
     final int numActiveEvals = numEvalCounter.incrementAndGet();
     LOG.log(Level.FINE, "MemoryStore {0} is assigned to eval {1}", new Object[]{memoryStoreId, contextId});
@@ -131,8 +132,10 @@ public final class BlockManager {
 
     final Set<Integer> remainingBlocks = storeIdToBlockIds.get(memoryStoreId);
     if (remainingBlocks == null) {
+      // TODO #545: throw a exception defined for specific purpose
       throw new RuntimeException("The store " + memoryStoreId + " does not exist");
     } else if (!remainingBlocks.isEmpty()) {
+      // TODO #545: throw a exception defined for specific purpose
       throw new RuntimeException("This attempt tries to remove a non-empty store, resulting missing blocks.");
     }
 
@@ -212,7 +215,6 @@ public final class BlockManager {
   int getNumTotalBlocks() {
     return numTotalBlocks;
   }
-
 
   /**
    * @param evalId id of the Evaluator
