@@ -63,8 +63,8 @@
   </prerequisites>
 
   <modules>
-    <module>dolphin</module>
-    <module>dolphin-async</module>
+    <module>dolphin/bsp</module>
+    <module>dolphin/async</module>
     <module>services/elastic-memory</module>
     <module>services/evaluator-manager</module>
     <module>services/shuffle</module>
