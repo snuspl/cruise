@@ -305,8 +305,10 @@ public final class AsyncDolphinLauncher {
         .set(DriverConfiguration.ON_DRIVER_STARTED, AsyncDolphinDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, AsyncDolphinDriver.AllocatedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, AsyncDolphinDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_COMPLETED, AsyncDolphinDriver.CompletedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, AsyncDolphinDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_FAILED, AsyncDolphinDriver.FailedContextHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_CLOSED, AsyncDolphinDriver.ClosedContextHandler.class)
         .set(DriverConfiguration.ON_TASK_RUNNING, AsyncDolphinDriver.RunningTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_COMPLETED, AsyncDolphinDriver.CompletedTaskHandler.class)
         .set(DriverConfiguration.ON_TASK_FAILED, AsyncDolphinDriver.FailedTaskHandler.class);
