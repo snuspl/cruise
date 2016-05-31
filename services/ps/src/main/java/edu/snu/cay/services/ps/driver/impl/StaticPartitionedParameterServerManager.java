@@ -25,9 +25,7 @@ import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
-import edu.snu.cay.services.ps.worker.partitioned.ContextStopHandler;
-import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
-import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerHandler;
+import edu.snu.cay.services.ps.worker.partitioned.*;
 import edu.snu.cay.services.ps.common.partitioned.resolver.ServerResolver;
 import edu.snu.cay.services.ps.common.partitioned.resolver.StaticServerResolver;
 import edu.snu.cay.services.ps.worker.partitioned.parameters.ParameterWorkerNumThreads;
@@ -90,7 +88,8 @@ public final class StaticPartitionedParameterServerManager implements ParameterS
     return Tang.Factory.getTang()
         .newConfigurationBuilder(ServiceConfiguration.CONF
             .set(ServiceConfiguration.SERVICES, PartitionedParameterWorker.class)
-            .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
+            .set(ServiceConfiguration.ON_TASK_STOP, ShutdownHandlers.TaskStopHandler.class)
+            .set(ServiceConfiguration.ON_CONTEXT_STOP, ShutdownHandlers.ContextStopHandler.class)
             .build())
         .bindImplementation(ParameterWorker.class, PartitionedParameterWorker.class)
         .bindImplementation(AsyncWorkerHandler.class, PartitionedWorkerHandler.class)

@@ -42,6 +42,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -234,13 +235,22 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
    * Close the worker, after waiting for queued messages to be sent.
    */
   public void close() {
-    // Close all partitions
+    // Close all threads
     for (int i = 0; i < numThreads; i++) {
       threads[i].close();
     }
-    // Wait for shutdown to complete on all partitions
+    // Wait for shutdown to complete on all threads
     for (int i = 0; i < numThreads; i++) {
       threads[i].waitForShutdown();
+    }
+  }
+
+  /**
+   * Wait for queued messages to be sent.
+   */
+  public void waitPendingOps() {
+    for (int i = 0; i < numThreads; i++) {
+      threads[i].waitPendingOps();
     }
   }
 
@@ -433,7 +443,9 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     private final int drainSize; // Max number of operations to drain per iteration.
 
     private volatile boolean close = false;
-    private volatile boolean shutdown = false;
+    private final AtomicBoolean shutdown = new AtomicBoolean(false);
+    private final AtomicBoolean flushing = new AtomicBoolean(false);
+    private volatile boolean flip = false; // a flip bit for controlling flushing state
 
     public WorkerThread(final ConcurrentMap<K, PullFuture<V>> pendingPulls,
                         final ServerResolver serverResolver,
@@ -500,6 +512,11 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     @Override
     public void run() {
       while (!close || !queue.isEmpty()) {
+        // notify that all the queued operations are flushed
+        if (flushing.get() || queue.isEmpty()) {
+          flushed();
+        }
+
         // First, poll and apply. The timeout allows the run thread to close cleanly within timeout ms.
         try {
           final Op<K, V> op = queue.poll(QUEUE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
@@ -525,24 +542,58 @@ public final class PartitionedParameterWorker<K, P, V> implements ParameterWorke
     }
 
     /**
-     * Cleanly close the run thread.
+     * Notify threads waiting in {@link #waitPendingOps()}.
+     */
+    private void flushed() {
+      if (flushing.compareAndSet(true, false)) {
+        flip = !flip;
+        synchronized (flushing) {
+          flushing.notifyAll();
+        }
+      }
+    }
+
+    /**
+     * Wait for threads to process all pending operations.
+     */
+    public void waitPendingOps() {
+      final boolean token = flip;
+      flushing.set(true);
+      while (token == flip) {
+        try {
+          synchronized (flushing) {
+            flushing.wait();
+          }
+        } catch (InterruptedException e) {
+          LOG.log(Level.WARNING, "InterruptedException while waiting for queued operations to complete", e);
+        }
+      }
+    }
+
+    /**
+     * Close the run thread.
+     * To prevent message loss, call {@link #waitPendingOps()} beforehand.
      */
     public void close() {
       close = true;
     }
 
-    private synchronized void shutdown() {
-      shutdown = true;
-      notifyAll();
+    private void shutdown() {
+      shutdown.set(true);
+      synchronized (shutdown) {
+        shutdown.notifyAll();
+      }
     }
 
     /**
      * Wait for shutdown confirmation (clean close has finished).
      */
-    public synchronized void waitForShutdown() {
-      while (!shutdown) {
+    public void waitForShutdown() {
+      while (!shutdown.get()) {
         try {
-          wait();
+          synchronized (shutdown) {
+            shutdown.wait();
+          }
         } catch (final InterruptedException e) {
           LOG.log(Level.WARNING, "InterruptedException while waiting for close to complete", e);
         }

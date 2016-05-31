@@ -28,8 +28,8 @@ import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
 import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
 import edu.snu.cay.services.ps.worker.AsyncWorkerHandler;
 import edu.snu.cay.services.ps.worker.api.ParameterWorker;
+import edu.snu.cay.services.ps.worker.partitioned.ShutdownHandlers;
 import edu.snu.cay.services.ps.worker.partitioned.dynamic.TaskStartHandler;
-import edu.snu.cay.services.ps.worker.partitioned.ContextStopHandler;
 import edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedParameterWorker;
 import edu.snu.cay.services.ps.worker.partitioned.PartitionedWorkerHandler;
@@ -98,7 +98,8 @@ public final class DynamicPartitionedParameterServerManager implements Parameter
             .set(ServiceConfiguration.SERVICES, PartitionedParameterWorker.class)
             .set(ServiceConfiguration.ON_TASK_STARTED, TaskStartHandler.class)
             .set(ServiceConfiguration.ON_TASK_STOP, TaskStopHandler.class)
-            .set(ServiceConfiguration.ON_CONTEXT_STOP, ContextStopHandler.class)
+            .set(ServiceConfiguration.ON_TASK_STOP, ShutdownHandlers.TaskStopHandler.class)
+            .set(ServiceConfiguration.ON_CONTEXT_STOP, ShutdownHandlers.ContextStopHandler.class)
             .build())
         .bindImplementation(ParameterWorker.class, PartitionedParameterWorker.class)
         .bindImplementation(AsyncWorkerHandler.class, PartitionedWorkerHandler.class)
