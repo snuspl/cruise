@@ -127,7 +127,7 @@ public final class BlockManager {
    * It should be called after all blocks in the store of the evaluator are completely moved out.
    * @param contextId an id of context
    */
-  public synchronized void deregisterEvaluator(final String contextId) {
+  synchronized void deregisterEvaluator(final String contextId) {
     final int memoryStoreId = getMemoryStoreId(contextId);
 
     final Set<Integer> remainingBlocks = storeIdToBlockIds.get(memoryStoreId);
@@ -194,10 +194,10 @@ public final class BlockManager {
       throw new RuntimeException("MemoryStore " + newOwnerId + " has been lost.");
     }
 
-    if (!storeIdToBlockIds.get(oldOwnerId).remove(blockId)) {
+    if (!storeIdToBlockIds.get(oldOwnerId).contains(blockId)) {
       throw new RuntimeException("Store " + oldOwnerId + " does not own block " + blockId);
     }
-    if (!storeIdToBlockIds.get(newOwnerId).add(blockId)) {
+    if (!storeIdToBlockIds.get(newOwnerId).contains(blockId)) {
       throw new RuntimeException("Store " + newOwnerId + " already owns block " + blockId);
     }
 
@@ -227,6 +227,18 @@ public final class BlockManager {
       return 0;
     }
     return blockIds.size();
+  }
+
+  /**
+   * @return mapping between identifier of evaluator and the number of blocks it has
+   */
+  private Map<String, Integer> getEvalIdToNumBlocks() {
+    final Map<String, Integer> evalIdToNumBlocks = new HashMap<>();
+    for (final Map.Entry<Integer, Set<Integer>> storeIdToblockId : storeIdToBlockIds.entrySet()) {
+      final String evalId = getEvaluatorId(storeIdToblockId.getKey());
+      evalIdToNumBlocks.put(evalId, storeIdToblockId.getValue().size());
+    }
+    return evalIdToNumBlocks;
   }
 
   /**
@@ -298,16 +310,11 @@ public final class BlockManager {
     }
   }
 
-  private Map<String, Integer> getEvalIdToNumBlocks() {
-    final Map<String, Integer> evalIdToNumBlocks = new HashMap<>();
-    for (final Map.Entry<Integer, Set<Integer>> storeIdToblockId : storeIdToBlockIds.entrySet()) {
-      final String evalId = getEvaluatorId(storeIdToblockId.getKey());
-      evalIdToNumBlocks.put(evalId, storeIdToblockId.getValue().size());
-    }
-    return evalIdToNumBlocks;
-  }
-
-  public Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
+  /**
+   * @param dataType the type of data
+   * @return mapping between identifier of evaluator and its EvaluatorParameters
+   */
+  Map<String, EvaluatorParameters> generateEvalParams(final String dataType) {
     final Map<String, Integer> evalIdToNumBlocks = getEvalIdToNumBlocks();
     final int numEvaluators = evalIdToNumBlocks.size();
 

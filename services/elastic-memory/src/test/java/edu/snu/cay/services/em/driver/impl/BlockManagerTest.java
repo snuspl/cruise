@@ -89,7 +89,6 @@ public final class BlockManagerTest {
 
     // 2. Register an additional evaluator and confirm that the added evaluator has no assigned block
     // and the total number of block never changes
-
     for (int idx = NUM_INIT_EVALS; idx < NUM_INIT_EVALS + NUM_EVALS_TO_ADD; idx++) {
       blockManager.registerEvaluator(EVAL_ID_PREFIX + idx, NUM_INIT_EVALS);
     }
@@ -137,7 +136,11 @@ public final class BlockManagerTest {
     int numTotalBlocks = 0;
     for (int idx = 0; idx < numActiveEvals; idx++) {
       final int numBlocks = blockManager.getNumBlocks(EVAL_ID_PREFIX + idx);
-      assertTrue("Newly added eval should have 0 block", idx == newEvalIndex ? numBlocks == 0 : numBlocks > 0);
+      if (idx == newEvalIndex) {
+        assertTrue("Newly added eval should have 0 block", numBlocks == 0);
+      } else {
+        assertTrue("Initial evaluators should have several blocks", numBlocks > 0);
+      }
       numTotalBlocks += numBlocks;
     }
     assertEquals("The number of existing blocks should always same with the total blocks generated at initial",

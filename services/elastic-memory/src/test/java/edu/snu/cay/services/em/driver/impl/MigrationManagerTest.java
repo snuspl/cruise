@@ -52,10 +52,10 @@ public class MigrationManagerTest {
   private MigrationManager migrationManager;
   private MockedMsgSender messageSender;
 
-  private static final String OP_ID = "op";
+  private static final String OP_PREFIX = "op";
   private static final String EVAL_PREFIX = "eval-";
   private static final String DATA_TYPE = "dataType";
-  private static final int NUM_REQUESTS = 10;
+  private static final int NUM_REQUESTS_PER_EVAL = 10;
   private static final int NUM_THREAD = 4;
 
   @Before
@@ -85,27 +85,25 @@ public class MigrationManagerTest {
     final ExecutorService executor = Executors.newFixedThreadPool(NUM_THREAD);
     final AtomicInteger operationIdCounter = new AtomicInteger(0);
 
-    final CountDownLatch movedLatch = new CountDownLatch(2 * NUM_REQUESTS);
+    final CountDownLatch movedLatch = new CountDownLatch(2 * NUM_REQUESTS_PER_EVAL);
     final FinishedCallback finishedCallback0 = new FinishedCallback(movedLatch);
     final FinishedCallback finishedCallback1 = new FinishedCallback(movedLatch);
 
     final int numInitBlocksIn0 = blockManager.getNumBlocks(EVAL_PREFIX + 0);
     final int numInitBlocksIn1 = blockManager.getNumBlocks(EVAL_PREFIX + 1);
 
-    for (int i = 0; i < NUM_REQUESTS; i++) {
-      final int numBlocksInSrcEval = blockManager.getNumBlocks(EVAL_PREFIX + 0);
-      final int numBlocksToMove = numBlocksInSrcEval / NUM_REQUESTS;
+    // Start migration of blocks between Eval0 and Eval1, by requesting multiple times as many as NUM_REQUESTS_PER_EVAL.
+    for (int i = 0; i < NUM_REQUESTS_PER_EVAL; i++) {
+      final int numBlocksInSrcEval0 = blockManager.getNumBlocks(EVAL_PREFIX + 0);
+      final int numBlocksInSrcEval1 = blockManager.getNumBlocks(EVAL_PREFIX + 1);
+
+      final int numBlocksToMoveFromEval0 = numBlocksInSrcEval0 / NUM_REQUESTS_PER_EVAL;
+      final int numBlocksToMoveFromEval1 = numBlocksInSrcEval1 / NUM_REQUESTS_PER_EVAL;
 
       executor.execute(new MigrationThread(operationIdCounter.getAndIncrement(),
-          EVAL_PREFIX + 0, EVAL_PREFIX + 1, numBlocksToMove, finishedCallback0, migrationManager));
-    }
-
-    for (int i = 0; i < NUM_REQUESTS; i++) {
-      final int numBlocksInSrcEval = blockManager.getNumBlocks(EVAL_PREFIX + 1);
-      final int numBlocksToMove = numBlocksInSrcEval / NUM_REQUESTS;
-
+          EVAL_PREFIX + 0, EVAL_PREFIX + 1, numBlocksToMoveFromEval0, finishedCallback0, migrationManager));
       executor.execute(new MigrationThread(operationIdCounter.getAndIncrement(),
-          EVAL_PREFIX + 1, EVAL_PREFIX + 0, numBlocksToMove, finishedCallback1, migrationManager));
+          EVAL_PREFIX + 1, EVAL_PREFIX + 0, numBlocksToMoveFromEval1, finishedCallback1, migrationManager));
     }
 
     // wait until all moves are finished
@@ -369,7 +367,7 @@ public class MigrationManagerTest {
 
     @Override
     public void run() {
-      migrationManager.startMigration(OP_ID + opId, srcId, destId, DATA_TYPE, numBlocksToMove,
+      migrationManager.startMigration(OP_PREFIX + opId, srcId, destId, DATA_TYPE, numBlocksToMove,
           null, finishedCallback);
     }
   }
