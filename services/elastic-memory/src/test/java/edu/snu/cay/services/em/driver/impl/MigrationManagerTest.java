@@ -37,6 +37,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.*;
 
@@ -44,6 +46,7 @@ import static org.junit.Assert.*;
  * Test that the MigrationManager handles the states and sends messages correctly.
  */
 public class MigrationManagerTest {
+  private static final Logger LOG = Logger.getLogger(MigrationManagerTest.class.getName());
   // the number of intial evals should be larger than 3 for simulating all roles: sender, receiver, and the other
   // so as to test the broadcast of the result of migration in testBroadcastwithInitialEvals().
   private static final int NUM_INIT_EVALS = 3;
@@ -85,6 +88,7 @@ public class MigrationManagerTest {
     final ExecutorService executor = Executors.newFixedThreadPool(NUM_THREAD);
     final AtomicInteger operationIdCounter = new AtomicInteger(0);
 
+    // movedLatch is countdown in FinishedCallback.onNext()
     final CountDownLatch movedLatch = new CountDownLatch(2 * NUM_REQUESTS_PER_EVAL);
     final FinishedCallback finishedCallback0 = new FinishedCallback(movedLatch);
     final FinishedCallback finishedCallback1 = new FinishedCallback(movedLatch);
@@ -134,6 +138,8 @@ public class MigrationManagerTest {
 
     final int numActiveEvals = NUM_INIT_EVALS;
     final int numOtherEvals = numActiveEvals - 2; // -2 to exclude src and dest evals
+
+    // movedLatch is countdown in FinishedCallback.onNext()
     final CountDownLatch movedLatch = new CountDownLatch(numMoves);
     final FinishedCallback finishedCallback = new FinishedCallback(movedLatch);
 
@@ -169,6 +175,8 @@ public class MigrationManagerTest {
 
     final int numActiveEvals = NUM_INIT_EVALS + numAdditionalEvals;
     final int numOtherEvals = numActiveEvals - 2; // -2 to exclude src and dest evals
+
+    // movedLatch is countdown in FinishedCallback.onNext()
     final CountDownLatch movedLatch = new CountDownLatch(numMoves);
     final FinishedCallback finishedCallback = new FinishedCallback(movedLatch);
 
@@ -200,6 +208,8 @@ public class MigrationManagerTest {
 
     // 1. First moves with two listening clients
     int numMoves = 5;
+
+    // movedLatch is countdown in FinishedCallback.onNext()
     CountDownLatch movedLatch = new CountDownLatch(numMoves);
     FinishedCallback finishedCallback = new FinishedCallback(movedLatch);
 
@@ -223,16 +233,22 @@ public class MigrationManagerTest {
     migrationManager.deregisterRoutingTableUpdateCallback(clientId1);
 
     numMoves = 5;
+
+    // movedLatch is countdown in FinishedCallback.onNext()
     movedLatch = new CountDownLatch(numMoves);
     finishedCallback = new FinishedCallback(movedLatch);
 
     runRandomMove(executor, operationIdCounter, numMoves, NUM_INIT_EVALS, finishedCallback);
     assertTrue("Move does not finish within time", movedLatch.await(10000, TimeUnit.MILLISECONDS));
 
+    int loop = 0;
+
     final int numUpdatesInSecondMoves = numMoves - finishedCallback.getNumFailedMoves();
     while (updateCallback0.getUpdateCount() < numUpdatesInFirstMoves + numUpdatesInSecondMoves) {
+      loop++;
       Thread.sleep(1000);
     }
+    LOG.log(Level.INFO, "loop: {0}", loop);
 
     // confirm the number of broadcast stops at numBroadcasts
     Thread.sleep(2000);
@@ -380,11 +396,11 @@ public class MigrationManagerTest {
     /**
      * A counter for the number of broadcasts.
      */
-    private AtomicInteger broadcastCounter = new AtomicInteger(0);
+    private final AtomicInteger broadcastCounter = new AtomicInteger(0);
 
-    private BlockManager blockManager;
+    private final BlockManager blockManager;
 
-    private MigrationManager migrationManager;
+    private final MigrationManager migrationManager;
 
     /**
      * @return the number of broadcasts

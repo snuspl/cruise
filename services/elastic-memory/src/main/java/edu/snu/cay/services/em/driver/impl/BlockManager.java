@@ -197,7 +197,7 @@ public final class BlockManager {
     if (!storeIdToBlockIds.get(oldOwnerId).contains(blockId)) {
       throw new RuntimeException("Store " + oldOwnerId + " does not own block " + blockId);
     }
-    if (!storeIdToBlockIds.get(newOwnerId).contains(blockId)) {
+    if (storeIdToBlockIds.get(newOwnerId).contains(blockId)) {
       throw new RuntimeException("Store " + newOwnerId + " already owns block " + blockId);
     }
 
