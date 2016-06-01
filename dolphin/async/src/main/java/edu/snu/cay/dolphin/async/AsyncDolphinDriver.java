@@ -608,7 +608,7 @@ public final class AsyncDolphinDriver {
             LOG.log(Level.WARNING, "Errors in tracking server context: {0}", closedContext);
           }
         }
-      } if (rootServerContexts.containsKey(contextId) || rootWorkerContexts.containsKey(contextId)) {
+      } else if (rootServerContexts.containsKey(contextId) || rootWorkerContexts.containsKey(contextId)) {
         LOG.log(Level.INFO, "Root context {0} is closed. Its evaluator will be released soon.", contextId);
       } else {
         LOG.log(Level.WARNING, "Untracked context: {0}", closedContext);
