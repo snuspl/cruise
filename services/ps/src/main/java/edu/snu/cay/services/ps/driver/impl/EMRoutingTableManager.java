@@ -33,6 +33,7 @@ import java.util.*;
  * It receives the latest routing table from EM Driver. In addition, it keeps the mapping between
  * EM's MemoryStore ID and the PS's NCS endpoint id for PSWorkers can send requests to the appropriate servers.
  */
+// TODO #553: Should be instantiated only when dynamic PS is used.
 @Private
 @DriverSide
 public final class EMRoutingTableManager {

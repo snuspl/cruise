@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 /**
- * Parameter Server classes that are instantiated at the driver.
+ * Classes for worker-side parameter server tests.
  */
-package edu.snu.cay.services.ps.driver.impl;
+package edu.snu.cay.services.ps.worker.impl;

@@ -21,7 +21,7 @@ import java.util.List;
 
 /**
  * A Parameter Server worker (client) that interacts with the servers to provide or fetch parameters.
- * Works as a set with {@link edu.snu.cay.services.ps.server.concurrent.api.ParameterServer}.
+ * Works as a set with {@link edu.snu.cay.services.ps.server.api.ParameterServer}.
  * @param <K> class type of parameter keys
  * @param <P> class type of parameter values before they are processed at the servers
  * @param <V> class type of parameter values after they are processed at the servers

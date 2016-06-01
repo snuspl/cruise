@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 /**
- * Parameter Server classes that are instantiated at the driver.
+ * Server-side implementations for Parameter Server components.
+ * This Parameter Server supports atomic, in-order processing of push and pull operations.
+ * Partitions are based on the hash of the key.
+ * Each partition consists of a queue, kvStore, and thread.
+ * Operations are immediately added to the queue, so the message processing threads will not block,
+ * except when the queue is full.
  */
-package edu.snu.cay.services.ps.driver.impl;
+package edu.snu.cay.services.ps.server.impl;

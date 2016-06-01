@@ -24,6 +24,7 @@ import java.util.Set;
  * This class maintains the EM's routing table for Dynamic Partitioned Parameter Server.
  * Worker's push/pull requests are routed to the server that has the requested partition in its MemoryStore.
  */
+// TODO #553: Should be instantiated only when dynamic PS is used.
 @Private
 public final class EMRoutingTable {
   private final Map<Integer, Set<Integer>> storeIdToBlockIds;

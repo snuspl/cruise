@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Parameter Server classes that are instantiated at the driver.
- */
-package edu.snu.cay.services.ps.driver.impl;
+package edu.snu.cay.services.ps.worker.parameters;
+
+import org.apache.reef.tang.annotations.Name;
+import org.apache.reef.tang.annotations.NamedParameter;
+
+@NamedParameter(doc = "Time in ms to expire local cache", default_value = "1000",
+    short_name = "workerExpireTimeout")
+public final class WorkerExpireTimeout implements Name<Long> {
+}

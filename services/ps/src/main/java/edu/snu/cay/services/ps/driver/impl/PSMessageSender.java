@@ -27,9 +27,10 @@ import javax.inject.Inject;
 
 /**
  * Sends messages from the Driver to Parameter Workers.
- * Only used in the DynamicPartitionedParameterServer implementation
+ * Only used in the DynamicParameterServer implementation
  * to send the routing information acquired from Elastic Memory.
  */
+// TODO #553: Should be instantiated only when dynamic PS is used.
 @DriverSide
 final class PSMessageSender {
   private final InjectionFuture<PSNetworkSetup> psNetworkSetup;

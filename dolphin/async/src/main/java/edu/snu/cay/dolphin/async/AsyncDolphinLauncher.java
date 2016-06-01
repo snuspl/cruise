@@ -31,19 +31,19 @@ import edu.snu.cay.services.em.plan.api.PlanExecutor;
 import edu.snu.cay.services.em.plan.conf.PlanExecutorClass;
 import edu.snu.cay.services.em.serialize.Serializer;
 import edu.snu.cay.services.ps.ParameterServerConfigurationBuilder;
-import edu.snu.cay.services.ps.common.partitioned.parameters.Dynamic;
-import edu.snu.cay.services.ps.common.partitioned.parameters.NumPartitions;
-import edu.snu.cay.services.ps.common.partitioned.parameters.NumServers;
-import edu.snu.cay.services.ps.driver.ParameterServerDriver;
+import edu.snu.cay.services.ps.common.parameters.Dynamic;
+import edu.snu.cay.services.ps.common.parameters.NumPartitions;
+import edu.snu.cay.services.ps.common.parameters.NumServers;
+import edu.snu.cay.services.ps.driver.impl.ParameterServerDriver;
 import edu.snu.cay.services.ps.driver.api.ParameterServerManager;
-import edu.snu.cay.services.ps.driver.impl.DynamicPartitionedParameterServerManager;
-import edu.snu.cay.services.ps.driver.impl.StaticPartitionedParameterServerManager;
-import edu.snu.cay.services.ps.server.partitioned.parameters.ServerNumThreads;
-import edu.snu.cay.services.ps.server.partitioned.parameters.ServerQueueSize;
-import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerExpireTimeout;
-import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerKeyCacheSize;
-import edu.snu.cay.services.ps.worker.partitioned.parameters.ParameterWorkerNumThreads;
-import edu.snu.cay.services.ps.worker.partitioned.parameters.WorkerQueueSize;
+import edu.snu.cay.services.ps.driver.impl.dynamic.DynamicParameterServerManager;
+import edu.snu.cay.services.ps.driver.impl.fixed.StaticParameterServerManager;
+import edu.snu.cay.services.ps.server.parameters.ServerNumThreads;
+import edu.snu.cay.services.ps.server.parameters.ServerQueueSize;
+import edu.snu.cay.services.ps.worker.parameters.WorkerExpireTimeout;
+import edu.snu.cay.services.ps.worker.parameters.WorkerKeyCacheSize;
+import edu.snu.cay.services.ps.worker.parameters.ParameterWorkerNumThreads;
+import edu.snu.cay.services.ps.worker.parameters.WorkerQueueSize;
 import edu.snu.cay.utils.trace.HTraceParameters;
 import edu.snu.cay.utils.trace.parameters.ReceiverHost;
 import edu.snu.cay.utils.trace.parameters.ReceiverPort;
@@ -138,8 +138,8 @@ public final class AsyncDolphinLauncher {
       // configuration for the parameter server
       final boolean dynamic = basicParameterInjector.getNamedInstance(Dynamic.class);
       final Class<? extends ParameterServerManager> managerClass = dynamic ?
-          DynamicPartitionedParameterServerManager.class :
-          StaticPartitionedParameterServerManager.class;
+          DynamicParameterServerManager.class :
+          StaticParameterServerManager.class;
 
       final Configuration parameterServerConf = ParameterServerConfigurationBuilder.newBuilder()
           .setManagerClass(managerClass)

@@ -34,9 +34,10 @@ import java.util.Set;
 /**
  * Receives the messages from ParameterServers and ParameterWorkers.
  * Currently used to exchange the routing table between
- * {@link edu.snu.cay.services.ps.server.partitioned.DynamicPartitionedParameterServer} and
- * {@link edu.snu.cay.services.ps.common.partitioned.resolver.DynamicServerResolver}.
+ * {@link edu.snu.cay.services.ps.server.impl.dynamic.DynamicParameterServer} and
+ * {@link edu.snu.cay.services.ps.common.resolver.DynamicServerResolver}.
  */
+// TODO #553: Should be instantiated only when dynamic PS is used.
 @DriverSide
 public final class DriverSideMsgHandler implements EventHandler<Message<AvroParameterServerMsg>> {
   private final EMRoutingTableManager routingTableManager;

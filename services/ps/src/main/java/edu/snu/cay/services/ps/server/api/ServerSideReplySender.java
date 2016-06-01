@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Seoul National University
+ * Copyright (C) 2016 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package edu.snu.cay.services.ps.server.api;
+
 /**
- * Parameter Server classes that are instantiated at the driver.
+ * Sender for ParameterServer.
  */
-package edu.snu.cay.services.ps.driver.impl;
+public interface ServerSideReplySender<K, V> {
+  /**
+   * Implementing classes must serialize K, V immediately within the calling thread,
+   * to ensure atomicity of updates.
+   * @param destId the destination's network address
+   * @param key key, to be serialized immediately
+   * @param value value, to be serialized immediately
+   */
+  void sendReplyMsg(String destId, K key, V value);
+}
